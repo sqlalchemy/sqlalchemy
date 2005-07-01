@@ -1,0 +1,62 @@
+import sys, StringIO, string
+
+import sqlalchemy.sql as sql
+import sqlalchemy.schema as schema
+import sqlalchemy.ansisql as ansisql
+from sqlalchemy.ansisql import *
+
+
+def engine(**params):
+    return OracleSQLEngine(**params)
+    
+class OracleSQLEngine(ansisql.ANSISQLEngine):
+    def __init__(self, use_ansi = True, **params):
+        self._use_ansi = use_ansi
+        ansisql.ANSISQLEngine.__init__(self, **params)
+        
+    def compile(self, statement):
+        compiler = OracleCompiler(statement, use_ansi = self._use_ansi)
+        
+        statement.accept_visitor(compiler)
+        return compiler
+
+    def create_connection(self):
+        raise NotImplementedError()
+
+class OracleCompiler(ansisql.ANSICompiler):
+    """oracle compiler modifies the lexical structure of Select statements to work under 
+    non-ANSI configured Oracle databases, if the use_ansi flag is False."""
+    
+    def __init__(self, parent, use_ansi = True):
+        self._outertable = None
+        self._use_ansi = use_ansi
+        ansisql.ANSICompiler.__init__(self, parent)
+        
+    def visit_join(self, join):
+        if self._use_ansi:
+            return ansisql.ANSICompiler.visit_join(self, join)
+            
+        self.froms[join] = self.get_from_text(join.left) + ", " + self.get_from_text(join.right)
+        self.wheres[join] = join.onclause
+        
+        if join.isouter:
+            # if outer join, push on the right side table as the current "outertable"
+            outertable = self._outertable
+            self._outertable = join.right
+
+            # now re-visit the onclause, which will be used as a where clause
+            # (the first visit occured via the Join object itself right before it called visit_join())
+            join.onclause.accept_visitor(self)
+
+            self._outertable = outertable
+        
+    def visit_column(self, column):
+        if self._use_ansi:
+            return ansisql.ANSICompiler.visit_column(self, column)
+            
+        if column.table is self._outertable:
+            self.strings[column] = "%s.%s(+)" % (column.table.name, column.name)
+        else:
+            self.strings[column] = "%s.%s" % (column.table.name, column.name)
+        
+
