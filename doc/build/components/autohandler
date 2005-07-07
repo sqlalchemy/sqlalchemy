@@ -1,0 +1,22 @@
+<%flags>inherit =None</%flags>
+<html>
+<head>
+	<title><& REQUEST:title &></title>
+	<link href="style.css" rel="stylesheet" type="text/css"></link>
+	<link href="syntaxhighlight.css" rel="stylesheet" type="text/css"></link>
+</head>
+<body>
+
+% m.call_next()
+
+<center>
+</center>
+</body>
+</html>
+
+
+<%method title>
+Welcome to Myghty!
+</%method>
+
+
