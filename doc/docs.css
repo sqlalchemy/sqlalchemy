@@ -1,0 +1,170 @@
+/* documentation section styles */
+
+.doccontainer {
+}
+
+.panecontainer {
+}
+
+.sidebar {
+	background-color: #EEEEFB;
+	border: 1px solid;
+	padding: 5px 5px 5px 5px;
+	margin: 0px 5px 5px 0px;
+	width:120px;
+	float:left;
+}
+
+ 
+.sectionnavblock {
+}
+
+.sectionnav {
+	background-color: #EEEEFB;
+	border: 1px solid;
+	padding: 10px 10px 10px 10px; 
+	margin: 35px 0px 15px 5px;
+	float:right;
+}
+
+
+.topnav {
+	background-color: #EEEEFB;
+	border: 1px solid;
+	padding:10px 10px 0px 10px;
+	margin:0px 0px 10px 0px;
+}
+
+.tipbox {
+	background-color: #EEEEFB;
+	border:1px solid;
+	padding:10px;
+	margin: 5px;
+}
+
+/* optional margin to add to topnav */
+.topnavmargin {
+	margin:10px;
+}
+
+.topnavsectionlink {
+	padding: 0px 0px 0px 0px; 
+	margin: 0px 0px 0px 0px;
+}
+
+.topnavcontrol {
+	float:right;
+}
+
+.topnavmain {
+	margin: 25px 5px 15px 5px;
+}
+
+.topnavheader {
+	font-weight: bold;
+	font-size: 16px;
+	margin: 0px 0px 0px 0px;
+	padding:0px 0px 15px 0px;
+}
+
+.topnavitems {
+	margin: 0px 0px 0px 40px;
+}
+
+.prevnext {
+	padding: 5px 0px 0px 0px;
+}
+
+.code {
+	font-family:courier, serif;
+	font-size:12px;
+	background-color: #E2E2EB;
+	padding:2px 2px 2px 10px;
+	margin: 5px 5px 5px 5px;
+}
+
+.codetitle {
+	font-family: verdana, sans-serif;
+	font-size: 12px;
+	font-weight: bold;
+	text-decoration:underline;
+	padding:5px;
+}
+
+.codeline {
+	font-family:courier, serif;
+	font-size:12px;
+}
+
+
+.content {
+	border: 1px solid;
+	padding: 0px 10px 20px 0px;
+}
+
+.sectioncontent {
+	border: 1px solid;
+	padding: 0px 10px 20px 0px;
+}
+
+.onepagecontent {
+	border: 1px solid;
+	margin: 0px 0px 0px 0px;
+}
+
+.docheadertext {
+       font-size: 16px;
+       font-weight: bold;
+}
+
+.docheader {
+	margin: 0px 0px 10px 0px;
+}
+
+.subsection {
+	/* this style is dynamically modified by the indentation */
+	margin:15px 0px 0px 0px;
+	clear:right;
+}
+
+.section {
+	padding: 20px 0px 0px 0px;
+}
+
+.sectionheadertext {
+	font-weight: bold;
+	font-size: 16px;
+}
+
+.sectiontext {
+	font-size: 12px;
+	margin: 5px 0px 0px 0px;
+}
+
+.maintoc {
+	background-color: #EEEEFB;
+	border: 1px solid;
+	padding: 10px 10px 10px 10px; 
+	margin: 0px 0px 10px 0px;
+}
+
+.toclinkcontainer {
+	padding:0px 0px 0px 8px;
+	/*border:1px solid;*/
+}
+
+.tocsection {
+	padding:2px 2px 2px 8px;
+}
+
+.toclink {
+	font-size: 12px;
+	padding:0px 0px 3px 8px;
+	/*border:1px solid;*/
+}
+
+.smalltoclink {
+	font-size: 11px;
+	padding:0px 0px 3px 0px;
+}
+
