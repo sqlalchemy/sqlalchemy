@@ -1,0 +1,101 @@
+body, td {
+	font-family: verdana, sans-serif;
+	font-size: 12px;
+}
+
+body {
+	background-color: #FDFBFC;
+	margin:20px 20px 20px 20px;
+}
+
+
+p {
+	margin-top:10px;
+	margin-bottom:10px;
+}
+
+a {font-weight:normal; text-decoration:underline;}
+a:link {color:#0000FF;}
+a:visited {color:#0000FF;}
+a:active {color:#0000FF;}
+a:hover {color:#700000;}
+
+
+.toc {
+	background-color: #EEEEFB;
+	border: 1px solid;
+	/*padding:10px 8px 10px 15px;*/
+	padding: 10px 10px 10px 10px; 
+	margin: 5px;
+}
+
+.light {
+	background-color: #FFFFFF;
+}
+
+.dark {
+	background-color: #D2D2D2;
+}
+
+.logo {
+	float:left;
+	padding: 24px 15px 0px 10px;
+	height:276px;
+}
+
+.smalllogo {
+	float:left;
+}
+
+.headerbar {
+	padding-bottom:60px;
+}
+	
+.header {
+	font-weight: bold;
+	font-size: 20px;
+}
+
+.smallheader {
+	font-weight: bold;
+	font-size: 16px;
+}
+
+.filelist {
+	font-size:14px;
+	margin: 10px 10px 10px 70px;
+	line-height:25px;
+}
+
+.dirheader {
+	font-size:13px;
+	margin: 10px 50px 10px 20px
+}
+
+.toolbar {
+	text-align:right;
+	margin: 0px 10px 0px 10px
+}
+
+.copyright {
+	padding-top: 30px;
+	text-align:center;
+	font-size:9px;
+	color: #5F5F5F;
+}
+
+.small {
+	font-size:9px;
+}
+
+.sforgelogo {
+	text-align:right;
+	height: 40px;
+}
+
+.source {
+	border:1px solid;
+	padding:10px;
+	width:auto;
+}
+
