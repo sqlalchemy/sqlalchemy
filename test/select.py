@@ -314,6 +314,13 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
             insert(self.table, select([self.table2])),
             ""
         )
+
+    def testupdate(self):
+        self.runtest(update(self.table, self.table.c.id == 7), "UPDATE mytable SET name=:name WHERE mytable.myid = :mytable_myid", params = {self.table.c.name:'fred'})
+        self.runtest(update(self.table, self.table.c.id == 7), "UPDATE mytable SET name=:name WHERE mytable.myid = :mytable_myid", params = {'name':'fred'})
+
+    def testdelete(self):
+        self.runtest(delete(self.table, self.table.c.id == 7), "DELETE FROM mytable WHERE mytable.myid = :mytable_myid")
         
     def footestupdate(self):
         self.runtest(
@@ -399,8 +406,8 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
         u2 = alias(table, 'u2')
         
         
-    def runtest(self, clause, result, engine = None):
-        c = clause.compile(engine)
+    def runtest(self, clause, result, engine = None, params = None):
+        c = clause.compile(engine, params)
         print "\n" + str(c) + repr(c.get_params())
         self.assert_(str(c) == result)
 
