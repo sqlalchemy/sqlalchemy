@@ -218,6 +218,14 @@ class ANSICompiler(sql.Compiled):
             text += " WHERE " + self.get_str(update_stmt.whereclause)
          
         self.strings[update_stmt] = text
+
+    def visit_delete(self, delete_stmt):
+        text = "DELETE FROM " + delete_stmt.table.name
+        
+        if delete_stmt.whereclause:
+            text += " WHERE " + self.get_str(delete_stmt.whereclause)
+         
+        self.strings[delete_stmt] = text
         
     def __str__(self):
         return self.get_str(self.parent)
