@@ -101,3 +101,5 @@ class ThreadLocal(object):
     def __setattr__(self, key, value):
         object.__getattribute__(self, 'tdict')["%d_%s" % (thread.get_ident(), key)] = value
         
+
+
