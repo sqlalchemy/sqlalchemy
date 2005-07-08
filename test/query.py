@@ -31,6 +31,17 @@ class QueryTest(PersistTest):
 
         self.users.update(self.users.c.user_id == 7).execute(user_name = 'fred')
         print repr(self.users.select().execute().fetchall())
+
+    def testdelete(self):
+        c = db.connection()
+
+        self.users.insert().execute(user_id = 7, user_name = 'jack')
+        self.users.insert().execute(user_id = 8, user_name = 'fred')
+        print repr(self.users.select().execute().fetchall())
+
+        self.users.delete(self.users.c.user_name == 'fred').execute()
+        
+        print repr(self.users.select().execute().fetchall())
         
     def testtransaction(self):
         def dostuff():
