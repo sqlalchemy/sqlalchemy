@@ -46,6 +46,9 @@ def insert(table, values = None, **params):
 def update(table, whereclause = None, values = None, **params):
     return Update(table, whereclause, values, **params)
 
+def delete(table, whereclause = None, **params):
+    return Delete(table, whereclause, **params)
+
 def and_(*clauses):
     return _compound_clause('AND', *clauses)
 
@@ -377,6 +380,9 @@ class TableImpl(Selectable):
 
     def update(self, whereclause = None, parameters = None):
         return update(self.table, whereclause, parameters)
+
+    def delete(self, whereclause = None):
+        return delete(self.table, whereclause)
         
     columns = property(lambda self: self.table.columns)
 
@@ -592,4 +598,17 @@ class Update(UpdateBase):
 
         visitor.visit_update(self)
 
+class Delete(UpdateBase):
+    def __init__(self, table, whereclause, **params):
+        self.table = table
+        self.whereclause = whereclause
+
+        self.engine = self.table._engine()
+
+    
+    def accept_visitor(self, visitor):
+        if self.whereclause is not None:
+            self.whereclause.accept_visitor(visitor)
+
+        visitor.visit_delete(self)
         
