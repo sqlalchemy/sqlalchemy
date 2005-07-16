@@ -59,11 +59,19 @@ class Mapper(object):
     def instances(self, cursor):
         result = []
         cursor = ResultProxy(cursor)
+        lastinstance = None
         while True:
             row = cursor.fetchone()
             if row is None:
                 break
-            result.append(self.identitymap.get(row, self.class_, self.table, creator = self._create))
+            instance = self._instance(row)
+            if instance != lastinstance:
+                result.append(instance)
+                lastinstance = instance
+            else:
+                for key, prop in self.props.iteritems():
+                    prop.execute(instance, key, row, True)
+                
         return result
         
     def get(self, id):
@@ -102,41 +110,51 @@ class Mapper(object):
         statement.use_labels = True
         return self.instances(statement.execute(**params))
 
+    def _instance(self, row):
+        return self.identitymap.get(row, self.class_, self.table, creator = self._create)
+
     def _create(self, row):
         instance = self.class_()
         for key, prop in self.props.iteritems():
-            prop.execute(instance, key, row)
-
+            prop.execute(instance, key, row, False)
         return instance
 
 
 class MapperProperty:
-    def execute(self, instance, key, row):
+    def execute(self, instance, key, row, isduplicate):
         raise NotImplementedError()
     def setup(self, primarytable, statement):
         pass
-        
+
 class ColumnProperty(MapperProperty):
     def __init__(self, column):
         self.column = column
         
-    def execute(self, instance, key, row):
-        setattr(instance, key, row[self.column.label])
+    def execute(self, instance, key, row, isduplicate):
+        if not isduplicate:
+            setattr(instance, key, row[self.column.label])
 
 class EagerLoader(MapperProperty):
     def __init__(self, mapper, whereclause):
         self.mapper = mapper
         self.whereclause = whereclause
     def setup(self, primarytable, statement):
-        statement.append_from(sql.outerjoin(primarytable, self.mapper.table, self.whereclause))
+        if hasattr(statement, '_outerjoin'):
+            statement._outerjoin.right = sql.outerjoin(primarytable, self.mapper.table, self.whereclause)
+        else:
+            statement._outerjoin = sql.outerjoin(primarytable, self.mapper.table, self.whereclause)
+            statement.append_from(statement._outerjoin)
         statement.append_column(self.mapper.table)
-    def execute(self, instance, key, row):
-        print "eagerloader exec for key " + key
-        list = getattr(instance, key, [])
-        list.append(self.mapper._create(row))
-        
-        
-    
+    def execute(self, instance, key, row, isduplicate):
+        try:
+            list = getattr(instance, key)
+        except AttributeError:
+            list = []
+            setattr(instance, key, list)
+        subinstance = self.mapper._instance(row)
+        if subinstance is not None:
+            list.append(subinstance)
+
 class ResultProxy:
     def __init__(self, cursor):
         self.cursor = cursor
@@ -150,6 +168,7 @@ class ResultProxy:
 
     def fetchone(self):
         row = self.cursor.fetchone()
+        print "row: " + repr(row)
         if row is not None:
             return RowProxy(self, row)
         else:
@@ -177,7 +196,11 @@ class IdentityMap(object):
         try:
             return self.map[key]
         except KeyError:
-            return self.map.setdefault(key, creator(row))
+            newinstance = creator(row)
+            for column in table.primary_keys:
+                if row[column.label] is None:
+                    return None
+            return self.map.setdefault(key, newinstance)
             
     
     
