@@ -37,58 +37,39 @@ addressmapper = Mapper(Address, addresses, properties = {
 import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
 
-class Mapper:
+class Mapper(object):
     def __init__(self, class_, table, properties = None, identitymap = None):
         self.class_ = class_
         self.table = table
         
         self.props = {}
         
+        for column in table.columns:
+            self.props[column.key] = ColumnProperty(column)
+
         if properties is not None:
-            for key, column in properties.iteritems():
-                desc = (key, column)
-                self.props["key_" + key] = desc
-                self.props["column_" + column.label] = desc
-                self.props["column_" + column.name] = desc
-        else:
-            for column in table.columns:
-                desc = (column.name, column)
-                self.props["key_" + column.name] = desc
-                self.props["column_" + column.label] = desc
-                self.props["column_" + column.name] = desc
+            for key, value in properties.iteritems():
+                self.props[key] = value
                 
         if identitymap is not None:
             self.identitymap = identitymap
         else:
             self.identitymap = _global_identitymap
-
-    def _create(self, row):
-        instance = self.class_()
-        for desc in self.props.values():
-            setattr(instance, desc[0], row[desc[1].name])
-        return instance
             
-    def instance(self, row):
-        return self.identitymap.get(row, self.class_, self.table, creator = self._create)
-
-    def get(self, id):
-        """returns an instance of the object based on the given ID."""
-        pass
-        
-    def _select_whereclause(self, whereclause = None, **params):
-        statement = sql.select([self.table], whereclause)    
-        return self._select_statement(statement, **params)
-    
-    def _select_statement(self, statement, **params):
+    def instances(self, cursor):
         result = []
-        cursor = ResultProxy(statement.execute(**params))
+        cursor = ResultProxy(cursor)
         while True:
             row = cursor.fetchone()
             if row is None:
                 break
-            result.append(self.instance(row))
+            result.append(self.identitymap.get(row, self.class_, self.table, creator = self._create))
         return result
-
+        
+    def get(self, id):
+        """returns an instance of the object based on the given ID."""
+        pass
+        
     def select(self, arg = None, **params):
         """selects instances of the object from the database.  
         
@@ -109,7 +90,53 @@ class Mapper:
         
     def delete(self, whereclause = None, **params):
         pass
+
+
+    def _select_whereclause(self, whereclause = None, **params):
+        statement = sql.select([self.table], whereclause)
+        for value in self.props.values():
+            value.setup(self.table, statement) 
+        return self._select_statement(statement, **params)
+    
+    def _select_statement(self, statement, **params):
+        statement.use_labels = True
+        return self.instances(statement.execute(**params))
+
+    def _create(self, row):
+        instance = self.class_()
+        for key, prop in self.props.iteritems():
+            prop.execute(instance, key, row)
+
+        return instance
+
+
+class MapperProperty:
+    def execute(self, instance, key, row):
+        raise NotImplementedError()
+    def setup(self, primarytable, statement):
+        pass
         
+class ColumnProperty(MapperProperty):
+    def __init__(self, column):
+        self.column = column
+        
+    def execute(self, instance, key, row):
+        setattr(instance, key, row[self.column.label])
+
+class EagerLoader(MapperProperty):
+    def __init__(self, mapper, whereclause):
+        self.mapper = mapper
+        self.whereclause = whereclause
+    def setup(self, primarytable, statement):
+        statement.append_from(sql.outerjoin(primarytable, self.mapper.table, self.whereclause))
+        statement.append_column(self.mapper.table)
+    def execute(self, instance, key, row):
+        print "eagerloader exec for key " + key
+        list = getattr(instance, key, [])
+        list.append(self.mapper._create(row))
+        
+        
+    
 class ResultProxy:
     def __init__(self, cursor):
         self.cursor = cursor
@@ -135,7 +162,7 @@ class RowProxy:
     def __getitem__(self, key):
         return self.row[self.parent.props[key]]
         
-class IdentityMap:
+class IdentityMap(object):
     def __init__(self):
         self.map = {}
         self.keystereotypes = {}
@@ -145,7 +172,7 @@ class IdentityMap:
         to the row, returns a corrseponding object instance, if any, from the identity
         map.  the primary keys specified in the table will be used to indicate which
         columns from the row form the effective key of the instance."""
-        key = (class_, table, tuple([row[column.name] for column in table.primary_keys]))
+        key = (class_, table, tuple([row[column.label] for column in table.primary_keys]))
         
         try:
             return self.map[key]
