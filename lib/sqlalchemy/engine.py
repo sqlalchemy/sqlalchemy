@@ -71,7 +71,7 @@ class SQLEngine(schema.SchemaEngine):
     def dbapi(self):
         raise NotImplementedError()
 
-    def compile(self, statement):
+    def compile(self, statement, bindparams):
         raise NotImplementedError()
 
     def proxy(self):

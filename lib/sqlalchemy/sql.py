@@ -279,6 +279,9 @@ class Join(Selectable):
         self.onclause = onclause
         self.isouter = isouter
     
+    def add_join(self, join):
+        pass
+        
     def select(self, whereclauses = None, **params):
         return select([self.left, self.right], and_(self.onclause, whereclauses), **params)
     
@@ -287,13 +290,15 @@ class Join(Selectable):
         self.right.accept_visitor(visitor)
         self.onclause.accept_visitor(visitor)
         visitor.visit_join(self)
-
+            
     def _engine(self):
         return self.left._engine() or self.right._engine()
         
     def _get_from_objects(self):
-        return [self, FromClause(from_key = self.left.id), FromClause(from_key = self.right.id)]
-
+        result = [self] + [FromClause(from_key = c.id) for c in self.left._get_from_objects() + self.right._get_from_objects()]
+        print repr([c.id for c in result])
+        return result
+        
 class Alias(Selectable):
     def __init__(self, selectable, alias):
         self.selectable = selectable
@@ -304,6 +309,8 @@ class Alias(Selectable):
         for co in selectable.columns:
             co._make_proxy(self)
 
+    primary_keys = property (lambda self: [c for c in self.columns if c.primary_key])
+    
     def accept_visitor(self, visitor):
         self.selectable.accept_visitor(visitor)
         visitor.visit_alias(self)

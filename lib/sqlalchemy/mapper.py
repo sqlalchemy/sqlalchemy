@@ -102,8 +102,8 @@ class Mapper(object):
 
     def _select_whereclause(self, whereclause = None, **params):
         statement = sql.select([self.table], whereclause)
-        for value in self.props.values():
-            value.setup(self.table, statement) 
+        for key, value in self.props.iteritems():
+            value.setup(key, self.table, statement) 
         return self._select_statement(statement, **params)
     
     def _select_statement(self, statement, **params):
@@ -123,7 +123,7 @@ class Mapper(object):
 class MapperProperty:
     def execute(self, instance, key, row, isduplicate):
         raise NotImplementedError()
-    def setup(self, primarytable, statement):
+    def setup(self, key, primarytable, statement):
         pass
 
 class ColumnProperty(MapperProperty):
@@ -138,13 +138,14 @@ class EagerLoader(MapperProperty):
     def __init__(self, mapper, whereclause):
         self.mapper = mapper
         self.whereclause = whereclause
-    def setup(self, primarytable, statement):
+    def setup(self, key, primarytable, statement):
+        targettable = self.mapper.table
         if hasattr(statement, '_outerjoin'):
-            statement._outerjoin.right = sql.outerjoin(primarytable, self.mapper.table, self.whereclause)
+            statement._outerjoin = sql.outerjoin(statement._outerjoin, targettable, self.whereclause)
         else:
-            statement._outerjoin = sql.outerjoin(primarytable, self.mapper.table, self.whereclause)
-            statement.append_from(statement._outerjoin)
-        statement.append_column(self.mapper.table)
+            statement._outerjoin = sql.outerjoin(primarytable, targettable, self.whereclause)
+        statement.append_from(statement._outerjoin)
+        statement.append_column(targettable)
     def execute(self, instance, key, row, isduplicate):
         try:
             list = getattr(instance, key)

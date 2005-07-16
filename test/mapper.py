@@ -77,8 +77,8 @@ class MapperTest(PersistTest):
         print repr(l)
 
     def testmultieager(self):
-        openorders = alias(self.orders, 'open')
-        closedorders = alias(self.orders, 'closed')
+        openorders = alias(self.orders, 'openorders')
+        closedorders = alias(self.orders, 'closedorders')
         m = mapper.Mapper(User, self.users, properties = dict(
             orders_open = mapper.EagerLoader(mapper.Mapper(Order, openorders), and_(openorders.c.isopen == 1, self.users.c.user_id==openorders.c.user_id)),
             orders_closed = mapper.EagerLoader(mapper.Mapper(Order, closedorders), and_(closedorders.c.isopen == 0, self.users.c.user_id==closedorders.c.user_id))
@@ -91,7 +91,7 @@ class MapperTest(PersistTest):
         self.users.drop()
         self.addresses.drop()
         self.orders.drop()
-        
+    	pass    
         
 if __name__ == "__main__":
     unittest.main()        

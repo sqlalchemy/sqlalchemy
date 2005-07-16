@@ -207,19 +207,23 @@ FROM myothertable, mytable WHERE mytable.myid = myothertable.otherid"
                 [self.table],
                 from_obj = [join(self.table, self.table2, self.table.c.id == self.table2.c.id)]
             ),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM (mytable JOIN myothertable ON mytable.myid = myothertable.otherid)")
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable JOIN myothertable ON mytable.myid = myothertable.otherid")
         
         self.runtest(
             select(
-                [join(self.table, join(self.table2, self.table3, self.table2.c.id == self.table3.c.id), self.table.c.id == self.table2.c.id),
-                
+                [join(join(self.table, self.table2, self.table.c.id == self.table2.c.id), self.table3, self.table.c.id == self.table3.c.id)
             ]),
-            "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, \
-myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM \
-(mytable JOIN (myothertable JOIN thirdtable ON myothertable.otherid = thirdtable.userid) ON mytable.myid = myothertable.otherid)"
+            "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable JOIN myothertable ON mytable.myid = myothertable.otherid JOIN thirdtable ON mytable.myid = thirdtable.userid"
         )
         
-        
+    def testmultijoin(self):
+        self.runtest(
+                select([self.table, self.table2, self.table3],
+                from_obj = [outerjoin(join(self.table, self.table2, self.table.c.id == self.table2.c.id), self.table3, self.table.c.id==self.table3.c.id)]
+                )
+                ,"SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable JOIN myothertable ON mytable.myid = myothertable.otherid LEFT OUTER JOIN thirdtable ON mytable.myid = thirdtable.userid"
+            )
+            
     def testunion(self):
             x = union(
                   select([self.table], self.table.c.id == 5),
@@ -263,7 +267,7 @@ FROM myothertable UNION SELECT thirdtable.userid, thirdtable.otherstuff FROM thi
                 
         self.runtest(query, 
             "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername \
-FROM (mytable LEFT OUTER JOIN myothertable ON mytable.myid = myothertable.otherid) \
+FROM mytable LEFT OUTER JOIN myothertable ON mytable.myid = myothertable.otherid \
 WHERE mytable.name = :mytable_name AND mytable.myid = :mytable_myid AND \
 myothertable.othername != :myothertable_othername AND \
 EXISTS (select yay from foo where boo = lar)",

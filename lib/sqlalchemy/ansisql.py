@@ -190,7 +190,8 @@ class ANSICompiler(sql.Compiled):
         else:
             self.froms[join] = (self.get_from_text(join.left) + " JOIN " + self.get_from_text(join.right) + 
             " ON " + self.get_str(join.onclause))
-
+            
+            
     def visit_insert(self, insert_stmt):
         colparams = insert_stmt.get_colparams(self.bindparams)
 
