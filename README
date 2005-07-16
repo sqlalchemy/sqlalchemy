@@ -162,7 +162,7 @@ users.update(users.c.user_id == 7).execute(user_name = 'fred')
 c = db.connection()
 
 
-# use the connection pooling directly:
+# use the connection pooling via the transparent manager:
 
 # import a real DBAPI database
 from pysqlite2 import dbapi2 as sqlite
