@@ -1,5 +1,180 @@
 SQLAlchemy README
 
-nothing to read as of yet.
+What is SQLAlchemy ?
+---------------------
+
+SQLAlchemy is:
+
+	- everything you need to work with SQL and database APIs in Python.
+
+	- the first Python library with clear and unambiguous support for enterprise-level
+	persistence patterns, such as (as defined by Fowler):  Data Mapper, Identity Map,
+	Table Meta-Data, and Unit of Work.
+
+	- a set of distinct tools that build upon each other.  The lower level tools, such as
+	the connection pool or the transparent registry, can be used completely independently
+	of the higher levels, such as the SQL construction language.  The higher level tools,
+	such as the Data Mapper, allow plenty of spaces with which to manipulate its
+	functioning at a lower level.
+
+	- extremely easy to use for basic tasks, such as: get a thread-safe and pooled
+	connection to a database, perform SQL queries constructed from Python expressions,
+	persist a set of objects to their corresponding tables.
+
+	- powerful enough to use for complicated tasks, such as: load objects and their child
+	objects all in one query via eager loading, utilize the full power of ANSI SQL plus
+	vendor-specific extensions via Python expressions, combine multiple tables together
+	to load whole sets of otherwise unrelated objects from a set of rows.
+
+	- high performing, allowing pre-compilation of SQL queries, heavy usage of bind
+	parameters which allow a database to cache its queries more effectively.
+
+	- extensible.  Query-generators contain many hooks and open ends at which vendor-
+	specific syntaxes and augment or replace the standard ANSI syntaxes.
+
+SQLAlchemy includes:
+
+	- a connection pool
+
+	- a transparent connection pool registry
+
+	- a library that allows the construction of SQL queries, of any complexity, including
+	the full capabilities of ANSI SQL as well as vendor-specific extensions,  using
+	Python objects and expressions.
+
+	- a table-meta-data and database-meta-data description system.
+
+	- a database creator/dropper
+
+	- an Object Relational Mapper that supports the Data Mapper algorithm, objects
+	created across multiple tables, lazy or eager loading of related objects.
+
+	- an Active Record adapter for the above Data Mapper algorithm
+
+	- an Identity Map, which stores a singleton instance of an object loaded from the
+	database based on its key, or keys.
+
+	- a Unit Of Work system which stores SQL operations into queues, with deferred
+	execution. this is used for session-spanning transactions
+
+SQLAlchemy has the advantages:
+
+	- since DataMapper separates the database metadata from object instances, persisted
+	objects contain only your data, and nothing else.  no subclassing requirement exists.
+	Object hierarchies can be totally persisted with SQLAlchemy with no dependencies
+	whatsoever.  They also retain their ability to be pickled for usage in various
+	caching systems and session objects.
+
+	- the IdentityMap can key objects based on tables that have multiple primary keys.
+
+	- objects are loaded from rows, which can be created from anywhere.  any bizarre
+	query that you or your DBA can cook up, you can run in SQLAlchemy, and as long as it
+	returns the expected columns within a rowset, you can get your objects from it.  If
+	your rowset defines multiple kinds of objects within each row, you can get all of
+	them from each row.
+
+	- all generated queries, whether or not the developer defines literal values within
+	them, are compiled to use bind parameters for all literals.  This way databases can
+	maximally optimize query caching.
+
+What does SQLAlchemy look like so far ?
+
+	The SQL construction API's architecture is complete, as is the connection pooling and
+	connection registry.  The architecture to allow more kinds of SQL clauses is built,
+	and the PySQLite engine is working.
+
+Well, what does that look like ?
+
+Cool things you can do with SQLAlchemy
+----------------------------------------
+
+# first, some imports
+from sqlalchemy.sql import *
+from sqlalchemy.schema import *
 
 
+# make a database engine based on sqlite
+import sqlalchemy.databases.sqlite as sqlite_db
+db = sqlite_db.engine('foo.db', pool_size = 10, max_overflow = 5)
+
+# define metadata for a table
+
+users = Table('users', db,
+	Column('user_id', INT),
+	Column('user_name', VARCHAR(20)),
+	Column('password', CHAR(10))
+)
+
+
+# select rows from the table
+
+query = users.select()
+cursor = query.execute()
+rows = cursor.fetchall()
+
+
+# select rows from the table where user_name=='ed'
+rows = users.select(users.c.user_name == 'ed').execute().fetchall()
+
+# make a query  with a bind param
+query = select([users], users.c.user_id == bindparam('userid'))
+
+# execute with params
+rows = query.execute(userid = 7).fetchall()
+
+
+# make another table
+addresses = Table('addresses', db, 
+	Column('address_id', INT),
+	Column('user_id', INT),
+	Column('street', VARCHAR(20)),
+	Column('city', VARCHAR(20)),
+	Column('state', CHAR(2)),
+	Column('zip', CHAR(5))
+)
+
+# no, really, make this table in the DB via CREATE
+addresses.build()
+
+
+# make a nonsensical query that selects from an outer join, and 
+# throws in a literally-defined EXISTS clause 
+query = select(
+	[users, addresses],
+	and_(
+	    addresses.c.street == 'Green Street',
+            addresses.c.city == 'New York',
+	    users.c.user_id != 12,
+	    "EXISTS (select 1 from special_table where user_id=users.user_id)"
+	),
+	from_obj = [ outerjoin(users, addresses, addresses.user_id==users.user_id) ]
+	)
+
+
+# insert into a table
+users.insert().execute(user_id = 7, user_name = 'jack')
+
+# update the table
+users.update(users.c.user_id == 7).execute(user_name = 'fred')
+
+
+# get DBAPI connections from the higher-level engine
+c = db.connection()
+
+
+# use the connection pooling directly:
+
+# import a real DBAPI database
+from pysqlite2 import dbapi2 as sqlite
+
+# make an implicit pool around it
+import sqlalchemy.pool as pool
+sqlite = pool.manage(sqlite, pool_size = 10, max_overflow = 5, use_threadlocal = True)
+
+# get a pooled connection local to the current thread
+c = sqlite.connect('foo.db')
+cursor = c.cursor()
+
+# return the connection to the pool
+cursor = None
+c = None	
