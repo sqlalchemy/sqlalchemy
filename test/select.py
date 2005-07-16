@@ -195,7 +195,7 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
         ), 
         "SELECT t.myid, t.name, t.description, foo.f FROM mytable t, (select f from bar where lala=heyhey) foo WHERE foo.f = t.id")
 
-    def  testjoin(self):
+    def testjoin(self):
         self.runtest(
             join(self.table2, self.table, self.table.c.id == self.table2.c.id).select(),
             "SELECT myothertable.otherid, myothertable.othername, mytable.myid, mytable.name, mytable.description \

@@ -270,11 +270,10 @@ class Join(Selectable):
         self.left = left
         self.right = right
         self.id = self.left.id + "_" + self.right.id
-
         if allcols:
             self.columns = [c for c in self.left.columns] + [c for c in self.right.columns]
         else:
-            self.columns = [c for c in self.right.columns]    
+            self.columns = [c for c in self.right.columns]
 
         # TODO: if no onclause, do NATURAL JOIN
         self.onclause = onclause
