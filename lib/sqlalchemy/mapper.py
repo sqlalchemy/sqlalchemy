@@ -41,28 +41,45 @@ class Mapper:
     def __init__(self, class_, table, properties, identitymap = None):
         self.class_ = class_
         self.table = table
-        self.properties = properties
+        if properties is not None:
+            self.properties = properties
+        else:
+            properties = {}
+            for column in table.columns:
+                properties[column.name] = column
+                
         if identitymap is not None:
             self.identitymap = identitymap
         else:
             self.identitymap = _global_identitymap
 
+    def _create(self, row):
+        instance = self.class_()
+        for key, column in self.properties.iteritems:
+            # column label or column name ? depends on the query
+            setattr(instance, key, row[value.label])
+        return instance
+            
     def instance(self, row):
-        pass
+        return self.identitymap.get(row, self.class_, self.table, creator = self._create)
 
     def get(self, id):
         """returns an instance of the object based on the given ID."""
         pass
         
     def _select_whereclause(self, whereclause, **params):
-        # make select statement
-
-        
+        statement = select([self.table], whereclause)    
         return self._select_statement(statement, **params)
-
     
     def _select_statement(self, statement, **params):
-        pass
+        result = []
+        cursor = statement.execute(**params)
+        while True:
+            row = cursor.fetchone()
+            if row is None:
+                break
+            result.append(self.instance(row))
+        return result
 
     def select(self, arg, **params):
         """selects instances of the object from the database.  
@@ -89,20 +106,20 @@ class Mapper:
 class IdentityMap:
     def __init__(self):
         self.map = {}
+        self.keystereotypes = {}
         
-    def get(self, row, class_, table):
+    def get(self, row, class_, table, creator = None):
         """given a database row, a class to be instantiated, and a table corresponding 
         to the row, returns a corrseponding object instance, if any, from the identity
         map.  the primary keys specified in the table will be used to indicate which
         columns from the row form the effective key of the instance."""
-        pass
+        key = (class_, table, tuple([row[column.label] for column in table.primary_keys]))
         
-    def put(self, instance, table):
-        """puts this object instance, corresponding to a row from the given table, into 
-        the identity map.  the primary keys specified in the table will be used to 
-        indicate which properties of the instance form the effective key of the instance."""
-        
-        pass
+        try:
+            return self.map(key)
+        except KeyError:
+            return self.map.setdefault(key, creator())
+            
     
     
 _global_identitymap = IdentityMap()
