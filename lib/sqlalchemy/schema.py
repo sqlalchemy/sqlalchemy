@@ -78,8 +78,7 @@ class Table(SchemaItem):
         schema.tables[self.name] = self
         self.schema = schema
 
-    def primary_keys(self):
-        return [c for c in self.columns if c.primary_key]
+    primary_keys = property (lambda self: [c for c in self.columns if c.primary_key])
         
     def accept_visitor(self, visitor): 
         for c in self.columns:
