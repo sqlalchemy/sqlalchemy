@@ -77,6 +77,9 @@ class Table(SchemaItem):
     def _set_parent(self, schema):
         schema.tables[self.name] = self
         self.schema = schema
+
+    def primary_keys(self):
+        return [c for c in self.columns if c.primary_key]
         
     def accept_visitor(self, visitor): 
         for c in self.columns:
