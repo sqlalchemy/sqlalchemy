@@ -541,17 +541,19 @@ class UpdateBase(ClauseElement):
             for c in self.table.columns:
                 values.append((c, bindparam(c.name)))                
         else:
+            d = {}
             for key, value in parameters.iteritems():
                 if isinstance(key, schema.Column):
-                    column = key
+                    d[key] = value
                 else:
-                    column = self.table.columns[str(key)]
+                    d[self.table.columns[str(key)]] = value
                 
-                if not isinstance(value, BindParamClause):
-                    value = bindparam(column.name, value)
-                
-                values.append((column, value))
-                
+            for c in self.table.columns:
+                if d.has_key(c):
+                    value = d[c]
+                    if not isinstance(value, BindParamClause):
+                        value = bindparam(c.name, value)
+                    values.append((c, value))
         return values
 
     def _engine(self):
@@ -570,7 +572,6 @@ class Insert(UpdateBase):
     def __init__(self, table, parameters = None, **params):
         self.table = table
         self.select = None
-        
         self.parameters = parameters
         self.engine = self.table._engine()
         

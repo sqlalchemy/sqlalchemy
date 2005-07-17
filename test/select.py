@@ -310,14 +310,14 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
         # provided as strings
         self.runtest(
             insert(self.table, dict(id = 3, name = 'jack')), 
-            ""
+            "INSERT INTO mytable (myid, name) VALUES (:myid, :name)"
         )
         
         # insert with a subselect provided 
-        self.runtest(
-            insert(self.table, select([self.table2])),
-            ""
-        )
+        #self.runtest(
+         #   insert(self.table, select([self.table2])),
+         #   ""
+        #)
 
     def testupdate(self):
         self.runtest(update(self.table, self.table.c.id == 7), "UPDATE mytable SET name=:name WHERE mytable.myid = :mytable_myid", params = {self.table.c.name:'fred'})
@@ -325,89 +325,6 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
 
     def testdelete(self):
         self.runtest(delete(self.table, self.table.c.id == 7), "DELETE FROM mytable WHERE mytable.myid = :mytable_myid")
-        
-    def footestupdate(self):
-        self.runtest(
-            update(self.table, {self.table.c.id : select([self.table2.c.id], self.table2.c.name == 'jack')})
-        )
-        
-    def footestonetomany(self):
-        return
-        
-        table1 = Table('users',
-            Column('user_id',3, key='id'),
-            Column('user_name', 4, key='name'),
-            Column('user_email', 4, key='desc'),
-        )
-
-        table2 = Table('orders',
-            Column('order_id',3, key='id'),
-            Column('user_id', 4),
-            Column('information', 4),
-        )
-        
-        Relation(table1, table2, table2.c.user_id == table1.c.id, lazy = False)
-
-        self.runtest(
-            table1.select(includerelations = True, use_labels = True),
-            "SELECT users.user_id, users.user_name, users.user_email, orders.order_id, orders.user_id, orders.information FROM users LEFT OUTER JOIN orders ON orders.user_id = users.user_id"
-        )
-
-    def footestmanytomany(self):
-        return
-
-        table2 = Table('clubs',
-            Column('club_id',3, key='id'),
-            Column('club_name', 4, key='name'),
-            Column('club_description', 4, key='description'),
-        )
-
-        table1 = Table('users',
-            Column('user_id',3, key='id'),
-            Column('user_name', 4, key='name'),
-            Column('user_email', 4, key='desc'),
-        )
-        
-        table3 = Table('user_clubs',
-            Column('user_id', 3),
-            Column('club_id', 4)
-        )
-        
-        sq = join(table2, table3, table2.c.id==table3.c.user_id)
-        
-        Relation(table1, table2, table1.c.id==table3.c.user_id, 
-            association = Relation(table3, table2, table3.c.club_id==table2.c.id), 
-        lazy = False)
-
-        self.runtest(
-            table1.select(includerelations = True),
-            ""
-        )
-
-
-    def donttesttableselect(self):
-        
-        print select(
-            [table2, sq],
-            sq.c.name == table2.c.name
-        )
-        
-
-        
-
-        print table.select(table.c.id == 'hithere').dump()
-
-        print table.select(and_(table2.c.id == table.c.id, table2.c.id == 'hilar')).dump()
-
-        print table.select(and_(table.c.id < 5, table.c.name == 'hilar')).dump()
-        
-
-
-        print repr(table.impl.params)
-        
-        print table.select(None).dump()
-        
-        u2 = alias(table, 'u2')
         
         
     def runtest(self, clause, result, engine = None, params = None):

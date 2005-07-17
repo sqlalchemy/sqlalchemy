@@ -74,6 +74,7 @@ class Mapper(object):
                 instance = self._create(row, identitykey, localmap)
                 result.append(instance)
             else:
+                instance = localmap[identitykey]
                 for key, prop in self.props.iteritems():
                     prop.execute(instance, key, row, identitykey, localmap, True)
                 
@@ -167,6 +168,8 @@ class EagerLoader(MapperProperty):
             statement._outerjoin = sql.outerjoin(primarytable, targettable, self.whereclause)
         statement.append_from(statement._outerjoin)
         statement.append_column(targettable)
+        for key, value in self.mapper.props.iteritems():
+            value.setup(key, self.mapper.selectable, statement) 
         
     def execute(self, instance, key, row, identitykey, localmap, isduplicate):
         try:
@@ -178,12 +181,19 @@ class EagerLoader(MapperProperty):
         identitykey = self.mapper._identity_key(row)
         if not localmap.has_key(identitykey):
             subinstance = self.mapper._create(row, identitykey, localmap)
-            list.append(subinstance)
+            if subinstance is not None:
+                list.append(subinstance)
+        else:
+            subinstance = localmap[identitykey]
+            for key, prop in self.mapper.props.iteritems():
+                prop.execute(subinstance, key, row, identitykey, localmap, True)
 
         
 class IdentityMap(dict):
     def get_key(self, row, class_, table, selectable):
         return (class_, table, tuple([row[column.label] for column in selectable.primary_keys]))
         
-
 _global_identitymap = IdentityMap()
+
+def clear_identity():
+    _global_identitymap.clear()
