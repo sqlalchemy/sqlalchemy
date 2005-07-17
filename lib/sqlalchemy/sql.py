@@ -126,6 +126,10 @@ class ClauseElement(object):
         c = self.compile(e, bindparams = params)
         return e.execute(str(c), c.get_params(**params))
 
+    def result(self, **params):
+        e = self._engine()
+        c = self.compile(e, bindparams = params)
+        return e.result(str(c), c.get_params(**params))
         
 class ColumnClause(ClauseElement):
     """represents a column clause element in a SQL statement."""

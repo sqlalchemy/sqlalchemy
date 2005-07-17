@@ -99,7 +99,6 @@ class MapperTest(PersistTest):
         ), identitymap = mapper.IdentityMap())
         l = m.select()
         print repr(l)
-        print repr(m.identitymap.map)
 
         
     def tearDown(self):

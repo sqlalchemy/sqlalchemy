@@ -132,3 +132,29 @@ class SQLEngine(schema.SchemaEngine):
 
     def log(self, msg):
         print msg
+
+
+class ResultProxy:
+    def __init__(self, cursor):
+        self.cursor = cursor
+        metadata = cursor.description
+        self.props = {}
+        i = 0
+        for item in metadata:
+            self.props[item[0]] = i
+            self.props[i] = i
+            i+=1
+
+    def fetchone(self):
+        row = self.cursor.fetchone()
+        if row is not None:
+            return RowProxy(self, row)
+        else:
+            return None
+
+class RowProxy:
+    def __init__(self, parent, row):
+        self.parent = parent
+        self.row = row
+    def __getitem__(self, key):
+        return self.row[self.parent.props[key]]

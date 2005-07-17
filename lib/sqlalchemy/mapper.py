@@ -36,14 +36,16 @@ addressmapper = Mapper(Address, addresses, properties = {
 
 import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
+import sqlalchemy.engine as engine
 
 class Mapper(object):
-    def __init__(self, class_, selectable, properties = None, identitymap = None):
+    def __init__(self, class_, selectable, table = None, properties = None, identitymap = None):
         self.class_ = class_
-
         self.selectable = selectable
-        self.table = self._find_table(selectable)
-        
+        if table is None:
+            self.table = self._find_table(selectable)
+        else:
+            self.table = table
         self.props = {}
         
         for column in self.selectable.columns:
@@ -60,15 +62,15 @@ class Mapper(object):
             
     def instances(self, cursor):
         result = []
-        cursor = ResultProxy(cursor)
+        cursor = engine.ResultProxy(cursor)
         localmap = IdentityMap()
         while True:
             row = cursor.fetchone()
             if row is None:
                 break
                 
-            identitykey = localmap.get_key(row, self.class_, self.table, self.selectable)
-            if not localmap.map.has_key(identitykey):
+            identitykey = self._identity_key(row)
+            if not localmap.has_key(identitykey):
                 instance = self._create(row, identitykey, localmap)
                 result.append(instance)
             else:
@@ -104,6 +106,8 @@ class Mapper(object):
 
     class TableFinder(sql.ClauseVisitor):
         def visit_table(self, table):
+            if hasattr(self, 'table'):
+                raise "Mapper can only create object instances against a single-table identity - specify the 'table' argument to the Mapper constructor"
             self.table = table
             
     def _find_table(self, selectable):
@@ -131,8 +135,8 @@ class Mapper(object):
                 return None
         for key, prop in self.props.iteritems():
             prop.execute(instance, key, row, identitykey, localmap, False)
-        self.identitymap.map[identitykey] = instance
-        localmap.map[identitykey] = instance
+        self.identitymap[identitykey] = instance
+        localmap[identitykey] = instance
         return instance
 
 
@@ -176,46 +180,10 @@ class EagerLoader(MapperProperty):
             subinstance = self.mapper._create(row, identitykey, localmap)
             list.append(subinstance)
 
-class ResultProxy:
-    def __init__(self, cursor):
-        self.cursor = cursor
-        metadata = cursor.description
-        self.props = {}
-        i = 0
-        for item in metadata:
-            self.props[item[0]] = i
-            self.props[i] = i
-            i+=1
-
-    def fetchone(self):
-        row = self.cursor.fetchone()
-        print "row: " + repr(row)
-        if row is not None:
-            return RowProxy(self, row)
-        else:
-            return None
         
-class RowProxy:
-    def __init__(self, parent, row):
-        self.parent = parent
-        self.row = row
-    def __getitem__(self, key):
-        return self.row[self.parent.props[key]]
-        
-class IdentityMap(object):
-    def __init__(self):
-        self.map = {}
-        self.keystereotypes = {}
-    
-    def has_key(self, key):
-        return self.map.has_key(key)
-        
+class IdentityMap(dict):
     def get_key(self, row, class_, table, selectable):
         return (class_, table, tuple([row[column.label] for column in selectable.primary_keys]))
         
-    def get(self, key):
-        return self.map[key]
-            
-    
-    
+
 _global_identitymap = IdentityMap()
