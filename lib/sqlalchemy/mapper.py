@@ -109,8 +109,14 @@ class Mapper(object):
     def save(self, object, traverse = True, refetch = False):
         """saves the object.  based on the existence of its primary key, either inserts or updates.
         primary key is determined by the underlying database engine's sequence methodology.
-        traverse indicates attached objects should be saved as well."""
-        pass
+        traverse indicates attached objects should be saved as well.
+        
+        if smart attributes are being used for the object, the "dirty" flag, or the absense 
+        of the attribute, determines if the item is saved.  if smart attributes are not being 
+        used, the item is saved unconditionally.
+        """
+        if not getattr(object, 'dirty', True):
+            return
     
     def remove(self, object, traverse = True):
         """removes the object.  traverse indicates attached objects should be removed as well."""
@@ -173,7 +179,8 @@ class Mapper(object):
             self.identitymap[identitykey] = instance
         else:
             instance = self.identitymap[identitykey]
-
+        instance.dirty = False
+        
         # call further mapper properties on the row, to pull further 
         # instances from the row and possibly populate this item.
         for key, prop in self.props.iteritems():
@@ -219,8 +226,9 @@ class ColumnProperty(MapperProperty):
     def execute(self, instance, key, row, identitykey, localmap, isduplicate):
         if not isduplicate:
             if self.use_smart:
-                key = "_" + key
-            setattr(instance, key, row[self.column.label])
+                instance.__dict__[key] = row[self.column.label]
+            else:
+                setattr(instance, key, row[self.column.label])
 
     
 class EagerLoader(MapperProperty):
@@ -256,11 +264,17 @@ class EagerLoader(MapperProperty):
 class SmartProperty(object):
     def __init__(self, key):
         self.key = key
+
     def property(self):
-        def set_property(self, value):
-            setattr(self, "_" + self.key, value)
-            self.dirty = True
-        return property(lambda s: getattr(s, "_" + self.key), set_property)
+        def set_prop(s, value):
+            s.__dict__[self.key] = value
+            s.dirty = True
+        def del_prop(s):
+            del s.__dict__[self.key]
+            s.dirty = True
+        def get_prop(s):
+            return s.__dict__[self.key]
+        return property(get_prop, set_prop, del_prop)
         
 class IdentityMap(dict):
     def get_key(self, row, class_, table, selectable):
