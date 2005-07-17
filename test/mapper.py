@@ -9,8 +9,7 @@ db = sqllite.engine('querytest.db', echo = True)
 
 from sqlalchemy.sql import *
 from sqlalchemy.schema import *
-
-import sqlalchemy.mapper as mapper
+from sqlalchemy.mapper import *
 
 users = Table('users', db,
     Column('user_id', INT, primary_key = True),
@@ -124,47 +123,47 @@ class Keyword:
 class MapperTest(PersistTest):
     
     def setUp(self):
-        mapper.clear_identity()
+        globalidentity().clear()
     
         
     def testmapper(self):
-        m = mapper.Mapper(User, users)
+        m = mapper(User, users)
         l = m.select()
         print repr(l)
 
     def testeager(self):
-        m = mapper.Mapper(User, users, properties = dict(
-            addresses = mapper.EagerLoader(mapper.Mapper(Address, addresses), users.c.user_id==addresses.c.user_id)
+        m = mapper(User, users, properties = dict(
+            addresses = eagermapper(Address, addresses, users.c.user_id==addresses.c.user_id)
         ))
         l = m.select()
         print repr(l)
 
     def testmultieager(self):
-        m = mapper.Mapper(User, users, properties = dict(
-            addresses = mapper.EagerLoader(mapper.Mapper(Address, addresses), users.c.user_id==addresses.c.user_id),
-            orders = mapper.EagerLoader(mapper.Mapper(Order, orders), users.c.user_id==orders.c.user_id),
-        ), identitymap = mapper.IdentityMap())
+        m = mapper(User, users, properties = dict(
+            addresses = eagermapper(Address, addresses, users.c.user_id==addresses.c.user_id),
+            orders = eagermapper(Order, orders, users.c.user_id==orders.c.user_id),
+        ), identitymap = identitymap())
         l = m.select()
         print repr(l)
 
     def testdoubleeager(self):
         openorders = alias(orders, 'openorders')
         closedorders = alias(orders, 'closedorders')
-        m = mapper.Mapper(User, users, properties = dict(
-            orders_open = mapper.EagerLoader(mapper.Mapper(Order, openorders), and_(openorders.c.isopen == 1, users.c.user_id==openorders.c.user_id)),
-            orders_closed = mapper.EagerLoader(mapper.Mapper(Order, closedorders), and_(closedorders.c.isopen == 0, users.c.user_id==closedorders.c.user_id))
-        ), identitymap = mapper.IdentityMap())
+        m = mapper(User, users, properties = dict(
+            orders_open = eagermapper(Order, openorders, and_(openorders.c.isopen == 1, users.c.user_id==openorders.c.user_id)),
+            orders_closed = eagermapper(Order, closedorders, and_(closedorders.c.isopen == 0, users.c.user_id==closedorders.c.user_id))
+        ), identitymap = identitymap())
         l = m.select()
         print repr(l)
 
     def testnestedeager(self):
-        ordermapper = mapper.Mapper(Order, orders, properties = dict(
-                items = mapper.EagerLoader(mapper.Mapper(Item, orderitems), orders.c.order_id == orderitems.c.order_id)
+        ordermapper = mapper(Order, orders, properties = dict(
+                items = eagermapper(Item, orderitems, orders.c.order_id == orderitems.c.order_id)
             ))
 
-        m = mapper.Mapper(User, users, properties = dict(
-            addresses = mapper.EagerLoader(mapper.Mapper(Address, addresses), users.c.user_id==addresses.c.user_id),
-            orders = mapper.EagerLoader(ordermapper, users.c.user_id==orders.c.user_id),
+        m = mapper(User, users, properties = dict(
+            addresses = eagermapper(Address, addresses, users.c.user_id==addresses.c.user_id),
+            orders = eagerloader(ordermapper, users.c.user_id==orders.c.user_id),
         ))
         l = m.select()
         print repr(l)
@@ -172,8 +171,8 @@ class MapperTest(PersistTest):
     def testmanytomanyeager(self):
         items = orderitems
         
-        m = mapper.Mapper(Item, items, properties = dict(
-                keywords = mapper.EagerLoader(mapper.Mapper(Keyword, keywords),
+        m = mapper(Item, items, properties = dict(
+                keywords = eagermapper(Keyword, keywords,
                     and_(items.c.item_id == itemkeywords.c.item_id, keywords.c.keyword_id == itemkeywords.c.keyword_id))
             ))
         l = m.select()
