@@ -68,17 +68,9 @@ class Mapper(object):
             row = cursor.fetchone()
             if row is None:
                 break
-                
-            identitykey = self._identity_key(row)
-            if not localmap.has_key(identitykey):
-                instance = self._create(row, identitykey, localmap)
-                result.append(instance)
-            else:
-                instance = localmap[identitykey]
-                for key, prop in self.props.iteritems():
-                    prop.execute(instance, key, row, identitykey, localmap, True)
-                
+            self._instance(row, localmap, result)
         return result
+    
         
     def get(self, id):
         """returns an instance of the object based on the given ID."""
@@ -129,6 +121,17 @@ class Mapper(object):
     def _identity_key(self, row):
         return self.identitymap.get_key(row, self.class_, self.table, self.selectable)
 
+    def _instance(self, row, localmap, result):
+        identitykey = self._identity_key(row)
+        if not localmap.has_key(identitykey):
+            instance = self._create(row, identitykey, localmap)
+            if instance is not None:
+                result.append(instance)
+        else:
+            instance = localmap[identitykey]
+            for key, prop in self.props.iteritems():
+                prop.execute(instance, key, row, identitykey, localmap, True)
+
     def _create(self, row, identitykey, localmap):
         instance = self.class_()
         for column in self.selectable.primary_keys:
@@ -177,16 +180,8 @@ class EagerLoader(MapperProperty):
         except AttributeError:
             list = []
             setattr(instance, key, list)
-        
-        identitykey = self.mapper._identity_key(row)
-        if not localmap.has_key(identitykey):
-            subinstance = self.mapper._create(row, identitykey, localmap)
-            if subinstance is not None:
-                list.append(subinstance)
-        else:
-            subinstance = localmap[identitykey]
-            for key, prop in self.mapper.props.iteritems():
-                prop.execute(subinstance, key, row, identitykey, localmap, True)
+        self.mapper._instance(row, localmap, list)
+
 
         
 class IdentityMap(dict):
