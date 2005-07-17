@@ -59,18 +59,19 @@ class Mapper(object):
     def instances(self, cursor):
         result = []
         cursor = ResultProxy(cursor)
-        lastinstance = None
+        localmap = IdentityMap()
         while True:
             row = cursor.fetchone()
             if row is None:
                 break
-            instance = self._instance(row)
-            if instance != lastinstance:
+                
+            identitykey = localmap.get_key(row, self.class_, self.table)
+            if not localmap.map.has_key(identitykey):
+                instance = self._create(row, identitykey, localmap)
                 result.append(instance)
-                lastinstance = instance
             else:
                 for key, prop in self.props.iteritems():
-                    prop.execute(instance, key, row, True)
+                    prop.execute(instance, key, row, identitykey, localmap, True)
                 
         return result
         
@@ -110,13 +111,18 @@ class Mapper(object):
         statement.use_labels = True
         return self.instances(statement.execute(**params))
 
-    def _instance(self, row):
-        return self.identitymap.get(row, self.class_, self.table, creator = self._create)
+    def _identity_key(self, row):
+        return self.identitymap.get_key(row, self.class_, self.table)
 
-    def _create(self, row):
+    def _create(self, row, identitykey, localmap):
         instance = self.class_()
+        for column in self.table.primary_keys:
+            if row[column.label] is None:
+                return None
         for key, prop in self.props.iteritems():
-            prop.execute(instance, key, row, False)
+            prop.execute(instance, key, row, identitykey, localmap, False)
+        self.identitymap.map[identitykey] = instance
+        localmap.map[identitykey] = instance
         return instance
 
 
@@ -130,7 +136,7 @@ class ColumnProperty(MapperProperty):
     def __init__(self, column):
         self.column = column
         
-    def execute(self, instance, key, row, isduplicate):
+    def execute(self, instance, key, row, identitykey, localmap, isduplicate):
         if not isduplicate:
             setattr(instance, key, row[self.column.label])
 
@@ -138,6 +144,7 @@ class EagerLoader(MapperProperty):
     def __init__(self, mapper, whereclause):
         self.mapper = mapper
         self.whereclause = whereclause
+        
     def setup(self, key, primarytable, statement):
         targettable = self.mapper.table
         if hasattr(statement, '_outerjoin'):
@@ -146,14 +153,17 @@ class EagerLoader(MapperProperty):
             statement._outerjoin = sql.outerjoin(primarytable, targettable, self.whereclause)
         statement.append_from(statement._outerjoin)
         statement.append_column(targettable)
-    def execute(self, instance, key, row, isduplicate):
+        
+    def execute(self, instance, key, row, identitykey, localmap, isduplicate):
         try:
             list = getattr(instance, key)
         except AttributeError:
             list = []
             setattr(instance, key, list)
-        subinstance = self.mapper._instance(row)
-        if subinstance is not None:
+        
+        identitykey = self.mapper._identity_key(row)
+        if not localmap.has_key(identitykey):
+            subinstance = self.mapper._create(row, identitykey, localmap)
             list.append(subinstance)
 
 class ResultProxy:
@@ -186,22 +196,23 @@ class IdentityMap(object):
     def __init__(self):
         self.map = {}
         self.keystereotypes = {}
+    
+    def has_key(self, key):
+        return self.map.has_key(key)
         
-    def get(self, row, class_, table, creator = None):
+    def get_key(self, row, class_, table):
+        return (class_, table.id, tuple([row[column.label] for column in table.primary_keys]))
+        
+    def get(self, row, class_, table, key = None):
         """given a database row, a class to be instantiated, and a table corresponding 
         to the row, returns a corrseponding object instance, if any, from the identity
         map.  the primary keys specified in the table will be used to indicate which
         columns from the row form the effective key of the instance."""
-        key = (class_, table, tuple([row[column.label] for column in table.primary_keys]))
         
-        try:
-            return self.map[key]
-        except KeyError:
-            newinstance = creator(row)
-            for column in table.primary_keys:
-                if row[column.label] is None:
-                    return None
-            return self.map.setdefault(key, newinstance)
+        if key is None:
+            key = self.get_key(row, class_, table)
+
+        return self.map[key]
             
     
     

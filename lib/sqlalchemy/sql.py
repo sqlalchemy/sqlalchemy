@@ -296,7 +296,6 @@ class Join(Selectable):
         
     def _get_from_objects(self):
         result = [self] + [FromClause(from_key = c.id) for c in self.left._get_from_objects() + self.right._get_from_objects()]
-        print repr([c.id for c in result])
         return result
         
 class Alias(Selectable):

@@ -12,9 +12,17 @@ import sqlalchemy.mapper as mapper
 
 class User:
     def __repr__(self):
-        return ("User: " + repr(self.user_id) + " " + self.user_name + repr(getattr(self, 'addresses', None)) +
-            repr(getattr(self, 'orders', None))
-            )
+        return (
+"""
+User ID: %s
+Addresses: %s
+Orders: %s
+Open Orders %s
+Closed Orders %s
+------------------
+""" % tuple([self.user_id] + [repr(getattr(self, attr, None)) for attr in ('addresses', 'orders', 'orders_open', 'orders_closed')])
+)
+
             
 class Address:
     def __repr__(self):
@@ -67,7 +75,6 @@ class MapperTest(PersistTest):
         m = mapper.Mapper(User, self.users)
         l = m.select()
         print repr(l)
-        print repr(m.identitymap.map)
 
     def testeager(self):
         m = mapper.Mapper(User, self.users, properties = dict(
@@ -77,12 +84,19 @@ class MapperTest(PersistTest):
         print repr(l)
 
     def testmultieager(self):
+        m = mapper.Mapper(User, self.users, properties = dict(
+            addresses = mapper.EagerLoader(mapper.Mapper(Address, self.addresses), self.users.c.user_id==self.addresses.c.user_id),
+            orders = mapper.EagerLoader(mapper.Mapper(Order, self.orders), and_(self.orders.c.isopen == 1, self.users.c.user_id==self.orders.c.user_id)),
+        ), identitymap = mapper.IdentityMap())
+        l = m.select()
+        print repr(l)
+#        return
         openorders = alias(self.orders, 'openorders')
         closedorders = alias(self.orders, 'closedorders')
         m = mapper.Mapper(User, self.users, properties = dict(
             orders_open = mapper.EagerLoader(mapper.Mapper(Order, openorders), and_(openorders.c.isopen == 1, self.users.c.user_id==openorders.c.user_id)),
             orders_closed = mapper.EagerLoader(mapper.Mapper(Order, closedorders), and_(closedorders.c.isopen == 0, self.users.c.user_id==closedorders.c.user_id))
-        ))
+        ), identitymap = mapper.IdentityMap())
         l = m.select()
         print repr(l)
 
