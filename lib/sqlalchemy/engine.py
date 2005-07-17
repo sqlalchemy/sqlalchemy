@@ -148,7 +148,6 @@ class ResultProxy:
     def fetchone(self):
         row = self.cursor.fetchone()
         if row is not None:
-            print repr(row)
             return RowProxy(self, row)
         else:
             return None

@@ -63,7 +63,8 @@ class Mapper(object):
     def instances(self, cursor):
         result = []
         cursor = engine.ResultProxy(cursor)
-        localmap = IdentityMap()
+
+        localmap = {}
         while True:
             row = cursor.fetchone()
             if row is None:
@@ -122,26 +123,41 @@ class Mapper(object):
         return self.identitymap.get_key(row, self.class_, self.table, self.selectable)
 
     def _instance(self, row, localmap, result):
+        """pulls an object instance from the given row and appends it to the given result list.
+        if the instance already exists in the given identity map, its not added.  in either
+        case, executes all the property loaders on the instance to also process extra information
+        in the row."""
+            
+        # create the instance if its not in the identity map,
+        # else retrieve it
         identitykey = self._identity_key(row)
-        if not localmap.has_key(identitykey):
-            instance = self._create(row, identitykey, localmap)
-            if instance is not None:
-                result.append(instance)
+        exists = self.identitymap.has_key(identitykey)
+        if not exists:
+            instance = self.class_()
+            for column in self.selectable.primary_keys:
+                if row[column.label] is None:
+                    return None
+            self.identitymap[identitykey] = instance
         else:
-            instance = localmap[identitykey]
-            for key, prop in self.props.iteritems():
-                prop.execute(instance, key, row, identitykey, localmap, True)
+            instance = self.identitymap[identitykey]
 
-    def _create(self, row, identitykey, localmap):
-        instance = self.class_()
-        for column in self.selectable.primary_keys:
-            if row[column.label] is None:
-                return None
+        # call further mapper properties on the row, to pull further 
+        # instances from the row and possibly populate this item.
         for key, prop in self.props.iteritems():
-            prop.execute(instance, key, row, identitykey, localmap, False)
-        self.identitymap[identitykey] = instance
-        localmap[identitykey] = instance
-        return instance
+            prop.execute(instance, key, row, identitykey, localmap, exists)
+
+        # now add to the result list, but we only want to add 
+        # to the result list uniquely, so get another identity map
+        # that is associated with that list
+        try:
+            imap = localmap[id(result)]
+        except:
+            imap = localmap.setdefault(id(result), IdentityMap())
+        if not imap.has_key(identitykey):
+            imap[identitykey] = instance
+            result.append(instance)
+
+
 
 
 class MapperProperty:
@@ -164,6 +180,7 @@ class EagerLoader(MapperProperty):
         self.whereclause = whereclause
         
     def setup(self, key, primarytable, statement):
+        """add a left outer join to the statement thats being constructed"""
         targettable = self.mapper.selectable
         if hasattr(statement, '_outerjoin'):
             statement._outerjoin = sql.outerjoin(statement._outerjoin, targettable, self.whereclause)
@@ -175,6 +192,8 @@ class EagerLoader(MapperProperty):
             value.setup(key, self.mapper.selectable, statement) 
         
     def execute(self, instance, key, row, identitykey, localmap, isduplicate):
+        """a row.  tell our mapper to look for a new object instance in the row, and attach
+        it to a list on the parent instance."""
         try:
             list = getattr(instance, key)
         except AttributeError:

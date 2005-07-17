@@ -299,7 +299,13 @@ class Join(Selectable):
         return self.left._engine() or self.right._engine()
         
     def _get_from_objects(self):
-        result = [self] + [FromClause(from_key = c.id) for c in self.left._get_from_objects() + self.right._get_from_objects()]
+        m = {}
+        for x in self.onclause._get_from_objects():
+            m[x.id] = x
+        result = [self] + [FromClause(from_key = c.id) for c in self.left._get_from_objects() + self.right._get_from_objects()] 
+        for x in result:
+            m[x.id] = x
+        result = m.values()
         return result
         
 class Alias(Selectable):
