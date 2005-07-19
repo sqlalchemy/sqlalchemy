@@ -138,6 +138,7 @@ class ResultProxy:
     def __init__(self, cursor):
         self.cursor = cursor
         metadata = cursor.description
+        print "meta: " + repr(metadata)
         self.props = {}
         i = 0
         for item in metadata:
@@ -148,6 +149,7 @@ class ResultProxy:
     def fetchone(self):
         row = self.cursor.fetchone()
         if row is not None:
+            print "row: " + repr(row)
             return RowProxy(self, row)
         else:
             return None

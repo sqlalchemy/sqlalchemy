@@ -130,12 +130,21 @@ class MapperTest(PersistTest):
         m = mapper(User, users)
         l = m.select()
         print repr(l)
-
+        l = m.select("users.user_name LIKE '%ed%'")
+        print repr(l)
+        
     def testeager(self):
         m = mapper(User, users, properties = dict(
             addresses = eagermapper(Address, addresses, users.c.user_id==addresses.c.user_id)
         ))
         l = m.select()
+        print repr(l)
+
+    def testeagerwithrepeat(self):
+        m = mapper(User, users, properties = dict(
+            addresses = eagermapper(Address, addresses, users.c.user_id==addresses.c.user_id)
+        ))
+        l = m.select(and_(addresses.c.email_address == 'ed@lala.com', addresses.c.user_id==users.c.user_id))
         print repr(l)
 
     def testmultieager(self):
@@ -177,6 +186,8 @@ class MapperTest(PersistTest):
             ))
         l = m.select()
         print repr(l)
+        
+        l = m.select(and_(keywords.c.name == 'red', keywords.c.keyword_id == itemkeywords.c.keyword_id, items.c.item_id==itemkeywords.c.item_id))
             
         
 if __name__ == "__main__":

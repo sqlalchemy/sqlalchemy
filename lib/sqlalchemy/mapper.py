@@ -15,25 +15,27 @@ usermapper = mapper(
     User, 
     users, 
     properties = {
-        'addresses' : eagerloader(addressmapper, users.c.user_id == addresses.c.user_id),
-        'permissions' : lazymapper(Permissions, permissions, users.c.user_id == permissions.c.user_id)
+        'addresses' : relation(addressmapper, users.c.user_id == addresses.c.user_id, lazy = False),
+        'permissions' : relation(Permissions, permissions, users.c.user_id == permissions.c.user_id, lazy = True)
     },
     )
+
+usermapper.select("user_id LIKE "%foo%")
 
 """
 
 import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
 import sqlalchemy.engine as engine
-import weakref
+import weakref, random
 
 __ALL__ = ['eagermapper', 'eagerloader', 'mapper', 'lazyloader', 'lazymapper', 'identitymap', 'globalidentity']
 
-def eagermapper(class_, selectable, whereclause, table = None, properties = None):
-    return eagerloader(mapper(class_, selectable, table = table, properties = properties, isroot = False), whereclause)
+def eagermapper(class_, selectable, whereclause, table = None, properties = None, **options):
+    return eagerloader(mapper(class_, selectable, table = table, properties = properties, isroot = False), whereclause, **options)
 
-def eagerloader(mapper, whereclause):
-    return EagerLoader(mapper, whereclause)
+def eagerloader(mapper, whereclause, **options):
+    return EagerLoader(mapper, whereclause, **options)
 
 def mapper(class_, selectable, table = None, properties = None, identitymap = None, use_smart_properties = True, isroot = True):
     return Mapper(class_, selectable, table = table, properties = properties, identitymap = identitymap, use_smart_properties = use_smart_properties, isroot = isroot)
@@ -232,7 +234,7 @@ class ColumnProperty(MapperProperty):
 
     
 class EagerLoader(MapperProperty):
-    def __init__(self, mapper, whereclause):
+    def __init__(self, mapper, whereclause, **options):
         self.mapper = mapper
         self.whereclause = whereclause
     
@@ -242,6 +244,15 @@ class EagerLoader(MapperProperty):
     def setup(self, key, primarytable, statement):
         """add a left outer join to the statement thats being constructed"""
         targettable = self.mapper.selectable
+
+        if statement.whereclause is not None:
+            #if the whereclause of the statement contains the table we eager load against,
+            # "aliasize" the whereclause into a new selectable unit
+            for target in [targettable]: # + self.whereclause._get_from_objects():
+                aliasizer = Aliasizer(target, "aliased_" + target.name + "_" + hex(random.randint(0, 65535))[2:])
+                statement.whereclause.accept_visitor(aliasizer)
+                statement.append_from(aliasizer.alias)
+        
         if hasattr(statement, '_outerjoin'):
             statement._outerjoin = sql.outerjoin(statement._outerjoin, targettable, self.whereclause)
         else:
@@ -260,6 +271,18 @@ class EagerLoader(MapperProperty):
             list = []
             setattr(instance, key, list)
         self.mapper._instance(row, localmap, list)
+
+class Aliasizer(sql.ClauseVisitor):
+    def __init__(self, table, aliasname):
+        self.table = table
+        self.alias = sql.alias(table, aliasname)
+        self.binary = None
+
+    def visit_binary(self, binary):
+        if isinstance(binary.left, schema.Column) and binary.left.table == self.table:
+            binary.left = self.alias.c[binary.left.name]
+        if isinstance(binary.right, schema.Column) and binary.right.table == self.table:
+            binary.right = self.alias.c[binary.right.name]
 
 class SmartProperty(object):
     def __init__(self, key):
