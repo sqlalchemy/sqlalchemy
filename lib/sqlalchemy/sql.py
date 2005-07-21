@@ -23,7 +23,7 @@ import sqlalchemy.schema as schema
 import sqlalchemy.util as util
 import string
 
-__ALL__ = ['textclause', 'select', 'join', 'and_', 'or_', 'union', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'bindparam']
+__ALL__ = ['textclause', 'select', 'join', 'and_', 'or_', 'union', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'bindparam', 'sequence']
 
 def desc(column):
     return CompoundClause(None, column, "DESC")
@@ -71,6 +71,9 @@ def bindparam(key, value = None):
 def textclause(text, params = None):
     return TextClause(text, params)
 
+def sequence():
+    return Sequence()
+    
 def _compound_clause(keyword, *clauses):
     return CompoundClause(keyword, *clauses)
 
@@ -124,6 +127,9 @@ class ClauseElement(object):
     def execute(self, **params):
         e = self._engine()
         c = self.compile(e, bindparams = params)
+        # TODO: do pre-execute right here, for sequences, if the compiled object
+        # defines it
+        # TODO: why do we send the params twice, once to compile, once to c.get_params
         return e.execute(str(c), c.get_params(**params))
 
     def result(self, **params):
@@ -637,3 +643,10 @@ class Delete(UpdateBase):
 
         visitor.visit_delete(self)
         
+class Sequence(BindParamClause):
+    def __init__(self):
+        BindParamClause.__init__(self, 'sequence')
+
+    def accept_visitor(self, visitor):
+        visitor.visit_sequence(self)
+
