@@ -139,6 +139,9 @@ class Column(SchemaItem):
     def __gt__(self, other): return self._impl.__gt__(other)
     def __ge__(self, other): return self._impl.__ge__(other)
     def __str__(self): return self._impl.__str__()
+    def like(self, other):return self._impl.like(other)
+    def startswith(self, other):return self._impl.startswith(other)
+    def endswith(self, other):return self._impl.endswith(other)
 
 
 class Relation(SchemaItem):
