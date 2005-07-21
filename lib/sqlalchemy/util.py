@@ -102,4 +102,20 @@ class ThreadLocal(object):
         object.__getattribute__(self, 'tdict')["%d_%s" % (thread.get_ident(), key)] = value
         
 
+class Set(object):
+    def __init__(self, iter):
+        self.map  = {}
+        for i in iter:
+            self.append(i)
 
+    def __iter__(self):
+        return iter(self.map.values())
+        
+    def append(self, item):
+        self.map[item] = item
+        
+    def __delitem__(self, key):
+        del self.map[key]
+        
+    def __getitem__(self, key):
+        return self.map[key]
