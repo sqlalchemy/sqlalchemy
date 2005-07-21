@@ -379,6 +379,15 @@ class ColumnSelectable(Selectable):
     def __ge__(self, other):    
         return self._compare('>=', other)
         
+    def like(self, other):
+        return self._compare('LIKE', other)
+    
+    def startswith(self, other):
+        return self._compare('LIKE', str(other) + "%")
+    
+    def endswith(self, other):
+        return self._compare('LIKE', "%" + str(other))
+        
 class TableImpl(Selectable):
     """attached to a schema.Table to provide it with a Selectable interface
     as well as other functions
