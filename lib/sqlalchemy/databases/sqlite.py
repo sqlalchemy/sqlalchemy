@@ -57,6 +57,9 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
     def columnimpl(self, column):
         return SQLiteColumnImpl(column)
 
+    def reflecttable(self, table):
+        raise NotImplementedError()
+
 class SQLiteColumnImpl(sql.ColumnSelectable):
     def _get_specification(self):
         coltype = self.column.type
