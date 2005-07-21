@@ -130,7 +130,7 @@ class MapperTest(PersistTest):
         m = mapper(User, users)
         l = m.select()
         print repr(l)
-        l = m.select("users.user_name LIKE '%ed%'")
+        l = m.select(users.c.user_name.endswith('ed'))
         print repr(l)
         
     def testeager(self):
