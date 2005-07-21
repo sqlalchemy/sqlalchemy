@@ -288,7 +288,15 @@ class PropertyLoader(MapperProperty):
         self.mapper.init(root)
 
     def save(self, object, traverse, refetch):
-        self.mapper.save(object, )
+        # if a mapping table does not exist, save a row for all objects
+        # in our list normally, setting their primary keys
+        # else, determine the foreign key column in our table, set it to the parent
+        # of all child objects before saving
+        # if a mapping table exists, determine the two foreign key columns 
+        # in the mapping table, set the two values, and insert that row, for
+        # each row in the list
+        pass
+
     def delete(self):
         self.mapper.delete()
         
