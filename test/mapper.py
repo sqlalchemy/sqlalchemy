@@ -135,8 +135,9 @@ class MapperTest(PersistTest):
         
     def testeager(self):
         m = mapper(User, users, properties = dict(
-            addresses = eagermapper(Address, addresses, users.c.user_id==addresses.c.user_id)
+            addresses = lazymapper(Address, addresses, users.c.user_id==addresses.c.user_id)
         ))
+        #l = m.options(eagerload('addresses')).select()
         l = m.select()
         print repr(l)
 
@@ -147,6 +148,17 @@ class MapperTest(PersistTest):
         l = m.select(and_(addresses.c.email_address == 'ed@lala.com', addresses.c.user_id==users.c.user_id))
         print repr(l)
 
+    def testcompile(self):
+        m = mapper(User, users, properties = dict(
+            addresses = eagermapper(Address, addresses, users.c.user_id==addresses.c.user_id)
+        ))
+        s = m.compile(and_(addresses.c.email_address == bindparam('emailad'), addresses.c.user_id==users.c.user_id))
+        c = s.compile()
+        print "\n" + str(c) + repr(c.get_params())
+        
+        l = m.instances(s.execute(emailad = 'jack@bean.com'))
+        print repr(l)
+        
     def testmultieager(self):
         m = mapper(User, users, properties = dict(
             addresses = eagermapper(Address, addresses, users.c.user_id==addresses.c.user_id),

@@ -16,6 +16,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 from sqlalchemy.util import *
+import copy
 
 engine = None
 
@@ -74,6 +75,12 @@ class Table(SchemaItem):
         self._impl = self.engine.tableimpl(self)
         self._init_items(*args)
         
+        if params.get('autoload', False):
+            self.engine.reflecttable(self)
+
+    def append_item(self, item):
+        self._init_items(item)
+        
     def _set_parent(self, schema):
         schema.tables[self.name] = self
         self.schema = schema
@@ -110,6 +117,10 @@ class Column(SchemaItem):
 
     def _make_proxy(self, selectable, name = None):
         # wow! using copy.copy(c) adds a full second to the select.py unittest package
+        #c = copy.copy(self)
+        #if name is not None:
+         #   c.name = name
+         #   c.key = name
         c = Column(name or self.name, self.type, key = name or self.key, primary_key = self.primary_key)
         c.table = selectable
         c.engine = self.engine
