@@ -115,11 +115,11 @@ class SQLEngine(schema.SchemaEngine):
                 self.context.transaction = None
                 self.context.tcount = None
                 
-    def execute(self, statement, parameters, connection = None, **params):
+    def execute(self, statement, parameters, connection = None, echo = None, **params):
         if parameters is None:
             parameters = {}
         
-        if self._echo:
+        if echo is True or self._echo:
             self.log(statement)
             self.log(repr(parameters))
             
@@ -143,15 +143,16 @@ class ResultProxy:
         metadata = cursor.description
         self.props = {}
         i = 0
-        for item in metadata:
-            self.props[item[0]] = i
-            self.props[i] = i
-            i+=1
+        if metadata is not None:
+            for item in metadata:
+                self.props[item[0]] = i
+                self.props[i] = i
+                i+=1
 
     def fetchone(self):
         row = self.cursor.fetchone()
         if row is not None:
-            print repr(row)
+            #print repr(row)
             return RowProxy(self, row)
         else:
             return None

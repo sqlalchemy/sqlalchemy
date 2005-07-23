@@ -122,6 +122,10 @@ class ClauseElement(object):
         return engine.compile(self, bindparams = bindparams)
 
     def copy_structure(self):
+        """allows the copying of a statement's containers, so that a modified statement
+        can be produced without affecting the original.  containing clauseelements,
+        like Select, Join, CompoundClause, BinaryClause, etc.,  should produce a copy of 
+        themselves, whereas "leaf-node" clauseelements should return themselves."""
         return self
         
     def _engine(self):
@@ -133,7 +137,7 @@ class ClauseElement(object):
         # TODO: do pre-execute right here, for sequences, if the compiled object
         # defines it
         # TODO: why do we send the params twice, once to compile, once to c.get_params
-        return e.execute(str(c), c.get_params(**params))
+        return e.execute(str(c), c.get_params(**params), echo = getattr(self, 'echo', None))
 
     def result(self, **params):
         e = self._engine()
@@ -277,6 +281,7 @@ class Selectable(FromClause):
     c = property(lambda self: self.columns)
 
     def accept_visitor(self, visitor):
+        print repr(self.__class__)
         raise NotImplementedError()
     
     def select(self, whereclauses = None, **params):
@@ -361,6 +366,9 @@ class ColumnSelectable(Selectable):
         else:
             self.label = self.column.name
             self.fullname = self.column.name
+
+    def copy_structure(self):
+        return self.column
     
     def _get_from_objects(self):
         return [self.column.table]

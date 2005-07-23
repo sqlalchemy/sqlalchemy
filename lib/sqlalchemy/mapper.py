@@ -47,10 +47,10 @@ def relation_loader(mapper, secondary = None, primaryjoin = None, secondaryjoin 
         return EagerLoader(mapper, secondary, primaryjoin, secondaryjoin, **options)
     
 def relation_mapper(class_, selectable, secondary = None, primaryjoin = None, secondaryjoin = None, table = None, properties = None, lazy = True, **options):
-    return relation_loader(mapper(class_, selectable, table = table, properties = properties, isroot = False), secondary, primaryjoin, secondaryjoin, lazy = lazy, **options)
+    return relation_loader(mapper(class_, selectable, table = table, properties = properties, isroot = False, **options), secondary, primaryjoin, secondaryjoin, lazy = lazy, **options)
 
-def mapper(class_, selectable, table = None, properties = None, identitymap = None, use_smart_properties = True, isroot = True):
-    return Mapper(class_, selectable, table = table, properties = properties, identitymap = identitymap, use_smart_properties = use_smart_properties, isroot = isroot)
+def mapper(*args, **params):
+    return Mapper(*args, **params)
 
 def identitymap():
     return IdentityMap()
@@ -65,7 +65,7 @@ def lazyload(name):
     return LazyOption(name)
 
 class Mapper(object):
-    def __init__(self, class_, selectable, table = None, properties = None, identitymap = None, use_smart_properties = True, isroot = True):
+    def __init__(self, class_, selectable, table = None, properties = None, identitymap = None, use_smart_properties = True, isroot = True, echo = None):
         self.class_ = class_
         self.selectable = selectable
         self.use_smart_properties = use_smart_properties
@@ -74,7 +74,8 @@ class Mapper(object):
         else:
             self.table = table
         self.props = {}
-        
+
+        self.echo = echo
         for column in self.selectable.columns:
             self.props[column.key] = ColumnProperty(column)
 
@@ -97,6 +98,7 @@ class Mapper(object):
     def init(self, root):
         self.root = root
         self.identitymap = root.identitymap
+        self.echo = self.root.echo
         [prop.init(key, self, root) for key, prop in self.props.iteritems()]
             
     def instances(self, cursor):
@@ -122,6 +124,9 @@ class Mapper(object):
         return self._compile(whereclause, **options)
     
     def options(self, *options):
+        """uses this mapper as a prototype for a new mapper with different behavior.
+        
+        *options is a list of options directives, which include eagerload() and lazyload()"""
         mapper = copy.copy(self)
         for option in options:
             option.process(mapper)
@@ -200,6 +205,7 @@ class Mapper(object):
     
     def _select_statement(self, statement, **params):
         statement.use_labels = True
+        statement.echo = self.echo
         return self.instances(statement.execute(**params))
 
     def _identity_key(self, row):
@@ -296,6 +302,14 @@ class PropertyLoader(MapperProperty):
     def init(self, key, parent, root):
         self.key = key
         self.mapper.init(root)
+        if self.secondary is not None:
+            if self.secondaryjoin is None:
+                self.secondaryjoin = match_primaries(self.target, self.secondary)
+            if self.primaryjoin is None:
+                self.primaryjoin = match_primaries(parent.selectable, self.secondary)
+        else:
+            if self.primaryjoin is None:
+                self.primaryjoin = match_primaries(parent.selectable, self.target)
 
     def save(self, object, traverse, refetch):
         # if a mapping table does not exist, save a row for all objects
@@ -316,10 +330,16 @@ class LazyLoader(PropertyLoader):
     def init(self, key, parent, root):
         PropertyLoader.init(self, key, parent, root)
         if not hasattr(parent.class_, key):
+            if not issubclass(parent.class_, object):
+                raise "LazyLoader can only be used with new-style classes, i.e. subclass object"
             setattr(parent.class_, key, SmartProperty(key).property())
-
+        
     def setup(self, key, primarytable, statement, **options):
-        self.lazywhere = self.whereclause.copy_structure()
+        if self.secondaryjoin is not None:
+            self.lazywhere = sql.and_(self.primaryjoin, self.secondaryjoin)
+        else:
+            self.lazywhere = self.primaryjoin
+        self.lazywhere = self.lazywhere.copy_structure()
         li = LazyIzer(primarytable)
         self.lazywhere.accept_visitor(li)
         self.binds = li.binds
@@ -337,16 +357,6 @@ class LazyLoader(PropertyLoader):
 class EagerLoader(PropertyLoader):
     def init(self, key, parent, root):
         PropertyLoader.init(self, key, parent, root)
-        
-        if self.secondary is not None:
-            if self.secondaryjoin is None:
-                self.secondaryjoin = match_primaries(self.target, self.secondary)
-            if self.primaryjoin is None:
-                self.primaryjoin = match_primaries(parent.selectable, self.secondary)
-        else:
-            if self.primaryjoin is None:
-                self.primaryjoin = match_primaries(parent.selectable, self.target)
-        
         self.to_alias = util.Set()
         [self.to_alias.append(f) for f in self.primaryjoin._get_from_objects()]
         if self.secondaryjoin is not None:
@@ -379,7 +389,7 @@ class EagerLoader(PropertyLoader):
         statement.append_from(statement._outerjoin)
         statement.append_column(self.target)
         for key, value in self.mapper.props.iteritems():
-            value.setup(key, self.mapper.selectable, statement) 
+            value.setup(key, self.mapper.selectable, statement)
         
     def execute(self, instance, row, identitykey, localmap, isduplicate):
         """receive a row.  tell our mapper to look for a new object instance in the row, and attach
@@ -399,7 +409,7 @@ class EagerOption(MapperOption):
 
     def process(self, mapper):
         oldprop = mapper.props[self.key]
-        mapper.set_property(self.key, EagerLoader(oldprop.mapper, oldprop.whereclause))
+        mapper.set_property(self.key, EagerLoader(oldprop.mapper, oldprop.secondary, primaryjoin = oldprop.primaryjoin, secondaryjoin = oldprop.secondaryjoin))
         
 class LazyOption(MapperOption):
     """an option that switches a PropertyLoader to be a LazyLoader"""

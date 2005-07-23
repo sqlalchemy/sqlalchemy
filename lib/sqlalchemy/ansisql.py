@@ -148,7 +148,7 @@ class ANSICompiler(sql.Compiled):
         else:
             collist = string.join([c.fullname for c in inner_columns], ', ')
 
-        text = "SELECT " + collist + " FROM "
+        text = "SELECT " + collist + " \nFROM "
         
         whereclause = select.whereclause
         
@@ -171,7 +171,7 @@ class ANSICompiler(sql.Compiled):
         if whereclause is not None:
             t = self.get_str(whereclause)
             if t:
-                text += " WHERE " + t
+                text += " \nWHERE " + t
 
         for tup in select._clauses:
             text += " " + tup[0] + " " + self.get_str(tup[1])
