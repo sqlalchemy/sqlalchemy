@@ -113,10 +113,9 @@ Closed Orderss %s
 """ % tuple([self.user_id, repr(self.user_name)] + [repr(getattr(self, attr, None)) for attr in ('addresses', 'orders', 'orders_open', 'orders_closed')])
 )
 
-            
 class Address(object):
     def __repr__(self):
-        return "Address: " + repr(self.user_id) + " " + repr(self.email_address)
+        return "Address: " + repr(self.address_id) + " " + repr(self.user_id) + " " + repr(self.email_address)
 
 class Order(object):
     def __repr__(self):
@@ -128,9 +127,24 @@ class Item(object):
     
 class Keyword(object):
     def __repr__(self):
-        return "Keyword: " + repr(self.name)
+        return "Keyword: %s/%s" % (repr(self.keyword_id),repr(self.name))
+
+class AssertMixin(PersistTest):
+    def assert_result(self, result, class_, *objects):
+        print repr(result)
+        self.assert_list(result, class_, objects)
+    def assert_list(self, result, class_, list):
+        for i in range(0, len(result)):
+            self.assert_row(class_, result[i], list[i])
+    def assert_row(self, class_, rowobj, desc):
+        self.assert_(rowobj.__class__ is class_, "item class is not " + repr(class_))
+        for key, value in desc.iteritems():
+            if isinstance(value, tuple):
+                self.assert_list(getattr(rowobj, key), value[0], value[1])
+            else:
+                self.assert_(getattr(rowobj, key) == value, "attribute %s value %s does not match %s" % (key, getattr(rowobj, key), value))
         
-class MapperTest(PersistTest):
+class MapperTest(AssertMixin):
     
     def setUp(self):
         globalidentity().clear()
@@ -139,9 +153,9 @@ class MapperTest(PersistTest):
         """tests loading rows with a mapper and producing object instances"""
         m = mapper(User, users)
         l = m.select()
-        print repr(l)
+        self.assert_result(l, User, {'user_id' : 7}, {'user_id' : 8}, {'user_id' : 9})
         l = m.select(users.c.user_name.endswith('ed'))
-        print repr(l)
+        self.assert_result(l, User, {'user_id' : 8}, {'user_id' : 9})
 
     def testeageroptions(self):
         """tests that a lazy relation can be upgraded to an eager relation via the options method"""
@@ -149,7 +163,11 @@ class MapperTest(PersistTest):
             addresses = relation(Address, addresses, lazy = True)
         ), echo = True)
         l = m.options(eagerload('addresses')).select()
-        print repr(l)
+        self.assert_result(l, User, 
+            {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
+            {'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}])},
+            {'user_id' : 9, 'addresses' : (Address, [])}
+            )
 
     def testlazyoptions(self):
         """tests that an eager relation can be upgraded to a lazy relation via the options method"""
@@ -157,9 +175,13 @@ class MapperTest(PersistTest):
             addresses = relation(Address, addresses, lazy = False)
         ), echo = True)
         l = m.options(lazyload('addresses')).select()
-        print repr(l)
+        self.assert_result(l, User, 
+            {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
+            {'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}])},
+            {'user_id' : 9, 'addresses' : (Address, [])}
+            )
     
-class LazyTest(PersistTest):
+class LazyTest(AssertMixin):
     def setUp(self):
         globalidentity().clear()
 
@@ -169,9 +191,9 @@ class LazyTest(PersistTest):
             addresses = relation(Address, addresses, lazy = True)
         ), echo = True)
         l = m.select(users.c.user_id == 7)
-        user = l[0]
-        a = user.addresses
-        print repr(user)
+        self.assert_result(l, User, 
+            {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
+            )
 
     def testmanytomany(self):
         """tests a many-to-many lazy load"""
@@ -180,11 +202,20 @@ class LazyTest(PersistTest):
         m = mapper(Item, items, properties = dict(
                 keywords = relation(Keyword, keywords, itemkeywords, lazy = True),
             ), echo = True)
- #       l = m.select()
- #       print repr(l)
+        l = m.select()
+        self.assert_result(l, Item, 
+            {'item_id' : 1, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 4}, {'keyword_id' : 6}])},
+            {'item_id' : 3, 'keywords' : (Keyword, [{'keyword_id' : 3}, {'keyword_id' : 4}, {'keyword_id' : 6}])},
+            {'item_id' : 2, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 5}, {'keyword_id' : 7}])},
+            {'item_id' : 5, 'keywords' : (Keyword, [])},
+            {'item_id' : 4, 'keywords' : (Keyword, [])}
+        )
 
         l = m.select(and_(keywords.c.name == 'red', keywords.c.keyword_id == itemkeywords.c.keyword_id, items.c.item_id==itemkeywords.c.item_id))
-        print repr(l)
+        self.assert_result(l, Item, 
+            {'item_id' : 1, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 4}, {'keyword_id' : 6}])},
+            {'item_id' : 2, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 5}, {'keyword_id' : 7}])},
+        )
 
 class EagerTest(PersistTest):
     
@@ -199,7 +230,7 @@ class EagerTest(PersistTest):
         l = m.select()
         print repr(l)
 
-    def testeagerwithrepeat(self):
+    def testwithrepeat(self):
         """tests a one-to-many eager load where we also query on joined criterion, where the joined
         criterion is using the same tables that are used within the eager load.  the mapper must insure that the 
         criterion doesnt interfere with the eager load criterion."""
@@ -221,7 +252,7 @@ class EagerTest(PersistTest):
         l = m.instances(s.execute(emailad = 'jack@bean.com'))
         print repr(l)
         
-    def testmultieager(self):
+    def testmulti(self):
         """tests eager loading with two relations simultaneously"""
         m = mapper(User, users, properties = dict(
             addresses = relation(Address, addresses, primaryjoin = users.c.user_id==addresses.c.user_id, lazy = False),
@@ -230,7 +261,7 @@ class EagerTest(PersistTest):
         l = m.select()
         print repr(l)
 
-    def testdoubleeager(self):
+    def testdouble(self):
         """tests eager loading with two relations simulatneously, from the same table.  you
         have to use aliases for this less frequent type of operation."""
         openorders = alias(orders, 'openorders')
@@ -242,7 +273,7 @@ class EagerTest(PersistTest):
         l = m.select()
         print repr(l)
 
-    def testnestedeager(self):
+    def testnested(self):
         """tests eager loading, where one of the eager loaded items also eager loads its own 
         child items."""
         ordermapper = mapper(Order, orders, properties = dict(
@@ -256,7 +287,7 @@ class EagerTest(PersistTest):
         l = m.select()
         print repr(l)
     
-    def testmanytomanyeager(self):
+    def testmanytomany(self):
         items = orderitems
         
         m = mapper(Item, items, properties = dict(
@@ -266,7 +297,7 @@ class EagerTest(PersistTest):
         print repr(l)
         
         l = m.select(and_(keywords.c.name == 'red', keywords.c.keyword_id == itemkeywords.c.keyword_id, items.c.item_id==itemkeywords.c.item_id))
-        print repr(l)            
+        print repr(l)
     
     def testoneandmany(self):
         items = orderitems
