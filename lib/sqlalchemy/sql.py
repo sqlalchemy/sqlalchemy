@@ -136,13 +136,12 @@ class ClauseElement(object):
         c = self.compile(e, bindparams = params)
         # TODO: do pre-execute right here, for sequences, if the compiled object
         # defines it
-        # TODO: why do we send the params twice, once to compile, once to c.get_params
-        return e.execute(str(c), c.get_params(**params), echo = getattr(self, 'echo', None))
+        return e.execute(str(c), c.get_params(), echo = getattr(self, 'echo', None))
 
     def result(self, **params):
         e = self._engine()
         c = self.compile(e, bindparams = params)
-        return e.result(str(c), c.get_params(**params))
+        return e.result(str(c), c.binds)
         
 class ColumnClause(ClauseElement):
     """represents a column clause element in a SQL statement."""

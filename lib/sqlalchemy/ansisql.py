@@ -55,7 +55,7 @@ class ANSISQLEngine(sqlalchemy.engine.SQLEngine):
 class ANSICompiler(sql.Compiled):
     def __init__(self, parent, bindparams):
         self.binds = {}
-        self.bindparams = bindparams
+        self._bindparams = bindparams
         self.parent = parent
         self.froms = {}
         self.wheres = {}
@@ -71,6 +71,8 @@ class ANSICompiler(sql.Compiled):
         return self.wheres.get(obj, None)
         
     def get_params(self, **params):
+        """returns the bind params for this compiled object, with values overridden by 
+        those given in the **params dictionary"""
         d = {}
         for key, value in params.iteritems():
             try:
@@ -80,8 +82,7 @@ class ANSICompiler(sql.Compiled):
             d[b.key] = value
 
         for b in self.binds.values():
-            if not d.has_key(b.key):
-                d[b.key] = b.value
+            d.setdefault(b.key, b.value)
 
         return d
         
@@ -166,7 +167,7 @@ class ANSICompiler(sql.Compiled):
             if t is not None:
                 froms.append(t)
 
-        text += string.join(froms, ', ')                
+        text += string.join(froms, ', ')
 
         if whereclause is not None:
             t = self.get_str(whereclause)
@@ -182,18 +183,17 @@ class ANSICompiler(sql.Compiled):
 
     def visit_table(self, table):
         self.froms[table] = table.name
-        
+
     def visit_join(self, join):
         if join.isouter:
             self.froms[join] = (self.get_from_text(join.left) + " LEFT OUTER JOIN " + self.get_from_text(join.right) + 
             " ON " + self.get_str(join.onclause))
         else:
-            self.froms[join] = (self.get_from_text(join.left) + " JOIN " + self.get_from_text(join.right) + 
+            self.froms[join] = (self.get_from_text(join.left) + " JOIN " + self.get_from_text(join.right) +
             " ON " + self.get_str(join.onclause))
-            
-            
+
     def visit_insert(self, insert_stmt):
-        colparams = insert_stmt.get_colparams(self.bindparams)
+        colparams = insert_stmt.get_colparams(self._bindparams)
 
         for c in colparams:
             b = c[1]
@@ -206,7 +206,7 @@ class ANSICompiler(sql.Compiled):
         self.strings[insert_stmt] = text
 
     def visit_update(self, update_stmt):
-        colparams = update_stmt.get_colparams(self.bindparams)
+        colparams = update_stmt.get_colparams(self._bindparams)
         
         for c in colparams:
             b = c[1]

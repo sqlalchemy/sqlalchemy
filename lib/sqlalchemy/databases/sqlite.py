@@ -51,6 +51,12 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
     
     def connect_args(self):
         return ([self.filename], self.opts)
+
+    def compile(self, statement, bindparams):
+        compiler = SQLiteCompiler(statement, bindparams)
+
+        statement.accept_visitor(compiler)
+        return compiler
         
     def dbapi(self):
         return sqlite
@@ -61,6 +67,10 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
     def reflecttable(self, table):
         raise NotImplementedError()
 
+class SQLiteCompiler(ansisql.ANSICompiler):
+    def visit_insert(self, insert):
+        ansisql.ANSICompiler.visit_insert(self, insert)
+        
 class SQLiteColumnImpl(sql.ColumnSelectable):
     def _get_specification(self):
         coltype = self.column.type
