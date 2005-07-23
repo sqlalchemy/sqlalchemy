@@ -103,10 +103,11 @@ class ThreadLocal(object):
         
 
 class Set(object):
-    def __init__(self, iter):
+    def __init__(self, iter = None):
         self.map  = {}
-        for i in iter:
-            self.append(i)
+        if iter is not None:
+            for i in iter:
+                self.append(i)
 
     def __iter__(self):
         return iter(self.map.values())

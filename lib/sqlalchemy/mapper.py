@@ -40,14 +40,14 @@ def relation(*args, **params):
     else:
         return relation_mapper(*args, **params)
 
-def relation_loader(mapper, whereclause, lazy = True, **options):
+def relation_loader(mapper, secondary = None, primaryjoin = None, secondaryjoin = None, lazy = True, **options):
     if lazy:
-        return LazyLoader(mapper, whereclause, **options)
+        return LazyLoader(mapper, secondary, primaryjoin, secondaryjoin, **options)
     else:
-        return EagerLoader(mapper, whereclause, **options)
+        return EagerLoader(mapper, secondary, primaryjoin, secondaryjoin, **options)
     
-def relation_mapper(class_, selectable, whereclause, table = None, properties = None, lazy = True, **options):
-    return relation_loader(mapper(class_, selectable, table = table, properties = properties, isroot = False), whereclause, lazy = lazy, **options)
+def relation_mapper(class_, selectable, secondary = None, primaryjoin = None, secondaryjoin = None, table = None, properties = None, lazy = True, **options):
+    return relation_loader(mapper(class_, selectable, table = table, properties = properties, isroot = False), secondary, primaryjoin, secondaryjoin, lazy = lazy, **options)
 
 def mapper(class_, selectable, table = None, properties = None, identitymap = None, use_smart_properties = True, isroot = True):
     return Mapper(class_, selectable, table = table, properties = properties, identitymap = identitymap, use_smart_properties = use_smart_properties, isroot = isroot)
@@ -225,11 +225,6 @@ class Mapper(object):
             instance = self.identitymap[identitykey]
         instance.dirty = False
 
-        # call further mapper properties on the row, to pull further 
-        # instances from the row and possibly populate this item.
-        for key, prop in self.props.iteritems():
-            prop.execute(instance, row, identitykey, localmap, exists)
-
         # now add to the result list, but we only want to add 
         # to the result list uniquely, so get another identity map
         # that is associated with that list
@@ -237,9 +232,16 @@ class Mapper(object):
             imap = localmap[id(result)]
         except KeyError:
             imap = localmap.setdefault(id(result), IdentityMap())
-        if not imap.has_key(identitykey):
+
+        isduplicate = imap.has_key(identitykey)
+        if not isduplicate:
             imap[identitykey] = instance
             result.append(instance)
+
+        # call further mapper properties on the row, to pull further 
+        # instances from the row and possibly populate this item.
+        for key, prop in self.props.iteritems():
+            prop.execute(instance, row, identitykey, localmap, isduplicate)
 
 
 class MapperOption:
@@ -284,9 +286,12 @@ class ColumnProperty(MapperProperty):
 
 
 class PropertyLoader(MapperProperty):
-    def __init__(self, mapper, whereclause, **options):
+    def __init__(self, mapper, secondary, primaryjoin, secondaryjoin, **options):
         self.mapper = mapper
-        self.whereclause = whereclause
+        self.target = self.mapper.selectable
+        self.secondary = secondary
+        self.primaryjoin = primaryjoin
+        self.secondaryjoin = secondaryjoin
 
     def init(self, key, parent, root):
         self.key = key
@@ -305,16 +310,6 @@ class PropertyLoader(MapperProperty):
     def delete(self):
         self.mapper.delete()
 
-class LazyRow(MapperProperty):
-    def __init__(self, table, whereclause, **options):
-        self.table = table
-        self.whereclause = whereclause
-        
-    def init(self, key, parent, root):
-        self.keys.append(key)
-    
-    def execute(self, instance, row, identitykey, localmap, isduplicate):
-        pass
         
 class LazyLoader(PropertyLoader):
 
@@ -340,39 +335,61 @@ class LazyLoader(PropertyLoader):
             setattr(instance, self.key, load)
         
 class EagerLoader(PropertyLoader):
+    def init(self, key, parent, root):
+        PropertyLoader.init(self, key, parent, root)
+        
+        if self.secondary is not None:
+            if self.secondaryjoin is None:
+                self.secondaryjoin = match_primaries(self.target, self.secondary)
+            if self.primaryjoin is None:
+                self.primaryjoin = match_primaries(parent.selectable, self.secondary)
+        else:
+            if self.primaryjoin is None:
+                self.primaryjoin = match_primaries(parent.selectable, self.target)
+        
+        self.to_alias = util.Set()
+        [self.to_alias.append(f) for f in self.primaryjoin._get_from_objects()]
+        if self.secondaryjoin is not None:
+            [self.to_alias.append(f) for f in self.secondaryjoin._get_from_objects()]
+        del self.to_alias[parent.selectable]
+        
     def setup(self, key, primarytable, statement, **options):
         """add a left outer join to the statement thats being constructed"""
-        targettable = self.mapper.selectable
 
         if statement.whereclause is not None:
             # if the whereclause of the statement references tables that are also
             # in the outer join we are constructing, then convert those objects to 
             # reference "aliases" of those tables so that their where condition does not interfere
             # with ours
-            targets = util.Set([targettable] + self.whereclause._get_from_objects())
-            del targets[primarytable]
-            for target in targets:
+            for target in self.to_alias:
                 aliasizer = Aliasizer(target, "aliased_" + target.name + "_" + hex(random.randint(0, 65535))[2:])
                 statement.whereclause.accept_visitor(aliasizer)
                 statement.append_from(aliasizer.alias)
         
         if hasattr(statement, '_outerjoin'):
-            statement._outerjoin = sql.outerjoin(statement._outerjoin, targettable, self.whereclause)
+            towrap = statement._outerjoin
         else:
-            statement._outerjoin = sql.outerjoin(primarytable, targettable, self.whereclause)
+            towrap = primarytable
+        
+        if self.secondaryjoin is not None:
+            statement._outerjoin = sql.outerjoin(sql.outerjoin(towrap, self.secondary, self.secondaryjoin), self.target, self.primaryjoin)
+        else:
+            statement._outerjoin = sql.outerjoin(towrap, self.target, self.primaryjoin)
+            
         statement.append_from(statement._outerjoin)
-        statement.append_column(targettable)
+        statement.append_column(self.target)
         for key, value in self.mapper.props.iteritems():
             value.setup(key, self.mapper.selectable, statement) 
         
     def execute(self, instance, row, identitykey, localmap, isduplicate):
         """receive a row.  tell our mapper to look for a new object instance in the row, and attach
         it to a list on the parent instance."""
-        try:
-            list = getattr(instance, self.key)
-        except AttributeError:
+        if not isduplicate:
             list = []
             setattr(instance, self.key, list)
+        else:
+            list = getattr(instance, self.key)
+
         self.mapper._instance(row, localmap, list)
 
 class EagerOption(MapperOption):
@@ -419,6 +436,16 @@ class LazyIzer(sql.ClauseVisitor):
             binary.right = self.binds.setdefault(self.table.name + "_" + binary.right.name,
                     sql.BindParamClause(self.table.name + "_" + binary.right.name, None, shortname = binary.left.name))
     
+class LazyRow(MapperProperty):
+    def __init__(self, table, whereclause, **options):
+        self.table = table
+        self.whereclause = whereclause
+
+    def init(self, key, parent, root):
+        self.keys.append(key)
+
+    def execute(self, instance, row, identitykey, localmap, isduplicate):
+        pass
 
 
 class SmartProperty(object):
@@ -439,6 +466,12 @@ class SmartProperty(object):
             return s.__dict__[self.key]
         return property(get_prop, set_prop, del_prop)
 
+def match_primaries(primary, secondary):
+    pk = primary.primary_keys
+    if len(pk) == 1:
+        return (pk[0] == secondary.c[pk[0].name])
+    else:
+        return sql.and_([pk == secondary.c[pk.name] for pk in primary.primary_keys])
 
 class IdentityMap(dict):
     def get_key(self, row, class_, table, selectable):

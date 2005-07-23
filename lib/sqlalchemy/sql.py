@@ -259,7 +259,7 @@ class BinaryClause(ClauseElement):
         self.parens = False
 
     def copy_structure(self):
-        return BinaryClause(self.left, self.right, self.operator)
+        return BinaryClause(self.left.copy_structure(), self.right.copy_structure(), self.operator)
         
     def _get_from_objects(self):
         return self.left._get_from_objects() + self.right._get_from_objects()

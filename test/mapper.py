@@ -3,9 +3,13 @@ import unittest, sys, os
 
 import sqlalchemy.databases.sqlite as sqllite
 
-if os.access('querytest.db', os.F_OK):
-    os.remove('querytest.db')
-db = sqllite.engine('querytest.db', opts = {'isolation_level':None}, echo = True)
+memory = True
+if memory:
+    db = sqllite.engine(':memory:', {}, echo = True)
+else:
+    if os.access('querytest.db', os.F_OK):
+        os.remove('querytest.db')
+    db = sqllite.engine('querytest.db', opts = {}, echo = True)
 
 from sqlalchemy.sql import *
 from sqlalchemy.schema import *
@@ -54,6 +58,7 @@ addresses.build()
 addresses.insert().execute(address_id = 1, user_id = 7, email_address = "jack@bean.com")
 addresses.insert().execute(address_id = 2, user_id = 8, email_address = "ed@wood.com")
 addresses.insert().execute(address_id = 3, user_id = 8, email_address = "ed@lala.com")
+db.connection().commit()
 
 orders.build()
 orders.insert().execute(order_id = 1, user_id = 7, description = 'order 1', isopen=0)
@@ -61,6 +66,7 @@ orders.insert().execute(order_id = 2, user_id = 9, description = 'order 2', isop
 orders.insert().execute(order_id = 3, user_id = 7, description = 'order 3', isopen=1)
 orders.insert().execute(order_id = 4, user_id = 9, description = 'order 4', isopen=1)
 orders.insert().execute(order_id = 5, user_id = 7, description = 'order 5', isopen=0)
+db.connection().commit()
 
 orderitems.build()
 orderitems.insert().execute(item_id=1, order_id=2, item_name='item 1')
@@ -68,6 +74,7 @@ orderitems.insert().execute(item_id=3, order_id=3, item_name='item 3')
 orderitems.insert().execute(item_id=2, order_id=2, item_name='item 2')
 orderitems.insert().execute(item_id=5, order_id=3, item_name='item 5')
 orderitems.insert().execute(item_id=4, order_id=3, item_name='item 4')
+db.connection().commit()
 
 keywords.build()
 keywords.insert().execute(keyword_id=1, name='blue')
@@ -77,6 +84,7 @@ keywords.insert().execute(keyword_id=4, name='big')
 keywords.insert().execute(keyword_id=5, name='small')
 keywords.insert().execute(keyword_id=6, name='round')
 keywords.insert().execute(keyword_id=7, name='square')
+db.connection().commit()
 
 itemkeywords.build()
 itemkeywords.insert().execute(keyword_id=2, item_id=1)
@@ -88,9 +96,9 @@ itemkeywords.insert().execute(keyword_id=6, item_id=3)
 itemkeywords.insert().execute(keyword_id=3, item_id=3)
 itemkeywords.insert().execute(keyword_id=5, item_id=2)
 itemkeywords.insert().execute(keyword_id=4, item_id=3)
+db.connection().commit()
 
 
-sys.exit()
 class User(object):
     def __repr__(self):
         return (
@@ -183,7 +191,7 @@ class EagerTest(PersistTest):
     def testbasic(self):
         """tests a basic one-to-many eager load"""
         m = mapper(User, users, properties = dict(
-            addresses = relation(Address, addresses, users.c.user_id==addresses.c.user_id, lazy = False)
+            addresses = relation(Address, addresses, lazy = False)
         ))
         l = m.select()
         print repr(l)
@@ -193,7 +201,7 @@ class EagerTest(PersistTest):
         criterion is using the same tables that are used within the eager load.  the mapper must insure that the 
         criterion doesnt interfere with the eager load criterion."""
         m = mapper(User, users, properties = dict(
-            addresses = relation(Address, addresses, users.c.user_id==addresses.c.user_id, lazy = False)
+            addresses = relation(Address, addresses, primaryjoin = users.c.user_id==addresses.c.user_id, lazy = False)
         ))
         l = m.select(and_(addresses.c.email_address == 'ed@lala.com', addresses.c.user_id==users.c.user_id))
         print repr(l)
@@ -249,8 +257,7 @@ class EagerTest(PersistTest):
         items = orderitems
         
         m = mapper(Item, items, properties = dict(
-                keywords = relation(Keyword, keywords,
-                    and_(items.c.item_id == itemkeywords.c.item_id, keywords.c.keyword_id == itemkeywords.c.keyword_id), lazy = False),
+                keywords = relation(Keyword, keywords, itemkeywords, lazy = False),
             ))
         l = m.select()
         print repr(l)
