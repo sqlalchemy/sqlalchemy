@@ -143,12 +143,20 @@ class MapperTest(PersistTest):
         l = m.select(users.c.user_name.endswith('ed'))
         print repr(l)
 
-    def testoptions(self):
+    def testeageroptions(self):
         """tests that a lazy relation can be upgraded to an eager relation via the options method"""
         m = mapper(User, users, properties = dict(
             addresses = relation(Address, addresses, lazy = True)
         ), echo = True)
         l = m.options(eagerload('addresses')).select()
+        print repr(l)
+
+    def testlazyoptions(self):
+        """tests that an eager relation can be upgraded to a lazy relation via the options method"""
+        m = mapper(User, users, properties = dict(
+            addresses = relation(Address, addresses, lazy = False)
+        ), echo = True)
+        l = m.options(lazyload('addresses')).select()
         print repr(l)
     
 class LazyTest(PersistTest):

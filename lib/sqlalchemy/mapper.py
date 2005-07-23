@@ -59,10 +59,10 @@ def globalidentity():
     return _global_identitymap
     
 def eagerload(name):
-    return EagerOption(name)
+    return EagerLazySwitcher(name, toeager = True)
     
 def lazyload(name):
-    return LazyOption(name)
+    return EagerLazySwitcher(name, toeager = False)
 
 class Mapper(object):
     def __init__(self, class_, selectable, table = None, properties = None, identitymap = None, use_smart_properties = True, isroot = True, echo = None):
@@ -253,24 +253,31 @@ class Mapper(object):
 class MapperOption:
     def process(self, mapper):
         raise NotImplementedError()
-        
+
 class MapperProperty:
+    """an element attached to a Mapper that describes the loading and population
+    of an attribute on an object instance."""
     def execute(self, instance, row, identitykey, localmap, isduplicate):
         """called when the mapper receives a row.  instance is the parent instance corresponding
         to the row. """
         raise NotImplementedError()
+
     def setup(self, key, primarytable, statement, **options):
         """called when a statement is being constructed.  """
         return self
+
     def init(self, key, parent, root):
         """called when the MapperProperty is first attached to a new parent Mapper."""
         pass
+    
     def save(self, object, traverse, refetch):
         pass
+    
     def delete(self, object):
         pass
-        
+
 class ColumnProperty(MapperProperty):
+    """describes an object attribute that corresponds to the value in a result set column."""
     def __init__(self, column):
         self.column = column
 
@@ -282,7 +289,7 @@ class ColumnProperty(MapperProperty):
                 setattr(parent.class_, key, SmartProperty(key).property())
         else:
             self.use_smart = False
-            
+
     def execute(self, instance, row, identitykey, localmap, isduplicate):
         if not isduplicate:
             if self.use_smart:
@@ -402,24 +409,20 @@ class EagerLoader(PropertyLoader):
 
         self.mapper._instance(row, localmap, list)
 
-class EagerOption(MapperOption):
+class EagerLazySwitcher(MapperOption):
     """an option that switches a PropertyLoader to be an EagerLoader"""
-    def __init__(self, key):
+    def __init__(self, key, toeager = True):
         self.key = key
+        self.toeager = toeager
 
     def process(self, mapper):
         oldprop = mapper.props[self.key]
-        mapper.set_property(self.key, EagerLoader(oldprop.mapper, oldprop.secondary, primaryjoin = oldprop.primaryjoin, secondaryjoin = oldprop.secondaryjoin))
-        
-class LazyOption(MapperOption):
-    """an option that switches a PropertyLoader to be a LazyLoader"""
-    def __init__(self, key):
-        self.key = key
+        if self.toeager:
+            class_ = EagerLoader
+        else:
+            class_ = LazyLoader
+        mapper.set_property(self.key, class_(oldprop.mapper, oldprop.secondary, primaryjoin = oldprop.primaryjoin, secondaryjoin = oldprop.secondaryjoin))
 
-    def process(self, mapper):
-        oldprop = mapper.props[self.key]
-        mapper.set_property(self.key, LazyLoader(oldprop.mapper, oldprop.whereclause))
-        
 class Aliasizer(sql.ClauseVisitor):
     def __init__(self, table, aliasname):
         self.table = table
