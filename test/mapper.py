@@ -126,31 +126,66 @@ class MapperTest(PersistTest):
         globalidentity().clear()
     
         
-    def testmapper(self):
+    def testload(self):
+        """tests loading rows with a mapper and producing object instances"""
         m = mapper(User, users)
         l = m.select()
         print repr(l)
         l = m.select(users.c.user_name.endswith('ed'))
         print repr(l)
-        
-    def testeager(self):
+
+    def testoptions(self):
+        """tests that a lazy relation can be upgraded to an eager relation via the options method"""
         m = mapper(User, users, properties = dict(
-            addresses = lazymapper(Address, addresses, users.c.user_id==addresses.c.user_id)
+            addresses = relation(Address, addresses, users.c.user_id==addresses.c.user_id, lazy = True)
         ))
-        #l = m.options(eagerload('addresses')).select()
+        l = m.options(eagerload('addresses')).select()
+        print repr(l)
+    
+class LazyTest(PersistTest):
+    def setUp(self):
+        globalidentity().clear()
+
+    def testbasic(self):
+        """tests a basic one-to-many lazy load"""
+        m = mapper(User, users, properties = dict(
+            addresses = relation(Address, addresses, users.c.user_id==addresses.c.user_id, lazy = True)
+        ))
+        l = m.select(users.c.user_id == 7)
+        user = l[0]
+        a = user.addresses
+        print repr(user)
+
+        
+        
+
+class EagerTest(PersistTest):
+    
+    def setUp(self):
+        globalidentity().clear()
+
+    def testbasic(self):
+        """tests a basic one-to-many eager load"""
+        m = mapper(User, users, properties = dict(
+            addresses = relation(Address, addresses, users.c.user_id==addresses.c.user_id, lazy = False)
+        ))
         l = m.select()
         print repr(l)
 
     def testeagerwithrepeat(self):
+        """tests a one-to-many eager load where we also query on joined criterion, where the joined
+        criterion is using the same tables that are used within the eager load.  the mapper must insure that the 
+        criterion doesnt interfere with the eager load criterion."""
         m = mapper(User, users, properties = dict(
-            addresses = eagermapper(Address, addresses, users.c.user_id==addresses.c.user_id)
+            addresses = relation(Address, addresses, users.c.user_id==addresses.c.user_id, lazy = False)
         ))
         l = m.select(and_(addresses.c.email_address == 'ed@lala.com', addresses.c.user_id==users.c.user_id))
         print repr(l)
 
     def testcompile(self):
+        """tests deferred operation of a pre-compiled mapper statement"""
         m = mapper(User, users, properties = dict(
-            addresses = eagermapper(Address, addresses, users.c.user_id==addresses.c.user_id)
+            addresses = relation(Address, addresses, users.c.user_id==addresses.c.user_id, lazy = False)
         ))
         s = m.compile(and_(addresses.c.email_address == bindparam('emailad'), addresses.c.user_id==users.c.user_id))
         c = s.compile()
@@ -160,31 +195,36 @@ class MapperTest(PersistTest):
         print repr(l)
         
     def testmultieager(self):
+        """tests eager loading with two relations simultaneously"""
         m = mapper(User, users, properties = dict(
-            addresses = eagermapper(Address, addresses, users.c.user_id==addresses.c.user_id),
-            orders = eagermapper(Order, orders, users.c.user_id==orders.c.user_id),
+            addresses = relation(Address, addresses, users.c.user_id==addresses.c.user_id, lazy = False),
+            orders = relation(Order, orders, users.c.user_id==orders.c.user_id, lazy = False),
         ), identitymap = identitymap())
         l = m.select()
         print repr(l)
 
     def testdoubleeager(self):
+        """tests eager loading with two relations simulatneously, from the same table.  you
+        have to use aliases for this less frequent type of operation."""
         openorders = alias(orders, 'openorders')
         closedorders = alias(orders, 'closedorders')
         m = mapper(User, users, properties = dict(
-            orders_open = eagermapper(Order, openorders, and_(openorders.c.isopen == 1, users.c.user_id==openorders.c.user_id)),
-            orders_closed = eagermapper(Order, closedorders, and_(closedorders.c.isopen == 0, users.c.user_id==closedorders.c.user_id))
+            orders_open = relation(Order, openorders, and_(openorders.c.isopen == 1, users.c.user_id==openorders.c.user_id), lazy = False),
+            orders_closed = relation(Order, closedorders, and_(closedorders.c.isopen == 0, users.c.user_id==closedorders.c.user_id), lazy = False)
         ), identitymap = identitymap())
         l = m.select()
         print repr(l)
 
     def testnestedeager(self):
+        """tests eager loading, where one of the eager loaded items also eager loads its own 
+        child items."""
         ordermapper = mapper(Order, orders, properties = dict(
-                items = eagermapper(Item, orderitems, orders.c.order_id == orderitems.c.order_id)
+                items = relation(Item, orderitems, orders.c.order_id == orderitems.c.order_id, lazy = False)
             ))
 
         m = mapper(User, users, properties = dict(
-            addresses = eagermapper(Address, addresses, users.c.user_id==addresses.c.user_id),
-            orders = eagerloader(ordermapper, users.c.user_id==orders.c.user_id),
+            addresses = relation(Address, addresses, users.c.user_id==addresses.c.user_id, lazy = False),
+            orders = relation(ordermapper, users.c.user_id==orders.c.user_id, lazy = False),
         ))
         l = m.select()
         print repr(l)
@@ -193,14 +233,14 @@ class MapperTest(PersistTest):
         items = orderitems
         
         m = mapper(Item, items, properties = dict(
-                keywords = eagermapper(Keyword, keywords,
-                    and_(items.c.item_id == itemkeywords.c.item_id, keywords.c.keyword_id == itemkeywords.c.keyword_id))
+                keywords = relation(Keyword, keywords,
+                    and_(items.c.item_id == itemkeywords.c.item_id, keywords.c.keyword_id == itemkeywords.c.keyword_id), lazy = False),
             ))
         l = m.select()
         print repr(l)
         
         l = m.select(and_(keywords.c.name == 'red', keywords.c.keyword_id == itemkeywords.c.keyword_id, items.c.item_id==itemkeywords.c.item_id))
-            
+        print repr(l)            
         
 if __name__ == "__main__":
     unittest.main()        
