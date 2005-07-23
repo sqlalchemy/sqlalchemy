@@ -5,7 +5,7 @@ import sqlalchemy.databases.sqlite as sqllite
 
 if os.access('querytest.db', os.F_OK):
     os.remove('querytest.db')
-db = sqllite.engine('querytest.db', echo = True)
+db = sqllite.engine('querytest.db', opts = {'isolation_level':None}, echo = True)
 
 from sqlalchemy.sql import *
 from sqlalchemy.schema import *
@@ -89,7 +89,9 @@ itemkeywords.insert().execute(keyword_id=3, item_id=3)
 itemkeywords.insert().execute(keyword_id=5, item_id=2)
 itemkeywords.insert().execute(keyword_id=4, item_id=3)
 
-class User:
+
+sys.exit()
+class User(object):
     def __repr__(self):
         return (
 """
@@ -98,25 +100,25 @@ User Name: %s
 Addresses: %s
 Orders: %s
 Open Orders %s
-Closed Orders %s
+Closed Orderss %s
 ------------------
 """ % tuple([self.user_id, repr(self.user_name)] + [repr(getattr(self, attr, None)) for attr in ('addresses', 'orders', 'orders_open', 'orders_closed')])
 )
 
             
-class Address:
+class Address(object):
     def __repr__(self):
         return "Address: " + repr(self.user_id) + " " + repr(self.email_address)
 
-class Order:
+class Order(object):
     def __repr__(self):
         return "Order: " + repr(self.description) + " " + repr(self.isopen) + " " + repr(getattr(self, 'items', None))
 
-class Item:
+class Item(object):
     def __repr__(self):
         return "Item: " + repr(self.item_name) + " " +repr(getattr(self, 'keywords', None))
     
-class Keyword:
+class Keyword(object):
     def __repr__(self):
         return "Keyword: " + repr(self.name)
         
@@ -155,6 +157,20 @@ class LazyTest(PersistTest):
         user = l[0]
         a = user.addresses
         print repr(user)
+
+    def testmanytomany(self):
+        """tests a many-to-many lazy load"""
+        items = orderitems
+
+        m = mapper(Item, items, properties = dict(
+                keywords = relation(Keyword, keywords,
+                    and_(items.c.item_id == itemkeywords.c.item_id, keywords.c.keyword_id == itemkeywords.c.keyword_id), lazy = True),
+            ))
+        l = m.select()
+        print repr(l)
+
+        l = m.select(and_(keywords.c.name == 'red', keywords.c.keyword_id == itemkeywords.c.keyword_id, items.c.item_id==itemkeywords.c.item_id))
+        print repr(l)            
 
         
         
