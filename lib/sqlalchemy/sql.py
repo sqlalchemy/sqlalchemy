@@ -120,7 +120,10 @@ class ClauseElement(object):
 
     def compile(self, engine, bindparams = None):
         return engine.compile(self, bindparams = bindparams)
-    
+
+    def copy_structure(self):
+        return self
+        
     def _engine(self):
         raise NotImplementedError("Object %s has no built-in SQLEngine." % repr(self))
         
@@ -215,6 +218,10 @@ class CompoundClause(ClauseElement):
             if c is None: continue
             self.append(c)
     
+    def copy_structure(self):
+        clauses = [clause.copy_structure() for clause in self.clauses]
+        return CompoundClause(self.operator, *clauses)
+        
     def append(self, clause):
         if type(clause) == str:
             clause = TextClause(clause)
@@ -245,14 +252,17 @@ class ClauseList(ClauseElement):
 class BinaryClause(ClauseElement):
     """represents two clauses with an operator in between"""
     
-    def __init__(self, left, right, operator, fromobj = None):
+    def __init__(self, left, right, operator):
         self.left = left
         self.right = right
         self.operator = operator
-        self.fromobj = fromobj or []
+        self.fromobj = []
         self.parens = False
         self.fromobj += left._get_from_objects()
         self.fromobj += right._get_from_objects()
+
+    def copy_structure(self):
+        return BinaryClause(self.left, self.right, self.operator)
         
     def _get_from_objects(self):
         return self.fromobj
@@ -365,7 +375,7 @@ class ColumnSelectable(Selectable):
             else:
                 obj = BindParamClause(self.column.table.name + "_" + self.name, obj, shortname = self.name)
         
-        return BinaryClause(self.column, obj, operator, [self.column.table])
+        return BinaryClause(self.column, obj, operator)
 
     def __lt__(self, other):
         return self._compare('<', other)

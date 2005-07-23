@@ -78,6 +78,8 @@ class ConnectionFairy:
         return getattr(self.connection, key)
     def __del__(self):
         self.pool.return_conn(self.connection)
+        self.pool = None
+        self.connection = None
             
 class CursorFairy:
     def __init__(self, parent, cursor):
@@ -111,6 +113,14 @@ class QueuePool(Pool):
             self._overflow += 1
             return self._creator()
 
+    def __del__(self):
+        while True:
+            try:
+                conn = self._pool.get(False)
+                conn.close()
+            except Queue.Empty:
+                break
+        
     def size(self):
         return self._pool.maxsize
     

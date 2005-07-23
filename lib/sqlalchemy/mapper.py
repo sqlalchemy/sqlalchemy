@@ -28,7 +28,7 @@ import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
 import sqlalchemy.engine as engine
 import sqlalchemy.util as util
-import weakref, random, copy
+import random, copy, types
 
 __ALL__ = ['eagermapper', 'eagerloader', 'lazymapper', 'lazyloader', 'eagerload', 'lazyload', 'mapper', 'lazyloader', 'lazymapper', 'identitymap', 'globalidentity']
 
@@ -304,17 +304,30 @@ class PropertyLoader(MapperProperty):
 
     def delete(self):
         self.mapper.delete()
+
+class LazyRow(MapperProperty):
+    def __init__(self, table, whereclause, **options):
+        self.table = table
+        self.whereclause = whereclause
+        
+    def init(self, key, parent, root):
+        self.keys.append(key)
+    
+    def execute(self, instance, row, identitykey, localmap, isduplicate):
+        pass
         
 class LazyLoader(PropertyLoader):
+
+    def init(self, key, parent, root):
+        PropertyLoader.init(self, key, parent, root)
+        if not hasattr(parent.class_, key):
+            setattr(parent.class_, key, SmartProperty(key).property())
+
     def setup(self, key, primarytable, statement, **options):
         self.lazywhere = self.whereclause.copy_structure()
         li = LazyIzer(primarytable)
         self.lazywhere.accept_visitor(li)
         self.binds = li.binds
-
-    def init(self, key, parent, root):
-        PropertyLoader.init(self, key, parent, root)
-        setattr(parent.class_, key, SmartProperty(key).property())
 
     def execute(self, instance, row, identitykey, localmap, isduplicate):
         if not isduplicate:
@@ -322,7 +335,7 @@ class LazyLoader(PropertyLoader):
                 m = {}
                 for key, value in self.binds.iteritems():
                     m[key] = row[key]
-                return self.mapper.select(**m)
+                return self.mapper.select(self.lazywhere, **m)
 
             setattr(instance, self.key, load)
         
@@ -399,11 +412,11 @@ class LazyIzer(sql.ClauseVisitor):
         
     def visit_binary(self, binary):
         if isinstance(binary.left, schema.Column) and binary.left.table == self.table:
-            binary.left = self.binds.setdefault(binary.left.name,
+            binary.left = self.binds.setdefault(self.table.name + "_" + binary.left.name,
                     sql.BindParamClause(self.table.name + "_" + binary.left.name, None, shortname = binary.left.name))
 
         if isinstance(binary.right, schema.Column) and binary.right.table == self.table:
-            binary.right = self.binds.setdefault(binary.right.name,
+            binary.right = self.binds.setdefault(self.table.name + "_" + binary.right.name,
                     sql.BindParamClause(self.table.name + "_" + binary.right.name, None, shortname = binary.left.name))
     
 
@@ -414,8 +427,6 @@ class SmartProperty(object):
 
     def property(self):
         def set_prop(s, value):
-            print "hi setting is " + repr(value)
-            raise "hi"
             s.__dict__[self.key] = value
             s.dirty = True
         def del_prop(s):
@@ -423,8 +434,6 @@ class SmartProperty(object):
             s.dirty = True
         def get_prop(s):
             v = s.__dict__[self.key]
-            # TODO: this sucks a little
-            print "hi thing is " + repr(v)
             if isinstance(v, types.FunctionType):
                 s.__dict__[self.key] = v()
             return s.__dict__[self.key]
