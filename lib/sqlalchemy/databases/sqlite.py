@@ -40,16 +40,17 @@ colspecs = {
     schema.BOOLEAN : "BOOLEAN",
 }
 
-def engine(filename, **params):
-    return SQLiteSQLEngine(filename, **params)
+def engine(filename, opts, **params):
+    return SQLiteSQLEngine(filename, opts, **params)
     
 class SQLiteSQLEngine(ansisql.ANSISQLEngine):
-    def __init__(self, filename, **params):
+    def __init__(self, filename, opts, **params):
         self.filename = filename
+        self.opts = opts or {}
         ansisql.ANSISQLEngine.__init__(self, **params)
     
     def connect_args(self):
-        return ([self.filename], {})
+        return ([self.filename], self.opts)
         
     def dbapi(self):
         return sqlite

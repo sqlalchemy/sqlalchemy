@@ -256,16 +256,13 @@ class BinaryClause(ClauseElement):
         self.left = left
         self.right = right
         self.operator = operator
-        self.fromobj = []
         self.parens = False
-        self.fromobj += left._get_from_objects()
-        self.fromobj += right._get_from_objects()
 
     def copy_structure(self):
         return BinaryClause(self.left, self.right, self.operator)
         
     def _get_from_objects(self):
-        return self.fromobj
+        return self.left._get_from_objects() + self.right._get_from_objects()
 
     def accept_visitor(self, visitor):
         self.left.accept_visitor(visitor)
