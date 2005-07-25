@@ -68,6 +68,11 @@ class SQLEngine(schema.SchemaEngine):
     def columnimpl(self, column):
         return sql.ColumnSelectable(column)
 
+    def last_inserted_ids(self):
+        """returns a thread-local map of the generated primary keys corresponding to the most recent
+        insert statement.  keys are the names of columns."""
+        raise NotImplementedError()
+        
     def connect_args(self):
         raise NotImplementedError()
         
@@ -126,12 +131,11 @@ class SQLEngine(schema.SchemaEngine):
         if connection is None:
             poolconn = self.connection()
             c = poolconn.cursor()
-            c.execute(statement, parameters)
-            return c
         else:
             c = connection.cursor()
-            c.execute(statement, parameters)
-            return c
+        
+        c.execute(statement, parameters)
+        return c
 
     def log(self, msg):
         print msg
