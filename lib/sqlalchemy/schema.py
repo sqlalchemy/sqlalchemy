@@ -59,10 +59,13 @@ class SchemaItem(object):
             
     def accept_visitor(self, visitor): raise NotImplementedError()
     def _set_parent(self, parent): raise NotImplementedError()
-
+    def hash_key(self):
+        return repr(self)
+        
     def __getattr__(self, key):
         return getattr(self._impl, key)
 
+    
 class Table(SchemaItem):
     """represents a relational database table."""
     
@@ -86,7 +89,7 @@ class Table(SchemaItem):
         self.schema = schema
 
     primary_keys = property (lambda self: [c for c in self.columns if c.primary_key])
-        
+
     def accept_visitor(self, visitor): 
         for c in self.columns:
             c.accept_visitor(visitor)
