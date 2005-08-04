@@ -473,7 +473,10 @@ class SmartProperty(object):
             del s.__dict__[self.key]
             s.dirty = True
         def get_prop(s):
-            v = s.__dict__[self.key]
+            try:
+                v = s.__dict__[self.key]
+            except KeyError:
+                raise AttributeError(self.key)
             if isinstance(v, types.FunctionType):
                 s.__dict__[self.key] = v()
             return s.__dict__[self.key]
