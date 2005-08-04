@@ -190,7 +190,7 @@ class FromClause(ClauseElement):
         return None
     
     def hash_key(self):
-        return "FromClause(%s, %s)" % (self.id, self.from_name)
+        return "FromClause(%s, %s)" % (repr(self.id), repr(self.from_name))
             
     def accept_visitor(self, visitor): 
         visitor.visit_fromclause(self)
@@ -208,7 +208,7 @@ class BindParamClause(ClauseElement):
         return []
      
     def hash_key(self):
-        return "BindParam(%s, %s)" % (self.key, self.value)
+        return "BindParam(%s, %s, %s)" % (repr(self.key), repr(self.value), repr(self.shortname))
         
 class TextClause(ClauseElement):
     """represents any plain text WHERE clause or full SQL statement"""
@@ -220,7 +220,7 @@ class TextClause(ClauseElement):
     def accept_visitor(self, visitor): visitor.visit_textclause(self)
 
     def hash_key(self):
-        return "TextClause(%s)" % self.text
+        return "TextClause(%s)" % repr(self.text)
         
     def _get_from_objects(self):
         return []
@@ -257,6 +257,9 @@ class CompoundClause(ClauseElement):
     def _get_from_objects(self):
         return self.fromobj
         
+    def hash_key(self):
+        return string.join(self.clauses.hash_key(), self.operator)
+        
 class ClauseList(ClauseElement):
     def __init__(self, *clauses):
         self.clauses = clauses
@@ -282,6 +285,9 @@ class BinaryClause(ClauseElement):
     def _get_from_objects(self):
         return self.left._get_from_objects() + self.right._get_from_objects()
 
+    def hash_key(self):
+        return self.left.hash_key() + self.operator + self.right.hash_key()
+        
     def accept_visitor(self, visitor):
         self.left.accept_visitor(visitor)
         self.right.accept_visitor(visitor)
@@ -306,6 +312,7 @@ class Join(Selectable):
         self.left = left
         self.right = right
         self.id = self.left.id + "_" + self.right.id
+        self.allcols = allcols
         if allcols:
             self.columns = [c for c in self.left.columns] + [c for c in self.right.columns]
         else:
@@ -314,7 +321,10 @@ class Join(Selectable):
         # TODO: if no onclause, do NATURAL JOIN
         self.onclause = onclause
         self.isouter = isouter
-    
+
+    def hash_key(self):
+        return "Join(%s, %s, %s, %s)" % (repr(self.left.hash_key()), repr(self.right.hash_key()), repr(self.onclause.hash_key()), repr(self.isouter))
+        
     def add_join(self, join):
         pass
         

@@ -9,7 +9,7 @@ from sqlalchemy.sql import *
 from sqlalchemy.schema import *
 
 from testbase import PersistTest
-import unittest
+import unittest, re
 
 class SelectTest(PersistTest):
     
@@ -46,7 +46,7 @@ class SelectTest(PersistTest):
 
     def testtext(self):
         self.runtest(
-            textclause("select * from foo where lala = bar", {}) ,
+            textclause("select * from foo where lala = bar") ,
             "select * from foo where lala = bar",
             engine = db
         )
@@ -330,7 +330,8 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
     def runtest(self, clause, result, engine = None, params = None):
         c = clause.compile(engine, params)
         print "\n" + str(c) + repr(c.get_params())
-        self.assert_(str(c) == result)
+        cc = re.sub(r'\n', '', str(c))
+        self.assert_(cc == result)
 
 if __name__ == "__main__":
     unittest.main()        
