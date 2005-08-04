@@ -68,8 +68,8 @@ def subquery(alias, *args, **params):
 def bindparam(key, value = None):
     return BindParamClause(key, value)
 
-def textclause(text, params = None):
-    return TextClause(text, params)
+def textclause(text):
+    return TextClause(text)
 
 def sequence():
     return Sequence()
@@ -114,9 +114,12 @@ class ClauseElement(object):
     parameters are scooped up into the enclosing-most ClauseElement.
     """
 
-    def _get_from_objects(self):raise NotImplementedError(repr(self))
-
-    def accept_visitor(self, visitor): raise NotImplementedError(repr(self))
+    def hash_key(self):
+        raise NotImplementedError(repr(self))
+    def _get_from_objects(self):
+        raise NotImplementedError(repr(self))
+    def accept_visitor(self, visitor):
+        raise NotImplementedError(repr(self))
 
     def compile(self, engine, bindparams = None):
         return engine.compile(self, bindparams = bindparams)
@@ -157,8 +160,12 @@ class ColumnClause(ClauseElement):
     label = property(lambda self:self.text)
     fullname = property(lambda self:self.text)
 
-    def accept_visitor(self, visitor): visitor.visit_columnclause(self)
+    def accept_visitor(self, visitor): 
+        visitor.visit_columnclause(self)
 
+    def hash_key(self):
+        return "ColumnClause(%s, %s)" % (self.text, self.table.hash_key())
+        
     def _get_from_objects(self):
         return []
 
@@ -171,7 +178,7 @@ class ColumnClause(ClauseElement):
 class FromClause(ClauseElement):
     """represents a FROM clause element in a SQL statement."""
     
-    def __init__(self, params = None, from_name = None, from_key = None):
+    def __init__(self, from_name = None, from_key = None):
         self.from_name = from_name
         self.id = from_key or from_name
         
@@ -181,32 +188,40 @@ class FromClause(ClauseElement):
 
     def _engine(self):
         return None
-        
-    def accept_visitor(self, visitor): visitor.visit_fromclause(self)
+    
+    def hash_key(self):
+        return "FromClause(%s, %s)" % (self.id, self.from_name)
+            
+    def accept_visitor(self, visitor): 
+        visitor.visit_fromclause(self)
     
 class BindParamClause(ClauseElement):
     def __init__(self, key, value, shortname = None):
         self.key = key
         self.value = value
         self.shortname = shortname
-        self.fromobj = []
 
     def accept_visitor(self, visitor):
         visitor.visit_bindparam(self)
 
     def _get_from_objects(self):
         return []
-      
+     
+    def hash_key(self):
+        return "BindParam(%s, %s)" % (self.key, self.value)
+        
 class TextClause(ClauseElement):
     """represents any plain text WHERE clause or full SQL statement"""
     
-    def __init__(self, text = "", params = None):
+    def __init__(self, text = ""):
         self.text = text
         self.parens = False
-        self.params = params or {}
 
     def accept_visitor(self, visitor): visitor.visit_textclause(self)
 
+    def hash_key(self):
+        return "TextClause(%s)" % self.text
+        
     def _get_from_objects(self):
         return []
         
