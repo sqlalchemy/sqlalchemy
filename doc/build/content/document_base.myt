@@ -3,7 +3,15 @@
 <%python scope="global">
 
 	files = [
-		'coolthings'
+		'roadmap',
+		'pooling',
+		'dbengine',
+		'metadata',
+		'sqlconstruction',
+		'datamapping',
+		'adv_datamapping',
+		'activerecord',
+		
 		]
 
 </%python>

@@ -49,8 +49,14 @@ def relation_loader(mapper, secondary = None, primaryjoin = None, secondaryjoin 
 def relation_mapper(class_, selectable, secondary = None, primaryjoin = None, secondaryjoin = None, table = None, properties = None, lazy = True, **options):
     return relation_loader(mapper(class_, selectable, table = table, properties = properties, isroot = False, **options), secondary, primaryjoin, secondaryjoin, lazy = lazy, **options)
 
+_mappers = {}
 def mapper(*args, **params):
-    return Mapper(*args, **params)
+    hashkey = mapper_hash_key(*args, **params)
+    print "HASHKEY: " + hashkey
+    try:
+        return _mappers[hashkey]
+    except KeyError:
+        return _mappers.setdefault(hashkey, Mapper(*args, **params))
 
 def identitymap():
     return IdentityMap()
@@ -84,12 +90,24 @@ class Mapper(object):
         else:
             self.identitymap = _global_identitymap
 
+        self.properties = properties
         if properties is not None:
             for key, value in properties.iteritems():
                 self.props[key] = value
 
         if isroot:
             self.init(self)
+    
+    def hash_key(self):
+        return mapper_hash_key(
+            self.class_,
+            self.selectable,
+            self.table,
+            self.properties,
+            self.identitymap,
+            self.use_smart_properties,
+            self.echo
+        )
     
     def set_property(self, key, prop):
         self.props[key] = prop
@@ -125,12 +143,17 @@ class Mapper(object):
     
     def options(self, *options):
         """uses this mapper as a prototype for a new mapper with different behavior.
-        
         *options is a list of options directives, which include eagerload() and lazyload()"""
-        mapper = copy.copy(self)
-        for option in options:
-            option.process(mapper)
-        return mapper
+        
+        hashkey = hash_key(self) + "->" + repr([hash_key(o) for o in options])
+        print "HASHKEY: " + hashkey
+        try:
+            return _mappers[hashkey]
+        except KeyError:
+            mapper = copy.copy(self)
+            for option in options:
+                option.process(mapper)
+            return _mappers.setdefault(hashkey, mapper)
         
     def select(self, arg = None, **params):
         """selects instances of the object from the database.  
@@ -253,6 +276,9 @@ class Mapper(object):
 class MapperOption:
     def process(self, mapper):
         raise NotImplementedError()
+    
+    def hash_key(self):
+        return repr(self)
 
 class MapperProperty:
     """an element attached to a Mapper that describes the loading and population
@@ -260,6 +286,11 @@ class MapperProperty:
     def execute(self, instance, row, identitykey, localmap, isduplicate):
         """called when the mapper receives a row.  instance is the parent instance corresponding
         to the row. """
+        raise NotImplementedError()
+
+    def hash_key(self):
+        """describes this property and its instantiated arguments in such a way
+        as to uniquely identify the concept this MapperProperty represents"""
         raise NotImplementedError()
 
     def setup(self, key, primarytable, statement, **options):
@@ -281,6 +312,9 @@ class ColumnProperty(MapperProperty):
     def __init__(self, column):
         self.column = column
 
+    def hash_key(self):
+        return "ColumnProperty(%s)" % hash_key(self.column)
+        
     def init(self, key, parent, root):
         self.key = key
         if root.use_smart_properties:
@@ -298,14 +332,42 @@ class ColumnProperty(MapperProperty):
                 setattr(instance, self.key, row[self.column.label])
 
 
+def hash_key(obj):
+    if obj is None:
+        return 'None'
+    else:
+        return obj.hash_key()
+
+def mapper_hash_key(class_, selectable, table = None, properties = None, identitymap = None, use_smart_properties = True, isroot = True, echo = None):
+    if properties is None:
+        properties = {}
+    return (
+        "Mapper(%s, %s, table=%s, properties=%s, identitymap=%s, use_smart_properties=%s, echo=%s)" % (
+            repr(class_),
+            hash_key(selectable),
+            hash_key(table),
+            repr(dict([(k, hash_key(p)) for k,p in properties.iteritems()])),
+            hash_key(identitymap),
+            repr(use_smart_properties),
+            repr(echo)
+
+        )
+    )
+
+
+        
 class PropertyLoader(MapperProperty):
-    def __init__(self, mapper, secondary, primaryjoin, secondaryjoin, **options):
+    def __init__(self, mapper, secondary, primaryjoin, secondaryjoin):
         self.mapper = mapper
         self.target = self.mapper.selectable
         self.secondary = secondary
         self.primaryjoin = primaryjoin
         self.secondaryjoin = secondaryjoin
-
+        self._hash_key = "%s(%s, %s, %s, %s)" % (self.__class__.__name__, hash_key(mapper), hash_key(secondary), hash_key(primaryjoin), hash_key(secondaryjoin))
+        
+    def hash_key(self):
+        return self._hash_key
+        
     def init(self, key, parent, root):
         self.key = key
         self.mapper.init(root)
@@ -369,7 +431,8 @@ class EagerLoader(PropertyLoader):
         if self.secondaryjoin is not None:
             [self.to_alias.append(f) for f in self.secondaryjoin._get_from_objects()]
         del self.to_alias[parent.selectable]
-        
+    
+            
     def setup(self, key, primarytable, statement, **options):
         """add a left outer join to the statement thats being constructed"""
 
@@ -415,6 +478,9 @@ class EagerLazySwitcher(MapperOption):
         self.key = key
         self.toeager = toeager
 
+    def hash_key(self):
+        return "EagerLazySwitcher(%s, %s)" % (repr(self.key), repr(self.toeager))
+        
     def process(self, mapper):
         oldprop = mapper.props[self.key]
         if self.toeager:
@@ -492,6 +558,8 @@ def match_primaries(primary, secondary):
 class IdentityMap(dict):
     def get_key(self, row, class_, table, selectable):
         return (class_, table, tuple([row[column.label] for column in selectable.primary_keys]))
+    def hash_key(self):
+        return "IdentityMap(%s)" % id(self)
         
 _global_identitymap = IdentityMap()
 

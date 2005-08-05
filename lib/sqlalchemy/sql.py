@@ -258,7 +258,7 @@ class CompoundClause(ClauseElement):
         return self.fromobj
         
     def hash_key(self):
-        return string.join(self.clauses.hash_key(), self.operator)
+        return string.join([c.hash_key() for c in self.clauses], self.operator)
         
 class ClauseList(ClauseElement):
     def __init__(self, *clauses):
@@ -361,7 +361,10 @@ class Alias(Selectable):
             co._make_proxy(self)
 
     primary_keys = property (lambda self: [c for c in self.columns if c.primary_key])
-    
+
+    def hash_key(self):
+        return "Alias(%s, %s)" % (repr(self.selectable.hash_key()), repr(self.name))
+
     def accept_visitor(self, visitor):
         self.selectable.accept_visitor(visitor)
         visitor.visit_alias(self)
