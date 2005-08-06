@@ -68,8 +68,7 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
         raise NotImplementedError()
 
 class SQLiteCompiler(ansisql.ANSICompiler):
-    def visit_insert(self, insert):
-        ansisql.ANSICompiler.visit_insert(self, insert)
+    pass
         
 class SQLiteColumnImpl(sql.ColumnSelectable):
     def _get_specification(self):

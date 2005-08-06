@@ -116,11 +116,14 @@ class ANSICompiler(sql.Compiled):
         self.strings[list] = string.join([self.get_str(c) for c in list.clauses], ', ')
         
     def visit_binary(self, binary):
-        
-        if binary.parens:
-           self.strings[binary] = "(" + self.get_str(binary.left) + " " + str(binary.operator) + " " + self.get_str(binary.right) + ")"
+        if isinstance(binary.right, sql.Select):
+            s = self.get_str(binary.left) + " " + str(binary.operator) + " (" + self.get_str(binary.right) + ")"
         else:
-            self.strings[binary] = self.get_str(binary.left) + " " + str(binary.operator) + " " + self.get_str(binary.right)
+            s = self.get_str(binary.left) + " " + str(binary.operator) + " " + self.get_str(binary.right)
+        if binary.parens:
+           self.strings[binary] = "(" + s + ")"
+        else:
+            self.strings[binary] = s
         
     def visit_bindparam(self, bindparam):
         self.binds[bindparam.shortname] = bindparam
@@ -136,6 +139,7 @@ class ANSICompiler(sql.Compiled):
 
     def visit_alias(self, alias):
         self.froms[alias] = self.get_from_text(alias.selectable) + " " + alias.name
+        self.strings[alias] = self.get_str(alias.selectable)
 
     def visit_select(self, select):
         inner_columns = []
@@ -183,6 +187,7 @@ class ANSICompiler(sql.Compiled):
 
     def visit_table(self, table):
         self.froms[table] = table.name
+        self.strings[table] = ""
 
     def visit_join(self, join):
         if join.isouter:
@@ -194,7 +199,6 @@ class ANSICompiler(sql.Compiled):
 
     def visit_insert(self, insert_stmt):
         colparams = insert_stmt.get_colparams(self._bindparams)
-
         for c in colparams:
             b = c[1]
             self.binds[b.key] = b

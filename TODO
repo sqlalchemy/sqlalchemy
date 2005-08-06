@@ -1,0 +1,20 @@
+TODO:
+
+correlated subquery support, plus clauses like EXISTS, IN, etc:
+
+    select foo from lala where g = (select x from y where lala.xx = y.bar)
+    select foo from lala where exists (select x from y where lala.xx = y.bar)
+
+table reflection, i.e. create tables with autoload = True
+
+sequences/autoincrement support
+
+Oracle module
+
+Postgres module
+
+MySQL module
+
+INSERT from a SELECT
+
+

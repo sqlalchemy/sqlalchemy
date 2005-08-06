@@ -101,6 +101,14 @@ def or_(*clauses):
     clause = _compound_clause('OR', *clauses)
     return clause
 
+def exists(*args, **params):
+    s = select(*args, **params)
+    return BinaryClause(TextClause("EXISTS"), s, '')
+
+def in_(*args, **params):
+    s = select(*args, **params)
+    return BinaryClause(TextClause("IN"), s, '')
+    
 def union(*selects, **params):
     return _compound_select('UNION', *selects, **params)
 
@@ -346,7 +354,9 @@ class ClauseList(ClauseElement):
         for c in self.clauses:
             c.accept_visitor(visitor)
         visitor.visit_clauselist(self)
-        
+    
+    def _get_from_objects(self):
+        return []
         
 class BinaryClause(ClauseElement):
     """represents two clauses with an operator in between"""
@@ -354,6 +364,8 @@ class BinaryClause(ClauseElement):
     def __init__(self, left, right, operator):
         self.left = left
         self.right = right
+        if isinstance(right, Select):
+            right._set_from_objects([])
         self.operator = operator
         self.parens = False
 
@@ -429,9 +441,11 @@ class Join(Selectable):
         return result
         
 class Alias(Selectable):
-    def __init__(self, selectable, alias):
+    def __init__(self, selectable, alias = None):
         self.selectable = selectable
         self.columns = util.OrderedProperties()
+        if alias is None:
+            alias = id(self)
         self.name = alias
         self.id = self.name
         self.count = 0
@@ -479,12 +493,12 @@ class ColumnSelectable(Selectable):
         return [self.column.table]
     
     def _compare(self, operator, obj):
-        if not isinstance(obj, BindParamClause) and not isinstance(obj, schema.Column):
+        if not isinstance(obj, ClauseElement) and not isinstance(obj, schema.Column):
             if self.column.table.name is None:
                 obj = BindParamClause(self.name, obj, shortname = self.name)
             else:
                 obj = BindParamClause(self.column.table.name + "_" + self.name, obj, shortname = self.name)
-        
+
         return BinaryClause(self.column, obj, operator)
 
     def __lt__(self, other):
@@ -605,6 +619,14 @@ class Select(Selectable):
         for f in self.whereclause._get_from_objects():
             self.froms.setdefault(f.id, f)
 
+        class CorrelatedVisitor(ClauseVisitor):
+            def visit_select(s, select):
+                for f in self.froms.keys():
+                    select.clear_from(f)
+        self.whereclause.accept_visitor(CorrelatedVisitor())
+   
+    def clear_from(self, id):
+        self.append_from(FromClause(from_name = None, from_key = id))
     def append_from(self, fromclause):
         if type(fromclause) == str:
             fromclause = FromClause(from_name = fromclause)
@@ -667,8 +689,11 @@ class Select(Selectable):
             
         return None
 
+    def _set_from_objects(self, obj):
+        self._from_obj = obj
+        
     def _get_from_objects(self):
-        return [self]
+        return getattr(self, '_from_obj', [self])
 
 
 class UpdateBase(ClauseElement):
@@ -722,7 +747,7 @@ class UpdateBase(ClauseElement):
         for c in self.table.columns:
             if d.has_key(c):
                 value = d[c]
-                if isinstance(value, str):
+                if not isinstance(value, schema.Column) and not isinstance(value, ClauseElement):
                     value = bindparam(c.name, value)
                 values.append((c, value))
         return values

@@ -70,7 +70,7 @@ def eagerload(name):
 def lazyload(name):
     return EagerLazySwitcher(name, toeager = False)
 
-copy_containerclass Mapper(object):
+class Mapper(object):
     def __init__(self, class_, selectable, table = None, properties = None, identitymap = None, use_smart_properties = True, isroot = True, echo = None):
         self.class_ = class_
         self.selectable = selectable
