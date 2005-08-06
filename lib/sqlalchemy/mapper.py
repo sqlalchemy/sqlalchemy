@@ -70,7 +70,7 @@ def eagerload(name):
 def lazyload(name):
     return EagerLazySwitcher(name, toeager = False)
 
-class Mapper(object):
+copy_containerclass Mapper(object):
     def __init__(self, class_, selectable, table = None, properties = None, identitymap = None, use_smart_properties = True, isroot = True, echo = None):
         self.class_ = class_
         self.selectable = selectable
@@ -408,7 +408,7 @@ class LazyLoader(PropertyLoader):
             self.lazywhere = sql.and_(self.primaryjoin, self.secondaryjoin)
         else:
             self.lazywhere = self.primaryjoin
-        self.lazywhere = self.lazywhere.copy_structure()
+        self.lazywhere = self.lazywhere.copy_container()
         li = LazyIzer(primarytable)
         self.lazywhere.accept_visitor(li)
         self.binds = li.binds

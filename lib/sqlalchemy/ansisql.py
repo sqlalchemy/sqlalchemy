@@ -207,13 +207,19 @@ class ANSICompiler(sql.Compiled):
 
     def visit_update(self, update_stmt):
         colparams = update_stmt.get_colparams(self._bindparams)
-        
-        for c in colparams:
-            b = c[1]
-            self.binds[b.key] = b
-            self.binds[b.shortname] = b
-            
-        text = "UPDATE " + update_stmt.table.name + " SET " + string.join(["%s=:%s" % (c[0].name, c[1].key) for c in colparams], ', ')
+        def create_param(p):
+            if isinstance(p, BindParamClause):
+                self.binds[p.key] = p
+                self.binds[p.shortname] = p
+                return ":" + p.key
+            else:
+                p.accept_visitor(self)
+                if isinstance(p, ClauseElement):
+                    return "(" + self.get_str(p) + ")"
+                else:
+                    return self.get_str(p)
+                
+        text = "UPDATE " + update_stmt.table.name + " SET " + string.join(["%s=%s" % (c[0].name, create_param(c[1])) for c in colparams], ', ')
         
         if update_stmt.whereclause:
             text += " WHERE " + self.get_str(update_stmt.whereclause)
