@@ -116,14 +116,14 @@ class ANSICompiler(sql.Compiled):
         self.strings[list] = string.join([self.get_str(c) for c in list.clauses], ', ')
         
     def visit_binary(self, binary):
-        if isinstance(binary.right, sql.Select):
-            s = self.get_str(binary.left) + " " + str(binary.operator) + " (" + self.get_str(binary.right) + ")"
-        else:
-            s = self.get_str(binary.left) + " " + str(binary.operator) + " " + self.get_str(binary.right)
+        result = self.get_str(binary.left)
+        if binary.operator is not None:
+            result += " " + binary.operator
+        result += " " + self.get_str(binary.right)
         if binary.parens:
-           self.strings[binary] = "(" + s + ")"
-        else:
-            self.strings[binary] = s
+            result = "(" + result + ")"
+        
+        self.strings[binary] = result
         
     def visit_bindparam(self, bindparam):
         self.binds[bindparam.shortname] = bindparam
@@ -181,7 +181,11 @@ class ANSICompiler(sql.Compiled):
         for tup in select._clauses:
             text += " " + tup[0] + " " + self.get_str(tup[1])
 
-        self.strings[select] = text
+        if getattr(select, 'issubquery', False):
+            self.strings[select] = "(" + text + ")"
+        else:
+            self.strings[select] = text
+
         self.froms[select] = "(" + text + ")"
 
 

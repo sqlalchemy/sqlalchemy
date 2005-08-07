@@ -30,24 +30,30 @@ table3 = Table(
     Column('otherstuff', 5),
 )
 
-class SelectTest(PersistTest):
+class SQLTest(PersistTest):
+    def runtest(self, clause, result, engine = None, params = None):
+        c = clause.compile(engine, params)
+        print "\n" + str(c) + repr(c.get_params())
+        cc = re.sub(r'\n', '', str(c))
+        self.assert_(cc == result)
+
+class SelectTest(SQLTest):
 
     def testtext(self):
         self.runtest(
-            textclause("select * from foo where lala = bar") ,
+            text("select * from foo where lala = bar") ,
             "select * from foo where lala = bar",
             engine = db
         )
-    
+
     def testtableselect(self):
         self.runtest(table.select(), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable")
 
         self.runtest(select([table, table2]), "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, \
 myothertable.othername FROM mytable, myothertable")
-        
+
     def testsubquery(self):
-    
-        s = select([table], table.c.name == 'jack')    
+        s = select([table], table.c.name == 'jack')
         self.runtest(
             select(
                 [s],
@@ -269,10 +275,7 @@ mytable.name = :mytable_name AND mytable.myid = :mytable_myid AND \
 myothertable.othername != :myothertable_othername AND EXISTS (select yay from foo where boo = lar)",
             engine = oracle.engine(use_ansi = False))
 
-
-
     def testbindparam(self):
-        #return
         self.runtest(select(
                     [table, table2],
                     and_(table.c.id == table2.c.id,
@@ -283,7 +286,30 @@ myothertable.othername != :myothertable_othername AND EXISTS (select yay from fo
 FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable.name = :mytablename"
                 )
 
+    def testcorrelatedsubquery(self):
+        self.runtest(
+            select([table], table.c.id == select([table2.c.id], table.c.name == table2.c.name)),
+            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = (SELECT myothertable.otherid FROM myothertable WHERE mytable.name = myothertable.othername)"
+        )
 
+        self.runtest(
+            select([table], exists([1], table2.c.id == table.c.id)),
+            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE EXISTS (SELECT 1 FROM myothertable WHERE myothertable.otherid = mytable.myid)"
+        )
+
+        s = subquery('sq2', [table], exists([1], table2.c.id == table.c.id))
+        self.runtest(
+            select([s, table])
+        ,"SELECT sq2.myid, sq2.name, sq2.description, mytable.myid, mytable.name, mytable.description FROM (SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE EXISTS (SELECT 1 FROM myothertable WHERE myothertable.otherid = mytable.myid)) sq2, mytable")
+
+    def testin(self):
+        self.runtest(select([table], table.c.id.in_(1, 2, 3)),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (1, 2, 3)")
+
+        self.runtest(select([table], table.c.id.in_(select([table2.c.id]))),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (SELECT myothertable.otherid FROM myothertable)")
+    
+class CRUDTest(SQLTest):
     def testinsert(self):
         # generic insert, will create bind params for all columns
         self.runtest(insert(table), "INSERT INTO mytable (myid, name, description) VALUES (:myid, :name, :description)")
@@ -315,7 +341,7 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
 
     def testcorrelatedupdate(self):
         # test against a straight text subquery
-        u = update(table, values = {table.c.name : TextClause("select name from mytable where id=mytable.id")})
+        u = update(table, values = {table.c.name : text("select name from mytable where id=mytable.id")})
         self.runtest(u, "UPDATE mytable SET name=(select name from mytable where id=mytable.id)")
         
         # test against a regular constructed subquery
@@ -326,12 +352,6 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
     def testdelete(self):
         self.runtest(delete(table, table.c.id == 7), "DELETE FROM mytable WHERE mytable.myid = :mytable_myid")
         
-        
-    def runtest(self, clause, result, engine = None, params = None):
-        c = clause.compile(engine, params)
-        print "\n" + str(c) + repr(c.get_params())
-        cc = re.sub(r'\n', '', str(c))
-        self.assert_(cc == result)
 
 if __name__ == "__main__":
     unittest.main()        
