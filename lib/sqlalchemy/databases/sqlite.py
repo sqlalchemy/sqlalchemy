@@ -25,8 +25,8 @@ import sqlalchemy.ansisql as ansisql
 from sqlalchemy.ansisql import *
 
 from pysqlite2 import dbapi2 as sqlite
-        
-colspecs = {        
+
+colspecs = {
     schema.INT : "INTEGER",
     schema.CHAR : "CHAR(%(length)s)",
     schema.VARCHAR : "VARCHAR(%(length)s)",
@@ -42,25 +42,27 @@ colspecs = {
 
 def engine(filename, opts, **params):
     return SQLiteSQLEngine(filename, opts, **params)
-    
+
 class SQLiteSQLEngine(ansisql.ANSISQLEngine):
     def __init__(self, filename, opts, **params):
         self.filename = filename
         self.opts = opts or {}
         ansisql.ANSISQLEngine.__init__(self, **params)
-    
+
+    def last_inserted_ids(self):
+        pass
+
     def connect_args(self):
         return ([self.filename], self.opts)
 
     def compile(self, statement, bindparams):
-        compiler = SQLiteCompiler(statement, bindparams)
-
+        compiler = SQLiteCompiler(self, statement, bindparams)
         statement.accept_visitor(compiler)
         return compiler
-        
+
     def dbapi(self):
         return sqlite
-        
+
     def columnimpl(self, column):
         return SQLiteColumnImpl(column)
 
@@ -69,16 +71,15 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
 
 class SQLiteCompiler(ansisql.ANSICompiler):
     pass
-        
+
+
 class SQLiteColumnImpl(sql.ColumnSelectable):
-    def _get_specification(self):
+    def get_specification(self):
         coltype = self.column.type
-        if type(coltype) == types.ClassType:
+        if isinstance(coltype, types.ClassType):
             key = coltype
         else:
             key = coltype.__class__
 
         return self.name + " " + colspecs[key] % {'precision': getattr(coltype, 'precision', None), 'length' : getattr(coltype, 'length', None)}
 
-    
-    
