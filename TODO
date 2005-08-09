@@ -1,13 +1,27 @@
 TODO:
 
-correlated subquery support, plus clauses like EXISTS, IN, etc:
-
-    select foo from lala where g = (select x from y where lala.xx = y.bar)
-    select foo from lala where exists (select x from y where lala.xx = y.bar)
 
 table reflection, i.e. create tables with autoload = True
 
 sequences/autoincrement support
+
+mapper can take a row-processing/object instantiating function, without expensive construction
+
+lazy/eager loaders added to mapper via a list instaed of dictionary
+
+clean up select test suite
+
+horizontal lazy/eager loaders for one object across tables - add it to existing lazy/eager loader
+this will add a lot to SmartProperty since it needs to support a list of properties that all trigger
+one lazy loader
+
+saving !
+
+unit of work ?
+
+identity map - more like fowlers
+
+
 
 Oracle module
 
