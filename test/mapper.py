@@ -215,7 +215,15 @@ class EagerTest(PersistTest):
         l = m.select("orders.order_id in (1,2,3)")
         print repr(l)
 
-    
-    
+class SaveTest(PersistTest):
+    def _testinsert(self):
+        u = User()
+        u.user_name = 'inserttester'
+        m = mapper(User, users)
+        m.insert(u)
+
+        nu = m.select(users.c.user_id == u.user_id)
+        self.assert_(u is nu)
+
 if __name__ == "__main__":
     unittest.main()        
