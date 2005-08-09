@@ -70,12 +70,12 @@ class SchemaItem(object):
         return repr(self)
 
     def __getattr__(self, key):
+        """proxies method calls to an underlying implementation object for methods not found locally"""
         return getattr(self._impl, key)
 
-    
 class Table(SchemaItem):
     """represents a relational database table."""
-    
+
     def __init__(self, name, engine, *args, **kwargs):
         self.name = name
         self.columns = OrderedProperties()
