@@ -25,10 +25,10 @@ import sqlalchemy.engine
 from sqlalchemy.sql import *
 from sqlalchemy.util import *
 import string
-        
+
 def engine(**params):
     return ANSISQLEngine(**params)
-    
+
 class ANSISQLEngine(sqlalchemy.engine.SQLEngine):
 
     def tableimpl(self, table):
@@ -42,21 +42,19 @@ class ANSISQLEngine(sqlalchemy.engine.SQLEngine):
 
     def connect_args(self):
         return ([],{})
-        
+
     def dbapi(self):
         return object()
-        
+
     def compile(self, statement, bindparams):
-        compiler = ANSICompiler(statement, bindparams)
-        
+        compiler = ANSICompiler(self, statement, bindparams)
         statement.accept_visitor(compiler)
         return compiler
 
 class ANSICompiler(sql.Compiled):
-    def __init__(self, parent, bindparams):
+    def __init__(self, engine, statement, bindparams):
+        sql.Compiled.__init__(self, engine, statement, bindparams)
         self.binds = {}
-        self._bindparams = bindparams
-        self.parent = parent
         self.froms = {}
         self.wheres = {}
         self.strings = {}
@@ -202,7 +200,7 @@ class ANSICompiler(sql.Compiled):
             " ON " + self.get_str(join.onclause))
 
     def visit_insert(self, insert_stmt):
-        colparams = insert_stmt.get_colparams(self._bindparams)
+        colparams = insert_stmt.get_colparams(self.bindparams)
         for c in colparams:
             b = c[1]
             self.binds[b.key] = b
@@ -214,7 +212,7 @@ class ANSICompiler(sql.Compiled):
         self.strings[insert_stmt] = text
 
     def visit_update(self, update_stmt):
-        colparams = update_stmt.get_colparams(self._bindparams)
+        colparams = update_stmt.get_colparams(self.bindparams)
         def create_param(p):
             if isinstance(p, BindParamClause):
                 self.binds[p.key] = p
@@ -243,7 +241,7 @@ class ANSICompiler(sql.Compiled):
         self.strings[delete_stmt] = text
         
     def __str__(self):
-        return self.get_str(self.parent)
+        return self.get_str(self.statement)
 
 
     
@@ -268,7 +266,7 @@ class ANSISchemaGenerator(sqlalchemy.engine.SchemaIterator):
         for column in table.columns:
             self.append(separator)
             separator = ", \n"
-            self.append("\t" + column._get_specification())
+            self.append("\t" + column.get_specification())
             
         self.append("\n)\n\n")
         self.execute()
