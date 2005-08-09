@@ -79,17 +79,17 @@ class Mapper(object):
             self.table = self._find_table(selectable)
         else:
             self.table = table
-        self.props = {}
 
         self.echo = echo
-        for column in self.selectable.columns:
-            self.props[column.key] = ColumnProperty(column)
 
         if identitymap is not None:
             self.identitymap = identitymap
         else:
             self.identitymap = _global_identitymap
 
+        self.props = {}
+        for column in self.selectable.columns:
+            self.props[column.key] = ColumnProperty(column)
         self.properties = properties
         if properties is not None:
             for key, value in properties.iteritems():
@@ -108,17 +108,17 @@ class Mapper(object):
             self.use_smart_properties,
             self.echo
         )
-    
+
     def set_property(self, key, prop):
         self.props[key] = prop
         prop.init(key, self, self.root)
-        
+
     def init(self, root):
         self.root = root
         self.identitymap = root.identitymap
         self.echo = self.root.echo
         [prop.init(key, self, root) for key, prop in self.props.iteritems()]
-            
+
     def instances(self, cursor):
         result = []
         cursor = engine.ResultProxy(cursor)
@@ -130,8 +130,7 @@ class Mapper(object):
                 break
             self._instance(row, localmap, result)
         return result
-    
-        
+
     def get(self, id):
         """returns an instance of the object based on the given ID."""
         pass
@@ -140,11 +139,11 @@ class Mapper(object):
         """works like select, except returns the SQL statement object without 
         compiling or executing it"""
         return self._compile(whereclause, **options)
-    
+
     def options(self, *options):
         """uses this mapper as a prototype for a new mapper with different behavior.
         *options is a list of options directives, which include eagerload() and lazyload()"""
-        
+
         hashkey = hash_key(self) + "->" + repr([hash_key(o) for o in options])
         print "HASHKEY: " + hashkey
         try:
@@ -192,12 +191,22 @@ class Mapper(object):
     def insert(self, object):
         """inserts the object into its table, regardless of primary key being set.  this is a 
         lower-level operation than save."""
-        pass
+        params = {}
+        for col in self.table.columns:
+            params[col.key] = getattr(object, col.key)
+        ins = self.table.insert()
+        ins.execute(**params)
+        primary_keys = self.table.engine.last_inserted_ids()
+        # TODO: put the primary keys into the object props
 
     def update(self, object):
         """inserts the object into its table, regardless of primary key being set.  this is a 
         lower-level operation than save."""
-        pass
+        params = {}
+        for col in self.table.columns:
+            params[col.key] = getattr(object, col.key)
+        upd = self.table.update()
+        upd.execute(**params)
         
     def delete(self, object):
         """deletes the object's row from its table unconditionally. this is a lower-level
@@ -261,7 +270,7 @@ class Mapper(object):
             imap = localmap[id(result)]
         except KeyError:
             imap = localmap.setdefault(id(result), IdentityMap())
-
+        
         isduplicate = imap.has_key(identitykey)
         if not isduplicate:
             imap[identitykey] = instance
