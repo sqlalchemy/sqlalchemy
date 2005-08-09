@@ -119,22 +119,30 @@ class SQLEngine(schema.SchemaEngine):
                 self.context.transaction.commit()
                 self.context.transaction = None
                 self.context.tcount = None
-                
-    def execute(self, statement, parameters, connection = None, echo = None, **params):
+
+    def pre_exec(self, connection, cursor, statement, parameters, echo = None, **kwargs):
+        pass
+
+    def post_exec(self, connection, cursor, statement, parameters, echo = None, **kwargs):
+        pass
+
+    def execute(self, statement, parameters, connection = None, echo = None, **kwargs):
         if parameters is None:
             parameters = {}
-        
+
         if echo is True or self._echo:
             self.log(statement)
             self.log(repr(parameters))
-            
+
         if connection is None:
             poolconn = self.connection()
             c = poolconn.cursor()
         else:
             c = connection.cursor()
-        
+
+        self.pre_exec(connection, c, statement, parameters, echo = echo, **kwargs)
         c.execute(statement, parameters)
+        self.post_exec(connection, c, statement, parameters, echo = echo, **kwargs)
         return c
 
     def log(self, msg):
