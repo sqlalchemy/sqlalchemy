@@ -161,13 +161,24 @@ class Compiled(ClauseVisitor):
     within a particular set of bind parameters.  In no case should the Compiled object be dependent
     on the actual values of those bind parameters, even though it may reference those values
     as defaults."""
+
+    def __init__(self, engine, statement, bindparams):
+        self.engine = engine
+        self.bindparams = bindparams
+        self.statement = statement
+
     def __str__(self):
+        """returns the string text of the generated SQL statement."""
         raise NotImplementedError()
     def get_params(self, **params):
         """returns the bind params for this compiled object, with values overridden by 
         those given in the **params dictionary"""
         raise NotImplementedError()
-        
+
+    def execute(self, **params):
+        """executes this compiled object using the underlying SQLEngine"""
+        return self.engine.execute(str(self), self.get_params(**params), echo = getattr(self.statement, 'echo', False), compiled = self)
+
 class ClauseElement(object):
     """base class for elements of a programmatically constructed SQL expression.
     
@@ -193,7 +204,6 @@ class ClauseElement(object):
     def accept_visitor(self, visitor):
         raise NotImplementedError(repr(self))
 
-
     def copy_container(self):
         """should return a copy of this ClauseElement, iff this ClauseElement contains other 
         ClauseElements.  Otherwise, it should be left alone to return self.  This is used to create
@@ -201,10 +211,6 @@ class ClauseElement(object):
         can then be restructured without affecting the original."""
         return self
 
-    def _engine(self):
-        """should return a SQLEngine instance that is associated with this expression tree.
-        this engine is usually attached to one of the underlying Table objects within the expression."""
-        raise NotImplementedError("Object %s has no built-in SQLEngine." % repr(self))
 
     def compile(self, engine, bindparams = None):
         """compiles this SQL expression using its underlying SQLEngine to produce
@@ -219,18 +225,14 @@ class ClauseElement(object):
         """compiles and executes this SQL expression using its underlying SQLEngine.
         the given **params are used as bind parameters when compiling and executing the expression. 
         the DBAPI cursor object is returned."""
-        e = self._engine()
+        e = self.engine
         c = self.compile(e, bindparams = params)
-        # TODO: do pre-execute right here, for sequences, if the compiled object
-        # defines it
-        return e.execute(str(c), c.get_params(), echo = getattr(self, 'echo', None))
+        return c.execute()
 
     def result(self, **params):
         """the same as execute(), except a RowProxy object is returned instead of a DBAPI cursor."""
-        e = self._engine()
-        c = self.compile(e, bindparams = params)
-        return e.result(str(c), c.get_params(), echo = getattr(self, 'echo', None))
-
+        raise NotImplementedError()
+        
 class ColumnClause(ClauseElement):
     """represents a textual column clause in a SQL statement."""
 
@@ -271,8 +273,7 @@ class FromClause(ClauseElement):
         # this could also be [self], at the moment it doesnt matter to the Select object
         return []
 
-    def _engine(self):
-        return None
+    engine = property(lambda s: None)
     
     def hash_key(self):
         return "FromClause(%s, %s)" % (repr(self.id), repr(self.from_name))
@@ -419,8 +420,7 @@ class Join(Selectable):
         self.onclause.accept_visitor(visitor)
         visitor.visit_join(self)
 
-    def _engine(self):
-        return self.left._engine() or self.right._engine()
+    engine = property(lambda s:s.left.engine or s.right.engine)
         
     def _get_from_objects(self):
         m = {}
@@ -456,8 +456,7 @@ class Alias(Selectable):
     def _get_from_objects(self):
         return [self]
 
-    def _engine(self):
-        return self.selectable._engine()
+    engine = property(lambda s: s.selectable.engine)
 
     def select(self, whereclauses = None, **params):
         return select([self], whereclauses, **params)
@@ -531,8 +530,8 @@ class TableImpl(Selectable):
     as well as other functions
     """
 
-    def _engine(self):
-        return self.table.engine
+#    def _engine(self):
+#        return self.table.engine
 
     def select(self, whereclauses = None, **params):
         return select([self.table], whereclauses, **params)
@@ -574,7 +573,7 @@ class Select(Selectable):
         self.id = id(self)
         self.name = None
         self.whereclause = whereclause
-        self.engine = engine
+        self._engine = engine
         
         # indicates if this select statement is a subquery inside of a WHERE clause
         # note this is different from a subquery inside the FROM list
@@ -652,7 +651,7 @@ class Select(Selectable):
         if engine is None:
             if self.engine is None:
                 for f in self.froms.values():
-                    self.engine = f._engine()
+                    self.engine = f.engine
                     if self.engine is not None: break
                     
             engine = self.engine
@@ -678,20 +677,22 @@ class Select(Selectable):
     def select(self, whereclauses = None, **params):
         return select([self], whereclauses, **params)
 
-    def _engine(self):
+    def _find_engine(self):
         """tries to return a SQLEngine, either explicitly set in this object, or searched
         within the from clauses for one"""
         
-        if self.engine:
-            return self.engine
+        if self._engine:
+            return self._engine
             
         for f in self.froms.values():
-            e = f._engine()
+            e = f.engine
             if e:
                 return e
             
         return None
 
+    engine = property(lambda s: s._find_engine())
+    
     def _get_from_objects(self):
         if self.issubquery:
             return []
@@ -755,8 +756,6 @@ class UpdateBase(ClauseElement):
                 values.append((c, value))
         return values
 
-    def _engine(self):
-        return self.engine
 
     def compile(self, engine = None, bindparams = None):
         if engine is None:
@@ -772,7 +771,7 @@ class Insert(UpdateBase):
         self.table = table
         self.select = None
         self.parameters = self._process_colparams(parameters)
-        self.engine = self.table._engine()
+        self.engine = self.table.engine
         
     def accept_visitor(self, visitor):
         if self.select is not None:
@@ -780,8 +779,6 @@ class Insert(UpdateBase):
 
         visitor.visit_insert(self)
 
-    def _engine(self):
-        return self.engine
         
     def compile(self, engine = None, bindparams = None):
         if engine is None:
@@ -795,7 +792,7 @@ class Update(UpdateBase):
         self.table = table
         self.whereclause = whereclause
         self.parameters = self._process_colparams(parameters)
-        self.engine = self.table._engine()
+        self.engine = self.table.engine
 
     def accept_visitor(self, visitor):
         if self.whereclause is not None:
@@ -806,7 +803,7 @@ class Delete(UpdateBase):
     def __init__(self, table, whereclause, **params):
         self.table = table
         self.whereclause = whereclause
-        self.engine = self.table._engine()
+        self.engine = self.table.engine
 
     def accept_visitor(self, visitor):
         if self.whereclause is not None:
