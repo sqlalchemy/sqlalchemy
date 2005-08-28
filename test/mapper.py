@@ -10,12 +10,13 @@ class User(object):
 objid: %d
 User ID: %s
 User Name: %s
+email address ?: %s
 Addresses: %s
 Orders: %s
 Open Orders %s
 Closed Orderss %s
 ------------------
-""" % tuple([id(self), self.user_id, repr(self.user_name)] + [repr(getattr(self, attr, None)) for attr in ('addresses', 'orders', 'orders_open', 'orders_closed')])
+""" % tuple([id(self), self.user_id, repr(self.user_name), repr(getattr(self, 'email_address', None))] + [repr(getattr(self, attr, None)) for attr in ('addresses', 'orders', 'orders_open', 'orders_closed')])
 )
 
 class Address(object):
@@ -69,6 +70,12 @@ class MapperTest(AssertMixin):
         l = m.select(users.c.user_name.endswith('ed'))
         self.assert_result(l, User, {'user_id' : 8}, {'user_id' : 9})
 
+    def testmultitable(self):
+        usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
+        m = mapper(User, usersaddresses, table = users)
+        l = m.select()
+        print repr(l)
+
     def testeageroptions(self):
         """tests that a lazy relation can be upgraded to an eager relation via the options method"""
         m = mapper(User, users, properties = dict(
@@ -103,7 +110,7 @@ class LazyTest(AssertMixin):
             addresses = relation(Address, addresses, lazy = True)
         ), echo = True)
         l = m.select(users.c.user_id == 7)
-        self.assert_result(l, User, 
+        self.assert_result(l, User,
             {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
             )
 
@@ -117,10 +124,10 @@ class LazyTest(AssertMixin):
         l = m.select()
         self.assert_result(l, Item, 
             {'item_id' : 1, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 4}, {'keyword_id' : 6}])},
-            {'item_id' : 3, 'keywords' : (Keyword, [{'keyword_id' : 3}, {'keyword_id' : 4}, {'keyword_id' : 6}])},
             {'item_id' : 2, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 5}, {'keyword_id' : 7}])},
-            {'item_id' : 5, 'keywords' : (Keyword, [])},
-            {'item_id' : 4, 'keywords' : (Keyword, [])}
+            {'item_id' : 3, 'keywords' : (Keyword, [{'keyword_id' : 3}, {'keyword_id' : 4}, {'keyword_id' : 6}])},
+            {'item_id' : 4, 'keywords' : (Keyword, [])},
+            {'item_id' : 5, 'keywords' : (Keyword, [])}
         )
 
         l = m.select(and_(keywords.c.name == 'red', keywords.c.keyword_id == itemkeywords.c.keyword_id, items.c.item_id==itemkeywords.c.item_id))
@@ -230,9 +237,61 @@ class SaveTest(PersistTest):
         u.user_name = 'inserttester'
         m = mapper(User, users, echo=True)
         m.insert(u)
-        nu = m.get(u.user_id)
-    #    nu = m.select(users.c.user_id == u.user_id)[0]
+#        nu = m.get(u.user_id)
+        nu = m.select(users.c.user_id == u.user_id)[0]
         self.assert_(u is nu)
 
+    def testsave(self):
+        # save two users
+        u = User()
+        u.user_name = 'savetester'
+        u2 = User()
+        u2.user_name = 'savetester2'
+        m = mapper(User, users, echo=True)
+        m.save(u)
+        m.save(u2)
+        
+        # assert the first one retreives the same from the identity map
+        nu = m.get(u.user_id)
+        self.assert_(u is nu)
+        
+        # clear out the identity map, so next get forces a SELECT
+        m.identitymap.clear()
+
+        # check it again, identity should be different but ids the same
+        nu = m.get(u.user_id)
+        self.assert_(u is not nu and u.user_id == nu.user_id and nu.user_name == 'savetester')
+        
+        # change first users name and save
+        u.user_name = 'modifiedname'
+        m.save(u)
+
+        # select both
+        userlist = m.select(users.c.user_id.in_(u.user_id, u2.user_id))
+        # making a slight assumption here about the IN clause mechanics with regards to ordering
+        self.assert_(u.user_id == userlist[0].user_id and userlist[0].user_name == 'modifiedname')
+        self.assert_(u2.user_id == userlist[1].user_id and userlist[1].user_name == 'savetester2')
+
+    def testsavemultitable(self):
+        usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
+        m = mapper(User, usersaddresses, table = users)
+        u = User()
+        u.user_name = 'multitester'
+        u.email_address = 'multi@test.org'
+        m.save(u)
+        
+        usertable = engine.ResultProxy(users.select().execute()).fetchall()
+        print repr(usertable)
+        addresstable = engine.ResultProxy(addresses.select().execute()).fetchall()
+        print repr(addresstable)
+        
+        u.email_address = 'lala@hey.com'
+        u.user_name = 'imnew'
+        m.save(u)
+        usertable = engine.ResultProxy(users.select().execute()).fetchall()
+        print repr(usertable)
+        addresstable = engine.ResultProxy(addresses.select().execute()).fetchall()
+        print repr(addresstable)
+        
 if __name__ == "__main__":
     unittest.main()        

@@ -132,7 +132,7 @@ class SQLEngine(schema.SchemaEngine):
 
         if echo is True or self._echo:
             self.log(statement)
-            self.log("here are the params: " + repr(parameters))
+            self.log(repr(parameters))
 
         if connection is None:
             poolconn = self.connection()
@@ -162,6 +162,14 @@ class ResultProxy:
                 self.props[i] = i
                 i+=1
 
+    def fetchall(self):
+        l = []
+        while True:
+            v = self.fetchone()
+            if v is None:
+                return l
+            l.append(v)
+            
     def fetchone(self):
         row = self.cursor.fetchone()
         if row is not None:
@@ -174,5 +182,7 @@ class RowProxy:
     def __init__(self, parent, row):
         self.parent = parent
         self.row = row
+    def __repr__(self):
+        return repr(self.row)
     def __getitem__(self, key):
         return self.row[self.parent.props[key]]

@@ -3,7 +3,7 @@ import unittest, sys
 
 import sqlalchemy.databases.sqlite as sqllite
 
-db = sqllite.engine('querytest.db', echo = True)
+db = sqllite.engine(':memory:', {}, echo = True)
 
 from sqlalchemy.sql import *
 from sqlalchemy.schema import *
