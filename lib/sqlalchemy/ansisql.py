@@ -58,6 +58,7 @@ class ANSICompiler(sql.Compiled):
         self.froms = {}
         self.wheres = {}
         self.strings = {}
+        self.isinsert = False
         
     def get_from_text(self, obj):
         return self.froms[obj]
@@ -200,6 +201,7 @@ class ANSICompiler(sql.Compiled):
             " ON " + self.get_str(join.onclause))
 
     def visit_insert(self, insert_stmt):
+        self.isinsert = True
         colparams = insert_stmt.get_colparams(self.bindparams)
         for c in colparams:
             b = c[1]

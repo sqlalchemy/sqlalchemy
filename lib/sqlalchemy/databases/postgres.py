@@ -52,15 +52,22 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         statement.accept_visitor(compiler)
         return compiler
 
+    def last_inserted_ids(self):
+        return self.context.last_inserted_ids
+
     def pre_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
         if compiled is None: return
         if getattr(compiled, "isinsert", False):
+            last_inserted_ids = []
             for primary_key in compiled.statement.table.primary_keys:
                 # pseudocode
                 if echo is True or self._echo:
                     self.log(primary_key.sequence.text)
                 res = cursor.execute(primary_key.sequence.text)
-                parameters[primary_key.key] = res.fetchrow()[0]
+                newid = res.fetchrow()[0]
+                parameters[primary_key.key] = newid
+                last_inserted_ids.append(newid)
+            self.context.last_inserted_ids = last_inserted_ids
 
     def dbapi(self):
         return None
@@ -73,10 +80,8 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         raise NotImplementedError()
 
 class PGCompiler(ansisql.ANSICompiler):
-    def visit_insert(self, insert):
-        self.isinsert = True
-        super(self).visit_insert(insert)
-    
+    pass
+
 class PGColumnImpl(sql.ColumnSelectable):
     def get_specification(self):
         coltype = self.column.type

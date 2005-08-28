@@ -52,7 +52,7 @@ def relation_mapper(class_, selectable, secondary = None, primaryjoin = None, se
 _mappers = {}
 def mapper(*args, **params):
     hashkey = mapper_hash_key(*args, **params)
-    print "HASHKEY: " + hashkey
+    #print "HASHKEY: " + hashkey
     try:
         return _mappers[hashkey]
     except KeyError:
@@ -121,7 +121,7 @@ class Mapper(object):
 
     def instances(self, cursor):
         result = []
-        cursor = engine.ResultProxy(cursor)
+        cursor = engine.ResultProxy(cursor, echo = self.echo)
 
         localmap = {}
         while True:
@@ -131,9 +131,30 @@ class Mapper(object):
             self._instance(row, localmap, result)
         return result
 
-    def get(self, id):
-        """returns an instance of the object based on the given ID."""
-        pass
+    def get(self, *ident):
+        """returns an instance of the object based on the given identifier, or None
+        if not found.  The *ident argument is a 
+        list of primary keys in the order of the table def's primary keys."""
+        key = self.identitymap.get_id_key(ident, self.class_, self.table, self.selectable)
+        try:
+            return self.identitymap[key]
+        except KeyError:
+            clause = sql.and_()
+            i = 0
+            for primary_key in self.selectable.primary_keys:
+                # appending to the and_'s clause list directly to skip
+                # typechecks etc.
+                clause.clauses.append(primary_key == ident[i])
+                i += 2
+            try:
+                return self.select(clause)[0]
+            except IndexError:
+                return None
+
+    def put(self, instance):
+        key = self.identitymap.get_instance_key(instance, self.class_, self.table, self.selectable)
+        self.identitymap[key] = instance
+        return key
 
     def compile(self, whereclause = None, **options):
         """works like select, except returns the SQL statement object without 
@@ -188,29 +209,45 @@ class Mapper(object):
         """removes the object.  traverse indicates attached objects should be removed as well."""
         pass
     
-    def insert(self, object):
+    def insert(self, obj):
         """inserts the object into its table, regardless of primary key being set.  this is a 
         lower-level operation than save."""
         params = {}
         for col in self.table.columns:
-            params[col.key] = getattr(object, col.key)
+            params[col.key] = getattr(obj, col.key, None)
         ins = self.table.insert()
         ins.execute(**params)
-        primary_keys = self.table.engine.last_inserted_ids()
-        # TODO: put the primary keys into the object props
 
-    def update(self, object):
+        # TODO: unset dirty flag
+
+        # populate new primary keys
+        primary_keys = self.table.engine.last_inserted_ids()
+        index = 0
+        for pk in self.table.primary_keys:
+            newid = primary_keys[index]
+            index += 1
+            # TODO: do this via the ColumnProperty objects
+            setattr(obj, pk.key, newid)
+
+        self.put(obj)
+
+    def update(self, obj):
         """inserts the object into its table, regardless of primary key being set.  this is a 
         lower-level operation than save."""
         params = {}
         for col in self.table.columns:
-            params[col.key] = getattr(object, col.key)
+            params[col.key] = getattr(obj, col.key)
         upd = self.table.update()
         upd.execute(**params)
-        
-    def delete(self, object):
+        # TODO: unset dirty flag
+
+    def delete(self, obj):
         """deletes the object's row from its table unconditionally. this is a lower-level
         operation than remove."""
+        # delete dependencies ?
+        # delete row
+        # remove primary keys
+        # unset dirty flag
         pass
 
     class TableFinder(sql.ClauseVisitor):
@@ -234,7 +271,7 @@ class Mapper(object):
     def _select_whereclause(self, whereclause = None, **params):
         statement = self._compile(whereclause)
         return self._select_statement(statement, **params)
-    
+
     def _select_statement(self, statement, **params):
         statement.use_labels = True
         statement.echo = self.echo
@@ -243,12 +280,13 @@ class Mapper(object):
     def _identity_key(self, row):
         return self.identitymap.get_key(row, self.class_, self.table, self.selectable)
 
+
     def _instance(self, row, localmap, result):
         """pulls an object instance from the given row and appends it to the given result list.
         if the instance already exists in the given identity map, its not added.  in either
         case, executes all the property loaders on the instance to also process extra information
         in the row."""
-            
+
         # create the instance if its not in the identity map,
         # else retrieve it
         identitykey = self._identity_key(row)
@@ -323,7 +361,7 @@ class ColumnProperty(MapperProperty):
 
     def hash_key(self):
         return "ColumnProperty(%s)" % hash_key(self.column)
-        
+
     def init(self, key, parent, root):
         self.key = key
         if root.use_smart_properties:
@@ -363,8 +401,6 @@ def mapper_hash_key(class_, selectable, table = None, properties = None, identit
         )
     )
 
-
-        
 class PropertyLoader(MapperProperty):
     def __init__(self, mapper, secondary, primaryjoin, secondaryjoin):
         self.mapper = mapper
@@ -373,10 +409,10 @@ class PropertyLoader(MapperProperty):
         self.primaryjoin = primaryjoin
         self.secondaryjoin = secondaryjoin
         self._hash_key = "%s(%s, %s, %s, %s)" % (self.__class__.__name__, hash_key(mapper), hash_key(secondary), hash_key(primaryjoin), hash_key(secondaryjoin))
-        
+
     def hash_key(self):
         return self._hash_key
-        
+
     def init(self, key, parent, root):
         self.key = key
         self.mapper.init(root)
@@ -397,12 +433,15 @@ class PropertyLoader(MapperProperty):
         # if a mapping table exists, determine the two foreign key columns 
         # in the mapping table, set the two values, and insert that row, for
         # each row in the list
-        pass
+        if self.secondary is None:
+            self.mapper.save(object)
+        else:
+            # TODO: crap, we dont have a simple version of what object props/cols match to which
+            pass
 
     def delete(self):
         self.mapper.delete()
 
-        
 class LazyLoader(PropertyLoader):
 
     def init(self, key, parent, root):
@@ -424,14 +463,22 @@ class LazyLoader(PropertyLoader):
 
     def execute(self, instance, row, identitykey, localmap, isduplicate):
         if not isduplicate:
-            def load():
-                m = {}
-                for key, value in self.binds.iteritems():
-                    m[key] = row[key]
-                return self.mapper.select(self.lazywhere, **m)
+            setattr(instance, self.key, LazyLoadInstance(self, row))
 
-            setattr(instance, self.key, load)
-        
+class LazyLoadInstance(object):
+    """attached to a specific object instance to load related rows.  this is implemetned
+    as a callable object, rather than a closure, to allow serialization of the target object"""
+    def __init__(self, lazyloader, row):
+        self.params = {}
+        for key, value in lazyloader.binds.iteritems():
+            self.params[key] = row[key]
+        # TODO: dont attach to the mapper, its huge.
+        # figure out some way to shrink this.
+        self.mapper = lazyloader.mapper
+
+    def __call__(self):
+        return self.mapper.select(self.lazywhere, **self.params)
+
 class EagerLoader(PropertyLoader):
     def init(self, key, parent, root):
         PropertyLoader.init(self, key, parent, root)
@@ -440,8 +487,7 @@ class EagerLoader(PropertyLoader):
         if self.secondaryjoin is not None:
             [self.to_alias.append(f) for f in self.secondaryjoin._get_from_objects()]
         del self.to_alias[parent.selectable]
-    
-            
+
     def setup(self, key, primarytable, statement, **options):
         """add a left outer join to the statement thats being constructed"""
 
@@ -565,10 +611,14 @@ def match_primaries(primary, secondary):
         return sql.and_([pk == secondary.c[pk.name] for pk in primary.primary_keys])
 
 class IdentityMap(dict):
+    def get_id_key(self, ident, class_, table, selectable):
+        return (class_, table, tuple(ident))
+    def get_instance_key(self, object, class_, table, selectable):
+        return (class_, table, tuple([getattr(object, column.key, None) for column in selectable.primary_keys]))
     def get_key(self, row, class_, table, selectable):
         return (class_, table, tuple([row[column.label] for column in selectable.primary_keys]))
     def hash_key(self):
         return "IdentityMap(%s)" % id(self)
-        
+
 _global_identitymap = IdentityMap()
 

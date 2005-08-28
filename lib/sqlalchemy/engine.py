@@ -150,8 +150,9 @@ class SQLEngine(schema.SchemaEngine):
 
 
 class ResultProxy:
-    def __init__(self, cursor):
+    def __init__(self, cursor, echo = False):
         self.cursor = cursor
+        self.echo = echo
         metadata = cursor.description
         self.props = {}
         i = 0
@@ -164,7 +165,7 @@ class ResultProxy:
     def fetchone(self):
         row = self.cursor.fetchone()
         if row is not None:
-            #print repr(row)
+            if self.echo: print repr(row)
             return RowProxy(self, row)
         else:
             return None

@@ -49,8 +49,13 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
         self.opts = opts or {}
         ansisql.ANSISQLEngine.__init__(self, **params)
 
+    def post_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
+        if compiled is None: return
+        if getattr(compiled, "isinsert", False):
+            self.context.last_inserted_ids = [cursor.lastrowid]
+
     def last_inserted_ids(self):
-        pass
+        return self.context.last_inserted_ids
 
     def connect_args(self):
         return ([self.filename], self.opts)
@@ -81,5 +86,7 @@ class SQLiteColumnImpl(sql.ColumnSelectable):
         else:
             key = coltype.__class__
 
-        return self.name + " " + colspecs[key] % {'precision': getattr(coltype, 'precision', None), 'length' : getattr(coltype, 'length', None)}
-
+        colspec = self.name + " " + colspecs[key] % {'precision': getattr(coltype, 'precision', None), 'length' : getattr(coltype, 'length', None)}
+        if self.column.primary_key:
+            colspec += " PRIMARY KEY"
+        return colspec

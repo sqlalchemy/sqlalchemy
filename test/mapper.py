@@ -7,6 +7,7 @@ class User(object):
     def __repr__(self):
         return (
 """
+objid: %d
 User ID: %s
 User Name: %s
 Addresses: %s
@@ -14,7 +15,7 @@ Orders: %s
 Open Orders %s
 Closed Orderss %s
 ------------------
-""" % tuple([self.user_id, repr(self.user_name)] + [repr(getattr(self, attr, None)) for attr in ('addresses', 'orders', 'orders_open', 'orders_closed')])
+""" % tuple([id(self), self.user_id, repr(self.user_name)] + [repr(getattr(self, attr, None)) for attr in ('addresses', 'orders', 'orders_open', 'orders_closed')])
 )
 
 class Address(object):
@@ -52,7 +53,14 @@ class MapperTest(AssertMixin):
     
     def setUp(self):
         globalidentity().clear()
-        
+
+    def testget(self):
+        m = mapper(User, users, echo = True)
+        self.assert_(m.get(19) is None)
+        u = m.get(7)
+        u2 = m.get(7)
+        self.assert_(u is u2)
+
     def testload(self):
         """tests loading rows with a mapper and producing object instances"""
         m = mapper(User, users)
@@ -67,7 +75,7 @@ class MapperTest(AssertMixin):
             addresses = relation(Address, addresses, lazy = True)
         ), echo = True)
         l = m.options(eagerload('addresses')).select()
-        self.assert_result(l, User, 
+        self.assert_result(l, User,
             {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
             {'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}])},
             {'user_id' : 9, 'addresses' : (Address, [])}
@@ -79,7 +87,7 @@ class MapperTest(AssertMixin):
             addresses = relation(Address, addresses, lazy = False)
         ), echo = True)
         l = m.options(lazyload('addresses')).select()
-        self.assert_result(l, User, 
+        self.assert_result(l, User,
             {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
             {'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}])},
             {'user_id' : 9, 'addresses' : (Address, [])}
@@ -216,13 +224,14 @@ class EagerTest(PersistTest):
         print repr(l)
 
 class SaveTest(PersistTest):
-    def _testinsert(self):
+        
+    def testinsert(self):
         u = User()
         u.user_name = 'inserttester'
-        m = mapper(User, users)
+        m = mapper(User, users, echo=True)
         m.insert(u)
-
-        nu = m.select(users.c.user_id == u.user_id)
+        nu = m.get(u.user_id)
+    #    nu = m.select(users.c.user_id == u.user_id)[0]
         self.assert_(u is nu)
 
 if __name__ == "__main__":
