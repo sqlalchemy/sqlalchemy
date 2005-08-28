@@ -63,10 +63,10 @@ def identitymap():
 
 def globalidentity():
     return _global_identitymap
-    
+
 def eagerload(name):
     return EagerLazySwitcher(name, toeager = True)
-    
+
 def lazyload(name):
     return EagerLazySwitcher(name, toeager = False)
 
@@ -104,7 +104,7 @@ class Mapper(object):
 
         if isroot:
             self.init(self)
-    
+
     def hash_key(self):
         return mapper_hash_key(
             self.class_,
@@ -181,7 +181,7 @@ class Mapper(object):
             for option in options:
                 option.process(mapper)
             return _mappers.setdefault(hashkey, mapper)
-        
+
     def select(self, arg = None, **params):
         """selects instances of the object from the database.  
         
@@ -196,28 +196,37 @@ class Mapper(object):
             return self._select_statement(arg, **params)
         else:
             return self._select_whereclause(arg, **params)
-        
+
     def save(self, obj, traverse = True, refetch = False):
-        """saves the object.  based on the existence of its primary key, either inserts or updates.
+        """saves the object across all its primary tables.  
+        based on the existence of the primary key for each table, either inserts or updates.
         primary key is determined by the underlying database engine's sequence methodology.
-        traverse indicates attached objects should be saved as well.
+        the traverse flag indicates attached objects should be saved as well.
         
         if smart attributes are being used for the object, the "dirty" flag, or the absense 
         of the attribute, determines if the item is saved.  if smart attributes are not being 
         used, the item is saved unconditionally.
         """
-        # TODO: support multi-table saves
-        if getattr(obj, 'dirty', True):
-            for table in self.tables:
-                for col in table.columns:
-                    if getattr(obj, col.key, None) is None:
-                        self.insert(obj, table)
-                        break
-                else:
-                    self.update(obj, table)
 
-        for prop in self.props.values():
-            prop.save(obj, traverse, refetch)
+        if getattr(obj, 'dirty', True):
+            f = def():
+                for table in self.tables:
+                    for col in table.columns:
+                        if getattr(obj, col.key, None) is None:
+                            self.insert(obj, table)
+                            break
+                    else:
+                        self.update(obj, table)
+
+                for prop in self.props.values():
+                    prop.save(obj, traverse, refetch)
+            self.transaction(f)
+        else:
+            for prop in self.props.values():
+                prop.save(obj, traverse, refetch)
+
+    def transaction(self, f):
+        return self.table.engine.multi_transaction(self.tables, f)
 
     def remove(self, obj, traverse = True):
         """removes the object.  traverse indicates attached objects should be removed as well."""
@@ -433,7 +442,7 @@ class PropertyLoader(MapperProperty):
             if self.primaryjoin is None:
                 self.primaryjoin = match_primaries(parent.selectable, self.target)
 
-    def save(self, object, traverse, refetch):
+    def save(self, obj, traverse, refetch):
         # if a mapping table does not exist, save a row for all objects
         # in our list normally, setting their primary keys
         # else, determine the foreign key column in our table, set it to the parent
@@ -441,14 +450,19 @@ class PropertyLoader(MapperProperty):
         # if a mapping table exists, determine the two foreign key columns 
         # in the mapping table, set the two values, and insert that row, for
         # each row in the list
-        if self.secondary is None:
-            self.mapper.save(object)
-        else:
-            # TODO: crap, we dont have a simple version of what object props/cols match to which
-            pass
+        for child in getattr(obj, self.key):
+            setter = ForeignKeySetter(obj, child)
+            self.primaryjoin.accept_visitor(setter)
+            self.mapper.save(child)
 
     def delete(self):
         self.mapper.delete()
+
+class ForeignKeySetter(ClauseVisitor):
+    def visit_binary(self, binary):
+        if binary.operator == '==':
+            if binary.left.table == self.primarytable and binary.right.table == self.secondarytable:
+                setattr(self.child, binary.left.colname, getattr(obj, binary.right.colname))
 
 class LazyLoader(PropertyLoader):
 

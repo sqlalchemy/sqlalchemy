@@ -55,7 +55,7 @@ class SQLEngine(schema.SchemaEngine):
         self._pool = sqlalchemy.pool.manage(self.dbapi()).get_pool(*cargs, **cparams)
         self._echo = echo
         self.context = util.ThreadLocal()
-        
+
     def schemagenerator(self, proxy, **params):
         raise NotImplementedError()
 
@@ -64,7 +64,7 @@ class SQLEngine(schema.SchemaEngine):
 
     def reflecttable(self, table):
         raise NotImplementedError()
-        
+
     def columnimpl(self, column):
         return sql.ColumnSelectable(column)
 
@@ -72,21 +72,51 @@ class SQLEngine(schema.SchemaEngine):
         """returns a thread-local map of the generated primary keys corresponding to the most recent
         insert statement.  keys are the names of columns."""
         raise NotImplementedError()
-        
+
     def connect_args(self):
         raise NotImplementedError()
-        
+
     def dbapi(self):
         raise NotImplementedError()
 
     def compile(self, statement, bindparams):
         raise NotImplementedError()
 
+    def do_begin(self, connection):
+        """implementations might want to put logic here for turning autocommit on/off, etc."""
+        pass
+    def do_rollback(self, connection):
+        """implementations might want to put logic here for turning autocommit on/off, etc."""
+        connection.rollback()
+    def do_commit(self, connection):
+        """implementations might want to put logic here for turning autocommit on/off, etc."""
+        connection.commit()
+
     def proxy(self):
         return lambda s, p = None: self.execute(s, p)
-        
+
     def connection(self):
         return self._pool.connect()
+
+    def multi_transaction(self, tables, func):
+        """provides a transaction boundary across tables which may be in multiple databases.
+        
+        clearly, this approach only goes so far, such as if database A commits, then database B commits
+        and fails, A is already committed.  Any failure conditions have to be raised before anyone
+        commits for this to be useful."""
+        engines = util.Set()
+        for table in tables:
+            engines.append(table.engine)
+        for engine in engines:
+            engine.begin()
+        try:
+            func()
+        except:
+            for engine in engines:
+                engine.rollback()
+            raise
+        for engine in engines:
+            engine.commit()
 
     def transaction(self, func):
         self.begin()
@@ -96,10 +126,12 @@ class SQLEngine(schema.SchemaEngine):
             self.rollback()
             raise
         self.commit()
-            
+
+        
     def begin(self):
         if getattr(self.context, 'transaction', None) is None:
             conn = self.connection()
+            self.do_begin(conn)
             self.context.transaction = conn
             self.context.tcount = 1
         else:
@@ -107,7 +139,7 @@ class SQLEngine(schema.SchemaEngine):
             
     def rollback(self):
         if self.context.transaction is not None:
-            self.context.transaction.rollback()
+            self.do_rollback(self.context.transaction)
             self.context.transaction = None
             self.context.tcount = None
             
@@ -116,7 +148,7 @@ class SQLEngine(schema.SchemaEngine):
             count = self.context.tcount - 1
             self.context.tcount = count
             if count == 0:
-                self.context.transaction.commit()
+                self.do_commit(self.context.transaction)
                 self.context.transaction = None
                 self.context.tcount = None
 

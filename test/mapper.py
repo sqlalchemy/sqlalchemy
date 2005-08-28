@@ -250,18 +250,18 @@ class SaveTest(PersistTest):
         m = mapper(User, users, echo=True)
         m.save(u)
         m.save(u2)
-        
+
         # assert the first one retreives the same from the identity map
         nu = m.get(u.user_id)
         self.assert_(u is nu)
-        
+
         # clear out the identity map, so next get forces a SELECT
         m.identitymap.clear()
 
         # check it again, identity should be different but ids the same
         nu = m.get(u.user_id)
         self.assert_(u is not nu and u.user_id == nu.user_id and nu.user_name == 'savetester')
-        
+
         # change first users name and save
         u.user_name = 'modifiedname'
         m.save(u)
@@ -292,6 +292,6 @@ class SaveTest(PersistTest):
         print repr(usertable)
         addresstable = engine.ResultProxy(addresses.select().execute()).fetchall()
         print repr(addresstable)
-        
+
 if __name__ == "__main__":
-    unittest.main()        
+    unittest.main()
