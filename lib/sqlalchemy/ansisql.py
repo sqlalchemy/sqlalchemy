@@ -68,12 +68,17 @@ class ANSICompiler(sql.Compiled):
 
     def get_whereclause(self, obj):
         return self.wheres.get(obj, None)
-        
+
     def get_params(self, **params):
         """returns the bind params for this compiled object, with values overridden by 
         those given in the **params dictionary"""
         d = {}
-        for key, value in params.iteritems():
+        if self.bindparams is not None:
+            bindparams = self.bindparams.copy()
+        else:
+            bindparams = {}
+        bindparams.update(params)
+        for key, value in bindparams.iteritems():
             try:
                 b = self.binds[key]
             except KeyError:
@@ -84,7 +89,7 @@ class ANSICompiler(sql.Compiled):
             d.setdefault(b.key, b.value)
 
         return d
-        
+
     def visit_column(self, column):
         if column.table.name is None:
             self.strings[column] = column.name
@@ -121,19 +126,18 @@ class ANSICompiler(sql.Compiled):
         result += " " + self.get_str(binary.right)
         if binary.parens:
             result = "(" + result + ")"
-        
         self.strings[binary] = result
-        
+
     def visit_bindparam(self, bindparam):
         self.binds[bindparam.shortname] = bindparam
-        
         count = 1
         key = bindparam.key
-        
+
+        # redefine the generated name of the bind param in the case
+        # that we have multiple conflicting bind parameters.
         while self.binds.setdefault(key, bindparam) is not bindparam:
             key = "%s_%d" % (bindparam.key, count)
             count += 1
-            
         self.strings[bindparam] = ":" + key
 
     def visit_alias(self, alias):

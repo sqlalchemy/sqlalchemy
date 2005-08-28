@@ -39,7 +39,7 @@ class AssertMixin(PersistTest):
         print repr(result)
         self.assert_list(result, class_, objects)
     def assert_list(self, result, class_, list):
-        for i in range(0, len(result)):
+        for i in range(0, len(list)):
             self.assert_row(class_, result[i], list[i])
     def assert_row(self, class_, rowobj, desc):
         self.assert_(rowobj.__class__ is class_, "item class is not " + repr(class_))

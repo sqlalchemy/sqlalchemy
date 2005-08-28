@@ -132,7 +132,7 @@ class SQLEngine(schema.SchemaEngine):
 
         if echo is True or self._echo:
             self.log(statement)
-            self.log(repr(parameters))
+            self.log("here are the params: " + repr(parameters))
 
         if connection is None:
             poolconn = self.connection()

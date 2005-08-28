@@ -286,6 +286,12 @@ EXISTS (select yay from foo where boo = lar)",
 FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable.name = :mytablename"
                 )
 
+        # check that the bind params sent along with a compile() call
+        # get preserved when the params are retreived later
+        s = select([table], table.c.id == bindparam('test'))
+        c = s.compile(bindparams = {'test' : 7})
+        self.assert_(c.get_params() == {'test' : 7})
+
     def testcorrelatedsubquery(self):
         self.runtest(
             select([table], table.c.id == select([table2.c.id], table.c.name == table2.c.name)),

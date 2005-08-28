@@ -166,7 +166,7 @@ class Mapper(object):
         *options is a list of options directives, which include eagerload() and lazyload()"""
 
         hashkey = hash_key(self) + "->" + repr([hash_key(o) for o in options])
-        print "HASHKEY: " + hashkey
+        #print "HASHKEY: " + hashkey
         try:
             return _mappers[hashkey]
         except KeyError:
@@ -321,6 +321,8 @@ class Mapper(object):
 
 
 class MapperOption:
+    """describes a modification to a Mapper in the context of making a copy
+    of it.  This is used to assist in the prototype pattern used by mapper.options()."""
     def process(self, mapper):
         raise NotImplementedError()
     
@@ -328,7 +330,7 @@ class MapperOption:
         return repr(self)
 
 class MapperProperty:
-    """an element attached to a Mapper that describes the loading and population
+    """an element attached to a Mapper that describes and assists in the loading and saving 
     of an attribute on an object instance."""
     def execute(self, instance, row, identitykey, localmap, isduplicate):
         """called when the mapper receives a row.  instance is the parent instance corresponding
@@ -337,7 +339,8 @@ class MapperProperty:
 
     def hash_key(self):
         """describes this property and its instantiated arguments in such a way
-        as to uniquely identify the concept this MapperProperty represents"""
+        as to uniquely identify the concept this MapperProperty represents,within 
+        a process."""
         raise NotImplementedError()
 
     def setup(self, key, primarytable, statement, **options):
@@ -347,15 +350,17 @@ class MapperProperty:
     def init(self, key, parent, root):
         """called when the MapperProperty is first attached to a new parent Mapper."""
         pass
-    
+
     def save(self, object, traverse, refetch):
+        """called when the instance is being saved"""
         pass
-    
+
     def delete(self, object):
+        """called when the instance is being deleted"""
         pass
 
 class ColumnProperty(MapperProperty):
-    """describes an object attribute that corresponds to the value in a result set column."""
+    """describes an object attribute that corresponds to a table column."""
     def __init__(self, column):
         self.column = column
 
@@ -379,27 +384,6 @@ class ColumnProperty(MapperProperty):
                 setattr(instance, self.key, row[self.column.label])
 
 
-def hash_key(obj):
-    if obj is None:
-        return 'None'
-    else:
-        return obj.hash_key()
-
-def mapper_hash_key(class_, selectable, table = None, properties = None, identitymap = None, use_smart_properties = True, isroot = True, echo = None):
-    if properties is None:
-        properties = {}
-    return (
-        "Mapper(%s, %s, table=%s, properties=%s, identitymap=%s, use_smart_properties=%s, echo=%s)" % (
-            repr(class_),
-            hash_key(selectable),
-            hash_key(table),
-            repr(dict([(k, hash_key(p)) for k,p in properties.iteritems()])),
-            hash_key(identitymap),
-            repr(use_smart_properties),
-            repr(echo)
-
-        )
-    )
 
 class PropertyLoader(MapperProperty):
     def __init__(self, mapper, secondary, primaryjoin, secondaryjoin):
@@ -448,9 +432,9 @@ class LazyLoader(PropertyLoader):
         PropertyLoader.init(self, key, parent, root)
         if not hasattr(parent.class_, key):
             if not issubclass(parent.class_, object):
-                raise "LazyLoader can only be used with new-style classes, i.e. subclass object"
+                raise "LazyLoader can only be used with new-style classes"
             setattr(parent.class_, key, SmartProperty(key).property())
-        
+
     def setup(self, key, primarytable, statement, **options):
         if self.secondaryjoin is not None:
             self.lazywhere = sql.and_(self.primaryjoin, self.secondaryjoin)
@@ -465,17 +449,37 @@ class LazyLoader(PropertyLoader):
         if not isduplicate:
             setattr(instance, self.key, LazyLoadInstance(self, row))
 
+class LazyIzer(sql.ClauseVisitor):
+    """converts an expression which refers to a table column into an
+    expression refers to a Bind Param, i.e. a specific value.  
+    e.g. the clause 'WHERE tablea.foo=tableb.foo' becomes 'WHERE tablea.foo=:foo'.  
+    this is used to turn a join expression into one useable by a lazy load
+    for a specific parent row."""
+
+    def __init__(self, table):
+        self.table = table
+        self.binds = {}
+
+    def visit_binary(self, binary):
+        if isinstance(binary.left, schema.Column) and binary.left.table == self.table:
+            binary.left = self.binds.setdefault(self.table.name + "_" + binary.left.name,
+                    sql.BindParamClause(self.table.name + "_" + binary.left.name, None, shortname = binary.left.name))
+
+        if isinstance(binary.right, schema.Column) and binary.right.table == self.table:
+            binary.right = self.binds.setdefault(self.table.name + "_" + binary.right.name,
+                    sql.BindParamClause(self.table.name + "_" + binary.right.name, None, shortname = binary.right.name))
+
 class LazyLoadInstance(object):
-    """attached to a specific object instance to load related rows.  this is implemetned
-    as a callable object, rather than a closure, to allow serialization of the target object"""
+    """attached to a specific object instance to load related rows."""
     def __init__(self, lazyloader, row):
         self.params = {}
         for key, value in lazyloader.binds.iteritems():
             self.params[key] = row[key]
-        # TODO: dont attach to the mapper, its huge.
-        # figure out some way to shrink this.
+        # TODO: this still sucks. the mapper points to tables, which point
+        # to dbengines, which cant be serialized, or are too huge to be serialized
+        # quickly, so an object with a lazyloader still cant really be serialized
         self.mapper = lazyloader.mapper
-
+        self.lazywhere = lazyloader.lazywhere
     def __call__(self):
         return self.mapper.select(self.lazywhere, **self.params)
 
@@ -535,7 +539,7 @@ class EagerLazySwitcher(MapperOption):
 
     def hash_key(self):
         return "EagerLazySwitcher(%s, %s)" % (repr(self.key), repr(self.toeager))
-        
+
     def process(self, mapper):
         oldprop = mapper.props[self.key]
         if self.toeager:
@@ -545,6 +549,7 @@ class EagerLazySwitcher(MapperOption):
         mapper.set_property(self.key, class_(oldprop.mapper, oldprop.secondary, primaryjoin = oldprop.primaryjoin, secondaryjoin = oldprop.secondaryjoin))
 
 class Aliasizer(sql.ClauseVisitor):
+    """converts a table instance within an expression to be an alias of that table."""
     def __init__(self, table, aliasname):
         self.table = table
         self.alias = sql.alias(table, aliasname)
@@ -556,19 +561,6 @@ class Aliasizer(sql.ClauseVisitor):
         if isinstance(binary.right, schema.Column) and binary.right.table == self.table:
             binary.right = self.alias.c[binary.right.name]
 
-class LazyIzer(sql.ClauseVisitor):
-    def __init__(self, table):
-        self.table = table
-        self.binds = {}
-        
-    def visit_binary(self, binary):
-        if isinstance(binary.left, schema.Column) and binary.left.table == self.table:
-            binary.left = self.binds.setdefault(self.table.name + "_" + binary.left.name,
-                    sql.BindParamClause(self.table.name + "_" + binary.left.name, None, shortname = binary.left.name))
-
-        if isinstance(binary.right, schema.Column) and binary.right.table == self.table:
-            binary.right = self.binds.setdefault(self.table.name + "_" + binary.right.name,
-                    sql.BindParamClause(self.table.name + "_" + binary.right.name, None, shortname = binary.left.name))
     
 class LazyRow(MapperProperty):
     def __init__(self, table, whereclause, **options):
@@ -598,17 +590,10 @@ class SmartProperty(object):
                 v = s.__dict__[self.key]
             except KeyError:
                 raise AttributeError(self.key)
-            if isinstance(v, types.FunctionType):
+            if callable(v):
                 s.__dict__[self.key] = v()
             return s.__dict__[self.key]
         return property(get_prop, set_prop, del_prop)
-
-def match_primaries(primary, secondary):
-    pk = primary.primary_keys
-    if len(pk) == 1:
-        return (pk[0] == secondary.c[pk[0].name])
-    else:
-        return sql.and_([pk == secondary.c[pk.name] for pk in primary.primary_keys])
 
 class IdentityMap(dict):
     def get_id_key(self, ident, class_, table, selectable):
@@ -619,6 +604,37 @@ class IdentityMap(dict):
         return (class_, table, tuple([row[column.label] for column in selectable.primary_keys]))
     def hash_key(self):
         return "IdentityMap(%s)" % id(self)
+
+
+def hash_key(obj):
+    if obj is None:
+        return 'None'
+    else:
+        return obj.hash_key()
+
+def mapper_hash_key(class_, selectable, table = None, properties = None, identitymap = None, use_smart_properties = True, isroot = True, echo = None):
+    if properties is None:
+        properties = {}
+    return (
+        "Mapper(%s, %s, table=%s, properties=%s, identitymap=%s, use_smart_properties=%s, echo=%s)" % (
+            repr(class_),
+            hash_key(selectable),
+            hash_key(table),
+            repr(dict([(k, hash_key(p)) for k,p in properties.iteritems()])),
+            hash_key(identitymap),
+            repr(use_smart_properties),
+            repr(echo)
+
+        )
+    )
+
+def match_primaries(primary, secondary):
+    pk = primary.primary_keys
+    if len(pk) == 1:
+        return (pk[0] == secondary.c[pk[0].name])
+    else:
+        return sql.and_([pk == secondary.c[pk.name] for pk in primary.primary_keys])
+
 
 _global_identitymap = IdentityMap()
 
