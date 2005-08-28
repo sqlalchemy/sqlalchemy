@@ -279,12 +279,12 @@ class SaveTest(PersistTest):
         u.user_name = 'multitester'
         u.email_address = 'multi@test.org'
         m.save(u)
-        
+
         usertable = engine.ResultProxy(users.select().execute()).fetchall()
         print repr(usertable)
         addresstable = engine.ResultProxy(addresses.select().execute()).fetchall()
         print repr(addresstable)
-        
+
         u.email_address = 'lala@hey.com'
         u.user_name = 'imnew'
         m.save(u)
