@@ -232,14 +232,6 @@ class EagerTest(PersistTest):
 
 class SaveTest(PersistTest):
         
-    def testinsert(self):
-        u = User()
-        u.user_name = 'inserttester'
-        m = mapper(User, users, echo=True)
-        m.insert(u)
-#        nu = m.get(u.user_id)
-        nu = m.select(users.c.user_id == u.user_id)[0]
-        self.assert_(u is nu)
 
     def testsave(self):
         # save two users
@@ -274,24 +266,24 @@ class SaveTest(PersistTest):
 
     def testsavemultitable(self):
         usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
-        m = mapper(User, usersaddresses, table = users)
+        m = mapper(User, usersaddresses, table = users, echo = True, properties = dict(email = ColumnProperty(addresses.c.email_address), foo_id = ColumnProperty(users.c.user_id, addresses.c.user_id)))
         u = User()
         u.user_name = 'multitester'
-        u.email_address = 'multi@test.org'
+        u.email = 'multi@test.org'
         m.save(u)
 
-        usertable = engine.ResultProxy(users.select().execute()).fetchall()
-        print repr(usertable)
-        addresstable = engine.ResultProxy(addresses.select().execute()).fetchall()
-        print repr(addresstable)
+        usertable = engine.ResultProxy(users.select(users.c.user_id.in_(10)).execute()).fetchall()
+        self.assert_(usertable[0].row == (10, 'multitester'))
+        addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(4)).execute()).fetchall()
+        self.assert_(addresstable[0].row == (4, 10, 'multi@test.org'))
 
-        u.email_address = 'lala@hey.com'
+        u.email = 'lala@hey.com'
         u.user_name = 'imnew'
         m.save(u)
-        usertable = engine.ResultProxy(users.select().execute()).fetchall()
-        print repr(usertable)
-        addresstable = engine.ResultProxy(addresses.select().execute()).fetchall()
-        print repr(addresstable)
+        usertable = engine.ResultProxy(users.select(users.c.user_id.in_(10)).execute()).fetchall()
+        self.assert_(usertable[0].row == (10, 'imnew'))
+        addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(4)).execute()).fetchall()
+        self.assert_(addresstable[0].row == (4, 10, 'lala@hey.com'))
 
 if __name__ == "__main__":
     unittest.main()
