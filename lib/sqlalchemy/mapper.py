@@ -423,6 +423,7 @@ class PropertyLoader(MapperProperty):
     def init(self, key, parent, root):
         self.key = key
         self.mapper.init(root)
+        self.parenttable = parent.selectable
         if self.secondary is not None:
             if self.secondaryjoin is None:
                 self.secondaryjoin = match_primaries(self.target, self.secondary)
@@ -440,20 +441,29 @@ class PropertyLoader(MapperProperty):
         # if a mapping table exists, determine the two foreign key columns 
         # in the mapping table, set the two values, and insert that row, for
         # each row in the list
-  #      for child in getattr(obj, self.key):
-  #          setter = ForeignKeySetter(obj, child)
-  #          self.primaryjoin.accept_visitor(setter)
-  #          self.mapper.save(child)
-        pass
+        setter = ForeignKeySetter(self.parenttable, self.target, obj)
+        for child in getattr(obj, self.key):
+            setter.child = child
+            self.primaryjoin.accept_visitor(setter)
+            self.mapper.save(child)
+        #pass
 
     def delete(self):
         self.mapper.delete()
 
-#class ForeignKeySetter(ClauseVisitor):
- #   def visit_binary(self, binary):
-  #      if binary.operator == '==':
-  #          if binary.left.table == self.primarytable and binary.right.table == self.secondarytable:
-  #              setattr(self.child, binary.left.colname, getattr(obj, binary.right.colname))
+class ForeignKeySetter(sql.ClauseVisitor):
+    def __init__(self, primarytable, secondarytable, obj):
+        self.child = None
+        self.obj = obj
+        self.primarytable = primarytable
+        self.secondarytable = secondarytable
+
+    def visit_binary(self, binary):
+        if binary.operator == '=':
+            if binary.left.table == self.primarytable and binary.right.table == self.secondarytable:
+                setattr(self.child, binary.left.key, getattr(self.obj, binary.right.key))
+            elif binary.right.table == self.primarytable and binary.left.table == self.secondarytable:
+                setattr(self.child, binary.right.key, getattr(self.obj, binary.left.key))
 
 class LazyLoader(PropertyLoader):
 

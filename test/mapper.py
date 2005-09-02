@@ -231,7 +231,6 @@ class EagerTest(PersistTest):
         print repr(l)
 
 class SaveTest(PersistTest):
-        
 
     def testsave(self):
         # save two users
@@ -265,6 +264,8 @@ class SaveTest(PersistTest):
         self.assert_(u2.user_id == userlist[1].user_id and userlist[1].user_name == 'savetester2')
 
     def testsavemultitable(self):
+        """tests a save of an object where each instance spans two tables. also tests
+        redefinition of the keynames for the column properties."""
         usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
         m = mapper(User, usersaddresses, table = users, echo = True, properties = dict(email = ColumnProperty(addresses.c.email_address), foo_id = ColumnProperty(users.c.user_id, addresses.c.user_id)))
         u = User()
@@ -280,10 +281,30 @@ class SaveTest(PersistTest):
         u.email = 'lala@hey.com'
         u.user_name = 'imnew'
         m.save(u)
-        usertable = engine.ResultProxy(users.select(users.c.user_id.in_(10)).execute()).fetchall()
-        self.assert_(usertable[0].row == (10, 'imnew'))
-        addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(4)).execute()).fetchall()
-        self.assert_(addresstable[0].row == (4, 10, 'lala@hey.com'))
+        usertable = engine.ResultProxy(users.select(users.c.user_id.in_(u.user_id)).execute()).fetchall()
+        self.assert_(usertable[0].row == (u.user_id, 'imnew'))
+        addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(u.address_id)).execute()).fetchall()
+        self.assert_(addresstable[0].row == (u.address_id, u.user_id, 'lala@hey.com'))
+
+    def testsaveonetomany(self):
+        m = mapper(User, users, properties = dict(
+            addresses = relation(Address, addresses, lazy = True)
+        ), echo = True)
+        u = User()
+        u.user_name = 'one2manytester'
+        u.addresses = []
+        a = Address()
+        a.email_address = 'one2many@test.org'
+        u.addresses.append(a)
+        a2 = Address()
+        a2.email_address = 'lala@test.org'
+        u.addresses.append(a2)
+        m.save(u)
+        usertable = engine.ResultProxy(users.select(users.c.user_id.in_(u.user_id)).execute()).fetchall()
+        self.assert_(usertable[0].row == (u.user_id, 'one2manytester'))
+        addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id)).execute()).fetchall()
+        self.assert_(addresstable[0].row == (a.address_id, u.user_id, 'one2many@test.org'))
+        self.assert_(addresstable[1].row == (a2.address_id, u.user_id, 'lala@test.org'))
 
 if __name__ == "__main__":
     unittest.main()
