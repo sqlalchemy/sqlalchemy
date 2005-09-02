@@ -460,6 +460,7 @@ class ForeignKeySetter(sql.ClauseVisitor):
 
     def visit_binary(self, binary):
         if binary.operator == '=':
+            # TODO: gotta use ColumnProperties to get/set these fields
             if binary.left.table == self.primarytable and binary.right.table == self.secondarytable:
                 setattr(self.child, binary.left.key, getattr(self.obj, binary.right.key))
             elif binary.right.table == self.primarytable and binary.left.table == self.secondarytable:

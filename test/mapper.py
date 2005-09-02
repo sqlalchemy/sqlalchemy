@@ -306,5 +306,11 @@ class SaveTest(PersistTest):
         self.assert_(addresstable[0].row == (a.address_id, u.user_id, 'one2many@test.org'))
         self.assert_(addresstable[1].row == (a2.address_id, u.user_id, 'lala@test.org'))
 
+        a2.email_address = 'somethingnew@foo.com'
+        m.save(u)
+        addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id == a2.address_id).execute()).fetchall()
+        self.assert_(addresstable[0].row == (a2.address_id, u.user_id, 'somethingnew@foo.com'))
+
+
 if __name__ == "__main__":
     unittest.main()
