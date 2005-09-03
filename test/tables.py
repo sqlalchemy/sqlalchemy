@@ -1,19 +1,20 @@
-import unittest, sys, os
-
-import sqlalchemy.databases.sqlite as sqllite
-
-db_type = 'memory'
-
-if db_type == 'memory':
-    db = sqllite.engine(':memory:', {})
-elif db_type =='file':
-    if os.access('querytest.db', os.F_OK):
-        os.remove('querytest.db')
-    db = sqllite.engine('querytest.db', {}, echo = True)
 
 from sqlalchemy.sql import *
 from sqlalchemy.schema import *
+from sqlalchemy.mapper import *
 
+DBTYPE = 'sqlite_memory'
+
+if DBTYPE == 'sqlite_memory':
+    import sqlalchemy.databases.sqlite as sqllite
+    db = sqllite.engine(':memory:', {}, echo = False)
+elif DBTYPE == 'sqlite_file':
+    import sqlalchemy.databases.sqlite as sqllite
+    if os.access('querytest.db', os.F_OK):
+        os.remove('querytest.db')
+    db = sqllite.engine('querytest.db', opts = {}, echo = True)
+elif DBTYPE == 'postgres':
+    pass
 
 users = Table('users', db,
     Column('user_id', INT, primary_key = True),
@@ -53,7 +54,6 @@ users.build()
 users.insert().execute(user_id = 7, user_name = 'jack')
 users.insert().execute(user_id = 8, user_name = 'ed')
 users.insert().execute(user_id = 9, user_name = 'fred')
-db.connection().commit()
 
 addresses.build()
 addresses.insert().execute(address_id = 1, user_id = 7, email_address = "jack@bean.com")
@@ -98,4 +98,3 @@ itemkeywords.insert().execute(keyword_id=3, item_id=3)
 itemkeywords.insert().execute(keyword_id=5, item_id=2)
 itemkeywords.insert().execute(keyword_id=4, item_id=3)
 db.connection().commit()
-
