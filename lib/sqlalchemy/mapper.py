@@ -503,7 +503,7 @@ class EagerLoader(PropertyLoader):
         # figure out tables in the various join clauses we have, because user-defined
         # whereclauses that reference the same tables will be converted to use
         # aliases of those tables
-        self.to_alias = util.Set()
+        self.to_alias = util.HashSet()
         [self.to_alias.append(f) for f in self.primaryjoin._get_from_objects()]
         if self.secondaryjoin is not None:
             [self.to_alias.append(f) for f in self.secondaryjoin._get_from_objects()]

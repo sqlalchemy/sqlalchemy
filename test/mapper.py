@@ -58,11 +58,14 @@ class MapperTest(AssertMixin):
         #globalidentity().clear()
 
     def testget(self):
-        m = mapper(User, users, echo = True)
+        m = mapper(User, users, scope = "thread", echo = True)
         self.assert_(m.get(19) is None)
         u = m.get(7)
         u2 = m.get(7)
         self.assert_(u is u2)
+        identity_map.clear("thread")
+        u2 = m.get(7)
+        self.assert_(u is not u2)
 
     def testload(self):
         """tests loading rows with a mapper and producing object instances"""
