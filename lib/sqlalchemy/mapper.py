@@ -138,7 +138,7 @@ class Mapper(object):
         [prop.init(key, self, root) for key, prop in self.props.iteritems()]
 
     def instances(self, cursor):
-        result = []
+        result = util.HistoryArraySet()
         cursor = engine.ResultProxy(cursor, echo = self.echo)
 
         localmap = {'identity' : self.identitymap}
@@ -255,6 +255,9 @@ class Mapper(object):
                             index += 1
                             self._setattrbycolumn(obj, col, newid)
                         self.put(obj)
+                # TODO: if transaction fails, dirty reset and possibly
+                # new primary key set is invalid
+                # use unit of work ?
                 obj.dirty = False
                 for prop in self.props.values():
                     if not isinstance(prop, ColumnProperty):
@@ -320,17 +323,8 @@ class Mapper(object):
         else:
             instance = identitymap[identitykey]
 
-        # now add to the result list, but we only want to add 
-        # to the result list uniquely, so get another identity map
-        # that is associated with that list
-        try:
-            imap = localmap[id(result)]
-        except KeyError:
-            imap = localmap.setdefault(id(result), {})
-        isduplicate = imap.has_key(identitykey)
-        if not isduplicate:
-            imap[identitykey] = instance
-            result.append(instance)
+        isduplicate = result.has_item(instance)
+        result.append_nohistory(instance)
 
         # call further mapper properties on the row, to pull further 
         # instances from the row and possibly populate this item.
@@ -386,7 +380,7 @@ class ColumnProperty(MapperProperty):
     def getattr(self, object):
         return getattr(object, self.key, None)
     def setattr(self, object, value):
-        setattr(object, self.key, value)
+        clean_setattr(object, self.key, value)
     def hash_key(self):
         return "ColumnProperty(%s)" % repr([hash_key(c) for c in self.columns])
 
@@ -402,7 +396,7 @@ class ColumnProperty(MapperProperty):
     def execute(self, instance, row, identitykey, localmap, isduplicate):
         if not isduplicate:
             if self.use_smart:
-                instance.__dict__[self.key] = row[self.columns[0].label]
+                clean_setattr(instance, self.key, row[self.columns[0].label])
             else:
                 setattr(instance, self.key, row[self.columns[0].label])
 
@@ -445,11 +439,27 @@ class PropertyLoader(MapperProperty):
         # each row in the list
         if self.secondary is None:
             setter = ForeignKeySetter(self.parent, self.mapper, self.parent.table, self.target, obj)
-            for child in getattr(obj, self.key):
+            childlist = getattr(obj, self.key)
+            if not isinstance(childlist, util.HistoryArraySet):
+                childlist = util.HistoryArraySet(childlist)
+                clean_setattr(obj, self.key, childlist)
+            for child in childlist.added_items():
                 setter.child = child
                 self.primaryjoin.accept_visitor(setter)
+                child.dirty = True
+            for child in childlist.deleted_items():
+                setter.child = child
+                setter.clearkeys = True
+                self.primaryjoin.accept_visitor(setter)
+                child.dirty = True
                 self.mapper.save(child)
+            for child in childlist:
+                self.mapper.save(child)
+            # TODO: if transaction fails state is invalid
+            # use unit of work ?
+            childlist.clear_history()
         else:
+            raise "TODO"
             self.mapper.save(child)
             
             
@@ -478,7 +488,7 @@ class LazyLoader(PropertyLoader):
 
     def execute(self, instance, row, identitykey, localmap, isduplicate):
         if not isduplicate:
-            setattr(instance, self.key, LazyLoadInstance(self, row))
+            clean_setattr(instance, self.key, LazyLoadInstance(self, row))
 
 
 class LazyLoadInstance(object):
@@ -539,12 +549,12 @@ class EagerLoader(PropertyLoader):
         """receive a row.  tell our mapper to look for a new object instance in the row, and attach
         it to a list on the parent instance."""
         if not isduplicate:
-            list = []
-            setattr(instance, self.key, list)
+            result_list = util.HistoryArraySet()
+            clean_setattr(instance, self.key, result_list)
         else:
-            list = getattr(instance, self.key)
+            result_list = getattr(instance, self.key)
 
-        self.mapper._instance(row, localmap, list)
+        self.mapper._instance(row, localmap, result_list)
 
 class LazyRow(MapperProperty):
     """TODO: this will lazy-load additional properties of an object from a secondary table."""
@@ -611,14 +621,21 @@ class ForeignKeySetter(sql.ClauseVisitor):
         self.primarytable = primarytable
         self.secondarytable = secondarytable
         self.obj = obj
+        self.clearkeys = False
         self.child = None
 
     def visit_binary(self, binary):
         if binary.operator == '=':
             if binary.left.table == self.primarytable and binary.right.table == self.secondarytable:
-                self.childmapper._setattrbycolumn(self.child, binary.right, self.parentmapper._getattrbycolumn(self.obj, binary.left))
+                if self.clearkeys:
+                    self.childmapper._setattrbycolumn(self.child, binary.right, None)
+                else:
+                    self.childmapper._setattrbycolumn(self.child, binary.right, self.parentmapper._getattrbycolumn(self.obj, binary.left))
             elif binary.right.table == self.primarytable and binary.left.table == self.secondarytable:
-                self.childmapper._setattrbycolumn(self.child, binary.left, self.parentmapper._getattrbycolumn(self.obj, binary.right))
+                if self.clearkeys:
+                    self.childmapper._setattrbycolumn(self.child, binary.left, None)
+                else:
+                    self.childmapper._setattrbycolumn(self.child, binary.left, self.parentmapper._getattrbycolumn(self.obj, binary.right))
 
 class LazyIzer(sql.ClauseVisitor):
     """converts an expression which refers to a table column into an
@@ -664,7 +681,10 @@ class SmartProperty(object):
         return property(get_prop, set_prop, del_prop)
 
 identity_map = util.ScopedRegistry(lambda: {})
-            
+  
+def clean_setattr(object, key, value):
+    object.__dict__[key] = value
+          
 def get_id_key(ident, class_, table, selectable):
     return (class_, table, tuple(ident))
 def get_instance_key(object, class_, table, selectable):
