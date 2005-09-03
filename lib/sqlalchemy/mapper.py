@@ -112,6 +112,8 @@ class Mapper(object):
                 self.props[key] = prop
                 if isinstance(prop, ColumnProperty):
                     for col in prop.columns:
+                        if col.original is not None:
+                            col = col.original
                         proplist = self.columntoproperty.setdefault(col, [])
                         proplist.append(prop)
 
@@ -130,8 +132,10 @@ class Mapper(object):
             else:
                 continue
         
-            # its a ColumnProperty - match the columns
+            # its a ColumnProperty - match the ultimate table columns
             # back to the property
+            if column.original is not None:
+                column = column.original
             proplist = self.columntoproperty.setdefault(column, [])
             proplist.append(prop)
 
@@ -473,7 +477,7 @@ class PropertyLoader(MapperProperty):
         # if a mapping table exists, determine the two foreign key columns 
         # in the mapping table, set the two values, and insert that row, for
         # each row in the list
-        setter = ForeignKeySetter(self.parenttable, self.target, obj)
+        setter = ForeignKeySetter(self.mapper, self.parenttable, self.target, obj)
         for child in getattr(obj, self.key):
             setter.child = child
             self.primaryjoin.accept_visitor(setter)
@@ -484,19 +488,19 @@ class PropertyLoader(MapperProperty):
         self.mapper.delete()
 
 class ForeignKeySetter(sql.ClauseVisitor):
-    def __init__(self, primarytable, secondarytable, obj):
-        self.child = None
+    def __init__(self, mapper, primarytable, secondarytable, obj):
+        self.mapper = mapper
         self.obj = obj
         self.primarytable = primarytable
         self.secondarytable = secondarytable
+        self.child = None
 
     def visit_binary(self, binary):
         if binary.operator == '=':
-            # TODO: gotta use ColumnProperties to get/set these fields
             if binary.left.table == self.primarytable and binary.right.table == self.secondarytable:
-                setattr(self.child, binary.left.key, getattr(self.obj, binary.right.key))
+                setattr(self.child, binary.left.key, self.mapper._getattrbycolumn(self.obj, binary.right))
             elif binary.right.table == self.primarytable and binary.left.table == self.secondarytable:
-                setattr(self.child, binary.right.key, getattr(self.obj, binary.left.key))
+                setattr(self.child, binary.right.key, self.mapper._getattrbycolumn(self.obj, binary.left))
 
 class LazyLoader(PropertyLoader):
 
