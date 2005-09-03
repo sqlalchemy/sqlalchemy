@@ -144,8 +144,12 @@ class EagerTest(PersistTest):
 
     def testbasic(self):
         """tests a basic one-to-many eager load"""
+        
+        m = mapper(Address, addresses)
+        
         m = mapper(User, users, properties = dict(
-            addresses = relation(Address, addresses, lazy = False),
+            #addresses = relation(Address, addresses, lazy = False),
+            addresses = relation(m, lazy = False),
         ), echo = True)
         l = m.select()
         print repr(l)
@@ -189,7 +193,7 @@ class EagerTest(PersistTest):
         m = mapper(User, users, properties = dict(
             orders_open = relation(Order, openorders, primaryjoin = and_(openorders.c.isopen == 1, users.c.user_id==openorders.c.user_id), lazy = False),
             orders_closed = relation(Order, closedorders, primaryjoin = and_(closedorders.c.isopen == 0, users.c.user_id==closedorders.c.user_id), lazy = False)
-        ), identitymap = identitymap())
+        ), identitymap = identitymap(), echo = True)
         l = m.select()
         print repr(l)
 
@@ -203,7 +207,7 @@ class EagerTest(PersistTest):
         m = mapper(User, users, properties = dict(
             addresses = relation(Address, addresses, lazy = False),
             orders = relation(ordermapper, primaryjoin = users.c.user_id==orders.c.user_id, lazy = False),
-        ))
+        ), echo = True)
         l = m.select()
         print repr(l)
     
@@ -222,13 +226,17 @@ class EagerTest(PersistTest):
     def testoneandmany(self):
         items = orderitems
 
-        m = mapper(Item, items, properties = dict(
+        m = mapper(Item, items, 
+        properties = dict(
                 keywords = relation(Keyword, keywords, itemkeywords, lazy = False),
-            ))
+            ), 
+        echo = True)
+
         m = mapper(Order, orders, properties = dict(
                 items = relation(m, lazy = False)
             ), echo = True)
         l = m.select("orders.order_id in (1,2,3)")
+        #l = m.select()
         print repr(l)
 
 class SaveTest(PersistTest):
@@ -292,6 +300,9 @@ class SaveTest(PersistTest):
         self.assert_(usertable[0].row == (u.foo_id, 'imnew'))
         addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(u.address_id)).execute()).fetchall()
         self.assert_(addresstable[0].row == (u.address_id, u.foo_id, 'lala@hey.com'))
+
+        u = m.select(users.c.user_id==u.foo_id)[0]
+        print repr(u.__dict__)
 
     def testonetomany(self):
         m = mapper(User, users, properties = dict(
