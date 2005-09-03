@@ -111,8 +111,10 @@ class Column(SchemaItem):
         self.key = key or name
         self.primary_key = primary_key
         self._items = args
-        self.original = None
+        self._orig = None
         
+    original = property(lambda s: s._orig or s)
+    
     def _set_parent(self, table):
         table.columns[self.key] = self
         if self.primary_key:
@@ -133,7 +135,7 @@ class Column(SchemaItem):
         c = Column(name or self.name, self.type, key = name or self.key, primary_key = self.primary_key)
         c.table = selectable
         c.engine = self.engine
-        c.original = self.original or self
+        c._orig = self.original
         c._items = self._items
         selectable.columns[c.key] = c
         c._impl = self.engine.columnimpl(c)
