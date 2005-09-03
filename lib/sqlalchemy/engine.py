@@ -126,7 +126,6 @@ class SQLEngine(schema.SchemaEngine):
             self.rollback()
             raise
         self.commit()
-
         
     def begin(self):
         if getattr(self.context, 'transaction', None) is None:

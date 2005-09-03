@@ -16,7 +16,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 __ALL__ = ['OrderedProperties', 'OrderedDict']
-import thread
+import thread, weakref
 
 class OrderedProperties(object):
 
@@ -120,3 +120,40 @@ class Set(object):
         
     def __getitem__(self, key):
         return self.map[key]
+        
+        
+class ScopedRegistry(object):
+    def __init__(self, createfunc):
+        self.createfunc = createfunc
+        self.application = createfunc()
+        self.threadlocal = {}
+        self.scopes = {
+                    'application' : {'call' : self._call_application, 'clear' : self._clear_application}, 
+                    'thread' : {'call' : self._call_thread, 'clear':self._clear_thread}
+                    }
+
+    def __call__(self, scope):
+        return self.scopes[scope]['call']()
+
+    def clear(self, scope):
+        return self.scopes[scope]['clear']()
+        
+    def _call_thread(self):
+        try:
+            return self.threadlocal[thread.get_ident()]
+        except KeyError:
+            return self.threadlocal.setdefault(thread.get_ident(), self.createfunc())
+
+    def _clear_thread(self):
+        try:
+            del self.threadlocal[thread.get_ident()]
+        except KeyError:
+            pass
+
+    def _call_application(self):
+        return self.application
+
+    def _clear_application(self):
+        self.application = createfunc()
+                
+            
