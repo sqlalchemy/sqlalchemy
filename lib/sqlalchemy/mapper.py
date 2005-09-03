@@ -342,7 +342,7 @@ class Mapper(object):
         exists = self.identitymap.has_key(identitykey)
         if not exists:
             instance = self.class_()
-            for column in self.table.primary_keys:
+            for column in self.selectable.primary_keys:
                 if row[column.label] is None:
                     return None
             self.identitymap[identitykey] = instance
@@ -559,6 +559,10 @@ class EagerLoader(PropertyLoader):
     """loads related objects inline with a parent query."""
     def init(self, key, parent, root):
         PropertyLoader.init(self, key, parent, root)
+        
+        # figure out tables in the various join clauses we have, because user-defined
+        # whereclauses that reference the same tables will be converted to use
+        # aliases of those tables
         self.to_alias = util.Set()
         [self.to_alias.append(f) for f in self.primaryjoin._get_from_objects()]
         if self.secondaryjoin is not None:
@@ -569,14 +573,12 @@ class EagerLoader(PropertyLoader):
         """add a left outer join to the statement thats being constructed"""
 
         if statement.whereclause is not None:
-            # if the whereclause of the statement references tables that are also
-            # in the outer join we are constructing, then convert those objects to 
-            # reference "aliases" of those tables so that their where condition does not interfere
-            # with ours
-            for target in self.to_alias:
-                aliasizer = Aliasizer(target, "aliased_" + target.name + "_" + hex(random.randint(0, 65535))[2:])
-                statement.whereclause.accept_visitor(aliasizer)
-                statement.append_from(aliasizer.alias)
+            # "aliasize" the tables referenced in the user-defined whereclause to not 
+            # collide with the tables used by the eager load
+            aliasizer = Aliasizer(*self.to_alias)
+            statement.whereclause.accept_visitor(aliasizer)
+            for alias in aliasizer.aliases.values():
+                statement.append_from(alias)
 
         if hasattr(statement, '_outerjoin'):
             towrap = statement._outerjoin
@@ -623,16 +625,28 @@ class EagerLazySwitcher(MapperOption):
 
 class Aliasizer(sql.ClauseVisitor):
     """converts a table instance within an expression to be an alias of that table."""
-    def __init__(self, table, aliasname):
-        self.table = table
-        self.alias = sql.alias(table, aliasname)
+    def __init__(self, *tables):
+        self.tables = {}
+        for t in tables:
+            self.tables[t] = t
         self.binary = None
-
+        self.match = False
+        self.aliases = {}
+        
+    def get_alias(self, table):
+        try:
+            return self.aliases[table]
+        except:
+            aliasname = table.name + "_" + hex(random.randint(0, 65535))[2:]
+            return self.aliases.setdefault(table, sql.alias(table, aliasname))
+            
     def visit_binary(self, binary):
-        if isinstance(binary.left, schema.Column) and binary.left.table == self.table:
-            binary.left = self.alias.c[binary.left.name]
-        if isinstance(binary.right, schema.Column) and binary.right.table == self.table:
-            binary.right = self.alias.c[binary.right.name]
+        if isinstance(binary.left, schema.Column) and self.tables.has_key(binary.left.table):
+            binary.left = self.get_alias(binary.left.table).c[binary.left.name]
+            self.match = True
+        if isinstance(binary.right, schema.Column) and self.tables.has_key(binary.right.table):
+            binary.right = self.get_alias(binary.right.table).c[binary.right.name]
+            self.match = True
 
 class LazyRow(MapperProperty):
     """TODO: this will lazy-load additional properties of an object from a secondary table."""
@@ -670,9 +684,9 @@ class IdentityMap(dict):
     def get_id_key(self, ident, class_, table, selectable):
         return (class_, table, tuple(ident))
     def get_instance_key(self, object, class_, table, selectable):
-        return (class_, table, tuple([getattr(object, column.key, None) for column in table.primary_keys]))
+        return (class_, table, tuple([getattr(object, column.key, None) for column in selectable.primary_keys]))
     def get_key(self, row, class_, table, selectable):
-        return (class_, table, tuple([row[column.label] for column in table.primary_keys]))
+        return (class_, table, tuple([row[column.label] for column in selectable.primary_keys]))
     def hash_key(self):
         return "IdentityMap(%s)" % id(self)
 
