@@ -1,5 +1,6 @@
 from testbase import PersistTest
 import unittest, sys, os
+from sqlalchemy.mapper import *
 
 execfile("test/tables.py")
 
@@ -232,7 +233,7 @@ class EagerTest(PersistTest):
 
 class SaveTest(PersistTest):
 
-    def testsave(self):
+    def testbasic(self):
         # save two users
         u = User()
         u.user_name = 'savetester'
@@ -263,7 +264,7 @@ class SaveTest(PersistTest):
         self.assert_(u.user_id == userlist[0].user_id and userlist[0].user_name == 'modifiedname')
         self.assert_(u2.user_id == userlist[1].user_id and userlist[1].user_name == 'savetester2')
 
-    def testsavemultitable(self):
+    def testmultitable(self):
         """tests a save of an object where each instance spans two tables. also tests
         redefinition of the keynames for the column properties."""
         usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
@@ -286,7 +287,7 @@ class SaveTest(PersistTest):
         addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(u.address_id)).execute()).fetchall()
         self.assert_(addresstable[0].row == (u.address_id, u.user_id, 'lala@hey.com'))
 
-    def testsaveonetomany(self):
+    def testonetomany(self):
         m = mapper(User, users, properties = dict(
             addresses = relation(Address, addresses, lazy = True)
         ), echo = True)
