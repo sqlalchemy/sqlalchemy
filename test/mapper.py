@@ -352,5 +352,29 @@ class SaveTest(PersistTest):
         u2 = m.select(ualias.c.user_id == u.user_id)[0]
         self.assert_(u2 is u)
 
+    def testremove(self):
+        m = mapper(User, users, properties = dict(
+            addresses = relation(Address, addresses, lazy = True)
+        ), echo = True)
+        u = User()
+        u.user_name = 'one2manytester'
+        u.addresses = []
+        a = Address()
+        a.email_address = 'one2many@test.org'
+        u.addresses.append(a)
+        a2 = Address()
+        a2.email_address = 'lala@test.org'
+        u.addresses.append(a2)
+        m.save(u)
+        addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id)).execute()).fetchall()
+        print repr(addresstable[0].row)
+        self.assert_(addresstable[0].row == (a.address_id, u.user_id, 'one2many@test.org'))
+        self.assert_(addresstable[1].row == (a2.address_id, u.user_id, 'lala@test.org'))
+        del u.addresses[1]
+        m.save(u)
+        addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id)).execute()).fetchall()
+        self.assert_(addresstable[0].row == (a.address_id, u.user_id, 'one2many@test.org'))
+        self.assert_(addresstable[1].row == (a2.address_id, None, 'lala@test.org'))
+        
 if __name__ == "__main__":
     unittest.main()
