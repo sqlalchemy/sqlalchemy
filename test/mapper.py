@@ -305,6 +305,7 @@ class SaveTest(PersistTest):
         print repr(u.__dict__)
 
     def testonetomany(self):
+        """test basic save of one to many."""
         m = mapper(User, users, properties = dict(
             addresses = relation(Address, addresses, lazy = True)
         ), echo = True)
@@ -324,11 +325,26 @@ class SaveTest(PersistTest):
         self.assert_(addresstable[0].row == (a.address_id, u.user_id, 'one2many@test.org'))
         self.assert_(addresstable[1].row == (a2.address_id, u.user_id, 'lala@test.org'))
 
+        userid = u.user_id
+        addressid = a2.address_id
+        
         a2.email_address = 'somethingnew@foo.com'
         m.save(u)
-        addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id == a2.address_id).execute()).fetchall()
-        self.assert_(addresstable[0].row == (a2.address_id, u.user_id, 'somethingnew@foo.com'))
+        addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id == addressid).execute()).fetchall()
+        self.assert_(addresstable[0].row == (addressid, userid, 'somethingnew@foo.com'))
+        self.assert_(u.user_id == userid and a2.address_id == addressid)
 
+    def testalias(self):
+        """tests that an alias of a table can be used in a mapper. 
+        the mapper has to locate the original table and columns to keep it all straight."""
+        ualias = Alias(users, 'ualias')
+        m = mapper(User, ualias, echo = True)
+        u = User()
+        u.user_name = 'testalias'
+        m.save(u)
+        
+        u2 = m.select(ualias.c.user_id == u.user_id)[0]
+        self.assert_(u2 is u)
 
 if __name__ == "__main__":
     unittest.main()
