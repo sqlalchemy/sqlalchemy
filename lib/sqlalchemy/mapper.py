@@ -112,15 +112,13 @@ class Mapper(object):
                 self.props[key] = prop
                 if isinstance(prop, ColumnProperty):
                     for col in prop.columns:
-                        if col.original is not None:
-                            col = col.original
-                        proplist = self.columntoproperty.setdefault(col, [])
+                        proplist = self.columntoproperty.setdefault(col.original, [])
                         proplist.append(prop)
 
         # load properties from the main Selectable object,
         # not overriding those set up in the 'properties' argument
         for column in self.selectable.columns:
-            if self.columntoproperty.has_key(column):
+            if self.columntoproperty.has_key(column.original):
                 continue
                 
             prop = self.props.get(column.key, None)
@@ -134,9 +132,7 @@ class Mapper(object):
         
             # its a ColumnProperty - match the ultimate table columns
             # back to the property
-            if column.original is not None:
-                column = column.original
-            proplist = self.columntoproperty.setdefault(column, [])
+            proplist = self.columntoproperty.setdefault(column.original, [])
             proplist.append(prop)
 
 
