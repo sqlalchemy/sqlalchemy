@@ -54,7 +54,8 @@ class AssertMixin(PersistTest):
 class MapperTest(AssertMixin):
     
     def setUp(self):
-        globalidentity().clear()
+        pass
+        #globalidentity().clear()
 
     def testget(self):
         m = mapper(User, users, echo = True)
@@ -103,7 +104,8 @@ class MapperTest(AssertMixin):
     
 class LazyTest(AssertMixin):
     def setUp(self):
-        globalidentity().clear()
+        #globalidentity().clear()
+        pass
 
     def testbasic(self):
         """tests a basic one-to-many lazy load"""
@@ -140,7 +142,8 @@ class LazyTest(AssertMixin):
 class EagerTest(PersistTest):
     
     def setUp(self):
-        globalidentity().clear()
+        #globalidentity().clear()
+        pass
 
     def testbasic(self):
         """tests a basic one-to-many eager load"""
@@ -181,7 +184,7 @@ class EagerTest(PersistTest):
         m = mapper(User, users, properties = dict(
             addresses = relation(Address, addresses, primaryjoin = users.c.user_id==addresses.c.user_id, lazy = False),
             orders = relation(Order, orders, lazy = False),
-        ), identitymap = identitymap())
+        ))
         l = m.select()
         print repr(l)
 
@@ -193,7 +196,7 @@ class EagerTest(PersistTest):
         m = mapper(User, users, properties = dict(
             orders_open = relation(Order, openorders, primaryjoin = and_(openorders.c.isopen == 1, users.c.user_id==openorders.c.user_id), lazy = False),
             orders_closed = relation(Order, closedorders, primaryjoin = and_(closedorders.c.isopen == 0, users.c.user_id==closedorders.c.user_id), lazy = False)
-        ), identitymap = identitymap(), echo = True)
+        ), echo = True)
         l = m.select()
         print repr(l)
 
