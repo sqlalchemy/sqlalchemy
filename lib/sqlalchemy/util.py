@@ -157,6 +157,8 @@ class HistoryArraySet(UserList.UserList):
         return [key for key, value in self.records.iteritems() if value is True]
     def deleted_items(self):
         return [key for key, value in self.records.iteritems() if value is False]
+    def unchanged_items(self):
+        return [key for key, value in self.records.iteritems() if value is None]
     def append_nohistory(self, item):
         if not self.records.has_key(item):
             self.records[item] = None

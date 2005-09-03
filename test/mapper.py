@@ -375,6 +375,32 @@ class SaveTest(PersistTest):
         addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id)).execute()).fetchall()
         self.assert_(addresstable[0].row == (a.address_id, u.user_id, 'one2many@test.org'))
         self.assert_(addresstable[1].row == (a2.address_id, None, 'lala@test.org'))
-        
+
+    def testmanytomany(self):
+        items = orderitems
+
+        m = mapper(Item, items, properties = dict(
+                keywords = relation(Keyword, keywords, itemkeywords, lazy = False),
+            ), echo = True)
+
+        keywordmapper = mapper(Keyword, keywords)
+
+        item = Item()
+        item.item_name = 'item1'
+        item.keywords = []
+        k = Keyword()
+        k.name = 'purple'
+        item.keywords.append(k)
+        klist = keywordmapper.select(keywords.c.name.in_('blue', 'big', 'round'))
+        for k in klist:
+            item.keywords.append(k)
+        m.save(item)
+        print repr(m.select(items.c.item_id == item.item_id))
+
+        del item.keywords[2]
+        del item.keywords[2]
+        m.save(item)
+        print repr(m.select(items.c.item_id == item.item_id))
+
 if __name__ == "__main__":
     unittest.main()
