@@ -268,24 +268,30 @@ class SaveTest(PersistTest):
         """tests a save of an object where each instance spans two tables. also tests
         redefinition of the keynames for the column properties."""
         usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
-        m = mapper(User, usersaddresses, table = users, echo = True, properties = dict(email = ColumnProperty(addresses.c.email_address), foo_id = ColumnProperty(users.c.user_id, addresses.c.user_id)))
+        m = mapper(User, usersaddresses, table = users, echo = True, 
+            properties = dict(
+                email = ColumnProperty(addresses.c.email_address), 
+                foo_id = ColumnProperty(users.c.user_id, addresses.c.user_id)
+                )
+            )
+            
         u = User()
         u.user_name = 'multitester'
         u.email = 'multi@test.org'
         m.save(u)
 
-        usertable = engine.ResultProxy(users.select(users.c.user_id.in_(10)).execute()).fetchall()
-        self.assert_(usertable[0].row == (10, 'multitester'))
+        usertable = engine.ResultProxy(users.select(users.c.user_id.in_(u.foo_id)).execute()).fetchall()
+        self.assert_(usertable[0].row == (u.foo_id, 'multitester'))
         addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(4)).execute()).fetchall()
-        self.assert_(addresstable[0].row == (4, 10, 'multi@test.org'))
+        self.assert_(addresstable[0].row == (u.address_id, u.foo_id, 'multi@test.org'))
 
         u.email = 'lala@hey.com'
         u.user_name = 'imnew'
         m.save(u)
-        usertable = engine.ResultProxy(users.select(users.c.user_id.in_(u.user_id)).execute()).fetchall()
-        self.assert_(usertable[0].row == (u.user_id, 'imnew'))
+        usertable = engine.ResultProxy(users.select(users.c.user_id.in_(u.foo_id)).execute()).fetchall()
+        self.assert_(usertable[0].row == (u.foo_id, 'imnew'))
         addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(u.address_id)).execute()).fetchall()
-        self.assert_(addresstable[0].row == (u.address_id, u.user_id, 'lala@hey.com'))
+        self.assert_(addresstable[0].row == (u.address_id, u.foo_id, 'lala@hey.com'))
 
     def testonetomany(self):
         m = mapper(User, users, properties = dict(
