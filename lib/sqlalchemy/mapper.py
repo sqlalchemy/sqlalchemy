@@ -1,28 +1,19 @@
-"""
-usermapper = mapper(User, users)
-
-userlist = usermapper.select(usermapper.table.user_id == 10)
-
-userlist = usermapper.select(
-        and_(usermapper.table.user_name == 'fred', usermapper.table.user_id == 12)
-    )
-
-userlist = usermapper.select("user_id =12 and foo=bar", from_obj=["foo"])
-
-addressmapper = mapper(Address, addresses)
-
-usermapper = mapper(
-    User, 
-    users, 
-    properties = {
-        'addresses' : relation(addressmapper, users.c.user_id == addresses.c.user_id, lazy = False),
-        'permissions' : relation(Permissions, permissions, users.c.user_id == permissions.c.user_id, lazy = True)
-    },
-    )
-
-usermapper.select("user_id LIKE "%foo%")
-
-"""
+# mapper.py
+# Copyright (C) 2005 Michael Bayer mike_mp@zzzcomputing.com
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
@@ -30,12 +21,10 @@ import sqlalchemy.engine as engine
 import sqlalchemy.util as util
 import random, copy, types
 
-__ALL__ = ['eagermapper', 'eagerloader', 'lazymapper', 'lazyloader', 'eagerload', 'lazyload', 'mapper', 'lazyloader', 'lazymapper', 'globalidentity']
-
+__ALL__ = ['eagermapper', 'eagerloader', 'lazymapper', 'lazyloader', 'eagerload', 'lazyload', 'mapper', 'lazyloader', 'lazymapper', 'identity_map']
 
 def relation(*args, **params):
-    #multimethod poverty
-    if type(args[0]) == Mapper:
+    if isinstance(args[0], Mapper):
         return relation_loader(*args, **params)
     else:
         return relation_mapper(*args, **params)
@@ -57,7 +46,7 @@ def mapper(*args, **params):
         return _mappers[hashkey]
     except KeyError:
         return _mappers.setdefault(hashkey, Mapper(*args, **params))
-
+    
 def eagerload(name):
     return EagerLazySwitcher(name, toeager = True)
 
@@ -70,7 +59,7 @@ class Mapper(object):
         self.use_smart_properties = use_smart_properties
         self.scope = scope
         self.selectable = selectable
-        tf = Mapper.TableFinder()
+        tf = TableFinder()
         self.selectable.accept_visitor(tf)
         self.tables = tf.tables
 
@@ -161,6 +150,7 @@ class Mapper(object):
         return result
 
     identitymap = property(lambda self: identity_map(self.scope))
+    
     def get(self, *ident):
         """returns an instance of the object based on the given identifier, or None
         if not found.  The *ident argument is a 
@@ -281,7 +271,6 @@ class Mapper(object):
         """removes the object.  traverse indicates attached objects should be removed as well."""
         pass
 
-
     def delete(self, obj):
         """deletes the object's row from its table unconditionally. this is a lower-level
         operation than remove."""
@@ -290,13 +279,6 @@ class Mapper(object):
         # remove primary keys
         # unset dirty flag
         pass
-
-    class TableFinder(sql.ClauseVisitor):
-        def __init__(self):
-            self.tables = []
-        def visit_table(self, table):
-            self.tables.append(table)
-
 
     def _compile(self, whereclause = None, **options):
         statement = sql.select([self.selectable], whereclause)
@@ -443,7 +425,7 @@ class PropertyLoader(MapperProperty):
     def init(self, key, parent, root):
         self.key = key
         self.mapper.init(root)
-        self.parenttable = parent.selectable
+        self.parent = parent
         if self.secondary is not None:
             if self.secondaryjoin is None:
                 self.secondaryjoin = match_primaries(self.target, self.secondary)
@@ -461,30 +443,19 @@ class PropertyLoader(MapperProperty):
         # if a mapping table exists, determine the two foreign key columns 
         # in the mapping table, set the two values, and insert that row, for
         # each row in the list
-        setter = ForeignKeySetter(self.mapper, self.parenttable, self.target, obj)
-        for child in getattr(obj, self.key):
-            setter.child = child
-            self.primaryjoin.accept_visitor(setter)
+        if self.secondary is None:
+            setter = ForeignKeySetter(self.parent, self.mapper, self.parent.table, self.target, obj)
+            for child in getattr(obj, self.key):
+                setter.child = child
+                self.primaryjoin.accept_visitor(setter)
+                self.mapper.save(child)
+        else:
             self.mapper.save(child)
-        #pass
-
+            
+            
     def delete(self):
         self.mapper.delete()
 
-class ForeignKeySetter(sql.ClauseVisitor):
-    def __init__(self, mapper, primarytable, secondarytable, obj):
-        self.mapper = mapper
-        self.obj = obj
-        self.primarytable = primarytable
-        self.secondarytable = secondarytable
-        self.child = None
-
-    def visit_binary(self, binary):
-        if binary.operator == '=':
-            if binary.left.table == self.primarytable and binary.right.table == self.secondarytable:
-                setattr(self.child, binary.left.key, self.mapper._getattrbycolumn(self.obj, binary.right))
-            elif binary.right.table == self.primarytable and binary.left.table == self.secondarytable:
-                setattr(self.child, binary.right.key, self.mapper._getattrbycolumn(self.obj, binary.left))
 
 class LazyLoader(PropertyLoader):
 
@@ -509,25 +480,6 @@ class LazyLoader(PropertyLoader):
         if not isduplicate:
             setattr(instance, self.key, LazyLoadInstance(self, row))
 
-class LazyIzer(sql.ClauseVisitor):
-    """converts an expression which refers to a table column into an
-    expression refers to a Bind Param, i.e. a specific value.  
-    e.g. the clause 'WHERE tablea.foo=tableb.foo' becomes 'WHERE tablea.foo=:foo'.  
-    this is used to turn a join expression into one useable by a lazy load
-    for a specific parent row."""
-
-    def __init__(self, table):
-        self.table = table
-        self.binds = {}
-
-    def visit_binary(self, binary):
-        if isinstance(binary.left, schema.Column) and binary.left.table == self.table:
-            binary.left = self.binds.setdefault(self.table.name + "_" + binary.left.name,
-                    sql.BindParamClause(self.table.name + "_" + binary.left.name, None, shortname = binary.left.name))
-
-        if isinstance(binary.right, schema.Column) and binary.right.table == self.table:
-            binary.right = self.binds.setdefault(self.table.name + "_" + binary.right.name,
-                    sql.BindParamClause(self.table.name + "_" + binary.right.name, None, shortname = binary.right.name))
 
 class LazyLoadInstance(object):
     """attached to a specific object instance to load related rows."""
@@ -594,6 +546,16 @@ class EagerLoader(PropertyLoader):
 
         self.mapper._instance(row, localmap, list)
 
+class LazyRow(MapperProperty):
+    """TODO: this will lazy-load additional properties of an object from a secondary table."""
+    def __init__(self, table, whereclause, **options):
+        self.table = table
+        self.whereclause = whereclause
+    def init(self, key, parent, root):
+        self.keys.append(key)
+    def execute(self, instance, row, identitykey, localmap, isduplicate):
+        pass
+
 class EagerLazySwitcher(MapperOption):
     """an option that switches a PropertyLoader to be an EagerLoader"""
     def __init__(self, key, toeager = True):
@@ -636,15 +598,48 @@ class Aliasizer(sql.ClauseVisitor):
             binary.right = self.get_alias(binary.right.table).c[binary.right.name]
             self.match = True
 
-class LazyRow(MapperProperty):
-    """TODO: this will lazy-load additional properties of an object from a secondary table."""
-    def __init__(self, table, whereclause, **options):
+class TableFinder(sql.ClauseVisitor):
+    def __init__(self):
+        self.tables = []
+    def visit_table(self, table):
+        self.tables.append(table)
+
+class ForeignKeySetter(sql.ClauseVisitor):
+    def __init__(self, parentmapper, childmapper, primarytable, secondarytable, obj):
+        self.parentmapper = parentmapper
+        self.childmapper = childmapper
+        self.primarytable = primarytable
+        self.secondarytable = secondarytable
+        self.obj = obj
+        self.child = None
+
+    def visit_binary(self, binary):
+        if binary.operator == '=':
+            if binary.left.table == self.primarytable and binary.right.table == self.secondarytable:
+                self.childmapper._setattrbycolumn(self.child, binary.right, self.parentmapper._getattrbycolumn(self.obj, binary.left))
+            elif binary.right.table == self.primarytable and binary.left.table == self.secondarytable:
+                self.childmapper._setattrbycolumn(self.child, binary.left, self.parentmapper._getattrbycolumn(self.obj, binary.right))
+
+class LazyIzer(sql.ClauseVisitor):
+    """converts an expression which refers to a table column into an
+    expression refers to a Bind Param, i.e. a specific value.  
+    e.g. the clause 'WHERE tablea.foo=tableb.foo' becomes 'WHERE tablea.foo=:foo'.  
+    this is used to turn a join expression into one useable by a lazy load
+    for a specific parent row."""
+
+    def __init__(self, table):
         self.table = table
-        self.whereclause = whereclause
-    def init(self, key, parent, root):
-        self.keys.append(key)
-    def execute(self, instance, row, identitykey, localmap, isduplicate):
-        pass
+        self.binds = {}
+
+    def visit_binary(self, binary):
+        if isinstance(binary.left, schema.Column) and binary.left.table == self.table:
+            binary.left = self.binds.setdefault(self.table.name + "_" + binary.left.name,
+                    sql.BindParamClause(self.table.name + "_" + binary.left.name, None, shortname = binary.left.name))
+
+        if isinstance(binary.right, schema.Column) and binary.right.table == self.table:
+            binary.right = self.binds.setdefault(self.table.name + "_" + binary.right.name,
+                    sql.BindParamClause(self.table.name + "_" + binary.right.name, None, shortname = binary.right.name))
+
 
 
 class SmartProperty(object):
@@ -668,19 +663,8 @@ class SmartProperty(object):
             return s.__dict__[self.key]
         return property(get_prop, set_prop, del_prop)
 
-_application_ident = {}
-_tlocal_ident = util.ThreadLocal()
-
-def identity_map(scope):
-    if scope == 'thread':
-        try:
-            return _tlocal_ident.application_ident
-        except AttributeError:
-            _tlocal_ident.application_ident = {}
-            return _tlocal_ident.application_ident
-    elif scope == 'application':
-        return _application_ident
-        
+identity_map = util.ScopedRegistry(lambda: {})
+            
 def get_id_key(ident, class_, table, selectable):
     return (class_, table, tuple(ident))
 def get_instance_key(object, class_, table, selectable):
