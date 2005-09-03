@@ -30,7 +30,7 @@ import sqlalchemy.engine as engine
 import sqlalchemy.util as util
 import random, copy, types
 
-__ALL__ = ['eagermapper', 'eagerloader', 'lazymapper', 'lazyloader', 'eagerload', 'lazyload', 'mapper', 'lazyloader', 'lazymapper', 'identitymap', 'globalidentity']
+__ALL__ = ['eagermapper', 'eagerloader', 'lazymapper', 'lazyloader', 'eagerload', 'lazyload', 'mapper', 'lazyloader', 'lazymapper', 'globalidentity']
 
 
 def relation(*args, **params):
@@ -58,12 +58,6 @@ def mapper(*args, **params):
     except KeyError:
         return _mappers.setdefault(hashkey, Mapper(*args, **params))
 
-def identitymap():
-    return IdentityMap()
-
-def globalidentity():
-    return _global_identitymap
-
 def eagerload(name):
     return EagerLazySwitcher(name, toeager = True)
 
@@ -71,10 +65,10 @@ def lazyload(name):
     return EagerLazySwitcher(name, toeager = False)
 
 class Mapper(object):
-    def __init__(self, class_, selectable, table = None, properties = None, identitymap = None, use_smart_properties = True, isroot = True, echo = None):
+    def __init__(self, class_, selectable, table = None, scope = "thread", properties = None, use_smart_properties = True, isroot = True, echo = None):
         self.class_ = class_
         self.use_smart_properties = use_smart_properties
-
+        self.scope = scope
         self.selectable = selectable
         tf = Mapper.TableFinder()
         self.selectable.accept_visitor(tf)
@@ -88,11 +82,6 @@ class Mapper(object):
             self.table = table
 
         self.echo = echo
-
-        if identitymap is not None:
-            self.identitymap = identitymap
-        else:
-            self.identitymap = _global_identitymap
 
         # object attribute names mapped to MapperProperty objects
         self.props = {}
@@ -145,7 +134,7 @@ class Mapper(object):
             self.selectable,
             self.table,
             self.properties,
-            self.identitymap,
+            self.scope,
             self.use_smart_properties,
             self.echo
         )
@@ -156,7 +145,6 @@ class Mapper(object):
 
     def init(self, root):
         self.root = root
-        self.identitymap = root.identitymap
         self.echo = self.root.echo
         [prop.init(key, self, root) for key, prop in self.props.iteritems()]
 
@@ -164,7 +152,7 @@ class Mapper(object):
         result = []
         cursor = engine.ResultProxy(cursor, echo = self.echo)
 
-        localmap = {}
+        localmap = {'identity' : self.identitymap}
         while True:
             row = cursor.fetchone()
             if row is None:
@@ -172,11 +160,12 @@ class Mapper(object):
             self._instance(row, localmap, result)
         return result
 
+    identitymap = property(lambda self: identity_map(self.scope))
     def get(self, *ident):
         """returns an instance of the object based on the given identifier, or None
         if not found.  The *ident argument is a 
         list of primary keys in the order of the table def's primary keys."""
-        key = self.identitymap.get_id_key(ident, self.class_, self.table, self.selectable)
+        key = get_id_key(ident, self.class_, self.table, self.selectable)
         try:
             return self.identitymap[key]
         except KeyError:
@@ -193,7 +182,7 @@ class Mapper(object):
                 return None
 
     def put(self, instance):
-        key = self.identitymap.get_instance_key(instance, self.class_, self.table, self.selectable)
+        key = get_instance_key(instance, self.class_, self.table, self.selectable)
         self.identitymap[key] = instance
         return key
 
@@ -276,9 +265,7 @@ class Mapper(object):
                             index += 1
                             self._setattrbycolumn(obj, col, newid)
                         self.put(obj)
-                # unset dirty flag, if the object defines one
-                if hasattr(obj, 'dirty'):
-                    obj.dirty = False
+                obj.dirty = False
                 for prop in self.props.values():
                     if not isinstance(prop, ColumnProperty):
                         prop.save(obj, traverse, refetch)
@@ -328,7 +315,7 @@ class Mapper(object):
         return self.instances(statement.execute(**params))
 
     def _identity_key(self, row):
-        return self.identitymap.get_key(row, self.class_, self.table, self.selectable)
+        return get_key(row, self.class_, self.table, self.selectable)
 
     def _instance(self, row, localmap, result):
         """pulls an object instance from the given row and appends it to the given result list.
@@ -338,17 +325,18 @@ class Mapper(object):
 
         # create the instance if its not in the identity map,
         # else retrieve it
+        identitymap = localmap['identity']
         identitykey = self._identity_key(row)
-        exists = self.identitymap.has_key(identitykey)
+        exists = identitymap.has_key(identitykey)
         if not exists:
             instance = self.class_()
+            instance.dirty = False
             for column in self.selectable.primary_keys:
                 if row[column.label] is None:
                     return None
-            self.identitymap[identitykey] = instance
+            identitymap[identitykey] = instance
         else:
-            instance = self.identitymap[identitykey]
-        instance.dirty = False
+            instance = identitymap[identitykey]
 
         # now add to the result list, but we only want to add 
         # to the result list uniquely, so get another identity map
@@ -356,7 +344,7 @@ class Mapper(object):
         try:
             imap = localmap[id(result)]
         except KeyError:
-            imap = localmap.setdefault(id(result), IdentityMap())
+            imap = localmap.setdefault(id(result), {})
         isduplicate = imap.has_key(identitykey)
         if not isduplicate:
             imap[identitykey] = instance
@@ -680,16 +668,25 @@ class SmartProperty(object):
             return s.__dict__[self.key]
         return property(get_prop, set_prop, del_prop)
 
-class IdentityMap(dict):
-    def get_id_key(self, ident, class_, table, selectable):
-        return (class_, table, tuple(ident))
-    def get_instance_key(self, object, class_, table, selectable):
-        return (class_, table, tuple([getattr(object, column.key, None) for column in selectable.primary_keys]))
-    def get_key(self, row, class_, table, selectable):
-        return (class_, table, tuple([row[column.label] for column in selectable.primary_keys]))
-    def hash_key(self):
-        return "IdentityMap(%s)" % id(self)
+_application_ident = {}
+_tlocal_ident = util.ThreadLocal()
 
+def identity_map(scope):
+    if scope == 'thread':
+        try:
+            return _tlocal_ident.application_ident
+        except AttributeError:
+            _tlocal_ident.application_ident = {}
+            return _tlocal_ident.application_ident
+    elif scope == 'application':
+        return _application_ident
+        
+def get_id_key(ident, class_, table, selectable):
+    return (class_, table, tuple(ident))
+def get_instance_key(object, class_, table, selectable):
+    return (class_, table, tuple([getattr(object, column.key, None) for column in selectable.primary_keys]))
+def get_key(row, class_, table, selectable):
+    return (class_, table, tuple([row[column.label] for column in selectable.primary_keys]))
 
 def hash_key(obj):
     if obj is None:
@@ -697,16 +694,16 @@ def hash_key(obj):
     else:
         return obj.hash_key()
 
-def mapper_hash_key(class_, selectable, table = None, properties = None, identitymap = None, use_smart_properties = True, isroot = True, echo = None):
+def mapper_hash_key(class_, selectable, table = None, properties = None, scope = "thread", use_smart_properties = True, isroot = True, echo = None):
     if properties is None:
         properties = {}
     return (
-        "Mapper(%s, %s, table=%s, properties=%s, identitymap=%s, use_smart_properties=%s, echo=%s)" % (
+        "Mapper(%s, %s, table=%s, properties=%s, scope=%s, use_smart_properties=%s, echo=%s)" % (
             repr(class_),
             hash_key(selectable),
             hash_key(table),
             repr(dict([(k, hash_key(p)) for k,p in properties.iteritems()])),
-            hash_key(identitymap),
+            scope,
             repr(use_smart_properties),
             repr(echo)
 
@@ -721,5 +718,4 @@ def match_primaries(primary, secondary):
         return sql.and_([pk == secondary.c[pk.name] for pk in primary.primary_keys])
 
 
-_global_identitymap = IdentityMap()
 
