@@ -108,22 +108,35 @@ class HashSet(object):
         if iter is not None:
             for i in iter:
                 self.append(i)
-
     def __iter__(self):
         return iter(self.map.values())
-        
     def append(self, item):
         self.map[item] = item
-        
     def __delitem__(self, key):
         del self.map[key]
-        
     def __getitem__(self, key):
         return self.map[key]
         
 class HistoryAwareArraySet(object):
     def __init__(self):
         self.elements = []
+        self.data = {}
+    def __len__(self):
+        return len(self.elements)
+    def append(self, item):
+        if not hasattr(self.data, value):
+            self.data[value] = ['True', value]
+            self.elements.append(value)
+    def __setitem__(self, key, value):
+        if not hasattr(self.data, value):
+            self.data[value] = ['True', value]
+            self.elements[key] = value
+    def __getitem__(self, key):
+        return self.elements[key]
+    def __delitem__(self, key):
+        pass
+    def __iter__(self):
+        return iter(self.map.values())
         
 class ScopedRegistry(object):
     def __init__(self, createfunc):
