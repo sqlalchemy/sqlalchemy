@@ -102,7 +102,7 @@ class ThreadLocal(object):
         object.__getattribute__(self, 'tdict')["%d_%s" % (thread.get_ident(), key)] = value
         
 
-class Set(object):
+class HashSet(object):
     def __init__(self, iter = None):
         self.map  = {}
         if iter is not None:
@@ -121,6 +121,9 @@ class Set(object):
     def __getitem__(self, key):
         return self.map[key]
         
+class HistoryAwareArraySet(object):
+    def __init__(self):
+        self.elements = []
         
 class ScopedRegistry(object):
     def __init__(self, createfunc):

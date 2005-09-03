@@ -104,7 +104,7 @@ class SQLEngine(schema.SchemaEngine):
         clearly, this approach only goes so far, such as if database A commits, then database B commits
         and fails, A is already committed.  Any failure conditions have to be raised before anyone
         commits for this to be useful."""
-        engines = util.Set()
+        engines = util.HashSet()
         for table in tables:
             engines.append(table.engine)
         for engine in engines:

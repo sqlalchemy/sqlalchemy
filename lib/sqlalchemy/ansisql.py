@@ -82,7 +82,7 @@ class ANSICompiler(sql.Compiled):
             try:
                 b = self.binds[key]
             except KeyError:
-                raise "No such bind param in statement '%s': %s" % (str(self), key)
+                continue
             d[b.key] = value
 
         for b in self.binds.values():
