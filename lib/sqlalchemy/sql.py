@@ -175,9 +175,13 @@ class Compiled(ClauseVisitor):
         those given in the **params dictionary"""
         raise NotImplementedError()
 
-    def execute(self, **params):
+    def execute(self, *multiparams, **params):
         """executes this compiled object using the underlying SQLEngine"""
-        return self.engine.execute(str(self), self.get_params(**params), echo = getattr(self.statement, 'echo', False), compiled = self)
+        if len(multiparams):
+            params = [self.get_params(**m) for m in multiparams]
+        else:
+            params = self.get_params(**params)
+        return self.engine.execute(str(self), params, echo = getattr(self.statement, 'echo', False), compiled = self)
 
 class ClauseElement(object):
     """base class for elements of a programmatically constructed SQL expression.
@@ -221,13 +225,17 @@ class ClauseElement(object):
         table columns should be used in the statement."""
         return engine.compile(self, bindparams = bindparams)
 
-    def execute(self, **params):
+    def execute(self, *multiparams, **params):
         """compiles and executes this SQL expression using its underlying SQLEngine.
         the given **params are used as bind parameters when compiling and executing the expression. 
         the DBAPI cursor object is returned."""
         e = self.engine
-        c = self.compile(e, bindparams = params)
-        return c.execute()
+        if len(multiparams):
+            bindparams = multiparams[0]
+        else:
+            bindparams = params
+        c = self.compile(e, bindparams = bindparams)
+        return c.execute(*multiparams, **params)
 
     def result(self, **params):
         """the same as execute(), except a RowProxy object is returned instead of a DBAPI cursor."""

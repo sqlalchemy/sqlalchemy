@@ -639,25 +639,17 @@ class ForeignKeySetter(sql.ClauseVisitor):
 
     def visit_binary(self, binary):
         if binary.operator == '=':
-            # TODO: this code is silly
-            if binary.left.table == self.primarytable and binary.right.table == self.secondarytable:
+            # play a little rock/paper/scissors here    
+            colmap = {binary.left.table : binary.left, binary.right.table : binary.right}
+            if colmap.has_key(self.primarytable) and colmap.has_key(self.secondarytable):
                 if self.clearkeys:
-                    self.childmapper._setattrbycolumn(self.child, binary.right, None)
+                    self.childmapper._setattrbycolumn(self.child, colmap[self.secondarytable], None)
                 else:
-                    self.childmapper._setattrbycolumn(self.child, binary.right, self.parentmapper._getattrbycolumn(self.obj, binary.left))
-            elif binary.right.table == self.primarytable and binary.left.table == self.secondarytable:
-                if self.clearkeys:
-                    self.childmapper._setattrbycolumn(self.child, binary.left, None)
-                else:
-                    self.childmapper._setattrbycolumn(self.child, binary.left, self.parentmapper._getattrbycolumn(self.obj, binary.right))
-            elif binary.right.table == self.associationtable and binary.left.table == self.primarytable:
-                self.associationrow[binary.right.key] = self.parentmapper._getattrbycolumn(self.obj, binary.left)
-            elif binary.left.table == self.associationtable and binary.right.table == self.primarytable:
-                self.associationrow[binary.left.key] = self.parentmapper._getattrbycolumn(self.obj, binary.right)
-            elif binary.right.table == self.associationtable and binary.left.table == self.secondarytable:
-                self.associationrow[binary.right.key] = self.childmapper._getattrbycolumn(self.child, binary.left)
-            elif binary.left.table == self.associationtable and binary.right.table == self.secondarytable:
-                self.associationrow[binary.left.key] = self.childmapper._getattrbycolumn(self.child, binary.right)
+                    self.childmapper._setattrbycolumn(self.child, colmap[self.secondarytable], self.parentmapper._getattrbycolumn(self.obj, colmap[self.primarytable]))
+            elif colmap.has_key(self.primarytable) and colmap.has_key(self.associationtable):
+                self.associationrow[colmap[self.associationtable].key] = self.parentmapper._getattrbycolumn(self.obj, colmap[self.primarytable])
+            elif colmap.has_key(self.secondarytable) and colmap.has_key(self.associationtable):
+                self.associationrow[colmap[self.associationtable].key] = self.childmapper._getattrbycolumn(self.child, colmap[self.secondarytable])
                 
 class LazyIzer(sql.ClauseVisitor):
     """converts an expression which refers to a table column into an

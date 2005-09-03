@@ -151,10 +151,10 @@ class SQLEngine(schema.SchemaEngine):
                 self.context.transaction = None
                 self.context.tcount = None
 
-    def pre_exec(self, connection, cursor, statement, parameters, echo = None, **kwargs):
+    def pre_exec(self, connection, cursor, statement, parameters, many = False, echo = None, **kwargs):
         pass
 
-    def post_exec(self, connection, cursor, statement, parameters, echo = None, **kwargs):
+    def post_exec(self, connection, cursor, statement, parameters, many = False, echo = None, **kwargs):
         pass
 
     def execute(self, statement, parameters, connection = None, echo = None, **kwargs):
@@ -172,7 +172,10 @@ class SQLEngine(schema.SchemaEngine):
             c = connection.cursor()
 
         self.pre_exec(connection, c, statement, parameters, echo = echo, **kwargs)
-        c.execute(statement, parameters)
+        if isinstance(parameters, list):
+            c.executemany(statement, parameters)
+        else:
+            c.execute(statement, parameters)
         self.post_exec(connection, c, statement, parameters, echo = echo, **kwargs)
         return c
 
