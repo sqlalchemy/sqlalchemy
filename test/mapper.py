@@ -2,7 +2,7 @@ from testbase import PersistTest
 import unittest, sys, os
 from sqlalchemy.mapper import *
 
-ECHO = False
+ECHO = True
 execfile("test/tables.py")
 
 class User(object):

@@ -443,7 +443,6 @@ class PropertyLoader(MapperProperty):
             setter.associationrow = {}
             setter.clearkeys = True
             self.primaryjoin.accept_visitor(setter)
-            child.dirty = True
             self.mapper.save(child, traverse)
             if self.secondary is not None:
                 self.secondaryjoin.accept_visitor(setter)
@@ -453,7 +452,6 @@ class PropertyLoader(MapperProperty):
             setter.child = child
             setter.associationrow = {}
             self.primaryjoin.accept_visitor(setter)
-            child.dirty = True
             self.mapper.save(child, traverse)
             if self.secondary is not None:
                 self.secondaryjoin.accept_visitor(setter)
