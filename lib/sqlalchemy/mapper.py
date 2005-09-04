@@ -216,7 +216,7 @@ class Mapper(object):
     def _setattrbycolumn(self, obj, column, value):
         self.columntoproperty[column][0].setattr(obj, value)
         
-    def save(self, obj, traverse = True, refetch = False):
+    def save(self, obj, traverse = True):
         """saves the object across all its primary tables.  
         based on the existence of the primary key for each table, either inserts or updates.
         primary key is determined by the underlying database engine's sequence methodology.
@@ -229,6 +229,8 @@ class Mapper(object):
 
         if getattr(obj, 'dirty', True):
             def foo():
+                insert_statement = None
+                update_statement = None
                 for table in self.tables:
                     params = {}
                     # TODO: prepare the insert() and update() - (1) within the code or
@@ -264,26 +266,17 @@ class Mapper(object):
                 obj.dirty = False
                 for prop in self.props.values():
                     if not isinstance(prop, ColumnProperty):
-                        prop.save(obj, traverse, refetch)
+                        prop.save(obj, traverse)
             self.transaction(foo)
         else:
             for prop in self.props.values():
-                prop.save(obj, traverse, refetch)
+                prop.save(obj, traverse)
 
     def transaction(self, f):
         return self.table.engine.multi_transaction(self.tables, f)
 
     def remove(self, obj, traverse = True):
         """removes the object.  traverse indicates attached objects should be removed as well."""
-        pass
-
-    def delete(self, obj):
-        """deletes the object's row from its table unconditionally. this is a lower-level
-        operation than remove."""
-        # delete dependencies ?
-        # delete row
-        # remove primary keys
-        # unset dirty flag
         pass
 
     def _compile(self, whereclause = None, **options):
@@ -365,7 +358,7 @@ class MapperProperty:
         """called when the MapperProperty is first attached to a new parent Mapper."""
         pass
 
-    def save(self, object, traverse, refetch):
+    def save(self, object, traverse):
         """called when the instance is being saved"""
         pass
 
@@ -432,47 +425,55 @@ class PropertyLoader(MapperProperty):
             if self.primaryjoin is None:
                 self.primaryjoin = match_primaries(parent.selectable, self.target)
 
-    def save(self, obj, traverse, refetch):
+    def save(self, obj, traverse):
         # saves child objects
         
-        # TODO: put association table inserts/deletes into one batch
-        #if self.secondary is not None:
-         #   secondary_delete = self.secondary.delete(sql.and_([c == bindparam(c.key) for c in setter.secondary.c]))
-            
+        if self.secondary is not None:
+            secondary_delete = []
+            secondary_insert = []
+             
         setter = ForeignKeySetter(self.parent, self.mapper, self.parent.table, self.target, self.secondary, obj)
         childlist = getattr(obj, self.key)
         if not isinstance(childlist, util.HistoryArraySet):
             childlist = util.HistoryArraySet(childlist)
             clean_setattr(obj, self.key, childlist)
+            
         for child in childlist.deleted_items():
             setter.child = child
+            setter.associationrow = {}
             setter.clearkeys = True
             self.primaryjoin.accept_visitor(setter)
             child.dirty = True
-            self.mapper.save(child)
+            self.mapper.save(child, traverse)
             if self.secondary is not None:
                 self.secondaryjoin.accept_visitor(setter)
-                # TODO: prepare this above
-                statement = self.secondary.delete(sql.and_(*[c == setter.associationrow[c.key] for c in self.secondary.c]))
-                statement.echo = self.mapper.echo
-                statement.execute()
+                secondary_delete.append(setter.associationrow)
+                
         for child in childlist.added_items():
             setter.child = child
+            setter.associationrow = {}
             self.primaryjoin.accept_visitor(setter)
             child.dirty = True
-            self.mapper.save(child)
+            self.mapper.save(child, traverse)
             if self.secondary is not None:
                 self.secondaryjoin.accept_visitor(setter)
-                # TODO: prepare this above
+                secondary_insert.append(setter.associationrow)
+
+        if self.secondary is not None:
+            if len(secondary_delete):
+                statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key) for c in self.secondary.c]))
+                statement.echo = self.mapper.echo
+                statement.execute(*secondary_delete)
+            if len(secondary_insert):
                 statement = self.secondary.insert()
                 statement.echo = self.mapper.echo
-                statement.execute(**setter.associationrow)
+                statement.execute(*secondary_insert)
+
         for child in childlist.unchanged_items():
-            self.mapper.save(child)
+            self.mapper.save(child, traverse)
         # TODO: if transaction fails state is invalid
         # use unit of work ?
         childlist.clear_history()
-            
             
     def delete(self):
         self.mapper.delete()

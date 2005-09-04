@@ -8,12 +8,12 @@ DBTYPE = 'sqlite_memory'
 
 if DBTYPE == 'sqlite_memory':
     import sqlalchemy.databases.sqlite as sqllite
-    db = sqllite.engine(':memory:', {}, echo = False)
+    db = sqllite.engine(':memory:', {}, echo = ECHO)
 elif DBTYPE == 'sqlite_file':
     import sqlalchemy.databases.sqlite as sqllite
     if os.access('querytest.db', os.F_OK):
         os.remove('querytest.db')
-    db = sqllite.engine('querytest.db', opts = {}, echo = True)
+    db = sqllite.engine('querytest.db', opts = {}, echo = ECHO)
 elif DBTYPE == 'postgres':
     pass
 

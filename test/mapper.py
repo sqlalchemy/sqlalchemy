@@ -2,6 +2,7 @@ from testbase import PersistTest
 import unittest, sys, os
 from sqlalchemy.mapper import *
 
+ECHO = False
 execfile("test/tables.py")
 
 class User(object):
@@ -58,7 +59,7 @@ class MapperTest(AssertMixin):
         #globalidentity().clear()
 
     def testget(self):
-        m = mapper(User, users, scope = "thread", echo = True)
+        m = mapper(User, users, scope = "thread")
         self.assert_(m.get(19) is None)
         u = m.get(7)
         u2 = m.get(7)
@@ -85,7 +86,7 @@ class MapperTest(AssertMixin):
         """tests that a lazy relation can be upgraded to an eager relation via the options method"""
         m = mapper(User, users, properties = dict(
             addresses = relation(Address, addresses, lazy = True)
-        ), echo = True)
+        ))
         l = m.options(eagerload('addresses')).select()
         self.assert_result(l, User,
             {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
@@ -97,7 +98,7 @@ class MapperTest(AssertMixin):
         """tests that an eager relation can be upgraded to a lazy relation via the options method"""
         m = mapper(User, users, properties = dict(
             addresses = relation(Address, addresses, lazy = False)
-        ), echo = True)
+        ))
         l = m.options(lazyload('addresses')).select()
         self.assert_result(l, User,
             {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
@@ -114,7 +115,7 @@ class LazyTest(AssertMixin):
         """tests a basic one-to-many lazy load"""
         m = mapper(User, users, properties = dict(
             addresses = relation(Address, addresses, lazy = True)
-        ), echo = True)
+        ))
         l = m.select(users.c.user_id == 7)
         self.assert_result(l, User,
             {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
@@ -126,7 +127,7 @@ class LazyTest(AssertMixin):
 
         m = mapper(Item, items, properties = dict(
                 keywords = relation(Keyword, keywords, itemkeywords, lazy = True),
-            ), echo = True)
+            ))
         l = m.select()
         self.assert_result(l, Item, 
             {'item_id' : 1, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 4}, {'keyword_id' : 6}])},
@@ -156,7 +157,7 @@ class EagerTest(PersistTest):
         m = mapper(User, users, properties = dict(
             #addresses = relation(Address, addresses, lazy = False),
             addresses = relation(m, lazy = False),
-        ), echo = True)
+        ))
         l = m.select()
         print repr(l)
 
@@ -166,7 +167,7 @@ class EagerTest(PersistTest):
         criterion doesnt interfere with the eager load criterion."""
         m = mapper(User, users, properties = dict(
             addresses = relation(Address, addresses, primaryjoin = users.c.user_id==addresses.c.user_id, lazy = False)
-        ), echo = True)
+        ))
         l = m.select(and_(addresses.c.email_address == 'ed@lala.com', addresses.c.user_id==users.c.user_id))
         print repr(l)
 
@@ -199,7 +200,7 @@ class EagerTest(PersistTest):
         m = mapper(User, users, properties = dict(
             orders_open = relation(Order, openorders, primaryjoin = and_(openorders.c.isopen == 1, users.c.user_id==openorders.c.user_id), lazy = False),
             orders_closed = relation(Order, closedorders, primaryjoin = and_(closedorders.c.isopen == 0, users.c.user_id==closedorders.c.user_id), lazy = False)
-        ), echo = True)
+        ))
         l = m.select()
         print repr(l)
 
@@ -213,7 +214,7 @@ class EagerTest(PersistTest):
         m = mapper(User, users, properties = dict(
             addresses = relation(Address, addresses, lazy = False),
             orders = relation(ordermapper, primaryjoin = users.c.user_id==orders.c.user_id, lazy = False),
-        ), echo = True)
+        ))
         l = m.select()
         print repr(l)
     
@@ -222,7 +223,7 @@ class EagerTest(PersistTest):
         
         m = mapper(Item, items, properties = dict(
                 keywords = relation(Keyword, keywords, itemkeywords, lazy = False),
-            ), echo = True)
+            ))
         l = m.select()
         print repr(l)
         
@@ -235,17 +236,16 @@ class EagerTest(PersistTest):
         m = mapper(Item, items, 
         properties = dict(
                 keywords = relation(Keyword, keywords, itemkeywords, lazy = False),
-            ), 
-        echo = True)
+            ))
 
         m = mapper(Order, orders, properties = dict(
                 items = relation(m, lazy = False)
-            ), echo = True)
+            ))
         l = m.select("orders.order_id in (1,2,3)")
         #l = m.select()
         print repr(l)
 
-class SaveTest(PersistTest):
+class SaveTest(AssertMixin):
 
     def testbasic(self):
         # save two users
@@ -253,7 +253,7 @@ class SaveTest(PersistTest):
         u.user_name = 'savetester'
         u2 = User()
         u2.user_name = 'savetester2'
-        m = mapper(User, users, echo=True)
+        m = mapper(User, users)
         m.save(u)
         m.save(u2)
 
@@ -282,7 +282,7 @@ class SaveTest(PersistTest):
         """tests a save of an object where each instance spans two tables. also tests
         redefinition of the keynames for the column properties."""
         usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
-        m = mapper(User, usersaddresses, table = users, echo = True, 
+        m = mapper(User, usersaddresses, table = users,  
             properties = dict(
                 email = ColumnProperty(addresses.c.email_address), 
                 foo_id = ColumnProperty(users.c.user_id, addresses.c.user_id)
@@ -314,7 +314,7 @@ class SaveTest(PersistTest):
         """test basic save of one to many."""
         m = mapper(User, users, properties = dict(
             addresses = relation(Address, addresses, lazy = True)
-        ), echo = True)
+        ))
         u = User()
         u.user_name = 'one2manytester'
         u.addresses = []
@@ -344,7 +344,7 @@ class SaveTest(PersistTest):
         """tests that an alias of a table can be used in a mapper. 
         the mapper has to locate the original table and columns to keep it all straight."""
         ualias = Alias(users, 'ualias')
-        m = mapper(User, ualias, echo = True)
+        m = mapper(User, ualias)
         u = User()
         u.user_name = 'testalias'
         m.save(u)
@@ -355,7 +355,7 @@ class SaveTest(PersistTest):
     def testremove(self):
         m = mapper(User, users, properties = dict(
             addresses = relation(Address, addresses, lazy = True)
-        ), echo = True)
+        ))
         u = User()
         u.user_name = 'one2manytester'
         u.addresses = []
@@ -381,7 +381,7 @@ class SaveTest(PersistTest):
 
         m = mapper(Item, items, properties = dict(
                 keywords = relation(Keyword, keywords, itemkeywords, lazy = False),
-            ), echo = True)
+            ))
 
         keywordmapper = mapper(Keyword, keywords)
 
@@ -395,12 +395,25 @@ class SaveTest(PersistTest):
         for k in klist:
             item.keywords.append(k)
         m.save(item)
-        print repr(m.select(items.c.item_id == item.item_id))
+        l = m.select(items.c.item_id == item.item_id)
+
+        self.assert_result(l, Item,
+            {'item_id' : item.item_id, 'keywords' : (Keyword, [
+                {'name' : 'purple'},
+                {'name' : 'blue'},
+                {'name' : 'big'},
+                {'name' : 'round'}
+            ])})
 
         del item.keywords[2]
         del item.keywords[2]
         m.save(item)
-        print repr(m.select(items.c.item_id == item.item_id))
+        l = m.select(items.c.item_id == item.item_id)
+        self.assert_result(l, Item,
+            {'item_id' : item.item_id, 'keywords' : (Keyword, [
+                {'name' : 'purple'},
+                {'name' : 'blue'},
+            ])})
 
 if __name__ == "__main__":
     unittest.main()
