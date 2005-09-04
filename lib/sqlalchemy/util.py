@@ -52,18 +52,18 @@ class OrderedDict(dict):
 
     def keys(self):
         return self.list
-    
+
     def update(self, dict):
         for key in dict.keys():
             self.__setitem__(key, dict[key])
-    
+
     def setdefault(self, key, value):
         if not self.has_key(key):
             self.__setitem__(key, value)
             return value
         else:
             return self.__getitem__(key)
-            
+
     def values(self):
         return map(lambda key: self[key], self.list)
         
@@ -77,30 +77,25 @@ class OrderedDict(dict):
     
     def iteritems(self):
         return iter([(key, self[key]) for key in self.keys()])
-        
+    
     def __setitem__(self, key, object):
         if not self.has_key(key):
             self.list.append(key)
-
         dict.__setitem__(self, key, object)
         
     def __getitem__(self, key):
         return dict.__getitem__(self, key)
 
-
 class ThreadLocal(object):
     def __init__(self):
         object.__setattr__(self, 'tdict', {})
-
     def __getattribute__(self, key):
         try:
             return object.__getattribute__(self, 'tdict')["%d_%s" % (thread.get_ident(), key)]
         except KeyError:
             raise AttributeError(key)
-        
     def __setattr__(self, key, value):
         object.__getattribute__(self, 'tdict')["%d_%s" % (thread.get_ident(), key)] = value
-        
 
 class HashSet(object):
     def __init__(self, iter = None):
@@ -110,10 +105,13 @@ class HashSet(object):
                 self.append(i)
     def __iter__(self):
         return iter(self.map.values())
+ 
     def append(self, item):
         self.map[item] = item
+ 
     def __delitem__(self, key):
         del self.map[key]
+ 
     def __getitem__(self, key):
         return self.map[key]
         

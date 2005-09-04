@@ -375,8 +375,11 @@ class ColumnProperty(MapperProperty):
 
     def getattr(self, object):
         return getattr(object, self.key, None)
-    def setattr(self, object, value):
-        clean_setattr(object, self.key, value)
+    def setattr(self, object, value, clean = False):
+        if clean:
+            clean_setattr(object, self.key, value)
+        else:
+            setattr(object, self.key, value)
     def hash_key(self):
         return "ColumnProperty(%s)" % repr([hash_key(c) for c in self.columns])
 

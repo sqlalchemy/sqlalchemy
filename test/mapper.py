@@ -373,6 +373,7 @@ class SaveTest(AssertMixin):
         del u.addresses[1]
         m.save(u)
         addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id)).execute()).fetchall()
+        print repr(addresstable)
         self.assert_(addresstable[0].row == (a.address_id, u.user_id, 'one2many@test.org'))
         self.assert_(addresstable[1].row == (a2.address_id, None, 'lala@test.org'))
 
