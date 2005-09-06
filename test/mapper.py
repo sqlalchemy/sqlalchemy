@@ -23,7 +23,7 @@ Closed Orderss %s
 
 class Address(object):
     def __repr__(self):
-        return "Address: " + repr(self.address_id) + " " + repr(self.user_id) + " " + repr(self.email_address)
+        return "Address: " + repr(getattr(self, 'address_id', None)) + " " + repr(getattr(self, 'user_id', None)) + " " + repr(self.email_address)
 
 class Order(object):
     def __repr__(self):
@@ -310,6 +310,16 @@ class SaveTest(AssertMixin):
         u = m.select(users.c.user_id==u.foo_id)[0]
         print repr(u.__dict__)
 
+    def testonetoone(self):
+        m = mapper(User, users, properties = dict(
+            address = relation(Address, addresses, lazy = True, uselist = False)
+        ))
+        u = User()
+        u.user_name = 'one2onetester'
+        u.address = Address()
+        u.address.email_address = 'myonlyaddress@foo.com'
+        m.save(u)
+        
     def testonetomany(self):
         """test basic save of one to many."""
         m = mapper(User, users, properties = dict(
