@@ -19,9 +19,10 @@ import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
 import sqlalchemy.engine as engine
 import sqlalchemy.util as util
+import sqlalchemy.objectstore as objectstore
 import random, copy, types
 
-__ALL__ = ['eagermapper', 'eagerloader', 'lazymapper', 'lazyloader', 'eagerload', 'lazyload', 'mapper', 'lazyloader', 'lazymapper', 'identity_map']
+__ALL__ = ['eagermapper', 'eagerloader', 'lazymapper', 'lazyloader', 'eagerload', 'lazyload', 'mapper', 'lazyloader', 'lazymapper']
 
 def relation(*args, **params):
     if isinstance(args[0], Mapper):
@@ -36,7 +37,7 @@ def relation_loader(mapper, secondary = None, primaryjoin = None, secondaryjoin 
         return EagerLoader(mapper, secondary, primaryjoin, secondaryjoin, **options)
     
 def relation_mapper(class_, selectable, secondary = None, primaryjoin = None, secondaryjoin = None, table = None, properties = None, lazy = True, uselist = True, **options):
-    return relation_loader(mapper(class_, selectable, table = table, properties = properties, skip_init = True, **options), secondary, primaryjoin, secondaryjoin, lazy = lazy, uselist = uselist, **options)
+    return relation_loader(mapper(class_, selectable, table = table, properties = properties, **options), secondary, primaryjoin, secondaryjoin, lazy = lazy, uselist = uselist, **options)
 
 _mappers = {}
 def mapper(*args, **params):
@@ -46,8 +47,6 @@ def mapper(*args, **params):
         return _mappers[hashkey]
     except KeyError:
         m = Mapper(*args, **params)
-        if not params.get('skip_init', False):
-            m.init(m)
         return _mappers.setdefault(hashkey, m)
     
 def eagerload(name):
@@ -57,7 +56,7 @@ def lazyload(name):
     return EagerLazySwitcher(name, toeager = False)
 
 class Mapper(object):
-    def __init__(self, class_, selectable, table = None, scope = "thread", properties = None, echo = None):
+    def __init__(self, class_, selectable, table = None, scope = "thread", properties = None, echo = None, **kwargs):
         self.class_ = class_
         self.scope = scope
         self.selectable = selectable
@@ -115,7 +114,7 @@ class Mapper(object):
             proplist = self.columntoproperty.setdefault(column.original, [])
             proplist.append(prop)
 
-
+        self.init()
 
     def hash_key(self):
         return mapper_hash_key(
@@ -129,34 +128,29 @@ class Mapper(object):
 
     def set_property(self, key, prop):
         self.props[key] = prop
-        prop.init(key, self, self.root)
+        prop.init(key, self)
 
-    def init(self, root):
-        self.root = root
-        self.echo = self.root.echo
-        [prop.init(key, self, root) for key, prop in self.props.iteritems()]
+    def init(self):
+        [prop.init(key, self) for key, prop in self.props.iteritems()]
 
     def instances(self, cursor):
         result = util.HistoryArraySet()
         cursor = engine.ResultProxy(cursor, echo = self.echo)
 
-        localmap = {'identity' : self.identitymap}
         while True:
             row = cursor.fetchone()
             if row is None:
                 break
-            self._instance(row, localmap, result)
+            self._instance(row, result)
         return result
 
-    identitymap = property(lambda self: identity_map(self.scope))
-    
     def get(self, *ident):
         """returns an instance of the object based on the given identifier, or None
         if not found.  The *ident argument is a 
         list of primary keys in the order of the table def's primary keys."""
-        key = get_id_key(ident, self.class_, self.table, self.selectable)
+        key = objectstore.get_id_key(ident, self.class_, self.table, self.selectable)
         try:
-            return self.identitymap[key]
+            return objectstore.get(key)
         except KeyError:
             clause = sql.and_()
             i = 0
@@ -171,8 +165,8 @@ class Mapper(object):
                 return None
 
     def put(self, instance):
-        key = get_instance_key(instance, self.class_, self.table, self.selectable)
-        self.identitymap[key] = instance
+        key = objectstore.get_instance_key(instance, self.class_, self.table, self.selectable)
+        objectstore.put(key, instance, self.scope)
         return key
 
     def compile(self, whereclause = None, **options):
@@ -295,9 +289,9 @@ class Mapper(object):
         return self.instances(statement.execute(**params))
 
     def _identity_key(self, row):
-        return get_key(row, self.class_, self.table, self.selectable)
+        return objectstore.get_key(row, self.class_, self.table, self.selectable)
 
-    def _instance(self, row, localmap, result):
+    def _instance(self, row, result):
         """pulls an object instance from the given row and appends it to the given result list.
         if the instance already exists in the given identity map, its not added.  in either
         case, executes all the property loaders on the instance to also process extra information
@@ -305,18 +299,17 @@ class Mapper(object):
 
         # create the instance if its not in the identity map,
         # else retrieve it
-        identitymap = localmap['identity']
         identitykey = self._identity_key(row)
-        exists = identitymap.has_key(identitykey)
+        exists = objectstore.has_key(identitykey)
         if not exists:
             instance = self.class_()
             instance.dirty = False
             for column in self.selectable.primary_keys:
                 if row[column.label] is None:
                     return None
-            identitymap[identitykey] = instance
+            objectstore.put(identitykey, instance, self.scope)
         else:
-            instance = identitymap[identitykey]
+            instance = objectstore.get(identitykey)
 
         isduplicate = result.has_item(instance)
         result.append_nohistory(instance)
@@ -324,7 +317,7 @@ class Mapper(object):
         # call further mapper properties on the row, to pull further 
         # instances from the row and possibly populate this item.
         for key, prop in self.props.iteritems():
-            prop.execute(instance, row, identitykey, localmap, isduplicate)
+            prop.execute(instance, row, identitykey, isduplicate)
 
 
 class MapperOption:
@@ -338,7 +331,7 @@ class MapperOption:
 class MapperProperty:
     """an element attached to a Mapper that describes and assists in the loading and saving 
     of an attribute on an object instance."""
-    def execute(self, instance, row, identitykey, localmap, isduplicate):
+    def execute(self, instance, row, identitykey, isduplicate):
         """called when the mapper receives a row.  instance is the parent instance corresponding
         to the row. """
         raise NotImplementedError()
@@ -353,7 +346,7 @@ class MapperProperty:
         """called when a statement is being constructed.  """
         return self
 
-    def init(self, key, parent, root):
+    def init(self, key, parent):
         """called when the MapperProperty is first attached to a new parent Mapper."""
         pass
 
@@ -382,12 +375,12 @@ class ColumnProperty(MapperProperty):
     def hash_key(self):
         return "ColumnProperty(%s)" % repr([hash_key(c) for c in self.columns])
 
-    def init(self, key, parent, root):
+    def init(self, key, parent):
         self.key = key
         if not hasattr(parent.class_, key):
             setattr(parent.class_, key, SmartProperty(key).property())
 
-    def execute(self, instance, row, identitykey, localmap, isduplicate):
+    def execute(self, instance, row, identitykey, isduplicate):
         if not isduplicate:
             clean_setattr(instance, self.key, row[self.columns[0].label])
 
@@ -408,9 +401,8 @@ class PropertyLoader(MapperProperty):
     def hash_key(self):
         return self._hash_key
 
-    def init(self, key, parent, root):
+    def init(self, key, parent):
         self.key = key
-        self.mapper.init(root)
         self.parent = parent
         if self.secondary is not None:
             if self.secondaryjoin is None:
@@ -487,8 +479,8 @@ class PropertyLoader(MapperProperty):
 
 class LazyLoader(PropertyLoader):
 
-    def init(self, key, parent, root):
-        PropertyLoader.init(self, key, parent, root)
+    def init(self, key, parent):
+        PropertyLoader.init(self, key, parent)
         if not hasattr(parent.class_, key):
             if not issubclass(parent.class_, object):
                 raise "LazyLoader can only be used with new-style classes"
@@ -504,7 +496,7 @@ class LazyLoader(PropertyLoader):
         self.lazywhere.accept_visitor(li)
         self.binds = li.binds
 
-    def execute(self, instance, row, identitykey, localmap, isduplicate):
+    def execute(self, instance, row, identitykey, isduplicate):
         if not isduplicate:
             clean_setattr(instance, self.key, LazyLoadInstance(self, row))
 
@@ -533,8 +525,8 @@ class LazyLoadInstance(object):
 
 class EagerLoader(PropertyLoader):
     """loads related objects inline with a parent query."""
-    def init(self, key, parent, root):
-        PropertyLoader.init(self, key, parent, root)
+    def init(self, key, parent):
+        PropertyLoader.init(self, key, parent)
         
         # figure out tables in the various join clauses we have, because user-defined
         # whereclauses that reference the same tables will be converted to use
@@ -571,7 +563,7 @@ class EagerLoader(PropertyLoader):
         for key, value in self.mapper.props.iteritems():
             value.setup(key, self.mapper.selectable, statement)
 
-    def execute(self, instance, row, identitykey, localmap, isduplicate):
+    def execute(self, instance, row, identitykey, isduplicate):
         """receive a row.  tell our mapper to look for a new object instance in the row, and attach
         it to a list on the parent instance."""
         if not self.uselist:
@@ -582,7 +574,7 @@ class EagerLoader(PropertyLoader):
         else:
             result_list = getattr(instance, self.key)
 
-        self.mapper._instance(row, localmap, result_list)
+        self.mapper._instance(row, result_list)
         
         if not self.uselist:
             clean_setattr(instance, self.key, result_list[0])
@@ -724,25 +716,17 @@ class SmartProperty(object):
 
 class GetPropHistory:pass
         
-identity_map = util.ScopedRegistry(lambda: {})
   
 def clean_setattr(object, key, value):
     object.__dict__[key] = value
           
-def get_id_key(ident, class_, table, selectable):
-    return (class_, table, tuple(ident))
-def get_instance_key(object, class_, table, selectable):
-    return (class_, table, tuple([getattr(object, column.key, None) for column in selectable.primary_keys]))
-def get_key(row, class_, table, selectable):
-    return (class_, table, tuple([row[column.label] for column in selectable.primary_keys]))
-
 def hash_key(obj):
     if obj is None:
         return 'None'
     else:
         return obj.hash_key()
 
-def mapper_hash_key(class_, selectable, table = None, properties = None, scope = "thread", echo = None):
+def mapper_hash_key(class_, selectable, table = None, properties = None, scope = "thread", echo = None, **kwargs):
     if properties is None:
         properties = {}
     return (
