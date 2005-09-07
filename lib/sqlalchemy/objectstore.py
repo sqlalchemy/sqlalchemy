@@ -21,7 +21,7 @@ def get_id_key(ident, class_, table, selectable):
     return (class_, table, tuple(ident))
 def get_instance_key(object, class_, table, selectable):
     return (class_, table, tuple([getattr(object, column.key, None) for column in selectable.primary_keys]))
-def get_key(row, class_, table, selectable):
+def get_row_key(row, class_, table, selectable):
     return (class_, table, tuple([row[column.label] for column in selectable.primary_keys]))
 
 identity_map = {}
@@ -67,4 +67,20 @@ def has_key(key):
         return False
     
 class UnitOfWork:
-    pass
+    def __init__(self):
+        pass
+        
+    def register_clean(self, obj):
+        pass
+
+    def register_new(self, obj):
+        pass
+        
+    def register_dirty(self, obj):
+        pass
+        
+    def register_deleted(self, obj):
+        pass   
+        
+        
+        
