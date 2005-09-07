@@ -3,9 +3,10 @@ import unittest, sys, os
 from sqlalchemy.mapper import *
 import sqlalchemy.objectstore as objectstore
 
-ECHO = True
+#ECHO = True
 ECHO = False
 execfile("test/tables.py")
+db.echo = True
 
 class User(object):
     def __repr__(self):
@@ -122,6 +123,14 @@ class LazyTest(AssertMixin):
         self.assert_result(l, User,
             {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
             )
+
+    def testonetoone(self):
+        m = mapper(User, users, properties = dict(
+            address = relation(Address, addresses, lazy = True, uselist = False)
+        ))
+        l = m.select(users.c.user_id == 7)
+        print repr(l)
+        print repr(l[0].address)
 
     def testmanytomany(self):
         """tests a many-to-many lazy load"""
