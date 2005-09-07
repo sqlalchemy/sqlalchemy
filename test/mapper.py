@@ -1,6 +1,7 @@
 from testbase import PersistTest
 import unittest, sys, os
 from sqlalchemy.mapper import *
+import sqlalchemy.objectstore as objectstore
 
 #ECHO = True
 ECHO = False
@@ -144,7 +145,7 @@ class LazyTest(AssertMixin):
             {'item_id' : 2, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 5}, {'keyword_id' : 7}])},
         )
 
-class EagerTest(PersistTest):
+class EagerTest(AssertMixin):
     
     def setUp(self):
         #globalidentity().clear()
@@ -226,10 +227,19 @@ class EagerTest(PersistTest):
                 keywords = relation(Keyword, keywords, itemkeywords, lazy = False),
             ))
         l = m.select()
-        print repr(l)
+        self.assert_result(l, Item, 
+            {'item_id' : 1, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 4}, {'keyword_id' : 6}])},
+            {'item_id' : 2, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 7}, {'keyword_id' : 5}])},
+            {'item_id' : 3, 'keywords' : (Keyword, [{'keyword_id' : 6}, {'keyword_id' : 3}, {'keyword_id' : 4}])},
+            {'item_id' : 4, 'keywords' : (Keyword, [])},
+            {'item_id' : 5, 'keywords' : (Keyword, [])}
+        )
         
         l = m.select(and_(keywords.c.name == 'red', keywords.c.keyword_id == itemkeywords.c.keyword_id, items.c.item_id==itemkeywords.c.item_id))
-        print repr(l)
+        self.assert_result(l, Item, 
+            {'item_id' : 1, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 4}, {'keyword_id' : 6}])},
+            {'item_id' : 2, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 7}, {'keyword_id' : 5}])},
+        )
     
     def testoneandmany(self):
         items = orderitems
@@ -263,7 +273,7 @@ class SaveTest(AssertMixin):
         self.assert_(u is nu)
 
         # clear out the identity map, so next get forces a SELECT
-        m.identitymap.clear()
+        objectstore.clear()
 
         # check it again, identity should be different but ids the same
         nu = m.get(u.user_id)

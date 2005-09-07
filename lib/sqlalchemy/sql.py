@@ -766,7 +766,6 @@ class UpdateBase(ClauseElement):
                 values.append((c, value))
         return values
 
-
     def compile(self, engine = None, bindparams = None):
         if engine is None:
             engine = self.engine
@@ -788,14 +787,6 @@ class Insert(UpdateBase):
             self.select.accept_visitor(visitor)
 
         visitor.visit_insert(self)
-
-        
-    def compile(self, engine = None, bindparams = None):
-        if engine is None:
-            engine = self.engine
-        if engine is None:
-            raise "no engine supplied, and no engine could be located within the clauses!"
-        return engine.compile(self, bindparams)
 
 class Update(UpdateBase):
     def __init__(self, table, whereclause, parameters = None, **params):
