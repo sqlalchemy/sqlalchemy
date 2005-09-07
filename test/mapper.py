@@ -2,7 +2,8 @@ from testbase import PersistTest
 import unittest, sys, os
 from sqlalchemy.mapper import *
 
-ECHO = True
+#ECHO = True
+ECHO = False
 execfile("test/tables.py")
 
 class User(object):
@@ -392,7 +393,7 @@ class SaveTest(AssertMixin):
 
         m = mapper(Item, items, properties = dict(
                 keywords = relation(Keyword, keywords, itemkeywords, lazy = False),
-            ))
+            ), echo = True)
 
         keywordmapper = mapper(Keyword, keywords)
 

@@ -231,6 +231,8 @@ class PropHistory(object):
         self.added = None
         self.current = current
         self.deleted = None
+    def setattr_clean(self, value):
+        self.current = value
     def setattr(self, value):
         self.deleted = self.current
         self.current = None
