@@ -53,7 +53,7 @@ class SQLEngine(schema.SchemaEngine):
         # by direct usage of pool.manager(<module>).connect(*args, **params)
         (cargs, cparams) = self.connect_args()
         self._pool = sqlalchemy.pool.manage(self.dbapi()).get_pool(*cargs, **cparams)
-        self._echo = echo
+        self.echo = echo
         self.context = util.ThreadLocal()
 
     def schemagenerator(self, proxy, **params):
@@ -161,7 +161,7 @@ class SQLEngine(schema.SchemaEngine):
         if parameters is None:
             parameters = {}
 
-        if echo is True or self._echo:
+        if echo is True or self.echo:
             self.log(statement)
             self.log(repr(parameters))
 
