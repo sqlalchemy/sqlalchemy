@@ -3,8 +3,8 @@ import unittest, sys, os
 from sqlalchemy.mapper import *
 import sqlalchemy.objectstore as objectstore
 
-#ECHO = True
-ECHO = False
+ECHO = True
+#ECHO = False
 execfile("test/tables.py")
 
 class User(object):
@@ -329,6 +329,11 @@ class SaveTest(AssertMixin):
         u.user_name = 'one2onetester'
         u.address = Address()
         u.address.email_address = 'myonlyaddress@foo.com'
+        m.save(u)
+        u.user_name = 'imnew'
+        m.save(u)
+        u.address.email_address = 'imnew@foo.com'
+        m.save(u)
         m.save(u)
         
     def testonetomany(self):
