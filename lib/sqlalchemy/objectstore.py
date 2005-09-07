@@ -107,7 +107,7 @@ def has_key(key):
     else:
         return False
     
-class UnitOfWork:
+class UnitOfWork(object):
     def __init__(self):
         self.dirty = util.HashSet()
         self.clean = util.HashSet()
@@ -128,13 +128,13 @@ class UnitOfWork:
             self.register_attribute(obj, key).setattr_clean(v)
         return v
         
-    def attribute_set(self, obj, key, value, usehistory = False):
+    def set_attribute(self, obj, key, value, usehistory = False):
         if usehistory:
             self.register_attribute(obj, key).setattr(value)
         obj.__dict__[key] = value
         self.register_dirty(obj)
         
-    def attribute_deleted(self, obj, key, value, usehistory = False):
+    def delete_attribute(self, obj, key, value, usehistory = False):
         if usehistory:
             self.register_attribute(obj, key).delattr(value)    
         del obj.__dict__[key]
@@ -150,11 +150,7 @@ class UnitOfWork:
         except KeyError:
             return attributes.setdefault(key, util.PropHistory(obj.__dict__.get(key, None)))
 
-    def register_list_attribute(self, obj, key, data = None, loader = None):
-        if loader is not None:
-            obj.__dict__[key] = loader
-            return
-            
+    def register_list_attribute(self, obj, key, data = None):
         try:
             childlist = obj.__dict__[key]
         except KeyError:
@@ -190,6 +186,7 @@ class UnitOfWork:
 
     def is_dirty(self, obj):
         if not self.dirty.contains(obj):
+            # if we know nothing about this object, register it as dirty (or new ?)
             if not self.clean.contains(obj):
                 # TODO: should this be register_new ?
                 self.register_dirty(obj)
