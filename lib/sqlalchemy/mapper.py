@@ -222,13 +222,14 @@ class Mapper(object):
 
         if objectstore.uow().is_dirty(obj):
             def foo():
+                # TODO: unitofwork.begin()
+                
+                # TODO: put a registry for statements in the unitofwork,
+                # where we can store insert/update statements and pre-compile them
                 insert_statement = None
                 update_statement = None
                 for table in self.tables:
                     params = {}
-                    # TODO: prepare the insert() and update() - (1) within the code or
-                    # (2) as a real prepared statement, just once, and put them somewhere for 
-                    # an external loop to grab onto them
                     for primary_key in table.primary_keys:
                         if self._getattrbycolumn(obj, primary_key) is None:
                             statement = table.insert()
@@ -253,13 +254,15 @@ class Mapper(object):
                             index += 1
                             self._setattrbycolumn(obj, col, newid)
                         self.put(obj)
-                # TODO: if transaction fails, dirty reset and possibly
-                # new primary key set is invalid
-                # use unit of work ?
+                # TODO: make this "register_saved", which gets committed
+                # to "clean" when you call "unitofwork.commit()"
+                # also put a reentrant "begin/commit" onto unitofwork to handle nests
                 objectstore.uow().register_clean(obj)
                 for prop in self.props.values():
                     if not isinstance(prop, ColumnProperty):
                         prop.save(obj, traverse)
+                        
+                # TODO: unitofwork.commit()
             self.transaction(foo)
         else:
             for prop in self.props.values():
@@ -291,7 +294,7 @@ class Mapper(object):
     def _identity_key(self, row):
         return objectstore.get_row_key(row, self.class_, self.table, self.selectable)
 
-    def _instance(self, row, result):
+    def _instance(self, row, result = None):
         """pulls an object instance from the given row and appends it to the given result list.
         if the instance already exists in the given identity map, its not added.  in either
         case, executes all the property loaders on the instance to also process extra information
@@ -310,8 +313,11 @@ class Mapper(object):
         else:
             instance = objectstore.get(identitykey)
 
-        isduplicate = result.has_item(instance)
-        result.append_nohistory(instance)
+        if result is not None:
+            isduplicate = result.has_item(instance)
+            result.append_nohistory(instance)
+        else:
+            isduplicate = False
 
         # call further mapper properties on the row, to pull further 
         # instances from the row and possibly populate this item.
@@ -319,7 +325,7 @@ class Mapper(object):
             prop.execute(instance, row, identitykey, isduplicate)
             
         objectstore.uow().register_clean(instance)
-
+        return instance
 
 class MapperOption:
     """describes a modification to a Mapper in the context of making a copy
@@ -404,15 +410,22 @@ class PropertyLoader(MapperProperty):
         self.parent = parent
         if self.secondary is not None:
             if self.secondaryjoin is None:
-                self.secondaryjoin = match_primaries(self.target, self.secondary)
+                self.secondaryjoin = self.match_primaries(self.target, self.secondary)
             if self.primaryjoin is None:
-                self.primaryjoin = match_primaries(parent.selectable, self.secondary)
+                self.primaryjoin = self.match_primaries(parent.selectable, self.secondary)
         else:
             if self.primaryjoin is None:
-                self.primaryjoin = match_primaries(parent.selectable, self.target)
+                self.primaryjoin = self.match_primaries(parent.selectable, self.target)
                 
         if not hasattr(parent.class_, key):
             setattr(parent.class_, key, SmartProperty(key).property(usehistory = True, uselist = self.uselist))
+
+    def match_primaries(self, primary, secondary):
+        pk = primary.primary_keys
+        if len(pk) == 1:
+            return (pk[0] == secondary.c[pk[0].name])
+        else:
+            return sql.and_([pk == secondary.c[pk.name] for pk in primary.primary_keys])
 
     def save(self, obj, traverse):
         # saves child objects
@@ -422,7 +435,6 @@ class PropertyLoader(MapperProperty):
             secondary_insert = []
              
         setter = ForeignKeySetter(self.parent, self.mapper, self.parent.table, self.target, self.secondary, obj)
-        
         
         if self.uselist:
             childlist = objectstore.uow().register_list_attribute(obj, self.key)
@@ -449,6 +461,10 @@ class PropertyLoader(MapperProperty):
                 secondary_insert.append(setter.associationrow)
 
         if self.secondary is not None:
+            # TODO: use unitofwork statement repository thing to get these
+            # delete/insert statements
+            # then, see if unitofwork can even bunch these all up at the end to do an even 
+            # bigger grouping within the "commit"
             if len(secondary_delete):
                 statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key) for c in self.secondary.c]))
                 statement.echo = self.mapper.echo
@@ -460,8 +476,9 @@ class PropertyLoader(MapperProperty):
 
         for child in childlist.unchanged_items():
             self.mapper.save(child, traverse)
-        # TODO: if transaction fails state is invalid
-        # use unit of work ?
+        # TODO: make this "register_saved_property", or something similar, which gets 
+        # a "clear_history" when you call "unitofwork.commit()"
+        # also put a reentrant "begin/commit" onto unitofwork to handle nests
         childlist.clear_history()
             
     def delete(self):
@@ -489,11 +506,10 @@ class LazyLoader(PropertyLoader):
 
     def execute(self, instance, row, identitykey, isduplicate):
         if not isduplicate:
-            if self.uselist:
-                objectstore.uow().register_list_attribute(instance, self.key, loader = LazyLoadInstance(self, row))
-            else:
-                setattr(instance, self.key, LazyLoadInstance(self, row))
-
+            # TODO: get lazy callables to be stored within the unit of work?
+            # allows serializable ?  still need lazyload state to exist in the application
+            # when u deserialize tho
+            objectstore.uow().attribute_set_callable(instance, self.key, LazyLoadInstance(self, row))
 
 class LazyLoadInstance(object):
     """attached to a specific object instance to load related rows."""
@@ -501,9 +517,6 @@ class LazyLoadInstance(object):
         self.params = {}
         for key, value in lazyloader.binds.iteritems():
             self.params[key] = row[key]
-        # TODO: this still sucks. the mapper points to tables, which point
-        # to dbengines, which cant be serialized, or are too huge to be serialized
-        # quickly, so an object with a lazyloader still cant really be serialized
         self.mapper = lazyloader.mapper
         self.lazywhere = lazyloader.lazywhere
         self.uselist = lazyloader.uselist
@@ -561,7 +574,9 @@ class EagerLoader(PropertyLoader):
         """receive a row.  tell our mapper to look for a new object instance in the row, and attach
         it to a list on the parent instance."""
         if not self.uselist:
-            result_list = []
+            # TODO: check for multiple values on single-element child element ?
+            setattr(instance, self.key, self.mapper._instance(row))
+            return
         elif not isduplicate:
             result_list = objectstore.uow().register_list_attribute(instance, self.key, data = [])
             result_list.clear_history()
@@ -569,10 +584,6 @@ class EagerLoader(PropertyLoader):
             result_list = getattr(instance, self.key)
 
         self.mapper._instance(row, result_list)
-        
-        if not self.uselist:
-            # TODO: check for multiple rows for a single-valued attribute ?
-            setattr(instance, self.key, result_list[0])
             
 class EagerLazySwitcher(MapperOption):
     """an option that switches a PropertyLoader to be an EagerLoader"""
@@ -617,12 +628,16 @@ class Aliasizer(sql.ClauseVisitor):
             self.match = True
 
 class TableFinder(sql.ClauseVisitor):
+    """given a Clause, locates all the Tables within it into a list."""
     def __init__(self):
         self.tables = []
     def visit_table(self, table):
         self.tables.append(table)
 
 class ForeignKeySetter(sql.ClauseVisitor):
+    """traverses a join condition of a parent/child object or two objects attached by
+    an association table and sets properties on either the child object or an 
+    association table row according to the join properties."""
     def __init__(self, parentmapper, childmapper, primarytable, secondarytable, associationtable, obj):
         self.parentmapper = parentmapper
         self.childmapper = childmapper
@@ -669,7 +684,6 @@ class LazyIzer(sql.ClauseVisitor):
                     sql.BindParamClause(self.table.name + "_" + binary.right.name, None, shortname = binary.right.name))
 
 
-
 class SmartProperty(object):
     def __init__(self, key):
         self.key = key
@@ -679,12 +693,13 @@ class SmartProperty(object):
             if uselist:
                 return objectstore.uow().register_list_attribute(s, self.key, value)
             else:
-                objectstore.uow().attribute_set(s, self.key, value, usehistory)
+                objectstore.uow().set_attribute(s, self.key, value, usehistory)
         def del_prop(s):
             if uselist:
+                # TODO: this probably doesnt work right, deleting the list off an item
                 objectstore.uow().register_list_attribute(s, self.key, [])
             else:
-                objectstore.uow().attribute_deleted(s, self.key, value, usehistory)
+                objectstore.uow().delete_attribute(s, self.key, value, usehistory)
         def get_prop(s):
             if uselist:
                 return objectstore.uow().register_list_attribute(s, self.key)
@@ -714,13 +729,6 @@ def mapper_hash_key(class_, selectable, table = None, properties = None, scope =
 
         )
     )
-
-def match_primaries(primary, secondary):
-    pk = primary.primary_keys
-    if len(pk) == 1:
-        return (pk[0] == secondary.c[pk[0].name])
-    else:
-        return sql.and_([pk == secondary.c[pk.name] for pk in primary.primary_keys])
 
 
 
