@@ -220,7 +220,7 @@ class Mapper(object):
         used, the item is saved unconditionally.
         """
 
-        if getattr(obj, 'dirty', True):
+        if objectstore.uow().is_dirty(obj):
             def foo():
                 insert_statement = None
                 update_statement = None
@@ -256,7 +256,7 @@ class Mapper(object):
                 # TODO: if transaction fails, dirty reset and possibly
                 # new primary key set is invalid
                 # use unit of work ?
-                obj.dirty = False
+                objectstore.uow().register_clean(obj)
                 for prop in self.props.values():
                     if not isinstance(prop, ColumnProperty):
                         prop.save(obj, traverse)
@@ -303,7 +303,7 @@ class Mapper(object):
         exists = objectstore.has_key(identitykey)
         if not exists:
             instance = self.class_()
-            instance.dirty = False
+            objectstore.uow().register_clean(instance)
             for column in self.selectable.primary_keys:
                 if row[column.label] is None:
                     return None
@@ -432,10 +432,7 @@ class PropertyLoader(MapperProperty):
                 childlist = util.HistoryArraySet(childlist)
                 clean_setattr(obj, self.key, childlist)
         else:
-            childlist = GetPropHistory()
-            # this is a nasty trick to communicate with a property()
-            setattr(obj, self.key, childlist)
-            childlist = childlist.history
+            childlist = objectstore.uow().register_attribute(obj, self.key)
 
         for child in childlist.deleted_items():
             setter.child = child
@@ -691,19 +688,14 @@ class SmartProperty(object):
         # thread-local unit of work
         def set_prop(s, value):
             if usehistory:
-                hist = self.get_history(s)
-                if isinstance(value, GetPropHistory):
-                    value.history = hist
-                    return
-                hist.setattr(value, s.__dict__.get(self.key, None))
+                objectstore.uow().attribute_set(s, self.key, value)
             s.__dict__[self.key] = value
-            s.dirty = True
+            objectstore.uow().register_dirty(s)
         def del_prop(s):
             if usehistory:
-                hist = self.get_history(s)
-                hist.delattr(value)
+                objectstore.uow().attribute_deleted(s, self.key, value)
             del s.__dict__[self.key]
-            s.dirty = True
+            objectstore.uow().register_dirty(s)
         def get_prop(s):
             try:
                 v = s.__dict__[self.key]
@@ -714,8 +706,6 @@ class SmartProperty(object):
             return s.__dict__[self.key]
         return property(get_prop, set_prop, del_prop)
 
-class GetPropHistory:pass
-        
   
 def clean_setattr(object, key, value):
     object.__dict__[key] = value
