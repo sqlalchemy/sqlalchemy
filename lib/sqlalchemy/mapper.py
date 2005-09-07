@@ -289,7 +289,7 @@ class Mapper(object):
         return self.instances(statement.execute(**params))
 
     def _identity_key(self, row):
-        return objectstore.get_key(row, self.class_, self.table, self.selectable)
+        return objectstore.get_row_key(row, self.class_, self.table, self.selectable)
 
     def _instance(self, row, result):
         """pulls an object instance from the given row and appends it to the given result list.
