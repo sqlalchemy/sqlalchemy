@@ -122,14 +122,30 @@ class HashSet(object):
         return self.map[key]
         
 class HistoryArraySet(UserList.UserList):
-    def __init__(self, items = None):
+    def __init__(self, items = None, data = None):
         UserList.UserList.__init__(self, items)
         # stores the array's items as keys, and a value of True, False or None indicating
         # added, deleted, or unchanged for that item
+        if data is not None:
+            self.data = data
         self.records = {}
-        if items is not None:
-            for i in items:
-                self.records[i] = True
+        for i in self.data:
+            self.records[i] = True
+
+    def set_data(self, data):
+        # first mark everything current as "deleted"
+        for i in self.data:
+            self.records[i] = False
+            
+        # switch array
+        self.data = data
+
+        # TODO: fix this up, remove items from array while iterating
+        for i in range(0, len(self.data)):
+            if not _setrecord(self, self.data[i]):
+               del self.data[i]
+               i -= 1
+
     def _setrecord(self, item):
         try:
             val = self.records[item]
