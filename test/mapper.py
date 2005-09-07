@@ -66,7 +66,7 @@ class MapperTest(AssertMixin):
         u = m.get(7)
         u2 = m.get(7)
         self.assert_(u is u2)
-        identity_map.clear("thread")
+        objectstore.clear("thread")
         u2 = m.get(7)
         self.assert_(u is not u2)
 
