@@ -303,7 +303,6 @@ class Mapper(object):
         exists = objectstore.has_key(identitykey)
         if not exists:
             instance = self.class_()
-            objectstore.uow().register_clean(instance)
             for column in self.selectable.primary_keys:
                 if row[column.label] is None:
                     return None
@@ -318,6 +317,8 @@ class Mapper(object):
         # instances from the row and possibly populate this item.
         for key, prop in self.props.iteritems():
             prop.execute(instance, row, identitykey, isduplicate)
+            
+        objectstore.uow().register_clean(instance)
 
 
 class MapperOption:
@@ -367,11 +368,8 @@ class ColumnProperty(MapperProperty):
 
     def getattr(self, object):
         return getattr(object, self.key, None)
-    def setattr(self, object, value, clean = False):
-        if clean:
-            clean_setattr(object, self.key, value)
-        else:
-            setattr(object, self.key, value)
+    def setattr(self, object, value):
+        setattr(object, self.key, value)
     def hash_key(self):
         return "ColumnProperty(%s)" % repr([hash_key(c) for c in self.columns])
 
@@ -382,7 +380,7 @@ class ColumnProperty(MapperProperty):
 
     def execute(self, instance, row, identitykey, isduplicate):
         if not isduplicate:
-            clean_setattr(instance, self.key, row[self.columns[0].label])
+            setattr(instance, self.key, row[self.columns[0].label])
 
 
 
@@ -413,8 +411,8 @@ class PropertyLoader(MapperProperty):
             if self.primaryjoin is None:
                 self.primaryjoin = match_primaries(parent.selectable, self.target)
                 
-        if not self.uselist and not hasattr(parent.class_, key):
-            setattr(parent.class_, key, SmartProperty(key).property(usehistory = True))
+        if not hasattr(parent.class_, key):
+            setattr(parent.class_, key, SmartProperty(key).property(usehistory = True, uselist = self.uselist))
 
     def save(self, obj, traverse):
         # saves child objects
@@ -427,10 +425,7 @@ class PropertyLoader(MapperProperty):
         
         
         if self.uselist:
-            childlist = getattr(obj, self.key)
-            if not isinstance(childlist, util.HistoryArraySet):
-                childlist = util.HistoryArraySet(childlist)
-                clean_setattr(obj, self.key, childlist)
+            childlist = objectstore.uow().register_list_attribute(obj, self.key)
         else:
             childlist = objectstore.uow().register_attribute(obj, self.key)
 
@@ -445,7 +440,6 @@ class PropertyLoader(MapperProperty):
                 secondary_delete.append(setter.associationrow)
                 
         for child in childlist.added_items():
-            #print "yup " + repr(child)
             setter.child = child
             setter.associationrow = {}
             self.primaryjoin.accept_visitor(setter)
@@ -495,7 +489,8 @@ class LazyLoader(PropertyLoader):
 
     def execute(self, instance, row, identitykey, isduplicate):
         if not isduplicate:
-            clean_setattr(instance, self.key, LazyLoadInstance(self, row))
+            objectstore.uow().register_list_attribute(instance, self.key, loader = LazyLoadInstance(self, row))
+            #setattr(instance, self.key, LazyLoadInstance(self, row))
 
 
 class LazyLoadInstance(object):
@@ -566,15 +561,16 @@ class EagerLoader(PropertyLoader):
         if not self.uselist:
             result_list = []
         elif not isduplicate:
-            result_list = util.HistoryArraySet()
-            clean_setattr(instance, self.key, result_list)
+            result_list = objectstore.uow().register_list_attribute(instance, self.key, data = [])
+            result_list.clear_history()
         else:
             result_list = getattr(instance, self.key)
 
         self.mapper._instance(row, result_list)
         
         if not self.uselist:
-            clean_setattr(instance, self.key, result_list[0])
+            # TODO: check for multiple rows for a single-valued attribute ?
+            setattr(instance, self.key, result_list[0])
             
 class EagerLazySwitcher(MapperOption):
     """an option that switches a PropertyLoader to be an EagerLoader"""
@@ -676,34 +672,32 @@ class SmartProperty(object):
     def __init__(self, key):
         self.key = key
 
-    def get_history(self, obj):
-        if not hasattr(obj, '_history'):
-            obj._history = {}
-        if not obj._history.has_key(self.key):
-            obj._history[self.key] = util.PropHistory(obj.__dict__.get(self.key, None))
-        return obj._history[self.key]
-        
-    def property(self, usehistory = False):
-        # TODO: all the history/dirty crap here is temporary, should communicate with a 
-        # thread-local unit of work
+    def property(self, usehistory = False, uselist = False):
         def set_prop(s, value):
-            if usehistory:
+            if uselist:
+                return objectstore.uow().register_list_attribute(s, self.key, value)
+            elif usehistory:
                 objectstore.uow().attribute_set(s, self.key, value)
-            s.__dict__[self.key] = value
-            objectstore.uow().register_dirty(s)
+            else:
+                s.__dict__[self.key] = value
+                objectstore.uow().register_dirty(s)
         def del_prop(s):
-            if usehistory:
+            if uselist:
+                objectstore.uow().register_list_attribute(s, self.key, [])
+            elif usehistory:
                 objectstore.uow().attribute_deleted(s, self.key, value)
-            del s.__dict__[self.key]
-            objectstore.uow().register_dirty(s)
+            else:
+                del s.__dict__[self.key]
+                objectstore.uow().register_dirty(s)
         def get_prop(s):
-            try:
-                v = s.__dict__[self.key]
-            except KeyError:
-                raise AttributeError(self.key)
-            if callable(v):
-                s.__dict__[self.key] = v()
-            return s.__dict__[self.key]
+            if uselist:
+                return objectstore.uow().register_list_attribute(s, self.key)
+            else:
+                try:
+                    return s.__dict__[self.key]
+                except KeyError:
+                    raise AttributeError(self.key)
+                    
         return property(get_prop, set_prop, del_prop)
 
   
