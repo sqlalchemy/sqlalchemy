@@ -172,6 +172,14 @@ class EagerTest(AssertMixin):
         l = m.select()
         print repr(l)
 
+    def testonetoone(self):
+        m = mapper(User, users, properties = dict(
+            address = relation(Address, addresses, lazy = False, uselist = False)
+        ))
+        l = m.select(users.c.user_id == 7)
+        print repr(l)
+        print repr(l[0].address)
+
     def testwithrepeat(self):
         """tests a one-to-many eager load where we also query on joined criterion, where the joined
         criterion is using the same tables that are used within the eager load.  the mapper must insure that the 
