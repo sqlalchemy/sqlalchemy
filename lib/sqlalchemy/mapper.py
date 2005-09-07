@@ -36,7 +36,7 @@ def relation_loader(mapper, secondary = None, primaryjoin = None, secondaryjoin 
         return EagerLoader(mapper, secondary, primaryjoin, secondaryjoin, **options)
     
 def relation_mapper(class_, selectable, secondary = None, primaryjoin = None, secondaryjoin = None, table = None, properties = None, lazy = True, uselist = True, **options):
-    return relation_loader(mapper(class_, selectable, table = table, properties = properties, isroot = False, **options), secondary, primaryjoin, secondaryjoin, lazy = lazy, uselist = uselist, **options)
+    return relation_loader(mapper(class_, selectable, table = table, properties = properties, skip_init = True, **options), secondary, primaryjoin, secondaryjoin, lazy = lazy, uselist = uselist, **options)
 
 _mappers = {}
 def mapper(*args, **params):
@@ -45,7 +45,10 @@ def mapper(*args, **params):
     try:
         return _mappers[hashkey]
     except KeyError:
-        return _mappers.setdefault(hashkey, Mapper(*args, **params))
+        m = Mapper(*args, **params)
+        if not params.get('skip_init', False):
+            m.init(m)
+        return _mappers.setdefault(hashkey, m)
     
 def eagerload(name):
     return EagerLazySwitcher(name, toeager = True)
@@ -54,7 +57,7 @@ def lazyload(name):
     return EagerLazySwitcher(name, toeager = False)
 
 class Mapper(object):
-    def __init__(self, class_, selectable, table = None, scope = "thread", properties = None, isroot = True, echo = None):
+    def __init__(self, class_, selectable, table = None, scope = "thread", properties = None, echo = None):
         self.class_ = class_
         self.scope = scope
         self.selectable = selectable
@@ -113,8 +116,6 @@ class Mapper(object):
             proplist.append(prop)
 
 
-        if isroot:
-            self.init(self)
 
     def hash_key(self):
         return mapper_hash_key(
@@ -455,7 +456,7 @@ class PropertyLoader(MapperProperty):
                 secondary_delete.append(setter.associationrow)
                 
         for child in childlist.added_items():
-            print "yup " + repr(child)
+            #print "yup " + repr(child)
             setter.child = child
             setter.associationrow = {}
             self.primaryjoin.accept_visitor(setter)
@@ -586,16 +587,6 @@ class EagerLoader(PropertyLoader):
         if not self.uselist:
             clean_setattr(instance, self.key, result_list[0])
             
-class LazyRow(MapperProperty):
-    """TODO: this will lazy-load additional properties of an object from a secondary table."""
-    def __init__(self, table, whereclause, **options):
-        self.table = table
-        self.whereclause = whereclause
-    def init(self, key, parent, root):
-        self.keys.append(key)
-    def execute(self, instance, row, identitykey, localmap, isduplicate):
-        pass
-
 class EagerLazySwitcher(MapperOption):
     """an option that switches a PropertyLoader to be an EagerLoader"""
     def __init__(self, key, toeager = True):
@@ -751,7 +742,7 @@ def hash_key(obj):
     else:
         return obj.hash_key()
 
-def mapper_hash_key(class_, selectable, table = None, properties = None, scope = "thread", isroot = True, echo = None):
+def mapper_hash_key(class_, selectable, table = None, properties = None, scope = "thread", echo = None):
     if properties is None:
         properties = {}
     return (
