@@ -489,8 +489,10 @@ class LazyLoader(PropertyLoader):
 
     def execute(self, instance, row, identitykey, isduplicate):
         if not isduplicate:
-            objectstore.uow().register_list_attribute(instance, self.key, loader = LazyLoadInstance(self, row))
-            #setattr(instance, self.key, LazyLoadInstance(self, row))
+            if self.uselist:
+                objectstore.uow().register_list_attribute(instance, self.key, loader = LazyLoadInstance(self, row))
+            else:
+                setattr(instance, self.key, LazyLoadInstance(self, row))
 
 
 class LazyLoadInstance(object):
@@ -676,34 +678,22 @@ class SmartProperty(object):
         def set_prop(s, value):
             if uselist:
                 return objectstore.uow().register_list_attribute(s, self.key, value)
-            elif usehistory:
-                objectstore.uow().attribute_set(s, self.key, value)
             else:
-                s.__dict__[self.key] = value
-                objectstore.uow().register_dirty(s)
+                objectstore.uow().attribute_set(s, self.key, value, usehistory)
         def del_prop(s):
             if uselist:
                 objectstore.uow().register_list_attribute(s, self.key, [])
-            elif usehistory:
-                objectstore.uow().attribute_deleted(s, self.key, value)
             else:
-                del s.__dict__[self.key]
-                objectstore.uow().register_dirty(s)
+                objectstore.uow().attribute_deleted(s, self.key, value, usehistory)
         def get_prop(s):
             if uselist:
                 return objectstore.uow().register_list_attribute(s, self.key)
             else:
-                try:
-                    return s.__dict__[self.key]
-                except KeyError:
-                    raise AttributeError(self.key)
-                    
+                return objectstore.uow().get_attribute(s, self.key)
+                
         return property(get_prop, set_prop, del_prop)
 
   
-def clean_setattr(object, key, value):
-    object.__dict__[key] = value
-          
 def hash_key(obj):
     if obj is None:
         return 'None'
