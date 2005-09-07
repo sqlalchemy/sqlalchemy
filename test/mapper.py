@@ -4,7 +4,7 @@ from sqlalchemy.mapper import *
 import sqlalchemy.objectstore as objectstore
 
 ECHO = True
-#ECHO = False
+ECHO = False
 execfile("test/tables.py")
 
 class User(object):
@@ -37,7 +37,7 @@ class Item(object):
     
 class Keyword(object):
     def __repr__(self):
-        return "Keyword: %s/%s" % (repr(self.keyword_id),repr(self.name))
+        return "Keyword: %s/%s" % (repr(getattr(self, 'keyword_id', None)),repr(self.name))
 
 class AssertMixin(PersistTest):
     def assert_result(self, result, class_, *objects):
@@ -404,6 +404,7 @@ class SaveTest(AssertMixin):
         self.assert_(addresstable[1].row == (a2.address_id, None, 'lala@test.org'))
 
     def testmanytomany(self):
+        print "\n\n\n\n\n"
         items = orderitems
 
         m = mapper(Item, items, properties = dict(
