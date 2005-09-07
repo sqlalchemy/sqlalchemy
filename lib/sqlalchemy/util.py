@@ -106,6 +106,12 @@ class HashSet(object):
     def __iter__(self):
         return iter(self.map.values())
  
+    def contains(self, item):
+        return self.map.has_key(item)
+
+    def clear(self):
+        self.map.clear()
+        
     def append(self, item):
         self.map[item] = item
  
@@ -209,15 +215,19 @@ class PropHistory(object):
         self.added = None
         self.current = current
         self.deleted = None
-    def setattr(self, value, current):
+    def setattr(self, value):
+        self.deleted = self.current
         self.current = None
-        self.deleted = current
         self.added = value
-    def delattr(self, current):
-        self.deleted = current
+    def delattr(self):
+        self.deleted = self.current
+        self.current = None
     def clear_history(self):
         if self.added is not None:
             self.current = self.added
+            self.added = None
+        if self.deleted is not None:
+            self.deleted = None
     def added_items(self):
         if self.added is not None:
             return [self.added]
@@ -235,8 +245,9 @@ class PropHistory(object):
             return []
         
 class ScopedRegistry(object):
-    def __init__(self, createfunc):
+    def __init__(self, createfunc, defaultscope):
         self.createfunc = createfunc
+        self.defaultscope = defaultscope
         self.application = createfunc()
         self.threadlocal = {}
         self.scopes = {
@@ -244,10 +255,14 @@ class ScopedRegistry(object):
                     'thread' : {'call' : self._call_thread, 'clear':self._clear_thread}
                     }
 
-    def __call__(self, scope):
+    def __call__(self, scope = None):
+        if scope is None:
+            scope = self.defaultscope
         return self.scopes[scope]['call']()
 
-    def clear(self, scope):
+    def clear(self, scope = None):
+        if scope is None:
+            scope = self.defaultscope
         return self.scopes[scope]['clear']()
         
     def _call_thread(self):
