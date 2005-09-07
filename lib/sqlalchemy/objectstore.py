@@ -115,10 +115,15 @@ class UnitOfWork:
         self.attribute_history = weakref.WeakKeyDictionary()
         
     def attribute_set(self, obj, key, value):
-        self.register_attribute(obj, key).setattr(value)    
+        self.register_attribute(obj, key).setattr(value)
+        obj.__dict__[key] = value
+        self.register_dirty(obj)
+        
     def attribute_deleted(self, obj, key, value):
         self.register_attribute(obj, key).delattr(value)    
-    
+        del obj.__dict__[key]
+        self.register_dirty(obj)
+        
     def register_attribute(self, obj, key):
         try:
             attributes = self.attribute_history[obj]
@@ -128,6 +133,27 @@ class UnitOfWork:
             return attributes[key]
         except KeyError:
             return attributes.setdefault(key, util.PropHistory(obj.__dict__.get(key, None)))
+
+    def register_list_attribute(self, obj, key, data = None, loader = None):
+        if loader is not None:
+            obj.__dict__[key] = loader
+            return
+            
+        try:
+            childlist = obj.__dict__[key]
+        except KeyError:
+            childlist = util.HistoryArraySet()
+            obj.__dict__[key] = childlist
+        
+        if callable(childlist):
+            childlist = childlist()
+            
+        if not isinstance(childlist, util.HistoryArraySet):
+            childlist = util.HistoryArraySet(childlist)
+            obj.__dict__[key] = childlist
+        if data is not None and childlist.data != data:
+            childlist.set_data(data)
+        return childlist
         
     def register_clean(self, obj):
         self.clean.append(obj)
