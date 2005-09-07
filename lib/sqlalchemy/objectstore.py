@@ -114,13 +114,29 @@ class UnitOfWork:
         self.deleted = util.HashSet()
         self.attribute_history = weakref.WeakKeyDictionary()
         
-    def attribute_set(self, obj, key, value):
-        self.register_attribute(obj, key).setattr(value)
+    def attribute_set_callable(self, obj, key, func):
+        obj.__dict__[key] = func
+
+    def get_attribute(self, obj, key):
+        try:
+            v = obj.__dict__[key]
+        except KeyError:
+            raise AttributeError(key)
+        if (callable(v)):
+            v = v()
+            obj.__dict__[key] = v
+            self.register_attribute(obj, key).setattr_clean(v)
+        return v
+        
+    def attribute_set(self, obj, key, value, usehistory = False):
+        if usehistory:
+            self.register_attribute(obj, key).setattr(value)
         obj.__dict__[key] = value
         self.register_dirty(obj)
         
-    def attribute_deleted(self, obj, key, value):
-        self.register_attribute(obj, key).delattr(value)    
+    def attribute_deleted(self, obj, key, value, usehistory = False):
+        if usehistory:
+            self.register_attribute(obj, key).delattr(value)    
         del obj.__dict__[key]
         self.register_dirty(obj)
         
@@ -173,7 +189,14 @@ class UnitOfWork:
             pass
 
     def is_dirty(self, obj):
-        return self.dirty.contains(obj)
+        if not self.dirty.contains(obj):
+            if not self.clean.contains(obj):
+                # TODO: should this be register_new ?
+                self.register_dirty(obj)
+                return True
+            return False
+        else:
+            return True
         
     def register_deleted(self, obj):
         pass   
