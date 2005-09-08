@@ -132,6 +132,14 @@ class LazyTest(AssertMixin):
         print repr(l)
         print repr(l[0].address)
 
+        # test 'backwards'
+        m = mapper(Address, addresses, properties = dict(
+            user = relation(User, users, primaryjoin = users.c.user_id == addresses.c.user_id, lazy = True, uselist = False)
+        ))
+        l = m.select(addresses.c.address_id == 1)
+        print repr(l)
+        print repr(l[0].user)
+
     def testmanytomany(self):
         """tests a many-to-many lazy load"""
         items = orderitems
@@ -179,6 +187,14 @@ class EagerTest(AssertMixin):
         l = m.select(users.c.user_id == 7)
         print repr(l)
         print repr(l[0].address)
+
+        # test 'backwards'
+        m = mapper(Address, addresses, properties = dict(
+            user = relation(User, users, primaryjoin = addresses.c.user_id == users.c.user_id, lazy = False, uselist = False)
+        ))
+        l = m.select(addresses.c.address_id == 1)
+        print repr(l)
+        print repr(l[0].user)
 
     def testwithrepeat(self):
         """tests a one-to-many eager load where we also query on joined criterion, where the joined
@@ -352,6 +368,20 @@ class SaveTest(AssertMixin):
         u.address.email_address = 'imnew@foo.com'
         m.save(u)
         m.save(u)
+
+    def testbackwardsonetoone(self):
+        # test 'backwards'
+        m = mapper(Address, addresses, properties = dict(
+            user = relation(User, users, primaryjoin = users.c.user_id == addresses.c.user_id, lazy = True, uselist = False)
+        ))
+        a = Address()
+        a.email_address = 'themaster@foo.com'
+        a.user = User()
+        a.user.user_name = 'thesub'
+        m.save(a)
+        l = sql.select([users, addresses], sql.and_(users.c.user_id==addresses.c.address_id, addresses.c.address_id==a.address_id)).execute()
+        r = engine.ResultProxy(l)
+        print repr(r.fetchone().row)
         
     def testonetomany(self):
         """test basic save of one to many."""
