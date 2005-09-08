@@ -109,8 +109,8 @@ def has_key(key):
     
 class UnitOfWork(object):
     def __init__(self):
+        self.new = util.HashSet()
         self.dirty = util.HashSet()
-        self.clean = util.HashSet()
         self.deleted = util.HashSet()
         self.attribute_history = weakref.WeakKeyDictionary()
         
@@ -168,28 +168,22 @@ class UnitOfWork(object):
         return childlist
         
     def register_clean(self, obj):
-        self.clean.append(obj)
         try:
             del self.dirty[obj]
         except KeyError:
             pass
 
     def register_new(self, obj):
-        pass
+        self.new.append(obj)
         
     def register_dirty(self, obj):
         self.dirty.append(obj)
-        try:
-            del self.clean[obj]
-        except KeyError:
-            pass
 
     def is_dirty(self, obj):
         if not self.dirty.contains(obj):
             # if we know nothing about this object, register it as dirty (or new ?)
             if not self.clean.contains(obj):
-                # TODO: should this be register_new ?
-                self.register_dirty(obj)
+                self.register_new(obj)
                 return True
             return False
         else:
@@ -197,10 +191,29 @@ class UnitOfWork(object):
         
     def register_deleted(self, obj):
         pass   
-        
+
     def commit(self):
-        for item in self.dirty:
-            self.clean.append(item)
-        self.dirty.clear()
+        import sqlalchemy.mapper as mapper
         
+        self.dependencies = {}
+        
+        for obj in self.new:
+            mapper = mapper.object_mapper(obj)
+            mapper.register_dependencies(item, self)
+        for obj in self.dirty:
+            mapper = mapper.object_mapper(obj)
+            mapper.register_dependencies(obj, self)
+#        for item in self.deleted:
+#            mapper = mapper.object_mapper(item)
+#        sort save instructions
+#        execute save instructions
+#           hmmmmm, as we save items, we have to populate the dependencies too
+#           then the save comes down to them and they are populated
+        self.dirty.clear()
+#        self.deleted.clear()
+
+    def register_dependency(self, obj, dependency):
+        pass
+        
+    
 uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")        

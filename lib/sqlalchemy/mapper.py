@@ -36,8 +36,8 @@ def relation_loader(mapper, secondary = None, primaryjoin = None, secondaryjoin 
     else:
         return EagerLoader(mapper, secondary, primaryjoin, secondaryjoin, **options)
     
-def relation_mapper(class_, selectable, secondary = None, primaryjoin = None, secondaryjoin = None, table = None, properties = None, lazy = True, uselist = True, **options):
-    return relation_loader(mapper(class_, selectable, table = table, properties = properties, **options), secondary, primaryjoin, secondaryjoin, lazy = lazy, uselist = uselist, **options)
+def relation_mapper(class_, selectable, secondary = None, primaryjoin = None, secondaryjoin = None, table = None, properties = None, lazy = True, uselist = True, direction = None, **options):
+    return relation_loader(mapper(class_, selectable, table = table, properties = properties, **options), secondary, primaryjoin, secondaryjoin, lazy = lazy, uselist = uselist, direction = direction, **options)
 
 _mappers = {}
 def mapper(*args, **params):
@@ -55,6 +55,15 @@ def eagerload(name):
 def lazyload(name):
     return EagerLazySwitcher(name, toeager = False)
 
+def object_mapper(object):
+    try:
+        return _mappers[object._mapper]
+    except AttributeError:
+        try:
+            return _mappers[object.__class__._mapper]
+        except AttributeError:
+            raise "Object " + object.__class__.__name__ + "/" + repr(id(object)) + " has no mapper specified"
+        
 class Mapper(object):
     def __init__(self, class_, selectable, table = None, scope = "thread", properties = None, echo = None, **kwargs):
         self.class_ = class_
@@ -117,14 +126,16 @@ class Mapper(object):
         self.init()
 
     def hash_key(self):
-        return mapper_hash_key(
-            self.class_,
-            self.selectable,
-            self.table,
-            self.properties,
-            self.scope,
-            self.echo
-        )
+        if not hasattr(self, 'hashkey'):
+            self.hashkey = mapper_hash_key(
+                self.class_,
+                self.selectable,
+                self.table,
+                self.properties,
+                self.scope,
+                self.echo
+            )
+        return self.hashkey
 
     def set_property(self, key, prop):
         self.props[key] = prop
@@ -132,6 +143,7 @@ class Mapper(object):
 
     def init(self):
         [prop.init(key, self) for key, prop in self.props.iteritems()]
+        self.class_._mapper = self.hash_key()
 
     def instances(self, cursor):
         result = util.HistoryArraySet()
@@ -268,6 +280,10 @@ class Mapper(object):
             for prop in self.props.values():
                 prop.save(obj, traverse)
 
+    def register_dependencies(self, obj, uow):
+        for prop in self.props.values():
+            prop.register_dependencies(obj, uow)
+            
     def transaction(self, f):
         return self.table.engine.multi_transaction(self.tables, f)
 
@@ -306,6 +322,7 @@ class Mapper(object):
         exists = objectstore.has_key(identitykey)
         if not exists:
             instance = self.class_()
+            instance._mapper = self.hash_key()
             for column in self.selectable.primary_keys:
                 if row[column.label] is None:
                     return None
@@ -364,6 +381,9 @@ class MapperProperty:
     def delete(self, object):
         """called when the instance is being deleted"""
         pass
+       
+    def register_dependencies(self, obj, uow):
+        pass
 
 class ColumnProperty(MapperProperty):
     """describes an object attribute that corresponds to a table column."""
@@ -393,21 +413,26 @@ class ColumnProperty(MapperProperty):
 class PropertyLoader(MapperProperty):
     """describes an object property that holds a list of items that correspond to a related
     database table."""
-    def __init__(self, mapper, secondary, primaryjoin, secondaryjoin, uselist = True):
+    def __init__(self, mapper, secondary, primaryjoin, secondaryjoin, uselist = True, direction = None):
         self.uselist = uselist
         self.mapper = mapper
         self.target = self.mapper.selectable
         self.secondary = secondary
         self.primaryjoin = primaryjoin
         self.secondaryjoin = secondaryjoin
+        self.direction = direction
         self._hash_key = "%s(%s, %s, %s, %s, uselist=%s)" % (self.__class__.__name__, hash_key(mapper), hash_key(secondary), hash_key(primaryjoin), hash_key(secondaryjoin), repr(self.uselist))
-
+        if self.direction is not None and self.direction != 'left' and self.direction != 'right':
+            raise "direction propery must be 'left', 'right' or None"
+            
     def hash_key(self):
         return self._hash_key
 
     def init(self, key, parent):
         self.key = key
         self.parent = parent
+        
+        # if join conditions were not specified, figure them out based on primary keys
         if self.secondary is not None:
             if self.secondaryjoin is None:
                 self.secondaryjoin = self.match_primaries(self.target, self.secondary)
@@ -416,9 +441,35 @@ class PropertyLoader(MapperProperty):
         else:
             if self.primaryjoin is None:
                 self.primaryjoin = self.match_primaries(parent.selectable, self.target)
+        
+        # if the foreign key wasnt specified and theres no assocaition table, try to figure
+        # out who is dependent on who. we dont need all the foreign keys represented in the join,
+        # just one of them.  
+        if self.foreignkey is None and self.secondaryjoin is None:
+            # else we usually will have a one-to-many where the secondary depends on the primary
+            # but its possible that its reversed
+            w = PropertyLoader.FindDependent()
+            w.accept_visitor(self.primaryjoin)
+            if w.dependent is None:
+                raise "cant determine primary foreign key in the join relationship....specify foreignkey=<column>"
+            else:
+                self.foreignkey = w.dependent
                 
         if not hasattr(parent.class_, key):
             setattr(parent.class_, key, SmartProperty(key).property(usehistory = True, uselist = self.uselist))
+
+    class FindDependent(sql.ClauseVisitor):
+        def visit_binary(self, binary):
+            if binary.operator == '=':
+                if binary.left.primary_key:
+                    if self.dependent == binary.left:
+                        raise "bidirectional dependency not supported...specify foreignkey"
+                    self.dependent = binary.right
+                elif binary.right.primary_key:
+                    if self.dependent == binary.right:
+                        raise "bidirectional dependency not supported...specify foreignkey"
+                    self.dependent = binary.left
+                
 
     def match_primaries(self, primary, secondary):
         pk = primary.primary_keys
@@ -426,6 +477,23 @@ class PropertyLoader(MapperProperty):
             return (pk[0] == secondary.c[pk[0].name])
         else:
             return sql.and_([pk == secondary.c[pk.name] for pk in primary.primary_keys])
+
+    def register_dependencies(self, obj, uow):
+        if self.uselist:
+            childlist = objectstore.uow().register_list_attribute(obj, self.key)
+        else:
+            childlist = objectstore.uow().register_attribute(obj, self.key)
+
+        if self.secondarytable is not None:
+            # TODO: put a "row" as a dependency into the UOW somehow
+            pass
+        elif self.foreignkey.table == self.target:
+            for child in childlist.added_items():
+                uow.register_dependency(obj, child)
+        elif self.foreignkey.table == self.secondary:
+            for child in childlist.added_items():
+                uow.register_dependency(child, obj)
+        
 
     def save(self, obj, traverse):
         # saves child objects
