@@ -372,7 +372,7 @@ class SaveTest(AssertMixin):
     def testbackwardsonetoone(self):
         # test 'backwards'
         m = mapper(Address, addresses, properties = dict(
-            user = relation(User, users, primaryjoin = users.c.user_id == addresses.c.user_id, lazy = True, uselist = False)
+            user = relation(User, users, foreignkey = addresses.c.user_id, primaryjoin = users.c.user_id == addresses.c.user_id, lazy = True, uselist = False)
         ))
         a = Address()
         a.email_address = 'themaster@foo.com'
