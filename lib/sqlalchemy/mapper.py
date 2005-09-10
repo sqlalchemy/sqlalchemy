@@ -521,7 +521,6 @@ class PropertyLoader(MapperProperty):
         setter = ForeignKeySetter(self.parent, self.mapper, self.parent.table, self.target, self.secondary)
 
         if self.secondaryjoin is not None:
-            print "secondaries !"
             secondary_delete = []
             secondary_insert = []
             for obj in deplist:

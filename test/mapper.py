@@ -482,7 +482,6 @@ class SaveTest(AssertMixin):
         self.assert_(addresstable[1].row == (a2.address_id, None, 'lala@test.org'))
 
     def testmanytomany(self):
-        print "\n\n\n\n\n"
         items = orderitems
 
         m = mapper(Item, items, properties = dict(
@@ -491,22 +490,28 @@ class SaveTest(AssertMixin):
 
         keywordmapper = mapper(Keyword, keywords)
 
-        data = [
-            {'name': 'item1', 'keywords' : ['green', 'purple', 'big', 'round']},
-            {'name': 'item2', 'keywords' : ['blue', 'small', 'imnew', 'round']},
-            {'name': 'item3', 'keywords' : ['red', 'small', 'round']},
-            {'name': 'item4', 'keywords' : ['blue', 'big']},
-            {'name': 'item5', 'keywords' : ['green', 'big', 'exacting']},
+        data = [Item,
+            {'item_name': 'item1', 'keywords' : (Keyword,[{'name': 'green'}, {'name': 'purple'},{'name': 'big'},{'name': 'round'}])},
+            {'item_name': 'item2', 'keywords' : (Keyword,[{'name':'blue'}, {'name':'small'}, {'name':'imnew'},{'name':'round'}])},
+            {'item_name': 'item3', 'keywords' : (Keyword,[])},
+            {'item_name': 'item4', 'keywords' : (Keyword,[{'name':'blue'},{'name':'big'}])},
+            {'item_name': 'item5', 'keywords' : (Keyword,[{'name':'green'},{'name':'big'},{'name':'exacting'}])},
+            {'item_name': 'item6', 'keywords' : (Keyword,[{'name':'red'},{'name':'small'},{'name':'round'}])},
         ]
-        for elem in data:
+        objects = []
+        for elem in data[1:]:
             item = Item()
-            item.item_name = elem['name']
+            objects.append(item)
+            item.item_name = elem['item_name']
             item.keywords = []
-            klist = keywordmapper.select(keywords.c.name.in_(*elem['keywords']))
+            if len(elem['keywords'][1]):
+                klist = keywordmapper.select(keywords.c.name.in_(*[e['name'] for e in elem['keywords'][1]]))
+            else:
+                klist = []
             khash = {}
             for k in klist:
                 khash[k.name] = k
-            for kname in elem['keywords']:
+            for kname in [e['name'] for e in elem['keywords'][1]]:
                 try:
                     k = khash[kname]
                 except KeyError:
@@ -516,8 +521,15 @@ class SaveTest(AssertMixin):
 
         objectstore.uow().commit()
 
-        l = m.select(items.c.item_name.in_(*[e['name'] for e in data]))
-        print repr(l)
+        l = m.select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]))
+        self.assert_result(l, data)
+
+        objects[4].item_name = 'item4updated'
+        k = Keyword()
+        k.name = 'yellow'
+        objects[5].keywords.append(k)
+        
+        objectstore.uow().commit()
         
 if __name__ == "__main__":
     unittest.main()
