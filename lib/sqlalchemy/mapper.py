@@ -501,7 +501,8 @@ class PropertyLoader(MapperProperty):
 
     def register_dependencies(self, objlist, uow):
         if self.secondaryjoin is not None:
-            pass
+            uow.register_dependency(self.parent, self.mapper, None, None)
+            uow.register_dependency(self.mapper, None, self, objlist)
         elif self.foreignkey.table == self.target:
             uow.register_dependency(self.parent, self.mapper, self, objlist)
         elif self.foreignkey.table == self.parent.table:
@@ -509,33 +510,63 @@ class PropertyLoader(MapperProperty):
         else:
             raise " no foreign key ?"
 
-    def process_dependencies(self, deplist):
+    def process_dependencies(self, deplist, uow):
 
-        for obj in deplist:
+        def getlist(obj):
             if self.uselist:
-                childlist = objectstore.uow().register_list_attribute(obj, self.key)
+                return uow.register_list_attribute(obj, self.key)
             else:
-                childlist = objectstore.uow().register_attribute(obj, self.key)
+                return uow.register_attribute(obj, self.key)
 
-            if self.secondaryjoin is not None:
-                pass
-            elif self.foreignkey.table == self.target:
-                setter = ForeignKeySetter(self.parent, self.mapper, self.parent.table, self.target, self.secondary, obj)
+        setter = ForeignKeySetter(self.parent, self.mapper, self.parent.table, self.target, self.secondary)
+
+        if self.secondaryjoin is not None:
+            print "secondaries !"
+            secondary_delete = []
+            secondary_insert = []
+            for obj in deplist:
+                childlist = getlist(obj)
                 for child in childlist.added_items():
                     setter.obj = obj
                     setter.child = child
                     setter.associationrow = {}
                     self.primaryjoin.accept_visitor(setter)
-                
-            elif self.foreignkey.table == self.parent.table:
-                setter = ForeignKeySetter(self.parent, self.mapper, self.parent.table, self.target, self.secondary, None)
+                    self.secondaryjoin.accept_visitor(setter)
+                    secondary_insert.append(setter.associationrow)
+                for child in childlist.deleted_items():
+                    setter.obj = obj
+                    setter.child = child
+                    setter.associationrow = {}
+                    setter.clearkeys = True
+                    self.primaryjoin.accept_visitor(setter)
+                    self.secondaryjoin.accept_visitor(setter)
+                    secondary_delete.append(setter.associationrow)
+            if len(secondary_delete):
+                statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key) for c in self.secondary.c]))
+                statement.echo = self.mapper.echo
+                statement.execute(*secondary_delete)
+            if len(secondary_insert):
+                statement = self.secondary.insert()
+                statement.echo = self.mapper.echo
+                statement.execute(*secondary_insert)
+        elif self.foreignkey.table == self.target:
+            for obj in deplist:
+                childlist = getlist(obj)
+                for child in childlist.added_items():
+                    setter.obj = obj
+                    setter.child = child
+                    setter.associationrow = {}
+                    self.primaryjoin.accept_visitor(setter)
+        elif self.foreignkey.table == self.parent.table:
+            for obj in deplist:
+                childlist = getlist(obj)
                 for child in childlist.added_items():
                     setter.obj = child
                     setter.child = obj
                     setter.associationrow = {}
                     self.primaryjoin.accept_visitor(setter)
-            else:
-                raise " no foreign key ?"
+        else:
+            raise " no foreign key ?"
         
     def save(self, obj, traverse):
         # saves child objects
@@ -748,13 +779,13 @@ class ForeignKeySetter(sql.ClauseVisitor):
     """traverses a join condition of a parent/child object or two objects attached by
     an association table and sets properties on either the child object or an 
     association table row according to the join properties."""
-    def __init__(self, parentmapper, childmapper, primarytable, secondarytable, associationtable, obj):
+    def __init__(self, parentmapper, childmapper, primarytable, secondarytable, associationtable):
         self.parentmapper = parentmapper
         self.childmapper = childmapper
         self.primarytable = primarytable
         self.secondarytable = secondarytable
         self.associationtable = associationtable
-        self.obj = obj
+        self.obj = None
         self.associationrow = {}
         self.clearkeys = False
         self.child = None

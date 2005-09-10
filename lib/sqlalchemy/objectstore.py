@@ -181,10 +181,6 @@ class UnitOfWork(object):
 
     def is_dirty(self, obj):
         if not self.dirty.contains(obj):
-            # if we know nothing about this object, register it as dirty (or new ?)
-            if not self.clean.contains(obj):
-                self.register_new(obj)
-                return True
             return False
         else:
             return True
@@ -229,16 +225,17 @@ class UnitOfWork(object):
             for obj in obj_list:
                 mapper.save_obj(obj)
             for dep in deplist:
-                (processor, list) = dep
-                processor.process_dependencies(list)
+                (processor, stuff_to_process) = dep
+                processor.process_dependencies(stuff_to_process, self)
 
         self.new.clear()
         self.dirty.clear()
 
-    def register_dependency(self, obj, dependency, processor, list):
+    def register_dependency(self, obj, dependency, processor, stuff_to_process):
         self.dependencies[(obj, dependency)] = True
         deplist = self.dependencies.setdefault(obj, [])
-        deplist.append((processor, list))
+        if processor is not None:
+            deplist.append((processor, stuff_to_process))
         
     
 uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")        

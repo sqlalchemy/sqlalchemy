@@ -382,14 +382,29 @@ class SaveTest(AssertMixin):
         m = mapper(Address, addresses, properties = dict(
             user = relation(User, users, foreignkey = addresses.c.user_id, primaryjoin = users.c.user_id == addresses.c.user_id, lazy = True, uselist = False)
         ))
-        a = Address()
-        a.email_address = 'themaster@foo.com'
-        a.user = User()
-        a.user.user_name = 'thesub'
+        data = [
+            {'user_name' : 'thesub' , 'email_address' : 'bar@foo.com'},
+            {'user_name' : 'assdkfj' , 'email_address' : 'thesdf@asdf.com'},
+            {'user_name' : 'n4knd' , 'email_address' : 'asf3@bar.org'},
+            {'user_name' : 'v88f4' , 'email_address' : 'adsd5@llala.net'},
+            {'user_name' : 'asdf8d' , 'email_address' : 'theater@foo.com'}
+        ]
+        objects = []
+        for elem in data:
+            a = Address()
+            a.email_address = elem['email_address']
+            a.user = User()
+            a.user.user_name = elem['user_name']
+            objects.append(a)
+            
+        objectstore.uow().commit()
 
+        objects[2].email_address = 'imnew@foo.bar'
+        objects[3].user = User()
+        objects[3].user.user_name = 'imnewlyadded'
+        
         objectstore.uow().commit()
         return
-
         m.save(a)
         l = sql.select([users, addresses], sql.and_(users.c.user_id==addresses.c.address_id, addresses.c.address_id==a.address_id)).execute()
         r = engine.ResultProxy(l)
@@ -485,7 +500,10 @@ class SaveTest(AssertMixin):
         klist = keywordmapper.select(keywords.c.name.in_('blue', 'big', 'round'))
         for k in klist:
             item.keywords.append(k)
-        m.save(item)
+
+        objectstore.uow().commit()
+        return
+
         l = m.select(items.c.item_id == item.item_id)
 
         self.assert_result(l, Item,
