@@ -491,38 +491,33 @@ class SaveTest(AssertMixin):
 
         keywordmapper = mapper(Keyword, keywords)
 
-        item = Item()
-        item.item_name = 'item1'
-        item.keywords = []
-        k = Keyword()
-        k.name = 'purple'
-        item.keywords.append(k)
-        klist = keywordmapper.select(keywords.c.name.in_('blue', 'big', 'round'))
-        for k in klist:
-            item.keywords.append(k)
+        data = [
+            {'name': 'item1', 'keywords' : ['green', 'purple', 'big', 'round']},
+            {'name': 'item2', 'keywords' : ['blue', 'small', 'imnew', 'round']},
+            {'name': 'item3', 'keywords' : ['red', 'small', 'round']},
+            {'name': 'item4', 'keywords' : ['blue', 'big']},
+            {'name': 'item5', 'keywords' : ['green', 'big', 'exacting']},
+        ]
+        for elem in data:
+            item = Item()
+            item.item_name = elem['name']
+            item.keywords = []
+            klist = keywordmapper.select(keywords.c.name.in_(*elem['keywords']))
+            khash = {}
+            for k in klist:
+                khash[k.name] = k
+            for kname in elem['keywords']:
+                try:
+                    k = khash[kname]
+                except KeyError:
+                    k = Keyword()
+                    k.name = kname
+                item.keywords.append(k)
 
         objectstore.uow().commit()
-        return
 
-        l = m.select(items.c.item_id == item.item_id)
-
-        self.assert_result(l, Item,
-            {'item_id' : item.item_id, 'keywords' : (Keyword, [
-                {'name' : 'purple'},
-                {'name' : 'blue'},
-                {'name' : 'big'},
-                {'name' : 'round'}
-            ])})
-
-        del item.keywords[2]
-        del item.keywords[2]
-        m.save(item)
-        l = m.select(items.c.item_id == item.item_id)
-        self.assert_result(l, Item,
-            {'item_id' : item.item_id, 'keywords' : (Keyword, [
-                {'name' : 'purple'},
-                {'name' : 'blue'},
-            ])})
-
+        l = m.select(items.c.item_name.in_(*[e['name'] for e in data]))
+        print repr(l)
+        
 if __name__ == "__main__":
     unittest.main()
