@@ -197,46 +197,48 @@ class UnitOfWork(object):
         
         # TODO: make some kinds of coherent objects here instead of tuples
         self.dependencies = {}
-        objects = []
+        
+        mappers = {}
         
         for obj in self.new:
             mapper = sqlalchemy.mapper.object_mapper(obj)
-            objects.append((obj, mapper))
-            mapper.register_dependencies(obj, self)
+            mapperlist = mappers.setdefault(mapper, [])
+            mapperlist.append(obj)
         for obj in self.dirty:
             mapper = sqlalchemy.mapper.object_mapper(obj)
-            objects.append((obj, mapper))
-            mapper.register_dependencies(obj, self)
+            mapperlist = mappers.setdefault(mapper, [])
+            mapperlist.append(obj)
 
-        def cmp(a, b):
-            if self.dependencies.has_key((a[0],b[0])):
+        for mapper in mappers.keys():
+            mapperlist = mappers[mapper]
+            mapper.register_dependencies(mapperlist, self)
+            
+        mapperlist = mappers.keys()
+        def compare(a, b):
+            if self.dependencies.has_key((a, b)):
                 return -1
-            elif self.dependencies.has_key((b[0],a[0])):
+            elif self.dependencies.has_key((b, a)):
                 return 1
             else:
                 return 0
+        mapperlist.sort(compare)
+        
+        for mapper in mapperlist:
+            obj_list = mappers[mapper]
+            deplist = self.dependencies.get(mapper, [])
+            for obj in obj_list:
+                mapper.save_obj(obj)
+            for dep in deplist:
+                (processor, list) = dep
+                processor.process_dependencies(list)
 
-        objects.sort(cmp)
-        for rec in objects:
-            rec[1].save_obj(rec[0])
-            list = self.dependencies.setdefault(rec[0], [])
-            for dep in list:
-                dep[1](rec[0], dep[0])
-
-                
-#        for item in self.deleted:
-#            mapper = mapper.object_mapper(item)
-#        sort save instructions
-#        execute save instructions
-#           hmmmmm, as we save items, we have to populate the dependencies too
-#           then the save comes down to them and they are populated
+        self.new.clear()
         self.dirty.clear()
-#        self.deleted.clear()
 
-    def register_dependency(self, obj, dependency, processor):
+    def register_dependency(self, obj, dependency, processor, list):
         self.dependencies[(obj, dependency)] = True
-        list = self.dependencies.setdefault(obj, [])
-        list.append((dependency, processor))
+        deplist = self.dependencies.setdefault(obj, [])
+        deplist.append((processor, list))
         
     
 uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")        

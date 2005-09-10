@@ -499,45 +499,44 @@ class PropertyLoader(MapperProperty):
         else:
             return sql.and_([pk == secondary.c[pk.name] for pk in primary.primary_keys])
 
-    def register_dependencies(self, obj, uow):
-        print 'hi2'
-        if self.uselist:
-            childlist = objectstore.uow().register_list_attribute(obj, self.key)
-        else:
-            childlist = objectstore.uow().register_attribute(obj, self.key)
-
+    def register_dependencies(self, objlist, uow):
         if self.secondaryjoin is not None:
-            print "hi6?"
-            # TODO: put a "row" as a dependency into the UOW somehow
             pass
         elif self.foreignkey.table == self.target:
-            print "hi4"
-            setter = ForeignKeySetter(self.parent, self.mapper, self.parent.table, self.target, self.secondary, obj)
-            def foo(obj, child):
-                setter.obj = obj
-                setter.child = child
-                setter.associationrow = {}
-                self.primaryjoin.accept_visitor(setter)
-                
-            for child in childlist.added_items():
-                uow.register_dependency(obj, child, foo)
+            uow.register_dependency(self.parent, self.mapper, self, objlist)
         elif self.foreignkey.table == self.parent.table:
-            print "hi5"
-            setter = ForeignKeySetter(self.parent, self.mapper, self.parent.table, self.target, self.secondary, None)
-
-         #   setter = ForeignKeySetter(self.mapper, self.parent, self.target, self.parent.table, self.secondary, obj)
-            def foo(obj, child):
-                print "hi7"
-                setter.obj = obj
-                setter.child = child
-                setter.associationrow = {}
-                self.primaryjoin.accept_visitor(setter)
-
-            for child in childlist.added_items():
-                uow.register_dependency(child, obj, foo)
+            uow.register_dependency(self.mapper, self.parent, self, objlist)
         else:
             raise " no foreign key ?"
 
+    def process_dependencies(self, deplist):
+
+        for obj in deplist:
+            if self.uselist:
+                childlist = objectstore.uow().register_list_attribute(obj, self.key)
+            else:
+                childlist = objectstore.uow().register_attribute(obj, self.key)
+
+            if self.secondaryjoin is not None:
+                pass
+            elif self.foreignkey.table == self.target:
+                setter = ForeignKeySetter(self.parent, self.mapper, self.parent.table, self.target, self.secondary, obj)
+                for child in childlist.added_items():
+                    setter.obj = obj
+                    setter.child = child
+                    setter.associationrow = {}
+                    self.primaryjoin.accept_visitor(setter)
+                
+            elif self.foreignkey.table == self.parent.table:
+                setter = ForeignKeySetter(self.parent, self.mapper, self.parent.table, self.target, self.secondary, None)
+                for child in childlist.added_items():
+                    setter.obj = child
+                    setter.child = obj
+                    setter.associationrow = {}
+                    self.primaryjoin.accept_visitor(setter)
+            else:
+                raise " no foreign key ?"
+        
     def save(self, obj, traverse):
         # saves child objects
         
