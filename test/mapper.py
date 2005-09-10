@@ -9,7 +9,9 @@ execfile("test/tables.py")
 db.echo = True
 
 class User(object):
-    def __repr__(self):
+    def __init__(self):
+        self.user_id = None
+    def __rrepr__(self):
         return (
 """
 objid: %d
@@ -25,7 +27,7 @@ Closed Orderss %s
 )
 
 class Address(object):
-    def __repr__(self):
+    def __rrepr__(self):
         return "Address: " + repr(getattr(self, 'address_id', None)) + " " + repr(getattr(self, 'user_id', None)) + " " + repr(self.email_address)
 
 class Order(object):
@@ -298,6 +300,10 @@ class SaveTest(AssertMixin):
         u2 = User()
         u2.user_name = 'savetester2'
         m = mapper(User, users)
+
+        objectstore.uow().commit()
+        return
+        
         m.save(u)
         m.save(u2)
 
@@ -336,6 +342,8 @@ class SaveTest(AssertMixin):
         u = User()
         u.user_name = 'multitester'
         u.email = 'multi@test.org'
+
+
         m.save(u)
 
         usertable = engine.ResultProxy(users.select(users.c.user_id.in_(u.foo_id)).execute()).fetchall()
@@ -378,6 +386,10 @@ class SaveTest(AssertMixin):
         a.email_address = 'themaster@foo.com'
         a.user = User()
         a.user.user_name = 'thesub'
+
+        objectstore.uow().commit()
+        return
+
         m.save(a)
         l = sql.select([users, addresses], sql.and_(users.c.user_id==addresses.c.address_id, addresses.c.address_id==a.address_id)).execute()
         r = engine.ResultProxy(l)
@@ -397,6 +409,10 @@ class SaveTest(AssertMixin):
         a2 = Address()
         a2.email_address = 'lala@test.org'
         u.addresses.append(a2)
+
+        objectstore.uow().commit()
+        return
+
         m.save(u)
         usertable = engine.ResultProxy(users.select(users.c.user_id.in_(u.user_id)).execute()).fetchall()
         self.assert_(usertable[0].row == (u.user_id, 'one2manytester'))
