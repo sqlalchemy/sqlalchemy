@@ -193,16 +193,36 @@ class UnitOfWork(object):
         pass   
 
     def commit(self):
-        import sqlalchemy.mapper as mapper
+        import sqlalchemy.mapper
         
         self.dependencies = {}
+        objects = []
         
         for obj in self.new:
-            mapper = mapper.object_mapper(obj)
-            mapper.register_dependencies(item, self)
-        for obj in self.dirty:
-            mapper = mapper.object_mapper(obj)
+            mapper = sqlalchemy.mapper.object_mapper(obj)
+            objects.append((obj, mapper))
             mapper.register_dependencies(obj, self)
+        for obj in self.dirty:
+            mapper = sqlalchemy.mapper.object_mapper(obj)
+            objects.append((obj, mapper))
+            mapper.register_dependencies(obj, self)
+
+        def cmp(a, b):
+            if self.dependencies.has_key((a[0],b[0])):
+                return -1
+            elif self.dependencies.has_key((b[0],a[0])):
+                return 1
+            else:
+                return 0
+
+        objects.sort(cmp)
+        for rec in objects:
+            rec[1].save_obj(rec[0])
+            list = self.dependencies.setdefault(rec[0], [])
+            for dep in list:
+                dep[1](rec[0], dep[0])
+
+                
 #        for item in self.deleted:
 #            mapper = mapper.object_mapper(item)
 #        sort save instructions
@@ -212,8 +232,10 @@ class UnitOfWork(object):
         self.dirty.clear()
 #        self.deleted.clear()
 
-    def register_dependency(self, obj, dependency):
-        pass
+    def register_dependency(self, obj, dependency, processor):
+        self.dependencies[(obj, dependency)] = True
+        list = self.dependencies.setdefault(obj, [])
+        list.append((dependency, processor))
         
     
 uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")        
