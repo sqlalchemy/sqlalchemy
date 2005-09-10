@@ -106,11 +106,34 @@ def has_key(key):
             return True
     else:
         return False
+
+class UOWListElement(util.HistoryArraySet):
+    class listpointer(object): pass
+        
+    def __init__(self, obj, items = None):
+        util.HistoryArraySet.__init__(self, items)
+        self.obj = weakref.ref(obj)
+        
+        # cant hash a UserList, so make a bullshit pointer to us
+        self.listpointer = UOWListElement.listpointer()
+        self.listpointer.list = self
+        
+    def _setrecord(self, item):
+        res = util.HistoryArraySet._setrecord(self, item)
+        if res:
+            uow().modified_lists.append(self.listpointer)
+        return res
+    def _delrecord(self, item):
+        res = util.HistoryArraySet._delrecord(self, item)
+        if res:
+            uow().modified_lists.append(self.listpointer)
+        return res
     
 class UnitOfWork(object):
     def __init__(self):
         self.new = util.HashSet()
         self.dirty = util.HashSet()
+        self.modified_lists = util.HashSet()
         self.deleted = util.HashSet()
         self.attribute_history = weakref.WeakKeyDictionary()
         
@@ -154,14 +177,14 @@ class UnitOfWork(object):
         try:
             childlist = obj.__dict__[key]
         except KeyError:
-            childlist = util.HistoryArraySet()
+            childlist = UOWListElement(obj)
             obj.__dict__[key] = childlist
         
         if callable(childlist):
             childlist = childlist()
             
         if not isinstance(childlist, util.HistoryArraySet):
-            childlist = util.HistoryArraySet(childlist)
+            childlist = UOWListElement(obj, childlist)
             obj.__dict__[key] = childlist
         if data is not None and childlist.data != data:
             childlist.set_data(data)
@@ -204,9 +227,14 @@ class UnitOfWork(object):
             mapper = sqlalchemy.mapper.object_mapper(obj)
             mapperlist = mappers.setdefault(mapper, [])
             mapperlist.append(obj)
-
+        for array in self.modified_lists:
+            mapper = sqlalchemy.mapper.object_mapper(array.list.obj())
+            mapperlist = mappers.setdefault(mapper, [])
+            mapperlist.append(array.list.obj())
+            
         for mapper in mappers.keys():
             mapperlist = mappers[mapper]
+            print repr(mapperlist)
             mapper.register_dependencies(mapperlist, self)
             
         mapperlist = mappers.keys()
@@ -221,7 +249,9 @@ class UnitOfWork(object):
         
         for mapper in mapperlist:
             obj_list = mappers[mapper]
+            print "mapper " + mapper.table.name
             deplist = self.dependencies.get(mapper, [])
+            print "deps " + repr(deplist)
             for obj in obj_list:
                 mapper.save_obj(obj)
             for dep in deplist:
@@ -230,6 +260,10 @@ class UnitOfWork(object):
 
         self.new.clear()
         self.dirty.clear()
+        for item in self.modified_lists:
+            item = item.list
+            item.clear_history()
+        self.modified_lists.clear()
 
     def register_dependency(self, obj, dependency, processor, stuff_to_process):
         self.dependencies[(obj, dependency)] = True

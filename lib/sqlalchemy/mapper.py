@@ -212,65 +212,6 @@ class Mapper(object):
 
     def _setattrbycolumn(self, obj, column, value):
         self.columntoproperty[column][0].setattr(obj, value)
-        
-    def save(self, obj, traverse = True):
-        """saves the object across all its primary tables.  
-        based on the existence of the primary key for each table, either inserts or updates.
-        primary key is determined by the underlying database engine's sequence methodology.
-        the traverse flag indicates attached objects should be saved as well.
-        
-        if smart attributes are being used for the object, the "dirty" flag, or the absense 
-        of the attribute, determines if the item is saved.  if smart attributes are not being 
-        used, the item is saved unconditionally.
-        """
-
-        if objectstore.uow().is_dirty(obj):
-            def foo():
-                # TODO: unitofwork.begin()
-                
-                # TODO: put a registry for statements in the unitofwork,
-                # where we can store insert/update statements and pre-compile them
-                insert_statement = None
-                update_statement = None
-                for table in self.tables:
-                    params = {}
-                    for primary_key in table.primary_keys:
-                        if self._getattrbycolumn(obj, primary_key) is None:
-                            statement = table.insert()
-                            for col in table.columns:
-                                params[col.key] = self._getattrbycolumn(obj, col)
-                            break
-                    else:
-                        clause = sql.and_()
-                        for col in table.columns:
-                            if col.primary_key:
-                                clause.clauses.append(col == self._getattrbycolumn(obj, col))
-                            else:
-                                params[col.key] = self._getattrbycolumn(obj, col)
-                        statement = table.update(clause)
-                    statement.echo = self.echo
-                    statement.execute(**params)
-                    if isinstance(statement, sql.Insert):
-                        primary_keys = table.engine.last_inserted_ids()
-                        index = 0
-                        for col in table.primary_keys:
-                            newid = primary_keys[index]
-                            index += 1
-                            self._setattrbycolumn(obj, col, newid)
-                        self.put(obj)
-                # TODO: make this "register_saved", which gets committed
-                # to "clean" when you call "unitofwork.commit()"
-                # also put a reentrant "begin/commit" onto unitofwork to handle nests
-                objectstore.uow().register_clean(obj)
-                for prop in self.props.values():
-                    if not isinstance(prop, ColumnProperty):
-                        prop.save(obj, traverse)
-                        
-                # TODO: unitofwork.commit()
-            self.transaction(foo)
-        else:
-            for prop in self.props.values():
-                prop.save(obj, traverse)
 
     def save_obj(self, obj):
         for table in self.tables:
@@ -301,7 +242,6 @@ class Mapper(object):
                 self.put(obj)
 
     def register_dependencies(self, obj, uow):
-        print "hi1"
         for prop in self.props.values():
             prop.register_dependencies(obj, uow)
             
@@ -393,10 +333,6 @@ class MapperProperty:
 
     def init(self, key, parent):
         """called when the MapperProperty is first attached to a new parent Mapper."""
-        pass
-
-    def save(self, object, traverse):
-        """called when the instance is being saved"""
         pass
 
     def delete(self, object):
@@ -520,11 +456,13 @@ class PropertyLoader(MapperProperty):
 
         setter = ForeignKeySetter(self.parent, self.mapper, self.parent.table, self.target, self.secondary)
 
+        print "procdep " + repr(deplist)
         if self.secondaryjoin is not None:
             secondary_delete = []
             secondary_insert = []
             for obj in deplist:
                 childlist = getlist(obj)
+                print "added! " + repr(childlist.added_items())
                 for child in childlist.added_items():
                     setter.obj = obj
                     setter.child = child
@@ -567,59 +505,6 @@ class PropertyLoader(MapperProperty):
         else:
             raise " no foreign key ?"
         
-    def save(self, obj, traverse):
-        # saves child objects
-        
-        if self.secondary is not None:
-            secondary_delete = []
-            secondary_insert = []
-             
-        setter = ForeignKeySetter(self.parent, self.mapper, self.parent.table, self.target, self.secondary, obj)
-        
-        if self.uselist:
-            childlist = objectstore.uow().register_list_attribute(obj, self.key)
-        else:
-            childlist = objectstore.uow().register_attribute(obj, self.key)
-
-        for child in childlist.deleted_items():
-            setter.child = child
-            setter.associationrow = {}
-            setter.clearkeys = True
-            self.primaryjoin.accept_visitor(setter)
-            self.mapper.save(child, traverse)
-            if self.secondary is not None:
-                self.secondaryjoin.accept_visitor(setter)
-                secondary_delete.append(setter.associationrow)
-                
-        for child in childlist.added_items():
-            setter.child = child
-            setter.associationrow = {}
-            self.primaryjoin.accept_visitor(setter)
-            self.mapper.save(child, traverse)
-            if self.secondary is not None:
-                self.secondaryjoin.accept_visitor(setter)
-                secondary_insert.append(setter.associationrow)
-
-        if self.secondary is not None:
-            # TODO: use unitofwork statement repository thing to get these
-            # delete/insert statements
-            # then, see if unitofwork can even bunch these all up at the end to do an even 
-            # bigger grouping within the "commit"
-            if len(secondary_delete):
-                statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key) for c in self.secondary.c]))
-                statement.echo = self.mapper.echo
-                statement.execute(*secondary_delete)
-            if len(secondary_insert):
-                statement = self.secondary.insert()
-                statement.echo = self.mapper.echo
-                statement.execute(*secondary_insert)
-
-        for child in childlist.unchanged_items():
-            self.mapper.save(child, traverse)
-        # TODO: make this "register_saved_property", or something similar, which gets 
-        # a "clear_history" when you call "unitofwork.commit()"
-        # also put a reentrant "begin/commit" onto unitofwork to handle nests
-        childlist.clear_history()
             
     def delete(self):
         self.mapper.delete()

@@ -520,15 +520,20 @@ class SaveTest(AssertMixin):
                 item.keywords.append(k)
 
         objectstore.uow().commit()
-
+        print "OK!"
         l = m.select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]))
         self.assert_result(l, data)
+        print "OK!"
 
         objects[4].item_name = 'item4updated'
         k = Keyword()
         k.name = 'yellow'
         objects[5].keywords.append(k)
         
+        objectstore.uow().commit()
+        print "OK!"
+        objects[2].keywords.append(k)
+        print "added: " + repr(objects[2].keywords.added_items())
         objectstore.uow().commit()
         
 if __name__ == "__main__":
