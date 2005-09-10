@@ -195,6 +195,7 @@ class UnitOfWork(object):
     def commit(self):
         import sqlalchemy.mapper
         
+        # TODO: make some kinds of coherent objects here instead of tuples
         self.dependencies = {}
         objects = []
         
