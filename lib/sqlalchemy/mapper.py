@@ -387,6 +387,8 @@ class PropertyLoader(MapperProperty):
         self.key = key
         self.parent = parent
         
+        # TODO: if just a foreign key specified, figure out the proper "match_primaries" relationship
+        
         # if join conditions were not specified, figure them out based on primary keys
         if self.secondary is not None:
             if self.secondaryjoin is None:
@@ -437,8 +439,12 @@ class PropertyLoader(MapperProperty):
 
     def register_dependencies(self, objlist, uow):
         if self.secondaryjoin is not None:
-            uow.register_dependency(self.parent, self.mapper, None, None)
-            uow.register_dependency(self.mapper, None, self, objlist)
+            # with many-to-many, set the parent as dependent on us, then the 
+            # list of associations as dependent on the parent
+            # if only a list changes, the parent mapper is the only mapper that
+            # gets added to the "todo" list
+            uow.register_dependency(self.mapper, self.parent, None, None)
+            uow.register_dependency(self.parent, None, self, objlist)
         elif self.foreignkey.table == self.target:
             uow.register_dependency(self.parent, self.mapper, self, objlist)
         elif self.foreignkey.table == self.parent.table:
@@ -456,13 +462,11 @@ class PropertyLoader(MapperProperty):
 
         setter = ForeignKeySetter(self.parent, self.mapper, self.parent.table, self.target, self.secondary)
 
-        print "procdep " + repr(deplist)
         if self.secondaryjoin is not None:
             secondary_delete = []
             secondary_insert = []
             for obj in deplist:
                 childlist = getlist(obj)
-                print "added! " + repr(childlist.added_items())
                 for child in childlist.added_items():
                     setter.obj = obj
                     setter.child = child

@@ -108,6 +108,7 @@ def has_key(key):
         return False
 
 class UOWListElement(util.HistoryArraySet):
+    """overrides HistoryArraySet to mark the parent object as dirty when changes occur"""
     class listpointer(object): pass
         
     def __init__(self, obj, items = None):
@@ -122,11 +123,13 @@ class UOWListElement(util.HistoryArraySet):
         res = util.HistoryArraySet._setrecord(self, item)
         if res:
             uow().modified_lists.append(self.listpointer)
+            uow().register_dirty(self.obj())
         return res
     def _delrecord(self, item):
         res = util.HistoryArraySet._delrecord(self, item)
         if res:
             uow().modified_lists.append(self.listpointer)
+            uow().register_dirty(self.obj())
         return res
     
 class UnitOfWork(object):
@@ -227,14 +230,9 @@ class UnitOfWork(object):
             mapper = sqlalchemy.mapper.object_mapper(obj)
             mapperlist = mappers.setdefault(mapper, [])
             mapperlist.append(obj)
-        for array in self.modified_lists:
-            mapper = sqlalchemy.mapper.object_mapper(array.list.obj())
-            mapperlist = mappers.setdefault(mapper, [])
-            mapperlist.append(array.list.obj())
             
         for mapper in mappers.keys():
             mapperlist = mappers[mapper]
-            print repr(mapperlist)
             mapper.register_dependencies(mapperlist, self)
             
         mapperlist = mappers.keys()
@@ -247,11 +245,11 @@ class UnitOfWork(object):
                 return 0
         mapperlist.sort(compare)
         
+        # TODO: figure some way to process dependencies without saving a lead item,
+        # for the case when a list changes within a many-to-many
         for mapper in mapperlist:
             obj_list = mappers[mapper]
-            print "mapper " + mapper.table.name
             deplist = self.dependencies.get(mapper, [])
-            print "deps " + repr(deplist)
             for obj in obj_list:
                 mapper.save_obj(obj)
             for dep in deplist:
@@ -264,6 +262,8 @@ class UnitOfWork(object):
             item = item.list
             item.clear_history()
         self.modified_lists.clear()
+        
+        # TODO: deleted stuff
 
     def register_dependency(self, obj, dependency, processor, stuff_to_process):
         self.dependencies[(obj, dependency)] = True
@@ -272,4 +272,4 @@ class UnitOfWork(object):
             deplist.append((processor, stuff_to_process))
         
     
-uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")        
+uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")
