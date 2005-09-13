@@ -123,13 +123,13 @@ class UOWListElement(util.HistoryArraySet):
         res = util.HistoryArraySet._setrecord(self, item)
         if res:
             uow().modified_lists.append(self.listpointer)
-            uow().register_dirty(self.obj())
+            #uow().register_dirty(self.obj())
         return res
     def _delrecord(self, item):
         res = util.HistoryArraySet._delrecord(self, item)
         if res:
             uow().modified_lists.append(self.listpointer)
-            uow().register_dirty(self.obj())
+            #uow().register_dirty(self.obj())
         return res
     
 class UnitOfWork(object):
@@ -217,29 +217,36 @@ class UnitOfWork(object):
     def commit(self):
         import sqlalchemy.mapper
         
-        # TODO: make some kinds of coherent objects here instead of tuples
         self.dependencies = {}
+        self.tasks = {}
         
-        mappers = {}
         
-        for obj in self.new:
+        for obj in [n for n in self.new] + [d for d in self.dirty]:
             mapper = sqlalchemy.mapper.object_mapper(obj)
-            mapperlist = mappers.setdefault(mapper, [])
-            mapperlist.append(obj)
-        for obj in self.dirty:
+            try:
+                task = self.tasks[mapper]
+            except KeyError:
+                task = self.tasks.setdefault(mapper, UOWTask(mapper))
+            task.objects.append(obj)
+
+        for item in self.modified_lists:
+            item = item.list
+            obj = item.obj()
             mapper = sqlalchemy.mapper.object_mapper(obj)
-            mapperlist = mappers.setdefault(mapper, [])
-            mapperlist.append(obj)
+            try:
+                task = self.tasks[mapper]
+            except KeyError:
+                task = self.tasks.setdefault(mapper, UOWTask(mapper))
+            task.lists.append(obj)
             
-        for mapper in mappers.keys():
-            mapperlist = mappers[mapper]
-            mapper.register_dependencies(mapperlist, self)
+        for task in self.tasks.values():
+            task.mapper.register_dependencies(task.objects + task.lists, self)
             
-        mapperlist = mappers.keys()
+        mapperlist = self.tasks.values()
         def compare(a, b):
-            if self.dependencies.has_key((a, b)):
+            if self.dependencies.has_key((a.mapper, b.mapper)):
                 return -1
-            elif self.dependencies.has_key((b, a)):
+            elif self.dependencies.has_key((b.mapper, a.mapper)):
                 return 1
             else:
                 return 0
@@ -249,12 +256,11 @@ class UnitOfWork(object):
         # for the case when a list changes within a many-to-many
         # also break save_obj into a list of tasks that are more SQL-specific
         # generally, make this whole thing more straightforward and generic-'task' oriented
-        for mapper in mapperlist:
-            obj_list = mappers[mapper]
-            deplist = self.dependencies.get(mapper, [])
+        for task in mapperlist:
+            obj_list = task.objects
             for obj in obj_list:
-                mapper.save_obj(obj)
-            for dep in deplist:
+                task.mapper.save_obj(obj)
+            for dep in task.dependencies:
                 (processor, stuff_to_process) = dep
                 processor.process_dependencies(stuff_to_process, self)
 
@@ -267,11 +273,21 @@ class UnitOfWork(object):
         
         # TODO: deleted stuff
 
-    def register_dependency(self, obj, dependency, processor, stuff_to_process):
-        self.dependencies[(obj, dependency)] = True
-        deplist = self.dependencies.setdefault(obj, [])
+    def register_dependency(self, mapper, dependency, processor, stuff_to_process):
+        self.dependencies[(mapper, dependency)] = True
+        try:
+            task = self.tasks[mapper]
+        except KeyError:
+            task = self.tasks.setdefault(mapper, UOWTask(mapper))
         if processor is not None:
-            deplist.append((processor, stuff_to_process))
+            task.dependencies.append((processor, stuff_to_process))
         
-    
+
+class UOWTask(object):
+    def __init__(self, mapper):
+        self.mapper = mapper
+        self.objects = []
+        self.lists = []
+        self.dependencies = []
+        
 uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")
