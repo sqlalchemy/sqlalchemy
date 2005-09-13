@@ -257,7 +257,7 @@ class Mapper(object):
     def _compile(self, whereclause = None, **options):
         statement = sql.select([self.selectable], whereclause)
         for key, value in self.props.iteritems():
-            value.setup(key, self.selectable, statement, **options) 
+            value.setup(key, statement, **options) 
         statement.use_labels = True
         return statement
 
@@ -329,7 +329,7 @@ class MapperProperty:
         a process."""
         raise NotImplementedError()
 
-    def setup(self, key, primarytable, statement, **options):
+    def setup(self, key, statement, **options):
         """called when a statement is being constructed.  """
         return self
 
@@ -538,16 +538,17 @@ class LazyLoader(PropertyLoader):
             if not issubclass(parent.class_, object):
                 raise "LazyLoader can only be used with new-style classes"
             setattr(parent.class_, key, SmartProperty(key).property())
-
-    def setup(self, key, primarytable, statement, **options):
         if self.secondaryjoin is not None:
             self.lazywhere = sql.and_(self.primaryjoin, self.secondaryjoin)
         else:
             self.lazywhere = self.primaryjoin
+
+        # we dont want to screw with the primaryjoin and secondary join of the PropertyLoader,
+        # so create a copy
         self.lazywhere = self.lazywhere.copy_container()
-        li = LazyIzer(primarytable)
+        self.binds = {}
+        li = BinaryVisitor(lambda b: self._create_lazy_clause(b, self.binds))
         self.lazywhere.accept_visitor(li)
-        self.binds = li.binds
 
     def execute(self, instance, row, identitykey, isduplicate):
         if not isduplicate:
@@ -555,6 +556,15 @@ class LazyLoader(PropertyLoader):
             # allows serializable ?  still need lazyload state to exist in the application
             # when u deserialize tho
             objectstore.uow().attribute_set_callable(instance, self.key, LazyLoadInstance(self, row))
+
+    def _create_lazy_clause(self, binary, binds):
+        if isinstance(binary.left, schema.Column) and binary.left.table == self.parent.selectable:
+            binary.left = binds.setdefault(self.parent.selectable.name + "_" + binary.left.name,
+                    sql.BindParamClause(self.parent.selectable.name + "_" + binary.left.name, None, shortname = binary.left.name))
+
+        if isinstance(binary.right, schema.Column) and binary.right.table == self.parent.selectable:
+            binary.right = binds.setdefault(self.parent.selectable.name + "_" + binary.right.name,
+                    sql.BindParamClause(self.parent.selectable.name + "_" + binary.right.name, None, shortname = binary.right.name))
 
 class LazyLoadInstance(object):
     """attached to a specific object instance to load related rows."""
@@ -589,12 +599,13 @@ class EagerLoader(PropertyLoader):
             [self.to_alias.append(f) for f in self.secondaryjoin._get_from_objects()]
         del self.to_alias[parent.selectable]
 
-    def setup(self, key, primarytable, statement, **options):
+    def setup(self, key, statement, **options):
         """add a left outer join to the statement thats being constructed"""
 
         if statement.whereclause is not None:
             # "aliasize" the tables referenced in the user-defined whereclause to not 
             # collide with the tables used by the eager load
+            # note that we arent affecting the mapper's selectable, nor our own primary or secondary joins
             aliasizer = Aliasizer(*self.to_alias)
             statement.whereclause.accept_visitor(aliasizer)
             for alias in aliasizer.aliases.values():
@@ -603,7 +614,7 @@ class EagerLoader(PropertyLoader):
         if hasattr(statement, '_outerjoin'):
             towrap = statement._outerjoin
         else:
-            towrap = primarytable
+            towrap = self.parent.selectable
 
         if self.secondaryjoin is not None:
             statement._outerjoin = sql.outerjoin(sql.outerjoin(towrap, self.secondary, self.secondaryjoin), self.target, self.primaryjoin)
@@ -613,7 +624,7 @@ class EagerLoader(PropertyLoader):
         statement.append_from(statement._outerjoin)
         statement.append_column(self.target)
         for key, value in self.mapper.props.iteritems():
-            value.setup(key, self.mapper.selectable, statement)
+            value.setup(key, statement)
 
     def execute(self, instance, row, identitykey, isduplicate):
         """receive a row.  tell our mapper to look for a new object instance in the row, and attach
@@ -685,27 +696,6 @@ class BinaryVisitor(sql.ClauseVisitor):
     def visit_binary(self, binary):
         self.func(binary)
         
-class LazyIzer(sql.ClauseVisitor):
-    """converts an expression which refers to a table column into an
-    expression refers to a Bind Param, i.e. a specific value.  
-    e.g. the clause 'WHERE tablea.foo=tableb.foo' becomes 'WHERE tablea.foo=:foo'.  
-    this is used to turn a join expression into one useable by a lazy load
-    for a specific parent row."""
-
-    def __init__(self, table):
-        self.table = table
-        self.binds = {}
-
-    def visit_binary(self, binary):
-        if isinstance(binary.left, schema.Column) and binary.left.table == self.table:
-            binary.left = self.binds.setdefault(self.table.name + "_" + binary.left.name,
-                    sql.BindParamClause(self.table.name + "_" + binary.left.name, None, shortname = binary.left.name))
-
-        if isinstance(binary.right, schema.Column) and binary.right.table == self.table:
-            binary.right = self.binds.setdefault(self.table.name + "_" + binary.right.name,
-                    sql.BindParamClause(self.table.name + "_" + binary.right.name, None, shortname = binary.right.name))
-
-
 class SmartProperty(object):
     def __init__(self, key):
         self.key = key

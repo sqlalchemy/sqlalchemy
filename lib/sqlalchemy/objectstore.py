@@ -123,13 +123,11 @@ class UOWListElement(util.HistoryArraySet):
         res = util.HistoryArraySet._setrecord(self, item)
         if res:
             uow().modified_lists.append(self.listpointer)
-            #uow().register_dirty(self.obj())
         return res
     def _delrecord(self, item):
         res = util.HistoryArraySet._delrecord(self, item)
         if res:
             uow().modified_lists.append(self.listpointer)
-            #uow().register_dirty(self.obj())
         return res
     
 class UnitOfWork(object):
@@ -220,27 +218,20 @@ class UnitOfWork(object):
         self.dependencies = {}
         self.tasks = {}
         
-        
         for obj in [n for n in self.new] + [d for d in self.dirty]:
             mapper = sqlalchemy.mapper.object_mapper(obj)
-            try:
-                task = self.tasks[mapper]
-            except KeyError:
-                task = self.tasks.setdefault(mapper, UOWTask(mapper))
+            task = self.get_task_by_mapper(mapper)
             task.objects.append(obj)
 
         for item in self.modified_lists:
             item = item.list
             obj = item.obj()
             mapper = sqlalchemy.mapper.object_mapper(obj)
-            try:
-                task = self.tasks[mapper]
-            except KeyError:
-                task = self.tasks.setdefault(mapper, UOWTask(mapper))
+            task = self.get_task_by_mapper(mapper)
             task.lists.append(obj)
             
         for task in self.tasks.values():
-            task.mapper.register_dependencies(task.objects + task.lists, self)
+            task.mapper.register_dependencies(util.HashSet(task.objects + task.lists), self)
             
         mapperlist = self.tasks.values()
         def compare(a, b):
@@ -252,10 +243,7 @@ class UnitOfWork(object):
                 return 0
         mapperlist.sort(compare)
         
-        # TODO: figure some way to process dependencies without saving a lead item,
-        # for the case when a list changes within a many-to-many
-        # also break save_obj into a list of tasks that are more SQL-specific
-        # generally, make this whole thing more straightforward and generic-'task' oriented
+        # TODO: break save_obj into a list of tasks that are more SQL-specific
         for task in mapperlist:
             obj_list = task.objects
             for obj in obj_list:
@@ -270,19 +258,24 @@ class UnitOfWork(object):
             item = item.list
             item.clear_history()
         self.modified_lists.clear()
-        
+
+        self.tasks.clear()
+        self.dependencies.clear()
         # TODO: deleted stuff
 
+    # TODO: better interface for tasks with no object save, or multiple dependencies
     def register_dependency(self, mapper, dependency, processor, stuff_to_process):
         self.dependencies[(mapper, dependency)] = True
-        try:
-            task = self.tasks[mapper]
-        except KeyError:
-            task = self.tasks.setdefault(mapper, UOWTask(mapper))
+        task = self.get_task_by_mapper(mapper)
         if processor is not None:
             task.dependencies.append((processor, stuff_to_process))
         
-
+    def get_task_by_mapper(self, mapper):
+        try:
+            return self.tasks[mapper]
+        except KeyError:
+            return self.tasks.setdefault(mapper, UOWTask(mapper))
+    
 class UOWTask(object):
     def __init__(self, mapper):
         self.mapper = mapper
