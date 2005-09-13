@@ -77,6 +77,8 @@ def put(key, obj, scope='thread'):
 
     if isinstance(obj, dict):
         raise "cant put a dict in the object store"
+    
+    obj._instance_key = key
         
     if scope == 'thread':
         try:
@@ -156,13 +158,19 @@ class UnitOfWork(object):
         if usehistory:
             self.register_attribute(obj, key).setattr(value)
         obj.__dict__[key] = value
-        self.register_dirty(obj)
+        if hasattr(obj, '_instance_key'):
+            self.register_dirty(obj)
+        else:
+            self.register_new(obj)
         
     def delete_attribute(self, obj, key, value, usehistory = False):
         if usehistory:
             self.register_attribute(obj, key).delattr(value)    
         del obj.__dict__[key]
-        self.register_dirty(obj)
+        if hasattr(obj, '_instance_key'):
+            self.register_dirty(obj)
+        else:
+            self.register_new(obj)
         
     def register_attribute(self, obj, key):
         try:
@@ -252,6 +260,9 @@ class UnitOfWork(object):
                 (processor, stuff_to_process) = dep
                 processor.process_dependencies(stuff_to_process, self)
 
+        for obj in self.new:
+            mapper = sqlalchemy.mapper.object_mapper(obj)
+            mapper.put(obj)
         self.new.clear()
         self.dirty.clear()
         for item in self.modified_lists:

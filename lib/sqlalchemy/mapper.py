@@ -170,6 +170,7 @@ class Mapper(object):
 
     def put(self, instance):
         key = objectstore.get_instance_key(instance, self.class_, self.table, self.selectable)
+        instance._instance_key = key
         objectstore.put(key, instance, self.scope)
         return key
 
@@ -218,9 +219,17 @@ class Mapper(object):
         # so they can be combined into a multiple execute
         for table in self.tables:
             params = {}
+            if hasattr(obj, "_instance_key"):
+                isinsert = False
+            else:
+                isinsert = True
+                
+            needs_primaries = False
             for primary_key in table.primary_keys:
                 if self._getattrbycolumn(obj, primary_key) is None:
-                    statement = table.insert()
+                    needs_primaries = True
+                    #statement = table.insert()
+                if isinsert:
                     for col in table.columns:
                         params[col.key] = self._getattrbycolumn(obj, col)
                     break
@@ -231,10 +240,17 @@ class Mapper(object):
                         clause.clauses.append(col == self._getattrbycolumn(obj, col))
                     else:
                         params[col.key] = self._getattrbycolumn(obj, col)
+                #statement = table.update(clause)
+
+            if not isinsert:
                 statement = table.update(clause)
+            else:
+                statement = table.insert()
+
             statement.echo = self.echo
             statement.execute(**params)
-            if isinstance(statement, sql.Insert):
+
+            if needs_primaries and isinstance(statement, sql.Insert):
                 primary_keys = table.engine.last_inserted_ids()
                 index = 0
                 for col in table.primary_keys:
@@ -254,15 +270,15 @@ class Mapper(object):
         """removes the object.  traverse indicates attached objects should be removed as well."""
         pass
 
-    def _compile(self, whereclause = None, **options):
-        statement = sql.select([self.selectable], whereclause)
+    def _compile(self, whereclause = None, order_by = None, **options):
+        statement = sql.select([self.selectable], whereclause, order_by = order_by)
         for key, value in self.props.iteritems():
             value.setup(key, statement, **options) 
         statement.use_labels = True
         return statement
 
-    def _select_whereclause(self, whereclause = None, **params):
-        statement = self._compile(whereclause)
+    def _select_whereclause(self, whereclause = None, order_by = None, **params):
+        statement = self._compile(whereclause, order_by = order_by)
         return self._select_statement(statement, **params)
 
     def _select_statement(self, statement, **params):

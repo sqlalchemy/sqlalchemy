@@ -490,12 +490,12 @@ class SaveTest(AssertMixin):
         keywordmapper = mapper(Keyword, keywords)
 
         data = [Item,
-            {'item_name': 'item1', 'keywords' : (Keyword,[{'name': 'green'}, {'name': 'purple'},{'name': 'big'},{'name': 'round'}])},
-            {'item_name': 'item2', 'keywords' : (Keyword,[{'name':'blue'}, {'name':'small'}, {'name':'imnew'},{'name':'round'}])},
+            {'item_name': 'item1', 'keywords' : (Keyword,[{'name': 'big'},{'name': 'green'}, {'name': 'purple'},{'name': 'round'}])},
+            {'item_name': 'item2', 'keywords' : (Keyword,[{'name':'blue'}, {'name':'imnew'},{'name':'round'}, {'name':'small'}])},
             {'item_name': 'item3', 'keywords' : (Keyword,[])},
-            {'item_name': 'item4', 'keywords' : (Keyword,[{'name':'blue'},{'name':'big'}])},
-            {'item_name': 'item5', 'keywords' : (Keyword,[{'name':'green'},{'name':'big'},{'name':'exacting'}])},
-            {'item_name': 'item6', 'keywords' : (Keyword,[{'name':'red'},{'name':'small'},{'name':'round'}])},
+            {'item_name': 'item4', 'keywords' : (Keyword,[{'name':'big'}, {'name':'blue'},])},
+            {'item_name': 'item5', 'keywords' : (Keyword,[{'name':'big'},{'name':'exacting'},{'name':'green'}])},
+            {'item_name': 'item6', 'keywords' : (Keyword,[{'name':'red'},{'name':'round'},{'name':'small'}])},
         ]
         objects = []
         for elem in data[1:]:
@@ -520,8 +520,8 @@ class SaveTest(AssertMixin):
 
         objectstore.uow().commit()
         print "OK!"
-        l = m.select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]))
-        self.assert_result(l, data)
+        l = m.select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name, keywords.c.name])
+        self.assert_result(l, *data)
         print "OK!"
 
         objects[4].item_name = 'item4updated'
@@ -535,6 +535,61 @@ class SaveTest(AssertMixin):
         objects[2].keywords.append(k)
         print "added: " + repr(objects[2].keywords.added_items())
         objectstore.uow().commit()
+        
+    def testassociation(self):
+        class IKAssociation(object):
+            def __repr__(self):
+                return "\nIKAssociation " + repr(self.item) + " " + repr(self.keyword)
+
+        itemkeywords = Table('itemkeywords', db,
+            Column('item_id', INT, primary_key = True),
+            Column('keyword_id', INT, primary_key = True)
+        )
+
+        items = orderitems
+
+        keywordmapper = mapper(Keyword, keywords)
+
+        m = mapper(IKAssociation, itemkeywords, properties = dict(
+                keyword = relation(Keyword, keywords, primaryjoin = itemkeywords.c.keyword_id==keywords.c.keyword_id, foreignkey = itemkeywords.c.keyword_id, lazy = False, uselist = False),
+                item = relation(Item, items, primaryjoin = itemkeywords.c.item_id==items.c.item_id, foreignkey = itemkeywords.c.item_id, lazy = False, uselist = False)
+            ), echo = True)
+
+        # TODO: spiff up the assertion thing so this can be what its supposed to be
+        data = [Item,
+            {'item_name': 'item1', 'keywords' : (Keyword,[{'name': 'big'},{'name': 'green'}, {'name': 'purple'},{'name': 'round'}])},
+            {'item_name': 'item2', 'keywords' : (Keyword,[{'name':'blue'}, {'name':'imnew'},{'name':'round'}, {'name':'small'}])},
+            {'item_name': 'item3', 'keywords' : (Keyword,[])},
+            {'item_name': 'item4', 'keywords' : (Keyword,[{'name':'big'}, {'name':'blue'},])},
+            {'item_name': 'item5', 'keywords' : (Keyword,[{'name':'big'},{'name':'exacting'},{'name':'green'}])},
+            {'item_name': 'item6', 'keywords' : (Keyword,[{'name':'red'},{'name':'round'},{'name':'small'}])},
+        ]
+        objects = []
+        for elem in data[1:]:
+            if len(elem['keywords'][1]):
+                klist = keywordmapper.select(keywords.c.name.in_(*[e['name'] for e in elem['keywords'][1]]))
+            else:
+                klist = []
+
+            khash = {}
+            for k in klist:
+                khash[k.name] = k
+            for kname in [e['name'] for e in elem['keywords'][1]]:
+                try:
+                    k = khash[kname]
+                except KeyError:
+                    k = Keyword()
+                    k.name = kname
+
+                ik = IKAssociation()
+                ik.item = Item()
+                ik.item.item_name = elem['item_name']
+                ik.keyword = k
+
+        objectstore.uow().commit()
+
+        l = m.select(sql.and_(items.c.item_id==itemkeywords.c.item_id, items.c.item_name.in_(*[e['item_name'] for e in data[1:]])), order_by=[items.c.item_name, keywords.c.name])
+        print repr(l)
         
 if __name__ == "__main__":
     unittest.main()
