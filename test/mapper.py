@@ -11,7 +11,7 @@ db.echo = True
 class User(object):
     def __init__(self):
         self.user_id = None
-    def __rrepr__(self):
+    def __repr__(self):
         return (
 """
 objid: %d
@@ -27,7 +27,7 @@ Closed Orderss %s
 )
 
 class Address(object):
-    def __rrepr__(self):
+    def __repr__(self):
         return "Address: " + repr(getattr(self, 'address_id', None)) + " " + repr(getattr(self, 'user_id', None)) + " " + repr(self.email_address)
 
 class Order(object):
