@@ -247,6 +247,8 @@ class UnitOfWork(object):
         
         # TODO: figure some way to process dependencies without saving a lead item,
         # for the case when a list changes within a many-to-many
+        # also break save_obj into a list of tasks that are more SQL-specific
+        # generally, make this whole thing more straightforward and generic-'task' oriented
         for mapper in mapperlist:
             obj_list = mappers[mapper]
             deplist = self.dependencies.get(mapper, [])
