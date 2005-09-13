@@ -398,14 +398,13 @@ class SaveTest(AssertMixin):
             objects.append(a)
             
         objectstore.uow().commit()
-
+        
         objects[2].email_address = 'imnew@foo.bar'
         objects[3].user = User()
         objects[3].user.user_name = 'imnewlyadded'
         
         objectstore.uow().commit()
         return
-        m.save(a)
         l = sql.select([users, addresses], sql.and_(users.c.user_id==addresses.c.address_id, addresses.c.address_id==a.address_id)).execute()
         r = engine.ResultProxy(l)
         print repr(r.fetchone().row)
@@ -532,6 +531,7 @@ class SaveTest(AssertMixin):
         
         objectstore.uow().commit()
         print "OK!"
+        return
         objects[2].keywords.append(k)
         print "added: " + repr(objects[2].keywords.added_items())
         objectstore.uow().commit()
