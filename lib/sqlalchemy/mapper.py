@@ -516,6 +516,7 @@ class PropertyLoader(MapperProperty):
         if binary.operator == '=':
             colmap = {binary.left.table : binary.left, binary.right.table : binary.right}
             if colmap.has_key(self.parent.table) and colmap.has_key(self.target):
+                #print "set " + repr(child) + ":" + colmap[self.target].key + " to " + repr(obj) + ":" + colmap[self.parent.table].key
                 if clearkeys:
                     self.mapper._setattrbycolumn(child, colmap[self.target], None)
                 else:
