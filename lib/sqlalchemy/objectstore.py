@@ -223,6 +223,9 @@ class UnitOfWork(object):
     def register_deleted(self, obj):
         pass   
 
+    # TODO: add begin().  tie in register_new/register_dirty with table transaction begins ?
+    
+    # TODO: add optional args for "i only want to save/delete these objects, not the whole thing"
     def commit(self):
         import sqlalchemy.mapper
         
@@ -254,11 +257,9 @@ class UnitOfWork(object):
                 return 0
         mapperlist.sort(compare)
         
-        # TODO: break save_obj into a list of tasks that are more SQL-specific
         for task in mapperlist:
             obj_list = task.objects
-            for obj in obj_list:
-                task.mapper.save_obj(obj)
+            task.mapper.save_obj(obj_list)
             for dep in task.dependencies:
                 (processor, stuff_to_process) = dep
                 processor.process_dependencies(stuff_to_process, self)
