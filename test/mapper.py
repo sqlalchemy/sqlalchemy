@@ -53,7 +53,11 @@ class AssertMixin(PersistTest):
         self.assert_(rowobj.__class__ is class_, "item class is not " + repr(class_))
         for key, value in desc.iteritems():
             if isinstance(value, tuple):
-                self.assert_list(getattr(rowobj, key), value[0], value[1])
+                if isinstance(value[1], list):
+                    print repr(value[1])
+                    self.assert_list(getattr(rowobj, key), value[0], value[1])
+                else:
+                    self.assert_row(value[0], getattr(rowobj, key), value[1])
             else:
                 self.assert_(getattr(rowobj, key) == value, "attribute %s value %s does not match %s" % (key, getattr(rowobj, key), value))
         
@@ -539,7 +543,7 @@ class SaveTest(AssertMixin):
     def testassociation(self):
         class IKAssociation(object):
             def __repr__(self):
-                return "\nIKAssociation " + repr(self.item) + " " + repr(self.keyword)
+                return "\nIKAssociation " + repr(self.item_id) + " " + repr(self.keyword)
 
         itemkeywords = Table('itemkeywords', db,
             Column('item_id', INT, primary_key = True),
@@ -550,46 +554,56 @@ class SaveTest(AssertMixin):
 
         keywordmapper = mapper(Keyword, keywords)
 
-        m = mapper(IKAssociation, itemkeywords, properties = dict(
-                keyword = relation(Keyword, keywords, primaryjoin = itemkeywords.c.keyword_id==keywords.c.keyword_id, foreignkey = itemkeywords.c.keyword_id, lazy = False, uselist = False),
-                item = relation(Item, items, primaryjoin = itemkeywords.c.item_id==items.c.item_id, foreignkey = itemkeywords.c.item_id, lazy = False, uselist = False)
+        m = mapper(Item, items, properties = dict(
+                keywords = relation(IKAssociation, itemkeywords, lazy = False, properties = dict(
+                    keyword = relation(Keyword, keywords, lazy = False, foreignkey = itemkeywords.c.keyword_id, uselist = False)
+                ))
             ), echo = True)
 
-        # TODO: spiff up the assertion thing so this can be what its supposed to be
         data = [Item,
-            {'item_name': 'item1', 'keywords' : (Keyword,[{'name': 'big'},{'name': 'green'}, {'name': 'purple'},{'name': 'round'}])},
-            {'item_name': 'item2', 'keywords' : (Keyword,[{'name':'blue'}, {'name':'imnew'},{'name':'round'}, {'name':'small'}])},
-            {'item_name': 'item3', 'keywords' : (Keyword,[])},
-            {'item_name': 'item4', 'keywords' : (Keyword,[{'name':'big'}, {'name':'blue'},])},
-            {'item_name': 'item5', 'keywords' : (Keyword,[{'name':'big'},{'name':'exacting'},{'name':'green'}])},
-            {'item_name': 'item6', 'keywords' : (Keyword,[{'name':'red'},{'name':'round'},{'name':'small'}])},
+            {'item_name': 'item1', 'keywords' : (IKAssociation, 
+                                                    [
+                                                        {'keyword' : (Keyword, {'name': 'big'})},
+                                                        {'keyword' : (Keyword, {'name': 'green'})}, 
+                                                        {'keyword' : (Keyword, {'name': 'purple'})},
+                                                        {'keyword' : (Keyword, {'name': 'round'})}
+                                                    ]
+                                                 ) 
+            },
+            {'item_name': 'item2', 'keywords' : (IKAssociation, 
+                                                    [
+                                                        {'keyword' : (Keyword, {'name': 'huge'})},
+                                                        {'keyword' : (Keyword, {'name': 'violet'})}, 
+                                                        {'keyword' : (Keyword, {'name': 'yellow'})}
+                                                    ]
+                                                 ) 
+            },
+            {'item_name': 'item3', 'keywords' : (IKAssociation, 
+                                                    [
+                                                        {'keyword' : (Keyword, {'name': 'big'})},
+                                                        {'keyword' : (Keyword, {'name': 'blue'})}, 
+                                                    ]
+                                                 ) 
+            }
         ]
-        objects = []
         for elem in data[1:]:
-            if len(elem['keywords'][1]):
-                klist = keywordmapper.select(keywords.c.name.in_(*[e['name'] for e in elem['keywords'][1]]))
-            else:
-                klist = []
-
-            khash = {}
-            for k in klist:
-                khash[k.name] = k
-            for kname in [e['name'] for e in elem['keywords'][1]]:
+            item = Item()
+            item.item_name = elem['item_name']
+            item.keywords = []
+            for kname in [e['keyword'][1]['name'] for e in elem['keywords'][1]]:
                 try:
-                    k = khash[kname]
-                except KeyError:
+                    k = keywordmapper.select(keywords.c.name == kname)[0]
+                except IndexError:
                     k = Keyword()
-                    k.name = kname
-
+                    k.name= kname
                 ik = IKAssociation()
-                ik.item = Item()
-                ik.item.item_name = elem['item_name']
                 ik.keyword = k
+                item.keywords.append(ik)
 
         objectstore.uow().commit()
 
-        l = m.select(sql.and_(items.c.item_id==itemkeywords.c.item_id, items.c.item_name.in_(*[e['item_name'] for e in data[1:]])), order_by=[items.c.item_name, keywords.c.name])
-        print repr(l)
+        l = m.select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name, keywords.c.name])
+        self.assert_result(l, *data)
         
 if __name__ == "__main__":
     unittest.main()
