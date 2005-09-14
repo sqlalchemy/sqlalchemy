@@ -213,34 +213,38 @@ class Mapper(object):
     def _setattrbycolumn(self, obj, column, value):
         self.columntoproperty[column][0].setattr(obj, value)
 
-    def save_obj(self, obj):
-        # TODO: start breaking down the individual updates/inserts into the UOW or something,
-        # so they can be combined into a multiple execute
-        if hasattr(obj, "_instance_key"):
-            isinsert = False
-        else:
-            isinsert = True
-
+    def save_obj(self, objects):
+        # ok, multiple save works sorta, make this more efficient by only
+        # creating inserts/updates when they are definitely needed
+        
+        # also try to get inserts to be en-masse with the "guess-the-id" thing maybe
+        work = {}
         for table in self.tables:
-            params = {}
+            clause = sql.and_()
+            for col in table.primary_keys:
+                clause.clauses.append(col == sql.bindparam(col.key))
+            
+            work[table] = {'insert': [], 'update': [], 'istmt': table.insert(), 'ustmt': table.update(clause)}
+            work[table]['istmt'].echo = self.echo
+            work[table]['ustmt'].echo = self.echo
                 
-            if isinsert:
-                for col in table.columns:
-                    params[col.key] = self._getattrbycolumn(obj, col)
-                statement = table.insert()
+        for obj in objects:
+            params = {}
+            for col in table.columns:
+                params[col.key] = self._getattrbycolumn(obj, col)
+                
+            if hasattr(obj, "_instance_key"):
+                work[table]['update'].append(params)
             else:
-                clause = sql.and_()
-                for col in table.columns:
-                    if col.primary_key:
-                        clause.clauses.append(col == self._getattrbycolumn(obj, col))
-                    else:
-                        params[col.key] = self._getattrbycolumn(obj, col)
-                statement = table.update(clause)
+                work[table]['insert'].append((obj, params))
 
-            statement.echo = self.echo
-            statement.execute(**params)
-
-            if isinstance(statement, sql.Insert):
+        for table, stuff in work.iteritems():
+            if len(stuff['update']):
+                stuff['ustmt'].execute(*stuff['update'])
+            
+            for rec in stuff['insert']:
+                (obj, params) = rec
+                stuff['istmt'].execute(**params)
                 primary_key = table.engine.last_inserted_ids()[0]
                 found = False
                 for col in table.primary_keys:
