@@ -214,19 +214,10 @@ class Mapper(object):
         self.columntoproperty[column][0].setattr(obj, value)
 
     def save_obj(self, objects):
-        # ok, multiple save works sorta, make this more efficient by only
-        # creating inserts/updates when they are definitely needed
-        
-        # also try to get inserts to be en-masse with the "guess-the-id" thing maybe
+        # try to get inserts to be en-masse with the "guess-the-id" thing maybe
         work = {}
         for table in self.tables:
-            clause = sql.and_()
-            for col in table.primary_keys:
-                clause.clauses.append(col == sql.bindparam(col.key))
-            
-            work[table] = {'insert': [], 'update': [], 'istmt': table.insert(), 'ustmt': table.update(clause)}
-            work[table]['istmt'].echo = self.echo
-            work[table]['ustmt'].echo = self.echo
+            work[table] = {'insert': [], 'update': []}
                 
         for obj in objects:
             params = {}
@@ -240,20 +231,28 @@ class Mapper(object):
 
         for table, stuff in work.iteritems():
             if len(stuff['update']):
-                stuff['ustmt'].execute(*stuff['update'])
-            
-            for rec in stuff['insert']:
-                (obj, params) = rec
-                stuff['istmt'].execute(**params)
-                primary_key = table.engine.last_inserted_ids()[0]
-                found = False
+                clause = sql.and_()
                 for col in table.primary_keys:
-                    if self._getattrbycolumn(obj, col) is None:
-                        if found:
-                            raise "Only one primary key per inserted row can be set via autoincrement/sequence"
-                        else:
-                            self._setattrbycolumn(obj, col, primary_key)
-                            found = True
+                    clause.clauses.append(col == sql.bindparam(col.key))
+                statement = table.update(clause)
+                statement.echo = self.echo
+                statement.execute(*stuff['update'])
+            
+            if len(stuff['insert']):
+                statement = table.insert()
+                statement.echo = self.echo
+                for rec in stuff['insert']:
+                    (obj, params) = rec
+                    statement.execute(**params)
+                    primary_key = table.engine.last_inserted_ids()[0]
+                    found = False
+                    for col in table.primary_keys:
+                        if self._getattrbycolumn(obj, col) is None:
+                            if found:
+                                raise "Only one primary key per inserted row can be set via autoincrement/sequence"
+                            else:
+                                self._setattrbycolumn(obj, col, primary_key)
+                                found = True
 
     def register_dependencies(self, obj, uow):
         for prop in self.props.values():
