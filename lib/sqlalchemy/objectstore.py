@@ -196,7 +196,10 @@ class UnitOfWork(object):
             childlist = UOWListElement(obj, childlist)
             obj.__dict__[key] = childlist
         if data is not None and childlist.data != data:
-            childlist.set_data(data)
+            try:
+                childlist.set_data(data)
+            except TypeError:
+                raise "object " + repr(data) + " is not an iterable object"
         return childlist
         
     def register_clean(self, obj):
