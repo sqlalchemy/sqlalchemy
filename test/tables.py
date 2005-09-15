@@ -47,8 +47,8 @@ keywords = Table('keywords', db,
 )
 
 itemkeywords = Table('itemkeywords', db,
-    Column('item_id', INT),
-    Column('keyword_id', INT)
+    Column('item_id', INT, foreign_key = ForeignKey(orderitems.c.item_id)),
+    Column('keyword_id', INT, foreign_key = ForeignKey(keywords.c.keyword_id))
 )
 
 users.build()
