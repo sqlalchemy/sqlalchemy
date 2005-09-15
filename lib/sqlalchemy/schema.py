@@ -81,7 +81,7 @@ class Table(SchemaItem):
         self.name = name
         self.columns = OrderedProperties()
         self.c = self.columns
-        self.relations = []
+        self.foreign_keys = OrderedProperties()
         self.primary_keys = []
         self.engine = engine
         self._impl = self.engine.tableimpl(self)
@@ -117,7 +117,6 @@ class Column(SchemaItem):
     original = property(lambda s: s._orig or s)
     
     def _set_parent(self, table):
-        print "key:" + repr(self.key)
         table.columns[self.key] = self
         if self.primary_key:
             table.primary_keys.append(self)
@@ -125,7 +124,10 @@ class Column(SchemaItem):
         self.engine = table.engine
 
         self._impl = self.engine.columnimpl(self)
-        self._init_items(*[self.foreign_key, self.sequence])
+        
+        if self.foreign_key is not None:
+            self._init_items(self.foreign_key)
+            table.foreign_keys[self.foreign_key.column.key] = self.foreign_key
 
     def _make_proxy(self, selectable, name = None):
         """creates a copy of this Column for use in a new selectable unit"""
@@ -134,11 +136,10 @@ class Column(SchemaItem):
         #if name is not None:
          #   c.name = name
          #   c.key = name
-        c = Column(name or self.name, self.type, key = name or self.key, primary_key = self.primary_key)
+        c = Column(name or self.name, self.type, key = name or self.key, primary_key = self.primary_key, foreign_key = self.foreign_key, sequence = self.sequence)
         c.table = selectable
         c.engine = self.engine
         c._orig = self.original
-        c._items = self._items
         selectable.columns[c.key] = c
         c._impl = self.engine.columnimpl(c)
         return c
