@@ -439,9 +439,9 @@ class SaveTest(AssertMixin):
 
         usertable = engine.ResultProxy(users.select(users.c.user_id.in_(u.user_id)).execute()).fetchall()
         self.assert_(usertable[0].row == (u.user_id, 'one2manytester'))
-        addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id)).execute()).fetchall()
-        self.assert_(addresstable[0].row == (a.address_id, u.user_id, 'one2many@test.org'))
-        self.assert_(addresstable[1].row == (a2.address_id, u.user_id, 'lala@test.org'))
+        addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id), order_by=[addresses.c.email_address]).execute()).fetchall()
+        self.assert_(addresstable[0].row == (a2.address_id, u.user_id, 'lala@test.org'))
+        self.assert_(addresstable[1].row == (a.address_id, u.user_id, 'one2many@test.org'))
 
         userid = u.user_id
         addressid = a2.address_id
