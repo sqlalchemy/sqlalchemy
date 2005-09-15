@@ -299,17 +299,18 @@ class SaveTest(AssertMixin):
 
     def testbasic(self):
         # save two users
+
+
         u = User()
         u.user_name = 'savetester'
+
+        m = mapper(User, users)
         u2 = User()
         u2.user_name = 'savetester2'
-        m = mapper(User, users)
 
-        objectstore.uow().commit()
-        return
+        objectstore.uow().register_new(u)
         
-        m.save(u)
-        m.save(u2)
+        objectstore.uow().commit()
 
         # assert the first one retreives the same from the identity map
         nu = m.get(u.user_id)
@@ -324,10 +325,10 @@ class SaveTest(AssertMixin):
 
         # change first users name and save
         u.user_name = 'modifiedname'
-        m.save(u)
+        objectstore.uow().commit()
 
         # select both
-        userlist = m.select(users.c.user_id.in_(u.user_id, u2.user_id))
+        userlist = m.select(users.c.user_id.in_(u.user_id, u2.user_id), order_by=[users.c.user_name])
         # making a slight assumption here about the IN clause mechanics with regards to ordering
         self.assert_(u.user_id == userlist[0].user_id and userlist[0].user_name == 'modifiedname')
         self.assert_(u2.user_id == userlist[1].user_id and userlist[1].user_name == 'savetester2')
@@ -348,16 +349,20 @@ class SaveTest(AssertMixin):
         u.email = 'multi@test.org'
 
 
-        m.save(u)
+        objectstore.uow().commit()
 
+        print repr(u.__dict__)
         usertable = engine.ResultProxy(users.select(users.c.user_id.in_(u.foo_id)).execute()).fetchall()
+        print repr(usertable[0].row)
         self.assert_(usertable[0].row == (u.foo_id, 'multitester'))
-        addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(4)).execute()).fetchall()
+        addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(u.address_id)).execute()).fetchall()
+        print repr(addresstable[0].row)
         self.assert_(addresstable[0].row == (u.address_id, u.foo_id, 'multi@test.org'))
 
         u.email = 'lala@hey.com'
         u.user_name = 'imnew'
-        m.save(u)
+        objectstore.uow().commit()
+
         usertable = engine.ResultProxy(users.select(users.c.user_id.in_(u.foo_id)).execute()).fetchall()
         self.assert_(usertable[0].row == (u.foo_id, 'imnew'))
         addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(u.address_id)).execute()).fetchall()
@@ -374,12 +379,11 @@ class SaveTest(AssertMixin):
         u.user_name = 'one2onetester'
         u.address = Address()
         u.address.email_address = 'myonlyaddress@foo.com'
-        m.save(u)
+        objectstore.uow().commit()
         u.user_name = 'imnew'
-        m.save(u)
+        objectstore.uow().commit()
         u.address.email_address = 'imnew@foo.com'
-        m.save(u)
-        m.save(u)
+        objectstore.uow().commit()
 
     def testbackwardsonetoone(self):
         # test 'backwards'
@@ -432,9 +436,7 @@ class SaveTest(AssertMixin):
         u.addresses.append(a2)
 
         objectstore.uow().commit()
-        return
 
-        m.save(u)
         usertable = engine.ResultProxy(users.select(users.c.user_id.in_(u.user_id)).execute()).fetchall()
         self.assert_(usertable[0].row == (u.user_id, 'one2manytester'))
         addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id)).execute()).fetchall()
@@ -445,7 +447,9 @@ class SaveTest(AssertMixin):
         addressid = a2.address_id
         
         a2.email_address = 'somethingnew@foo.com'
-        m.save(u)
+
+        objectstore.uow().commit()
+        
         addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id == addressid).execute()).fetchall()
         self.assert_(addresstable[0].row == (addressid, userid, 'somethingnew@foo.com'))
         self.assert_(u.user_id == userid and a2.address_id == addressid)
