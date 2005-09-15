@@ -175,7 +175,7 @@ class Mapper(object):
         except KeyError:
             clause = sql.and_()
             i = 0
-            for primary_key in self.primary_keys[table]:
+            for primary_key in self.primary_keys[self.table]:
                 # appending to the and_'s clause list directly to skip
                 # typechecks etc.
                 clause.clauses.append(primary_key == ident[i])
@@ -237,14 +237,15 @@ class Mapper(object):
             work[table] = {'insert': [], 'update': []}
                 
         for obj in objects:
-            params = {}
-            for col in table.columns:
-                params[col.key] = self._getattrbycolumn(obj, col)
-                
-            if hasattr(obj, "_instance_key"):
-                work[table]['update'].append(params)
-            else:
-                work[table]['insert'].append((obj, params))
+            for table in self.tables:
+                params = {}
+                for col in table.columns:
+                    params[col.key] = self._getattrbycolumn(obj, col)
+
+                if hasattr(obj, "_instance_key"):
+                    work[table]['update'].append(params)
+                else:
+                    work[table]['insert'].append((obj, params))
 
         for table, stuff in work.iteritems():
             if len(stuff['update']):
@@ -417,7 +418,7 @@ class PropertyLoader(MapperProperty):
         self.key = key
         self.parent = parent
         
-        # if join conditions were not specified, figure them out based on primary keys
+        # if join conditions were not specified, figure them out based on foreign keys
         if self.secondary is not None:
             if self.secondaryjoin is None:
                 self.secondaryjoin = self.match_primaries(self.target, self.secondary)
@@ -430,15 +431,15 @@ class PropertyLoader(MapperProperty):
         # if the foreign key wasnt specified and theres no assocaition table, try to figure
         # out who is dependent on who. we dont need all the foreign keys represented in the join,
         # just one of them.  
-#        if self.foreignkey is None and self.secondaryjoin is None:
+        if self.foreignkey is None and self.secondaryjoin is None:
             # else we usually will have a one-to-many where the secondary depends on the primary
             # but its possible that its reversed
-#            w = PropertyLoader.FindDependent()
-#            self.primaryjoin.accept_visitor(w)
-#            if w.dependent is None:
-#                raise "cant determine primary foreign key in the join relationship....specify foreignkey=<column>"
-#            else:
-#                self.foreignkey = w.dependent
+            w = PropertyLoader.FindDependent()
+            self.primaryjoin.accept_visitor(w)
+            if w.dependent is None:
+                raise "cant determine primary foreign key in the join relationship....specify foreignkey=<column>"
+            else:
+                self.foreignkey = w.dependent
                 
         if not hasattr(parent.class_, key):
             setattr(parent.class_, key, SmartProperty(key).property(usehistory = True, uselist = self.uselist))

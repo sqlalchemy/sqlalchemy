@@ -37,7 +37,7 @@ def get_id_key(ident, class_, table):
     return value: a tuple object which is used as an identity key.
     """
     return (class_, table, tuple(ident))
-def get_instance_key(object, class_, table, primary_keys):
+def get_instance_key(object, class_, table, primary_keys, mapper):
     """returns an identity-map key for use in storing/retrieving an item from the identity map, given
     the object instance itself.
     
@@ -49,7 +49,8 @@ def get_instance_key(object, class_, table, primary_keys):
     may be synonymous with the table argument or can be a larger construct containing that table.
     return value: a tuple object which is used as an identity key.
     """
-    return (class_, table, tuple([getattr(object, column.key, None) for column in primary_keys]))
+    # TODO: clean this up, too many args, too confusing
+    return (class_, table, tuple([mapper._getattrbycolumn(object, column) for column in primary_keys]))
 def get_row_key(row, class_, table, primary_keys):
     """returns an identity-map key for use in storing/retrieving an item from the identity map, given
     a result set row.
@@ -74,7 +75,6 @@ def get(key):
         return val
     
 def put(key, obj, scope='thread'):
-
     if isinstance(obj, dict):
         raise "cant put a dict in the object store"
     
