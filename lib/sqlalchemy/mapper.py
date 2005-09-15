@@ -186,7 +186,8 @@ class Mapper(object):
                 return None
 
     def put(self, instance):
-        key = objectstore.get_instance_key(instance, self.class_, self.table, self.primary_keys[self.selectable])
+        key = objectstore.get_instance_key(instance, self.class_, self.table, self.primary_keys[self.selectable], self)
+        print repr(instance.__dict__)
         objectstore.put(key, instance, self.scope)
         return key
 
@@ -232,34 +233,36 @@ class Mapper(object):
 
     def save_obj(self, objects):
         # try to get inserts to be en-masse with the "guess-the-id" thing maybe
-        work = {}
-        for table in self.tables:
-            work[table] = {'insert': [], 'update': []}
                 
-        for obj in objects:
-            for table in self.tables:
+        for table in self.tables:
+            # loop thru tables in the outer loop, objects on the inner loop.
+            # this is important for an object represented across two tables
+            # so that it gets its primary keys populated for the benefit of the
+            # second table.
+            insert = []
+            update = []
+            for obj in objects:
                 params = {}
                 for col in table.columns:
                     params[col.key] = self._getattrbycolumn(obj, col)
 
                 if hasattr(obj, "_instance_key"):
-                    work[table]['update'].append(params)
+                    update.append(params)
                 else:
-                    work[table]['insert'].append((obj, params))
+                    insert.append((obj, params))
 
-        for table, stuff in work.iteritems():
-            if len(stuff['update']):
+            if len(update):
                 clause = sql.and_()
                 for col in self.primary_keys[table]:
                     clause.clauses.append(col == sql.bindparam(col.key))
                 statement = table.update(clause)
                 statement.echo = self.echo
-                statement.execute(*stuff['update'])
+                statement.execute(*update)
             
-            if len(stuff['insert']):
+            if len(insert):
                 statement = table.insert()
                 statement.echo = self.echo
-                for rec in stuff['insert']:
+                for rec in insert:
                     (obj, params) = rec
                     statement.execute(**params)
                     primary_key = table.engine.last_inserted_ids()[0]
