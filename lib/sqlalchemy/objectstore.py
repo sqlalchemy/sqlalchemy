@@ -24,7 +24,7 @@ import thread
 import sqlalchemy.util as util
 import weakref
 
-def get_id_key(ident, class_, table, selectable):
+def get_id_key(ident, class_, table):
     """returns an identity-map key for use in storing/retrieving an item from the identity map, given
     a tuple of the object's primary key values.
     
@@ -37,7 +37,7 @@ def get_id_key(ident, class_, table, selectable):
     return value: a tuple object which is used as an identity key.
     """
     return (class_, table, tuple(ident))
-def get_instance_key(object, class_, table, selectable):
+def get_instance_key(object, class_, table, primary_keys):
     """returns an identity-map key for use in storing/retrieving an item from the identity map, given
     the object instance itself.
     
@@ -49,8 +49,8 @@ def get_instance_key(object, class_, table, selectable):
     may be synonymous with the table argument or can be a larger construct containing that table.
     return value: a tuple object which is used as an identity key.
     """
-    return (class_, table, tuple([getattr(object, column.key, None) for column in selectable.primary_keys]))
-def get_row_key(row, class_, table, selectable):
+    return (class_, table, tuple([getattr(object, column.key, None) for column in primary_keys]))
+def get_row_key(row, class_, table, primary_keys):
     """returns an identity-map key for use in storing/retrieving an item from the identity map, given
     a result set row.
     
@@ -62,7 +62,7 @@ def get_row_key(row, class_, table, selectable):
     may be synonymous with the table argument or can be a larger construct containing that table.
     return value: a tuple object which is used as an identity key.
     """
-    return (class_, table, tuple([row[column.label] for column in selectable.primary_keys]))
+    return (class_, table, tuple([row[column.label] for column in primary_keys]))
 
 identity_map = {}
 
