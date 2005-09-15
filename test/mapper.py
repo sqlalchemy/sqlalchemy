@@ -383,8 +383,11 @@ class SaveTest(AssertMixin):
 
     def testbackwardsonetoone(self):
         # test 'backwards'
+#        m = mapper(Address, addresses, properties = dict(
+#            user = relation(User, users, foreignkey = addresses.c.user_id, primaryjoin = users.c.user_id == addresses.c.user_id, lazy = True, uselist = False)
+#        ))
         m = mapper(Address, addresses, properties = dict(
-            user = relation(User, users, foreignkey = addresses.c.user_id, primaryjoin = users.c.user_id == addresses.c.user_id, lazy = True, uselist = False)
+            user = relation(User, users, lazy = True, uselist = False)
         ))
         data = [
             {'user_name' : 'thesub' , 'email_address' : 'bar@foo.com'},
@@ -545,19 +548,14 @@ class SaveTest(AssertMixin):
             def __repr__(self):
                 return "\nIKAssociation " + repr(self.item_id) + " " + repr(self.keyword)
 
-        itemkeywords = Table('itemkeywords', db,
-            Column('item_id', INT, primary_key = True),
-            Column('keyword_id', INT, primary_key = True)
-        )
-
         items = orderitems
 
         keywordmapper = mapper(Keyword, keywords)
 
         m = mapper(Item, items, properties = dict(
                 keywords = relation(IKAssociation, itemkeywords, lazy = False, properties = dict(
-                    keyword = relation(Keyword, keywords, lazy = False, foreignkey = itemkeywords.c.keyword_id, uselist = False)
-                ))
+                    keyword = relation(Keyword, keywords, lazy = False, uselist = False)
+                ), primary_keys = [itemkeywords.c.item_id, itemkeywords.c.keyword_id])
             ), echo = True)
 
         data = [Item,

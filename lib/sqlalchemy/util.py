@@ -115,6 +115,9 @@ class HashSet(object):
     def append(self, item):
         self.map[item] = item
  
+    def __len__(self):
+        return len(self.map)
+        
     def __delitem__(self, key):
         del self.map[key]
  
