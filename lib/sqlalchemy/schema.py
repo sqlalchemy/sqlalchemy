@@ -18,7 +18,7 @@
 from sqlalchemy.util import *
 import copy
 
-__ALL__ = ['Table', 'Column', 'Sequence', 
+__ALL__ = ['Table', 'Column', 'Sequence', 'ForeignKey', 
             'INT', 'CHAR', 'VARCHAR', 'TEXT', 'FLOAT', 'DECIMAL', 
             'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN'
             ]
@@ -56,7 +56,8 @@ class SchemaItem(object):
     """base class for items that define a database schema."""
     def _init_items(self, *args):
         for item in args:
-            item._set_parent(self)
+            if item is not None:
+                item._set_parent(self)
 
     def accept_visitor(self, visitor):
         raise NotImplementedError()
@@ -104,18 +105,19 @@ class Table(SchemaItem):
 
 class Column(SchemaItem):
     """represents a column in a database table."""
-    def __init__(self, name, type, key = None, primary_key = False, *args):
+    def __init__(self, name, type, key = None, primary_key = False, foreign_key = None, sequence = None):
         self.name = name
         self.type = type
-        self.sequences = OrderedProperties()
+        self.sequence = sequence
+        self.foreign_key = foreign_key
         self.key = key or name
         self.primary_key = primary_key
-        self._items = args
         self._orig = None
         
     original = property(lambda s: s._orig or s)
     
     def _set_parent(self, table):
+        print "key:" + repr(self.key)
         table.columns[self.key] = self
         if self.primary_key:
             table.primary_keys.append(self)
@@ -123,7 +125,7 @@ class Column(SchemaItem):
         self.engine = table.engine
 
         self._impl = self.engine.columnimpl(self)
-        self._init_items(*self._items)
+        self._init_items(*[self.foreign_key, self.sequence])
 
     def _make_proxy(self, selectable, name = None):
         """creates a copy of this Column for use in a new selectable unit"""
@@ -152,11 +154,15 @@ class Column(SchemaItem):
     def __ge__(self, other): return self._impl.__ge__(other)
     def __str__(self): return self._impl.__str__()
 
-
+class ForeignKey(SchemaItem):
+    def __init__(self, column):
+        self.column = column
+    def _set_parent(self, column):
+        self.parent = column
+        
 class Sequence(SchemaItem):
     """represents a sequence, which applies to Oracle and Postgres databases."""
-    def set_parent(self, column, key):
-        column.sequences[key] = self
+    def _set_parent(self, column, key):
         self.column = column
     def accept_visitor(self, visitor):
         return visitor.visit_sequence(self)
@@ -175,7 +181,7 @@ class SchemaVisitor(object):
         def visit_schema(self, schema):pass
         def visit_table(self, table):pass
         def visit_column(self, column):pass
-        def visit_relation(self, join):pass
+        def visit_foreign_key(self, join):pass
         def visit_index(self, index):pass
         def visit_sequence(self, sequence):pass
 
