@@ -24,7 +24,7 @@ users = Table('users', db,
 
 addresses = Table('email_addresses', db,
     Column('address_id', INT, primary_key = True),
-    Column('user_id', INT),
+    Column('user_id', INT, foreign_key = ForeignKey(users.c.user_id)),
     Column('email_address', VARCHAR(20)),
 )
 
