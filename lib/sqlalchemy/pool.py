@@ -41,6 +41,10 @@ def manage(module, **params):
 def clear_managers():
     """removes all current DBAPI2 managers.  all pools and connections are disposed."""
     proxies.clear()
+
+def status(pool):
+    tup = (pool.size(), pool.checkedin(), pool.overflow(), pool.checkedout())
+    return "Pool size: %d  Connections in pool: %d Current Overflow: %d Current Checked out connections: %d" % tup
     
 class Pool(object):
     def __init__(self, echo = False, use_threadlocal = True):
@@ -107,6 +111,7 @@ class QueuePool(Pool):
     def get(self):
         if self._echo:
             self.log("get connection from pool")
+            self.log(status(self))
         try:
             return self._pool.get(self._max_overflow > -1 and self._overflow >= self._max_overflow)
         except Queue.Empty:
