@@ -53,6 +53,8 @@ def get_row_key(row, class_, table, primary_keys):
 
 identity_map = {}
 
+foo = 0
+
 def get(key):
     val = identity_map[key]
     if isinstance(val, dict):
@@ -64,8 +66,6 @@ def put(key, obj, scope='thread'):
     if isinstance(obj, dict):
         raise "cant put a dict in the object store"
     
-    obj._instance_key = key
-        
     if scope == 'thread':
         try:
             d = identity_map[key]
@@ -187,12 +187,17 @@ class UnitOfWork(object):
                 raise "object " + repr(data) + " is not an iterable object"
         return childlist
         
-    def register_clean(self, obj):
+    def register_clean(self, obj, scope="thread"):
         try:
             del self.dirty[obj]
         except KeyError:
             pass
-
+        try:
+            del self.new[obj]
+        except KeyError:
+            pass
+        put(obj._instance_key, obj, scope=scope)
+        
     def register_new(self, obj):
         self.new.append(obj)
         
@@ -234,9 +239,9 @@ class UnitOfWork(object):
             
         mapperlist = self.commit_context.tasks.values()
         def compare(a, b):
-            if self.dependencies.has_key((a.mapper, b.mapper)):
+            if self.commit_context.dependencies.has_key((a.mapper, b.mapper)):
                 return -1
-            elif self.dependencies.has_key((b.mapper, a.mapper)):
+            elif self.commit_context.dependencies.has_key((b.mapper, a.mapper)):
                 return 1
             else:
                 return 0
@@ -254,12 +259,9 @@ class UnitOfWork(object):
             raise
             
         for obj in self.commit_context.saved_objects:
-            if self.new.contains(obj):
-                mapper = sqlalchemy.mapper.object_mapper(obj)
-                mapper.put(obj)
-                del self.new[obj]
-            elif self.dirty.contains(obj):
-                del self.dirty[obj]
+            mapper = sqlalchemy.mapper.object_mapper(obj)
+            obj._instance_key = mapper.identity_key(obj)
+            self.register_clean(obj)
 
         for obj in self.commit_context.saved_lists:
             del self.modified_lists[obj]
