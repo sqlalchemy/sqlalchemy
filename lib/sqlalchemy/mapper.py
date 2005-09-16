@@ -160,9 +160,10 @@ class Mapper(object):
             row = cursor.fetchone()
             if row is None:
                 break
-            self._instance(row, result)
-            #self._instance(row, result, imap)
+            #self._instance(row, result)
+            self._instance(row, imap, result)
         
+        # store new stuff in the identity map
         for key, value in imap.iteritems():
             objectstore.put(key, value)
             
@@ -307,26 +308,31 @@ class Mapper(object):
     def _identity_key(self, row):
         return objectstore.get_row_key(row, self.class_, self.table, self.primary_keys[self.selectable])
 
-    def _instance(self, row, result = None):
+    def _instance(self, row, imap, result = None):
         """pulls an object instance from the given row and appends it to the given result list.
         if the instance already exists in the given identity map, its not added.  in either
         case, executes all the property loaders on the instance to also process extra information
         in the row."""
 
-        # create the instance if its not in the identity map,
-        # else retrieve it
+        # look in main identity map.  if its there, we dont do anything to it,
+        # including modifying any of its related items lists, as its already
+        # been exposed to being modified by the application.
         identitykey = self._identity_key(row)
-        exists = objectstore.has_key(identitykey)
+        if objectstore.has_key(identitykey):
+            if result is not None:
+                result.append_nohistory(objectstore.get(identitykey))
+            else:
+                return instance
+
+        # look in result-local identitymap for it.
+        exists = imap.has_key(identitykey)      
         if not exists:
             instance = self.class_()
             instance._mapper = self.hashkey
-            for column in self.primary_keys[self.selectable]:
-                if row[column.label] is None:
-                    return None
-            objectstore.put(identitykey, instance, self.scope)
+            imap[identitykey] = instance
             isnew = True
         else:
-            instance = objectstore.get(identitykey)
+            instance = imap[identitykey]
             isnew = False
 
         if result is not None:
@@ -335,7 +341,7 @@ class Mapper(object):
         # call further mapper properties on the row, to pull further 
         # instances from the row and possibly populate this item.
         for key, prop in self.props.iteritems():
-            prop.execute(instance, row, identitykey, isnew)
+            prop.execute(instance, row, identitykey, imap, isnew)
             
         return instance
 
@@ -350,7 +356,7 @@ class MapperOption:
 class MapperProperty:
     """an element attached to a Mapper that describes and assists in the loading and saving 
     of an attribute on an object instance."""
-    def execute(self, instance, row, identitykey, isnew):
+    def execute(self, instance, row, identitykey, imap, isnew):
         """called when the mapper receives a row.  instance is the parent instance corresponding
         to the row. """
         raise NotImplementedError()
@@ -395,7 +401,7 @@ class ColumnProperty(MapperProperty):
         if not hasattr(parent.class_, key):
             setattr(parent.class_, key, SmartProperty(key).property())
 
-    def execute(self, instance, row, identitykey, isnew):
+    def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
             setattr(instance, self.key, row[self.columns[0].label])
 
@@ -595,7 +601,7 @@ class LazyLoader(PropertyLoader):
         li = BinaryVisitor(lambda b: self._create_lazy_clause(b, self.binds))
         self.lazywhere.accept_visitor(li)
 
-    def execute(self, instance, row, identitykey, isnew):
+    def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
             # TODO: get lazy callables to be stored within the unit of work?
             # allows serializable ?  still need lazyload state to exist in the application
@@ -671,7 +677,7 @@ class EagerLoader(PropertyLoader):
         for key, value in self.mapper.props.iteritems():
             value.setup(key, statement)
 
-    def execute(self, instance, row, identitykey, isnew):
+    def execute(self, instance, row, identitykey, imap, isnew):
         """receive a row.  tell our mapper to look for a new object instance in the row, and attach
         it to a list on the parent instance."""
         if not self.uselist:
@@ -684,7 +690,7 @@ class EagerLoader(PropertyLoader):
         else:
             result_list = getattr(instance, self.key)
 
-        self.mapper._instance(row, result_list)
+        self.mapper._instance(row, imap, result_list)
             
 class EagerLazySwitcher(MapperOption):
     """an option that switches a PropertyLoader to be an EagerLoader"""
