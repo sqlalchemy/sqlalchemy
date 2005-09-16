@@ -310,6 +310,8 @@ class SaveTest(AssertMixin):
 
         objectstore.uow().register_new(u)
         
+        objectstore.uow().commit(u)
+        print "OK"
         objectstore.uow().commit()
 
         # assert the first one retreives the same from the identity map

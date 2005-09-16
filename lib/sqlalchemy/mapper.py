@@ -164,8 +164,8 @@ class Mapper(object):
             self._instance(row, imap, result)
         
         # store new stuff in the identity map
-        for key, value in imap.iteritems():
-            objectstore.put(key, value)
+        for value in imap.values():
+            objectstore.uow().register_clean(value)
             
         return result
 
@@ -190,9 +190,12 @@ class Mapper(object):
                 return None
 
     def put(self, instance):
-        key = objectstore.get_id_key(tuple([self._getattrbycolumn(instance, column) for column in self.primary_keys[self.selectable]]), self.class_, self.table)
+        key = self.identity_key(instance)
         objectstore.put(key, instance, self.scope)
         return key
+
+    def identity_key(self, instance):
+        return objectstore.get_id_key(tuple([self._getattrbycolumn(instance, column) for column in self.primary_keys[self.selectable]]), self.class_, self.table)
 
     def compile(self, whereclause = None, **options):
         """works like select, except returns the SQL statement object without 
@@ -319,16 +322,19 @@ class Mapper(object):
         # been exposed to being modified by the application.
         identitykey = self._identity_key(row)
         if objectstore.has_key(identitykey):
+            instance = objectstore.get(identitykey)
             if result is not None:
-                result.append_nohistory(objectstore.get(identitykey))
-            else:
-                return instance
+                result.append_nohistory(instance)
+                
+            return instance
 
         # look in result-local identitymap for it.
         exists = imap.has_key(identitykey)      
         if not exists:
             instance = self.class_()
             instance._mapper = self.hashkey
+            instance._instance_key = identitykey
+
             imap[identitykey] = instance
             isnew = True
         else:
@@ -547,7 +553,7 @@ class PropertyLoader(MapperProperty):
                 for child in childlist.added_items():
                     associationrow = {}
                     self.primaryjoin.accept_visitor(setter)
-                    uow.register_saved(childlist)
+                    uow.register_saved_object(childlist)
                 # TODO: deleted items
         elif self.foreignkey.table == self.parent.table:
             for child in deplist:
@@ -555,7 +561,7 @@ class PropertyLoader(MapperProperty):
                 for obj in childlist.added_items():
                     associationrow = {}
                     self.primaryjoin.accept_visitor(setter)
-                    uow.register_saved(childlist)
+                    uow.register_saved_object(childlist)
                 # TODO: deleted items
         else:
             raise " no foreign key ?"

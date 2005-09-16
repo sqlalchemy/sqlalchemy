@@ -103,17 +103,16 @@ class UOWListElement(util.HistoryArraySet):
     def __init__(self, obj, items = None):
         util.HistoryArraySet.__init__(self, items)
         self.obj = weakref.ref(obj)
-        self.list = UOWListElement        
         
     def _setrecord(self, item):
         res = util.HistoryArraySet._setrecord(self, item)
         if res:
-            uow().modified_lists.append(self.list)
+            uow().modified_lists.append(self)
         return res
     def _delrecord(self, item):
         res = util.HistoryArraySet._delrecord(self, item)
         if res:
-            uow().modified_lists.append(self.list)
+            uow().modified_lists.append(self)
         return res
     
 class UnitOfWork(object):
@@ -197,6 +196,7 @@ class UnitOfWork(object):
         except KeyError:
             pass
         put(obj._instance_key, obj, scope=scope)
+        # TODO: get lists off the object and make sure theyre clean too ?
         
     def register_new(self, obj):
         self.new.append(obj)
@@ -233,9 +233,10 @@ class UnitOfWork(object):
             for item in self.modified_lists:
                 obj = item.obj()
                 self.commit_context.append_task(obj)
+                print "obj: " + repr(id(obj)) + obj.__class__.__name__
             
         for task in self.commit_context.tasks.values():
-            task.mapper.register_dependencies(util.HashSet(task.objects + task.lists), self)
+            task.mapper.register_dependencies(task.objects, self)
             
         mapperlist = self.commit_context.tasks.values()
         def compare(a, b):
@@ -264,7 +265,10 @@ class UnitOfWork(object):
             self.register_clean(obj)
 
         for obj in self.commit_context.saved_lists:
-            del self.modified_lists[obj]
+            try:
+                del self.modified_lists[obj]
+            except KeyError:
+                pass
 
         self.commit_context = None
         # TODO: deleted stuff
@@ -284,7 +288,6 @@ class UnitOfWork(object):
         task = self.commit_context.get_task_by_mapper(mapper)
         if processor is not None:
             task.dependencies.append((processor, stuff_to_process))
-        
             
 class UOWTransaction(object):
     def __init__(self):
@@ -308,8 +311,7 @@ class UOWTransaction(object):
 class UOWTask(object):
     def __init__(self, mapper):
         self.mapper = mapper
-        self.objects = []
-        self.lists = []
+        self.objects = util.HashSet()
         self.dependencies = []
         
 uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")
