@@ -114,7 +114,10 @@ class HashSet(object):
         
     def append(self, item):
         self.map[item] = item
- 
+
+    def __add__(self, other):
+        return HashSet(self.map.values() + [i for i in other])
+        
     def __len__(self):
         return len(self.map)
         
@@ -149,7 +152,7 @@ class HistoryArraySet(UserList.UserList):
                del self.data[i]
                i -= 1
 
-    def hash(self):
+    def __hash__(self):
         return id(self)
     def _setrecord(self, item):
         try:
