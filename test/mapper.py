@@ -195,10 +195,16 @@ class EagerTest(AssertMixin):
         print repr(l[0].address)
 
         # test 'backwards'
+        
+        # TODO: we have to clear everything, because it wont re-load the Address object.
+        # how should that work ?
+        objectstore.clear()
         m = mapper(Address, addresses, properties = dict(
             user = relation(User, users, primaryjoin = addresses.c.user_id == users.c.user_id, lazy = False, uselist = False)
+#            user = relation(User, users, lazy = False, uselist = False)
         ))
         l = m.select(addresses.c.address_id == 1)
+        print "OK"
         print repr(l)
         print repr(l[0].user)
 
@@ -503,12 +509,12 @@ class SaveTest(AssertMixin):
         keywordmapper = mapper(Keyword, keywords)
 
         data = [Item,
-            {'item_name': 'item1', 'keywords' : (Keyword,[{'name': 'big'},{'name': 'green'}, {'name': 'purple'},{'name': 'round'}])},
-            {'item_name': 'item2', 'keywords' : (Keyword,[{'name':'blue'}, {'name':'imnew'},{'name':'round'}, {'name':'small'}])},
-            {'item_name': 'item3', 'keywords' : (Keyword,[])},
-            {'item_name': 'item4', 'keywords' : (Keyword,[{'name':'big'}, {'name':'blue'},])},
-            {'item_name': 'item5', 'keywords' : (Keyword,[{'name':'big'},{'name':'exacting'},{'name':'green'}])},
-            {'item_name': 'item6', 'keywords' : (Keyword,[{'name':'red'},{'name':'round'},{'name':'small'}])},
+            {'item_name': 'mm_item1', 'keywords' : (Keyword,[{'name': 'big'},{'name': 'green'}, {'name': 'purple'},{'name': 'round'}])},
+            {'item_name': 'mm_item2', 'keywords' : (Keyword,[{'name':'blue'}, {'name':'imnew'},{'name':'round'}, {'name':'small'}])},
+            {'item_name': 'mm_item3', 'keywords' : (Keyword,[])},
+            {'item_name': 'mm_item4', 'keywords' : (Keyword,[{'name':'big'}, {'name':'blue'},])},
+            {'item_name': 'mm_item5', 'keywords' : (Keyword,[{'name':'big'},{'name':'exacting'},{'name':'green'}])},
+            {'item_name': 'mm_item6', 'keywords' : (Keyword,[{'name':'red'},{'name':'round'},{'name':'small'}])},
         ]
         objects = []
         for elem in data[1:]:
@@ -565,7 +571,7 @@ class SaveTest(AssertMixin):
             ), echo = True)
 
         data = [Item,
-            {'item_name': 'item1', 'keywords' : (IKAssociation, 
+            {'item_name': 'a_item1', 'keywords' : (IKAssociation, 
                                                     [
                                                         {'keyword' : (Keyword, {'name': 'big'})},
                                                         {'keyword' : (Keyword, {'name': 'green'})}, 
@@ -574,7 +580,7 @@ class SaveTest(AssertMixin):
                                                     ]
                                                  ) 
             },
-            {'item_name': 'item2', 'keywords' : (IKAssociation, 
+            {'item_name': 'a_item2', 'keywords' : (IKAssociation, 
                                                     [
                                                         {'keyword' : (Keyword, {'name': 'huge'})},
                                                         {'keyword' : (Keyword, {'name': 'violet'})}, 
@@ -582,7 +588,7 @@ class SaveTest(AssertMixin):
                                                     ]
                                                  ) 
             },
-            {'item_name': 'item3', 'keywords' : (IKAssociation, 
+            {'item_name': 'a_item3', 'keywords' : (IKAssociation, 
                                                     [
                                                         {'keyword' : (Keyword, {'name': 'big'})},
                                                         {'keyword' : (Keyword, {'name': 'blue'})}, 
