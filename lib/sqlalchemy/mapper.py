@@ -553,7 +553,7 @@ class PropertyLoader(MapperProperty):
                 for child in childlist.added_items():
                     associationrow = {}
                     self.primaryjoin.accept_visitor(setter)
-                    uow.register_saved_object(childlist)
+                    uow.register_saved_list(childlist)
                 # TODO: deleted items
         elif self.foreignkey.table == self.parent.table:
             for child in deplist:
@@ -561,7 +561,7 @@ class PropertyLoader(MapperProperty):
                 for obj in childlist.added_items():
                     associationrow = {}
                     self.primaryjoin.accept_visitor(setter)
-                    uow.register_saved_object(childlist)
+                    uow.register_saved_list(childlist)
                 # TODO: deleted items
         else:
             raise " no foreign key ?"
