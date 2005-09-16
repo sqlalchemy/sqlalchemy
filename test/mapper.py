@@ -456,7 +456,7 @@ class SaveTest(AssertMixin):
         self.assert_(addresstable[0].row == (addressid, userid, 'somethingnew@foo.com'))
         self.assert_(u.user_id == userid and a2.address_id == addressid)
 
-    def testalias(self):
+    def _testalias(self):
         """tests that an alias of a table can be used in a mapper. 
         the mapper has to locate the original table and columns to keep it all straight."""
         ualias = Alias(users, 'ualias')
@@ -468,7 +468,7 @@ class SaveTest(AssertMixin):
         u2 = m.select(ualias.c.user_id == u.user_id)[0]
         self.assert_(u2 is u)
 
-    def testremove(self):
+    def _testremove(self):
         m = mapper(User, users, properties = dict(
             addresses = relation(Address, addresses, lazy = True)
         ))
