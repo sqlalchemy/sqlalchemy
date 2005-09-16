@@ -80,10 +80,12 @@ def clear(scope='thread'):
         for k in identity_map.keys():
             if isinstance(identity_map[k], dict):
                 identity_map[k].clear()
+        uow.set(UnitOfWork())
     else:
         for k in identity_map.keys():
             if not isinstance(identity_map[k], dict):
                 del identity_map[k]
+        uow.set(UnitOfWork(), scope="application")
             
 def has_key(key):
     if identity_map.has_key(key):
@@ -222,7 +224,7 @@ class UnitOfWork(object):
         else:
             for obj in [n for n in self.new] + [d for d in self.dirty]:
                 self.commit_context.append_task(obj)
-
+                print "obj: " + repr(id(obj)) + obj.__class__.__name__
             for item in self.modified_lists:
                 obj = item.obj()
                 self.commit_context.append_task(obj)
