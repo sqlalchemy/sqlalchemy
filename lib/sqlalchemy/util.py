@@ -149,6 +149,8 @@ class HistoryArraySet(UserList.UserList):
                del self.data[i]
                i -= 1
 
+    def hash(self):
+        return id(self)
     def _setrecord(self, item):
         try:
             val = self.records[item]
@@ -272,8 +274,8 @@ class ScopedRegistry(object):
         self.application = createfunc()
         self.threadlocal = {}
         self.scopes = {
-                    'application' : {'call' : self._call_application, 'clear' : self._clear_application}, 
-                    'thread' : {'call' : self._call_thread, 'clear':self._clear_thread}
+                    'application' : {'call' : self._call_application, 'clear' : self._clear_application, 'set':self._set_application}, 
+                    'thread' : {'call' : self._call_thread, 'clear':self._clear_thread, 'set':self._set_thread}
                     }
 
     def __call__(self, scope = None):
@@ -281,11 +283,19 @@ class ScopedRegistry(object):
             scope = self.defaultscope
         return self.scopes[scope]['call']()
 
+    def set(self, obj, scope = None):
+        if scope is None:
+            scope = self.defaultscope
+        return self.scopes[scope]['set'](obj)
+        
     def clear(self, scope = None):
         if scope is None:
             scope = self.defaultscope
         return self.scopes[scope]['clear']()
-        
+
+    def _set_thread(self, obj):
+        self.threadlocal[thread.get_ident()] = obj
+    
     def _call_thread(self):
         try:
             return self.threadlocal[thread.get_ident()]
@@ -298,6 +308,9 @@ class ScopedRegistry(object):
         except KeyError:
             pass
 
+    def _set_application(self, obj):
+        self.application = obj
+        
     def _call_application(self):
         return self.application
 
