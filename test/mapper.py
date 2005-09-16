@@ -311,21 +311,15 @@ class SaveTest(AssertMixin):
         objectstore.uow().register_new(u)
         
         objectstore.uow().commit(u)
-        print "OK"
         objectstore.uow().commit()
 
         # assert the first one retreives the same from the identity map
         nu = m.get(u.user_id)
         self.assert_(u is nu)
         
-        print "STEP 1"
-        print repr(objectstore.identity_map)
-        
         # clear out the identity map, so next get forces a SELECT
         objectstore.clear()
 
-        print "STEP 2"
-        print repr(objectstore.identity_map)
 
         # check it again, identity should be different but ids the same
         nu = m.get(u.user_id)
@@ -333,15 +327,11 @@ class SaveTest(AssertMixin):
 
         # change first users name and save
         u.user_name = 'modifiedname'
-        print "STEP 3"
-        print repr(objectstore.identity_map)
         objectstore.uow().commit()
 
         # select both
         #objectstore.clear()
         userlist = m.select(users.c.user_id.in_(u.user_id, u2.user_id), order_by=[users.c.user_name])
-        print repr(userlist)
-        # making a slight assumption here about the IN clause mechanics with regards to ordering
         self.assert_(u.user_id == userlist[0].user_id and userlist[0].user_name == 'modifiedname')
         self.assert_(u2.user_id == userlist[1].user_id and userlist[1].user_name == 'savetester2')
 

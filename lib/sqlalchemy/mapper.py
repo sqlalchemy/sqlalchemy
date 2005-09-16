@@ -688,7 +688,7 @@ class EagerLoader(PropertyLoader):
         it to a list on the parent instance."""
         if not self.uselist:
             # TODO: check for multiple values on single-element child element ?
-            setattr(instance, self.key, self.mapper._instance(row))
+            setattr(instance, self.key, self.mapper._instance(row, imap))
             return
         elif isnew:
             result_list = objectstore.uow().register_list_attribute(instance, self.key, data = [])
