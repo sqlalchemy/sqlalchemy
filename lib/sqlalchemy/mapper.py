@@ -95,8 +95,6 @@ class Mapper(object):
                     raise "Table " + t.name + " has no primary keys. Specify primary_keys argument to mapper."
                 for k in t.primary_keys:
                     list.append(k)
-                
-                    
 
         self.echo = echo
 
@@ -157,12 +155,17 @@ class Mapper(object):
     def instances(self, cursor):
         result = util.HistoryArraySet()
         cursor = engine.ResultProxy(cursor, echo = self.echo)
-
+        imap = {}
         while True:
             row = cursor.fetchone()
             if row is None:
                 break
             self._instance(row, result)
+            #self._instance(row, result, imap)
+        
+        for key, value in imap.iteritems():
+            objectstore.put(key, value)
+            
         return result
 
     def get(self, *ident):
@@ -186,8 +189,7 @@ class Mapper(object):
                 return None
 
     def put(self, instance):
-        key = objectstore.get_instance_key(instance, self.class_, self.table, self.primary_keys[self.selectable], self)
-        print repr(instance.__dict__)
+        key = objectstore.get_id_key(tuple([self._getattrbycolumn(instance, column) for column in self.primary_keys[self.selectable]]), self.class_, self.table)
         objectstore.put(key, instance, self.scope)
         return key
 
@@ -231,7 +233,7 @@ class Mapper(object):
     def _setattrbycolumn(self, obj, column, value):
         self.columntoproperty[column][0].setattr(obj, value)
 
-    def save_obj(self, objects):
+    def save_obj(self, objects, uow):
         # try to get inserts to be en-masse with the "guess-the-id" thing maybe
                 
         for table in self.tables:
@@ -250,7 +252,7 @@ class Mapper(object):
                     update.append(params)
                 else:
                     insert.append((obj, params))
-
+                uow.register_saved_object(obj)
             if len(update):
                 clause = sql.and_()
                 for col in self.primary_keys[table]:
@@ -322,21 +324,19 @@ class Mapper(object):
                 if row[column.label] is None:
                     return None
             objectstore.put(identitykey, instance, self.scope)
+            isnew = True
         else:
             instance = objectstore.get(identitykey)
+            isnew = False
 
         if result is not None:
-            isduplicate = result.has_item(instance)
             result.append_nohistory(instance)
-        else:
-            isduplicate = False
-
+            
         # call further mapper properties on the row, to pull further 
         # instances from the row and possibly populate this item.
         for key, prop in self.props.iteritems():
-            prop.execute(instance, row, identitykey, isduplicate)
+            prop.execute(instance, row, identitykey, isnew)
             
-        objectstore.uow().register_clean(instance)
         return instance
 
 class MapperOption:
@@ -350,7 +350,7 @@ class MapperOption:
 class MapperProperty:
     """an element attached to a Mapper that describes and assists in the loading and saving 
     of an attribute on an object instance."""
-    def execute(self, instance, row, identitykey, isduplicate):
+    def execute(self, instance, row, identitykey, isnew):
         """called when the mapper receives a row.  instance is the parent instance corresponding
         to the row. """
         raise NotImplementedError()
@@ -395,8 +395,8 @@ class ColumnProperty(MapperProperty):
         if not hasattr(parent.class_, key):
             setattr(parent.class_, key, SmartProperty(key).property())
 
-    def execute(self, instance, row, identitykey, isduplicate):
-        if not isduplicate:
+    def execute(self, instance, row, identitykey, isnew):
+        if isnew:
             setattr(instance, self.key, row[self.columns[0].label])
 
 
@@ -526,6 +526,7 @@ class PropertyLoader(MapperProperty):
                     self.primaryjoin.accept_visitor(setter)
                     self.secondaryjoin.accept_visitor(setter)
                     secondary_delete.append(associationrow)
+                uow.register_saved_list(childlist)
             if len(secondary_delete):
                 statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key) for c in self.secondary.c]))
                 statement.echo = self.mapper.echo
@@ -540,6 +541,7 @@ class PropertyLoader(MapperProperty):
                 for child in childlist.added_items():
                     associationrow = {}
                     self.primaryjoin.accept_visitor(setter)
+                    uow.register_saved(childlist)
                 # TODO: deleted items
         elif self.foreignkey.table == self.parent.table:
             for child in deplist:
@@ -547,6 +549,7 @@ class PropertyLoader(MapperProperty):
                 for obj in childlist.added_items():
                     associationrow = {}
                     self.primaryjoin.accept_visitor(setter)
+                    uow.register_saved(childlist)
                 # TODO: deleted items
         else:
             raise " no foreign key ?"
@@ -592,8 +595,8 @@ class LazyLoader(PropertyLoader):
         li = BinaryVisitor(lambda b: self._create_lazy_clause(b, self.binds))
         self.lazywhere.accept_visitor(li)
 
-    def execute(self, instance, row, identitykey, isduplicate):
-        if not isduplicate:
+    def execute(self, instance, row, identitykey, isnew):
+        if isnew:
             # TODO: get lazy callables to be stored within the unit of work?
             # allows serializable ?  still need lazyload state to exist in the application
             # when u deserialize tho
@@ -668,14 +671,14 @@ class EagerLoader(PropertyLoader):
         for key, value in self.mapper.props.iteritems():
             value.setup(key, statement)
 
-    def execute(self, instance, row, identitykey, isduplicate):
+    def execute(self, instance, row, identitykey, isnew):
         """receive a row.  tell our mapper to look for a new object instance in the row, and attach
         it to a list on the parent instance."""
         if not self.uselist:
             # TODO: check for multiple values on single-element child element ?
             setattr(instance, self.key, self.mapper._instance(row))
             return
-        elif not isduplicate:
+        elif isnew:
             result_list = objectstore.uow().register_list_attribute(instance, self.key, data = [])
             result_list.clear_history()
         else:
