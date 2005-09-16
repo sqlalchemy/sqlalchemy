@@ -53,8 +53,6 @@ def get_row_key(row, class_, table, primary_keys):
 
 identity_map = {}
 
-foo = 0
-
 def get(key):
     val = identity_map[key]
     if isinstance(val, dict):
@@ -195,6 +193,7 @@ class UnitOfWork(object):
             del self.new[obj]
         except KeyError:
             pass
+        # TODO: figure scope out from what scope of this UOW is
         put(obj._instance_key, obj, scope=scope)
         # TODO: get lists off the object and make sure theyre clean too ?
         
@@ -229,11 +228,9 @@ class UnitOfWork(object):
         else:
             for obj in [n for n in self.new] + [d for d in self.dirty]:
                 self.commit_context.append_task(obj)
-                print "obj: " + repr(id(obj)) + obj.__class__.__name__
             for item in self.modified_lists:
                 obj = item.obj()
                 self.commit_context.append_task(obj)
-                print "obj: " + repr(id(obj)) + obj.__class__.__name__
             
         for task in self.commit_context.tasks.values():
             task.mapper.register_dependencies(task.objects, self)
