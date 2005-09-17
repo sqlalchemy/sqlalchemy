@@ -30,14 +30,14 @@ addresses = Table('email_addresses', db,
 
 orders = Table('orders', db,
     Column('order_id', INT, primary_key = True),
-    Column('user_id', INT),
+    Column('user_id', INT, foreign_key = ForeignKey(users.c.user_id)),
     Column('description', VARCHAR(50)),
     Column('isopen', INT)
 )
 
 orderitems = Table('items', db,
     Column('item_id', INT, primary_key = True),
-    Column('order_id', INT),
+    Column('order_id', INT, foreign_key = ForeignKey(orders.c.order_id)),
     Column('item_name', VARCHAR(50))
 )
 
