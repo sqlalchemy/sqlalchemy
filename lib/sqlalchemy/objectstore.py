@@ -166,7 +166,7 @@ class UnitOfWork(object):
             return True
         
     def register_deleted(self, obj):
-        pass   
+        self.deleted.append(obj)  
 
     # TODO: tie in register_new/register_dirty with table transaction begins ?
     def begin(self):
@@ -180,14 +180,19 @@ class UnitOfWork(object):
 
         if len(objects):
             for obj in objects:
-                commit_context.append_task(obj)
+                if self.deleted.contains(obj):
+                    commit_context.add_item_to_delete(obj)
+                elif self.new.contains(obj) or self.dirty.contains(obj):
+                    commit_context.append_task(obj)
         else:
             for obj in [n for n in self.new] + [d for d in self.dirty]:
                 commit_context.append_task(obj)
             for item in self.modified_lists:
                 obj = item.obj
                 commit_context.append_task(obj)
-
+            for obj in self.deleted:
+                commit_context.add_item_to_delete(obj)
+                
         engines = util.HashSet()
         for mapper in commit_context.mappers:
             for e in mapper.engines:
@@ -227,6 +232,8 @@ class UOWTransaction(object):
         self.tasks = {}
         self.saved_objects = util.HashSet()
         self.saved_lists = util.HashSet()
+        self.deleted_objects = util.HashSet()
+        self.todelete = util.HashSet()
 
     def append_task(self, obj):
         mapper = self.object_mapper(obj)
@@ -252,6 +259,12 @@ class UOWTransaction(object):
     def register_saved_list(self, listobj):
         self.saved_lists.append(listobj)
 
+    def register_deleted(self, obj):
+        self.deleted_objects.append(obj)
+        
+    def add_item_to_delete(self, obj):
+        self.todelete.append(obj)
+        
     def object_mapper(self, obj):
         import sqlalchemy.mapper
         try:

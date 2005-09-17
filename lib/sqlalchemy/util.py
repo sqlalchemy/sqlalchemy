@@ -19,7 +19,9 @@ __ALL__ = ['OrderedProperties', 'OrderedDict']
 import thread, weakref, UserList
 
 class OrderedProperties(object):
-
+    """an object that maintains the order in which attributes are set upon it.
+    also provides an iterator and a very basic dictionary interface to those attributes.
+    """
     def __init__(self):
         self.__dict__['_list'] = []
             
@@ -87,6 +89,7 @@ class OrderedDict(dict):
         return dict.__getitem__(self, key)
 
 class ThreadLocal(object):
+    """an object in which attribute access occurs only within the context of the current thread"""
     def __init__(self):
         object.__setattr__(self, 'tdict', {})
     def __getattribute__(self, key):
@@ -98,6 +101,7 @@ class ThreadLocal(object):
         object.__getattribute__(self, 'tdict')["%d_%s" % (thread.get_ident(), key)] = value
 
 class HashSet(object):
+    """implements a Set."""
     def __init__(self, iter = None):
         self.map  = {}
         if iter is not None:
@@ -128,6 +132,9 @@ class HashSet(object):
         return self.map[key]
         
 class HistoryArraySet(UserList.UserList):
+    """extends a UserList to provide unique-set functionality as well as history-aware 
+    functionality, including information about what list elements were modified, 
+    as well as rollback capability."""
     def __init__(self, data = None):
         # stores the array's items as keys, and a value of True, False or None indicating
         # added, deleted, or unchanged for that item
@@ -247,6 +254,8 @@ class HistoryArraySet(UserList.UserList):
 
         
 class ScopedRegistry(object):
+    """a Registry that can store one or multiple instances of a single class 
+    on a per-application or per-thread scoped basis"""
     def __init__(self, createfunc, defaultscope):
         self.createfunc = createfunc
         self.defaultscope = defaultscope

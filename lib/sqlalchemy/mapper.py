@@ -30,7 +30,7 @@ def relation(*args, **params):
     else:
         return relation_mapper(*args, **params)
 
-def relation_loader(mapper, secondary = None, primaryjoin = None, secondaryjoin = None, lazy = True, private = False, **options):
+def relation_loader(mapper, secondary = None, primaryjoin = None, secondaryjoin = None, lazy = True, **options):
     if lazy:
         return LazyLoader(mapper, secondary, primaryjoin, secondaryjoin, **options)
     else:
@@ -434,9 +434,9 @@ class ColumnProperty(MapperProperty):
 
 
 class PropertyLoader(MapperProperty):
-    """describes an object property that holds a list of items that correspond to a related
+    """describes an object property that holds a single item or list of items that correspond to a related
     database table."""
-    def __init__(self, mapper, secondary, primaryjoin, secondaryjoin, uselist = True, foreignkey = None):
+    def __init__(self, mapper, secondary, primaryjoin, secondaryjoin, uselist = True, foreignkey = None, private = False):
         self.uselist = uselist
         self.mapper = mapper
         self.target = self.mapper.selectable
@@ -444,6 +444,7 @@ class PropertyLoader(MapperProperty):
         self.primaryjoin = primaryjoin
         self.secondaryjoin = secondaryjoin
         self.foreignkey = foreignkey
+        self.private = private
         self._hash_key = "%s(%s, %s, %s, %s, %s, uselist=%s)" % (self.__class__.__name__, hash_key(mapper), hash_key(secondary), hash_key(primaryjoin), hash_key(secondaryjoin), hash_key(foreignkey), repr(self.uselist))
             
     def hash_key(self):
@@ -558,6 +559,8 @@ class PropertyLoader(MapperProperty):
                     self.primaryjoin.accept_visitor(setter)
                     self.secondaryjoin.accept_visitor(setter)
                     secondary_delete.append(associationrow)
+                    if self.private:
+                        uowcommit.add_item_to_delete(obj)
                 uowcommit.register_saved_list(childlist)
             if len(secondary_delete):
                 statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key) for c in self.secondary.c]))
@@ -568,23 +571,33 @@ class PropertyLoader(MapperProperty):
         elif self.foreignkey.table == self.target:
             for obj in deplist:
                 childlist = getlist(obj)
+                clearkeys = False
                 for child in childlist.added_items():
                     associationrow = {}
                     self.primaryjoin.accept_visitor(setter)
                     uowcommit.register_saved_list(childlist)
-                # TODO: deleted items
+                clearkeys = True
+                for child in childlist.deleted_items():
+                     associationrow = {}
+                     self.primaryjoin.accept_visitor(setter)
+                     uowcommit.register_saved_list(childlist)
+                     if self.private:
+                         uowcommit.add_item_to_delete(child)
         elif self.foreignkey.table == self.parent.table:
             for child in deplist:
                 childlist = getlist(child)
-                try:
-                    print "got a list and its " + repr(childlist)
-                except:
-                    pass
+                clearkeys = False
                 for obj in childlist.added_items():
                     associationrow = {}
                     self.primaryjoin.accept_visitor(setter)
                     uowcommit.register_saved_list(childlist)
-                # TODO: deleted items
+                clearkeys = True
+                for obj in childlist.deleted_items():
+                    if self.private:
+                        uowcommit.add_item_to_delete(obj)
+                    associationrow = {}
+                    self.primaryjoin.accept_visitor(setter)
+                    uowcommit.register_saved_list(childlist)
         else:
             raise " no foreign key ?"
 

@@ -1,7 +1,27 @@
+# attributes.py - manages object attributes
+# Copyright (C) 2005 Michael Bayer mike_mp@zzzcomputing.com
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
+
 import sqlalchemy.util as util
 import weakref
 
 class SmartProperty(object):
+    """attaches AttributeManager functionality to the property accessors of a class.  all instances
+    of the class will retrieve and modify their properties via an AttributeManager."""
     def __init__(self, manager):
         self.manager = manager
     def attribute_registry(self):
@@ -26,35 +46,8 @@ class SmartProperty(object):
                 
         return property(get_prop, set_prop, del_prop)
 
-class ListElement(util.HistoryArraySet):
-    """overrides HistoryArraySet to mark the parent object as dirty when changes occur"""
-
-    def __init__(self, obj, key, items = None):
-        self.obj = obj
-        self.key = key
-        util.HistoryArraySet.__init__(self, items)
-        obj.__dict__[key] = self.data
-
-    def list_value_changed(self, obj, key, listval):
-        pass    
-
-    def setattr(self, value):
-        self.obj.__dict__[self.key] = value
-        self.set_data(value)
-    def delattr(self, value):
-        pass    
-    def _setrecord(self, item):
-        res = util.HistoryArraySet._setrecord(self, item)
-        if res:
-            self.list_value_changed(self.obj, self.key, self)
-        return res
-    def _delrecord(self, item):
-        res = util.HistoryArraySet._delrecord(self, item)
-        if res:
-            self.list_value_changed(self.obj, self.key, self)
-        return res
-
 class PropHistory(object):
+    """manages the value of a particular scalar attribute on a particular object instance."""
     # make our own NONE to distinguish from "None"
     NONE = object()
     def __init__(self, obj, key):
@@ -81,7 +74,7 @@ class PropHistory(object):
         else:
             return []
     def deleted_items(self):
-        if self.orig is not PropHistory.NONE:
+        if self.orig is not PropHistory.NONE and self.orig is not None:
             return [self.orig]
         else:
             return []
@@ -91,19 +84,43 @@ class PropHistory(object):
         else:
             return []
 
+class ListElement(util.HistoryArraySet):
+    """manages the value of a particular list-based attribute on a particular object instance."""
+    def __init__(self, obj, key, items = None):
+        self.obj = obj
+        self.key = key
+        util.HistoryArraySet.__init__(self, items)
+        obj.__dict__[key] = self.data
+
+    def list_value_changed(self, obj, key, listval):
+        pass    
+
+    def setattr(self, value):
+        self.obj.__dict__[self.key] = value
+        self.set_data(value)
+    def delattr(self, value):
+        pass    
+    def _setrecord(self, item):
+        res = util.HistoryArraySet._setrecord(self, item)
+        if res:
+            self.list_value_changed(self.obj, self.key, self)
+        return res
+    def _delrecord(self, item):
+        res = util.HistoryArraySet._delrecord(self, item)
+        if res:
+            self.list_value_changed(self.obj, self.key, self)
+        return res
+
+
 class AttributeManager(object):
+    """maintains a set of per-attribute history objects for a set of objects."""
     def __init__(self):
         self.attribute_history = {}
+
     def value_changed(self, obj, key, value):
         pass
-#        if hasattr(obj, '_instance_key'):
-#            self.register_dirty(obj)
-#        else:
-#            self.register_new(obj)
-
     def create_prop(self, key, uselist):
         return SmartProperty(self).property(key, uselist)
-        
     def create_list(self, obj, key, list_):
         return ListElement(obj, key, list_)
         
