@@ -128,15 +128,16 @@ class HashSet(object):
         return self.map[key]
         
 class HistoryArraySet(UserList.UserList):
-    def __init__(self, items = None, data = None):
-        UserList.UserList.__init__(self, items)
+    def __init__(self, data = None):
         # stores the array's items as keys, and a value of True, False or None indicating
         # added, deleted, or unchanged for that item
+        self.records = OrderedDict()
         if data is not None:
             self.data = data
-        self.records = {}
-        for i in self.data:
-            self.records[i] = True
+            for item in data:
+                self._setrecord(item)
+        else:
+            self.data = []
 
     def set_data(self, data):
         # first mark everything current as "deleted"

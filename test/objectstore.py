@@ -27,9 +27,11 @@ class HistoryTest(AssertMixin):
         u = User()
         u.user_id = 7
         u.user_name = 'afdas'
-        u.addresses = [Address(), Address()]
+        u.addresses.append(Address())
         u.addresses[0].email_address = 'hi'
+        u.addresses.append(Address())
         u.addresses[1].email_address = 'there'
+        print repr(u.__dict__)
         m.rollback(u)
         print repr(u.__dict__)
         

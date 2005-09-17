@@ -140,7 +140,7 @@ class Mapper(object):
 
         self.init()
 
-    engines = property(lambda s: [t.engine for t in self.tables])
+    engines = property(lambda s: [t.engine for t in s.tables])
 
     def hash_key(self):
         return self.hashkey
@@ -365,9 +365,8 @@ class Mapper(object):
         return instance
 
     def rollback(self, obj):
-        for prop in self.props.values():
-            prop.rollback(obj)
-            
+        objectstore.uow().rollback_object(obj)
+        
 class MapperOption:
     """describes a modification to a Mapper in the context of making a copy
     of it.  This is used to assist in the prototype pattern used by mapper.options()."""
@@ -418,13 +417,12 @@ class ColumnProperty(MapperProperty):
         self.key = key
         # establish a SmartProperty property manager on the object for this key
         if not hasattr(parent.class_, key):
-            setattr(parent.class_, key, SmartProperty(key).property(usehistory = True))
+            objectstore.uow().register_attribute(parent.class_, key, uselist = False)
 
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
-            setattr(instance, self.key, row[self.columns[0].label])
-    def rollback(self, obj):
-        objectstore.uow().rollback_attribute(obj, self.key)
+            instance.__dict__[self.key] = row[self.columns[0].label]
+            #setattr(instance, self.key, row[self.columns[0].label])
         
 
 
@@ -443,9 +441,6 @@ class PropertyLoader(MapperProperty):
             
     def hash_key(self):
         return self._hash_key
-
-    def rollback(self, obj):
-        objectstore.uow().rollback_list_attribute(obj, self.key)
 
     def init(self, key, parent):
         self.key = key
@@ -475,7 +470,7 @@ class PropertyLoader(MapperProperty):
                 self.foreignkey = w.dependent
                 
         if not hasattr(parent.class_, key):
-            setattr(parent.class_, key, SmartProperty(key).property(usehistory = True, uselist = self.uselist))
+            objectstore.uow().register_attribute(parent.class_, key, uselist = self.uselist)
 
     class FindDependent(sql.ClauseVisitor):
         def __init__(self):
@@ -530,9 +525,9 @@ class PropertyLoader(MapperProperty):
 
         def getlist(obj):
             if self.uselist:
-                return uowcommit.uow.register_list_attribute(obj, self.key)
-            else:
-                return uowcommit.uow.register_attribute(obj, self.key)
+                return uowcommit.uow.manager.get_list_history(obj, self.key)
+            else: 
+                return uowcommit.uow.manager.get_history(obj, self.key)
 
         clearkeys = False
         
@@ -607,10 +602,6 @@ class LazyLoader(PropertyLoader):
 
     def init(self, key, parent):
         PropertyLoader.init(self, key, parent)
-        if not hasattr(parent.class_, key):
-            if not issubclass(parent.class_, object):
-                raise "LazyLoader can only be used with new-style classes"
-            setattr(parent.class_, key, SmartProperty(key).property())
         if self.secondaryjoin is not None:
             self.lazywhere = sql.and_(self.primaryjoin, self.secondaryjoin)
         else:
@@ -704,14 +695,17 @@ class EagerLoader(PropertyLoader):
         it to a list on the parent instance."""
         if not self.uselist:
             # TODO: check for multiple values on single-element child element ?
-            setattr(instance, self.key, self.mapper._instance(row, imap))
+            instance.__dict__[self.key] = self.mapper._instance(row, imap)
+            #setattr(instance, self.key, self.mapper._instance(row, imap))
             return
         elif isnew:
-            result_list = objectstore.uow().register_list_attribute(instance, self.key, data = [])
+            result_list = []
+            setattr(instance, self.key, result_list)
+            result_list = getattr(instance, self.key)
             result_list.clear_history()
         else:
             result_list = getattr(instance, self.key)
-
+            
         self.mapper._instance(row, imap, result_list)
             
 class EagerLazySwitcher(MapperOption):
@@ -769,30 +763,6 @@ class BinaryVisitor(sql.ClauseVisitor):
     def visit_binary(self, binary):
         self.func(binary)
         
-class SmartProperty(object):
-    def __init__(self, key):
-        self.key = key
-
-    def property(self, usehistory = False, uselist = False):
-        def set_prop(s, value):
-            if uselist:
-                return objectstore.uow().register_list_attribute(s, self.key, value)
-            else:
-                objectstore.uow().set_attribute(s, self.key, value, usehistory)
-        def del_prop(s):
-            if uselist:
-                # TODO: this probably doesnt work right, deleting the list off an item
-                objectstore.uow().register_list_attribute(s, self.key, [])
-            else:
-                objectstore.uow().delete_attribute(s, self.key, value, usehistory)
-        def get_prop(s):
-            if uselist:
-                return objectstore.uow().register_list_attribute(s, self.key)
-            else:
-                return objectstore.uow().get_attribute(s, self.key)
-                
-        return property(get_prop, set_prop, del_prop)
-
   
 def hash_key(obj):
     if obj is None:

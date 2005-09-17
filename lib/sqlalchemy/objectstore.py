@@ -22,6 +22,7 @@ to objects so that they may be properly persisted within a transactional scope."
 
 import thread
 import sqlalchemy.util as util
+import sqlalchemy.attributes as attributes
 import weakref
 
 def get_id_key(ident, class_, table):
@@ -95,125 +96,43 @@ def has_key(key):
     else:
         return False
 
-class UOWListElement(util.HistoryArraySet):
-    """overrides HistoryArraySet to mark the parent object as dirty when changes occur"""
+class UOWListElement(attributes.ListElement):
+    def list_value_changed(self, obj, key, listval):
+        uow().modified_lists.append(self)
+
+class UOWAttributeManager(attributes.AttributeManager):
+    def __init__(self, uow):
+        attributes.AttributeManager.__init__(self)
+        self.uow = uow
         
-    def __init__(self, obj, items = None):
-        util.HistoryArraySet.__init__(self, items)
-        self.obj = weakref.ref(obj)
+    def value_changed(self, obj, key, value):
+        if hasattr(obj, '_instance_key'):
+            self.uow.register_dirty(obj)
+        else:
+            self.uow.register_new(obj)
+
+    def create_list(self, obj, key, list_):
+        return UOWListElement(obj, key, list_)
         
-    def _setrecord(self, item):
-        res = util.HistoryArraySet._setrecord(self, item)
-        if res:
-            uow().modified_lists.append(self)
-        return res
-    def _delrecord(self, item):
-        res = util.HistoryArraySet._delrecord(self, item)
-        if res:
-            uow().modified_lists.append(self)
-        return res
-    
 class UnitOfWork(object):
     def __init__(self, parent = None, is_begun = False):
         self.is_begun = is_begun
+        self.attributes = UOWAttributeManager(self)
         self.new = util.HashSet()
         self.dirty = util.HashSet()
         self.modified_lists = util.HashSet()
         self.deleted = util.HashSet()
-        self.attribute_history = weakref.WeakKeyDictionary()
         self.parent = parent
+
+    def register_attribute(self, class_, key, uselist):
+        self.attributes.register_attribute(class_, key, uselist)
         
     def attribute_set_callable(self, obj, key, func):
         obj.__dict__[key] = func
 
-    def get_attribute(self, obj, key):
-        try:
-            v = obj.__dict__[key]
-        except KeyError:
-            raise AttributeError(key)
-        if (callable(v)):
-            v = v()
-            obj.__dict__[key] = v
-            self.register_attribute(obj, key).setattr_clean(v)
-        return v
+    def rollback_object(self, obj):
+        self.attributes.rollback(obj)
     
-    def rollback_attribute(self, obj, key):
-        if self.attribute_history.has_key(obj):
-            h = self.attribute_history[obj][key]
-            h.rollback()
-            obj.__dict__[key] = h.current
-            
-    def set_attribute(self, obj, key, value, usehistory = False):
-        if usehistory:
-            self.register_attribute(obj, key).setattr(value)
-        obj.__dict__[key] = value
-        if hasattr(obj, '_instance_key'):
-            self.register_dirty(obj)
-        else:
-            self.register_new(obj)
-        
-    def delete_attribute(self, obj, key, value, usehistory = False):
-        if usehistory:
-            self.register_attribute(obj, key).delattr(value)    
-        del obj.__dict__[key]
-        if hasattr(obj, '_instance_key'):
-            self.register_dirty(obj)
-        else:
-            self.register_new(obj)
-    
-    def rollback_obj(self, obj):
-        try:
-            attributes = self.attribute_history[obj]
-            for key, hist in attributes.iteritems():
-                hist.rollback()
-                obj.__dict__[key] = hist.current
-        except KeyError:
-            pass
-        for value in obj.__dict__.values():
-            if isinstance(value, util.HistoryArraySet):
-                value.rollback()
-    def register_attribute(self, obj, key):
-        try:
-            attributes = self.attribute_history[obj]
-        except KeyError:
-            attributes = self.attribute_history.setdefault(obj, {})
-        try:
-            return attributes[key]
-        except KeyError:
-            return attributes.setdefault(key, util.PropHistory(obj.__dict__.get(key, None)))
-
-    def register_list_attribute(self, obj, key, data = None):
-        try:
-            attributes = self.attribute_history[obj]
-        except KeyError:
-            attributes = self.attribute_history.setdefault(obj, {})
-        try:
-            childlist = attributes[key]
-        except KeyError:
-            try:
-                list = obj.__dict__[key]
-                if callable(list):
-                    list = list()
-            except KeyError:
-                list = []
-                obj.__dict__[key] = list
-
-            childlist = UOWListElement(obj, list)
-            
-        if data is not None and childlist.data != data:
-            try:
-                childlist.set_data(data)
-            except TypeError:
-                raise "object " + repr(data) + " is not an iterable object"
-        return childlist
-    
-    def rollback_list_attribute(self, obj, key):
-        try:
-            childlist = obj.__dict__[key]
-            if isinstance(childlist, util.HistoryArraySet):
-                childlist.rollback()
-        except KeyError:
-            pass    
     def register_clean(self, obj, scope="thread"):
         try:
             del self.dirty[obj]
@@ -263,7 +182,7 @@ class UnitOfWork(object):
                 commit_context.append_task(obj)
 
         engines = util.HashSet()
-        for mapper in commit_context.mappers.keys():
+        for mapper in commit_context.mappers:
             for e in mapper.engines:
                 engines.append(e)
                 
@@ -288,8 +207,8 @@ class UnitOfWork(object):
 class UOWTransaction(object):
     def __init__(self, uow):
         self.uow = uow
-        self.mappers = {}
-        self.engines = util.HashSet()
+        self.object_mappers = {}
+        self.mappers = util.HashSet()
         self.dependencies = {}
         self.tasks = {}
         self.saved_objects = util.HashSet()
@@ -322,10 +241,11 @@ class UOWTransaction(object):
     def object_mapper(self, obj):
         import sqlalchemy.mapper
         try:
-            return self.mappers[obj]
+            return self.object_mappers[obj]
         except KeyError:
             mapper = sqlalchemy.mapper.object_mapper(obj)
-            self.mappers[obj] = mapper
+            self.object_mappers[obj] = mapper
+            self.mappers.append(mapper)
             return mapper
             
     def execute(self):

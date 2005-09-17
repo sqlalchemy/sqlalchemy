@@ -38,6 +38,24 @@ class HistoryArrayTest(PersistTest):
         self.assert_(a.deleted_items() == [])
         self.assert_(a == ['hi'])
     
+    def testrollback(self):
+        a = util.HistoryArraySet()
+        a.append('hi')
+        a.append('there')
+        a.append('yo')
+        a.clear_history()
+        before = repr(a.data)
+        print repr(a.data)
+        a.remove('there')
+        a.append('lala')
+        a.remove('yo')
+        a.append('yo')
+        after = repr(a.data)
+        print repr(a.data)
+        a.rollback()
+        print repr(a.data)
+        self.assert_(before == repr(a.data))
+        
     def testarray(self):
         a = util.HistoryArraySet()
         a.append('hi')
