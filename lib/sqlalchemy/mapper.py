@@ -516,13 +516,13 @@ class PropertyLoader(MapperProperty):
         else:
             raise " no foreign key ?"
 
-    def process_dependencies(self, deplist, uow):
+    def process_dependencies(self, deplist, uowcommit):
 
         def getlist(obj):
             if self.uselist:
-                return uow.register_list_attribute(obj, self.key)
+                return uowcommit.uow.register_list_attribute(obj, self.key)
             else:
-                return uow.register_attribute(obj, self.key)
+                return uowcommit.uow.register_attribute(obj, self.key)
 
         clearkeys = False
         
@@ -546,7 +546,7 @@ class PropertyLoader(MapperProperty):
                     self.primaryjoin.accept_visitor(setter)
                     self.secondaryjoin.accept_visitor(setter)
                     secondary_delete.append(associationrow)
-                uow.register_saved_list(childlist)
+                uowcommit.register_saved_list(childlist)
             if len(secondary_delete):
                 statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key) for c in self.secondary.c]))
                 statement.execute(*secondary_delete)
@@ -559,7 +559,7 @@ class PropertyLoader(MapperProperty):
                 for child in childlist.added_items():
                     associationrow = {}
                     self.primaryjoin.accept_visitor(setter)
-                    uow.register_saved_list(childlist)
+                    uowcommit.register_saved_list(childlist)
                 # TODO: deleted items
         elif self.foreignkey.table == self.parent.table:
             for child in deplist:
@@ -567,7 +567,7 @@ class PropertyLoader(MapperProperty):
                 for obj in childlist.added_items():
                     associationrow = {}
                     self.primaryjoin.accept_visitor(setter)
-                    uow.register_saved_list(childlist)
+                    uowcommit.register_saved_list(childlist)
                 # TODO: deleted items
         else:
             raise " no foreign key ?"
