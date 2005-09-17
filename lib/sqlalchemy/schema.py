@@ -82,6 +82,8 @@ class TableSingleton(type):
             table = type.__call__(self, name, engine, *args, **kwargs)
             engine.tables[name] = table
             # load column definitions from the database if 'autoload' is defined
+            # we do it after the table is in the singleton dictionary to support
+            # circular foreign keys
             if kwargs.get('autoload', False):
                 engine.reflecttable(table)
             return table
@@ -93,7 +95,6 @@ class Table(SchemaItem):
     __metaclass__ = TableSingleton
     
     def __init__(self, name, engine, *args, **kwargs):
-        print "new table ! " + name + " " +repr(id(self))
         self.name = name
         self.columns = OrderedProperties()
         self.c = self.columns

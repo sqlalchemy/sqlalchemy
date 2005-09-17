@@ -22,7 +22,7 @@ class OrderedProperties(object):
 
     def __init__(self):
         self.__dict__['_list'] = []
-    
+            
     def keys(self):
         return self._list
         
