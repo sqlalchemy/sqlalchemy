@@ -31,13 +31,12 @@ class OracleSQLEngine(ansisql.ANSISQLEngine):
     def __init__(self, use_ansi = True, **params):
         self._use_ansi = use_ansi
         ansisql.ANSISQLEngine.__init__(self, **params)
-        
-    def compile(self, statement, bindparams = None):
-        compiler = OracleCompiler(statement, bindparams, use_ansi = self._use_ansi)
-        
+
+    def compile(self, statement, bindparams):
+        compiler = OracleCompiler(self, statement, bindparams, use_ansi = self._use_ansi)
         statement.accept_visitor(compiler)
         return compiler
-
+        
     def create_connection(self):
         raise NotImplementedError()
 
@@ -45,10 +44,10 @@ class OracleCompiler(ansisql.ANSICompiler):
     """oracle compiler modifies the lexical structure of Select statements to work under 
     non-ANSI configured Oracle databases, if the use_ansi flag is False."""
     
-    def __init__(self, parent, bindparams, use_ansi = True):
+    def __init__(self, engine, statement, bindparams, use_ansi = True):
         self._outertable = None
         self._use_ansi = use_ansi
-        ansisql.ANSICompiler.__init__(self, parent, bindparams)
+        ansisql.ANSICompiler.__init__(self, engine, statement, bindparams)
         
     def visit_join(self, join):
         if self._use_ansi:
