@@ -5,11 +5,26 @@ import sqlalchemy.objectstore as objectstore
 
 #ECHO = True
 ECHO = False
+DATA = False
 execfile("test/tables.py")
 db.echo = True
 
+keywords.insert().execute(
+    dict(keyword_id=1, name='blue'),
+    dict(keyword_id=2, name='red'),
+    dict(keyword_id=3, name='green'),
+    dict(keyword_id=4, name='big'),
+    dict(keyword_id=5, name='small'),
+    dict(keyword_id=6, name='round'),
+    dict(keyword_id=7, name='square')
+)
+
+db.connection().commit()
 
 class SaveTest(AssertMixin):
+
+    def setUp(self):
+        objectstore.clear()
 
     def testbasic(self):
         # save two users
@@ -31,7 +46,6 @@ class SaveTest(AssertMixin):
         
         # clear out the identity map, so next get forces a SELECT
         objectstore.clear()
-
 
         # check it again, identity should be different but ids the same
         nu = m.get(u.user_id)
@@ -62,15 +76,11 @@ class SaveTest(AssertMixin):
         u.user_name = 'multitester'
         u.email = 'multi@test.org'
 
-
         objectstore.uow().commit()
 
-        print repr(u.__dict__)
         usertable = engine.ResultProxy(users.select(users.c.user_id.in_(u.foo_id)).execute()).fetchall()
-        print repr(usertable[0].row)
         self.assert_(usertable[0].row == (u.foo_id, 'multitester'))
         addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(u.address_id)).execute()).fetchall()
-        print repr(addresstable[0].row)
         self.assert_(addresstable[0].row == (u.address_id, u.foo_id, 'multi@test.org'))
 
         u.email = 'lala@hey.com'
