@@ -172,9 +172,9 @@ class UnitOfWork(object):
             obj.__dict__[key] = childlist
         
         if callable(childlist):
-            childlist = childlist()
-            
-        if not isinstance(childlist, util.HistoryArraySet):
+            childlist = UOWListElement(obj, childlist())
+            obj.__dict__[key] = childlist                        
+        elif not isinstance(childlist, util.HistoryArraySet):
             childlist = UOWListElement(obj, childlist)
             obj.__dict__[key] = childlist
         if data is not None and childlist.data != data:
