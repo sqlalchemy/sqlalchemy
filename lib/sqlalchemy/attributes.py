@@ -37,7 +37,6 @@ class ListElement(util.HistoryArraySet):
 
     def list_value_changed(self, obj, key, listval):
         pass    
-#        uow().modified_lists.append(self)
 
     def setattr(self, value):
         self.obj.__dict__[self.key] = value
@@ -102,6 +101,9 @@ class AttributeManager(object):
 #        else:
 #            self.register_new(obj)
 
+    def create_prop(self, key, uselist):
+        return SmartProperty(self).property(key, uselist)
+        
     def create_list(self, obj, key, list_):
         return ListElement(obj, key, list_)
         
@@ -182,4 +184,4 @@ class AttributeManager(object):
                 return p
 
     def register_attribute(self, class_, key, uselist):
-        setattr(class_, key, SmartProperty(self).property(key, uselist))
+        setattr(class_, key, self.create_prop(key, uselist))

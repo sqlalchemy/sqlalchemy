@@ -39,7 +39,8 @@ class SaveTest(AssertMixin):
 
     def setUp(self):
         objectstore.clear()
-
+        clear_mappers()
+        
     def testbasic(self):
         # save two users
         u = User()
@@ -163,6 +164,7 @@ class SaveTest(AssertMixin):
         m = mapper(User, users, properties = dict(
             addresses = relation(Address, addresses, lazy = True)
         ))
+        print "TESTONETOMANY, mapper is " + repr(id(m))
         u = User()
         u.user_name = 'one2manytester'
         u.addresses = []
@@ -172,7 +174,8 @@ class SaveTest(AssertMixin):
         a2 = Address()
         a2.email_address = 'lala@test.org'
         u.addresses.append(a2)
-
+        print repr(u.addresses)
+        print repr(u.addresses.added_items())
         objectstore.uow().commit()
 
         usertable = engine.ResultProxy(users.select(users.c.user_id.in_(u.user_id)).execute()).fetchall()

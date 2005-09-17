@@ -22,7 +22,7 @@ import sqlalchemy.util as util
 import sqlalchemy.objectstore as objectstore
 import random, copy, types
 
-__ALL__ = ['eagermapper', 'eagerloader', 'lazymapper', 'lazyloader', 'eagerload', 'lazyload', 'mapper', 'lazyloader', 'lazymapper']
+__ALL__ = ['eagermapper', 'eagerloader', 'lazymapper', 'lazyloader', 'eagerload', 'lazyload', 'mapper', 'lazyloader', 'lazymapper', 'clear_mappers']
 
 def relation(*args, **params):
     if isinstance(args[0], Mapper):
@@ -39,6 +39,7 @@ def relation_loader(mapper, secondary = None, primaryjoin = None, secondaryjoin 
 def relation_mapper(class_, selectable, secondary = None, primaryjoin = None, secondaryjoin = None, table = None, properties = None, lazy = True, uselist = True, foreignkey = None, primary_keys = None, **options):
     return relation_loader(mapper(class_, selectable, table=table, properties=properties, primary_keys=primary_keys, **options), secondary, primaryjoin, secondaryjoin, lazy = lazy, uselist = uselist, foreignkey = foreignkey, **options)
 
+# TODO: where do we want to register these mappers, register them against their classes/objects etc
 _mappers = {}
 def mapper(*args, **params):
     hashkey = mapper_hash_key(*args, **params)
@@ -48,7 +49,10 @@ def mapper(*args, **params):
     except KeyError:
         m = Mapper(hashkey, *args, **params)
         return _mappers.setdefault(hashkey, m)
-    
+
+def clear_mappers():
+    _mappers.clear()
+        
 def eagerload(name):
     return EagerLazySwitcher(name, toeager = True)
 
@@ -151,6 +155,7 @@ class Mapper(object):
 
     def init(self):
         [prop.init(key, self) for key, prop in self.props.iteritems()]
+        print "well hi!"
         self.class_._mapper = self.hashkey
 
     def instances(self, cursor, db = None):
@@ -250,6 +255,8 @@ class Mapper(object):
             insert = []
             update = []
             for obj in objects:
+                
+#                print "SAVE_OBJ we are " + hash_key(self) + " obj: " +  obj.__class__.__name__ + repr(id(obj))
                 params = {}
                 for col in table.columns:
                     params[col.key] = self._getattrbycolumn(obj, col)
@@ -525,9 +532,9 @@ class PropertyLoader(MapperProperty):
 
         def getlist(obj):
             if self.uselist:
-                return uowcommit.uow.manager.get_list_history(obj, self.key)
+                return uowcommit.uow.attributes.get_list_history(obj, self.key)
             else: 
-                return uowcommit.uow.manager.get_history(obj, self.key)
+                return uowcommit.uow.attributes.get_history(obj, self.key)
 
         clearkeys = False
         
@@ -569,6 +576,10 @@ class PropertyLoader(MapperProperty):
         elif self.foreignkey.table == self.parent.table:
             for child in deplist:
                 childlist = getlist(child)
+                try:
+                    print "got a list and its " + repr(childlist)
+                except:
+                    pass
                 for obj in childlist.added_items():
                     associationrow = {}
                     self.primaryjoin.accept_visitor(setter)

@@ -245,48 +245,6 @@ class HistoryArraySet(UserList.UserList):
     def __iadd__(self, other):
         raise NotImplementedError()
 
-class PropHistory(object):
-    def __init__(self, current):
-        self.added = None
-        self.current = current
-        self.deleted = None
-    def setattr_clean(self, value):
-        self.current = value
-    def setattr(self, value):
-        self.deleted = self.current
-        self.current = None
-        self.added = value
-    def delattr(self):
-        self.deleted = self.current
-        self.current = None
-    def rollback(self):
-        if self.deleted is not None:
-            self.current = self.deleted
-            self.deleted = None
-        else:
-            self.current = None
-        self.added = None
-        self.deleted = None
-    def clear_history(self):
-        if self.added is not None:
-            self.current = self.added
-            self.added = None
-        self.deleted = None
-    def added_items(self):
-        if self.added is not None:
-            return [self.added]
-        else:
-            return []
-    def deleted_items(self):
-        if self.deleted is not None:
-            return [self.deleted]
-        else:
-            return []
-    def unchanged_items(self):
-        if self.current is not None:
-            return [self.current]
-        else:
-            return []
         
 class ScopedRegistry(object):
     def __init__(self, createfunc, defaultscope):

@@ -96,6 +96,10 @@ def has_key(key):
     else:
         return False
 
+class UOWSmartProperty(attributes.SmartProperty):
+    def attribute_registry(self):
+        return uow().attributes
+    
 class UOWListElement(attributes.ListElement):
     def list_value_changed(self, obj, key, listval):
         uow().modified_lists.append(self)
@@ -110,6 +114,9 @@ class UOWAttributeManager(attributes.AttributeManager):
             self.uow.register_dirty(obj)
         else:
             self.uow.register_new(obj)
+
+    def create_prop(self, key, uselist):
+        return UOWSmartProperty(self).property(key, uselist)
 
     def create_list(self, obj, key, list_):
         return UOWListElement(obj, key, list_)
@@ -177,8 +184,9 @@ class UnitOfWork(object):
         else:
             for obj in [n for n in self.new] + [d for d in self.dirty]:
                 commit_context.append_task(obj)
+                print "COMMIT append  " + obj.__class__.__name__ + " " + repr(id(obj))
             for item in self.modified_lists:
-                obj = item.obj()
+                obj = item.obj
                 commit_context.append_task(obj)
 
         engines = util.HashSet()
