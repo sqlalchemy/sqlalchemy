@@ -47,6 +47,7 @@ class AssertMixin(PersistTest):
         print repr(result)
         self.assert_list(result, class_, objects)
     def assert_list(self, result, class_, list):
+        self.assert_(len(result) == len(list), "result list is not the same size as test list")
         for i in range(0, len(list)):
             self.assert_row(class_, result[i], list[i])
     def assert_row(self, class_, rowobj, desc):
@@ -54,7 +55,6 @@ class AssertMixin(PersistTest):
         for key, value in desc.iteritems():
             if isinstance(value, tuple):
                 if isinstance(value[1], list):
-                    print repr(value[1])
                     self.assert_list(getattr(rowobj, key), value[0], value[1])
                 else:
                     self.assert_row(value[0], getattr(rowobj, key), value[1])
@@ -64,11 +64,11 @@ class AssertMixin(PersistTest):
 class MapperTest(AssertMixin):
     
     def setUp(self):
+        #objectstore.clear()
         pass
-        #globalidentity().clear()
 
     def testget(self):
-        m = mapper(User, users, scope = "thread")
+        m = mapper(User, users)
         self.assert_(m.get(19) is None)
         u = m.get(7)
         u2 = m.get(7)
@@ -87,9 +87,9 @@ class MapperTest(AssertMixin):
 
     def testmultitable(self):
         usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
-        m = mapper(User, usersaddresses, table = users)
+        m = mapper(User, usersaddresses, table = users, primary_keys=[users.c.user_id])
         l = m.select()
-        print repr(l)
+        self.assert_result(l, User, {'user_id' : 7}, {'user_id' : 8})
 
     def testeageroptions(self):
         """tests that a lazy relation can be upgraded to an eager relation via the options method"""
@@ -109,6 +109,10 @@ class MapperTest(AssertMixin):
             addresses = relation(Address, addresses, lazy = False)
         ))
         l = m.options(lazyload('addresses')).select()
+        print "HI " + repr(l[0].addresses)
+        print "HI2 " + repr(l[0].addresses)
+        
+        return
         self.assert_result(l, User,
             {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
             {'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}])},
@@ -504,7 +508,7 @@ class SaveTest(AssertMixin):
 
         m = mapper(Item, items, properties = dict(
                 keywords = relation(Keyword, keywords, itemkeywords, lazy = False),
-            ), echo = True)
+            ))
 
         keywordmapper = mapper(Keyword, keywords)
 
@@ -568,7 +572,7 @@ class SaveTest(AssertMixin):
                 keywords = relation(IKAssociation, itemkeywords, lazy = False, properties = dict(
                     keyword = relation(Keyword, keywords, lazy = False, uselist = False)
                 ), primary_keys = [itemkeywords.c.item_id, itemkeywords.c.keyword_id])
-            ), echo = True)
+            ))
 
         data = [Item,
             {'item_name': 'a_item1', 'keywords' : (IKAssociation, 
