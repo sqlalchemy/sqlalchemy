@@ -5,6 +5,7 @@ import sqlalchemy.objectstore as objectstore
 
 #ECHO = True
 ECHO = False
+DATA = True
 execfile("test/tables.py")
 db.echo = True
 
