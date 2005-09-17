@@ -153,7 +153,7 @@ class Mapper(object):
 
     def instances(self, cursor, db = None):
         result = util.HistoryArraySet()
-        cursor = engine.ResultProxy(cursor, echo = db.echo)
+        cursor = engine.ResultProxy(cursor, echo = db and db.echo)
         imap = {}
         while True:
             row = cursor.fetchone()
@@ -307,7 +307,7 @@ class Mapper(object):
     def _identity_key(self, row):
         return objectstore.get_row_key(row, self.class_, self.table, self.primary_keys[self.selectable])
 
-    def _instance(self, row, imap, result = None):
+    def _instance(self, row, imap, result = None, populate_existing = False):
         """pulls an object instance from the given row and appends it to the given result list.
         if the instance already exists in the given identity map, its not added.  in either
         case, executes all the property loaders on the instance to also process extra information
@@ -321,9 +321,16 @@ class Mapper(object):
             instance = objectstore.get(identitykey)
             if result is not None:
                 result.append_nohistory(instance)
-                
-            return instance
 
+            if populate_existing:
+                isnew = not imap.has_key(identitykey)
+                if isnew:
+                    imap[identitykey] = instance
+                for key, prop in self.props.iteritems():
+                    prop.execute(instance, row, identitykey, imap, isnew)
+
+            return instance
+                    
         # look in result-local identitymap for it.
         exists = imap.has_key(identitykey)      
         if not exists:
@@ -465,11 +472,11 @@ class PropertyLoader(MapperProperty):
             self.dependent = None
         def visit_binary(self, binary):
             if binary.operator == '=':
-                if binary.left.primary_key:
+                if isinstance(binary.left, schema.Column) and binary.left.primary_key:
                     if self.dependent is binary.left:
                         raise "bidirectional dependency not supported...specify foreignkey"
                     self.dependent = binary.right
-                elif binary.right.primary_key:
+                elif isinstance(binary.right, schema.Column) and binary.right.primary_key:
                     if self.dependent is binary.right:
                         raise "bidirectional dependency not supported...specify foreignkey"
                     self.dependent = binary.left

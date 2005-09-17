@@ -220,26 +220,78 @@ class UnitOfWork(object):
     def commit(self, *objects):
         import sqlalchemy.mapper
 
-        self.commit_context = UOWTransaction()
+        commit_context = UOWTransaction(self)
         
         if len(objects):
             for obj in objects:
-                self.commit_context.append_task(obj)
+                commit_context.append_task(obj)
         else:
             for obj in [n for n in self.new] + [d for d in self.dirty]:
-                self.commit_context.append_task(obj)
+                commit_context.append_task(obj)
             for item in self.modified_lists:
                 obj = item.obj()
-                self.commit_context.append_task(obj)
+                commit_context.append_task(obj)
+
+        commit_context.execute()                   
+
+        # TODO: deleted stuff
+        
+        if self.parent:
+            uow.set(self.parent)
             
-        for task in self.commit_context.tasks.values():
+        
+            
+class UOWTransaction(object):
+    def __init__(self, uow):
+        self.uow = uow
+        self.mappers = {}
+        self.dependencies = {}
+        self.tasks = {}
+        self.saved_objects = util.HashSet()
+        self.saved_lists = util.HashSet()
+
+    def append_task(self, obj):
+        mapper = self.object_mapper(obj)
+        task = self.get_task_by_mapper(mapper)
+        task.objects.append(obj)
+
+    def get_task_by_mapper(self, mapper):
+        try:
+            return self.tasks[mapper]
+        except KeyError:
+            return self.tasks.setdefault(mapper, UOWTask(mapper))
+
+    # TODO: better interface for tasks with no object save, or multiple dependencies
+    def register_dependency(self, mapper, dependency, processor, stuff_to_process):
+        self.dependencies[(mapper, dependency)] = True
+        task = self.get_task_by_mapper(mapper)
+        if processor is not None:
+            task.dependencies.append((processor, stuff_to_process))
+
+    def register_saved_object(self, obj):
+        self.saved_objects.append(obj)
+
+    def register_saved_list(self, listobj):
+        self.saved_lists.append(listobj)
+
+    def object_mapper(self, obj):
+        import sqlalchemy.mapper
+        try:
+            return self.mappers[obj]
+        except KeyError:
+            mapper = sqlalchemy.mapper.object_mapper(obj)
+            self.mappers[obj] = mapper
+            return mapper
+            
+    def execute(self):
+        for task in self.tasks.values():
             task.mapper.register_dependencies(task.objects, self)
             
-        mapperlist = self.commit_context.tasks.values()
+        mapperlist = self.tasks.values()
         def compare(a, b):
-            if self.commit_context.dependencies.has_key((a.mapper, b.mapper)):
+            if self.dependencies.has_key((a.mapper, b.mapper)):
                 return -1
-            elif self.commit_context.dependencies.has_key((b.mapper, a.mapper)):
+            elif self.dependencies.has_key((b.mapper, a.mapper)):
                 return 1
             else:
                 return 0
@@ -255,55 +307,18 @@ class UnitOfWork(object):
                     processor.process_dependencies(stuff_to_process, self)
         except:
             raise
-            
-        for obj in self.commit_context.saved_objects:
-            mapper = sqlalchemy.mapper.object_mapper(obj)
-            obj._instance_key = mapper.identity_key(obj)
-            self.register_clean(obj)
 
-        for obj in self.commit_context.saved_lists:
+        for obj in self.saved_objects:
+            mapper = self.object_mapper(obj)
+            obj._instance_key = mapper.identity_key(obj)
+            self.uow.register_clean(obj)
+
+        for obj in self.saved_lists:
             try:
-                del self.modified_lists[obj]
+                del self.uow.modified_lists[obj]
             except KeyError:
                 pass
 
-        self.commit_context = None
-        # TODO: deleted stuff
-        
-        if self.parent:
-            uow.set(self.parent)
-            
-    def register_saved_object(self, obj):
-        self.commit_context.saved_objects.append(obj)
-
-    def register_saved_list(self, listobj):
-        self.commit_context.saved_lists.append(listobj)
-        
-    # TODO: better interface for tasks with no object save, or multiple dependencies
-    def register_dependency(self, mapper, dependency, processor, stuff_to_process):
-        self.commit_context.dependencies[(mapper, dependency)] = True
-        task = self.commit_context.get_task_by_mapper(mapper)
-        if processor is not None:
-            task.dependencies.append((processor, stuff_to_process))
-            
-class UOWTransaction(object):
-    def __init__(self):
-        self.dependencies = {}
-        self.tasks = {}
-        self.saved_objects = util.HashSet()
-        self.saved_lists = util.HashSet()
-
-    def append_task(self, obj):
-        import sqlalchemy.mapper
-        mapper = sqlalchemy.mapper.object_mapper(obj)
-        task = self.get_task_by_mapper(mapper)
-        task.objects.append(obj)
-
-    def get_task_by_mapper(self, mapper):
-        try:
-            return self.tasks[mapper]
-        except KeyError:
-            return self.tasks.setdefault(mapper, UOWTask(mapper))
         
 class UOWTask(object):
     def __init__(self, mapper):
