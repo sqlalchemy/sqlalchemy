@@ -55,6 +55,7 @@ class SQLEngine(schema.SchemaEngine):
         self._pool = sqlalchemy.pool.manage(self.dbapi()).get_pool(*cargs, **cparams)
         self.echo = echo
         self.context = util.ThreadLocal()
+        self.tables = {}
 
     def schemagenerator(self, proxy, **params):
         raise NotImplementedError()
