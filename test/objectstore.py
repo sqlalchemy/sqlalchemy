@@ -21,6 +21,18 @@ keywords.insert().execute(
 
 db.connection().commit()
 
+class HistoryTest(AssertMixin):
+    def testattr(self):
+        m = mapper(User, users, properties = dict(addresses = relation(Address, addresses)))
+        u = User()
+        u.user_id = 7
+        u.user_name = 'afdas'
+        u.addresses = [Address(), Address()]
+        u.addresses[0].email_address = 'hi'
+        u.addresses[1].email_address = 'there'
+        m.rollback(u)
+        print repr(u.__dict__)
+        
 class SaveTest(AssertMixin):
 
     def setUp(self):

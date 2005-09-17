@@ -148,7 +148,7 @@ class HistoryArraySet(UserList.UserList):
 
         # TODO: fix this up, remove items from array while iterating
         for i in range(0, len(self.data)):
-            if not _setrecord(self, self.data[i]):
+            if not self._setrecord(self.data[i]):
                del self.data[i]
                i -= 1
 
@@ -181,6 +181,16 @@ class HistoryArraySet(UserList.UserList):
                 del self.records[key]
             else:
                 self.records[key] = None
+    def rollback(self):
+        # TODO: speed this up
+        list = []
+        for key, status in self.records.iteritems():
+            if status is False or status is None:
+                list.append(key)
+        self.data[:] = []
+        self.records = {}
+        for l in list:
+            self.append(l)
     def added_items(self):
         return [key for key in self.data if self.records[key] is True]
     def deleted_items(self):
@@ -248,12 +258,19 @@ class PropHistory(object):
     def delattr(self):
         self.deleted = self.current
         self.current = None
+    def rollback(self):
+        if self.deleted is not None:
+            self.current = self.deleted
+            self.deleted = None
+        else:
+            self.current = None
+        self.added = None
+        self.deleted = None
     def clear_history(self):
         if self.added is not None:
             self.current = self.added
             self.added = None
-        if self.deleted is not None:
-            self.deleted = None
+        self.deleted = None
     def added_items(self):
         if self.added is not None:
             return [self.added]
