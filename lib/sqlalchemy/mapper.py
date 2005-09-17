@@ -65,7 +65,7 @@ def object_mapper(object):
             raise "Object " + object.__class__.__name__ + "/" + repr(id(object)) + " has no mapper specified"
         
 class Mapper(object):
-    def __init__(self, hashkey, class_, selectable, table = None, scope = "thread", properties = None, echo = None, primary_keys = None, **kwargs):
+    def __init__(self, hashkey, class_, selectable, table = None, scope = "thread", properties = None, primary_keys = None, **kwargs):
         self.hashkey = hashkey
         self.class_ = class_
         self.scope = scope
@@ -85,6 +85,7 @@ class Mapper(object):
         if primary_keys is not None:
             for k in primary_keys:
                 self.primary_keys.setdefault(k.table, []).append(k)
+                self.primary_keys.setdefault(self.selectable, []).append(k)
         else:
             for t in self.tables + [self.selectable]:
                 try:
@@ -95,8 +96,6 @@ class Mapper(object):
                     raise "Table " + t.name + " has no primary keys. Specify primary_keys argument to mapper."
                 for k in t.primary_keys:
                     list.append(k)
-
-        self.echo = echo
 
         # object attribute names mapped to MapperProperty objects
         self.props = {}
@@ -152,9 +151,9 @@ class Mapper(object):
         [prop.init(key, self) for key, prop in self.props.iteritems()]
         self.class_._mapper = self.hashkey
 
-    def instances(self, cursor):
+    def instances(self, cursor, db = None):
         result = util.HistoryArraySet()
-        cursor = engine.ResultProxy(cursor, echo = self.echo)
+        cursor = engine.ResultProxy(cursor, echo = db.echo)
         imap = {}
         while True:
             row = cursor.fetchone()
@@ -262,12 +261,10 @@ class Mapper(object):
                 for col in self.primary_keys[table]:
                     clause.clauses.append(col == sql.bindparam(col.key))
                 statement = table.update(clause)
-                statement.echo = self.echo
                 statement.execute(*update)
             
             if len(insert):
                 statement = table.insert()
-                statement.echo = self.echo
                 for rec in insert:
                     (obj, params) = rec
                     statement.execute(**params)
@@ -305,8 +302,7 @@ class Mapper(object):
 
     def _select_statement(self, statement, **params):
         statement.use_labels = True
-        statement.echo = self.echo
-        return self.instances(statement.execute(**params))
+        return self.instances(statement.execute(**params), statement.engine)
 
     def _identity_key(self, row):
         return objectstore.get_row_key(row, self.class_, self.table, self.primary_keys[self.selectable])
@@ -331,6 +327,11 @@ class Mapper(object):
         # look in result-local identitymap for it.
         exists = imap.has_key(identitykey)      
         if not exists:
+            # check if primary keys in the result are None - this indicates 
+            # an instance of the object is not present in the row
+            for col in self.primary_keys[self.selectable]:
+                if row[col.label] is None:
+                    return None
             instance = self.class_()
             instance._mapper = self.hashkey
             instance._instance_key = identitykey
@@ -541,11 +542,9 @@ class PropertyLoader(MapperProperty):
                 uow.register_saved_list(childlist)
             if len(secondary_delete):
                 statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key) for c in self.secondary.c]))
-                statement.echo = self.mapper.echo
                 statement.execute(*secondary_delete)
             if len(secondary_insert):
                 statement = self.secondary.insert()
-                statement.echo = self.mapper.echo
                 statement.execute(*secondary_insert)
         elif self.foreignkey.table == self.target:
             for obj in deplist:
@@ -784,19 +783,16 @@ def hash_key(obj):
     else:
         return obj.hash_key()
 
-def mapper_hash_key(class_, selectable, table = None, properties = None, scope = "thread", echo = None, **kwargs):
+def mapper_hash_key(class_, selectable, table = None, properties = None, scope = "thread", **kwargs):
     if properties is None:
         properties = {}
     return (
-        "Mapper(%s, %s, table=%s, properties=%s, scope=%s, echo=%s)" % (
+        "Mapper(%s, %s, table=%s, properties=%s, scope=%s)" % (
             repr(class_),
             hash_key(selectable),
             hash_key(table),
             repr(dict([(k, hash_key(p)) for k,p in properties.iteritems()])),
-            scope,
-            repr(echo)
-
-        )
+            scope        )
     )
 
 
