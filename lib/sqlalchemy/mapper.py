@@ -30,7 +30,7 @@ def relation(*args, **params):
     else:
         return relation_mapper(*args, **params)
 
-def relation_loader(mapper, secondary = None, primaryjoin = None, secondaryjoin = None, lazy = True, **options):
+def relation_loader(mapper, secondary = None, primaryjoin = None, secondaryjoin = None, lazy = True, private = False, **options):
     if lazy:
         return LazyLoader(mapper, secondary, primaryjoin, secondaryjoin, **options)
     else:
@@ -140,6 +140,8 @@ class Mapper(object):
 
         self.init()
 
+    engines = property(lambda s: [t.engine for t in self.tables])
+
     def hash_key(self):
         return self.hashkey
         
@@ -215,6 +217,7 @@ class Mapper(object):
                 option.process(mapper)
             return _mappers.setdefault(hashkey, mapper)
 
+    
     def select(self, arg = None, **params):
         """selects instances of the object from the database.  
         
@@ -261,7 +264,9 @@ class Mapper(object):
                 for col in self.primary_keys[table]:
                     clause.clauses.append(col == sql.bindparam(col.key))
                 statement = table.update(clause)
-                statement.execute(*update)
+                c = statement.execute(*update)
+                if c.rowcount != len(update):
+                    raise "ConcurrencyError - updated rowcount does not match number of objects updated"
             
             if len(insert):
                 statement = table.insert()
@@ -326,7 +331,7 @@ class Mapper(object):
                 isnew = not imap.has_key(identitykey)
                 if isnew:
                     imap[identitykey] = instance
-                for key, prop in self.props.iteritems():
+                for prop in self.props.values():
                     prop.execute(instance, row, identitykey, imap, isnew)
 
             return instance
@@ -354,11 +359,15 @@ class Mapper(object):
             
         # call further mapper properties on the row, to pull further 
         # instances from the row and possibly populate this item.
-        for key, prop in self.props.iteritems():
+        for prop in self.props.values():
             prop.execute(instance, row, identitykey, imap, isnew)
             
         return instance
 
+    def rollback(self, obj):
+        for prop in self.props.values():
+            prop.rollback(obj)
+            
 class MapperOption:
     """describes a modification to a Mapper in the context of making a copy
     of it.  This is used to assist in the prototype pattern used by mapper.options()."""
@@ -374,25 +383,20 @@ class MapperProperty:
         """called when the mapper receives a row.  instance is the parent instance corresponding
         to the row. """
         raise NotImplementedError()
-
     def hash_key(self):
         """describes this property and its instantiated arguments in such a way
         as to uniquely identify the concept this MapperProperty represents,within 
         a process."""
         raise NotImplementedError()
-
     def setup(self, key, statement, **options):
         """called when a statement is being constructed.  """
         return self
-
     def init(self, key, parent):
         """called when the MapperProperty is first attached to a new parent Mapper."""
         pass
-
     def delete(self, object):
         """called when the instance is being deleted"""
         pass
-       
     def register_dependencies(self, obj, uow):
         pass
 
@@ -412,13 +416,16 @@ class ColumnProperty(MapperProperty):
 
     def init(self, key, parent):
         self.key = key
+        # establish a SmartProperty property manager on the object for this key
         if not hasattr(parent.class_, key):
-            setattr(parent.class_, key, SmartProperty(key).property())
+            setattr(parent.class_, key, SmartProperty(key).property(usehistory = True))
 
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
             setattr(instance, self.key, row[self.columns[0].label])
-
+    def rollback(self, obj):
+        objectstore.uow().rollback_attribute(obj, self.key)
+        
 
 
 class PropertyLoader(MapperProperty):
@@ -436,6 +443,9 @@ class PropertyLoader(MapperProperty):
             
     def hash_key(self):
         return self._hash_key
+
+    def rollback(self, obj):
+        objectstore.uow().rollback_list_attribute(obj, self.key)
 
     def init(self, key, parent):
         self.key = key
