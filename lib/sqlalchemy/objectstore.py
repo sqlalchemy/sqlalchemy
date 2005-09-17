@@ -239,8 +239,6 @@ class UnitOfWork(object):
         if self.parent:
             uow.set(self.parent)
             
-        
-            
 class UOWTransaction(object):
     def __init__(self, uow):
         self.uow = uow
