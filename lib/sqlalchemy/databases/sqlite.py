@@ -16,7 +16,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 
-import sys, StringIO, string, types
+import sys, StringIO, string, types, re
 
 import sqlalchemy.sql as sql
 import sqlalchemy.engine as engine
@@ -38,6 +38,16 @@ colspecs = {
     schema.CLOB : "TEXT",
     schema.BLOB : "BLOB",
     schema.BOOLEAN : "BOOLEAN",
+}
+
+pragma_names = {
+    'INTEGER' : schema.INT,
+    'VARCHAR' : schema.VARCHAR,
+    'CHAR' : schema.CHAR,
+    'TEXT' : schema.TEXT,
+    'NUMERIC' : schema.FLOAT,
+    'TIMESTAMP' : schema.TIMESTAMP,
+    'BLOB' : schema.BLOB,
 }
 
 def engine(filename, opts, **params):
@@ -72,8 +82,35 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
         return SQLiteColumnImpl(column)
 
     def reflecttable(self, table):
-        raise NotImplementedError()
-
+        c = self.execute("PRAGMA table_info(" + table.name + ")", {})
+        while True:
+            row = c.fetchone()
+            if row is None:
+                break
+            print "row! " + repr(row)
+            (name, type, nullable, primary_key) = (row[1], row[2].upper(), not row[3], row[5])
+            
+            match = re.match(r'(\w+)(\(.*?\))?', type)
+            coltype = match.group(1)
+            args = match.group(2)
+            
+            print "coltype: " + repr(coltype) + " args: " + repr(args)
+            coltype = pragma_names[coltype]
+            if args is not None:
+                args = re.findall(r'(\d+)', args)
+                print "args! " +repr(args)
+                coltype = coltype(*args)
+            table.append_item(schema.Column(name, coltype, primary_key = primary_key, nullable = nullable))
+        c = self.execute("PRAGMA foreign_key_list(" + table.name + ")", {})
+        while True:
+            row = c.fetchone()
+            if row is None:
+                break
+            (tablename, localcol, remotecol) = (row[2], row[3], row[4])
+            print "row! " + repr(row)
+            remotetable = Table(tablename, self, autoload = True)
+            table.c[localcol].foreign_key = schema.ForeignKey(remotetable.c[remotecol])
+            
 class SQLiteCompiler(ansisql.ANSICompiler):
     pass
 
@@ -86,7 +123,11 @@ class SQLiteColumnImpl(sql.ColumnSelectable):
         else:
             key = coltype.__class__
 
-        colspec = self.name + " " + colspecs[key] % {'precision': getattr(coltype, 'precision', None), 'length' : getattr(coltype, 'length', None)}
+        colspec = self.name + " " + colspecs[key] % {'precision': getattr(coltype, 'precision', 10), 'length' : getattr(coltype, 'length', 10)}
+        if not self.column.nullable:
+            colspec += " NOT NULL"
         if self.column.primary_key:
             colspec += " PRIMARY KEY"
+        if self.column.foreign_key:
+            colspec += " REFERENCES %s(%s)" % (self.column.foreign_key.column.table.name, self.column.foreign_key.column.name) 
         return colspec
