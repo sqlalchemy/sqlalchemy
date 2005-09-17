@@ -529,7 +529,7 @@ class PropertyLoader(MapperProperty):
         else:
             raise " no foreign key ?"
 
-    def process_dependencies(self, deplist, uowcommit):
+    def process_dependencies(self, deplist, uowcommit, delete = False):
 
         def getlist(obj):
             if self.uselist:
@@ -569,35 +569,48 @@ class PropertyLoader(MapperProperty):
                 statement = self.secondary.insert()
                 statement.execute(*secondary_insert)
         elif self.foreignkey.table == self.target:
+            associationrow = {}
             for obj in deplist:
                 childlist = getlist(obj)
-                clearkeys = False
-                for child in childlist.added_items():
-                    associationrow = {}
-                    self.primaryjoin.accept_visitor(setter)
-                    uowcommit.register_saved_list(childlist)
-                clearkeys = True
-                for child in childlist.deleted_items():
-                     associationrow = {}
-                     self.primaryjoin.accept_visitor(setter)
-                     uowcommit.register_saved_list(childlist)
-                     if self.private:
-                         uowcommit.add_item_to_delete(child)
+                if delete:
+                    clearkeys = True
+                    for child in childlist.deleted_items() + childlist.current_items():
+                        self.primaryjoin.accept_visitor(setter)
+                        uowcommit.register_saved_list(childlist)
+                        if self.private:
+                            uowcommit.add_item_to_delete(child)
+                else:
+                    clearkeys = False
+                    for child in childlist.added_items():
+                        self.primaryjoin.accept_visitor(setter)
+                        uowcommit.register_saved_list(childlist)
+                    clearkeys = True
+                    for child in childlist.deleted_items():
+                         self.primaryjoin.accept_visitor(setter)
+                         uowcommit.register_saved_list(childlist)
+                         if self.private:
+                             uowcommit.add_item_to_delete(child)
         elif self.foreignkey.table == self.parent.table:
+            associationrow = {}
             for child in deplist:
                 childlist = getlist(child)
-                clearkeys = False
-                for obj in childlist.added_items():
-                    associationrow = {}
-                    self.primaryjoin.accept_visitor(setter)
-                    uowcommit.register_saved_list(childlist)
-                clearkeys = True
-                for obj in childlist.deleted_items():
-                    if self.private:
-                        uowcommit.add_item_to_delete(obj)
-                    associationrow = {}
-                    self.primaryjoin.accept_visitor(setter)
-                    uowcommit.register_saved_list(childlist)
+                if delete:
+                    for obj in childlist.deleted_items() + childlist.current_items():
+                        self.primaryjoin.accept_visitor(setter)
+                        uowcommit.register_saved_list(childlist)
+                        if self.private:
+                            uowcommit.add_item_to_delete(obj)
+                else:
+                    clearkeys = False
+                    for obj in childlist.added_items():
+                        self.primaryjoin.accept_visitor(setter)
+                        uowcommit.register_saved_list(childlist)
+                    clearkeys = True
+                    for obj in childlist.deleted_items():
+                        if self.private:
+                            uowcommit.add_item_to_delete(obj)
+                        self.primaryjoin.accept_visitor(setter)
+                        uowcommit.register_saved_list(childlist)
         else:
             raise " no foreign key ?"
 
