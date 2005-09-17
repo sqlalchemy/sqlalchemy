@@ -23,7 +23,7 @@ Orders: %s
 Open Orders %s
 Closed Orderss %s
 ------------------
-""" % tuple([id(self), self.user_id, repr(self.user_name), repr(getattr(self, 'email_address', None))] + [repr(getattr(self, attr, None)) for attr in ('addresses', 'orders', 'orders_open', 'orders_closed')])
+""" % tuple([id(self), self.user_id, repr(self.user_name), repr(getattr(self, 'email_address', None))] + [repr(getattr(self, attr, None)) for attr in ('addresses', 'orders', 'open_orders', 'closed_orders')])
 )
 
 class Address(object):
@@ -64,8 +64,7 @@ class AssertMixin(PersistTest):
 class MapperTest(AssertMixin):
     
     def setUp(self):
-        #objectstore.clear()
-        pass
+        objectstore.clear()
 
     def testget(self):
         m = mapper(User, users)
@@ -109,10 +108,6 @@ class MapperTest(AssertMixin):
             addresses = relation(Address, addresses, lazy = False)
         ))
         l = m.options(lazyload('addresses')).select()
-        print "HI " + repr(l[0].addresses)
-        print "HI2 " + repr(l[0].addresses)
-        
-        return
         self.assert_result(l, User,
             {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
             {'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}])},
@@ -121,8 +116,7 @@ class MapperTest(AssertMixin):
     
 class LazyTest(AssertMixin):
     def setUp(self):
-        #globalidentity().clear()
-        pass
+        objectstore.clear()
 
     def testbasic(self):
         """tests a basic one-to-many lazy load"""
@@ -142,7 +136,7 @@ class LazyTest(AssertMixin):
         print repr(l)
         print repr(l[0].address)
 
-        # test 'backwards'
+    def testbackwardsonetoone(self):
         m = mapper(Address, addresses, properties = dict(
             user = relation(User, users, primaryjoin = users.c.user_id == addresses.c.user_id, lazy = True, uselist = False)
         ))
@@ -175,8 +169,7 @@ class LazyTest(AssertMixin):
 class EagerTest(AssertMixin):
     
     def setUp(self):
-        #globalidentity().clear()
-        pass
+        objectstore.clear()
 
     def testbasic(self):
         """tests a basic one-to-many eager load"""
@@ -184,33 +177,34 @@ class EagerTest(AssertMixin):
         m = mapper(Address, addresses)
         
         m = mapper(User, users, properties = dict(
-            #addresses = relation(Address, addresses, lazy = False),
             addresses = relation(m, lazy = False),
         ))
         l = m.select()
-        print repr(l)
+        self.assert_result(l, User,
+            {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
+            {'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}])},
+            {'user_id' : 9, 'addresses' : (Address, [])}
+            )
 
     def testonetoone(self):
         m = mapper(User, users, properties = dict(
             address = relation(Address, addresses, lazy = False, uselist = False)
         ))
         l = m.select(users.c.user_id == 7)
-        print repr(l)
-        print repr(l[0].address)
+        self.assert_result(l, User,
+            {'user_id' : 7, 'address' : (Address, {'address_id' : 1, 'email_address': 'jack@bean.com'})},
+            )
 
-        # test 'backwards'
-        
-        # TODO: we have to clear everything, because it wont re-load the Address object.
-        # how should that work ?
-        objectstore.clear()
+    def testbackwardsonetoone(self):
         m = mapper(Address, addresses, properties = dict(
-            user = relation(User, users, primaryjoin = addresses.c.user_id == users.c.user_id, lazy = False, uselist = False)
-#            user = relation(User, users, lazy = False, uselist = False)
+            user = relation(User, users, lazy = False, uselist = False)
         ))
         l = m.select(addresses.c.address_id == 1)
-        print "OK"
-        print repr(l)
-        print repr(l[0].user)
+        self.assert_result(l, Address, 
+            {'address_id' : 1, 'email_address' : 'jack@bean.com', 
+                'user' : (User, {'user_id' : 7, 'user_name' : 'jack'}) 
+            },
+        )
 
     def testwithrepeat(self):
         """tests a one-to-many eager load where we also query on joined criterion, where the joined
@@ -220,7 +214,10 @@ class EagerTest(AssertMixin):
             addresses = relation(Address, addresses, primaryjoin = users.c.user_id==addresses.c.user_id, lazy = False)
         ))
         l = m.select(and_(addresses.c.email_address == 'ed@lala.com', addresses.c.user_id==users.c.user_id))
-        print repr(l)
+        self.assert_result(l, User,
+            {'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2, 'email_address':'ed@wood.com'}, {'address_id':3, 'email_address':'ed@lala.com'}])},
+        )
+        
 
     def testcompile(self):
         """tests deferred operation of a pre-compiled mapper statement"""
@@ -241,19 +238,48 @@ class EagerTest(AssertMixin):
             orders = relation(Order, orders, lazy = False),
         ))
         l = m.select()
-        print repr(l)
+        self.assert_result(l, User,
+            {'user_id' : 7, 
+                'addresses' : (Address, [{'address_id' : 1}]),
+                'orders' : (Order, [{'order_id' : 1}, {'order_id' : 3},{'order_id' : 5},])
+            },
+            {'user_id' : 8, 
+                'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}]),
+                'orders' : (Order, [])
+            },
+            {'user_id' : 9, 
+                'addresses' : (Address, []),
+                'orders' : (Order, [{'order_id' : 2},{'order_id' : 4}])
+            }
+            )
 
     def testdouble(self):
-        """tests eager loading with two relations simulatneously, from the same table.  you
-        have to use aliases for this less frequent type of operation."""
+        """tests eager loading with two relations simulatneously, from the same table.  """
         openorders = alias(orders, 'openorders')
         closedorders = alias(orders, 'closedorders')
         m = mapper(User, users, properties = dict(
-            orders_open = relation(Order, openorders, primaryjoin = and_(openorders.c.isopen == 1, users.c.user_id==openorders.c.user_id), lazy = False),
-            orders_closed = relation(Order, closedorders, primaryjoin = and_(closedorders.c.isopen == 0, users.c.user_id==closedorders.c.user_id), lazy = False)
+            addresses = relation(Address, addresses, lazy = False),
+            open_orders = relation(Order, openorders, primaryjoin = and_(openorders.c.isopen == 1, users.c.user_id==openorders.c.user_id), lazy = False),
+            closed_orders = relation(Order, closedorders, primaryjoin = and_(closedorders.c.isopen == 0, users.c.user_id==closedorders.c.user_id), lazy = False)
         ))
         l = m.select()
-        print repr(l)
+        self.assert_result(l, User,
+            {'user_id' : 7, 
+                'addresses' : (Address, [{'address_id' : 1}]),
+                'open_orders' : (Order, [{'order_id' : 3}]),
+                'closed_orders' : (Order, [{'order_id' : 1},{'order_id' : 5},])
+            },
+            {'user_id' : 8, 
+                'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}]),
+                'open_orders' : (Order, []),
+                'closed_orders' : (Order, [])
+            },
+            {'user_id' : 9, 
+                'addresses' : (Address, []),
+                'open_orders' : (Order, [{'order_id' : 4}]),
+                'closed_orders' : (Order, [{'order_id' : 2}])
+            }
+            )
 
     def testnested(self):
         """tests eager loading, where one of the eager loaded items also eager loads its own 
@@ -267,7 +293,27 @@ class EagerTest(AssertMixin):
             orders = relation(ordermapper, primaryjoin = users.c.user_id==orders.c.user_id, lazy = False),
         ))
         l = m.select()
-        print repr(l)
+        self.assert_result(l, User,
+            {'user_id' : 7, 
+                'addresses' : (Address, [{'address_id' : 1}]),
+                'orders' : (Order, [
+                    {'order_id' : 1, 'items': (Item, [])}, 
+                    {'order_id' : 3, 'items': (Item, [{'item_id':3, 'item_name':'item 3'}, {'item_id':4, 'item_name':'item 4'}, {'item_id':5, 'item_name':'item 5'}])},
+                    {'order_id' : 5, 'items': (Item, [])},
+                    ])
+            },
+            {'user_id' : 8, 
+                'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}]),
+                'orders' : (Order, [])
+            },
+            {'user_id' : 9, 
+                'addresses' : (Address, []),
+                'orders' : (Order, [
+                    {'order_id' : 2, 'items': (Item, [{'item_id':1, 'item_name':'item 1'}, {'item_id':2, 'item_name':'item 2'}])},
+                    {'order_id' : 4, 'items': (Item, [])}
+                ])
+            }
+            )
     
     def testmanytomany(self):
         items = orderitems
@@ -278,8 +324,8 @@ class EagerTest(AssertMixin):
         l = m.select()
         self.assert_result(l, Item, 
             {'item_id' : 1, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 4}, {'keyword_id' : 6}])},
-            {'item_id' : 2, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 7}, {'keyword_id' : 5}])},
-            {'item_id' : 3, 'keywords' : (Keyword, [{'keyword_id' : 6}, {'keyword_id' : 3}, {'keyword_id' : 4}])},
+            {'item_id' : 2, 'keywords' : (Keyword, [{'keyword_id' : 2, 'name':'red'}, {'keyword_id' : 7, 'name':'square'}, {'keyword_id' : 5, 'name':'small'}])},
+            {'item_id' : 3, 'keywords' : (Keyword, [{'keyword_id' : 6,'name':'round'}, {'keyword_id' : 3,'name':'green'}, {'keyword_id' : 4,'name':'big'}])},
             {'item_id' : 4, 'keywords' : (Keyword, [])},
             {'item_id' : 5, 'keywords' : (Keyword, [])}
         )
@@ -294,7 +340,7 @@ class EagerTest(AssertMixin):
         items = orderitems
 
         m = mapper(Item, items, 
-        properties = dict(
+            properties = dict(
                 keywords = relation(Keyword, keywords, itemkeywords, lazy = False),
             ))
 
@@ -302,9 +348,19 @@ class EagerTest(AssertMixin):
                 items = relation(m, lazy = False)
             ))
         l = m.select("orders.order_id in (1,2,3)")
-        #l = m.select()
-        print repr(l)
-
+        self.assert_result(l, Order,
+            {'order_id' : 1, 'items': (Item, [])}, 
+            {'order_id' : 2, 'items': (Item, [
+                {'item_id':1, 'item_name':'item 1', 'keywords': (Keyword, [{'keyword_id':2, 'name':'red'}, {'keyword_id':4, 'name':'big'}, {'keyword_id' : 6, 'name':'round'}])}, 
+                {'item_id':2, 'item_name':'item 2','keywords' : (Keyword, [{'keyword_id' : 2, 'name':'red'}, {'keyword_id' : 7, 'name':'square'}, {'keyword_id' : 5, 'name':'small'}])}
+               ])},
+            {'order_id' : 3, 'items': (Item, [
+                {'item_id':3, 'item_name':'item 3'}, 
+                {'item_id':4, 'item_name':'item 4'}, 
+                {'item_id':5, 'item_name':'item 5'}
+               ])},
+        )
+        
 class SaveTest(AssertMixin):
 
     def testbasic(self):
