@@ -175,7 +175,7 @@ class HistoryArraySet(UserList.UserList):
                 del self.records[item]
         except KeyError:
             pass
-    def clear_history(self):
+    def commit(self):
         for key in self.records.keys():
             value = self.records[key]
             if value is False:

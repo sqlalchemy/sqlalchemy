@@ -155,7 +155,7 @@ class Mapper(object):
 
     def init(self):
         [prop.init(key, self) for key, prop in self.props.iteritems()]
-        print "well hi!"
+        # TODO: get some notion of "primary mapper" going so multiple mappers dont collide
         self.class_._mapper = self.hashkey
 
     def instances(self, cursor, db = None):
@@ -713,7 +713,7 @@ class EagerLoader(PropertyLoader):
             result_list = []
             setattr(instance, self.key, result_list)
             result_list = getattr(instance, self.key)
-            result_list.clear_history()
+            result_list.commit()
         else:
             result_list = getattr(instance, self.key)
             

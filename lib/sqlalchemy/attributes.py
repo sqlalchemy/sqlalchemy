@@ -33,7 +33,7 @@ class ListElement(util.HistoryArraySet):
         self.obj = obj
         self.key = key
         util.HistoryArraySet.__init__(self, items)
-        print "listelement init"
+        obj.__dict__[key] = self.data
 
     def list_value_changed(self, obj, key, listval):
         pass    
@@ -73,7 +73,7 @@ class PropHistory(object):
         if self.orig is not PropHistory.NONE:
             self.obj.__dict__[self.key] = self.orig
             self.orig = PropHistory.NONE
-    def clear_history(self):
+    def commit(self):
         self.orig = PropHistory.NONE
     def added_items(self):
         if self.orig is not PropHistory.NONE:
@@ -134,21 +134,31 @@ class AttributeManager(object):
     def delete_list_attribute(self, obj, key):
         pass
         
-    def rollback(self, obj):
-        try:
-            attributes = self.attribute_history[obj]
-            for hist in attributes.values():
-                hist.rollback()
-        except KeyError:
-            pass
+    def rollback(self, obj = None):
+        if obj is None:
+            for attr in self.attribute_history.values():
+                for hist in attr.values():
+                    hist.rollback()
+        else:
+            try:
+                attributes = self.attribute_history[obj]
+                for hist in attributes.values():
+                    hist.rollback()
+            except KeyError:
+                pass
 
-    def clear_history(self, obj):
-        try:
-            attributes = self.attribute_history[obj]
-            for hist in attributes.values():
-                hist.clear_history()
-        except KeyError:
-            pass
+    def commit(self, obj = None):
+        if obj is None:
+            for attr in self.attribute_history.values():
+                for hist in attr.values():
+                    hist.commit()
+        else:
+            try:
+                attributes = self.attribute_history[obj]
+                for hist in attributes.values():
+                    hist.commit()
+            except KeyError:
+                pass
 
     def get_history(self, obj, key):
         try:

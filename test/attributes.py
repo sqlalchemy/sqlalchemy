@@ -22,7 +22,7 @@ class AttributesTest(PersistTest):
         
         print repr(u.__dict__)
         self.assert_(u.user_id == 7 and u.user_name == 'john' and u.email_address == 'lala@123.com')
-        manager.clear_history(u)
+        manager.commit(u)
         print repr(u.__dict__)
         self.assert_(u.user_id == 7 and u.user_name == 'john' and u.email_address == 'lala@123.com')
 
@@ -58,7 +58,7 @@ class AttributesTest(PersistTest):
 
         print repr(u.__dict__)
         self.assert_(u.user_id == 7 and u.user_name == 'john' and u.addresses[0].email_address == 'lala@123.com')
-        manager.clear_history(u)
+        manager.commit()
         print repr(u.__dict__)
         self.assert_(u.user_id == 7 and u.user_name == 'john' and u.addresses[0].email_address == 'lala@123.com')
 
@@ -70,8 +70,9 @@ class AttributesTest(PersistTest):
         print repr(u.__dict__)
         self.assert_(u.user_id == 7 and u.user_name == 'heythere' and u.addresses[0].email_address == 'lala@123.com' and u.addresses[1].email_address == 'foo@bar.com')
 
-        manager.rollback(u)
+        manager.rollback()
         print repr(u.__dict__)
+        print repr(u.addresses[0].__dict__)
         self.assert_(u.user_id == 7 and u.user_name == 'john' and u.addresses[0].email_address == 'lala@123.com')
 
 if __name__ == "__main__":

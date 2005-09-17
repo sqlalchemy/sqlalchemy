@@ -32,6 +32,7 @@ class HistoryTest(AssertMixin):
         u.addresses.append(Address())
         u.addresses[1].email_address = 'there'
         print repr(u.__dict__)
+        print repr(u.addresses)
         m.rollback(u)
         print repr(u.__dict__)
         

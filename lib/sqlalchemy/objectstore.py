@@ -184,7 +184,6 @@ class UnitOfWork(object):
         else:
             for obj in [n for n in self.new] + [d for d in self.dirty]:
                 commit_context.append_task(obj)
-                print "COMMIT append  " + obj.__class__.__name__ + " " + repr(id(obj))
             for item in self.modified_lists:
                 obj = item.obj
                 commit_context.append_task(obj)
@@ -201,16 +200,23 @@ class UnitOfWork(object):
         except:
             for e in engines:
                 e.rollback()
-                if self.parent:
-                    uow.set(self.parent)
+            if self.parent:
+                self.rollback()
             raise
         for e in engines:
             e.commit()
             
         commit_context.post_exec()
+        self.attributes.commit()
         
         if self.parent:
             uow.set(self.parent)
+
+    def rollback(self):
+        if not self.is_begun:
+            raise "UOW transaction is not begun"
+        self.attributes.rollback()
+        uow.set(self.parent)
             
 class UOWTransaction(object):
     def __init__(self, uow):
