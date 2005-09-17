@@ -268,12 +268,12 @@ EXISTS (select yay from foo where boo = lar)",
             engine = postgres.engine())
 
 
-#        self.runtest(query, 
-#            "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername \
-#FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid(+) AND \
-#mytable.name = :mytable_name AND mytable.myid = :mytable_myid AND \
-#myothertable.othername != :myothertable_othername AND EXISTS (select yay from foo where boo = lar)",
-#            engine = oracle.engine(use_ansi = False))
+        self.runtest(query, 
+            "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername \
+FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid(+) AND \
+mytable.name = :mytable_name AND mytable.myid = :mytable_myid AND \
+myothertable.othername != :myothertable_othername AND EXISTS (select yay from foo where boo = lar)",
+            engine = oracle.engine(use_ansi = False))
 
     def testbindparam(self):
         self.runtest(select(
