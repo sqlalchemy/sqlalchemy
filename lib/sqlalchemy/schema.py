@@ -37,14 +37,13 @@ class VARCHAR:
     def __init__(self, length):
         self.length = length
 
-
-class FLOAT:
+class Numeric:
     def __init__(self, precision, length):
         self.precision = precision
         self.length = length
-
+class FLOAT(Numeric):pass
 class TEXT: pass
-class DECIMAL: pass
+class DECIMAL(Numeric):pass
 class TIMESTAMP: pass
 class DATETIME: pass
 class CLOB: pass
@@ -74,10 +73,27 @@ class SchemaItem(object):
         """proxies method calls to an underlying implementation object for methods not found locally"""
         return getattr(self._impl, key)
 
+
+class TableSingleton(type):
+    def __call__(self, name, engine, *args, **kwargs):
+        try:
+            return engine.tables[name]
+        except:
+            table = type.__call__(self, name, engine, *args, **kwargs)
+            engine.tables[name] = table
+            # load column definitions from the database if 'autoload' is defined
+            if kwargs.get('autoload', False):
+                engine.reflecttable(table)
+            return table
+
+        
+        
 class Table(SchemaItem):
     """represents a relational database table."""
-
+    __metaclass__ = TableSingleton
+    
     def __init__(self, name, engine, *args, **kwargs):
+        print "new table ! " + name + " " +repr(id(self))
         self.name = name
         self.columns = OrderedProperties()
         self.c = self.columns
@@ -86,10 +102,6 @@ class Table(SchemaItem):
         self.engine = engine
         self._impl = self.engine.tableimpl(self)
         self._init_items(*args)
-
-        # load column definitions from the database if 'autoload' is defined
-        if kwargs.get('autoload', False):
-            self.engine.reflecttable(self)
 
     def append_item(self, item):
         self._init_items(item)
@@ -105,13 +117,16 @@ class Table(SchemaItem):
 
 class Column(SchemaItem):
     """represents a column in a database table."""
-    def __init__(self, name, type, key = None, primary_key = False, foreign_key = None, sequence = None):
+    def __init__(self, name, type, key = None, primary_key = False, foreign_key = None, sequence = None, nullable = True):
         self.name = name
         self.type = type
         self.sequence = sequence
         self.foreign_key = foreign_key
         self.key = key or name
         self.primary_key = primary_key
+        if primary_key:
+            nullable = False
+        self.nullable = nullable
         self._orig = None
         
     original = property(lambda s: s._orig or s)
@@ -129,6 +144,11 @@ class Column(SchemaItem):
             self._init_items(self.foreign_key)
             table.foreign_keys[self.foreign_key.column.key] = self.foreign_key
 
+    def set_foreign_key(self, fk):
+        self.foreign_key = fk
+        self._init_items(self.foreign_key)
+        self.table.foreign_keys[self.foreign_key.column.key] = self.foreign_key
+    
     def _make_proxy(self, selectable, name = None):
         """creates a copy of this Column for use in a new selectable unit"""
         # using copy.copy(c) seems to add a full second to the select.py unittest package
@@ -172,10 +192,11 @@ class SchemaEngine(object):
     """a factory object used to create implementations for schema objects"""
     def tableimpl(self, table):
         raise NotImplementedError()
-
     def columnimpl(self, column):
         raise NotImplementedError()
-
+    def reflecttable(self, table):
+        raise NotImplementedError()
+        
 class SchemaVisitor(object):
         """base class for an object that traverses across Schema objects"""
 
