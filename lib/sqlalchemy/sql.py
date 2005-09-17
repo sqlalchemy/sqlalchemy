@@ -181,7 +181,7 @@ class Compiled(ClauseVisitor):
             params = [self.get_params(**m) for m in multiparams]
         else:
             params = self.get_params(**params)
-        return self.engine.execute(str(self), params, echo = getattr(self.statement, 'echo', False), compiled = self)
+        return self.engine.execute(str(self), params, compiled = self)
 
 class ClauseElement(object):
     """base class for elements of a programmatically constructed SQL expression.
