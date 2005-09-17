@@ -107,3 +107,39 @@ itemkeywords.insert().execute(
     dict(keyword_id=4, item_id=3)
 )
 db.connection().commit()
+
+
+class User(object):
+    def __init__(self):
+        self.user_id = None
+    def __repr__(self):
+        return (
+"""
+objid: %d
+User ID: %s
+User Name: %s
+email address ?: %s
+Addresses: %s
+Orders: %s
+Open Orders %s
+Closed Orderss %s
+------------------
+""" % tuple([id(self), self.user_id, repr(self.user_name), repr(getattr(self, 'email_address', None))] + [repr(getattr(self, attr, None)) for attr in ('addresses', 'orders', 'open_orders', 'closed_orders')])
+)
+
+class Address(object):
+    def __repr__(self):
+        return "Address: " + repr(getattr(self, 'address_id', None)) + " " + repr(getattr(self, 'user_id', None)) + " " + repr(self.email_address)
+
+class Order(object):
+    def __repr__(self):
+        return "Order: " + repr(self.description) + " " + repr(self.isopen) + " " + repr(getattr(self, 'items', None))
+
+class Item(object):
+    def __repr__(self):
+        return "Item: " + repr(self.item_name) + " " +repr(getattr(self, 'keywords', None))
+    
+class Keyword(object):
+    def __repr__(self):
+        return "Keyword: %s/%s" % (repr(getattr(self, 'keyword_id', None)),repr(self.name))
+
