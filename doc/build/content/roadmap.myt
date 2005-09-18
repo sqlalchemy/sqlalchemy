@@ -13,13 +13,13 @@ Start
   |              |------ Connection Pooling Configuration
   |                                         |              
   |                                         |
-  |--- <&formatting.myt:link, path="dbengine_establishing" &>       |
+  +--- <&formatting.myt:link, path="dbengine_establishing" &>       |
                    |                        |
                    |                        | 
                    |--------- <&formatting.myt:link, path="dbengine_options" &>
                    |
                    |
-                   |---- <&formatting.myt:link, path="metadata_tables" &>
+                   +---- <&formatting.myt:link, path="metadata_tables" &>
                                    |
                                    |
                                    |---- <&formatting.myt:link, path="metadata_building" &>
@@ -31,9 +31,9 @@ Start
                                    |---- Basic Data Mapping               |                
                                    |               |                      |  
                                    |               |                      |              
-                                   |               |----------- Advanced Data Mapping
+                                   |               +----------- Advanced Data Mapping
                                    |                                        
                                    |                
-                                   |----- Basic Active Record
+                                   +----- Basic Active Record
 </pre>
 </&>

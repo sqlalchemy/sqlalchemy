@@ -181,7 +181,7 @@ class Mapper(object):
         list of primary keys in the order of the table def's primary keys."""
         key = objectstore.get_id_key(ident, self.class_, self.table)
         try:
-            return objectstore.get(key)
+            return objectstore.uow()._get(key)
         except KeyError:
             clause = sql.and_()
             i = 0
@@ -194,11 +194,6 @@ class Mapper(object):
                 return self.select(clause)[0]
             except IndexError:
                 return None
-
-    def put(self, instance):
-        key = self.identity_key(instance)
-        objectstore.put(key, instance, self.scope)
-        return key
 
     def identity_key(self, instance):
         return objectstore.get_id_key(tuple([self._getattrbycolumn(instance, column) for column in self.primary_keys[self.selectable]]), self.class_, self.table)
@@ -290,9 +285,12 @@ class Mapper(object):
                                 self._setattrbycolumn(obj, col, primary_key)
                                 found = True
 
-    def register_dependencies(self, obj, uow):
+    def delete_obj(self, objects, uow):
+        pass
+
+    def register_dependencies(self, *args, **kwargs):
         for prop in self.props.values():
-            prop.register_dependencies(obj, uow)
+            prop.register_dependencies(*args, **kwargs)
             
     def transaction(self, f):
         return self.table.engine.multi_transaction(self.tables, f)
@@ -330,7 +328,7 @@ class Mapper(object):
         # been exposed to being modified by the application.
         identitykey = self._identity_key(row)
         if objectstore.has_key(identitykey):
-            instance = objectstore.get(identitykey)
+            instance = objectstore.uow()._get(identitykey)
             if result is not None:
                 result.append_nohistory(instance)
 
@@ -371,8 +369,6 @@ class Mapper(object):
             
         return instance
 
-    def rollback(self, obj):
-        objectstore.uow().rollback_object(obj)
         
 class MapperOption:
     """describes a modification to a Mapper in the context of making a copy
@@ -403,7 +399,7 @@ class MapperProperty:
     def delete(self, object):
         """called when the instance is being deleted"""
         pass
-    def register_dependencies(self, obj, uow):
+    def register_dependencies(self, *args, **kwargs):
         pass
 
 class ColumnProperty(MapperProperty):
@@ -514,23 +510,25 @@ class PropertyLoader(MapperProperty):
         else:
             return sql.and_(crit)
             
-    def register_dependencies(self, objlist, uow):
+    def register_dependencies(self, uowcommit):
         if self.secondaryjoin is not None:
             # with many-to-many, set the parent as dependent on us, then the 
             # list of associations as dependent on the parent
             # if only a list changes, the parent mapper is the only mapper that
             # gets added to the "todo" list
-            uow.register_dependency(self.mapper, self.parent, None, None)
-            uow.register_dependency(self.parent, None, self, objlist)
+            uowcommit.register_dependency(self.mapper, self.parent)
+            uowcommit.register_task(self.parent, self, uowcommit.get_objects(self.parent), False)
         elif self.foreignkey.table == self.target:
-            uow.register_dependency(self.parent, self.mapper, self, objlist)
+            uowcommit.register_dependency(self.parent, self.mapper)
+            uowcommit.register_task(self.parent, self, uowcommit.get_objects(self.parent), False)
         elif self.foreignkey.table == self.parent.table:
-            uow.register_dependency(self.mapper, self.parent, self, objlist)
+            uowcommit.register_dependency(self.mapper, self.parent)
+            uowcommit.register_task(self.mapper, self, uowcommit.get_objects(self.parent), False)
         else:
             raise " no foreign key ?"
-
+                
     def process_dependencies(self, deplist, uowcommit, delete = False):
-
+        print self.mapper.table.name + " process_dep"
         def getlist(obj):
             if self.uselist:
                 return uowcommit.uow.attributes.get_list_history(obj, self.key)
@@ -548,20 +546,28 @@ class PropertyLoader(MapperProperty):
             secondary_insert = []
             for obj in deplist:
                 childlist = getlist(obj)
-                for child in childlist.added_items():
-                    associationrow = {}
-                    self.primaryjoin.accept_visitor(setter)
-                    self.secondaryjoin.accept_visitor(setter)
-                    secondary_insert.append(associationrow)
-                for child in childlist.deleted_items():
-                    associationrow = {}
+                if delete:
                     clearkeys = True
-                    self.primaryjoin.accept_visitor(setter)
-                    self.secondaryjoin.accept_visitor(setter)
-                    secondary_delete.append(associationrow)
-                    if self.private:
-                        uowcommit.add_item_to_delete(obj)
-                uowcommit.register_saved_list(childlist)
+                    for child in childlist.deleted_items() + childlist.unchanged_items():
+                        associationrow = {}
+                        self.primaryjoin.accept_visitor(setter)
+                        self.secondaryjoin.accept_visitor(setter)
+                        secondary_delete.append(associationrow)
+                    uowcommit.register_removed_list(childlist)
+                else:
+                    clearkeys = False
+                    for child in childlist.added_items():
+                        associationrow = {}
+                        self.primaryjoin.accept_visitor(setter)
+                        self.secondaryjoin.accept_visitor(setter)
+                        secondary_insert.append(associationrow)
+                    clearkeys = True
+                    for child in childlist.deleted_items():
+                        associationrow = {}
+                        self.primaryjoin.accept_visitor(setter)
+                        self.secondaryjoin.accept_visitor(setter)
+                        secondary_delete.append(associationrow)
+                    uowcommit.register_saved_list(childlist)
             if len(secondary_delete):
                 statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key) for c in self.secondary.c]))
                 statement.execute(*secondary_delete)
@@ -577,8 +583,6 @@ class PropertyLoader(MapperProperty):
                     for child in childlist.deleted_items() + childlist.current_items():
                         self.primaryjoin.accept_visitor(setter)
                         uowcommit.register_saved_list(childlist)
-                        if self.private:
-                            uowcommit.add_item_to_delete(child)
                 else:
                     clearkeys = False
                     for child in childlist.added_items():
@@ -588,8 +592,6 @@ class PropertyLoader(MapperProperty):
                     for child in childlist.deleted_items():
                          self.primaryjoin.accept_visitor(setter)
                          uowcommit.register_saved_list(childlist)
-                         if self.private:
-                             uowcommit.add_item_to_delete(child)
         elif self.foreignkey.table == self.parent.table:
             associationrow = {}
             for child in deplist:
@@ -598,8 +600,6 @@ class PropertyLoader(MapperProperty):
                     for obj in childlist.deleted_items() + childlist.current_items():
                         self.primaryjoin.accept_visitor(setter)
                         uowcommit.register_saved_list(childlist)
-                        if self.private:
-                            uowcommit.add_item_to_delete(obj)
                 else:
                     clearkeys = False
                     for obj in childlist.added_items():
@@ -607,8 +607,6 @@ class PropertyLoader(MapperProperty):
                         uowcommit.register_saved_list(childlist)
                     clearkeys = True
                     for obj in childlist.deleted_items():
-                        if self.private:
-                            uowcommit.add_item_to_delete(obj)
                         self.primaryjoin.accept_visitor(setter)
                         uowcommit.register_saved_list(childlist)
         else:

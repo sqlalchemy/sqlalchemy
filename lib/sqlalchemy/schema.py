@@ -28,6 +28,7 @@ class INT:
     """integer datatype"""
     pass
 
+INTEGER = INT
 class CHAR:
     """character datatype"""
     def __init__(self, length):

@@ -7,7 +7,6 @@ import sqlalchemy.objectstore as objectstore
 ECHO = False
 DATA = False
 execfile("test/tables.py")
-db.echo = True
 
 keywords.insert().execute(
     dict(keyword_id=1, name='blue'),
@@ -21,6 +20,8 @@ keywords.insert().execute(
 
 db.connection().commit()
 
+db.echo = True
+
 class HistoryTest(AssertMixin):
     def testattr(self):
         m = mapper(User, users, properties = dict(addresses = relation(Address, addresses)))
@@ -33,7 +34,7 @@ class HistoryTest(AssertMixin):
         u.addresses[1].email_address = 'there'
         print repr(u.__dict__)
         print repr(u.addresses)
-        m.rollback(u)
+        objectstore.uow().rollback_object(u)
         print repr(u.__dict__)
         
 class SaveTest(AssertMixin):
@@ -130,6 +131,7 @@ class SaveTest(AssertMixin):
 #        m = mapper(Address, addresses, properties = dict(
 #            user = relation(User, users, foreignkey = addresses.c.user_id, primaryjoin = users.c.user_id == addresses.c.user_id, lazy = True, uselist = False)
 #        ))
+        # TODO: put assertion in here !!!
         m = mapper(Address, addresses, properties = dict(
             user = relation(User, users, lazy = True, uselist = False)
         ))

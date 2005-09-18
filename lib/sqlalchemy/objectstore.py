@@ -52,49 +52,11 @@ def get_row_key(row, class_, table, primary_keys):
     """
     return (class_, table, tuple([row[column.label] for column in primary_keys]))
 
-identity_map = {}
-
-def get(key):
-    val = identity_map[key]
-    if isinstance(val, dict):
-        return val[thread.get_ident()]
-    else:
-        return val
-    
-def put(key, obj, scope='thread'):
-    if isinstance(obj, dict):
-        raise "cant put a dict in the object store"
-    
-    if scope == 'thread':
-        try:
-            d = identity_map[key]
-        except KeyError:
-            d = identity_map.setdefault(key, {})
-        d[thread.get_ident()] = obj
-    else:
-        identity_map[key] = obj
-
-def clear(scope='thread'):
-    if scope == 'thread':
-        for k in identity_map.keys():
-            if isinstance(identity_map[k], dict):
-                identity_map[k].clear()
-        uow.set(UnitOfWork())
-    else:
-        for k in identity_map.keys():
-            if not isinstance(identity_map[k], dict):
-                del identity_map[k]
-        uow.set(UnitOfWork(), scope="application")
+def clear():
+    uow.set(UnitOfWork())
             
 def has_key(key):
-    if identity_map.has_key(key):
-        d = identity_map[key]
-        if isinstance(d, dict):
-            return d.has_key(thread.get_ident())
-        else:
-            return True
-    else:
-        return False
+    return uow().identity_map.has_key(key)
 
 class UOWSmartProperty(attributes.SmartProperty):
     def attribute_registry(self):
@@ -124,6 +86,10 @@ class UOWAttributeManager(attributes.AttributeManager):
 class UnitOfWork(object):
     def __init__(self, parent = None, is_begun = False):
         self.is_begun = is_begun
+        if parent is not None:
+            self.identity_map = parent.identity_map
+        else:
+            self.identity_map = {}
         self.attributes = UOWAttributeManager(self)
         self.new = util.HashSet()
         self.dirty = util.HashSet()
@@ -131,16 +97,29 @@ class UnitOfWork(object):
         self.deleted = util.HashSet()
         self.parent = parent
 
+    def get(self, class_, *id):
+        return sqlalchemy.mapper.object_mapper(class_).get(*id)
+
+    def _get(self, key):
+        return self.identity_map[key]
+        
+    def _put(self, key, obj):
+        self.identity_map[key] = obj
+        
+    def update(self, obj):
+        """called to add an object to this UnitOfWork as though it were loaded from the DB, but is
+        actually coming from somewhere else, like a web session or similar."""
+        self._put(obj._instance_key, obj)
+        self.register_dirty(obj)
+        
     def register_attribute(self, class_, key, uselist):
         self.attributes.register_attribute(class_, key, uselist)
         
     def attribute_set_callable(self, obj, key, func):
         obj.__dict__[key] = func
 
-    def rollback_object(self, obj):
-        self.attributes.rollback(obj)
     
-    def register_clean(self, obj, scope="thread"):
+    def register_clean(self, obj):
         try:
             del self.dirty[obj]
         except KeyError:
@@ -149,8 +128,7 @@ class UnitOfWork(object):
             del self.new[obj]
         except KeyError:
             pass
-        # TODO: figure scope out from what scope of this UOW is
-        put(obj._instance_key, obj, scope=scope)
+        self._put(obj._instance_key, obj)
         # TODO: get lists off the object and make sure theyre clean too ?
         
     def register_new(self, obj):
@@ -217,6 +195,9 @@ class UnitOfWork(object):
         if self.parent:
             uow.set(self.parent)
 
+    def rollback_object(self, obj):
+        self.attributes.rollback(obj)
+
     def rollback(self):
         if not self.is_begun:
             raise "UOW transaction is not begun"
@@ -233,25 +214,38 @@ class UOWTransaction(object):
         self.saved_objects = util.HashSet()
         self.saved_lists = util.HashSet()
         self.deleted_objects = util.HashSet()
-        self.todelete = util.HashSet()
 
     def append_task(self, obj):
         mapper = self.object_mapper(obj)
         task = self.get_task_by_mapper(mapper)
         task.objects.append(obj)
 
-    def get_task_by_mapper(self, mapper):
-        try:
-            return self.tasks[mapper]
-        except KeyError:
-            return self.tasks.setdefault(mapper, UOWTask(mapper))
-
-    # TODO: better interface for tasks with no object save, or multiple dependencies
-    def register_dependency(self, mapper, dependency, processor, stuff_to_process):
-        self.dependencies[(mapper, dependency)] = True
+    def add_item_to_delete(self, obj):
+        mapper = self.object_mapper(obj)
         task = self.get_task_by_mapper(mapper)
-        if processor is not None:
-            task.dependencies.append((processor, stuff_to_process))
+        task.todelete.append(obj)
+
+    def get_task_by_mapper(self, mapper, isdelete = False):
+        try:
+            return self.tasks[(mapper, isdelete)]
+        except KeyError:
+            return self.tasks.setdefault((mapper, isdelete), UOWTask(mapper, isdelete))
+
+    def get_objects(self, mapper, isdelete = False):
+        try:
+            task = self.tasks[(mapper, isdelete)]
+        except KeyError:
+            return []
+            
+        return task.objects
+            
+    # TODO: better interface for tasks with no object save, or multiple dependencies
+    def register_dependency(self, mapper, dependency):
+        self.dependencies[(mapper, dependency)] = True
+
+    def register_task(self, mapper, processor, objects, isdelete):
+        task = self.get_task_by_mapper(mapper, isdelete)
+        task.dependencies.append((processor, objects))
 
     def register_saved_object(self, obj):
         self.saved_objects.append(obj)
@@ -262,8 +256,6 @@ class UOWTransaction(object):
     def register_deleted(self, obj):
         self.deleted_objects.append(obj)
         
-    def add_item_to_delete(self, obj):
-        self.todelete.append(obj)
         
     def object_mapper(self, obj):
         import sqlalchemy.mapper
@@ -277,9 +269,9 @@ class UOWTransaction(object):
             
     def execute(self):
         for task in self.tasks.values():
-            task.mapper.register_dependencies(task.objects, self)
+            task.mapper.register_dependencies(self)
             
-        mapperlist = self.tasks.values()
+        tasklist = self.tasks.values()
         def compare(a, b):
             if self.dependencies.has_key((a.mapper, b.mapper)):
                 return -1
@@ -287,15 +279,21 @@ class UOWTransaction(object):
                 return 1
             else:
                 return 0
-        mapperlist.sort(compare)
+        tasklist.sort(compare)
 
-        for task in mapperlist:
+        import string
+        for task in tasklist:
             obj_list = task.objects
-            task.mapper.save_obj(obj_list, self)
+            if len(obj_list):
+                print "t:" + string.join([o.__class__.__name__ for o in obj_list])
+            if not task.isdelete:
+                task.mapper.save_obj(obj_list, self)
             for dep in task.dependencies:
-                (processor, stuff_to_process) = dep
-                processor.process_dependencies(stuff_to_process, self)
-
+                (processor, stuff) = dep
+                processor.process_dependencies(stuff, self, delete = task.isdelete)
+            if task.isdelete:
+                task.mapper.delete_obj(obj_list, self)
+            
     def post_exec(self):
         for obj in self.saved_objects:
             mapper = self.object_mapper(obj)
@@ -310,8 +308,9 @@ class UOWTransaction(object):
 
         
 class UOWTask(object):
-    def __init__(self, mapper):
+    def __init__(self, mapper, isdelete = False):
         self.mapper = mapper
+        self.isdelete = isdelete
         self.objects = util.HashSet()
         self.dependencies = []
         

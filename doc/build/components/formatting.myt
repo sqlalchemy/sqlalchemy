@@ -297,7 +297,7 @@
 <%method code autoflush=False>
 <%args>
 	title = None
-	syntaxtype = 'myghty'
+	syntaxtype = 'python'
 </%args>
 
 <%init>

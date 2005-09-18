@@ -21,7 +21,7 @@ class MapperTest(AssertMixin):
         u = m.get(7)
         u2 = m.get(7)
         self.assert_(u is u2)
-        objectstore.clear("thread")
+        objectstore.clear()
         u2 = m.get(7)
         self.assert_(u is not u2)
 
