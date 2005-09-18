@@ -148,6 +148,7 @@ class AttributeManager(object):
         self.get_history(obj, key).delattr()
         self.value_changed(obj, key, value)
 
+        
     def delete_list_attribute(self, obj, key):
         pass
         
@@ -176,7 +177,13 @@ class AttributeManager(object):
                     hist.commit()
             except KeyError:
                 pass
-
+                
+    def remove(self, obj):
+        try:
+            del self.attribute_history[obj]
+        except KeyError:
+            pass
+            
     def get_history(self, obj, key):
         try:
             return self.attribute_history[obj][key]
@@ -192,12 +199,14 @@ class AttributeManager(object):
                 self.attribute_history[obj][key] = p
                 return p
 
-    def get_list_history(self, obj, key):
+    def get_list_history(self, obj, key, passive = False):
         try:
             return self.attribute_history[obj][key]
         except KeyError, e:
             list_ = obj.__dict__.get(key, None)
             if callable(list_):
+                if passive:
+                    return None
                 list_ = list_()
             if e.args[0] is obj:
                 d = {}

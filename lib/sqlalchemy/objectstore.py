@@ -105,6 +105,12 @@ class UnitOfWork(object):
         
     def _put(self, key, obj):
         self.identity_map[key] = obj
+    
+    def _remove_deleted(self, obj):
+        if hasattr(obj, "_instancekey"):
+            del self.identity_map[obj._instancekey]
+        del self.deleted[obj]
+        self.attributes.remove(obj)
         
     def update(self, obj):
         """called to add an object to this UnitOfWork as though it were loaded from the DB, but is
@@ -207,13 +213,16 @@ class UnitOfWork(object):
 class UOWTransaction(object):
     def __init__(self, uow):
         self.uow = uow
+        # links objects to their mappers
         self.object_mappers = {}
+        #  unique list of all the mappers we come across
         self.mappers = util.HashSet()
         self.dependencies = {}
         self.tasks = {}
         self.saved_objects = util.HashSet()
         self.saved_lists = util.HashSet()
         self.deleted_objects = util.HashSet()
+        self.deleted_lists = util.HashSet()
 
     def append_task(self, obj):
         mapper = self.object_mapper(obj)
@@ -222,8 +231,8 @@ class UOWTransaction(object):
 
     def add_item_to_delete(self, obj):
         mapper = self.object_mapper(obj)
-        task = self.get_task_by_mapper(mapper)
-        task.todelete.append(obj)
+        task = self.get_task_by_mapper(mapper, True)
+        task.objects.append(obj)
 
     def get_task_by_mapper(self, mapper, isdelete = False):
         try:
@@ -239,13 +248,13 @@ class UOWTransaction(object):
             
         return task.objects
             
-    # TODO: better interface for tasks with no object save, or multiple dependencies
     def register_dependency(self, mapper, dependency):
         self.dependencies[(mapper, dependency)] = True
 
-    def register_task(self, mapper, processor, objects, isdelete):
+    def register_task(self, mapper, isdelete, processor, mapperfrom, isdeletefrom):
         task = self.get_task_by_mapper(mapper, isdelete)
-        task.dependencies.append((processor, objects))
+        targettask = self.get_task_by_mapper(mapperfrom, isdeletefrom)
+        task.dependencies.append((processor, targettask))
 
     def register_saved_object(self, obj):
         self.saved_objects.append(obj)
@@ -253,7 +262,10 @@ class UOWTransaction(object):
     def register_saved_list(self, listobj):
         self.saved_lists.append(listobj)
 
-    def register_deleted(self, obj):
+    def register_deleted_list(self, listobj):
+        self.deleted_lists.append(listobj)
+        
+    def register_deleted_object(self, obj):
         self.deleted_objects.append(obj)
         
         
@@ -273,24 +285,33 @@ class UOWTransaction(object):
             
         tasklist = self.tasks.values()
         def compare(a, b):
-            if self.dependencies.has_key((a.mapper, b.mapper)):
-                return -1
+            if a.mapper is b.mapper:
+                return a.isdelete and 1 or -1
+            elif self.dependencies.has_key((a.mapper, b.mapper)):
+                if a.isdelete is not b.isdelete:
+                    return a.isdelete and 1 or -1
+                else:
+                    return -1
             elif self.dependencies.has_key((b.mapper, a.mapper)):
-                return 1
+                if a.isdelete is not b.isdelete:
+                    return a.isdelete and 1 or -1
+                else:
+                    return 1
             else:
                 return 0
+            return c
         tasklist.sort(compare)
 
         import string
+        print string.join([str(t) for t in tasklist], ',')
+
         for task in tasklist:
             obj_list = task.objects
-            if len(obj_list):
-                print "t:" + string.join([o.__class__.__name__ for o in obj_list])
             if not task.isdelete:
                 task.mapper.save_obj(obj_list, self)
             for dep in task.dependencies:
-                (processor, stuff) = dep
-                processor.process_dependencies(stuff, self, delete = task.isdelete)
+                (processor, targettask) = dep
+                processor.process_dependencies(targettask.objects, self, delete = task.isdelete)
             if task.isdelete:
                 task.mapper.delete_obj(obj_list, self)
             
@@ -306,12 +327,26 @@ class UOWTransaction(object):
             except KeyError:
                 pass
 
+        for obj in self.deleted_objects:
+            self.uow._remove_deleted(obj)
         
+        for obj in self.deleted_lists:
+            try:
+                del self.uow.modified_lists[obj]
+            except KeyError:
+                pass
+            
 class UOWTask(object):
     def __init__(self, mapper, isdelete = False):
         self.mapper = mapper
         self.isdelete = isdelete
         self.objects = util.HashSet()
         self.dependencies = []
-        
+    
+    def __str__(self):
+        if self.isdelete:
+            return self.mapper.table.name + " deletes"
+        else:
+            return self.mapper.table.name + " saves"
+            
 uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")
