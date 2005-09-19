@@ -128,17 +128,19 @@ class SaveTest(AssertMixin):
 
     def testdelete(self):
         m = mapper(User, users, properties = dict(
-            address = relation(Address, addresses, lazy = True, uselist = False)
+            address = relation(Address, addresses, lazy = True, uselist = False, private = False)
         ))
         u = User()
+        a = Address()
         u.user_name = 'one2onetester'
-        u.address = Address()
+        u.address = a
         u.address.email_address = 'myonlyaddress@foo.com'
         objectstore.uow().commit()
 
         print "OK"
         objectstore.uow().register_deleted(u)
         objectstore.uow().commit()
+        self.assert_(a.address_id is not None and a.user_id is None)
         
     def testbackwardsonetoone(self):
         # test 'backwards'

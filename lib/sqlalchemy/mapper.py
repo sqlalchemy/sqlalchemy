@@ -491,6 +491,8 @@ class PropertyLoader(MapperProperty):
             else:
                 self.foreignkey = w.dependent
                 
+        (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.selectable, self.primaryjoin, self.secondaryjoin)
+                
         if not hasattr(parent.class_, key):
             objectstore.uow().register_attribute(parent.class_, key, uselist = self.uselist)
 
@@ -539,7 +541,7 @@ class PropertyLoader(MapperProperty):
         elif self.foreignkey.table == self.target:
             uowcommit.register_dependency(self.parent, self.mapper)
             uowcommit.register_task(self.parent, False, self, self.parent, False)
-            uowcommit.register_task(self.parent, True, self, self.mapper, False)
+            uowcommit.register_task(self.parent, True, self, self.parent, True)
                 
         elif self.foreignkey.table == self.parent.table:
             uowcommit.register_dependency(self.mapper, self.parent)
@@ -590,11 +592,25 @@ class PropertyLoader(MapperProperty):
         elif self.foreignkey.table == self.target:
             if delete:
                 updates = []
+                clearkeys = True
                 for obj in deplist:
+                    params = {}
+                    for bind in self.lazybinds.values():
+                        params[bind.key] = self.parent._getattrbycolumn(obj, self.parent.selectable.c[bind.shortname])
+                    updates.append(params)
                     childlist = getlist(obj, False)
-                #if len(updates):
-                #    statement = self.secondary.update(sql.and_(*[c == sql.bindparam(c.key) for c in self.secondary.c]))
-                #    statement.execute(*secondary_delete)
+                    for child in childlist.deleted_items() + childlist.unchanged_items():
+                        self.primaryjoin.accept_visitor(setter)
+                if len(updates):
+                    if self.private:
+                        statement = self.target.delete(lazywhere)
+                    else:
+                        parameters = {}
+                        for bind in self.lazybinds.values():
+                            parameters[bind.shortname] = None
+                        statement = self.target.update(self.lazywhere, parameters = parameters)
+                    statement.execute(**updates[0])
+                    #statement.execute(*updates)
             else:
                 for obj in deplist:
                     childlist = getlist(obj)
@@ -645,20 +661,6 @@ class PropertyLoader(MapperProperty):
 # to do child deletes
 class LazyLoader(PropertyLoader):
 
-    def init(self, key, parent):
-        PropertyLoader.init(self, key, parent)
-        if self.secondaryjoin is not None:
-            self.lazywhere = sql.and_(self.primaryjoin, self.secondaryjoin)
-        else:
-            self.lazywhere = self.primaryjoin
-
-        # we dont want to screw with the primaryjoin and secondary join of the PropertyLoader,
-        # so create a copy
-        self.lazywhere = self.lazywhere.copy_container()
-        self.binds = {}
-        li = BinaryVisitor(lambda b: self._create_lazy_clause(b, self.binds))
-        self.lazywhere.accept_visitor(li)
-
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
             # TODO: get lazy callables to be stored within the unit of work?
@@ -666,20 +668,33 @@ class LazyLoader(PropertyLoader):
             # when u deserialize tho
             objectstore.uow().attribute_set_callable(instance, self.key, LazyLoadInstance(self, row))
 
-    def _create_lazy_clause(self, binary, binds):
-        if isinstance(binary.left, schema.Column) and binary.left.table == self.parent.selectable:
-            binary.left = binds.setdefault(self.parent.selectable.name + "_" + binary.left.name,
-                    sql.BindParamClause(self.parent.selectable.name + "_" + binary.left.name, None, shortname = binary.left.name))
 
-        if isinstance(binary.right, schema.Column) and binary.right.table == self.parent.selectable:
-            binary.right = binds.setdefault(self.parent.selectable.name + "_" + binary.right.name,
-                    sql.BindParamClause(self.parent.selectable.name + "_" + binary.right.name, None, shortname = binary.right.name))
+def create_lazy_clause(table, primaryjoin, secondaryjoin):
+    binds = {}
+    def visit_binary(binary):
+        if isinstance(binary.left, schema.Column) and binary.left.table == table:
+            binary.left = binds.setdefault(table.name + "_" + binary.left.name,
+                    sql.BindParamClause(table.name + "_" + binary.left.name, None, shortname = binary.left.name))
+            binary.swap()
 
+        if isinstance(binary.right, schema.Column) and binary.right.table == table:
+            binary.right = binds.setdefault(table.name + "_" + binary.right.name,
+                    sql.BindParamClause(table.name + "_" + binary.right.name, None, shortname = binary.right.name))
+                    
+    if secondaryjoin is not None:
+        lazywhere = sql.and_(primaryjoin, secondaryjoin)
+    else:
+        lazywhere = primaryjoin
+    lazywhere = lazywhere.copy_container()
+    li = BinaryVisitor(visit_binary)
+    lazywhere.accept_visitor(li)
+    return (lazywhere, binds)
+        
 class LazyLoadInstance(object):
     """attached to a specific object instance to load related rows."""
     def __init__(self, lazyloader, row):
         self.params = {}
-        for key, value in lazyloader.binds.iteritems():
+        for key in lazyloader.lazybinds.keys():
             self.params[key] = row[key]
         self.mapper = lazyloader.mapper
         self.lazywhere = lazyloader.lazywhere

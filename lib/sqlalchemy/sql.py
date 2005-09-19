@@ -388,6 +388,10 @@ class BinaryClause(ClauseElement):
         self.right.accept_visitor(visitor)
         visitor.visit_binary(self)
 
+    def swap(self):
+        c = self.left
+        self.left = self.right
+        self.right = c
         
 class Selectable(FromClause):
     """represents a column list-holding object, like a table or subquery.  can be used anywhere
@@ -725,12 +729,14 @@ class UpdateBase(ClauseElement):
             if isinstance(value, Select):
                 value.clear_from(self.table.id)
             elif _is_literal(value):
-                try:
+                if _is_literal(key):
                     col = self.table.c[key]
+                else:
+                    col = key
+                try:
                     parameters[key] = bindparam(col.name, value)
                 except KeyError:
                     del parameters[key]
-
         return parameters
         
     def get_colparams(self, parameters):
@@ -743,6 +749,8 @@ class UpdateBase(ClauseElement):
         # compiled params
         if parameters is None:
             parameters = {}
+        else:
+            parameters = parameters.copy()
             
         if self.parameters is not None:
             for k, v in self.parameters.iteritems():
@@ -754,7 +762,10 @@ class UpdateBase(ClauseElement):
             if isinstance(key, schema.Column):
                 d[key] = value
             else:
-                d[self.table.columns[str(key)]] = value
+                try:
+                    d[self.table.columns[str(key)]] = value
+                except AttributeError:
+                    pass
 
         # create a list of column assignment clauses as tuples
         values = []
