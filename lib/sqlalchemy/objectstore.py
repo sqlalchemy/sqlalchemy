@@ -341,7 +341,7 @@ class UOWTransaction(object):
             head = None
             for tup in tuples:
                 (parent, child) = (tup[0], tup[1])
-                
+                print "tuple: " + str(parent) + " " + str(child)
                 try:
                     parentnode = nodes[parent]
                 except KeyError:
@@ -358,11 +358,13 @@ class UOWTransaction(object):
                 elif head is childnode:
                     head = parentnode
                 if childnode.parent is not None:
+                    print "splicing: " + str(parentnode.mapper) + " onto " + str(childnode.parent.mapper)
                     del childnode.parent.children[childnode]
                     childnode.parent.children.append(parentnode)
                 parentnode.children.append(childnode)
                 childnode.parent = parentnode
-
+                print "made a chain: " + str(childnode.parent.mapper) + " " + str(childnode.mapper)
+                
             for item in allitems:
                 if not nodes.has_key(item):
                     node = Node(item)
@@ -387,18 +389,20 @@ class UOWTransaction(object):
             
         mappers = []
         for task in self.tasks.values():
-            #print "new node for " + str(task)
+            print "new node for " + str(task)
             mappers.append(task.mapper)
             bymapper[(task.mapper, task.isdelete)] = task
-            
     
         head = maketree(self.dependencies, mappers)
         res = []
         tasklist = sort(head, False, res)
+
         res = []
         sort(head, True, res)
         res.reverse()
         tasklist += res
+
+        assert(len(self.tasks.values()) == len(tasklist)) # "sorted task list not the same size as original task list"
 
         import string,sys
         print string.join([str(t) for t in tasklist], ',')
