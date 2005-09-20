@@ -137,10 +137,72 @@ class SaveTest(AssertMixin):
         u.address.email_address = 'myonlyaddress@foo.com'
         objectstore.uow().commit()
 
-        print "OK"
         objectstore.uow().register_deleted(u)
         objectstore.uow().commit()
-        self.assert_(a.address_id is not None and a.user_id is None)
+        self.assert_(a.address_id is not None and a.user_id is None and not objectstore.uow().identity_map.has_key(u._instance_key) and objectstore.uow().identity_map.has_key(a._instance_key))
+
+    def testcascadingdelete(self):
+        m = mapper(User, users, properties = dict(
+            address = relation(Address, addresses, lazy = False, uselist = False, private = True),
+            orders = relation(
+                mapper(Order, orders, properties = dict (
+                    items = relation(Item, orderitems, lazy = False, uselist =True, private = True)
+                )), 
+                lazy = True, uselist = True, private = True)
+        ))
+        
+        data = [User,
+            {'user_name' : 'ed', 
+                'address' : (Address, {'email_address' : 'foo@bar.com'}),
+                'orders' : (Order, [
+                    {'description' : 'eds 1st order', 'items' : (Item, [{'item_name' : 'eds o1 item'}, {'item_name' : 'eds other o1 item'}])}, 
+                    {'description' : 'eds 2nd order', 'items' : (Item, [{'item_name' : 'eds o2 item'}, {'item_name' : 'eds other o2 item'}])}
+                 ])
+            },
+            {'user_name' : 'jack', 
+                'address' : (Address, {'email_address' : 'jack@jack.com'}),
+                'orders' : (Order, [
+                    {'description' : 'jacks 1st order', 'items' : (Item, [{'item_name' : 'im a lumberjack'}, {'item_name' : 'and im ok'}])}
+                 ])
+            },
+            {'user_name' : 'foo', 
+                'address' : (Address, {'email_address': 'hi@lala.com'}),
+                'orders' : (Order, [
+                    {'description' : 'foo order', 'items' : (Item, [])}, 
+                    {'description' : 'foo order 2', 'items' : (Item, [{'item_name' : 'hi'}])}, 
+                    {'description' : 'foo order three', 'items' : (Item, [{'item_name' : 'there'}])}
+                ])
+            }        
+        ]
+        
+        for elem in data[1:]:
+            u = User()
+            u.user_name = elem['user_name']
+            u.address = Address()
+            u.address.email_address = elem['address'][1]['email_address']
+            u.orders = []
+            for order in elem['orders'][1]:
+                o = Order()
+                o.isopen = None
+                o.description = order['description']
+                u.orders.append(o)
+                o.items = []
+                for item in order['items'][1]:
+                    i = Item()
+                    i.item_name = item['item_name']
+                    o.items.append(i)
+                
+        objectstore.uow().commit()
+        objectstore.clear()
+        
+        l = m.select()
+        for u in l:
+            print repr(u.orders)
+        #self.assert_result(l, data[0], *data[1])
+        
+        objectstore.uow().register_deleted(l[0])
+        objectstore.uow().register_deleted(l[2])
+        objectstore.uow().commit()
         
     def testbackwardsonetoone(self):
         # test 'backwards'
