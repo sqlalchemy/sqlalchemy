@@ -1,80 +1,80 @@
 <%doc>formatting.myt - library of HTML formatting functions to operate on a TOCElement tree</%doc>
 
 <%global>
-	import string, re
-	import highlight
+    import string, re
+    import highlight
 </%global>
 
 
 <%def printtocelement>
 <%doc>prints a TOCElement as a table of contents item and prints its immediate child items</%doc>
-	<%args>
-		item
-		includefile
-		bold = False
-		full = False
-		children = True
-	</%args>
+    <%args>
+        item
+        includefile
+        bold = False
+        full = False
+        children = True
+    </%args>
 
-	<div class="toclink">
-		<A style="<% bold and "font-weight:bold;" or "" %>" href="<% item.get_link(includefile, anchor = (not includefile)) %>"><% item.description %></a>
-	</div>
-	
-% if children:	
-	<div class="toclinkcontainer">
-% 	for i in item.children:
-		<& printsmtocelem, item=i, includefile = includefile, children=full &>
+    <div class="toclink">
+        <A style="<% bold and "font-weight:bold;" or "" %>" href="<% item.get_link(includefile, anchor = (not includefile)) %>"><% item.description %></a>
+    </div>
+    
+% if children:  
+    <div class="toclinkcontainer">
+%   for i in item.children:
+        <& printsmtocelem, item=i, includefile = includefile, children=full &>
 %
-	</div>
+    </div>
 %
 </%def>
 
 <%def printsmtocelem>
-	<%args>
-		item
-		includefile
-		children = False
-	</%args>	
-	<div class="toclinkcontainer">
-	
-	<div class="smalltoclink">
-	<A href="<% item.get_link(includefile) %>"><% item.description %></a>
-	</div>
+    <%args>
+        item
+        includefile
+        children = False
+    </%args>    
+    <div class="toclinkcontainer">
+    
+    <div class="smalltoclink">
+    <A href="<% item.get_link(includefile) %>"><% item.description %></a>
+    </div>
 
 % if children:
-% 	for i in item.children:
-		<& printsmtocelem, item = i, includefile = includefile &>
+%   for i in item.children:
+        <& printsmtocelem, item = i, includefile = includefile &>
 %
 %
-	</div>
+    </div>
 
 </%def>
 
 <%method printtoc>
 <%args> 
-	root
-	includefile
-	current = None
-	full = False
-	children = True
+    root
+    includefile
+    current = None
+    full = False
+    children = True
 </%args>
 
 % header = False
 % for i in root.children:
 
-%	if i.header:
-%		if header:
-	</div>
+%   if i.header:
+%       if header:
+    </div>
 %
-%	header = True
-	<b><% i.header %></b><br/>
-	<div class="tocsection">
+%   header = True
+    <b><% i.header %></b><br/>
+    <div class="tocsection">
 %
-	<& printtocelement, item=i, includefile = includefile, bold = (i == current and includefile), full = full, children=children &>
+    <& printtocelement, item=i, includefile = includefile, bold = (i == current and includefile), full = full, children=children &>
 %
 
-%	if header:
-	</div>
+%   if header:
+    </div>
 %
 </%method>
 
@@ -83,11 +83,11 @@
 <%doc>prints the description and contents of a TOC element and recursively prints its child items</%doc>
 
 <%args>
-	item
-	indentlevel = 0
-	includefile
-	omitheader = False
-	root = None
+    item
+    indentlevel = 0
+    includefile
+    omitheader = False
+    root = None
 </%args>
 
 % if root is None: root = item
@@ -99,49 +99,47 @@
 <div class="subsection" style="margin-left:<% repr(10 + indentlevel * 10) %>px;">
 
 % if not omitheader:
-	<span class="sectionheadertext"><% item.description %></span>
+    <span class="sectionheadertext"><% item.description %></span>
 %
-	<div class="sectiontext">
+    <div class="sectiontext">
 
 <%python>
-	regexp = re.compile(r"__FORMAT:LINK{(.*?)(?:\|(.*?))?}")
-	def link(matchobj):
-		path = matchobj.group(1)
-		if matchobj.lastindex >= 2:
-			xtra = matchobj.group(2)
-		else:
-			xtra = None
-			
-		try:
-			element = item.lookup(path)
-			if xtra is not None:
-				return '<a href="%s_%s">%s</a>' % (element.get_link(includefile), xtra, xtra)
-			else:
-				return '<a href="%s">%s</a>' % (element.get_link(includefile), element.description)
-		except KeyError:
-			if xtra is not None:
-				return '<b>%s</b>' % (xtra)
-			else:
-				return '<b>%s</b>' % path
-		
-	m.write(regexp.sub(link, item.content))
+    regexp = re.compile(r"__FORMAT:LINK{(.*?)(?:\|(.*?))?(?:\@text=(.+?))?}")
+    def link(matchobj):
+        path = matchobj.group(1)
+        text = matchobj.group(3)
+        xtra = matchobj.group(2)
+            
+        try:
+            element = item.lookup(path)
+            if xtra is not None:
+                return '<a href="%s_%s">%s</a>' % (element.get_link(includefile), xtra, text or xtra)
+            else:
+                return '<a href="%s">%s</a>' % (element.get_link(includefile), text or element.description)
+        except KeyError:
+            if xtra is not None:
+                return '<b>%s</b>' % (text or xtra)
+            else:
+                return '<b>%s</b>' % text or path
+        
+    m.write(regexp.sub(link, item.content))
 </%python>
 
-	</div>
+    </div>
 
-%	for i in item.children:
-		<& printitem, item=i, indentlevel=indentlevel + 1, includefile = includefile, root=root &>
+%   for i in item.children:
+        <& printitem, item=i, indentlevel=indentlevel + 1, includefile = includefile, root=root &>
 %
 
 % if root is not None and len(item.children) == 0:
-	<a href="#<% root.path %>" class="toclink">back to section top</a>
+    <a href="#<% root.path %>" class="toclink">back to section top</a>
 %
 
 % if indentlevel == 0:
-%	if includefile:
-	<& SELF:pagenav, item=item, includefile=includefile &>
-%	else:
-	<hr width="400px" align="left" />
+%   if includefile:
+    <& SELF:pagenav, item=item, includefile=includefile &>
+%   else:
+    <hr width="400px" align="left" />
 % #
 % 
 
@@ -151,14 +149,14 @@
 
 <%method pagenav>
 <%args>
-	item
-	includefile
+    item
+    includefile
 </%args>
 <div class="sectionnavblock">
 <div class="sectionnav">
 
 % if not includefile:
-	<a href="#top">Top</a> |
+    <a href="#top">Top</a> |
 %
 
 %       if item.previous is not None:
@@ -178,19 +176,19 @@
 </%method>
 
 <%method itemlink trim="both">
-	<%args>
-	item
-	includefile
-	</%args>
-	<a href="<% item.get_link(includefile, anchor = (not includefile)) %>"><% item.description %></a>
+    <%args>
+    item
+    includefile
+    </%args>
+    <a href="<% item.get_link(includefile, anchor = (not includefile)) %>"><% item.description %></a>
 </%method>
 
 
 
 <%method paramtable>
-	<table cellspacing="0">
-	<% m.content() %>
-	</table>
+    <table cellspacing="0">
+    <% m.content() %>
+    </table>
 </%method>
 
 <%method param>
@@ -198,94 +196,94 @@
         name
         classname
         type
-	users = 'all'
+    users = 'all'
         default = None
-	version = None
+    version = None
         </%args>
 % if default is None: default = 'None'
 
 <&|SELF:fliprow, flip=True &>
-	<td valign="top">
-	<A name="<% m.comp('doclib.myt:current').path %>_<% name %>"></a>
-	<b><% name %></b> (<% type %>)</td>
-	<td align="right" width="40%">
-		<div style="text-align:left">
+    <td valign="top">
+    <A name="<% m.comp('doclib.myt:current').path %>_<% name %>"></a>
+    <b><% name %></b> (<% type %>)</td>
+    <td align="right" width="40%">
+        <div style="text-align:left">
 % if users is not None:
-		for users: <% users %><br/>
+        for users: <% users %><br/>
 %
-		default: <% default %><br/>
-		used by: <% classname %>
+        default: <% default %><br/>
+        used by: <% classname %>
 % if version:
-		<br/>since version: <% version %>
+        <br/>since version: <% version %>
 %
-		</div>
-	</td>
+        </div>
+    </td>
 </&>
 
 <&|SELF:fliprow, flip=False &>
-	<td colspan="2">
-	<p style="margin-left:15px;margin-bottom:5px;margin-top:5px"><% m.content() %></p>
+    <td colspan="2">
+    <p style="margin-left:15px;margin-bottom:5px;margin-top:5px"><% m.content() %></p>
 
-	</td>
+    </td>
 </&>
 
 </%method>
 
 <%method function_doc>
-	<%args>
-		name = ""
-		alt = None
-		arglist = []
-		rettype = None
-	</%args>
-	<&|SELF:fliprow, flip=True&>
-	<td>
-	<A name="<% m.comp('doclib.myt:current').path %>_<% name %>"></a>
-	<b><% name %>(<% string.join(map(lambda k: "<i>%s</i>" % k, arglist), ", ")%>)</b></td>
-	</td>
-	</&>
-	<&|SELF:fliprow, flip=False&>
-	<td colspan="2"><div style="margin-left:15px;margin-bottom:5px;margin-top:5px"><% m.content() %>
-%	if alt is not None:
-	<br/><br/><b>Also called as:</b> <% alt %>
+    <%args>
+        name = ""
+        alt = None
+        arglist = []
+        rettype = None
+    </%args>
+    <&|SELF:fliprow, flip=True&>
+    <td>
+    <A name="<% m.comp('doclib.myt:current').path %>_<% name %>"></a>
+    <b><% name %>(<% string.join(map(lambda k: "<i>%s</i>" % k, arglist), ", ")%>)</b></td>
+    </td>
+    </&>
+    <&|SELF:fliprow, flip=False&>
+    <td colspan="2"><div style="margin-left:15px;margin-bottom:5px;margin-top:5px"><% m.content() %>
+%   if alt is not None:
+    <br/><br/><b>Also called as:</b> <% alt %>
 %
-	</div>
-	
-	</td>
-	</&>
+    </div>
+    
+    </td>
+    </&>
 </%method>
 
 <%method member_doc>
-	<%args>
-		name = ""
-		type = None
-	</%args>
-	<&|SELF:fliprow, flip=True&>
-	<td>
-	<A name="<% m.comp('doclib.myt:current').path %>_<% name %>"></a>
-	<b><% name %></b></td>
-	</td><td></td>
-	</&>
-	<&|SELF:fliprow, flip=False&>
-	<td colspan="2"><div style="margin-left:15px;margin-bottom:5px;margin-top:5px"><% m.content() %>
-	</div>
-	
-	</td>
-	</&>
+    <%args>
+        name = ""
+        type = None
+    </%args>
+    <&|SELF:fliprow, flip=True&>
+    <td>
+    <A name="<% m.comp('doclib.myt:current').path %>_<% name %>"></a>
+    <b><% name %></b></td>
+    </td><td></td>
+    </&>
+    <&|SELF:fliprow, flip=False&>
+    <td colspan="2"><div style="margin-left:15px;margin-bottom:5px;margin-top:5px"><% m.content() %>
+    </div>
+    
+    </td>
+    </&>
 </%method>
 
 
 <%method fliprow trim="both">
-	<%args>flip=True</%args>
-	<%python>
-		flipper = m.get_attribute("formatflipper")
-		if flipper is None: 
-			flipper = Value("light")
-			m.set_attribute("formatflipper", flipper)
-	</%python>
-	
+    <%args>flip=True</%args>
+    <%python>
+        flipper = m.get_attribute("formatflipper")
+        if flipper is None: 
+            flipper = Value("light")
+            m.set_attribute("formatflipper", flipper)
+    </%python>
+    
 % if flip: flipper({"light":"dark", "dark": "light"}[flipper()])
-	<tr class="<% flipper() %>"><% m.content() %></tr>
+    <tr class="<% flipper() %>"><% m.content() %></tr>
 </%method>
 
 
@@ -296,57 +294,94 @@
 
 <%method code autoflush=False>
 <%args>
-	title = None
-	syntaxtype = 'python'
+    title = None
+    syntaxtype = 'python'
 </%args>
 
 <%init>
-	def fix_indent(f):
-		f =string.expandtabs(f, 4)
-		g = ''
-		lines = string.split(f, "\n")
-		whitespace = None
-		for line in lines:
-			if whitespace is None:
-				match = re.match(r"^([ ]+)", line)
-				if match is not None:
-					whitespace = match.group(1)
+    def fix_indent(f):
+        f =string.expandtabs(f, 4)
+        g = ''
+        lines = string.split(f, "\n")
+        whitespace = None
+        for line in lines:
+            if whitespace is None:
+                match = re.match(r"^([ ]+)", line)
+                if match is not None:
+                    whitespace = match.group(1)
 
-			if whitespace is not None:
-				line = re.sub(r"^%s" % whitespace, "", line)
+            if whitespace is not None:
+                line = re.sub(r"^%s" % whitespace, "", line)
 
-			if whitespace is not None or re.search(r"\w", line) is not None:
-				g += (line + "\n")
+            if whitespace is not None or re.search(r"\w", line) is not None:
+                g += (line + "\n")
 
 
-		return g.rstrip()
+        return g.rstrip()
 
-	content = highlight.highlight(fix_indent(m.content()), syntaxtype = syntaxtype)
+    content = highlight.highlight(fix_indent(m.content()), syntaxtype = syntaxtype)
 
 </%init>
 <div class="code">
 % if title is not None:
-	<div class="codetitle"><% title %></div>
+    <div class="codetitle"><% title %></div>
 %
 <pre><% content %></pre></div>
 </%method>
 
 
 <%method link trim="both">
-	<%args>
-		path = None
-		param = None
-		method = None
-		member = None
-	</%args>
-	<%init>
-		if path is None:
-			path = m.comp('doclib.myt:current').path
-			
-		extra = (param or method or member)
-	</%init>
-__FORMAT:LINK{<%path%><% extra and "|" + extra or "" %>}
+    <%args>
+        path = None
+        param = None
+        method = None
+        member = None
+        text = None
+    </%args>
+    <%init>
+        if path is None:
+            path = m.comp('doclib.myt:current').path
+            
+        extra = (param or method or member)
+    </%init>
+__FORMAT:LINK{<%path%><% extra and "|" + extra or "" %><% text and "@text=" + text or "" %>}
 </%method>
 
 
+<%method uniqueblock>
+<%args>
+        blockname
+        uniquename
+</%args>
 
+<%init>
+        context = m.attributes.setdefault('ubcontext', {})
+        try:
+            writer = context[blockname]
+        except KeyError:
+            context[blockname] = uniquename
+            writer = uniquename
+</%init>
+
+% if writer == uniquename:
+        <% m.content() %>
+%
+</%method>
+
+#<&| /components/uniqueblock.mhtml, blockname=>'popboxscript', uniquename=>$name &>
+#        <script>
+#                function togglePopbox(id, show, hide) {
+#                        var link = document.getElementById(id + "_link");
+#                        var div = document.getElementById(id + "_div");
+#                        if (div.style.display == 'block') {
+#                                div.style.display = 'none';
+#                                link.firstChild.nodeValue = show;
+#                        }
+#                        else if (div.style.display == 'none') {
+#                                div.style.display = 'block';
+#                                link.firstChild.nodeValue = hide;
+#                        }
+#                }
+#
+#        </script>
+#</&>
