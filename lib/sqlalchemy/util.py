@@ -55,6 +55,10 @@ class OrderedDict(dict):
     def keys(self):
         return self.list
 
+    def clear(self):
+        self.list = []
+        dict.clear(self)
+        
     def update(self, dict):
         for key in dict.keys():
             self.__setitem__(key, dict[key])
@@ -80,6 +84,13 @@ class OrderedDict(dict):
     def iteritems(self):
         return iter([(key, self[key]) for key in self.keys()])
     
+    def __delitem__(self, key):
+        try:
+            del self.list[self.list.index(key)]
+        except ValueError:
+            raise KeyError(key)
+        dict.__delitem__(self, key)
+        
     def __setitem__(self, key, object):
         if not self.has_key(key):
             self.list.append(key)
@@ -110,6 +121,7 @@ class HashSet(object):
         if iter is not None:
             for i in iter:
                 self.append(i)
+        
     def __iter__(self):
         return iter(self.map.values())
  
