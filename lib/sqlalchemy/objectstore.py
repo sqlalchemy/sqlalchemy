@@ -172,13 +172,13 @@ class UnitOfWork(object):
                     commit_context.append_task(obj)
         else:
             for obj in [n for n in self.new] + [d for d in self.dirty]:
-                #print "going to save.... " + repr(obj)
+                #print "going to save.... " + obj.__class__.__name__ + repr(id(obj))
                 if self.deleted.contains(obj):
                     continue
                 commit_context.append_task(obj)
             for item in self.modified_lists:
                 obj = item.obj
-                #print "list on obj " + obj.__class__.__name__ + " is modified? " + repr(item.data)
+                #print "list on obj " + obj.__class__.__name__ + repr(id(obj)) + " is modified? " 
                 if self.deleted.contains(obj):
                     continue
                 commit_context.append_task(obj)
@@ -322,8 +322,8 @@ class UOWTransaction(object):
                 self.children = util.HashSet()
                 self.parent = None
                 
-        nodes = {}
-        def maketree(tuples):
+        def maketree(tuples, allitems):
+            nodes = {}
             head = None
             for tup in tuples:
                 (parent, child) = (tup[0], tup[1])
@@ -347,7 +347,14 @@ class UOWTransaction(object):
                     del childnode.parent.children[childnode]
                 parentnode.children.append(childnode)
                 childnode.parent = parentnode
-                    
+
+            for item in allitems:
+                if not nodes.has_key(item):
+                    node = Node(item)
+                    if head is not None:
+                        head.parent = node
+                        node.children.append(head)
+                    head = node
             return head
         
         bymapper = {}
@@ -362,12 +369,14 @@ class UOWTransaction(object):
                 sort(child, isdel, res)
             return res
             
+        mappers = []
         for task in self.tasks.values():
             #print "new node for " + str(task)
+            mappers.append(task.mapper)
             bymapper[(task.mapper, task.isdelete)] = task
             
     
-        head = maketree(self.dependencies)
+        head = maketree(self.dependencies, mappers)
         res = []
         tasklist = sort(head, False, res)
         res = []
