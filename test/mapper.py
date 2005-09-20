@@ -87,7 +87,7 @@ class LazyTest(AssertMixin):
 
     def testbackwardsonetoone(self):
         m = mapper(Address, addresses, properties = dict(
-            user = relation(User, users, primaryjoin = users.c.user_id == addresses.c.user_id, lazy = True, uselist = False)
+            user = relation(User, users, primaryjoin = users.c.user_id == addresses.c.user_id, lazy = True)
         ))
         l = m.select(addresses.c.address_id == 1)
         print repr(l)
@@ -146,8 +146,9 @@ class EagerTest(AssertMixin):
 
     def testbackwardsonetoone(self):
         m = mapper(Address, addresses, properties = dict(
-            user = relation(User, users, lazy = False, uselist = False)
+            user = relation(User, users, lazy = False)
         ))
+        print repr(m.props['user'].uselist)
         l = m.select(addresses.c.address_id == 1)
         self.assert_result(l, Address, 
             {'address_id' : 1, 'email_address' : 'jack@bean.com', 

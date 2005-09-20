@@ -91,7 +91,7 @@ class UnitOfWork(object):
         else:
             self.identity_map = {}
         self.attributes = UOWAttributeManager(self)
-        self.new = util.HashSet()
+        self.new = util.HashSet(ordered = True)
         self.dirty = util.HashSet()
         self.modified_lists = util.HashSet()
         self.deleted = util.HashSet()
@@ -352,7 +352,7 @@ class UOWTransaction(object):
             return res
             
         for task in self.tasks.values():
-            print "new node for " + str(task)
+            #print "new node for " + str(task)
             bymapper[(task.mapper, task.isdelete)] = task
             
     
@@ -376,7 +376,7 @@ class UOWTask(object):
         self.isdelete = isdelete
         self.objects = util.HashSet()
         self.dependencies = []
-        print "new task " + str(self)
+        #print "new task " + str(self)
     
     def __str__(self):
         if self.isdelete:
