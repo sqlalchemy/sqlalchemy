@@ -25,6 +25,7 @@ import sqlalchemy.util as util
 import sqlalchemy.attributes as attributes
 import weakref
 
+
 def get_id_key(ident, class_, table):
     """returns an identity-map key for use in storing/retrieving an item from the identity map, given
     a tuple of the object's primary key values.
@@ -52,9 +53,21 @@ def get_row_key(row, class_, table, primary_keys):
     """
     return (class_, table, tuple([row[column.label] for column in primary_keys]))
 
+def mapper(*args, **params):
+    import sqlalchemy.mapper
+    return sqlalchemy.mapper.mapper(*args, **params)
+    
+def commit(*obj):
+    uow().commit(*obj)
+    
 def clear():
     uow.set(UnitOfWork())
-            
+
+def delete(*obj):
+    uw = uow()
+    for o in obj:
+        uw.register_deleted(o)
+    
 def has_key(key):
     return uow().identity_map.has_key(key)
 
@@ -105,7 +118,10 @@ class UnitOfWork(object):
         
     def _put(self, key, obj):
         self.identity_map[key] = obj
-    
+
+    def has_key(self, key):
+        return self.identity_map.has_key(key)
+        
     def _remove_deleted(self, obj):
         if hasattr(obj, "_instance_key"):
             del self.identity_map[obj._instance_key]
@@ -135,7 +151,6 @@ class UnitOfWork(object):
         except KeyError:
             pass
         self._put(obj._instance_key, obj)
-        # TODO: get lists off the object and make sure theyre clean too ?
         
     def register_new(self, obj):
         self.new.append(obj)
@@ -150,8 +165,6 @@ class UnitOfWork(object):
             return True
         
     def register_deleted(self, obj):
-        #if self.deleted.contains(obj):
-        #    return
         self.deleted.append(obj)  
         mapper = object_mapper(obj)
         mapper.register_deleted(obj, self)
@@ -172,7 +185,7 @@ class UnitOfWork(object):
                     commit_context.append_task(obj)
         else:
             for obj in [n for n in self.new] + [d for d in self.dirty]:
-                #print "going to save.... " + obj.__class__.__name__ + repr(id(obj))
+                #if obj.__class__.__name__ == 'Order': print "going to save.... " + obj.__class__.__name__ + repr(id(obj)) + repr(obj.__dict__)
                 if self.deleted.contains(obj):
                     continue
                 commit_context.append_task(obj)
@@ -394,7 +407,7 @@ class UOWTask(object):
     def __init__(self, mapper, isdelete = False):
         self.mapper = mapper
         self.isdelete = isdelete
-        self.objects = util.HashSet()
+        self.objects = util.HashSet(ordered = True)
         self.dependencies = []
         #print "new task " + str(self)
     
