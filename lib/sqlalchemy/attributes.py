@@ -57,6 +57,8 @@ class PropHistory(object):
     def setattr_clean(self, value):
         self.obj.__dict__[self.key] = value
     def setattr(self, value):
+        if isinstance(value, list):
+            raise ("assigning a list to scalar property '%s' on '%s' instance %d" % (self.key, self.obj.__class__.__name__, id(self.obj)))
         self.orig = self.obj.__dict__.get(self.key, None)
         self.obj.__dict__[self.key] = value
     def delattr(self):
