@@ -22,7 +22,7 @@ import sqlalchemy.util as util
 import sqlalchemy.objectstore as objectstore
 import random, copy, types
 
-__ALL__ = ['eagermapper', 'eagerloader', 'lazymapper', 'lazyloader', 'eagerload', 'lazyload', 'mapper', 'lazyloader', 'lazymapper', 'clear_mappers']
+__ALL__ = ['eagermapper', 'eagerloader', 'lazymapper', 'lazyloader', 'eagerload', 'lazyload', 'mapper', 'lazyloader', 'lazymapper', 'clear_mappers', 'objectstore', 'sql']
 
 def relation(*args, **params):
     if isinstance(args[0], Mapper):
@@ -36,9 +36,10 @@ def relation_loader(mapper, secondary = None, primaryjoin = None, secondaryjoin 
     else:
         return EagerLoader(mapper, secondary, primaryjoin, secondaryjoin, **options)
     
-def relation_mapper(class_, selectable, secondary = None, primaryjoin = None, secondaryjoin = None, table = None, properties = None, lazy = True, uselist = True, foreignkey = None, primary_keys = None, **options):
-    return relation_loader(mapper(class_, selectable, table=table, properties=properties, primary_keys=primary_keys, **options), secondary, primaryjoin, secondaryjoin, lazy = lazy, uselist = uselist, foreignkey = foreignkey, **options)
+def relation_mapper(class_, selectable, secondary = None, primaryjoin = None, secondaryjoin = None, table = None, properties = None, lazy = True, foreignkey = None, primary_keys = None, **options):
+    return relation_loader(mapper(class_, selectable, table=table, properties=properties, primary_keys=primary_keys, **options), secondary, primaryjoin, secondaryjoin, lazy = lazy, foreignkey = foreignkey, **options)
 
+    
 # TODO: where do we want to register these mappers, register them against their classes/objects etc
 _mappers = {}
 def mapper(*args, **params):
@@ -182,7 +183,7 @@ class Mapper(object):
         if not found.  The *ident argument is a 
         list of primary keys in the order of the table def's primary keys."""
         key = objectstore.get_id_key(ident, self.class_, self.table)
-        print "key: " + repr(key) + " ident: " + repr(ident)
+        #print "key: " + repr(key) + " ident: " + repr(ident)
         try:
             return objectstore.uow()._get(key)
         except KeyError:
@@ -346,7 +347,7 @@ class Mapper(object):
         # including modifying any of its related items lists, as its already
         # been exposed to being modified by the application.
         identitykey = self._identity_key(row)
-        if objectstore.has_key(identitykey):
+        if objectstore.uow().has_key(identitykey):
             instance = objectstore.uow()._get(identitykey)
             if result is not None:
                 result.append_nohistory(instance)
@@ -451,7 +452,7 @@ class ColumnProperty(MapperProperty):
 class PropertyLoader(MapperProperty):
     """describes an object property that holds a single item or list of items that correspond to a related
     database table."""
-    def __init__(self, mapper, secondary, primaryjoin, secondaryjoin, uselist = True, foreignkey = None, private = False):
+    def __init__(self, mapper, secondary, primaryjoin, secondaryjoin, foreignkey = None, uselist = None, private = False):
         self.uselist = uselist
         self.mapper = mapper
         self.target = self.mapper.selectable
@@ -460,7 +461,7 @@ class PropertyLoader(MapperProperty):
         self.secondaryjoin = secondaryjoin
         self.foreignkey = foreignkey
         self.private = private
-        self._hash_key = "%s(%s, %s, %s, %s, %s, uselist=%s)" % (self.__class__.__name__, hash_key(mapper), hash_key(secondary), hash_key(primaryjoin), hash_key(secondaryjoin), hash_key(foreignkey), repr(self.uselist))
+        self._hash_key = "%s(%s, %s, %s, %s, %s, %s)" % (self.__class__.__name__, hash_key(mapper), hash_key(secondary), hash_key(primaryjoin), hash_key(secondaryjoin), hash_key(foreignkey), repr(uselist))
             
     def hash_key(self):
         return self._hash_key
@@ -491,7 +492,13 @@ class PropertyLoader(MapperProperty):
                 raise "cant determine primary foreign key in the join relationship....specify foreignkey=<column>"
             else:
                 self.foreignkey = w.dependent
-                
+
+        if self.uselist is None and self.foreignkey is not None and self.foreignkey.table == self.parent.table:
+            self.uselist = False
+
+        if self.uselist is None:
+            self.uselist = True
+                    
         (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.selectable, self.primaryjoin, self.secondaryjoin)
                 
         if not hasattr(parent.class_, key):
@@ -867,6 +874,4 @@ def mapper_hash_key(class_, selectable, table = None, properties = None, scope =
             repr(dict([(k, hash_key(p)) for k,p in properties.iteritems()])),
             scope        )
     )
-
-
 
