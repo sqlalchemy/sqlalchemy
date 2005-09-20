@@ -314,7 +314,14 @@ class UOWTransaction(object):
             except KeyError:
                 pass
 
-    def _sort_dependencies(self):        
+    def _sort_dependencies(self):
+    
+        class Node:
+            def __init__(self, mapper):
+                self.mapper = mapper
+                self.children = util.HashSet()
+                self.parent = None
+                
         nodes = {}
         def maketree(tuples):
             head = None
@@ -324,19 +331,23 @@ class UOWTransaction(object):
                 try:
                     parentnode = nodes[parent]
                 except KeyError:
-                    parentnode = (parent, [])
+                    parentnode = Node(parent)
                     nodes[parent] = parentnode
                 try:
                     childnode = nodes[child]
                 except KeyError:
-                    childnode = (child, [])
+                    childnode = Node(child)
                     nodes[child] = childnode
 
                 if head is None:
                     head = parentnode
                 elif head is childnode:
                     head = parentnode
-                parentnode[1].append(childnode)
+                if childnode.parent is not None:
+                    del childnode.parent.children[childnode]
+                parentnode.children.append(childnode)
+                childnode.parent = parentnode
+                    
             return head
         
         bymapper = {}
@@ -344,10 +355,10 @@ class UOWTransaction(object):
         def sort(node, isdel, res):
             if node is None:
                 return res
-            task = bymapper.get((node[0], isdel), None)
+            task = bymapper.get((node.mapper, isdel), None)
             if task is not None:
                 res.append(task)
-            for child in node[1]:
+            for child in node.children:
                 sort(child, isdel, res)
             return res
             
