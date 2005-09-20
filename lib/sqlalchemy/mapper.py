@@ -540,7 +540,6 @@ class PropertyLoader(MapperProperty):
             childlist = uow.attributes.get_history(obj, self.key)
 
         for child in childlist.deleted_items() + childlist.unchanged_items():
-            print "deleted? " + repr(child)
             uow.register_deleted(child)
 
             

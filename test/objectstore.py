@@ -40,8 +40,14 @@ class HistoryTest(AssertMixin):
 class SaveTest(AssertMixin):
 
     def setUp(self):
+        db.echo = False
         objectstore.clear()
         clear_mappers()
+        orders.delete().execute()
+        orderitems.delete().execute()
+        users.delete().execute()
+        addresses.delete().execute()
+        db.echo = True
         
     def testbasic(self):
         # save two users
@@ -194,9 +200,8 @@ class SaveTest(AssertMixin):
                     o.items.append(i)
                 
         objectstore.uow().commit()
-        return
         objectstore.clear()
-        
+
         l = m.select()
         for u in l:
             print repr(u.orders)

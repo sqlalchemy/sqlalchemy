@@ -102,8 +102,11 @@ class ThreadLocal(object):
 
 class HashSet(object):
     """implements a Set."""
-    def __init__(self, iter = None):
-        self.map  = {}
+    def __init__(self, iter = None, ordered = False):
+        if ordered:
+            self.map = OrderedDict()
+        else:
+            self.map  = {}
         if iter is not None:
             for i in iter:
                 self.append(i)
