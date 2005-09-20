@@ -264,6 +264,7 @@ class Mapper(object):
                     insert.append((obj, params))
                 uow.register_saved_object(obj)
             if len(update):
+                #print "REGULAR UPDATES"
                 clause = sql.and_()
                 for col in self.primary_keys[table]:
                     clause.clauses.append(col == sql.bindparam(col.key))
@@ -631,6 +632,7 @@ class PropertyLoader(MapperProperty):
                         self.primaryjoin.accept_visitor(setter)
                     uowcommit.register_deleted_list(childlist)
                 if len(updates):
+                    print "DELETION UPDATES?!"
                     parameters = {}
                     for bind in self.lazybinds.values():
                         parameters[bind.shortname] = None
