@@ -296,6 +296,7 @@
 <%args>
     title = None
     syntaxtype = 'python'
+    html_escape = False
 </%args>
 
 <%init>
@@ -319,7 +320,7 @@
 
         return g.rstrip()
 
-    content = highlight.highlight(fix_indent(m.content()), syntaxtype = syntaxtype)
+    content = highlight.highlight(fix_indent(m.content()), html_escape = html_escape, syntaxtype = syntaxtype)
 
 </%init>
 <div class="code">
@@ -368,20 +369,56 @@ __FORMAT:LINK{<%path%><% extra and "|" + extra or "" %><% text and "@text=" + te
 %
 </%method>
 
-#<&| /components/uniqueblock.mhtml, blockname=>'popboxscript', uniquename=>$name &>
-#        <script>
-#                function togglePopbox(id, show, hide) {
-#                        var link = document.getElementById(id + "_link");
-#                        var div = document.getElementById(id + "_div");
-#                        if (div.style.display == 'block') {
-#                                div.style.display = 'none';
-#                                link.firstChild.nodeValue = show;
-#                        }
-#                        else if (div.style.display == 'none') {
-#                                div.style.display = 'block';
-#                                link.firstChild.nodeValue = hide;
-#                        }
-#                }
-#
-#        </script>
-#</&>
+<%method popboxlink trim="both"> 
+    <%args>
+        name=None
+        show='show'
+        hide='hide'
+    </%args>
+    <%init>
+        if name is None:
+            name = m.attributes.setdefault('popbox_name', 0)
+        m.attributes['popbox_name'] += 1
+        name = "popbox_" + repr(name)
+    </%init>
+javascript:togglePopbox('<% name %>', show, hide)
+</%method>
+<%method popbox>
+<%args>
+    name = None
+</%args>
+<%init>
+    if name is None:
+        name = 'popbox_' + repr(m.attributes['popbox_name'])
+</%init>
+<&| SELF:uniqueblock, blockname='popboxscript', uniquename=name &>
+        <script>
+                function togglePopbox(id, show, hide) {
+                        var link = document.getElementById(id + "_link");
+                        var div = document.getElementById(id + "_div");
+                        if (div.style.display == 'block') {
+                                div.style.display = 'none';
+                                if (link) {
+                                    link.firstChild.nodeValue = show;
+                                }
+                        }
+                        else if (div.style.display == 'none') {
+                                div.style.display = 'block';
+                                if (link) {
+                                link.firstChild.nodeValue = hide;
+                                }
+                        }
+                }
+
+        </script>
+</&>
+<div id="<% name %>_div"><% m.content() %></div>
+</%method>
+
+<%method codepopper>
+    <%args>
+        link
+    </%args>
+    <a href="<& SELF:popboxlink &>">link</a>
+    <&|SELF:popbox&><% m.content() %></&>
+</%method>
