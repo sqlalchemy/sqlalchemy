@@ -28,7 +28,7 @@ Start
                                    |---- <&formatting.myt:link, path="sql" &>
                                    |                                      |                
                                    |                                      |                                  
-                                   |---- Basic Data Mapping               |                
+                                   |---- <&formatting.myt:link, path="datamapping"&>               |                
                                    |               |                      |  
                                    |               |                      |              
                                    |               +----------- Advanced Data Mapping
