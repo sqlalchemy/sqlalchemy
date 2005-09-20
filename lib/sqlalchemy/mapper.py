@@ -146,6 +146,8 @@ class Mapper(object):
 
     engines = property(lambda s: [t.engine for t in s.tables])
 
+    def __str__(self):
+        return "Mapper|" + self.class_.__name__ + "|" + self.table.name
     def hash_key(self):
         return self.hashkey
         
@@ -309,14 +311,11 @@ class Mapper(object):
     def register_dependencies(self, *args, **kwargs):
         for prop in self.props.values():
             prop.register_dependencies(*args, **kwargs)
+
+    def register_deleted(self, obj, uow):
+        for prop in self.props.values():
+            prop.register_deleted(obj, uow)
             
-    def transaction(self, f):
-        return self.table.engine.multi_transaction(self.tables, f)
-
-    def remove(self, obj, traverse = True):
-        """removes the object.  traverse indicates attached objects should be removed as well."""
-        pass
-
     def _compile(self, whereclause = None, order_by = None, **options):
         statement = sql.select([self.selectable], whereclause, order_by = order_by)
         for key, value in self.props.iteritems():
@@ -414,7 +413,7 @@ class MapperProperty:
     def init(self, key, parent):
         """called when the MapperProperty is first attached to a new parent Mapper."""
         pass
-    def delete(self, object):
+    def register_deleted(self, object, uow):
         """called when the instance is being deleted"""
         pass
     def register_dependencies(self, *args, **kwargs):
@@ -529,6 +528,20 @@ class PropertyLoader(MapperProperty):
             return (crit[0])
         else:
             return sql.and_(crit)
+
+    def register_deleted(self, obj, uow):
+        if not self.private:
+            return
+            
+        if self.uselist:
+            childlist = uow.attributes.get_list_history(obj, self.key, passive = False)
+        else: 
+            childlist = uow.attributes.get_history(obj, self.key)
+
+        for child in childlist.deleted_items() + childlist.unchanged_items():
+            print "deleted? " + repr(child)
+            uow.register_deleted(child)
+
             
     def register_dependencies(self, uowcommit):
         if self.secondaryjoin is not None:
@@ -551,13 +564,18 @@ class PropertyLoader(MapperProperty):
             raise " no foreign key ?"
                 
     def process_dependencies(self, deplist, uowcommit, delete = False):
-        print self.mapper.table.name + " process_dep isdelete " + repr(delete)
+        #print self.mapper.table.name + " process_dep isdelete " + repr(delete)
+        
+        # function to retreive the child list off of an object.  "passive" means, if its
+        # a lazy loaded list that is not loaded yet, dont load it.
         def getlist(obj, passive = True):
             if self.uselist:
                 return uowcommit.uow.attributes.get_list_history(obj, self.key, passive = passive)
             else: 
                 return uowcommit.uow.attributes.get_history(obj, self.key)
 
+        # fucntion to set properties across a parent/child object plus an "association row",
+        # based on a join condition
         def sync_foreign_keys(binary):
             self._sync_foreign_keys(binary, obj, child, associationrow, clearkeys)
         setter = BinaryVisitor(sync_foreign_keys)
@@ -567,30 +585,40 @@ class PropertyLoader(MapperProperty):
         if self.secondaryjoin is not None:
             secondary_delete = []
             secondary_insert = []
-            for obj in deplist:
-                childlist = getlist(obj)
-                if childlist is None: return
-                clearkeys = False
-                for child in childlist.added_items():
-                    associationrow = {}
-                    self.primaryjoin.accept_visitor(setter)
-                    self.secondaryjoin.accept_visitor(setter)
-                    secondary_insert.append(associationrow)
-                clearkeys = True
-                for child in childlist.deleted_items():
-                    associationrow = {}
-                    self.primaryjoin.accept_visitor(setter)
-                    self.secondaryjoin.accept_visitor(setter)
-                    secondary_delete.append(associationrow)
-                uowcommit.register_saved_list(childlist)
-            if len(secondary_delete):
-                statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key) for c in self.secondary.c]))
-                statement.execute(*secondary_delete)
-            if len(secondary_insert):
-                statement = self.secondary.insert()
-                statement.execute(*secondary_insert)
-        elif self.foreignkey.table == self.target:
             if delete:
+                for obj in deplist:
+                    childlist = getlist(obj, False)
+                    for child in childlist.deleted_items() + childlist.unchanged_items():
+                        associationrow = {}
+                        self.primaryjoin.accept_visitor(setter)
+                        self.secondaryjoin.accept_visitor(setter)
+                        secondary_delete.append(associationrow)
+                    uowcommit.register_deleted_list(childlist)
+            else:
+                for obj in deplist:
+                    childlist = getlist(obj)
+                    if childlist is None: return
+                    clearkeys = False
+                    for child in childlist.added_items():
+                        associationrow = {}
+                        self.primaryjoin.accept_visitor(setter)
+                        self.secondaryjoin.accept_visitor(setter)
+                        secondary_insert.append(associationrow)
+                    clearkeys = True
+                    for child in childlist.deleted_items():
+                        associationrow = {}
+                        self.primaryjoin.accept_visitor(setter)
+                        self.secondaryjoin.accept_visitor(setter)
+                        secondary_delete.append(associationrow)
+                    uowcommit.register_saved_list(childlist)
+                if len(secondary_delete):
+                    statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key) for c in self.secondary.c]))
+                    statement.execute(*secondary_delete)
+                if len(secondary_insert):
+                    statement = self.secondary.insert()
+                    statement.execute(*secondary_insert)
+        elif self.foreignkey.table == self.target:
+            if delete and not self.private:
                 updates = []
                 clearkeys = True
                 for obj in deplist:
@@ -601,16 +629,13 @@ class PropertyLoader(MapperProperty):
                     childlist = getlist(obj, False)
                     for child in childlist.deleted_items() + childlist.unchanged_items():
                         self.primaryjoin.accept_visitor(setter)
+                    uowcommit.register_deleted_list(childlist)
                 if len(updates):
-                    if self.private:
-                        statement = self.target.delete(lazywhere)
-                    else:
-                        parameters = {}
-                        for bind in self.lazybinds.values():
-                            parameters[bind.shortname] = None
-                        statement = self.target.update(self.lazywhere, parameters = parameters)
-                    statement.execute(**updates[0])
-                    #statement.execute(*updates)
+                    parameters = {}
+                    for bind in self.lazybinds.values():
+                        parameters[bind.shortname] = None
+                    statement = self.target.update(self.lazywhere, parameters = parameters)
+                    statement.execute(*updates)
             else:
                 for obj in deplist:
                     childlist = getlist(obj)
