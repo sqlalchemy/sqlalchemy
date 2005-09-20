@@ -182,6 +182,7 @@ class Mapper(object):
         if not found.  The *ident argument is a 
         list of primary keys in the order of the table def's primary keys."""
         key = objectstore.get_id_key(ident, self.class_, self.table)
+        print "key: " + repr(key) + " ident: " + repr(ident)
         try:
             return objectstore.uow()._get(key)
         except KeyError:
@@ -631,7 +632,6 @@ class PropertyLoader(MapperProperty):
                         self.primaryjoin.accept_visitor(setter)
                     uowcommit.register_deleted_list(childlist)
                 if len(updates):
-                    print "DELETION UPDATES?!"
                     parameters = {}
                     for bind in self.lazybinds.values():
                         parameters[bind.shortname] = None
