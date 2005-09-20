@@ -11,7 +11,7 @@ class AssertMixin(PersistTest):
         print repr(result)
         self.assert_list(result, class_, objects)
     def assert_list(self, result, class_, list):
-        self.assert_(len(result) == len(list), "result list is not the same size as test list")
+        self.assert_(len(result) == len(list), "result list is not the same size as test list, for class " + class_.__name__)
         for i in range(0, len(list)):
             self.assert_row(class_, result[i], list[i])
     def assert_row(self, class_, rowobj, desc):
