@@ -142,7 +142,9 @@ class HistoryArraySet(UserList.UserList):
         if data is not None:
             self.data = data
             for item in data:
-                self._setrecord(item)
+                # add items without triggering any change events
+                # *ASSUME* the list is unique already.  might want to change this.
+                self.records[item] = None
         else:
             self.data = []
 
