@@ -200,6 +200,9 @@ class SaveTest(AssertMixin):
             print repr(u.orders)
         #self.assert_result(l, data[0], *data[1])
         
+        print "OK " + repr(objectstore.uow().dirty.map)
+        objectstore.uow().doit = True
+        l[0].user_name = 'imnew'
         objectstore.uow().register_deleted(l[0])
         objectstore.uow().register_deleted(l[2])
         objectstore.uow().commit()
