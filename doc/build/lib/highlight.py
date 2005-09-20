@@ -94,7 +94,7 @@ def html_escape(string):
     #return "@" + re.sub(r"([&<>])", lambda m: html_escapes[m.group()], string) + "+"
     return re.sub(r"([&<>])", lambda m: html_escapes[m.group()], string) 
 
-def highlight(source, filename = None, syntaxtype = None):
+def highlight(source, filename = None, syntaxtype = None, html_escape = True):
     if syntaxtype is not None:
         highlighter = highlighters.get(syntaxtype, None)
     elif filename is not None:
@@ -107,15 +107,19 @@ def highlight(source, filename = None, syntaxtype = None):
         highlighter = None    
         
     if highlighter is None:
-        return html_escape(source)
+        if html_escape:
+            return html_escape(source)
+        else:
+            return source
     else:
-        return highlighter(source).highlight()    
+        return highlighter(source, html_escape = html_escape).highlight()
         
 class Highlighter:
-    def __init__(self, source, output = None):
+    def __init__(self, source, output = None, html_escape = True):
         self.source = source
         self.pos = 0
-
+        self.html_escape = html_escape
+        
         if output is None:
             self.output = StringIO.StringIO()
         else:
@@ -130,9 +134,15 @@ class Highlighter:
     def colorize(self, tokens):
         for pair in tokens:
             if pair[1] is None:
-                self.output.write(html_escape(pair[0]))
+                if self.html_escape:
+                    self.output.write(html_escape(pair[0]))
+                else:
+                    self.output.write(pair[0])
             else:
-                self.output.write('<span class="%s">%s</span>' % (pair[1], html_escape(pair[0])))
+                if self.html_escape:
+                    self.output.write('<span class="%s">%s</span>' % (pair[1], html_escape(pair[0])))
+                else:
+                    self.output.write('<span class="%s">%s</span>' % (pair[1], pair[0]))
 
 
 class PythonHighlighter(Highlighter):
