@@ -341,7 +341,7 @@ class UOWTransaction(object):
             head = None
             for tup in tuples:
                 (parent, child) = (tup[0], tup[1])
-                print "tuple: " + str(parent) + " " + str(child)
+                #print "tuple: " + str(parent) + " " + str(child)
                 try:
                     parentnode = nodes[parent]
                 except KeyError:
@@ -358,12 +358,10 @@ class UOWTransaction(object):
                 elif head is childnode:
                     head = parentnode
                 if childnode.parent is not None:
-                    print "splicing: " + str(parentnode.mapper) + " onto " + str(childnode.parent.mapper)
                     del childnode.parent.children[childnode]
                     childnode.parent.children.append(parentnode)
                 parentnode.children.append(childnode)
                 childnode.parent = parentnode
-                print "made a chain: " + str(childnode.parent.mapper) + " " + str(childnode.mapper)
                 
             for item in allitems:
                 if not nodes.has_key(item):
@@ -377,7 +375,7 @@ class UOWTransaction(object):
         bymapper = {}
         
         def sort(node, isdel, res):
-            print "Sort: " + (node and str(node.mapper) or 'None')
+            #print "Sort: " + (node and str(node.mapper) or 'None')
             if node is None:
                 return res
             task = bymapper.get((node.mapper, isdel), None)
@@ -389,7 +387,7 @@ class UOWTransaction(object):
             
         mappers = []
         for task in self.tasks.values():
-            print "new node for " + str(task)
+            #print "new node for " + str(task)
             mappers.append(task.mapper)
             bymapper[(task.mapper, task.isdelete)] = task
     
