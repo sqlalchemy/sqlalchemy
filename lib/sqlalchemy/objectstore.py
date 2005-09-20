@@ -331,6 +331,7 @@ class UOWTransaction(object):
     
         class Node:
             def __init__(self, mapper):
+                print "new node on " + str(mapper)
                 self.mapper = mapper
                 self.children = util.HashSet()
                 self.parent = None
@@ -358,6 +359,7 @@ class UOWTransaction(object):
                     head = parentnode
                 if childnode.parent is not None:
                     del childnode.parent.children[childnode]
+                    childnode.parent.children.append(parentnode)
                 parentnode.children.append(childnode)
                 childnode.parent = parentnode
 
@@ -373,6 +375,7 @@ class UOWTransaction(object):
         bymapper = {}
         
         def sort(node, isdel, res):
+            print "Sort: " + (node and str(node.mapper) or 'None')
             if node is None:
                 return res
             task = bymapper.get((node.mapper, isdel), None)
