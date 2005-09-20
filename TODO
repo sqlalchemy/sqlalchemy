@@ -1,11 +1,9 @@
 TODO:
 
 
-table reflection, i.e. create tables with autoload = True
-
 mapper can take a row-processing/object instantiating function, without expensive construction
 
-lazy/eager loaders added to mapper via a list instaed of dictionary
+lazy/eager loaders added to mapper via a list instaed of dictionary (do we ?)
 
 clean up select test suite
 
@@ -13,9 +11,7 @@ horizontal lazy/eager loaders for one object across tables - add it to existing 
 this will add a lot to SmartProperty since it needs to support a list of properties that all trigger
 one lazy loader
 
-unit of work ?
-
-deletion of objects
+simple table inheritance
 
 Oracle module
 
