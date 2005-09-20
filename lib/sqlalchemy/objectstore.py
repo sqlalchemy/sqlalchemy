@@ -172,12 +172,18 @@ class UnitOfWork(object):
                     commit_context.append_task(obj)
         else:
             for obj in [n for n in self.new] + [d for d in self.dirty]:
+                #print "going to save.... " + repr(obj)
+                if self.deleted.contains(obj):
+                    continue
                 commit_context.append_task(obj)
             for item in self.modified_lists:
                 obj = item.obj
+                #print "list on obj " + obj.__class__.__name__ + " is modified? " + repr(item.data)
+                if self.deleted.contains(obj):
+                    continue
                 commit_context.append_task(obj)
             for obj in self.deleted:
-                print "going to delete.... " + repr(obj)
+                #print "going to delete.... " + repr(obj)
                 commit_context.add_item_to_delete(obj)
                 
         engines = util.HashSet()
@@ -229,6 +235,7 @@ class UOWTransaction(object):
     def append_task(self, obj):
         mapper = object_mapper(obj)
         self.mappers.append(mapper)
+        #print "APPENDING TASK " + obj.__class__.__name__
         task = self.get_task_by_mapper(mapper)
         task.objects.append(obj)
 
@@ -335,6 +342,8 @@ class UOWTransaction(object):
         bymapper = {}
         
         def sort(node, isdel, res):
+            if node is None:
+                return res
             task = bymapper.get((node[0], isdel), None)
             if task is not None:
                 res.append(task)
