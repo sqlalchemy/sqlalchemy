@@ -59,6 +59,7 @@ class SaveTest(AssertMixin):
 
         # assert the first one retreives the same from the identity map
         nu = m.get(u.user_id)
+        print "U: " + repr(u) + "NU: " + repr(nu)
         self.assert_(u is nu)
         
         # clear out the identity map, so next get forces a SELECT
