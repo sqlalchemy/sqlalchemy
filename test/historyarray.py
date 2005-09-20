@@ -12,7 +12,7 @@ class HistoryArrayTest(PersistTest):
     def testremove(self):
         a = util.HistoryArraySet()
         a.append('hi')
-        a.clear_history()
+        a.commit()
         self.assert_(a == ['hi'])
         self.assert_(a.added_items() == [])
         a.remove('hi')
@@ -30,7 +30,7 @@ class HistoryArrayTest(PersistTest):
     def testaddedremoved(self):
         a = util.HistoryArraySet()
         a.append('hi')
-        a.clear_history()
+        a.commit()
         a.remove('hi')
         self.assert_(a.deleted_items() == ['hi'])
         a.append('hi')
@@ -43,7 +43,7 @@ class HistoryArrayTest(PersistTest):
         a.append('hi')
         a.append('there')
         a.append('yo')
-        a.clear_history()
+        a.commit()
         before = repr(a.data)
         print repr(a.data)
         a.remove('there')
