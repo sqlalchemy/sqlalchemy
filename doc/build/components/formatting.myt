@@ -104,25 +104,37 @@
     <div class="sectiontext">
 
 <%python>
-    regexp = re.compile(r"__FORMAT:LINK{(.*?)(?:\|(.*?))?(?:\@text=(.+?))?}")
+    regexp = re.compile(r"__FORMAT:LINK{(?:\@path=(.+?))?(?:\@xtra=(.+?))?(?:\@text=(.+?))?(?:\@href=(.+?))?(?:\@class=(.+?))?}")
     def link(matchobj):
         path = matchobj.group(1)
-        text = matchobj.group(3)
         xtra = matchobj.group(2)
-            
-        try:
-            element = item.lookup(path)
-            if xtra is not None:
-                return '<a href="%s_%s">%s</a>' % (element.get_link(includefile), xtra, text or xtra)
-            else:
-                return '<a href="%s">%s</a>' % (element.get_link(includefile), text or element.description)
-        except KeyError:
-            if xtra is not None:
-                return '<b>%s</b>' % (text or xtra)
-            else:
-                return '<b>%s</b>' % text or path
+        text = matchobj.group(3)
+        href = matchobj.group(4)
+        class_ = matchobj.group(5)
         
-    m.write(regexp.sub(link, item.content))
+        if class_ is not None:
+            class_ = 'class="%s"' % class_
+            
+        if href:
+            return '<a href="%s" %s>%s</a>' % (href, class_, text or href)
+        else:
+            try:
+                element = item.lookup(path)
+                if xtra is not None:
+                    return '<a href="%s_%s" %s>%s</a>' % (element.get_link(includefile), xtra, class_, text or xtra)
+                else:
+                    return '<a href="%s" %s>%s</a>' % (element.get_link(includefile), class_, text or element.description)
+            except KeyError:
+                if xtra is not None:
+                    return '<b>%s</b>' % (text or xtra)
+                else:
+                    return '<b>%s</b>' % text or path
+
+    re2 = re.compile(r"'''PYESC(.+?)PYESC'''", re.S)
+    content = regexp.sub(link, item.content)
+    content = re2.sub(lambda m: m.group(1), content)
+    #m.write(item.content)
+    m.write(content)
 </%python>
 
     </div>
@@ -286,8 +298,6 @@
     <tr class="<% flipper() %>"><% m.content() %></tr>
 </%method>
 
-
-
 <%method codeline trim="both">
 <span class="codeline"><% m.content() %></span>
 </%method>
@@ -330,7 +340,6 @@
 <pre><% content %></pre></div>
 </%method>
 
-
 <%method link trim="both">
     <%args>
         path = None
@@ -338,35 +347,16 @@
         method = None
         member = None
         text = None
+        href = None
+        class_ = None
     </%args>
     <%init>
-        if path is None:
+        if href is None and path is None:
             path = m.comp('doclib.myt:current').path
             
         extra = (param or method or member)
     </%init>
-__FORMAT:LINK{<%path%><% extra and "|" + extra or "" %><% text and "@text=" + text or "" %>}
-</%method>
-
-
-<%method uniqueblock>
-<%args>
-        blockname
-        uniquename
-</%args>
-
-<%init>
-        context = m.attributes.setdefault('ubcontext', {})
-        try:
-            writer = context[blockname]
-        except KeyError:
-            context[blockname] = uniquename
-            writer = uniquename
-</%init>
-
-% if writer == uniquename:
-        <% m.content() %>
-%
+__FORMAT:LINK{<% path and "@path=" + path or "" %><% extra and "@xtra=" + extra or "" %><% text and "@text=" + text or "" %><% href and "@href=" + href or "" %><% class_ and "@class=" + class_ or "" %>}
 </%method>
 
 <%method popboxlink trim="both"> 
@@ -378,47 +368,32 @@ __FORMAT:LINK{<%path%><% extra and "|" + extra or "" %><% text and "@text=" + te
     <%init>
         if name is None:
             name = m.attributes.setdefault('popbox_name', 0)
-        m.attributes['popbox_name'] += 1
+        name += 1
+        m.attributes['popbox_name'] = name
         name = "popbox_" + repr(name)
     </%init>
-javascript:togglePopbox('<% name %>', show, hide)
+javascript:togglePopbox('<% name %>', '<% show %>', '<% hide %>')
 </%method>
-<%method popbox>
+
+<%method popbox trim="both">
 <%args>
     name = None
+    class_ = None
 </%args>
 <%init>
     if name is None:
         name = 'popbox_' + repr(m.attributes['popbox_name'])
 </%init>
-<&| SELF:uniqueblock, blockname='popboxscript', uniquename=name &>
-        <script>
-                function togglePopbox(id, show, hide) {
-                        var link = document.getElementById(id + "_link");
-                        var div = document.getElementById(id + "_div");
-                        if (div.style.display == 'block') {
-                                div.style.display = 'none';
-                                if (link) {
-                                    link.firstChild.nodeValue = show;
-                                }
-                        }
-                        else if (div.style.display == 'none') {
-                                div.style.display = 'block';
-                                if (link) {
-                                link.firstChild.nodeValue = hide;
-                                }
-                        }
-                }
-
-        </script>
-</&>
-<div id="<% name %>_div"><% m.content() %></div>
+<div id="<% name %>_div" class="<% class_ %>" style="display:none;"><% m.content().strip() %></div>
 </%method>
 
-<%method codepopper>
+<%method codepopper trim="both">
     <%args>
         link
     </%args>
-    <a href="<& SELF:popboxlink &>">link</a>
-    <&|SELF:popbox&><% m.content() %></&>
+    <%init>
+        href = m.scomp('SELF:popboxlink')
+    </%init>
+    '''PYESC<& SELF:link, href=href, text=link, class_="codepoplink" &>PYESC'''
+    '''PYESC<&|SELF:popbox, class_="codepop" &><% m.content() %></&>PYESC'''
 </%method>
