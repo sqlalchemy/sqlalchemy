@@ -194,7 +194,7 @@ class UnitOfWork(object):
                 #print "list on obj " + obj.__class__.__name__ + repr(id(obj)) + " is modified? " 
                 if self.deleted.contains(obj):
                     continue
-                commit_context.append_task(obj)
+                commit_context.append_task(obj, listonly = True)
             for obj in self.deleted:
                 #print "going to delete.... " + repr(obj)
                 commit_context.add_item_to_delete(obj)
@@ -245,11 +245,11 @@ class UOWTransaction(object):
         self.deleted_objects = util.HashSet()
         self.deleted_lists = util.HashSet()
 
-    def append_task(self, obj):
+    def append_task(self, obj, listonly = False):
         mapper = object_mapper(obj)
         self.mappers.append(mapper)
         #print "APPENDING TASK " + obj.__class__.__name__
-        task = self.get_task_by_mapper(mapper)
+        task = self.get_task_by_mapper(mapper, listonly = listonly)
         task.objects.append(obj)
 
     def add_item_to_delete(self, obj):
@@ -258,11 +258,16 @@ class UOWTransaction(object):
         task = self.get_task_by_mapper(mapper, True)
         task.objects.append(obj)
 
-    def get_task_by_mapper(self, mapper, isdelete = False):
+    def get_task_by_mapper(self, mapper, isdelete = False, listonly = None):
         try:
-            return self.tasks[(mapper, isdelete)]
+            task = self.tasks[(mapper, isdelete)]
+            if listonly is not None and (task.listonly is None or task.listonly is True):
+                task.listonly = listonly
+            return task
         except KeyError:
-            return self.tasks.setdefault((mapper, isdelete), UOWTask(mapper, isdelete))
+            if listonly is None:
+                listonly = False
+            return self.tasks.setdefault((mapper, isdelete), UOWTask(mapper, isdelete, listonly))
 
     def get_objects(self, mapper, isdelete = False):
         try:
@@ -298,12 +303,12 @@ class UOWTransaction(object):
         
         for task in self._sort_dependencies():
             obj_list = task.objects
-            if not task.isdelete:
+            if not task.listonly and not task.isdelete:
                 task.mapper.save_obj(obj_list, self)
             for dep in task.dependencies:
                 (processor, targettask) = dep
                 processor.process_dependencies(targettask.objects, self, delete = task.isdelete)
-            if task.isdelete:
+            if not task.listonly and task.isdelete:
                 task.mapper.delete_obj(obj_list, self)
             
     def post_exec(self):
@@ -409,18 +414,19 @@ class UOWTransaction(object):
         return tasklist
             
 class UOWTask(object):
-    def __init__(self, mapper, isdelete = False):
+    def __init__(self, mapper, isdelete = False, listonly = False):
         self.mapper = mapper
         self.isdelete = isdelete
         self.objects = util.HashSet(ordered = True)
         self.dependencies = []
-        #print "new task " + str(self)
+        self.listonly = listonly
+        print "new task " + str(self)
     
     def __str__(self):
         if self.isdelete:
-            return self.mapper.table.name + " deletes"
+            return self.mapper.table.name + " deletes " + repr(self.listonly)
         else:
-            return self.mapper.table.name + " saves"
+            return self.mapper.table.name + " saves " + repr(self.listonly)
             
 uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")
 
