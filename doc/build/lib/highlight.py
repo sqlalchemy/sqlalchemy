@@ -119,7 +119,6 @@ class Highlighter:
         self.source = source
         self.pos = 0
         self.html_escape = html_escape
-        
         if output is None:
             self.output = StringIO.StringIO()
         else:
