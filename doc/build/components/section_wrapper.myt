@@ -1,23 +1,24 @@
 <%python scope="global">
-	import string, re, time
+    import string, re, time
 
 </%python>
 
 <%args>
-	comp
-	toc
-	title
-	version = None
-	last_updated = None
-	index
-	paged
-	onepage
-	isdynamic
-	ext
+    comp
+    toc
+    title
+    version = None
+    last_updated = None
+    index
+    paged
+    onepage
+    isdynamic
+    ext
 </%args>
 
 
 <link href="docs.css" rel="stylesheet" type="text/css"></link>
+<script src="scripts.js"></script>
 
 
 <div style="position:absolute;left:0px;top:0px;"><a name="top"></a>&nbsp;</div>

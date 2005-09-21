@@ -99,3 +99,23 @@ a:hover {color:#700000;}
 	width:auto;
 }
 
+.code {
+}
+
+.codepop {
+	font-weight:bold;
+	font-family: verdana, sans-serif;
+	font-size:12px;
+	color:#000000;
+	border:1px solid;
+	padding:10px;
+}
+
+.codepoplink {
+	font-weight:bold;
+	font-family: verdana, sans-serif;
+	font-size:12px;
+	color:#000000;
+	border:1px solid;
+	padding:2px 8px 2px 8px;
+}
