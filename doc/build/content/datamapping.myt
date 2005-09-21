@@ -6,14 +6,13 @@
         <&|formatting.myt:code&>
         from sqlalchemy.schema import *
         from sqlalchemy.mapper import *
-        import sqlalchemy.sqlite as sqlite
-        engine = sqllite.engine(':memory:', {})
+        import sqlalchemy.databases.sqlite as sqlite
+        engine = sqlite.engine(':memory:', {})
         
         # table <& formatting.myt:link, path="metadata", text="metadata" &>
         users = Table('users', engine, 
             Column('user_id', INTEGER, primary_key = True),
             Column('user_name', VARCHAR(16), nullable = False),
-            Column('email_address', VARCHAR(60), key='email'),
             Column('password', VARCHAR(20), nullable = False)
         )
         
@@ -27,14 +26,25 @@
         
         # select
         user = m.select(users.c.user_name == 'fred')[0]  <&|formatting.myt:codepopper, link="sql" &>
-        sql sql sql sql 
+SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
+users.password AS users_password 
+FROM users WHERE users.user_name = :users_user_name
+
+{'users_user_name': 'fred'}
+
         </&>
         # modify
         user.user_name == 'fred jones'
         
         # commit
-        objectstore.commit()
+        objectstore.commit() <&|formatting.myt:codepopper, link="sql" &>
 
+UPDATE users SET user_id=:user_id, user_name=:user_name, 
+password=:password WHERE users.user_id = :user_id
+
+[{'user_name': 'fred jones', 'password': u'45nfss', 'user_id': 1}]        
+        </&>
+        
     </&>
 </&>
 
@@ -60,17 +70,49 @@
         ))
         
         # select
-        user = m.select(users.c.user_name == 'fred')[0]
-        address = user.addresses[0]
+        user = m.select(users.c.user_name == 'fred jones')[0] <&|formatting.myt:codepopper, link="sql" &>
+SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
+users.password AS users_password FROM users
+WHERE users.user_name = :users_user_name
+
+{'users_user_name': 'fred jones'}
+</&>
+address = user.addresses[0] <&|formatting.myt:codepopper, link="sql" &>
+
+SELECT email_addresses.address_id AS email_addresses_address_id, 
+email_addresses.user_id AS email_addresses_user_id, 
+email_addresses.email_address AS email_addresses_email_address 
+FROM email_addresses
+WHERE email_addresses.user_id = :users_user_id
+
+{'users_user_id': 1}
+
+</&>
         
         # modify
-        user.user_name == 'fred jones'
+        user.user_name = 'fred'
         user.addresses[0].email_address = 'fredjones@foo.com'
         user.addresses.append(Address('freddy@hi.org'))
         
         # commit
-        objectstore.commit()
+        objectstore.commit() <&|formatting.myt:codepopper, link="sql" &>
 
+UPDATE users SET user_id=:user_id, user_name=:user_name, 
+password=:password WHERE users.user_id = :user_id
+
+[{'user_name': u'fred', 'password': u'45nfss', 'user_id': 1}]
+
+UPDATE email_addresses SET address_id=:address_id, user_id=:user_id, 
+email_address=:email_address WHERE email_addresses.address_id = :address_id
+
+[{'email_address': 'fredjones@foo.com', 'address_id': 1, 'user_id': 1}]
+
+INSERT INTO email_addresses (address_id, user_id, email_address) 
+VALUES (:address_id, :user_id, :email_address)
+
+{'email_address': 'freddy@hi.org', 'address_id': None, 'user_id': 1}
+
+</&>
     </&>
 </&>
 
@@ -89,8 +131,7 @@
         users = Table('users', engine, 
             Column('user_id', INTEGER, primary_key = True),
             Column('user_name', VARCHAR(16), nullable = False),
-            Column('email_address', VARCHAR(60), key='email'),
-            Column('password', VARCHAR(20), nullable = False)
+            Column('password', VARCHAR(20), nullable = False),
             Column('preference_id', INTEGER, foreign_key = ForeignKey(prefs.c.pref_id))
         )
         
@@ -105,15 +146,36 @@
         ))
         
         # select
-        user = m.select(users.c.user_name == 'fred')[0]
+        user = m.select(users.c.user_name == 'fred')[0] <&|formatting.myt:codepopper, link="sql" &>
+SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
+users.password AS users_password, users.preference_id AS users_preference_id, 
+user_prefs.pref_id AS user_prefs_pref_id, 
+user_prefs.stylename AS user_prefs_stylename, 
+user_prefs.save_password AS user_prefs_save_password, 
+user_prefs.timezone AS user_prefs_timezone
+FROM users 
+LEFT OUTER JOIN user_prefs ON user_prefs.pref_id = users.preference_id
+WHERE users.user_name = :users_user_name
+        </&>
         save_password = user.preferences.save_password
         
         # modify
         user.preferences.stylename = 'bluesteel'
+        user.addresses.append(Address('freddy@hi.org'))
         
         # commit
-        objectstore.commit()
+        objectstore.commit() <&|formatting.myt:codepopper, link="sql" &>
+UPDATE user_prefs SET pref_id=:pref_id, stylename=:stylename, 
+save_password=:save_password, timezone=:timezone 
+WHERE user_prefs.pref_id = :pref_id
 
+[{'timezone': u'EST', 'stylename': 'bluesteel', 'save_password': 1, 'pref_id': 1}]
+
+INSERT INTO email_addresses (address_id, user_id, email_address) 
+VALUES (:address_id, :user_id, :email_address)
+
+{'email_address': 'freddy@hi.org', 'address_id': None, 'user_id': 1}
+</&>
     </&>
 </&>
 
