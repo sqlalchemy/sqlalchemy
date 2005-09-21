@@ -26,7 +26,7 @@
         m = mapper(User, users)
         
         # select
-        <&|formatting.myt:codepopper, link="user = m.select(users.c.user_name == 'fred')[0]" &>
+        user = m.select(users.c.user_name == 'fred')[0]  <&|formatting.myt:codepopper, link="sql" &>
         sql sql sql sql 
         </&>
         # modify
