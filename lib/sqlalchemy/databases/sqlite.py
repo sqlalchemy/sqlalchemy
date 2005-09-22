@@ -53,25 +53,15 @@ class SLBoolean(sqltypes.Boolean):
         return "BOOLEAN"
         
 colspecs = {
-    sqltypes.INT : SLInteger,
-    sqltypes.CHAR : SLChar,
-    sqltypes.VARCHAR : SLString,
-    sqltypes.TEXT : SLText,
+    sqltypes.Integer : SLInteger,
     sqltypes.Numeric : SLNumeric,
-    sqltypes.TIMESTAMP : SLDateTime,
-    sqltypes.DATETIME : SLDateTime,
-    sqltypes.CLOB : SLText,
-    sqltypes.BLOB : SLBinary,
-    sqltypes.BOOLEAN : SLBoolean,
-    sqltypes.FLOAT : SLNumeric,
-    sqltypes.DECIMAL : SLNumeric,
+    sqltypes.DateTime : SLDateTime,
+    sqltypes.String : SLString,
+    sqltypes.Binary : SLBinary,
+    sqltypes.Boolean : SLBoolean,
+    sqltypes.TEXT : SLText,
+    sqltypes.CHAR: SLChar,
 }
-
-def type_descriptor(typeobj):
-    try:
-        return typeobj.typeself.adapt(colspecs[typeobj.typeclass])
-    except KeyError:
-        return typeobj.typeself.adapt(typeobj.typeclass)
 
 pragma_names = {
     'INTEGER' : SLInteger,
@@ -98,7 +88,7 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
             self.context.last_inserted_ids = [cursor.lastrowid]
 
     def type_descriptor(self, typeobj):
-        return type_descriptor(typeobj)
+        return typeobj.typeself.type_descriptor(colspecs)
         
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
