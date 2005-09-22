@@ -199,13 +199,17 @@ class ANSICompiler(sql.Compiled):
         self.strings[table] = ""
 
     def visit_join(self, join):
+        # TODO: ppl are going to want RIGHT, FULL OUTER and NATURAL joins.
+        righttext = self.get_from_text(join.right)
+        if join.right.group_parenthesized():
+            righttext = "(" + righttext + ")"
         if join.isouter:
-            self.froms[join] = (self.get_from_text(join.left) + " LEFT OUTER JOIN " + self.get_from_text(join.right) + 
+            self.froms[join] = (self.get_from_text(join.left) + " LEFT OUTER JOIN " + righttext + 
             " ON " + self.get_str(join.onclause))
         else:
-            self.froms[join] = (self.get_from_text(join.left) + " JOIN " + self.get_from_text(join.right) +
+            self.froms[join] = (self.get_from_text(join.left) + " JOIN " + righttext +
             " ON " + self.get_str(join.onclause))
-
+        
     def visit_insert(self, insert_stmt):
         self.isinsert = True
         colparams = insert_stmt.get_colparams(self.bindparams)

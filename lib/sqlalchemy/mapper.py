@@ -36,8 +36,8 @@ def relation_loader(mapper, secondary = None, primaryjoin = None, secondaryjoin 
     else:
         return EagerLoader(mapper, secondary, primaryjoin, secondaryjoin, **options)
     
-def relation_mapper(class_, selectable, secondary = None, primaryjoin = None, secondaryjoin = None, table = None, properties = None, lazy = True, foreignkey = None, primary_keys = None, **options):
-    return relation_loader(mapper(class_, selectable, table=table, properties=properties, primary_keys=primary_keys, **options), secondary, primaryjoin, secondaryjoin, lazy = lazy, foreignkey = foreignkey, **options)
+def relation_mapper(class_, table, secondary = None, primaryjoin = None, secondaryjoin = None, primarytable = None, properties = None, lazy = True, foreignkey = None, primary_keys = None, **options):
+    return relation_loader(mapper(class_, table, primarytable=primarytable, properties=properties, primary_keys=primary_keys, **options), secondary, primaryjoin, secondaryjoin, lazy = lazy, foreignkey = foreignkey, **options)
 
     
 # TODO: where do we want to register these mappers, register them against their classes/objects etc
@@ -70,28 +70,28 @@ def object_mapper(object):
             raise "Object " + object.__class__.__name__ + "/" + repr(id(object)) + " has no mapper specified"
         
 class Mapper(object):
-    def __init__(self, hashkey, class_, selectable, table = None, scope = "thread", properties = None, primary_keys = None, **kwargs):
+    def __init__(self, hashkey, class_, table, primarytable = None, scope = "thread", properties = None, primary_keys = None, **kwargs):
         self.hashkey = hashkey
         self.class_ = class_
         self.scope = scope
-        self.selectable = selectable
+        self.table = table
         tf = TableFinder()
-        self.selectable.accept_visitor(tf)
+        self.table.accept_visitor(tf)
         self.tables = tf.tables
         self.primary_keys = {}
-        if table is None:
+        if primarytable is None:
             if len(self.tables) > 1:
-                raise "Selectable contains multiple tables - specify primary table argument to Mapper"
-            self.table = self.tables[0]
+                raise "table contains multiple tables - specify primary table argument to Mapper"
+            self.primarytable = self.tables[0]
         else:
-            self.table = table
+            self.primarytable = primarytable
 
         if primary_keys is not None:
             for k in primary_keys:
                 self.primary_keys.setdefault(k.table, []).append(k)
-                self.primary_keys.setdefault(self.selectable, []).append(k)
+                self.primary_keys.setdefault(self.table, []).append(k)
         else:
-            for t in self.tables + [self.selectable]:
+            for t in self.tables + [self.table]:
                 try:
                     list = self.primary_keys[t]
                 except KeyError:
@@ -101,7 +101,7 @@ class Mapper(object):
                 for k in t.primary_keys:
                     list.append(k)
 
-        self.columns = self.selectable.columns
+        self.columns = self.table.columns
         self.c = self.columns
         
         # object attribute names mapped to MapperProperty objects
@@ -125,9 +125,9 @@ class Mapper(object):
                         proplist = self.columntoproperty.setdefault(col.original, [])
                         proplist.append(prop)
 
-        # load properties from the main Selectable object,
+        # load properties from the main table object,
         # not overriding those set up in the 'properties' argument
-        for column in self.selectable.columns:
+        for column in self.table.columns:
             if self.columntoproperty.has_key(column.original):
                 continue
                 
@@ -150,7 +150,7 @@ class Mapper(object):
     engines = property(lambda s: [t.engine for t in s.tables])
 
     def __str__(self):
-        return "Mapper|" + self.class_.__name__ + "|" + self.table.name
+        return "Mapper|" + self.class_.__name__ + "|" + self.primarytable.name
     def hash_key(self):
         return self.hashkey
         
@@ -184,14 +184,14 @@ class Mapper(object):
         """returns an instance of the object based on the given identifier, or None
         if not found.  The *ident argument is a 
         list of primary keys in the order of the table def's primary keys."""
-        key = objectstore.get_id_key(ident, self.class_, self.table)
+        key = objectstore.get_id_key(ident, self.class_, self.primarytable)
         #print "key: " + repr(key) + " ident: " + repr(ident)
         try:
             return objectstore.uow()._get(key)
         except KeyError:
             clause = sql.and_()
             i = 0
-            for primary_key in self.primary_keys[self.table]:
+            for primary_key in self.primary_keys[self.primarytable]:
                 # appending to the and_'s clause list directly to skip
                 # typechecks etc.
                 clause.clauses.append(primary_key == ident[i])
@@ -202,7 +202,7 @@ class Mapper(object):
                 return None
 
     def identity_key(self, instance):
-        return objectstore.get_id_key(tuple([self._getattrbycolumn(instance, column) for column in self.primary_keys[self.selectable]]), self.class_, self.table)
+        return objectstore.get_id_key(tuple([self._getattrbycolumn(instance, column) for column in self.primary_keys[self.table]]), self.class_, self.primarytable)
 
     def compile(self, whereclause = None, **options):
         """works like select, except returns the SQL statement object without 
@@ -322,7 +322,7 @@ class Mapper(object):
             prop.register_deleted(obj, uow)
             
     def _compile(self, whereclause = None, order_by = None, **options):
-        statement = sql.select([self.selectable], whereclause, order_by = order_by)
+        statement = sql.select([self.table], whereclause, order_by = order_by)
         for key, value in self.props.iteritems():
             value.setup(key, statement, **options) 
         statement.use_labels = True
@@ -337,7 +337,7 @@ class Mapper(object):
         return self.instances(statement.execute(**params), statement.engine)
 
     def _identity_key(self, row):
-        return objectstore.get_row_key(row, self.class_, self.table, self.primary_keys[self.selectable])
+        return objectstore.get_row_key(row, self.class_, self.primarytable, self.primary_keys[self.table])
 
     def _instance(self, row, imap, result = None, populate_existing = False):
         """pulls an object instance from the given row and appends it to the given result list.
@@ -368,7 +368,7 @@ class Mapper(object):
         if not exists:
             # check if primary keys in the result are None - this indicates 
             # an instance of the object is not present in the row
-            for col in self.primary_keys[self.selectable]:
+            for col in self.primary_keys[self.table]:
                 if row[col.label] is None:
                     return None
             instance = self.class_()
@@ -457,7 +457,7 @@ class PropertyLoader(MapperProperty):
     def __init__(self, mapper, secondary, primaryjoin, secondaryjoin, foreignkey = None, uselist = None, private = False):
         self.uselist = uselist
         self.mapper = mapper
-        self.target = self.mapper.selectable
+        self.target = self.mapper.table
         self.secondary = secondary
         self.primaryjoin = primaryjoin
         self.secondaryjoin = secondaryjoin
@@ -477,10 +477,10 @@ class PropertyLoader(MapperProperty):
             if self.secondaryjoin is None:
                 self.secondaryjoin = self.match_primaries(self.target, self.secondary)
             if self.primaryjoin is None:
-                self.primaryjoin = self.match_primaries(parent.selectable, self.secondary)
+                self.primaryjoin = self.match_primaries(parent.table, self.secondary)
         else:
             if self.primaryjoin is None:
-                self.primaryjoin = self.match_primaries(parent.selectable, self.target)
+                self.primaryjoin = self.match_primaries(parent.table, self.target)
         
         # if the foreign key wasnt specified and theres no assocaition table, try to figure
         # out who is dependent on who. we dont need all the foreign keys represented in the join,
@@ -495,13 +495,13 @@ class PropertyLoader(MapperProperty):
             else:
                 self.foreignkey = w.dependent
 
-        if self.uselist is None and self.foreignkey is not None and self.foreignkey.table == self.parent.table:
+        if self.uselist is None and self.foreignkey is not None and self.foreignkey.table == self.parent.primarytable:
             self.uselist = False
 
         if self.uselist is None:
             self.uselist = True
                     
-        (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.selectable, self.primaryjoin, self.secondaryjoin)
+        (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.table, self.primaryjoin, self.secondaryjoin)
                 
         if not hasattr(parent.class_, key):
             objectstore.uow().register_attribute(parent.class_, key, uselist = self.uselist)
@@ -566,7 +566,7 @@ class PropertyLoader(MapperProperty):
             uowcommit.register_task(self.parent, False, self, self.parent, False)
             uowcommit.register_task(self.parent, True, self, self.parent, True)
                 
-        elif self.foreignkey.table == self.parent.table:
+        elif self.foreignkey.table == self.parent.primarytable:
             uowcommit.register_dependency(self.mapper, self.parent)
             uowcommit.register_task(self.mapper, False, self, self.parent, False)
             #uowcommit.register_task(self.mapper, True, self, self.parent, False)
@@ -634,7 +634,7 @@ class PropertyLoader(MapperProperty):
                 for obj in deplist:
                     params = {}
                     for bind in self.lazybinds.values():
-                        params[bind.key] = self.parent._getattrbycolumn(obj, self.parent.selectable.c[bind.shortname])
+                        params[bind.key] = self.parent._getattrbycolumn(obj, self.parent.table.c[bind.shortname])
                     updates.append(params)
                     childlist = getlist(obj, False)
                     for child in childlist.deleted_items() + childlist.unchanged_items():
@@ -657,7 +657,7 @@ class PropertyLoader(MapperProperty):
                     clearkeys = True
                     for child in childlist.deleted_items():
                          self.primaryjoin.accept_visitor(setter)
-        elif self.foreignkey.table == self.parent.table:
+        elif self.foreignkey.table == self.parent.primarytable:
             for child in deplist:
                 childlist = getlist(child)
                 if childlist is None: return
@@ -680,14 +680,14 @@ class PropertyLoader(MapperProperty):
         an "association row" that represents an association link between the 'parent' and 'child' object."""
         if binary.operator == '=':
             colmap = {binary.left.table : binary.left, binary.right.table : binary.right}
-            if colmap.has_key(self.parent.table) and colmap.has_key(self.target):
-                #print "set " + repr(child) + ":" + colmap[self.target].key + " to " + repr(obj) + ":" + colmap[self.parent.table].key
+            if colmap.has_key(self.parent.primarytable) and colmap.has_key(self.target):
+                #print "set " + repr(child) + ":" + colmap[self.target].key + " to " + repr(obj) + ":" + colmap[self.parent.primarytable].key
                 if clearkeys:
                     self.mapper._setattrbycolumn(child, colmap[self.target], None)
                 else:
-                    self.mapper._setattrbycolumn(child, colmap[self.target], self.parent._getattrbycolumn(obj, colmap[self.parent.table]))
-            elif colmap.has_key(self.parent.table) and colmap.has_key(self.secondary):
-                associationrow[colmap[self.secondary].key] = self.parent._getattrbycolumn(obj, colmap[self.parent.table])
+                    self.mapper._setattrbycolumn(child, colmap[self.target], self.parent._getattrbycolumn(obj, colmap[self.parent.primarytable]))
+            elif colmap.has_key(self.parent.primarytable) and colmap.has_key(self.secondary):
+                associationrow[colmap[self.secondary].key] = self.parent._getattrbycolumn(obj, colmap[self.parent.primarytable])
             elif colmap.has_key(self.target) and colmap.has_key(self.secondary):
                 associationrow[colmap[self.secondary].key] = self.mapper._getattrbycolumn(child, colmap[self.target])
             
@@ -756,7 +756,7 @@ class EagerLoader(PropertyLoader):
         [self.to_alias.append(f) for f in self.primaryjoin._get_from_objects()]
         if self.secondaryjoin is not None:
             [self.to_alias.append(f) for f in self.secondaryjoin._get_from_objects()]
-        del self.to_alias[parent.selectable]
+        del self.to_alias[parent.table]
 
     def setup(self, key, statement, **options):
         """add a left outer join to the statement thats being constructed"""
@@ -764,7 +764,7 @@ class EagerLoader(PropertyLoader):
         if statement.whereclause is not None:
             # "aliasize" the tables referenced in the user-defined whereclause to not 
             # collide with the tables used by the eager load
-            # note that we arent affecting the mapper's selectable, nor our own primary or secondary joins
+            # note that we arent affecting the mapper's table, nor our own primary or secondary joins
             aliasizer = Aliasizer(*self.to_alias)
             statement.whereclause.accept_visitor(aliasizer)
             for alias in aliasizer.aliases.values():
@@ -773,12 +773,12 @@ class EagerLoader(PropertyLoader):
         if hasattr(statement, '_outerjoin'):
             towrap = statement._outerjoin
         else:
-            towrap = self.parent.selectable
+            towrap = self.parent.table
 
         if self.secondaryjoin is not None:
-            statement._outerjoin = sql.outerjoin(sql.outerjoin(towrap, self.secondary, self.secondaryjoin), self.target, self.primaryjoin)
+            statement._outerjoin = sql.outerjoin(towrap, self.secondary, self.secondaryjoin).outerjoin(self.target, self.primaryjoin)
         else:
-            statement._outerjoin = sql.outerjoin(towrap, self.target, self.primaryjoin)
+            statement._outerjoin = towrap.outerjoin(self.target, self.primaryjoin)
 
         statement.append_from(statement._outerjoin)
         statement.append_column(self.target)
@@ -865,14 +865,14 @@ def hash_key(obj):
     else:
         return obj.hash_key()
 
-def mapper_hash_key(class_, selectable, table = None, properties = None, scope = "thread", **kwargs):
+def mapper_hash_key(class_, table, primarytable = None, properties = None, scope = "thread", **kwargs):
     if properties is None:
         properties = {}
     return (
-        "Mapper(%s, %s, table=%s, properties=%s, scope=%s)" % (
+        "Mapper(%s, %s, primarytable=%s, properties=%s, scope=%s)" % (
             repr(class_),
-            hash_key(selectable),
             hash_key(table),
+            hash_key(primarytable),
             repr(dict([(k, hash_key(p)) for k,p in properties.iteritems()])),
             scope        )
     )

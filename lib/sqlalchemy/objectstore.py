@@ -420,13 +420,13 @@ class UOWTask(object):
         self.objects = util.HashSet(ordered = True)
         self.dependencies = []
         self.listonly = listonly
-        print "new task " + str(self)
+        #print "new task " + str(self)
     
     def __str__(self):
         if self.isdelete:
-            return self.mapper.table.name + " deletes " + repr(self.listonly)
+            return self.mapper.primarytable.name + " deletes " + repr(self.listonly)
         else:
-            return self.mapper.table.name + " saves " + repr(self.listonly)
+            return self.mapper.primarytable.name + " saves " + repr(self.listonly)
             
 uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")
 

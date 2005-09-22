@@ -88,7 +88,7 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
             self.context.last_inserted_ids = [cursor.lastrowid]
 
     def type_descriptor(self, typeobj):
-        return typeobj.typeself.type_descriptor(colspecs)
+        return sqltypes.adapt_type(typeobj, colspecs)
         
     def last_inserted_ids(self):
         return self.context.last_inserted_ids

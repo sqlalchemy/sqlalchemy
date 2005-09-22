@@ -15,7 +15,7 @@ class QueryTest(PersistTest):
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20)),
         )
-        self.users.build()
+        self.users.create()
         
         
     def testinsert(self):

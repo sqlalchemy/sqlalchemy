@@ -89,7 +89,7 @@ class SaveTest(AssertMixin):
         """tests a save of an object where each instance spans two tables. also tests
         redefinition of the keynames for the column properties."""
         usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
-        m = mapper(User, usersaddresses, table = users,  
+        m = mapper(User, usersaddresses, primarytable = users,  
             properties = dict(
                 email = ColumnProperty(addresses.c.email_address), 
                 foo_id = ColumnProperty(users.c.user_id, addresses.c.user_id)
