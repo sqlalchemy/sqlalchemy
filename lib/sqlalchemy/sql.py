@@ -290,10 +290,11 @@ class FromClause(ClauseElement):
         visitor.visit_fromclause(self)
     
 class BindParamClause(ClauseElement):
-    def __init__(self, key, value, shortname = None):
+    def __init__(self, key, value, shortname = None, typeengine = None):
         self.key = key
         self.value = value
         self.shortname = shortname
+        self.typeengine = typeengine
 
     def accept_visitor(self, visitor):
         visitor.visit_bindparam(self)
@@ -303,7 +304,13 @@ class BindParamClause(ClauseElement):
      
     def hash_key(self):
         return "BindParam(%s, %s, %s)" % (repr(self.key), repr(self.value), repr(self.shortname))
-        
+
+    def typeprocess(self, value):
+        if self.typeengine is not None:
+            return self.typeengine.convert_bind_param(value)
+        else:
+            return value
+            
 class TextClause(ClauseElement):
     """represents any plain text WHERE clause or full SQL statement"""
     
@@ -483,7 +490,8 @@ class ColumnSelectable(Selectable):
         self.column = column
         self.name = column.name
         self.columns = [self.column]
-
+        self.typeengine = column.table.engine.type_descriptor(self.column.type)
+        
         if column.table.name:
             self.label = column.table.name + "_" + self.column.name
             self.fullname = column.table.name + "." + self.column.name
@@ -500,9 +508,9 @@ class ColumnSelectable(Selectable):
     def _compare(self, operator, obj):
         if _is_literal(obj):
             if self.column.table.name is None:
-                obj = BindParamClause(self.name, obj, shortname = self.name)
+                obj = BindParamClause(self.name, obj, shortname = self.name, typeengine = self.typeengine)
             else:
-                obj = BindParamClause(self.column.table.name + "_" + self.name, obj, shortname = self.name)
+                obj = BindParamClause(self.column.table.name + "_" + self.name, obj, shortname = self.name, typeengine = self.typeengine)
 
         return BinaryClause(self.column, obj, operator)
 

@@ -70,10 +70,12 @@ def object_mapper(object):
             raise "Object " + object.__class__.__name__ + "/" + repr(id(object)) + " has no mapper specified"
         
 class Mapper(object):
-    def __init__(self, hashkey, class_, table, primarytable = None, scope = "thread", properties = None, primary_keys = None, **kwargs):
+    def __init__(self, hashkey, class_, table, primarytable = None, scope = "thread", properties = None, primary_keys = None, inherits = None, **kwargs):
         self.hashkey = hashkey
         self.class_ = class_
         self.scope = scope
+        if inherits is not None:
+            table = table.join(inherits.table)
         self.table = table
         tf = TableFinder()
         self.table.accept_visitor(tf)
@@ -116,6 +118,12 @@ class Mapper(object):
         # arguments, for caching purposes
         self.properties = properties
 
+        if inherits is not None and inherits.properties is not None:
+            if self.properties is None:
+                self.properties = {}
+            for key in inherits.properties.keys():
+                self.properties.setdefault(key, inherits.properties[key])
+                
         # load custom properties 
         if self.properties is not None:
             for key, prop in self.properties.iteritems():

@@ -197,7 +197,7 @@ class ResultProxy:
         i = 0
         if metadata is not None:
             for item in metadata:
-                print repr(item)
+                #print repr(item)
                 #rec = (engine.type_descriptor(item[1]), i)
                 rec = (None, i)
                 self.props[item[0]] = rec

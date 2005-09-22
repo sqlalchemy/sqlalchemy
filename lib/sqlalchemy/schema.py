@@ -110,7 +110,7 @@ class Column(SchemaItem):
             table.primary_keys.append(self)
         self.table = table
         self.engine = table.engine
-
+        self.type = self.engine.type_descriptor(self.type)
         self._impl = self.engine.columnimpl(self)
         
         if self.foreign_key is not None:
