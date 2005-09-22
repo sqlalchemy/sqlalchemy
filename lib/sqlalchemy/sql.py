@@ -564,7 +564,7 @@ class TableImpl(Selectable):
     def _get_from_objects(self):
         return [self.table]
 
-    def build(self, sqlproxy = None, **params):
+    def create(self, sqlproxy = None, **params):
         if sqlproxy is None:
             sqlproxy = self.table.engine.proxy()
         
