@@ -490,7 +490,6 @@ class ColumnSelectable(Selectable):
         self.column = column
         self.name = column.name
         self.columns = [self.column]
-        self.typeengine = column.table.engine.type_descriptor(self.column.type)
         
         if column.table.name:
             self.label = column.table.name + "_" + self.column.name
@@ -510,7 +509,7 @@ class ColumnSelectable(Selectable):
             if self.column.table.name is None:
                 obj = BindParamClause(self.name, obj, shortname = self.name, typeengine = self.typeengine)
             else:
-                obj = BindParamClause(self.column.table.name + "_" + self.name, obj, shortname = self.name, typeengine = self.typeengine)
+                obj = BindParamClause(self.column.table.name + "_" + self.name, obj, shortname = self.name, typeengine = self.column.type)
 
         return BinaryClause(self.column, obj, operator)
 
