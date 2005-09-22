@@ -163,9 +163,9 @@ class Mapper(object):
         # TODO: get some notion of "primary mapper" going so multiple mappers dont collide
         self.class_._mapper = self.hashkey
 
-    def instances(self, cursor, db = None):
+    def instances(self, cursor, db):
         result = util.HistoryArraySet()
-        cursor = engine.ResultProxy(cursor, echo = db and db.echo, engine = db)
+        cursor = engine.ResultProxy(cursor, db, echo = db.echo)
         imap = {}
         while True:
             row = cursor.fetchone()

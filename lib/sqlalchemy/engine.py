@@ -24,6 +24,14 @@ import sqlalchemy.util as util
 import sqlalchemy.sql as sql
 import StringIO
 
+class TypeDescriptor(object):
+    def get_col_spec(self):
+        raise NotImplementedError()
+    def convert_bind_param(self, value):
+        raise NotImplementedError()
+    def convert_result_value(self, value):
+        raise NotImplementedError()
+
 class SchemaIterator(schema.SchemaVisitor):
     """a visitor that can gather text into a buffer and execute the contents of the buffer."""
     
@@ -58,6 +66,9 @@ class SQLEngine(schema.SchemaEngine):
         self.tables = {}
         self.notes = {}
 
+    def type_descriptor(self, type):
+        raise NotImplementedError()
+        
     def schemagenerator(self, proxy, **params):
         raise NotImplementedError()
 
@@ -174,6 +185,7 @@ class SQLEngine(schema.SchemaEngine):
             c = connection.cursor()
 
         self.pre_exec(connection, c, statement, parameters, echo = echo, **kwargs)
+        # TODO: affix TypeDescriptors ehre to pre-process bind params
         if isinstance(parameters, list):
             c.executemany(statement, parameters)
         else:
@@ -186,12 +198,14 @@ class SQLEngine(schema.SchemaEngine):
 
 
 class ResultProxy:
-    def __init__(self, cursor, echo = False):
+    def __init__(self, cursor, echo = False, engine = None):
         self.cursor = cursor
         self.echo = echo
+        self.engine = engine
         metadata = cursor.description
         self.props = {}
         i = 0
+        # TODO: affix TypeDescriptors here to post-process results
         if metadata is not None:
             for item in metadata:
                 self.props[item[0]] = i

@@ -178,7 +178,7 @@ class EagerTest(AssertMixin):
         c = s.compile()
         print "\n" + str(c) + repr(c.get_params())
         
-        l = m.instances(s.execute(emailad = 'jack@bean.com'))
+        l = m.instances(s.execute(emailad = 'jack@bean.com'), users.engine)
         print repr(l)
         
     def testmulti(self):

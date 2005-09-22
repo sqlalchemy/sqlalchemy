@@ -20,36 +20,41 @@ import copy
 
 __ALL__ = ['Table', 'Column', 'Sequence', 'ForeignKey', 
             'INT', 'CHAR', 'VARCHAR', 'TEXT', 'FLOAT', 'DECIMAL', 
-            'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN'
+            'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN', 'String', 'Integer', 'Numeric', 'DateTime', 'Binary', 
             ]
 
 
-class INT:
+class String:
+    def __init__(self, length):
+        self.length = length
+
+class Integer:
     """integer datatype"""
     pass
-
-INTEGER = INT
-class CHAR:
-    """character datatype"""
-    def __init__(self, length):
-        self.length = length
-
-class VARCHAR:
-    def __init__(self, length):
-        self.length = length
 
 class Numeric:
     def __init__(self, precision, length):
         self.precision = precision
         self.length = length
+
+class DateTime:
+    pass
+
+class Binary:pass
+class Boolean:pass
+    
 class FLOAT(Numeric):pass
-class TEXT: pass
+class TEXT(String): pass
 class DECIMAL(Numeric):pass
-class TIMESTAMP: pass
-class DATETIME: pass
-class CLOB: pass
-class BLOB: pass
-class BOOLEAN: pass
+class INT(Integer):pass
+INTEGER = INT
+class TIMESTAMP(DateTime): pass
+class DATETIME(DateTime): pass
+class CLOB(String): pass
+class VARCHAR(String): pass
+class CHAR(String):pass
+class BLOB(Binary): pass
+class BOOLEAN(Boolean): pass
 
 
 class SchemaItem(object):
