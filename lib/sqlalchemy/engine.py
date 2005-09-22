@@ -56,6 +56,7 @@ class SQLEngine(schema.SchemaEngine):
         self.echo = echo
         self.context = util.ThreadLocal()
         self.tables = {}
+        self.notes = {}
 
     def schemagenerator(self, proxy, **params):
         raise NotImplementedError()
