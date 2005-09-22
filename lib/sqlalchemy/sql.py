@@ -290,11 +290,11 @@ class FromClause(ClauseElement):
         visitor.visit_fromclause(self)
     
 class BindParamClause(ClauseElement):
-    def __init__(self, key, value, shortname = None, typeengine = None):
+    def __init__(self, key, value, shortname = None, type = None):
         self.key = key
         self.value = value
         self.shortname = shortname
-        self.typeengine = typeengine
+        self.type = type
 
     def accept_visitor(self, visitor):
         visitor.visit_bindparam(self)
@@ -306,8 +306,8 @@ class BindParamClause(ClauseElement):
         return "BindParam(%s, %s, %s)" % (repr(self.key), repr(self.value), repr(self.shortname))
 
     def typeprocess(self, value):
-        if self.typeengine is not None:
-            return self.typeengine.convert_bind_param(value)
+        if self.type is not None:
+            return self.type.convert_bind_param(value)
         else:
             return value
             
@@ -412,7 +412,18 @@ class Selectable(FromClause):
     def select(self, whereclauses = None, **params):
         raise NotImplementedError()
 
+    def join(self, right, *args, **kwargs):
+        return Join(self, right, *args, **kwargs)
+
+    def outerjoin(self, right, *args, **kwargs):
+        return Join(self, right, isouter = True, *args, **kwargs)
+
+    def group_parenthesized(self):
+        """indicates if this Selectable requires parenthesis when grouped into a compound statement"""
+        return True
+        
 class Join(Selectable):
+    # TODO: put "using" + "natural" concepts in here and make "onclause" optional
     def __init__(self, left, right, onclause, isouter = False, allcols = True):
         self.left = left
         self.right = right
@@ -477,6 +488,9 @@ class Alias(Selectable):
     def _get_from_objects(self):
         return [self]
 
+    def group_parenthesized(self):
+        return False
+        
     engine = property(lambda s: s.selectable.engine)
 
     def select(self, whereclauses = None, **params):
@@ -500,16 +514,19 @@ class ColumnSelectable(Selectable):
 
     def copy_container(self):
         return self.column
-    
+
+    def group_parenthesized(self):
+        return False
+        
     def _get_from_objects(self):
         return [self.column.table]
     
     def _compare(self, operator, obj):
         if _is_literal(obj):
             if self.column.table.name is None:
-                obj = BindParamClause(self.name, obj, shortname = self.name, typeengine = self.typeengine)
+                obj = BindParamClause(self.name, obj, shortname = self.name, type = self.column.type)
             else:
-                obj = BindParamClause(self.column.table.name + "_" + self.name, obj, shortname = self.name, typeengine = self.column.type)
+                obj = BindParamClause(self.column.table.name + "_" + self.name, obj, shortname = self.name, type = self.column.type)
 
         return BinaryClause(self.column, obj, operator)
 
@@ -554,6 +571,15 @@ class TableImpl(Selectable):
 #    def _engine(self):
 #        return self.table.engine
 
+    def group_parenthesized(self):
+        return False
+    
+    def join(self, right, *args, **kwargs):
+        return Join(self.table, right, *args, **kwargs)
+    
+    def outerjoin(self, right, *args, **kwargs):
+        return Join(self.table, right, isouter = True, *args, **kwargs)
+            
     def select(self, whereclauses = None, **params):
         return select([self.table], whereclauses, **params)
 
