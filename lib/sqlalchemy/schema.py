@@ -120,6 +120,7 @@ class Table(SchemaItem):
 class Column(SchemaItem):
     """represents a column in a database table."""
     def __init__(self, name, type, key = None, primary_key = False, foreign_key = None, sequence = None, nullable = True):
+        print "NAME: " + name
         self.name = name
         self.type = type
         self.sequence = sequence
