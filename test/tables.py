@@ -51,7 +51,7 @@ itemkeywords = Table('itemkeywords', db,
     Column('keyword_id', INT, foreign_key = ForeignKey(keywords.c.keyword_id))
 )
 
-users.build()
+users.create()
 
 if DATA:
     users.insert().execute(
@@ -60,7 +60,7 @@ if DATA:
         dict(user_id = 9, user_name = 'fred')
     )
 
-addresses.build()
+addresses.create()
 if DATA:
     addresses.insert().execute(
         dict(address_id = 1, user_id = 7, email_address = "jack@bean.com"),
@@ -68,7 +68,7 @@ if DATA:
         dict(address_id = 3, user_id = 8, email_address = "ed@lala.com")
     )
 
-orders.build()
+orders.create()
 if DATA:
     orders.insert().execute(
         dict(order_id = 1, user_id = 7, description = 'order 1', isopen=0),
@@ -78,7 +78,7 @@ if DATA:
         dict(order_id = 5, user_id = 7, description = 'order 5', isopen=0)
     )
 
-orderitems.build()
+orderitems.create()
 if DATA:
     orderitems.insert().execute(
         dict(item_id=1, order_id=2, item_name='item 1'),
@@ -88,7 +88,7 @@ if DATA:
         dict(item_id=4, order_id=3, item_name='item 4')
     )
 
-keywords.build()
+keywords.create()
 if DATA:
     keywords.insert().execute(
         dict(keyword_id=1, name='blue'),
@@ -100,7 +100,7 @@ if DATA:
         dict(keyword_id=7, name='square')
     )
 
-itemkeywords.build()
+itemkeywords.create()
 if DATA:
     itemkeywords.insert().execute(
         dict(keyword_id=2, item_id=1),
