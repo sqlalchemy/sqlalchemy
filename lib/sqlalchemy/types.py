@@ -1,26 +1,29 @@
 __ALL__ = [
             'INT', 'CHAR', 'VARCHAR', 'TEXT', 'FLOAT', 'DECIMAL', 
-            'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN', 'String', 'Integer', 'Numeric', 'DateTime', 'Binary', 
+            'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN', 'String', 'Integer', 'Numeric', 'DateTime', 'Binary', 'Boolean'
             ]
 
 
 class TypeEngineMeta(type):
-    def convert_bind_param(cls, value):
-        return cls.singleton.convert_bind_param(value)
-    def convert_result_value(cls, value):
-        return cls.singleton.convert_result_value(value)
-        
+    typeself = property(lambda cls:cls.singleton)        
+    typeclass = property(lambda cls: cls)
+    
 class TypeEngine(object):
     __metaclass__ = TypeEngineMeta
-    def get_col_spec(self):
+    def get_col_spec(self, typeobj):
         raise NotImplementedError()
     def convert_bind_param(self, value):
         raise NotImplementedError()
     def convert_result_value(self, value):
         raise NotImplementedError()
+    def adapt(self, typeobj):
+        return typeobj()
 
+    typeclass = property(lambda s: s.__class__)
+    typeself = property(lambda s:s)
+    
 class NullTypeEngine(TypeEngine):
-    def get_col_spec(self):
+    def get_col_spec(self, typeobj):
         raise NotImplementedError()
     def convert_bind_param(self, value):
         return value
@@ -30,6 +33,8 @@ class NullTypeEngine(TypeEngine):
 class String(TypeEngine):
     def __init__(self, length):
         self.length = length
+    def adapt(self, typeobj):
+        return typeobj(self.length)
 String.singleton = String(-1)
 
 class Integer(TypeEngine):
@@ -41,6 +46,8 @@ class Numeric(TypeEngine):
     def __init__(self, precision, length):
         self.precision = precision
         self.length = length
+    def adapt(self, typeobj):
+        return typeobj(self.precision, self.length)
 Numeric.singleton = Numeric(10, 2)
 
 class DateTime(TypeEngine):
