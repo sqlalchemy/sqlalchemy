@@ -16,45 +16,11 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 from sqlalchemy.util import *
+from sqlalchemy.types import *
 import copy
 
-__ALL__ = ['Table', 'Column', 'Sequence', 'ForeignKey', 
-            'INT', 'CHAR', 'VARCHAR', 'TEXT', 'FLOAT', 'DECIMAL', 
-            'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN', 'String', 'Integer', 'Numeric', 'DateTime', 'Binary', 
-            ]
 
-
-class String:
-    def __init__(self, length):
-        self.length = length
-
-class Integer:
-    """integer datatype"""
-    pass
-
-class Numeric:
-    def __init__(self, precision, length):
-        self.precision = precision
-        self.length = length
-
-class DateTime:
-    pass
-
-class Binary:pass
-class Boolean:pass
-    
-class FLOAT(Numeric):pass
-class TEXT(String): pass
-class DECIMAL(Numeric):pass
-class INT(Integer):pass
-INTEGER = INT
-class TIMESTAMP(DateTime): pass
-class DATETIME(DateTime): pass
-class CLOB(String): pass
-class VARCHAR(String): pass
-class CHAR(String):pass
-class BLOB(Binary): pass
-class BOOLEAN(Boolean): pass
+__ALL__ = ['Table', 'Column', 'Sequence', 'ForeignKey']
 
 
 class SchemaItem(object):

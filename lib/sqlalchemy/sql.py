@@ -829,3 +829,4 @@ class Sequence(BindParamClause):
     def accept_visitor(self, visitor):
         visitor.visit_sequence(self)
 
+        
