@@ -18,6 +18,14 @@ class TypeEngine(object):
         raise NotImplementedError()
     def adapt(self, typeobj):
         return typeobj()
+    def type_descriptor(self, conversion, cls = None):
+        t = cls or self.__class__
+        for t in t.__mro__[0:-1]:
+            try:
+                return self.adapt(conversion[t])
+            except KeyError, e:
+                pass
+        return self.adapt(cls or self.__class__)
 
     typeclass = property(lambda s: s.__class__)
     typeself = property(lambda s:s)
@@ -35,6 +43,12 @@ class String(TypeEngine):
         self.length = length
     def adapt(self, typeobj):
         return typeobj(self.length)
+    def type_descriptor(self, conversion):
+        if self.length is None:
+            return super(String, self).type_descriptor(conversion, TEXT)
+        else:
+            return super(String, self).type_descriptor(conversion)
+            
 String.singleton = String(-1)
 
 class Integer(TypeEngine):
