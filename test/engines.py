@@ -43,8 +43,8 @@ class EngineTest(PersistTest):
         # really trip it up with a circular reference
         users.c.parent_user_id.set_foreign_key(ForeignKey(users.c.user_id))
 
-        users.build()
-        addresses.build()
+        users.create()
+        addresses.create()
 
         # clear out table registry
         db.tables.clear()
@@ -55,8 +55,8 @@ class EngineTest(PersistTest):
         users.drop()
         addresses.drop()
         
-        users.build()
-        addresses.build()
+        users.create()
+        addresses.create()
         
 if __name__ == "__main__":
     unittest.main()        

@@ -25,4 +25,8 @@ extension types, like pickle type, user-defined types
 
 generator functions returned from select() to handle [:] slices dynamically ?
 
+make ResultProxy standard return value, get cursor accessible off of it and metadata stuff optional
 
+figure out why metadata doesnt work for sqllite row
+
+type bind param handling and result row handling
