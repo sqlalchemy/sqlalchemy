@@ -23,18 +23,10 @@ import sqlalchemy.pool
 import sqlalchemy.util as util
 import sqlalchemy.sql as sql
 import StringIO
-
-class TypeDescriptor(object):
-    def get_col_spec(self):
-        raise NotImplementedError()
-    def convert_bind_param(self, value):
-        raise NotImplementedError()
-    def convert_result_value(self, value):
-        raise NotImplementedError()
+import sqlalchemy.types as types
 
 class SchemaIterator(schema.SchemaVisitor):
     """a visitor that can gather text into a buffer and execute the contents of the buffer."""
-    
     def __init__(self, sqlproxy, **params):
         self.sqlproxy = sqlproxy
         self.buffer = StringIO.StringIO()
@@ -67,7 +59,7 @@ class SQLEngine(schema.SchemaEngine):
         self.notes = {}
 
     def type_descriptor(self, type):
-        raise NotImplementedError()
+        return type
         
     def schemagenerator(self, proxy, **params):
         raise NotImplementedError()
@@ -185,7 +177,6 @@ class SQLEngine(schema.SchemaEngine):
             c = connection.cursor()
 
         self.pre_exec(connection, c, statement, parameters, echo = echo, **kwargs)
-        # TODO: affix TypeDescriptors ehre to pre-process bind params
         if isinstance(parameters, list):
             c.executemany(statement, parameters)
         else:
@@ -198,20 +189,23 @@ class SQLEngine(schema.SchemaEngine):
 
 
 class ResultProxy:
-    def __init__(self, cursor, echo = False, engine = None):
+    def __init__(self, cursor, engine, echo = False):
         self.cursor = cursor
         self.echo = echo
-        self.engine = engine
         metadata = cursor.description
         self.props = {}
         i = 0
-        # TODO: affix TypeDescriptors here to post-process results
         if metadata is not None:
             for item in metadata:
-                self.props[item[0]] = i
-                self.props[i] = i
+                rec = (engine.type_descriptor(item[1]), i)
+                self.props[item[0]] = rec
+                self.props[i] = rec
                 i+=1
 
+    def _get_col(self, row, key):
+        rec = self.props[key]
+        return rec[0].convert_result_value(row[rec[1]])
+        
     def fetchall(self):
         l = []
         while True:
@@ -235,4 +229,6 @@ class RowProxy:
     def __repr__(self):
         return repr(self.row)
     def __getitem__(self, key):
-        return self.row[self.parent.props[key]]
+        return self.parent._get_col(self.row, key)
+
+NULLTYPEENGINE = types.NullTypeEngine()
