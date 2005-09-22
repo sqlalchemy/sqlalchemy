@@ -197,14 +197,17 @@ class ResultProxy:
         i = 0
         if metadata is not None:
             for item in metadata:
-                rec = (engine.type_descriptor(item[1]), i)
+                print repr(item)
+                #rec = (engine.type_descriptor(item[1]), i)
+                rec = (None, i)
                 self.props[item[0]] = rec
                 self.props[i] = rec
                 i+=1
 
     def _get_col(self, row, key):
         rec = self.props[key]
-        return rec[0].convert_result_value(row[rec[1]])
+        #return rec[0].convert_result_value(row[rec[1]])
+        return row[rec[1]]
         
     def fetchall(self):
         l = []
