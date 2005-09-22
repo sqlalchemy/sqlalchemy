@@ -83,9 +83,11 @@ class ANSICompiler(sql.Compiled):
                 b = self.binds[key]
             except KeyError:
                 continue
+            # TODO: typeengine
             d[b.key] = value
 
         for b in self.binds.values():
+            # TODO: typeengine
             d.setdefault(b.key, b.value)
 
         return d
