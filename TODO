@@ -21,4 +21,8 @@ MySQL module
 
 INSERT from a SELECT
 
+extension types, like pickle type, user-defined types
+
+generator functions returned from select() to handle [:] slices dynamically ?
+
 
