@@ -22,33 +22,34 @@ import sqlalchemy.sql as sql
 import sqlalchemy.engine as engine
 import sqlalchemy.schema as schema
 import sqlalchemy.ansisql as ansisql
+import sqlalchemy.types as sqltypes
 from sqlalchemy.ansisql import *
 
 from pysqlite2 import dbapi2 as sqlite
 
 colspecs = {
-    schema.INT : "INTEGER",
-    schema.CHAR : "CHAR(%(length)s)",
-    schema.VARCHAR : "VARCHAR(%(length)s)",
-    schema.TEXT : "TEXT",
-    schema.Numeric : "NUMERIC(%(precision)s, %(length)s)",
-    schema.FLOAT : "NUMERIC(%(precision)s, %(length)s)",
-    schema.DECIMAL : "NUMERIC(%(precision)s, %(length)s)",
-    schema.TIMESTAMP : "TIMESTAMP",
-    schema.DATETIME : "TIMESTAMP",
-    schema.CLOB : "TEXT",
-    schema.BLOB : "BLOB",
-    schema.BOOLEAN : "BOOLEAN",
+    sqltypes.INT : "INTEGER",
+    sqltypes.CHAR : "CHAR(%(length)s)",
+    sqltypes.VARCHAR : "VARCHAR(%(length)s)",
+    sqltypes.TEXT : "TEXT",
+    sqltypes.Numeric : "NUMERIC(%(precision)s, %(length)s)",
+    sqltypes.FLOAT : "NUMERIC(%(precision)s, %(length)s)",
+    sqltypes.DECIMAL : "NUMERIC(%(precision)s, %(length)s)",
+    sqltypes.TIMESTAMP : "TIMESTAMP",
+    sqltypes.DATETIME : "TIMESTAMP",
+    sqltypes.CLOB : "TEXT",
+    sqltypes.BLOB : "BLOB",
+    sqltypes.BOOLEAN : "BOOLEAN",
 }
 
 pragma_names = {
-    'INTEGER' : schema.INT,
-    'VARCHAR' : schema.VARCHAR,
-    'CHAR' : schema.CHAR,
-    'TEXT' : schema.TEXT,
-    'NUMERIC' : schema.FLOAT,
-    'TIMESTAMP' : schema.TIMESTAMP,
-    'BLOB' : schema.BLOB,
+    'INTEGER' : sqltypes.INT,
+    'VARCHAR' : sqltypes.VARCHAR,
+    'CHAR' : sqltypes.CHAR,
+    'TEXT' : sqltypes.TEXT,
+    'NUMERIC' : sqltypes.FLOAT,
+    'TIMESTAMP' : sqltypes.TIMESTAMP,
+    'BLOB' : sqltypes.BLOB,
 }
 
 def engine(filename, opts, **params):
@@ -119,10 +120,11 @@ class SQLiteCompiler(ansisql.ANSICompiler):
 class SQLiteColumnImpl(sql.ColumnSelectable):
     def get_specification(self):
         coltype = self.column.type
-        if isinstance(coltype, types.ClassType):
+        if isinstance(coltype, type):
             key = coltype
         else:
             key = coltype.__class__
+            
 
         colspec = self.name + " " + colspecs[key] % {'precision': getattr(coltype, 'precision', 10), 'length' : getattr(coltype, 'length', 10)}
         if not self.column.nullable:

@@ -165,7 +165,7 @@ class Mapper(object):
 
     def instances(self, cursor, db = None):
         result = util.HistoryArraySet()
-        cursor = engine.ResultProxy(cursor, echo = db and db.echo)
+        cursor = engine.ResultProxy(cursor, echo = db and db.echo, engine = db)
         imap = {}
         while True:
             row = cursor.fetchone()
@@ -439,11 +439,9 @@ class ColumnProperty(MapperProperty):
         return "ColumnProperty(%s)" % repr([hash_key(c) for c in self.columns])
 
     def init(self, key, parent):
-        print "hi im a colprop on key " + key
         self.key = key
         # establish a SmartProperty property manager on the object for this key
         if not hasattr(parent.class_, key):
-            print "Setting the class attribute"
             objectstore.uow().register_attribute(parent.class_, key, uselist = False)
 
     def execute(self, instance, row, identitykey, imap, isnew):
