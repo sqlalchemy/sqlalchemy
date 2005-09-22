@@ -79,7 +79,6 @@ class Mapper(object):
         self.selectable.accept_visitor(tf)
         self.tables = tf.tables
         self.primary_keys = {}
-
         if table is None:
             if len(self.tables) > 1:
                 raise "Selectable contains multiple tables - specify primary table argument to Mapper"
@@ -102,6 +101,9 @@ class Mapper(object):
                 for k in t.primary_keys:
                     list.append(k)
 
+        self.columns = self.selectable.columns
+        self.c = self.columns
+        
         # object attribute names mapped to MapperProperty objects
         self.props = {}
         
@@ -437,9 +439,11 @@ class ColumnProperty(MapperProperty):
         return "ColumnProperty(%s)" % repr([hash_key(c) for c in self.columns])
 
     def init(self, key, parent):
+        print "hi im a colprop on key " + key
         self.key = key
         # establish a SmartProperty property manager on the object for this key
         if not hasattr(parent.class_, key):
+            print "Setting the class attribute"
             objectstore.uow().register_attribute(parent.class_, key, uselist = False)
 
     def execute(self, instance, row, identitykey, imap, isnew):
