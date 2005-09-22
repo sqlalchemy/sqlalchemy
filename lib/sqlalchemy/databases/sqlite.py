@@ -31,6 +31,7 @@ colspecs = {
     schema.CHAR : "CHAR(%(length)s)",
     schema.VARCHAR : "VARCHAR(%(length)s)",
     schema.TEXT : "TEXT",
+    schema.Numeric : "NUMERIC(%(precision)s, %(length)s)",
     schema.FLOAT : "NUMERIC(%(precision)s, %(length)s)",
     schema.DECIMAL : "NUMERIC(%(precision)s, %(length)s)",
     schema.TIMESTAMP : "TIMESTAMP",
