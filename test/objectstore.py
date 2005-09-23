@@ -157,7 +157,7 @@ class SaveTest(AssertMixin):
                 )), 
                 lazy = True, uselist = True, private = True)
         ))
-        
+
         data = [User,
             {'user_name' : 'ed', 
                 'address' : (Address, {'email_address' : 'foo@bar.com'}),
