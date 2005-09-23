@@ -90,12 +90,6 @@ class PropertyTest(AssertMixin):
                 orders = relation(_Order.mapper, lazy = False)
             ))
 
-        #l = User.mapper.select()            
-        #class AddressUser(User):
-        #    mapper = assignmapper(join(addresses, users, addresses.c.user_id==users.c.user_id), table=users, properties = dict(
-        #        orders = relation(Order.mapper, lazy = True)
-        #    ))
-
         class AddressUser(_User):
             mapper = assignmapper(addresses, inherits = _User.mapper, inherit_condition=_User.c.user_id==addresses.c.user_id)
             
@@ -141,7 +135,7 @@ class LazyTest(AssertMixin):
         """tests a many-to-many lazy load"""
         items = orderitems
 
-        Item.mapper = assignmapper(items, properties = dict(
+        Item.mapper = assignmapper('items', engine = items.engine, properties = dict(
                 keywords = relation(Keyword, keywords, itemkeywords, lazy = True),
             ))
         l = Item.mapper.select()
