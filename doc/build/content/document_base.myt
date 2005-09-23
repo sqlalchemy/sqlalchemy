@@ -10,7 +10,6 @@
 		'sqlconstruction',
 		'datamapping',
 		'adv_datamapping',
-		'activerecord',
 		
 		]
 
