@@ -11,7 +11,7 @@ users = Table('users', engine,
     Column('user_name', VARCHAR(16), nullable = False),
     Column('password', VARCHAR(20), nullable = False)
 )
-users.build()
+users.create()
 users.insert().execute(
     dict(user_name = 'fred', password='45nfss')
 )
@@ -19,13 +19,10 @@ users.insert().execute(
 
 # class definition
 class User(object):
-    def __init__(self):
-        pass
     mapper = assignmapper(users)
   
 # select
 user = User.mapper.select(User.c.user_name == 'fred')[0]      
-
 
 # modify
 user.user_name = 'fred jones'
@@ -40,7 +37,7 @@ addresses = Table('email_addresses', engine,
     Column('user_id', INT, foreign_key = ForeignKey(users.c.user_id)),
     Column('email_address', VARCHAR(20)),
 )
-addresses.build()
+addresses.create()
 addresses.insert().execute(
     dict(user_id = user.user_id, email_address='fred@bar.com')
 )
@@ -54,12 +51,12 @@ class Address(object):
     
 # obtain a Mapper.  "private=True" means deletions of the user
 # will cascade down to the child Address objects
-User.mapper = assignmapper(User, users, properties = dict(
+User.mapper = assignmapper(users, properties = dict(
     addresses = relation(Address.mapper, lazy=True, private=True)
 ))
 
 # select
-user = m.select(users.c.user_name == 'fred jones')[0]
+user = User.mapper.select(User.c.user_name == 'fred jones')[0]
 print repr(user.__dict__['addresses'])
 address = user.addresses[0]
 
@@ -84,7 +81,7 @@ prefs = Table('user_prefs', engine,
     Column('save_password', BOOLEAN, nullable = False),
     Column('timezone', CHAR(3), nullable = False)
 )
-prefs.build()
+prefs.create()
 prefs.insert().execute(
     dict(pref_id=1, stylename='green', save_password=1, timezone='EST')
 )
@@ -97,7 +94,7 @@ users = Table('users', engine,
     Column('preference_id', INTEGER, foreign_key = ForeignKey(prefs.c.pref_id))
 )
 users.drop()
-users.build()
+users.create()
 users.insert().execute(
     dict(user_name = 'fred', password='45nfss', preference_id=1)
 )
@@ -109,20 +106,22 @@ addresses = Table('email_addresses', engine,
     Column('email_address', VARCHAR(20)),
 )
 addresses.drop()
-addresses.build()
+addresses.create()
+
+Address.mapper = assignmapper(addresses)
 
 # class definition for preferences
 class UserPrefs(object):
-    pass
+    mapper = assignmapper(prefs)
     
-# obtain a Mapper.
-m = mapper(User, users, properties = dict(
-    addresses = relation(Address, addresses, lazy=True, private=True),
-    preferences = relation(UserPrefs, prefs, lazy=False, private=True),
+# set a new Mapper on the user
+User.mapper = assignmapper(users, properties = dict(
+    addresses = relation(Address.mapper, lazy=True, private=True),
+    preferences = relation(UserPrefs.mapper, lazy=False, private=True),
 ))
 
 # select
-user = m.select(users.c.user_name == 'fred')[0]
+user = User.mapper.select(User.c.user_name == 'fred')[0]
 save_password = user.preferences.save_password
 
 # modify
