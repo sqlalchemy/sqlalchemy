@@ -37,7 +37,7 @@ orders = Table('orders', db,
 
 orderitems = Table('items', db,
     Column('item_id', INT, primary_key = True),
-    Column('order_id', INT, foreign_key = ForeignKey(orders.c.order_id)),
+    Column('order_id', INT, foreign_key = ForeignKey("orders")),
     Column('item_name', VARCHAR(50))
 )
 
@@ -47,8 +47,8 @@ keywords = Table('keywords', db,
 )
 
 itemkeywords = Table('itemkeywords', db,
-    Column('item_id', INT, foreign_key = ForeignKey(orderitems.c.item_id)),
-    Column('keyword_id', INT, foreign_key = ForeignKey(keywords.c.keyword_id))
+    Column('item_id', INT, foreign_key = ForeignKey("items")),
+    Column('keyword_id', INT, foreign_key = ForeignKey("keywords"))
 )
 
 users.create()
