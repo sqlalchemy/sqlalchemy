@@ -16,16 +16,15 @@
             Column('password', VARCHAR(20), nullable = False)
         )
         
-        # class definition
+        # class definition with mapper (mapper can also be separate)
         class User(object):
             def __init__(self):
                 pass
     
-        # obtain a Mapper
-        m = mapper(User, users)
+            mapper = assignmapper(users)
         
         # select
-        user = m.select(users.c.user_name == 'fred')[0]  <&|formatting.myt:codepopper, link="sql" &>
+        user = User.mapper.select(User.c.user_name == 'fred')[0]  <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
 users.password AS users_password 
 FROM users WHERE users.user_name = :users_user_name
@@ -34,7 +33,7 @@ FROM users WHERE users.user_name = :users_user_name
 
         </&>
         # modify
-        user.user_name == 'fred jones'
+        user.user_name = 'fred jones'
         
         # commit
         objectstore.commit() <&|formatting.myt:codepopper, link="sql" &>
@@ -62,15 +61,18 @@ password=:password WHERE users.user_id = :user_id
         class Address(object):
             def __init__(self, email_address = None):
                 self.email_address = email_address
+
+            mapper = assignmapper(addresses)
+        
     
-        # obtain a Mapper.  "private=True" means deletions of the user
+        # give the User class a new Mapper referencing addresses.  "private=True" means deletions of the user
         # will cascade down to the child Address objects
-        m = mapper(User, users, properties = dict(
-            addresses = relation(Address, addresses, lazy=True, private=True)
+        User.mapper = assignmapper(users, properties = dict(
+            relation(Address.mapper, lazy=True, private=True)
         ))
         
         # select
-        user = m.select(users.c.user_name == 'fred jones')[0] <&|formatting.myt:codepopper, link="sql" &>
+        user = User.mapper.select(User.c.user_name == 'fred jones')[0] <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
 users.password AS users_password FROM users
 WHERE users.user_name = :users_user_name
@@ -137,12 +139,12 @@ VALUES (:address_id, :user_id, :email_address)
         
         # class definition for preferences
         class UserPrefs(object):
-            pass
+            mapper = assignmapper(prefs)
     
-        # obtain a Mapper.
+        # make a new mapper referencing everything.
         m = mapper(User, users, properties = dict(
-            addresses = relation(Address, addresses, lazy=True, private=True),
-            preferences = relation(UserPrefs, prefs, lazy=False, private=True),
+            addresses = relation(Address.mapper, lazy=True, private=True),
+            preferences = relation(UserPrefs.mapper, lazy=False, private=True),
         ))
         
         # select
@@ -208,7 +210,7 @@ VALUES (:address_id, :user_id, :email_address)
                     
             # create mapper.  we will eager load keywords.  
             m = mapper(Article, articles, properties = dict(
-                keywords = relation(Keyword, keywords, itemkeywords, lazy=False)
+                keywords = relation(Keyword.mapper, itemkeywords, lazy=False)
             ))
             
             # select articles based on some keywords.  the extra selection criterion 
