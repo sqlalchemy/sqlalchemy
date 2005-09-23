@@ -28,12 +28,11 @@ Start
                                    |---- <&formatting.myt:link, path="sql" &>
                                    |                                      |                
                                    |                                      |                                  
-                                   |---- <&formatting.myt:link, path="datamapping"&>               |                
-                                   |               |                      |  
-                                   |               |                      |              
-                                   |               +----------- Advanced Data Mapping
-                                   |                                        
-                                   |                
-                                   +----- Basic Active Record
+                                   +---- <&formatting.myt:link, path="datamapping"&>               |                
+                                                   |                      |  
+                                                   |                      |              
+                                                   +----------- Advanced Data Mapping
+                                                                           
+                                                   
 </pre>
 </&>
