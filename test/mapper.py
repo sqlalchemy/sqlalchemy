@@ -62,7 +62,51 @@ class MapperTest(AssertMixin):
             {'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}])},
             {'user_id' : 9, 'addresses' : (Address, [])}
             )
-    
+
+class PropertyTest(AssertMixin):
+    def setUp(self):
+        objectstore.clear()
+
+    def testbasic(self):
+        """tests that you can create mappers inline with class definitions"""
+        class _Address(object):
+            mapper = assignmapper(addresses)
+            
+        class _User(object):
+            mapper = assignmapper(users, properties = dict(
+                addresses = relation(_Address.mapper, lazy = False)
+            ), is_primary = True)
+        
+        l = _User.mapper.select(_User.c.user_name == 'fred')
+        print repr(l)
+        
+
+    def testinherits(self):
+        class _Order(object):
+            mapper = assignmapper(orders)
+            
+        class _User(object):
+            mapper = assignmapper(users, properties = dict(
+                orders = relation(_Order.mapper, lazy = False)
+            ))
+
+        #l = User.mapper.select()            
+        #class AddressUser(User):
+        #    mapper = assignmapper(join(addresses, users, addresses.c.user_id==users.c.user_id), table=users, properties = dict(
+        #        orders = relation(Order.mapper, lazy = True)
+        #    ))
+
+        class AddressUser(_User):
+            mapper = assignmapper(addresses, inherits = _User.mapper, inherit_condition=_User.c.user_id==addresses.c.user_id)
+            
+        l = AddressUser.mapper.select()
+        
+        jack = l[0]
+        jack.email_address = 'jack@gmail.com'
+        objectstore.commit()
+        
+        print repr(AddressUser.mapper.select(AddressUser.c.user_name == 'jack'))
+            
 class LazyTest(AssertMixin):
     def setUp(self):
         objectstore.clear()
@@ -97,10 +141,10 @@ class LazyTest(AssertMixin):
         """tests a many-to-many lazy load"""
         items = orderitems
 
-        m = mapper(Item, items, properties = dict(
+        Item.mapper = assignmapper(items, properties = dict(
                 keywords = relation(Keyword, keywords, itemkeywords, lazy = True),
             ))
-        l = m.select()
+        l = Item.mapper.select()
         self.assert_result(l, Item, 
             {'item_id' : 1, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 4}, {'keyword_id' : 6}])},
             {'item_id' : 2, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 5}, {'keyword_id' : 7}])},
@@ -109,7 +153,7 @@ class LazyTest(AssertMixin):
             {'item_id' : 5, 'keywords' : (Keyword, [])}
         )
 
-        l = m.select(and_(keywords.c.name == 'red', keywords.c.keyword_id == itemkeywords.c.keyword_id, items.c.item_id==itemkeywords.c.item_id))
+        l = Item.mapper.select(and_(keywords.c.name == 'red', keywords.c.keyword_id == itemkeywords.c.keyword_id, Item.c.item_id==itemkeywords.c.item_id))
         self.assert_result(l, Item, 
             {'item_id' : 1, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 4}, {'keyword_id' : 6}])},
             {'item_id' : 2, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 5}, {'keyword_id' : 7}])},
