@@ -17,7 +17,7 @@
 
 from sqlalchemy.util import *
 from sqlalchemy.types import *
-import copy
+import copy, re
 
 
 __ALL__ = ['Table', 'Column', 'Sequence', 'ForeignKey']
@@ -43,6 +43,8 @@ class SchemaItem(object):
 
     def __getattr__(self, key):
         """proxies method calls to an underlying implementation object for methods not found locally"""
+        if not hasattr(self, '_impl'):
+            raise AttributeError(key)
         return getattr(self._impl, key)
 
 
@@ -51,6 +53,8 @@ class TableSingleton(type):
         try:
             return engine.tables[name]
         except:
+            if kwargs.get('mustexist', False):
+                raise "Table '%s' not defined" % name
             table = type.__call__(self, name, engine, *args, **kwargs)
             engine.tables[name] = table
             # load column definitions from the database if 'autoload' is defined
@@ -58,6 +62,7 @@ class TableSingleton(type):
             # circular foreign keys
             if kwargs.get('autoload', False):
                 engine.reflecttable(table)
+
             return table
 
         
@@ -115,12 +120,12 @@ class Column(SchemaItem):
         
         if self.foreign_key is not None:
             self._init_items(self.foreign_key)
-            table.foreign_keys[self.foreign_key.column.key] = self.foreign_key
+#            table.foreign_keys[self.foreign_key.column.key] = self.foreign_key
 
     def set_foreign_key(self, fk):
         self.foreign_key = fk
         self._init_items(self.foreign_key)
-        self.table.foreign_keys[self.foreign_key.column.key] = self.foreign_key
+#        self.table.foreign_keys[self.foreign_key.column.key] = self.foreign_key
     
     def _make_proxy(self, selectable, name = None):
         """creates a copy of this Column for use in a new selectable unit"""
@@ -129,6 +134,7 @@ class Column(SchemaItem):
         #if name is not None:
          #   c.name = name
          #   c.key = name
+        # TODO: do we want the same foreign_key object here ?  
         c = Column(name or self.name, self.type, key = name or self.key, primary_key = self.primary_key, foreign_key = self.foreign_key, sequence = self.sequence)
         c.table = selectable
         c.engine = self.engine
@@ -150,7 +156,32 @@ class Column(SchemaItem):
 
 class ForeignKey(SchemaItem):
     def __init__(self, column):
-        self.column = column
+        self._colspec = column
+        self._column = None
+
+    def _init_column(self):
+        # ForeignKey inits its remote column as late as possible, so tables can
+        # be defined without dependencies
+        if self._column is None:
+            if isinstance(self._colspec, str):
+                m = re.match(r"([\w_-]+)(?:\.([\w_-]+))?", self._colspec)
+                if m is None:
+                    raise "Invalid foreign key column specification: " + self._colspec
+                (tname, colname) = m.group(1, 2)
+                table = Table(tname, self.parent.engine, mustexist = True)
+                if colname is None:
+                    key = self.parent
+                    self._column = table.c[self.parent.key]
+                else:
+                    self._column = table.c[colname]
+            else:
+                self._column = self._colspec
+
+            self.parent.table.foreign_keys[self._column.key] = self
+        return self._column
+            
+    column = property(lambda s: s._init_column())
+    
     def _set_parent(self, column):
         self.parent = column
         
