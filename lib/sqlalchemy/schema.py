@@ -51,8 +51,14 @@ class SchemaItem(object):
 class TableSingleton(type):
     def __call__(self, name, engine, *args, **kwargs):
         try:
-            return engine.tables[name]
-        except:
+            table = engine.tables[name]
+            if len(args):
+                if kwargs.get('redefine', False):
+                    table.reload_values(*args)
+                else:
+                    raise "Table '%s' is already defined. specify 'redefine=True' to remap columns" % name
+            return table
+        except KeyError:
             if kwargs.get('mustexist', False):
                 raise "Table '%s' not defined" % name
             table = type.__call__(self, name, engine, *args, **kwargs)
@@ -66,7 +72,6 @@ class TableSingleton(type):
             return table
 
         
-        
 class Table(SchemaItem):
     """represents a relational database table."""
     __metaclass__ = TableSingleton
@@ -78,6 +83,14 @@ class Table(SchemaItem):
         self.foreign_keys = OrderedProperties()
         self.primary_keys = []
         self.engine = engine
+        self._impl = self.engine.tableimpl(self)
+        self._init_items(*args)
+
+    def reload_values(self, *args):
+        self.columns = OrderedProperties()
+        self.c = self.columns
+        self.foreign_keys = OrderedProperties()
+        self.primary_keys = []
         self._impl = self.engine.tableimpl(self)
         self._init_items(*args)
 
@@ -177,6 +190,7 @@ class ForeignKey(SchemaItem):
             else:
                 self._column = self._colspec
 
+            print "setting up key " + self._column.key + " onto table " + self.parent.table.name
             self.parent.table.foreign_keys[self._column.key] = self
         return self._column
             
