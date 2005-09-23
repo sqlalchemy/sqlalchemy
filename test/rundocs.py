@@ -21,12 +21,10 @@ users.insert().execute(
 class User(object):
     def __init__(self):
         pass
-    
-# obtain a Mapper
-m = mapper(User, users)
-
+    mapper = assignmapper(users)
+  
 # select
-user = m.select(users.c.user_name == 'fred')[0]      
+user = User.mapper.select(User.c.user_name == 'fred')[0]      
 
 
 # modify
@@ -52,10 +50,12 @@ class Address(object):
     def __init__(self, email_address = None):
         self.email_address = email_address
 
+    mapper = assignmapper(addresses)
+    
 # obtain a Mapper.  "private=True" means deletions of the user
 # will cascade down to the child Address objects
-m = mapper(User, users, properties = dict(
-    addresses = relation(Address, addresses, lazy=True, private=True)
+User.mapper = assignmapper(User, users, properties = dict(
+    addresses = relation(Address.mapper, lazy=True, private=True)
 ))
 
 # select

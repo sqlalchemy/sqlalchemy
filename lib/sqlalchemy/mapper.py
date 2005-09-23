@@ -47,7 +47,6 @@ class assignmapper(object):
     def __get__(self, instance, owner):
         if not hasattr(self, 'mapper'):
             self.mapper = mapper(owner, self.table, **self.kwargs)
-            print "HI"
             self.mapper._init_class()
             if self.mapper.class_ is not owner:
                 raise "no match " + repr(self.mapper.class_) + " " + repr(owner)
@@ -56,9 +55,12 @@ class assignmapper(object):
         return self.mapper
     
 _mappers = {}
-def mapper(class_, table = None, *args, **params):
+def mapper(class_, table = None, engine = None, autoload = False, *args, **params):
     if table is None:
         return class_mapper(class_)
+
+    if isinstance(table, str):
+        table = schema.Table(table, engine, autoload = autoload, mustexist = not autoload)
             
     hashkey = mapper_hash_key(class_, table, *args, **params)
     #print "HASHKEY: " + hashkey
@@ -595,7 +597,6 @@ class PropertyLoader(MapperProperty):
 
     def match_primaries(self, primary, secondary):
         crit = []
-
         for fk in secondary.foreign_keys:
             if fk.column.table is primary:
                 crit.append(fk.column == fk.parent)
@@ -606,7 +607,7 @@ class PropertyLoader(MapperProperty):
                 self.foreignkey = fk.parent
 
         if len(crit) == 0:
-            raise "Cant find any foreign key relationships between " + primary.table.name + " and " + secondary.table.name
+            raise "Cant find any foreign key relationships between '%s' (%s) and '%s' (%s)" % (primary.table.name, repr(primary.table), secondary.table.name, repr(secondary.table))
         elif len(crit) == 1:
             return (crit[0])
         else:
@@ -641,6 +642,7 @@ class PropertyLoader(MapperProperty):
         elif self.foreignkey.table == self.parent.primarytable:
             uowcommit.register_dependency(self.mapper, self.parent)
             uowcommit.register_task(self.mapper, False, self, self.parent, False)
+            # TODO: private deletion thing for one-to-one relationship
             #uowcommit.register_task(self.mapper, True, self, self.parent, False)
         else:
             raise " no foreign key ?"
