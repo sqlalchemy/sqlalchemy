@@ -432,7 +432,7 @@ class Join(Selectable):
         if allcols:
             self.columns = [c for c in self.left.columns] + [c for c in self.right.columns]
         else:
-            self.columns = [c for c in self.right.columns]
+            self.columns = self.right.columns
 
         # TODO: if no onclause, do NATURAL JOIN
         self.onclause = onclause
@@ -586,8 +586,8 @@ class TableImpl(Selectable):
     def insert(self, select = None):
         return insert(self.table, select = select)
 
-    def update(self, whereclause = None, parameters = None):
-        return update(self.table, whereclause, parameters)
+    def update(self, whereclause = None, values = None):
+        return update(self.table, whereclause, values)
 
     def delete(self, whereclause = None):
         return delete(self.table, whereclause)
