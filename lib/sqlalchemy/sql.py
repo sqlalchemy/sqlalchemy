@@ -115,8 +115,8 @@ def alias(*args, **params):
 def subquery(alias, *args, **params):
     return Alias(Select(*args, **params), alias)
 
-def bindparam(key, value = None):
-    return BindParamClause(key, value)
+def bindparam(key, value = None, type=None):
+    return BindParamClause(key, value, type=type)
 
 def text(text):
     return TextClause(text)
@@ -183,7 +183,7 @@ class Compiled(ClauseVisitor):
             params = [self.get_params(**m) for m in multiparams]
         else:
             params = self.get_params(**params)
-        return self.engine.execute(str(self), params, compiled = self)
+        return self.engine.execute(str(self), params, compiled = self, typemap = self.typemap)
 
 class ClauseElement(object):
     """base class for elements of a programmatically constructed SQL expression.
@@ -297,7 +297,7 @@ class BindParamClause(ClauseElement):
         self.key = key
         self.value = value
         self.shortname = shortname
-        self.type = type
+        self.type = type or types.NULLTYPE
 
     def accept_visitor(self, visitor):
         visitor.visit_bindparam(self)
@@ -309,10 +309,7 @@ class BindParamClause(ClauseElement):
         return "BindParam(%s, %s, %s)" % (repr(self.key), repr(self.value), repr(self.shortname))
 
     def typeprocess(self, value):
-        if self.type is not None:
-            return self.type.convert_bind_param(value)
-        else:
-            return value
+        return self.type.convert_bind_param(value)
             
 class TextClause(ClauseElement):
     """represents any plain text WHERE clause or full SQL statement"""
@@ -768,7 +765,7 @@ class UpdateBase(ClauseElement):
                 else:
                     col = key
                 try:
-                    parameters[key] = bindparam(col.name, value)
+                    parameters[key] = bindparam(col.name, value, type=col.type)
                 except KeyError:
                     del parameters[key]
         return parameters
@@ -777,7 +774,7 @@ class UpdateBase(ClauseElement):
         # case one: no parameters in the statement, no parameters in the 
         # compiled params - just return binds for all the table columns
         if parameters is None and self.parameters is None:
-            return [(c, bindparam(c.name)) for c in self.table.columns]
+            return [(c, bindparam(c.name, type=c.type)) for c in self.table.columns]
 
         # if we have statement parameters - set defaults in the 
         # compiled params
@@ -807,7 +804,7 @@ class UpdateBase(ClauseElement):
             if d.has_key(c):
                 value = d[c]
                 if _is_literal(value):
-                    value = bindparam(c.name, value)
+                    value = bindparam(c.name, value, type=c.type)
                 values.append((c, value))
         return values
 

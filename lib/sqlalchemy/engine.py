@@ -67,6 +67,20 @@ class SQLEngine(schema.SchemaEngine):
     def schemadropper(self, proxy, **params):
         raise NotImplementedError()
 
+    def compiler(self, statement, bindparams):
+        raise NotImplementedError()
+
+    def create(self, table, **params):
+        table.accept_visitor(self.schemagenerator(self.proxy(), **params))
+
+    def drop(self, table, **params):
+        table.accept_visitor(self.schemadropper(self.proxy(), **params))
+
+    def compile(self, statement, bindparams):
+        compiler = self.compiler(statement, bindparams)
+        statement.accept_visitor(compiler)
+        return compiler
+
     def reflecttable(self, table):
         raise NotImplementedError()
 
@@ -82,9 +96,6 @@ class SQLEngine(schema.SchemaEngine):
         raise NotImplementedError()
 
     def dbapi(self):
-        raise NotImplementedError()
-
-    def compile(self, statement, bindparams):
         raise NotImplementedError()
 
     def do_begin(self, connection):
