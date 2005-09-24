@@ -13,21 +13,21 @@ import unittest, re
 
 
 table = Table('mytable', db,
-    Column('myid', 3, key = 'id'),
-    Column('name', 4, key = 'name'),
-    Column('description', 4, key = 'description'),
+    Column('myid', Integer, key = 'id'),
+    Column('name', String, key = 'name'),
+    Column('description', String, key = 'description'),
 )
 
 table2 = Table(
     'myothertable', db,
-    Column('otherid',3, key='id'),
-    Column('othername', 4, key='name'),
+    Column('otherid', Integer, key='id'),
+    Column('othername', String, key='name'),
 )
 
 table3 = Table(
     'thirdtable', db,
-    Column('userid', 5, key='id'),
-    Column('otherstuff', 5),
+    Column('userid', Integer, key='id'),
+    Column('otherstuff', Integer),
 )
 
 class SQLTest(PersistTest):
