@@ -102,18 +102,18 @@ class SaveTest(AssertMixin):
 
         objectstore.uow().commit()
 
-        usertable = engine.ResultProxy(users.select(users.c.user_id.in_(u.foo_id)).execute(), users.engine).fetchall()
+        usertable = users.select(users.c.user_id.in_(u.foo_id)).execute().fetchall()
         self.assert_(usertable[0].row == (u.foo_id, 'multitester'))
-        addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(u.address_id)).execute(), users.engine).fetchall()
+        addresstable = addresses.select(addresses.c.address_id.in_(u.address_id)).execute().fetchall()
         self.assert_(addresstable[0].row == (u.address_id, u.foo_id, 'multi@test.org'))
 
         u.email = 'lala@hey.com'
         u.user_name = 'imnew'
         objectstore.uow().commit()
 
-        usertable = engine.ResultProxy(users.select(users.c.user_id.in_(u.foo_id)).execute(), users.engine).fetchall()
+        usertable = users.select(users.c.user_id.in_(u.foo_id)).execute().fetchall()
         self.assert_(usertable[0].row == (u.foo_id, 'imnew'))
-        addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(u.address_id)).execute(), users.engine).fetchall()
+        addresstable = addresses.select(addresses.c.address_id.in_(u.address_id)).execute().fetchall()
         self.assert_(addresstable[0].row == (u.address_id, u.foo_id, 'lala@hey.com'))
 
         u = m.select(users.c.user_id==u.foo_id)[0]
@@ -243,8 +243,7 @@ class SaveTest(AssertMixin):
         objectstore.uow().commit()
         return
         l = sql.select([users, addresses], sql.and_(users.c.user_id==addresses.c.address_id, addresses.c.address_id==a.address_id)).execute()
-        r = engine.ResultProxy(l, users.engine)
-        print repr(r.fetchone().row)
+        print repr(l.fetchone().row)
         
     def testonetomany(self):
         """test basic save of one to many."""
@@ -265,9 +264,9 @@ class SaveTest(AssertMixin):
         print repr(u.addresses.added_items())
         objectstore.uow().commit()
 
-        usertable = engine.ResultProxy(users.select(users.c.user_id.in_(u.user_id)).execute(), users.engine).fetchall()
+        usertable = users.select(users.c.user_id.in_(u.user_id)).execute().fetchall()
         self.assert_(usertable[0].row == (u.user_id, 'one2manytester'))
-        addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id), order_by=[addresses.c.email_address]).execute(), users.engine).fetchall()
+        addresstable = addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id), order_by=[addresses.c.email_address]).execute().fetchall()
         self.assert_(addresstable[0].row == (a2.address_id, u.user_id, 'lala@test.org'))
         self.assert_(addresstable[1].row == (a.address_id, u.user_id, 'one2many@test.org'))
 
@@ -278,7 +277,7 @@ class SaveTest(AssertMixin):
 
         objectstore.uow().commit()
         
-        addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id == addressid).execute(), addresses.engine).fetchall()
+        addresstable = addresses.select(addresses.c.address_id == addressid).execute().fetchall()
         self.assert_(addresstable[0].row == (addressid, userid, 'somethingnew@foo.com'))
         self.assert_(u.user_id == userid and a2.address_id == addressid)
 
@@ -308,13 +307,13 @@ class SaveTest(AssertMixin):
         a2.email_address = 'lala@test.org'
         u.addresses.append(a2)
         m.save(u)
-        addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id)).execute()).fetchall()
+        addresstable = addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id)).execute().fetchall()
         print repr(addresstable[0].row)
         self.assert_(addresstable[0].row == (a.address_id, u.user_id, 'one2many@test.org'))
         self.assert_(addresstable[1].row == (a2.address_id, u.user_id, 'lala@test.org'))
         del u.addresses[1]
         m.save(u)
-        addresstable = engine.ResultProxy(addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id)).execute()).fetchall()
+        addresstable = addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id)).execute().fetchall()
         print repr(addresstable)
         self.assert_(addresstable[0].row == (a.address_id, u.user_id, 'one2many@test.org'))
         self.assert_(addresstable[1].row == (a2.address_id, None, 'lala@test.org'))

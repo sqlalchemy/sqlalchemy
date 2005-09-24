@@ -855,9 +855,7 @@ class EagerLoader(PropertyLoader):
 
         statement.append_from(statement._outerjoin)
         statement.append_column(self.target)
-        print "coming in, mapper is " + str(self.mapper)
         for key, value in self.mapper.props.iteritems():
-            print "setup " + key
             if value is self:
                 raise "wha?"
             value.setup(key, statement)
