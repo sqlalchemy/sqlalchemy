@@ -58,8 +58,10 @@ class SQLEngine(schema.SchemaEngine):
         self.tables = {}
         self.notes = {}
 
-    def type_descriptor(self, type):
-        return type
+    def type_descriptor(self, typeobj):
+        if type(typeobj) is type:
+            typeobj = typeobj()
+        return typeobj
         
     def schemagenerator(self, proxy, **params):
         raise NotImplementedError()
@@ -196,7 +198,7 @@ class SQLEngine(schema.SchemaEngine):
         else:
             c.execute(statement, parameters)
         self.post_exec(connection, c, statement, parameters, echo = echo, **kwargs)
-        return c
+        return ResultProxy(c, self, self.echo)
 
     def log(self, msg):
         print msg
@@ -211,7 +213,7 @@ class ResultProxy:
         i = 0
         if metadata is not None:
             for item in metadata:
-                #print repr(item)
+                print repr(item)
                 #rec = (engine.type_descriptor(item[1]), i)
                 rec = (None, i)
                 self.props[item[0]] = rec
