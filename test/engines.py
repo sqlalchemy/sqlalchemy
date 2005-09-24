@@ -9,13 +9,14 @@ from sqlalchemy.sql import *
 from sqlalchemy.schema import *
 
 from testbase import PersistTest
+import testbase
 import unittest, re
 
 
 class EngineTest(PersistTest):
     def testsqlitetableops(self):
         import sqlalchemy.databases.sqlite as sqllite
-        db = sqllite.engine(':memory:', {}, echo = True)
+        db = sqllite.engine(':memory:', {}, echo = testbase.echo)
         self.do_tableops(db)
         
     def do_tableops(self, db):
@@ -49,11 +50,9 @@ class EngineTest(PersistTest):
         # clear out table registry
         db.tables.clear()
 
-        print "HI"        
         users = Table('users', db, autoload = True)
         addresses = Table('email_addresses', db, autoload = True)
 
-        print "DROP"        
         users.drop()
         addresses.drop()
         
