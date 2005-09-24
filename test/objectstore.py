@@ -3,11 +3,9 @@ import unittest, sys, os
 from sqlalchemy.mapper import *
 import sqlalchemy.objectstore as objectstore
 
-#ECHO = True
-ECHO = False
-DATA = False
-execfile("test/tables.py")
+from tables import *
 
+keywords.delete().execute()
 keywords.insert().execute(
     dict(keyword_id=1, name='blue'),
     dict(keyword_id=2, name='red'),
@@ -20,7 +18,6 @@ keywords.insert().execute(
 
 db.connection().commit()
 
-db.echo = True
 
 class HistoryTest(AssertMixin):
     def testattr(self):
@@ -32,14 +29,15 @@ class HistoryTest(AssertMixin):
         u.addresses[0].email_address = 'hi'
         u.addresses.append(Address())
         u.addresses[1].email_address = 'there'
-        print repr(u.__dict__)
-        print repr(u.addresses)
+        self.echo(repr(u.__dict__))
+        self.echo(repr(u.addresses))
         objectstore.uow().rollback_object(u)
-        print repr(u.__dict__)
+        self.echo(repr(u.__dict__))
         
 class SaveTest(AssertMixin):
 
     def setUp(self):
+        e = db.echo
         db.echo = False
         objectstore.clear()
         clear_mappers()
@@ -47,7 +45,7 @@ class SaveTest(AssertMixin):
         orderitems.delete().execute()
         users.delete().execute()
         addresses.delete().execute()
-        db.echo = True
+        db.echo = e
         
     def testbasic(self):
         # save two users
@@ -65,7 +63,7 @@ class SaveTest(AssertMixin):
 
         # assert the first one retreives the same from the identity map
         nu = m.get(u.user_id)
-        print "U: " + repr(u) + "NU: " + repr(nu)
+        self.echo( "U: " + repr(u) + "NU: " + repr(nu))
         self.assert_(u is nu)
         
         # clear out the identity map, so next get forces a SELECT
@@ -117,7 +115,7 @@ class SaveTest(AssertMixin):
         self.assert_(addresstable[0].row == (u.address_id, u.foo_id, 'lala@hey.com'))
 
         u = m.select(users.c.user_id==u.foo_id)[0]
-        print repr(u.__dict__)
+        self.echo( repr(u.__dict__))
 
     def testonetoone(self):
         m = mapper(User, users, properties = dict(
@@ -204,7 +202,7 @@ class SaveTest(AssertMixin):
 
         l = m.select()
         for u in l:
-            print repr(u.orders)
+            self.echo( repr(u.orders))
         self.assert_result(l, data[0], *data[1:])
         
         objectstore.uow().register_deleted(l[0])
@@ -243,14 +241,13 @@ class SaveTest(AssertMixin):
         objectstore.uow().commit()
         return
         l = sql.select([users, addresses], sql.and_(users.c.user_id==addresses.c.address_id, addresses.c.address_id==a.address_id)).execute()
-        print repr(l.fetchone().row)
+        self.echo( repr(l.fetchone().row))
         
     def testonetomany(self):
         """test basic save of one to many."""
         m = mapper(User, users, properties = dict(
             addresses = relation(Address, addresses, lazy = True)
         ))
-        print "TESTONETOMANY, mapper is " + repr(id(m))
         u = User()
         u.user_name = 'one2manytester'
         u.addresses = []
@@ -260,8 +257,8 @@ class SaveTest(AssertMixin):
         a2 = Address()
         a2.email_address = 'lala@test.org'
         u.addresses.append(a2)
-        print repr(u.addresses)
-        print repr(u.addresses.added_items())
+        self.echo( repr(u.addresses))
+        self.echo( repr(u.addresses.added_items()))
         objectstore.uow().commit()
 
         usertable = users.select(users.c.user_id.in_(u.user_id)).execute().fetchall()
@@ -308,13 +305,13 @@ class SaveTest(AssertMixin):
         u.addresses.append(a2)
         m.save(u)
         addresstable = addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id)).execute().fetchall()
-        print repr(addresstable[0].row)
+        self.echo( repr(addresstable[0].row))
         self.assert_(addresstable[0].row == (a.address_id, u.user_id, 'one2many@test.org'))
         self.assert_(addresstable[1].row == (a2.address_id, u.user_id, 'lala@test.org'))
         del u.addresses[1]
         m.save(u)
         addresstable = addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id)).execute().fetchall()
-        print repr(addresstable)
+        self.echo( repr(addresstable))
         self.assert_(addresstable[0].row == (a.address_id, u.user_id, 'one2many@test.org'))
         self.assert_(addresstable[1].row == (a2.address_id, None, 'lala@test.org'))
 
@@ -357,10 +354,8 @@ class SaveTest(AssertMixin):
                 item.keywords.append(k)
 
         objectstore.uow().commit()
-        print "OK!"
         l = m.select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name, keywords.c.name])
         self.assert_result(l, *data)
-        print "OK!"
 
         objects[4].item_name = 'item4updated'
         k = Keyword()
@@ -368,10 +363,8 @@ class SaveTest(AssertMixin):
         objects[5].keywords.append(k)
         
         objectstore.uow().commit()
-        print "OK!"
-        return
         objects[2].keywords.append(k)
-        print "added: " + repr(objects[2].keywords.added_items())
+        self.echo("added: " + repr(objects[2].keywords.added_items()))
         objectstore.uow().commit()
         
     def testassociation(self):
