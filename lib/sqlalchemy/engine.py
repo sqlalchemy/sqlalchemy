@@ -178,7 +178,7 @@ class SQLEngine(schema.SchemaEngine):
     def post_exec(self, connection, cursor, statement, parameters, many = False, echo = None, **kwargs):
         pass
 
-    def execute(self, statement, parameters, connection = None, echo = None, **kwargs):
+    def execute(self, statement, parameters, connection = None, echo = None, typemap = None, **kwargs):
         if parameters is None:
             parameters = {}
 
@@ -198,14 +198,14 @@ class SQLEngine(schema.SchemaEngine):
         else:
             c.execute(statement, parameters)
         self.post_exec(connection, c, statement, parameters, echo = echo, **kwargs)
-        return ResultProxy(c, self, self.echo)
+        return ResultProxy(c, self.echo, typemap = typemap)
 
     def log(self, msg):
         print msg
 
 
 class ResultProxy:
-    def __init__(self, cursor, engine, echo = False):
+    def __init__(self, cursor, echo = False, typemap = None):
         self.cursor = cursor
         self.echo = echo
         metadata = cursor.description
@@ -213,17 +213,17 @@ class ResultProxy:
         i = 0
         if metadata is not None:
             for item in metadata:
-                print repr(item)
-                #rec = (engine.type_descriptor(item[1]), i)
-                rec = (None, i)
+                if typemap is not None:
+                    rec = (typemap.get(item[0], types.NULLTYPE), i)
+                else:
+                    rec = (types.NULLTYPE, i)
                 self.props[item[0]] = rec
                 self.props[i] = rec
                 i+=1
 
     def _get_col(self, row, key):
         rec = self.props[key]
-        #return rec[0].convert_result_value(row[rec[1]])
-        return row[rec[1]]
+        return rec[0].convert_result_value(row[rec[1]])
         
     def fetchall(self):
         l = []
@@ -245,9 +245,11 @@ class RowProxy:
     def __init__(self, parent, row):
         self.parent = parent
         self.row = row
+    def __eq__(self, other):
+        return (other is self) or (other == tuple([self.parent._get_col(self.row, key) for key in range(0, len(self.row))]))
     def __repr__(self):
-        return repr(self.row)
+        return repr(tuple([self.parent._get_col(self.row, key) for key in range(0, len(self.row))]))
     def __getitem__(self, key):
         return self.parent._get_col(self.row, key)
 
-NULLTYPEENGINE = types.NullTypeEngine()
+
