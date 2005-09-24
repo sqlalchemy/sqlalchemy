@@ -84,6 +84,9 @@ class SQLEngine(schema.SchemaEngine):
     def reflecttable(self, table):
         raise NotImplementedError()
 
+    def tableimpl(self, table):
+        return sql.TableImpl(table)
+
     def columnimpl(self, column):
         return sql.ColumnSelectable(column)
 
