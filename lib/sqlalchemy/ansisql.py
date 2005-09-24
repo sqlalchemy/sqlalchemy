@@ -54,6 +54,7 @@ class ANSICompiler(sql.Compiled):
         self.froms = {}
         self.wheres = {}
         self.strings = {}
+        self.typemap = {}
         self.isinsert = False
         
     def get_from_text(self, obj):
@@ -79,12 +80,10 @@ class ANSICompiler(sql.Compiled):
                 b = self.binds[key]
             except KeyError:
                 continue
-            # TODO: typeengine
-            d[b.key] = value
+            d[b.key] = b.typeprocess(value)
 
         for b in self.binds.values():
-            # TODO: typeengine
-            d.setdefault(b.key, b.value)
+            d.setdefault(b.key, b.typeprocess(b.value))
 
         return d
 
@@ -148,7 +147,8 @@ class ANSICompiler(sql.Compiled):
         for c in select._raw_columns:
             for co in c.columns:
                 inner_columns.append(co)
-
+                self.typemap[co.label] = co.type
+                
         if select.use_labels:
             collist = string.join(["%s AS %s" % (c.fullname, c.label) for c in inner_columns], ', ')
         else:
