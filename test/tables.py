@@ -3,6 +3,12 @@ from sqlalchemy.sql import *
 from sqlalchemy.schema import *
 from sqlalchemy.mapper import *
 import os
+import testbase
+
+__ALL__ = ['db', 'users', 'addresses', 'orders', 'orderitems', 'keywords', 'itemkeywords']
+
+ECHO = testbase.echo
+DATA = True
 
 DBTYPE = 'sqlite_memory'
 
@@ -150,3 +156,6 @@ class Keyword(object):
     def __repr__(self):
         return "Keyword: %s/%s" % (repr(getattr(self, 'keyword_id', None)),repr(self.name))
 
+
+
+#db.echo = True

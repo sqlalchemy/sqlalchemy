@@ -20,6 +20,7 @@
 
 import sqlalchemy.schema as schema
 import sqlalchemy.util as util
+import sqlalchemy.types as types
 import string
 
 __ALL__ = ['textclause', 'select', 'join', 'and_', 'or_', 'union', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'bindparam', 'sequence']
@@ -249,7 +250,8 @@ class ColumnClause(ClauseElement):
         self.text = text
         self.table = selectable
         self._impl = ColumnSelectable(self)
-
+        self.type = types.NullTypeEngine()
+        
     columns = property(lambda self: [self])
     name = property(lambda self:self.text)
     key = property(lambda self:self.text)
