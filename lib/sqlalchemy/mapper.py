@@ -225,7 +225,6 @@ class Mapper(object):
     
     def instances(self, cursor, db):
         result = util.HistoryArraySet()
-        cursor = engine.ResultProxy(cursor, db, echo = db.echo)
         imap = {}
         while True:
             row = cursor.fetchone()
@@ -334,7 +333,7 @@ class Mapper(object):
                     clause.clauses.append(col == sql.bindparam(col.key))
                 statement = table.update(clause)
                 c = statement.execute(*update)
-                if c.rowcount != len(update):
+                if c.cursor.rowcount != len(update):
                     raise "ConcurrencyError - updated rowcount does not match number of objects updated"
             
             if len(insert):
@@ -370,7 +369,7 @@ class Mapper(object):
                     clause.clauses.append(col == sql.bindparam(col.key))
                 statement = table.delete(clause)
                 c = statement.execute(*delete)
-                if c.rowcount != len(delete):
+                if c.cursor.rowcount != len(delete):
                     raise "ConcurrencyError - updated rowcount does not match number of objects updated"
 
     def register_dependencies(self, *args, **kwargs):
