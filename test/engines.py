@@ -19,6 +19,7 @@ class EngineTest(PersistTest):
         self.do_tableops(db)
         
     def do_tableops(self, db):
+        # really trip it up with a circular reference
         users = Table('users', db,
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20), nullable = False),
@@ -27,7 +28,7 @@ class EngineTest(PersistTest):
             Column('test3', TEXT),
             Column('test4', DECIMAL, nullable = False),
             Column('test5', TIMESTAMP),
-            Column('parent_user_id', INT),
+            Column('parent_user_id', INT, foreign_key = ForeignKey('users.user_id')),
             Column('test6', DATETIME, nullable = False),
             Column('test7', CLOB),
             Column('test8', BLOB),
@@ -40,18 +41,19 @@ class EngineTest(PersistTest):
             Column('email_address', VARCHAR(20)),
         )
         
-        # really trip it up with a circular reference
-        users.c.parent_user_id.set_foreign_key(ForeignKey(users.c.user_id))
+#        users.c.parent_user_id.set_foreign_key(ForeignKey(users.c.user_id))
 
         users.create()
         addresses.create()
 
         # clear out table registry
         db.tables.clear()
-        
+
+        print "HI"        
         users = Table('users', db, autoload = True)
         addresses = Table('email_addresses', db, autoload = True)
-        
+
+        print "DROP"        
         users.drop()
         addresses.drop()
         

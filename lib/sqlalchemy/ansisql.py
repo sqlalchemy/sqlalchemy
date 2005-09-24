@@ -31,9 +31,6 @@ def engine(**params):
 
 class ANSISQLEngine(sqlalchemy.engine.SQLEngine):
 
-    def tableimpl(self, table):
-        return ANSISQLTableImpl(table)
-
     def schemagenerator(self, proxy, **params):
         return ANSISchemaGenerator(proxy, **params)
     
@@ -255,20 +252,11 @@ class ANSICompiler(sql.Compiled):
         return self.get_str(self.statement)
 
 
-    
-class ANSISQLTableImpl(sql.TableImpl):
-    """Selectable implementation that gets attached to a schema.Table object."""
-    
-    def __init__(self, table):
-        sql.TableImpl.__init__(self)
-        self.table = table
-        self.id = self.table.name
-        
-    def get_from_text(self):
-        return self.table.name
-
 class ANSISchemaGenerator(sqlalchemy.engine.SchemaIterator):
 
+    def get_column_specification(self, column):
+        raise NotImplementedError()
+        
     def visit_table(self, table):
         self.append("\nCREATE TABLE " + table.name + "(")
         
@@ -277,7 +265,7 @@ class ANSISchemaGenerator(sqlalchemy.engine.SchemaIterator):
         for column in table.columns:
             self.append(separator)
             separator = ", \n"
-            self.append("\t" + column.get_specification())
+            self.append("\t" + self.get_column_specification(column))
             
         self.append("\n)\n\n")
         self.execute()

@@ -597,17 +597,11 @@ class TableImpl(Selectable):
     def _get_from_objects(self):
         return [self.table]
 
-    def create(self, sqlproxy = None, **params):
-        if sqlproxy is None:
-            sqlproxy = self.table.engine.proxy()
-        
-        self.table.accept_visitor(self.table.engine.schemagenerator(sqlproxy, **params))
+    def create(self, **params):
+        self.table.engine.create(self.table)
 
-    def drop(self, sqlproxy = None, **params):
-        if sqlproxy is None:
-            sqlproxy = self.table.engine.proxy()
-        
-        self.table.accept_visitor(self.table.engine.schemadropper(sqlproxy, **params))
+    def drop(self, **params):
+        self.table.engine.drop(self.table)
         
     
 class Select(Selectable):

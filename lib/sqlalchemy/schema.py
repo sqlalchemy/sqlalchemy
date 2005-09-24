@@ -216,8 +216,13 @@ class ForeignKey(SchemaItem):
         
 class Sequence(SchemaItem):
     """represents a sequence, which applies to Oracle and Postgres databases."""
+    def __init__(self, name, start = None, increment = None):
+        self.name = name
+        self.start = start
+        self.increment = increment
     def _set_parent(self, column, key):
         self.column = column
+        self.column.sequence = self
     def accept_visitor(self, visitor):
         return visitor.visit_sequence(self)
 

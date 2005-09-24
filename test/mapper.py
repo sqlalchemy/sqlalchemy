@@ -1,15 +1,14 @@
 from testbase import PersistTest, AssertMixin
+import testbase
 import unittest, sys, os
 from sqlalchemy.mapper import *
 import sqlalchemy.objectstore as objectstore
 
-#ECHO = True
-ECHO = False
-DATA = True
-execfile("test/tables.py")
-db.echo = True
 
-        
+from tables import *
+
+db.echo = testbase.echo
+
 class MapperTest(AssertMixin):
     
     def setUp(self):
@@ -78,7 +77,7 @@ class PropertyTest(AssertMixin):
             ), is_primary = True)
         
         l = _User.mapper.select(_User.c.user_name == 'fred')
-        print repr(l)
+        self.echo(repr(l))
         
 
     def testinherits(self):
@@ -99,7 +98,7 @@ class PropertyTest(AssertMixin):
         jack.email_address = 'jack@gmail.com'
         objectstore.commit()
         
-        print repr(AddressUser.mapper.select(AddressUser.c.user_name == 'jack'))
+        self.echo(repr(AddressUser.mapper.select(AddressUser.c.user_name == 'jack')))
             
 class LazyTest(AssertMixin):
     def setUp(self):
@@ -120,16 +119,16 @@ class LazyTest(AssertMixin):
             address = relation(Address, addresses, lazy = True, uselist = False)
         ))
         l = m.select(users.c.user_id == 7)
-        print repr(l)
-        print repr(l[0].address)
+        self.echo(repr(l))
+        self.echo(repr(l[0].address))
 
     def testbackwardsonetoone(self):
         m = mapper(Address, addresses, properties = dict(
             user = relation(User, users, primaryjoin = users.c.user_id == addresses.c.user_id, lazy = True)
         ))
         l = m.select(addresses.c.address_id == 1)
-        print repr(l)
-        print repr(l[0].user)
+        self.echo(repr(l))
+        self.echo(repr(l[0].user))
 
     def testmanytomany(self):
         """tests a many-to-many lazy load"""
@@ -186,7 +185,7 @@ class EagerTest(AssertMixin):
         m = mapper(Address, addresses, properties = dict(
             user = relation(User, users, lazy = False)
         ))
-        print repr(m.props['user'].uselist)
+        self.echo(repr(m.props['user'].uselist))
         l = m.select(addresses.c.address_id == 1)
         self.assert_result(l, Address, 
             {'address_id' : 1, 'email_address' : 'jack@bean.com', 
@@ -214,10 +213,10 @@ class EagerTest(AssertMixin):
         ))
         s = m.compile(and_(addresses.c.email_address == bindparam('emailad'), addresses.c.user_id==users.c.user_id))
         c = s.compile()
-        print "\n" + str(c) + repr(c.get_params())
+        self.echo("\n" + str(c) + repr(c.get_params()))
         
         l = m.instances(s.execute(emailad = 'jack@bean.com'), users.engine)
-        print repr(l)
+        self.echo(repr(l))
         
     def testmulti(self):
         """tests eager loading with two relations simultaneously"""
