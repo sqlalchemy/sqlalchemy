@@ -17,12 +17,12 @@
 
 __ALL__ = [
             'INT', 'CHAR', 'VARCHAR', 'TEXT', 'FLOAT', 'DECIMAL', 
-            'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN', 'String', 'Integer', 'Numeric', 'DateTime', 'Binary', 'Boolean'
+            'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN', 'String', 'Integer', 'Numeric', 'DateTime', 'Binary', 'Boolean', 'NULLTYPE'
             ]
 
 
 class TypeEngine(object):
-    def get_col_spec(self, typeobj):
+    def get_col_spec(self):
         raise NotImplementedError()
     def convert_bind_param(self, value):
         raise NotImplementedError()
@@ -46,7 +46,7 @@ def adapt_type(typeobj, colspecs):
     return typeobj.adapt(typeobj.__class__)
     
 class NullTypeEngine(TypeEngine):
-    def get_col_spec(self, typeobj):
+    def get_col_spec(self):
         raise NotImplementedError()
     def convert_bind_param(self, value):
         return value
@@ -63,7 +63,7 @@ class String(NullTypeEngine):
             return TEXT()
         else:
             return self
-
+        
 class Integer(NullTypeEngine):
     """integer datatype"""
     pass
@@ -97,3 +97,4 @@ class CHAR(String):pass
 class BLOB(Binary): pass
 class BOOLEAN(Boolean): pass
 
+NULLTYPE = NullTypeEngine()
