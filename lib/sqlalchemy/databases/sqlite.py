@@ -104,8 +104,8 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
     def dbapi(self):
         return sqlite
 
-    def columnimpl(self, column):
-        return SQLiteColumnImpl(column)
+    def schemagenerator(self, proxy, **params):
+        return SQLiteSchemaGenerator(proxy, **params)
 
     def reflecttable(self, table):
         c = self.execute("PRAGMA table_info(" + table.name + ")", {})
@@ -141,13 +141,14 @@ class SQLiteCompiler(ansisql.ANSICompiler):
     pass
 
 
-class SQLiteColumnImpl(sql.ColumnSelectable):
-    def get_specification(self):
-        colspec = self.name + " " + self.column.type.get_col_spec()
-        if not self.column.nullable:
+class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
+    def get_column_specification(self, column):
+        colspec = column.name + " " + column.column.type.get_col_spec()
+        if not column.column.nullable:
             colspec += " NOT NULL"
-        if self.column.primary_key:
+        if column.column.primary_key:
             colspec += " PRIMARY KEY"
-        if self.column.foreign_key:
-            colspec += " REFERENCES %s(%s)" % (self.column.foreign_key.column.table.name, self.column.foreign_key.column.name) 
+        if column.column.foreign_key:
+            colspec += " REFERENCES %s(%s)" % (column.column.foreign_key.column.table.name, column.column.foreign_key.column.name) 
         return colspec
+
