@@ -336,7 +336,7 @@ class UOWTransaction(object):
     
         class Node:
             def __init__(self, mapper):
-                print "new node on " + str(mapper)
+                #print "new node on " + str(mapper)
                 self.mapper = mapper
                 self.children = util.HashSet()
                 self.parent = None
@@ -408,7 +408,7 @@ class UOWTransaction(object):
         assert(len(self.tasks.values()) == len(tasklist)) # "sorted task list not the same size as original task list"
 
         import string,sys
-        print string.join([str(t) for t in tasklist], ',')
+        #print string.join([str(t) for t in tasklist], ',')
         #sys.exit(0)
         
         return tasklist
