@@ -61,7 +61,7 @@ class TableSingleton(type):
         except KeyError:
             if kwargs.get('mustexist', False):
                 raise "Table '%s' not defined" % name
-            table = type.__call__(self, name, engine, *args, **kwargs)
+            table = type.__call__(self, name, engine, *args)
             engine.tables[name] = table
             # load column definitions from the database if 'autoload' is defined
             # we do it after the table is in the singleton dictionary to support
@@ -76,7 +76,7 @@ class Table(SchemaItem):
     """represents a relational database table."""
     __metaclass__ = TableSingleton
     
-    def __init__(self, name, engine, *args, **kwargs):
+    def __init__(self, name, engine, *args):
         self.name = name
         self.columns = OrderedProperties()
         self.c = self.columns
@@ -96,7 +96,7 @@ class Table(SchemaItem):
 
     def append_item(self, item):
         self._init_items(item)
-
+        
     def _set_parent(self, schema):
         schema.tables[self.name] = self
         self.schema = schema
@@ -106,42 +106,51 @@ class Table(SchemaItem):
             c.accept_visitor(visitor)
         return visitor.visit_table(self)
 
+    def toengine(self, engine):
+        """returns a singleton instance of this Table with a different engine"""
+        try:
+            return engine.tables[self.name]
+        except:
+            for c in self.columns:
+                args.append(c.copy())
+            return Table(self.name, engine, *args)
+
 class Column(SchemaItem):
     """represents a column in a database table."""
-    def __init__(self, name, type, key = None, primary_key = False, foreign_key = None, sequence = None, nullable = True):
+    def __init__(self, name, type, *args, **kwargs):
         self.name = name
         self.type = type
-        self.sequence = sequence
-        self.foreign_key = foreign_key
-        self.key = key or name
-        self.primary_key = primary_key
-        if primary_key:
-            nullable = False
-        self.nullable = nullable
+        self.args = args
+        self.key = kwargs.get('key', name)
+        self.primary_key = kwargs.get('primary_key', False)
+        self.nullable = kwargs.get('nullable', not self.primary_key)
+        self.foreign_key = None
+        self.sequence = None
         self._orig = None
         
     original = property(lambda s: s._orig or s)
+    engine = property(lambda s: s.table.engine)
     
+        
     def _set_parent(self, table):
         table.columns[self.key] = self
         if self.primary_key:
             table.primary_keys.append(self)
         self.table = table
-        self.engine = table.engine
-        self.type = self.engine.type_descriptor(self.type)
-        self._impl = self.engine.columnimpl(self)
-        
-        if self.foreign_key is not None:
-            self._init_items(self.foreign_key)
-#            table.foreign_keys[self.foreign_key.column.key] = self.foreign_key
+        if self.table.engine is not None:
+            self.type = self.table.engine.type_descriptor(self.type)
+            
+        self._impl = self.table.engine.columnimpl(self)
 
-    def set_foreign_key(self, fk):
-        self.foreign_key = fk
-        self._init_items(self.foreign_key)
-#        self.table.foreign_keys[self.foreign_key.column.key] = self.foreign_key
-    
+        self._init_items(*self.args)
+        self.args = None
+
+    def copy(self):
+        """creates a copy of this Column, unitialized"""
+        return Column(self.name, self.type, key = self.key, primary_key = self.primary_key, foreign_key = self.foreign_key.copy(), sequence = self.sequence)
+        
     def _make_proxy(self, selectable, name = None):
-        """creates a copy of this Column for use in a new selectable unit"""
+        """creates a copy of this Column, initialized the way this Column is"""
         # using copy.copy(c) seems to add a full second to the select.py unittest package
         #c = copy.copy(self)
         #if name is not None:
@@ -150,7 +159,6 @@ class Column(SchemaItem):
         # TODO: do we want the same foreign_key object here ?  
         c = Column(name or self.name, self.type, key = name or self.key, primary_key = self.primary_key, foreign_key = self.foreign_key, sequence = self.sequence)
         c.table = selectable
-        c.engine = self.engine
         c._orig = self.original
         selectable.columns[c.key] = c
         c._impl = self.engine.columnimpl(c)
@@ -172,6 +180,12 @@ class ForeignKey(SchemaItem):
         self._colspec = column
         self._column = None
 
+    def copy(self):
+        if isinstance(self._colspec, str):
+            return ForeignKey(self._colspec)
+        else:
+            return ForeignKey("%s.%s" % (self._colspec.table.name, self._colspec.column.key))
+        
     def _init_column(self):
         # ForeignKey inits its remote column as late as possible, so tables can
         # be defined without dependencies
@@ -198,6 +212,7 @@ class ForeignKey(SchemaItem):
     
     def _set_parent(self, column):
         self.parent = column
+        self.parent.foreign_key = self
         
 class Sequence(SchemaItem):
     """represents a sequence, which applies to Oracle and Postgres databases."""
@@ -225,4 +240,5 @@ class SchemaVisitor(object):
         def visit_index(self, index):pass
         def visit_sequence(self, sequence):pass
 
-        
+            
+            

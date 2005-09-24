@@ -40,6 +40,8 @@ def manage(module, **params):
 
 def clear_managers():
     """removes all current DBAPI2 managers.  all pools and connections are disposed."""
+    for manager in proxies.values():
+        manager.close()
     proxies.clear()
 
     
@@ -154,6 +156,13 @@ class DBProxy:
         self.poolclass = poolclass
         self.pools = {}
 
+    def close(self):
+        for key in self.pools.keys():
+            del self.pools[key]
+
+    def __del__(self):
+        self.close()
+            
     def get_pool(self, *args, **params):
         key = self._serialize(*args, **params)
         try:
