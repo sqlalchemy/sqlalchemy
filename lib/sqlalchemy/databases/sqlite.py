@@ -96,10 +96,8 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
     def connect_args(self):
         return ([self.filename], self.opts)
 
-    def compile(self, statement, bindparams):
-        compiler = SQLiteCompiler(self, statement, bindparams)
-        statement.accept_visitor(compiler)
-        return compiler
+    def compiler(self, statement, bindparams):
+        return SQLiteCompiler(self, statement, bindparams)
 
     def dbapi(self):
         return sqlite

@@ -53,7 +53,7 @@ class NullTypeEngine(TypeEngine):
     def convert_result_value(self, value):
         return value
 
-class String(TypeEngine):
+class String(NullTypeEngine):
     def __init__(self, length = None):
         self.length = length
     def adapt(self, typeobj):
@@ -64,24 +64,24 @@ class String(TypeEngine):
         else:
             return self
 
-class Integer(TypeEngine):
+class Integer(NullTypeEngine):
     """integer datatype"""
     pass
 
-class Numeric(TypeEngine):
+class Numeric(NullTypeEngine):
     def __init__(self, precision = 10, length = 2):
         self.precision = precision
         self.length = length
     def adapt(self, typeobj):
         return typeobj(self.precision, self.length)
 
-class DateTime(TypeEngine):
+class DateTime(NullTypeEngine):
     pass
 
-class Binary(TypeEngine):
+class Binary(NullTypeEngine):
     pass
 
-class Boolean(TypeEngine):
+class Boolean(NullTypeEngine):
     pass
 
 class FLOAT(Numeric):pass
