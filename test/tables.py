@@ -24,20 +24,20 @@ users = Table('users', db,
 
 addresses = Table('email_addresses', db,
     Column('address_id', INT, primary_key = True),
-    Column('user_id', INT, foreign_key = ForeignKey(users.c.user_id)),
+    Column('user_id', INT, ForeignKey(users.c.user_id)),
     Column('email_address', VARCHAR(20)),
 )
 
 orders = Table('orders', db,
     Column('order_id', INT, primary_key = True),
-    Column('user_id', INT, foreign_key = ForeignKey(users.c.user_id)),
+    Column('user_id', INT, ForeignKey(users.c.user_id)),
     Column('description', VARCHAR(50)),
     Column('isopen', INT)
 )
 
 orderitems = Table('items', db,
     Column('item_id', INT, primary_key = True),
-    Column('order_id', INT, foreign_key = ForeignKey("orders")),
+    Column('order_id', INT, ForeignKey("orders")),
     Column('item_name', VARCHAR(50))
 )
 
@@ -47,8 +47,8 @@ keywords = Table('keywords', db,
 )
 
 itemkeywords = Table('itemkeywords', db,
-    Column('item_id', INT, foreign_key = ForeignKey("items")),
-    Column('keyword_id', INT, foreign_key = ForeignKey("keywords"))
+    Column('item_id', INT, ForeignKey("items")),
+    Column('keyword_id', INT, ForeignKey("keywords"))
 )
 
 users.create()
