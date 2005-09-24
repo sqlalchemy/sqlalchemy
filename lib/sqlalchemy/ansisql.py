@@ -147,7 +147,10 @@ class ANSICompiler(sql.Compiled):
         for c in select._raw_columns:
             for co in c.columns:
                 inner_columns.append(co)
-                self.typemap[co.label] = co.type
+                if select.use_labels:
+                    self.typemap[co.label] = co.type
+                else:
+                    self.typemap[co.key] = co.type
                 
         if select.use_labels:
             collist = string.join(["%s AS %s" % (c.fullname, c.label) for c in inner_columns], ', ')

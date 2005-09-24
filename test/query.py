@@ -1,9 +1,10 @@
 from testbase import PersistTest
+import testbase
 import unittest, sys
 
 import sqlalchemy.databases.sqlite as sqllite
 
-db = sqllite.engine(':memory:', {}, echo = True)
+db = sqllite.engine(':memory:', {}, echo = testbase.echo)
 
 from sqlalchemy.sql import *
 from sqlalchemy.schema import *
@@ -11,7 +12,7 @@ from sqlalchemy.schema import *
 class QueryTest(PersistTest):
     
     def setUp(self):
-        self.users = Table('users', db,
+        self.users = Table('query_users', db,
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20)),
             redefine = True
