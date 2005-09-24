@@ -14,6 +14,7 @@ class QueryTest(PersistTest):
         self.users = Table('users', db,
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20)),
+            redefine = True
         )
         self.users.create()
         

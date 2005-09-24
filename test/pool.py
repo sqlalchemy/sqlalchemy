@@ -16,7 +16,7 @@ class PoolTest(PersistTest):
         connection2 = manager.connect('foo.db')
         connection3 = manager.connect('bar.db')
         
-        print "connection " + repr(connection)
+        self.echo( "connection " + repr(connection))
         self.assert_(connection.cursor() is not None)
         self.assert_(connection is connection2)
         self.assert_(connection2 is not connection3)
@@ -27,7 +27,7 @@ class PoolTest(PersistTest):
         connection = manager.connect('foo.db')
         connection2 = manager.connect('foo.db')
 
-        print "connection " + repr(connection)
+        self.echo( "connection " + repr(connection))
 
         self.assert_(connection.cursor() is not None)
         self.assert_(connection is not connection2)
@@ -37,7 +37,7 @@ class PoolTest(PersistTest):
     
         def status(pool):
             tup = (pool.size(), pool.checkedin(), pool.overflow(), pool.checkedout())
-            print "Pool size: %d  Connections in pool: %d Current Overflow: %d Current Checked out connections: %d" % tup
+            self.echo( "Pool size: %d  Connections in pool: %d Current Overflow: %d Current Checked out connections: %d" % tup)
             return tup
                 
         c1 = p.connect()
@@ -63,7 +63,8 @@ class PoolTest(PersistTest):
         self.assert_(status(p) == (3, 2, 0, 1))
         
     def tearDown(self):
-        for file in ('foo.db', 'bar.db'):
+       pool.clear_managers()
+       for file in ('foo.db', 'bar.db'):
             if os.access(file, os.F_OK):
                 os.remove(file)
         

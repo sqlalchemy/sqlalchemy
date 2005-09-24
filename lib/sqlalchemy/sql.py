@@ -141,6 +141,7 @@ def _compound_select(keyword, *selects, **params):
 def _is_literal(element):
     return not isinstance(element, ClauseElement) and not isinstance(element, schema.SchemaItem)
 
+
 class ClauseVisitor(schema.SchemaVisitor):
     """builds upon SchemaVisitor to define the visiting of SQL statement elements in 
     addition to Schema elements."""
@@ -568,9 +569,13 @@ class TableImpl(Selectable):
     as well as other functions
     """
 
-#    def _engine(self):
-#        return self.table.engine
-
+    def __init__(self, table):
+        self.table = table
+        self.id = self.table.name
+        
+    def get_from_text(self):
+        return self.table.name
+        
     def group_parenthesized(self):
         return False
     

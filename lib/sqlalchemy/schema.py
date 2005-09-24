@@ -204,7 +204,6 @@ class ForeignKey(SchemaItem):
             else:
                 self._column = self._colspec
 
-            print "setting up key " + self._column.key + " onto table " + self.parent.table.name
             self.parent.table.foreign_keys[self._column.key] = self
         return self._column
             
