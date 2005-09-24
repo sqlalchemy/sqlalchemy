@@ -33,7 +33,7 @@ table3 = Table(
 class SQLTest(PersistTest):
     def runtest(self, clause, result, engine = None, params = None):
         c = clause.compile(engine, params)
-        print "\n" + str(c) + repr(c.get_params())
+        self.echo("\n" + str(c) + repr(c.get_params()))
         cc = re.sub(r'\n', '', str(c))
         self.assert_(cc == result)
 

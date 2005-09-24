@@ -40,16 +40,15 @@ class ANSISQLEngine(sqlalchemy.engine.SQLEngine):
     def schemadropper(self, proxy, **params):
         return ANSISchemaDropper(proxy, **params)
 
+    def compiler(self, statement, bindparams):
+        return ANSICompiler(self, statement, bindparams)
+    
     def connect_args(self):
         return ([],{})
 
     def dbapi(self):
         return object()
 
-    def compile(self, statement, bindparams):
-        compiler = ANSICompiler(self, statement, bindparams)
-        statement.accept_visitor(compiler)
-        return compiler
 
 class ANSICompiler(sql.Compiled):
     def __init__(self, engine, statement, bindparams):
