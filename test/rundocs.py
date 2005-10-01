@@ -7,9 +7,9 @@ engine.echo = True
 
 # table metadata
 users = Table('users', engine, 
-    Column('user_id', INTEGER, primary_key = True),
-    Column('user_name', VARCHAR(16), nullable = False),
-    Column('password', VARCHAR(20), nullable = False)
+    Column('user_id', Integer, primary_key = True),
+    Column('user_name', String(16), nullable = False),
+    Column('password', String(20), nullable = False)
 )
 users.create()
 users.insert().execute(
@@ -33,9 +33,9 @@ objectstore.commit()
 objectstore.clear()
 
 addresses = Table('email_addresses', engine,
-    Column('address_id', INT, primary_key = True),
-    Column('user_id', INT, foreign_key = ForeignKey(users.c.user_id)),
-    Column('email_address', VARCHAR(20)),
+    Column('address_id', Integer, primary_key = True),
+    Column('user_id', Integer, ForeignKey(users.c.user_id)),
+    Column('email_address', String(20)),
 )
 addresses.create()
 addresses.insert().execute(
@@ -76,9 +76,9 @@ engine.echo = True
 
 # a table to store a user's preferences for a site
 prefs = Table('user_prefs', engine,
-    Column('pref_id', INT, primary_key = True),
-    Column('stylename', VARCHAR(20)),
-    Column('save_password', BOOLEAN, nullable = False),
+    Column('pref_id', Integer, primary_key = True),
+    Column('stylename', String(20)),
+    Column('save_password', Boolean, nullable = False),
     Column('timezone', CHAR(3), nullable = False)
 )
 prefs.create()
@@ -88,10 +88,10 @@ prefs.insert().execute(
 
 # user table gets 'preference_id' column added
 users = Table('users', engine, 
-    Column('user_id', INTEGER, primary_key = True),
-    Column('user_name', VARCHAR(16), nullable = False),
-    Column('password', VARCHAR(20), nullable = False),
-    Column('preference_id', INTEGER, foreign_key = ForeignKey(prefs.c.pref_id))
+    Column('user_id', Integer, primary_key = True),
+    Column('user_name', String(16), nullable = False),
+    Column('password', String(20), nullable = False),
+    Column('preference_id', Integer, ForeignKey(prefs.c.pref_id))
 )
 users.drop()
 users.create()
@@ -102,7 +102,7 @@ users.insert().execute(
 
 addresses = Table('email_addresses', engine,
     Column('address_id', INT, primary_key = True),
-    Column('user_id', INT, foreign_key = ForeignKey(users.c.user_id)),
+    Column('user_id', INT, ForeignKey(users.c.user_id)),
     Column('email_address', VARCHAR(20)),
 )
 addresses.drop()
