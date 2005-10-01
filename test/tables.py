@@ -24,21 +24,21 @@ elif DBTYPE == 'postgres':
     pass
 
 users = Table('users', db,
-    Column('user_id', INT, primary_key = True),
-    Column('user_name', VARCHAR(20)),
+    Column('user_id', Integer, primary_key = True),
+    Column('user_name', String(20)),
 )
 
 addresses = Table('email_addresses', db,
-    Column('address_id', INT, primary_key = True),
-    Column('user_id', INT, ForeignKey(users.c.user_id)),
-    Column('email_address', VARCHAR(20)),
+    Column('address_id', Integer, primary_key = True),
+    Column('user_id', Integer, ForeignKey(users.c.user_id)),
+    Column('email_address', String(20)),
 )
 
 orders = Table('orders', db,
-    Column('order_id', INT, primary_key = True),
-    Column('user_id', INT, ForeignKey(users.c.user_id)),
-    Column('description', VARCHAR(50)),
-    Column('isopen', INT)
+    Column('order_id', Integer, primary_key = True),
+    Column('user_id', Integer, ForeignKey(users.c.user_id)),
+    Column('description', String(50)),
+    Column('isopen', Integer)
 )
 
 orderitems = Table('items', db,
@@ -48,7 +48,7 @@ orderitems = Table('items', db,
 )
 
 keywords = Table('keywords', db,
-    Column('keyword_id', INT, primary_key = True),
+    Column('keyword_id', Integer, primary_key = True),
     Column('name', VARCHAR(50))
 )
 
