@@ -37,9 +37,9 @@ class EngineTest(PersistTest):
         )
 
         addresses = Table('email_addresses', db,
-            Column('address_id', INT, primary_key = True),
-            Column('remote_user_id', INT, foreign_key = ForeignKey(users.c.user_id)),
-            Column('email_address', VARCHAR(20)),
+            Column('address_id', Integer, primary_key = True),
+            Column('remote_user_id', Integer, foreign_key = ForeignKey(users.c.user_id)),
+            Column('email_address', String(20)),
         )
         
 #        users.c.parent_user_id.set_foreign_key(ForeignKey(users.c.user_id))
