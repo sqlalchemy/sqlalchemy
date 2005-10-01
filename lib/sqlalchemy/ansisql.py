@@ -107,7 +107,7 @@ class ANSICompiler(sql.Compiled):
             sep = " "
         else:
             sep = " " + compound.operator + " "
-            
+        
         if compound.parens:
             self.strings[compound] = "(" + string.join([self.get_str(c) for c in compound.clauses], sep) + ")"
         else:

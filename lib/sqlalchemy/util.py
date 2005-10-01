@@ -162,7 +162,10 @@ class HistoryArraySet(UserList.UserList):
                 self.records[item] = None
         else:
             self.data = []
-
+    def __getattr__(self, attr):
+        """proxies unknown HistoryArraySet methods and attributes to the underlying
+        data array.  this allows custom list classes to be used."""
+        return getattr(self.data, attr)
     def set_data(self, data):
         # first mark everything current as "deleted"
         for i in self.data:

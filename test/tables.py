@@ -2,6 +2,7 @@
 from sqlalchemy.sql import *
 from sqlalchemy.schema import *
 from sqlalchemy.mapper import *
+import sqlalchemy
 import os
 import testbase
 
@@ -13,13 +14,12 @@ DATA = True
 DBTYPE = 'sqlite_memory'
 
 if DBTYPE == 'sqlite_memory':
-    import sqlalchemy.databases.sqlite as sqllite
-    db = sqllite.engine(':memory:', {}, echo = ECHO)
+    db = sqlalchemy.engine.create_engine('sqlite', ':memory:', {}, echo = testbase.echo)
 elif DBTYPE == 'sqlite_file':
     import sqlalchemy.databases.sqlite as sqllite
     if os.access('querytest.db', os.F_OK):
         os.remove('querytest.db')
-    db = sqllite.engine('querytest.db', opts = {}, echo = ECHO)
+    db = sqlalchemy.engine.create_engine('sqlite', 'querytest.db', {}, echo = testbase.echo)
 elif DBTYPE == 'postgres':
     pass
 

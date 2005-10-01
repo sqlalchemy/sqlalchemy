@@ -218,13 +218,23 @@ class ClauseElement(object):
         return self
 
 
-    def compile(self, engine, bindparams = None):
+    def compile(self, engine = None, bindparams = None):
         """compiles this SQL expression using its underlying SQLEngine to produce
         a Compiled object.  The actual SQL statement is the Compiled object's string representation.   
         bindparams is an optional dictionary representing the bind parameters to be used with 
         the statement.  Currently, only the compilations of INSERT and UPDATE statements
         use the bind parameters, in order to determine which
         table columns should be used in the statement."""
+
+        if engine is None:
+            for f in self._get_from_objects():
+                engine = f.engine
+                if engine is not None: break
+            else:
+                import sqlalchemy.ansisql as ansisql
+                engine = ansisql.engine()
+                #raise "no engine supplied, and no engine could be located within the clauses!"
+
         return engine.compile(self, bindparams = bindparams)
 
     def execute(self, *multiparams, **params):
@@ -317,7 +327,7 @@ class TextClause(ClauseElement):
     def __init__(self, text = ""):
         self.text = text
         self.parens = False
-
+        
     def accept_visitor(self, visitor): visitor.visit_textclause(self)
 
     def hash_key(self):

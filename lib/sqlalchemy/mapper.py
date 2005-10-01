@@ -25,7 +25,9 @@ import random, copy, types
 __ALL__ = ['eagermapper', 'eagerloader', 'lazymapper', 'lazyloader', 'eagerload', 'lazyload', 'assignmapper', 'mapper', 'lazyloader', 'lazymapper', 'clear_mappers', 'objectstore', 'sql']
 
 def relation(*args, **params):
-    if isinstance(args[0], Mapper):
+    if isinstance(args[0], type) and len(args) == 1:
+        return relation_loader(*args, **params)
+    elif isinstance(args[0], Mapper):
         return relation_loader(*args, **params)
     else:
         return relation_mapper(*args, **params)
@@ -68,7 +70,9 @@ def mapper(class_, table = None, engine = None, autoload = False, *args, **param
         return _mappers[hashkey]
     except KeyError:
         m = Mapper(hashkey, class_, table, *args, **params)
-        return _mappers.setdefault(hashkey, m)
+        _mappers.setdefault(hashkey, m)
+        m._init_properties()
+        return _mappers[hashkey]
 
 def clear_mappers():
     _mappers.clear()
@@ -169,6 +173,8 @@ class Mapper(object):
         # load custom properties 
         if properties is not None:
             for key, prop in properties.iteritems():
+                if isinstance(prop, schema.Column):
+                    prop = ColumnProperty(prop)
                 self.props[key] = prop
                 if isinstance(prop, ColumnProperty):
                     for col in prop.columns:
@@ -202,13 +208,13 @@ class Mapper(object):
                 if not self.props.has_key(key):
                     self.props[key] = prop._copy()
                 
-                
         if not hasattr(self.class_, '_mapper') or self.is_primary or not _mappers.has_key(self.class_._mapper):
             self._init_class()
-        [prop.init(key, self) for key, prop in self.props.iteritems()]
         
     engines = property(lambda s: [t.engine for t in s.tables])
 
+    def _init_properties(self):
+        [prop.init(key, self) for key, prop in self.props.iteritems()]
     def __str__(self):
         return "Mapper|" + self.class_.__name__ + "|" + self.primarytable.name
     def hash_key(self):
@@ -217,7 +223,6 @@ class Mapper(object):
     def _init_class(self):
         self.class_._mapper = self.hashkey
         self.class_.c = self.c
-    
     def set_property(self, key, prop):
         self.props[key] = prop
         prop.init(key, self)
@@ -404,6 +409,7 @@ class Mapper(object):
         case, executes all the property loaders on the instance to also process extra information
         in the row."""
 
+            
         # look in main identity map.  if its there, we dont do anything to it,
         # including modifying any of its related items lists, as its already
         # been exposed to being modified by the application.
@@ -430,6 +436,7 @@ class Mapper(object):
             for col in self.primary_keys[self.table]:
                 if row[col.label] is None:
                     return None
+            # plugin point
             instance = self.class_()
             instance._mapper = self.hashkey
             instance._instance_key = identitykey
@@ -442,7 +449,9 @@ class Mapper(object):
 
         if result is not None:
             result.append_nohistory(instance)
-            
+
+        # plugin point
+        
         # call further mapper properties on the row, to pull further 
         # instances from the row and possibly populate this item.
         for prop in self.props.values():
@@ -519,17 +528,15 @@ class ColumnProperty(MapperProperty):
 class PropertyLoader(MapperProperty):
     """describes an object property that holds a single item or list of items that correspond to a related
     database table."""
-    def __init__(self, mapper, secondary, primaryjoin, secondaryjoin, foreignkey = None, uselist = None, private = False):
+    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey = None, uselist = None, private = False):
         self.uselist = uselist
-        self.mapper = mapper
-        self.target = self.mapper.table
+        self.argument = argument
         self.secondary = secondary
         self.primaryjoin = primaryjoin
         self.secondaryjoin = secondaryjoin
         self.foreignkey = foreignkey
         self.private = private
-        self._hash_key = "%s(%s, %s, %s, %s, %s, %s)" % (self.__class__.__name__, hash_key(mapper), hash_key(secondary), hash_key(primaryjoin), hash_key(secondaryjoin), hash_key(foreignkey), repr(uselist))
-
+        self._hash_key = "%s(%s, %s, %s, %s, %s, %s)" % (self.__class__.__name__, hash_key(self.argument), hash_key(secondary), hash_key(primaryjoin), hash_key(secondaryjoin), hash_key(foreignkey), repr(uselist))
 
     def _copy(self):
         return self.__class__(self.mapper, self.secondary, self.primaryjoin, self.secondaryjoin, self.foreignkey, self.uselist, self.private)
@@ -538,8 +545,14 @@ class PropertyLoader(MapperProperty):
         return self._hash_key
 
     def init(self, key, parent):
-        if isinstance(self.mapper, str):
-            self.mapper = object_mapper(self.mapper)
+        if isinstance(self.argument, str):
+            self.mapper = object_mapper(self.argument)
+        elif isinstance(self.argument, type):
+            self.mapper = class_mapper(self.argument)
+        else:
+            self.mapper = self.argument
+            
+        self.target = self.mapper.table
             
         self.key = key
         self.parent = parent
@@ -610,7 +623,7 @@ class PropertyLoader(MapperProperty):
         elif len(crit) == 1:
             return (crit[0])
         else:
-            return sql.and_(crit)
+            return sql.and_(*crit)
 
     def register_deleted(self, obj, uow):
         if not self.private:
@@ -647,7 +660,7 @@ class PropertyLoader(MapperProperty):
             raise " no foreign key ?"
                 
     def process_dependencies(self, deplist, uowcommit, delete = False):
-        #print self.mapper.table.name + " process_dep isdelete " + repr(delete)
+        print self.mapper.table.name + " " + repr(deplist.map.values()) + " process_dep isdelete " + repr(delete)
         
         # function to retreive the child list off of an object.  "passive" means, if its
         # a lazy loaded list that is not loaded yet, dont load it.
@@ -664,6 +677,8 @@ class PropertyLoader(MapperProperty):
         setter = BinaryVisitor(sync_foreign_keys)
 
         associationrow = {}
+        
+        # plugin point
         
         if self.secondaryjoin is not None:
             secondary_delete = []
@@ -701,6 +716,7 @@ class PropertyLoader(MapperProperty):
                     statement = self.secondary.insert()
                     statement.execute(*secondary_insert)
         elif self.foreignkey.table == self.target:
+            print "HI"
             if delete and not self.private:
                 updates = []
                 clearkeys = True
@@ -720,9 +736,11 @@ class PropertyLoader(MapperProperty):
                     statement = self.target.update(self.lazywhere, values = values)
                     statement.execute(*updates)
             else:
+                print str(self.primaryjoin.compile())
                 for obj in deplist:
                     childlist = getlist(obj)
                     if childlist is None: return
+                    print "DEP: " +str(obj) + " LIST: " + repr([str(v) for v in childlist.added_items()])
                     uowcommit.register_saved_list(childlist)
                     clearkeys = False
                     for child in childlist.added_items():
@@ -746,23 +764,35 @@ class PropertyLoader(MapperProperty):
                         self.primaryjoin.accept_visitor(setter)
         else:
             raise " no foreign key ?"
+    
+        print self.mapper.table.name + " postdep " + repr([str(v) for v in deplist.map.values()]) + " process_dep isdelete " + repr(delete)
 
     def _sync_foreign_keys(self, binary, obj, child, associationrow, clearkeys):
         """given a binary clause with an = operator joining two table columns, synchronizes the values 
         of the corresponding attributes within a parent object and a child object, or the attributes within an 
         an "association row" that represents an association link between the 'parent' and 'child' object."""
         if binary.operator == '=':
-            colmap = {binary.left.table : binary.left, binary.right.table : binary.right}
-            if colmap.has_key(self.parent.primarytable) and colmap.has_key(self.target):
-                #print "set " + repr(child) + ":" + colmap[self.target].key + " to " + repr(obj) + ":" + colmap[self.parent.primarytable].key
-                if clearkeys:
-                    self.mapper._setattrbycolumn(child, colmap[self.target], None)
+            if binary.left.table == binary.right.table:
+                if binary.right is self.foreignkey:
+                    source = binary.left
+                elif binary.left is self.foreignkey:
+                    source = binary.right
                 else:
-                    self.mapper._setattrbycolumn(child, colmap[self.target], self.parent._getattrbycolumn(obj, colmap[self.parent.primarytable]))
-            elif colmap.has_key(self.parent.primarytable) and colmap.has_key(self.secondary):
-                associationrow[colmap[self.secondary].key] = self.parent._getattrbycolumn(obj, colmap[self.parent.primarytable])
-            elif colmap.has_key(self.target) and colmap.has_key(self.secondary):
-                associationrow[colmap[self.secondary].key] = self.mapper._getattrbycolumn(child, colmap[self.target])
+                    raise "Cant determine direction for relationship %s = %s" % (binary.left.fullname, binary.right.fullname)
+                print "set " + repr(child) + ":" + self.foreignkey.key + " to " + repr(obj) + ":" + source.key
+                self.mapper._setattrbycolumn(child, self.foreignkey, self.parent._getattrbycolumn(obj, source))
+            else:
+                colmap = {binary.left.table : binary.left, binary.right.table : binary.right}
+                if colmap.has_key(self.parent.primarytable) and colmap.has_key(self.target):
+                    print "set " + repr(child) + ":" + colmap[self.target].key + " to " + repr(obj) + ":" + colmap[self.parent.primarytable].key
+                    if clearkeys:
+                        self.mapper._setattrbycolumn(child, colmap[self.target], None)
+                    else:
+                        self.mapper._setattrbycolumn(child, colmap[self.target], self.parent._getattrbycolumn(obj, colmap[self.parent.primarytable]))
+                elif colmap.has_key(self.parent.primarytable) and colmap.has_key(self.secondary):
+                    associationrow[colmap[self.secondary].key] = self.parent._getattrbycolumn(obj, colmap[self.parent.primarytable])
+                elif colmap.has_key(self.target) and colmap.has_key(self.secondary):
+                    associationrow[colmap[self.secondary].key] = self.mapper._getattrbycolumn(child, colmap[self.target])
             
 
 # TODO: break out the lazywhere capability so that the main PropertyLoader can use it
@@ -937,9 +967,11 @@ class BinaryVisitor(sql.ClauseVisitor):
 def hash_key(obj):
     if obj is None:
         return 'None'
-    else:
+    elif hasattr(obj, 'hash_key'):
         return obj.hash_key()
-
+    else:
+        return repr(obj)
+        
 def mapper_hash_key(class_, table, primarytable = None, properties = None, scope = "thread", **kwargs):
     if properties is None:
         properties = {}

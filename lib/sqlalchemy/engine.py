@@ -25,6 +25,10 @@ import sqlalchemy.sql as sql
 import StringIO
 import sqlalchemy.types as types
 
+def create_engine(name, *args ,**kwargs):
+    module = getattr(__import__('sqlalchemy.databases.%s' % name).databases, name)
+    return module.engine(*args, **kwargs)
+
 class SchemaIterator(schema.SchemaVisitor):
     """a visitor that can gather text into a buffer and execute the contents of the buffer."""
     def __init__(self, sqlproxy, **params):
@@ -58,6 +62,7 @@ class SQLEngine(schema.SchemaEngine):
         self.tables = {}
         self.notes = {}
 
+        
     def type_descriptor(self, typeobj):
         if type(typeobj) is type:
             typeobj = typeobj()

@@ -301,6 +301,8 @@ class UOWTransaction(object):
         for task in self.tasks.values():
             task.mapper.register_dependencies(self)
         
+        print repr(self.dependencies)
+        
         for task in self._sort_dependencies():
             obj_list = task.objects
             if not task.listonly and not task.isdelete:
@@ -387,6 +389,8 @@ class UOWTransaction(object):
             if task is not None:
                 res.append(task)
             for child in node.children:
+                if child is node:
+                    continue
                 sort(child, isdel, res)
             return res
             
