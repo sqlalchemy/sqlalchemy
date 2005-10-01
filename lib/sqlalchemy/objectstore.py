@@ -301,17 +301,8 @@ class UOWTransaction(object):
         for task in self.tasks.values():
             task.mapper.register_dependencies(self)
         
-        print repr(self.dependencies)
-        
         for task in self._sort_dependencies():
-            obj_list = task.objects
-            if not task.listonly and not task.isdelete:
-                task.mapper.save_obj(obj_list, self)
-            for dep in task.dependencies:
-                (processor, targettask) = dep
-                processor.process_dependencies(targettask.objects, self, delete = task.isdelete)
-            if not task.listonly and task.isdelete:
-                task.mapper.delete_obj(obj_list, self)
+            task.execute(self)
             
     def post_exec(self):
         for obj in self.saved_objects:
@@ -426,6 +417,16 @@ class UOWTask(object):
         self.listonly = listonly
         #print "new task " + str(self)
     
+    def execute(self, trans):
+        obj_list = self.objects
+        if not self.listonly and not self.isdelete:
+            self.mapper.save_obj(obj_list, trans)
+        for dep in self.dependencies:
+            (processor, targettask) = dep
+            processor.process_dependencies(targettask.objects, trans, delete = self.isdelete)
+        if not self.listonly and self.isdelete:
+            self.mapper.delete_obj(obj_list, trans)
+        
     def __str__(self):
         if self.isdelete:
             return self.mapper.primarytable.name + " deletes " + repr(self.listonly)
