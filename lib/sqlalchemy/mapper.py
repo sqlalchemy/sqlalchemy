@@ -658,17 +658,17 @@ class PropertyLoader(MapperProperty):
             #uowcommit.register_task(self.mapper, True, self, self.parent, False)
         else:
             raise " no foreign key ?"
-                
+
+    def get_object_dependencies(self, obj, uowcommit, passive = True):
+        """function to retreive the child list off of an object.  "passive" means, if its
+         a lazy loaded list that is not loaded yet, dont load it."""
+        if self.uselist:
+            return uowcommit.uow.attributes.get_list_history(obj, self.key, passive = passive)
+        else: 
+            return uowcommit.uow.attributes.get_history(obj, self.key)
+    
     def process_dependencies(self, deplist, uowcommit, delete = False):
         print self.mapper.table.name + " " + repr(deplist.map.values()) + " process_dep isdelete " + repr(delete)
-        
-        # function to retreive the child list off of an object.  "passive" means, if its
-        # a lazy loaded list that is not loaded yet, dont load it.
-        def getlist(obj, passive = True):
-            if self.uselist:
-                return uowcommit.uow.attributes.get_list_history(obj, self.key, passive = passive)
-            else: 
-                return uowcommit.uow.attributes.get_history(obj, self.key)
 
         # fucntion to set properties across a parent/child object plus an "association row",
         # based on a join condition
@@ -676,6 +676,9 @@ class PropertyLoader(MapperProperty):
             self._sync_foreign_keys(binary, obj, child, associationrow, clearkeys)
         setter = BinaryVisitor(sync_foreign_keys)
 
+        def getlist(obj, passive=True):
+            return self.get_object_dependencies(obj, uowcommit, passive)
+            
         associationrow = {}
         
         # plugin point

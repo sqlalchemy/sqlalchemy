@@ -426,6 +426,26 @@ class UOWTask(object):
             processor.process_dependencies(targettask.objects, trans, delete = self.isdelete)
         if not self.listonly and self.isdelete:
             self.mapper.delete_obj(obj_list, trans)
+
+    def sort_circular_dependencies(self):
+        d = {}
+        head = None
+        for obj in obj_list:
+            d[obj] = UOWTask(self.mapper, self.isdelete, self.listonly)
+            d[obj].dependencies = self.dependencies
+            if head is None:
+                head = obj
+            for dep in self.dependencies:
+                (processor, targettask) = dep
+                if targetttask is self:
+                    for o in processor.get_object_dependencies(obj, self, passive = True):
+                        if o is head:
+                            head = obj
+                        d[obj].objects.append(o)
+        if head is None:
+            return self
+        else:
+            return d[head]
         
     def __str__(self):
         if self.isdelete:
