@@ -24,7 +24,7 @@ import thread
 import sqlalchemy.util as util
 import sqlalchemy.attributes as attributes
 import weakref
-
+import string
 
 def get_id_key(ident, class_, table):
     """returns an identity-map key for use in storing/retrieving an item from the identity map, given
@@ -302,6 +302,7 @@ class UOWTransaction(object):
             task.mapper.register_dependencies(self)
         
         for task in self._sort_dependencies():
+            print "exec task: " + str(task)
             task.execute(self)
             
     def post_exec(self):
@@ -326,54 +327,10 @@ class UOWTransaction(object):
                 pass
 
     def _sort_dependencies(self):
-    
-        class Node:
-            def __init__(self, mapper):
-                #print "new node on " + str(mapper)
-                self.mapper = mapper
-                self.children = util.HashSet()
-                self.parent = None
-                
-        def maketree(tuples, allitems):
-            nodes = {}
-            head = None
-            for tup in tuples:
-                (parent, child) = (tup[0], tup[1])
-                #print "tuple: " + str(parent) + " " + str(child)
-                try:
-                    parentnode = nodes[parent]
-                except KeyError:
-                    parentnode = Node(parent)
-                    nodes[parent] = parentnode
-                try:
-                    childnode = nodes[child]
-                except KeyError:
-                    childnode = Node(child)
-                    nodes[child] = childnode
-
-                if head is None:
-                    head = parentnode
-                elif head is childnode:
-                    head = parentnode
-                if childnode.parent is not None:
-                    del childnode.parent.children[childnode]
-                    childnode.parent.children.append(parentnode)
-                parentnode.children.append(childnode)
-                childnode.parent = parentnode
-                
-            for item in allitems:
-                if not nodes.has_key(item):
-                    node = Node(item)
-                    if head is not None:
-                        head.parent = node
-                        node.children.append(head)
-                    head = node
-            return head
-        
         bymapper = {}
         
         def sort(node, isdel, res):
-            #print "Sort: " + (node and str(node.mapper) or 'None')
+            print "Sort: " + (node and str(node.mapper) or 'None')
             if node is None:
                 return res
             task = bymapper.get((node.mapper, isdel), None)
@@ -381,6 +338,8 @@ class UOWTransaction(object):
                 res.append(task)
             for child in node.children:
                 if child is node:
+                    print "setting circular: " + str(task)
+                    task.iscircular = True
                     continue
                 sort(child, isdel, res)
             return res
@@ -391,7 +350,7 @@ class UOWTransaction(object):
             mappers.append(task.mapper)
             bymapper[(task.mapper, task.isdelete)] = task
     
-        head = maketree(self.dependencies, mappers)
+        head = TupleSorter(self.dependencies, mappers).sort()
         res = []
         tasklist = sort(head, False, res)
 
@@ -415,9 +374,16 @@ class UOWTask(object):
         self.objects = util.HashSet(ordered = True)
         self.dependencies = []
         self.listonly = listonly
+        self.iscircular = False
         #print "new task " + str(self)
     
     def execute(self, trans):
+        print "exec " + str(self) + " circualr=" + repr(self.iscircular)
+        if self.iscircular:
+            task = self.sort_circular_dependencies(trans)
+            task.execute_circular(trans)
+            return
+            
         obj_list = self.objects
         if not self.listonly and not self.isdelete:
             self.mapper.save_obj(obj_list, trans)
@@ -427,32 +393,151 @@ class UOWTask(object):
         if not self.listonly and self.isdelete:
             self.mapper.delete_obj(obj_list, trans)
 
-    def sort_circular_dependencies(self):
-        d = {}
-        head = None
-        for obj in obj_list:
-            d[obj] = UOWTask(self.mapper, self.isdelete, self.listonly)
-            d[obj].dependencies = self.dependencies
-            if head is None:
-                head = obj
+    def execute_circular(self, trans):
+        print "execcircular " + str(self)
+#        obj_list = self.objects
+ #       if not self.listonly and not self.isdelete:
+ #           self.mapper.save_obj(obj_list, trans)
+ #       raise "hi"
+        self.execute(trans)
+        for obj in self.objects:
+            childtask = self.taskhash[obj]
+            childtask.execute_circular(trans)
+    
+    
+    def sort_circular_dependencies(self, trans):
+        allobjects = self.objects
+        tuples = []
+        for obj in self.objects:
             for dep in self.dependencies:
                 (processor, targettask) = dep
-                if targetttask is self:
-                    for o in processor.get_object_dependencies(obj, self, passive = True):
-                        if o is head:
-                            head = obj
-                        d[obj].objects.append(o)
-        if head is None:
-            return self
-        else:
-            return d[head]
+                if targettask is self:
+                    childlist = processor.get_object_dependencies(obj, trans, passive = True)
+                    for o in childlist.added_items() + childlist.deleted_items():
+                        whosdep = processor.whose_dependent_on_who(obj, o, trans)
+                        if whosdep is not None:
+                            tuples.append(whosdep)
+        head = TupleSorter(tuples, allobjects).sort()
+        print "---------"
+        print str(head)
+        raise "hi"
+        
+    def old_sort_circular_dependencies(self, trans):
+        dependents = {}
+        d = {}
+
+        def make_task():
+            t = UOWTask(self.mapper, self.isdelete, self.listonly)
+            t.dependencies = self.dependencies
+            t.taskhash = d
+            return t
+
+        head = make_task()
+        for obj in self.objects:
+            print "obj: " + str(obj)
+            task  = make_task()
+            d[obj] = task
+            if not dependents.has_key(obj):
+                head.objects.append(obj)
+            for dep in self.dependencies:
+                (processor, targettask) = dep
+                if targettask is self:
+                    childlist = processor.get_object_dependencies(obj, trans, passive = True)
+                    for o in childlist.added_items() + childlist.deleted_items():
+                        whosdep = processor.whose_dependent_on_who(obj, o, trans)
+                        if whosdep is not None:
+                            (child, parent) = whosdep
+                            if not d.has_key(parent):
+                                d[parent] = make_task()
+                            if dependents.has_key(child):
+                                p2 = dependents[child]
+                                wd2 = processor.whose_dependent_on_who(parent, p2, trans)
+                                
+                            d[parent].objects.append(child)
+                            dependents[child] = parent
+                            print "dependent obj: " + str(child) + " is dependent in relation " + str(obj) + " " + str(o)
+                            if head.objects.contains(child):
+                                del head.objects[child]
+
+        def printtask(t):
+            print "l1"
+            print repr([str(v) for v in t.objects])
+            for v in t.objects:
+                t2 = t.taskhash[v]
+                print "l2"
+                print repr([str(v2) for v2 in t2.objects])
+                for v3 in t2.objects:
+                    t3 = t.taskhash[v3]
+                    print "l3"
+                    print repr([str(v4) for v4 in t3.objects])
+#                printtask(t2)
+        print "sorted hierarchical tasks: "
+        printtask(head)
+        raise "hi"
+        return head
         
     def __str__(self):
         if self.isdelete:
             return self.mapper.primarytable.name + " deletes " + repr(self.listonly)
         else:
             return self.mapper.primarytable.name + " saves " + repr(self.listonly)
+
+class TupleSorter(object):
+
+    class Node:
+        def __init__(self, mapper):
+            #print "new node on " + str(mapper)
+            self.mapper = mapper
+            self.children = util.HashSet()
+            self.parent = None
+        def __str__(self):
+            return self.safestr({})
+        def safestr(self, hash):
+            if hash.has_key(self):
+                return "[RECURSIVE:%s(%s, %s)]" % (str(self.mapper), repr(id(self)), repr(id(self.parent)))
+            hash[self] = True
+            return "%s(%s, %s)" % (str(self.mapper), repr(id(self)), repr(id(self.parent))) + "\n" + string.join([n.safestr(hash) for n in self.children])
             
+    def __init__(self, tuples, allitems):
+        self.tuples = tuples
+        self.allitems = allitems
+    def sort(self):
+        (tuples, allitems) = (self.tuples, self.allitems)
+        nodes = {}
+        head = None
+        for tup in tuples:
+            (parent, child) = (tup[0], tup[1])
+            print "tuple: " + str(parent) + " " + str(child)
+            try:
+                parentnode = nodes[parent]
+            except KeyError:
+                parentnode = TupleSorter.Node(parent)
+                nodes[parent] = parentnode
+            try:
+                childnode = nodes[child]
+            except KeyError:
+                childnode = TupleSorter.Node(child)
+                nodes[child] = childnode
+
+            if head is None:
+                head = parentnode
+            elif head is childnode:
+                head = parentnode
+            if childnode.parent is not None:
+                del childnode.parent.children[childnode]
+                childnode.parent.children.append(parentnode)
+            parentnode.children.append(childnode)
+            childnode.parent = parentnode
+            
+        for item in allitems:
+            if not nodes.has_key(item):
+                node = TupleSorter.Node(item)
+                if head is not None:
+                    head.parent = node
+                    node.children.append(head)
+                head = node
+        return head
+                    
 uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")
 
 

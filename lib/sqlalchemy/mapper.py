@@ -38,8 +38,8 @@ def relation_loader(mapper, secondary = None, primaryjoin = None, secondaryjoin 
     else:
         return EagerLoader(mapper, secondary, primaryjoin, secondaryjoin, **options)
     
-def relation_mapper(class_, table = None, secondary = None, primaryjoin = None, secondaryjoin = None, primarytable = None, properties = None, lazy = True, foreignkey = None, primary_keys = None, **options):
-    return relation_loader(mapper(class_, table, primarytable=primarytable, properties=properties, primary_keys=primary_keys, **options), secondary, primaryjoin, secondaryjoin, lazy = lazy, foreignkey = foreignkey, **options)
+def relation_mapper(class_, table = None, secondary = None, primaryjoin = None, secondaryjoin = None, primarytable = None, properties = None, lazy = True, foreignkey = None, primary_keys = None, thiscol = None, **options):
+    return relation_loader(mapper(class_, table, primarytable=primarytable, properties=properties, primary_keys=primary_keys, **options), secondary, primaryjoin, secondaryjoin, lazy = lazy, foreignkey = foreignkey, thiscol = thiscol, **options)
 
 class assignmapper(object):
     def __init__(self, table, **kwargs):
@@ -528,7 +528,7 @@ class ColumnProperty(MapperProperty):
 class PropertyLoader(MapperProperty):
     """describes an object property that holds a single item or list of items that correspond to a related
     database table."""
-    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey = None, uselist = None, private = False):
+    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey = None, uselist = None, private = False, thiscol = None):
         self.uselist = uselist
         self.argument = argument
         self.secondary = secondary
@@ -536,6 +536,7 @@ class PropertyLoader(MapperProperty):
         self.secondaryjoin = secondaryjoin
         self.foreignkey = foreignkey
         self.private = private
+        self.thiscol = thiscol
         self._hash_key = "%s(%s, %s, %s, %s, %s, %s)" % (self.__class__.__name__, hash_key(self.argument), hash_key(secondary), hash_key(primaryjoin), hash_key(secondaryjoin), hash_key(foreignkey), repr(uselist))
 
     def _copy(self):
@@ -553,10 +554,12 @@ class PropertyLoader(MapperProperty):
             self.mapper = self.argument
             
         self.target = self.mapper.table
-            
         self.key = key
         self.parent = parent
-        
+
+        if self.parent.table is self.target and self.thiscol is None:
+            raise "Circular relationship requires 'thiscol' parameter"
+            
         # if join conditions were not specified, figure them out based on foreign keys
         if self.secondary is not None:
             if self.secondaryjoin is None:
@@ -660,15 +663,33 @@ class PropertyLoader(MapperProperty):
             raise " no foreign key ?"
 
     def get_object_dependencies(self, obj, uowcommit, passive = True):
-        """function to retreive the child list off of an object.  "passive" means, if its
-         a lazy loaded list that is not loaded yet, dont load it."""
         if self.uselist:
             return uowcommit.uow.attributes.get_list_history(obj, self.key, passive = passive)
         else: 
             return uowcommit.uow.attributes.get_history(obj, self.key)
-    
+
+    def whose_dependent_on_who(self, obj1, obj2, uowcommit):
+        if obj1 is obj2:
+            return None
+        hist = self.get_object_dependencies(obj1, uowcommit)
+        if hist.history_contains(obj2):
+            if self.thiscol.primary_key:
+                return (obj1, obj2)
+            else:
+                return (obj2, obj1)
+        else:
+            hist = self.get_object_dependencies(obj2, uowcommit)
+            if hist.history_contains(obj1):
+                if self.thiscol.primary_key:
+                    return (obj2, obj1)
+                else:
+                    return (obj1, obj2)
+            else:
+                return None
+            
+            
     def process_dependencies(self, deplist, uowcommit, delete = False):
-        print self.mapper.table.name + " " + repr(deplist.map.values()) + " process_dep isdelete " + repr(delete)
+        #print self.mapper.table.name + " " + repr(deplist.map.values()) + " process_dep isdelete " + repr(delete)
 
         # fucntion to set properties across a parent/child object plus an "association row",
         # based on a join condition
@@ -677,7 +698,10 @@ class PropertyLoader(MapperProperty):
         setter = BinaryVisitor(sync_foreign_keys)
 
         def getlist(obj, passive=True):
-            return self.get_object_dependencies(obj, uowcommit, passive)
+            if self.uselist:
+                return uowcommit.uow.attributes.get_list_history(obj, self.key, passive = passive)
+            else: 
+                return uowcommit.uow.attributes.get_history(obj, self.key)
             
         associationrow = {}
         
@@ -719,7 +743,6 @@ class PropertyLoader(MapperProperty):
                     statement = self.secondary.insert()
                     statement.execute(*secondary_insert)
         elif self.foreignkey.table == self.target:
-            print "HI"
             if delete and not self.private:
                 updates = []
                 clearkeys = True
@@ -739,11 +762,9 @@ class PropertyLoader(MapperProperty):
                     statement = self.target.update(self.lazywhere, values = values)
                     statement.execute(*updates)
             else:
-                print str(self.primaryjoin.compile())
                 for obj in deplist:
                     childlist = getlist(obj)
                     if childlist is None: return
-                    print "DEP: " +str(obj) + " LIST: " + repr([str(v) for v in childlist.added_items()])
                     uowcommit.register_saved_list(childlist)
                     clearkeys = False
                     for child in childlist.added_items():
@@ -768,7 +789,7 @@ class PropertyLoader(MapperProperty):
         else:
             raise " no foreign key ?"
     
-        print self.mapper.table.name + " postdep " + repr([str(v) for v in deplist.map.values()]) + " process_dep isdelete " + repr(delete)
+        #print self.mapper.table.name + " postdep " + repr([str(v) for v in deplist.map.values()]) + " process_dep isdelete " + repr(delete)
 
     def _sync_foreign_keys(self, binary, obj, child, associationrow, clearkeys):
         """given a binary clause with an = operator joining two table columns, synchronizes the values 
@@ -782,12 +803,12 @@ class PropertyLoader(MapperProperty):
                     source = binary.right
                 else:
                     raise "Cant determine direction for relationship %s = %s" % (binary.left.fullname, binary.right.fullname)
-                print "set " + repr(child) + ":" + self.foreignkey.key + " to " + repr(obj) + ":" + source.key
+                #print "set " + repr(child) + ":" + self.foreignkey.key + " to " + repr(obj) + ":" + source.key
                 self.mapper._setattrbycolumn(child, self.foreignkey, self.parent._getattrbycolumn(obj, source))
             else:
                 colmap = {binary.left.table : binary.left, binary.right.table : binary.right}
                 if colmap.has_key(self.parent.primarytable) and colmap.has_key(self.target):
-                    print "set " + repr(child) + ":" + colmap[self.target].key + " to " + repr(obj) + ":" + colmap[self.parent.primarytable].key
+                    #print "set " + repr(child) + ":" + colmap[self.target].key + " to " + repr(obj) + ":" + colmap[self.parent.primarytable].key
                     if clearkeys:
                         self.mapper._setattrbycolumn(child, colmap[self.target], None)
                     else:

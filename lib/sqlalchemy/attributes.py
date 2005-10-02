@@ -54,6 +54,8 @@ class PropHistory(object):
         self.obj = obj
         self.key = key
         self.orig = PropHistory.NONE
+    def history_contains(self, obj):
+        return self.orig is obj or self.obj.__dict__[self.key] is obj
     def setattr_clean(self, value):
         self.obj.__dict__[self.key] = value
     def setattr(self, value):

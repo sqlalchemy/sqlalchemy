@@ -121,28 +121,20 @@ class HashSet(object):
         if iter is not None:
             for i in iter:
                 self.append(i)
-        
     def __iter__(self):
         return iter(self.map.values())
- 
     def contains(self, item):
         return self.map.has_key(item)
-
     def clear(self):
         self.map.clear()
-        
     def append(self, item):
         self.map[item] = item
-
     def __add__(self, other):
         return HashSet(self.map.values() + [i for i in other])
-        
     def __len__(self):
         return len(self.map)
-        
     def __delitem__(self, key):
         del self.map[key]
- 
     def __getitem__(self, key):
         return self.map[key]
         
@@ -179,7 +171,8 @@ class HistoryArraySet(UserList.UserList):
             if not self._setrecord(self.data[i]):
                del self.data[i]
                i -= 1
-
+    def history_contains(self, obj):
+        return self.records.has_key(obj)
     def __hash__(self):
         return id(self)
     def _setrecord(self, item):
