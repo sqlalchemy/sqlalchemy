@@ -348,7 +348,7 @@ class UOWTransaction(object):
             mappers.append(task.mapper)
             bymapper[(task.mapper, task.isdelete)] = task
     
-        head = TupleSorter(self.dependencies, mappers).sort()
+        head = util.DependencySorter(self.dependencies, mappers).sort()
         res = []
         tasklist = sort(head, False, res)
 
@@ -359,10 +359,6 @@ class UOWTransaction(object):
 
         assert(len(self.tasks.values()) == len(tasklist)) # "sorted task list not the same size as original task list"
 
-        import string,sys
-        #print string.join([str(t) for t in tasklist], ',')
-        #sys.exit(0)
-        
         return tasklist
             
 class UOWTask(object):
@@ -377,7 +373,7 @@ class UOWTask(object):
     
     def execute(self, trans):
         if self.iscircular:
-            task = self.sort_circular_dependencies(trans)
+            task = self._sort_circular_dependencies(trans)
             if task is not None:
                 task.execute_circular(trans)
             return
@@ -392,12 +388,15 @@ class UOWTask(object):
             self.mapper.delete_obj(obj_list, trans)
 
     def execute_circular(self, trans):
-        self.execute(trans)
+        if not self.isdelete:
+            self.execute(trans)
         for obj in self.objects:
             childtask = self.taskhash[obj]
             childtask.execute_circular(trans)
-    
-    def sort_circular_dependencies(self, trans):
+        if self.isdelete:
+            self.execute(trans)
+            
+    def _sort_circular_dependencies(self, trans):
         allobjects = self.objects
         tuples = []
         d = {}
@@ -426,20 +425,27 @@ class UOWTask(object):
             
         for obj in self.objects:
             parenttask = get_task(obj)
+            # TODO: we are doing this dependency sort which uses a lot of the 
+            # concepts in mapper.PropertyLoader's more coarse-grained version.
+            # should consolidate the concept of "childlist/added/deleted/unchanged" "left/right"
+            # in one place
             for dep in self.dependencies:
                 (processor, targettask) = dep
-                if targettask is self:
-                    childlist = processor.get_object_dependencies(obj, trans, passive = True)
-                    for o in childlist.added_items() + childlist.deleted_items():
-                        whosdep = processor.whose_dependent_on_who(obj, o, trans)
-                        if whosdep is not None:
-                            tuples.append(whosdep)
-                            if whosdep[0] is obj:
-                                get_dependency_task(whosdep[0], processor).objects.append(whosdep[0])
-                            else:
-                                get_dependency_task(whosdep[0], processor).objects.append(whosdep[1])
+                childlist = processor.get_object_dependencies(obj, trans, passive = True)
+                if self.isdelete:
+                    childlist = childlist.unchanged_items() + childlist.deleted_items()
+                else:
+                    childlist = childlist.added_items() + childlist.deleted_items()
+                for o in childlist:
+                    whosdep = processor.whose_dependent_on_who(obj, o, trans)
+                    if whosdep is not None:
+                        tuples.append(whosdep)
+                        if whosdep[0] is obj:
+                            get_dependency_task(whosdep[0], processor).objects.append(whosdep[0])
+                        else:
+                            get_dependency_task(whosdep[0], processor).objects.append(whosdep[1])
         
-        head = TupleSorter(tuples, allobjects).sort()
+        head = util.DependencySorter(tuples, allobjects).sort()
         if head is None:
             return None
         
@@ -475,96 +481,6 @@ class UOWTask(object):
         else:
             return self.mapper.primarytable.name + " saves " + repr(self.listonly)
 
-class TupleSorter(object):
-
-    class Node:
-        def __init__(self, item):
-            #print "new node on " + str(item)
-            self.item = item
-            self.children = util.HashSet()
-            self.parent = None
-            self.circular = False
-        def __str__(self):
-            return self.safestr({})
-        def safestr(self, hash, indent = 0):
-            if hash.has_key(self):
-                return (' ' * indent) + "RECURSIVE:%s(%s, %s)" % (str(self.item), repr(id(self)), self.parent and repr(id(self.parent)) or 'None')
-            hash[self] = True
-            return (' ' * indent) + "%s(%s, %s)" % (str(self.item), repr(id(self)), self.parent and repr(id(self.parent)) or "None") + "\n" + string.join([n.safestr(hash, indent + 1) for n in self.children], '')
-            
-    def __init__(self, tuples, allitems):
-        self.tuples = tuples
-        self.allitems = allitems
-    def sort(self):
-        (tuples, allitems) = (self.tuples, self.allitems)
-        nodes = {}
-        head = None
-        for tup in tuples:
-            (parent, child) = (tup[0], tup[1])
-            #print "tuple: " + str(parent) + " " + str(child)
-            
-            # get parent node
-            try:
-                parentnode = nodes[parent]
-            except KeyError:
-                parentnode = TupleSorter.Node(parent)
-                nodes[parent] = parentnode
-
-            # if parent is child, mark "circular" attribute on the node
-            if parent is child:
-                parentnode.circular = True
-                # set head if its nothing
-                if head is None:
-                    head = parentnode
-                # nothing more to do for this one
-                continue
-
-            # get child node
-            try:
-                childnode = nodes[child]
-            except KeyError:
-                childnode = TupleSorter.Node(child)
-                nodes[child] = childnode
-
-            # set head if its nothing, move it up to the parent
-            # if its the child node
-            if head is None:
-                head = parentnode
-            elif head is childnode:
-                head = parentnode
-            
-            # now see, if the parent is an ancestor of the child
-            c = childnode
-            while c is not None and c is not parentnode:
-                c = c.parent
-            
-            # nope, so we have to move the child down from whereever
-            # it currently is to a child of the parent
-            if c is None:
-                if childnode.parent is not None:
-                    del childnode.parent.children[childnode]
-                    childnode.parent.children.append(parentnode)
-                parentnode.children.append(childnode)
-                childnode.parent = parentnode
-            #print str(head)
-        
-        # go through the total list of items.  for those 
-        # that had no dependency tuples, and therefore are not
-        # in the tree, add them as head nodes in a line
-        newhead = None
-        for item in allitems:
-            if not nodes.has_key(item):
-                if newhead is None:
-                    newhead = TupleSorter.Node(item)
-                    if head is not None:
-                        head.parent = newhead
-                        newhead.children.append(head)
-                    head = newhead
-                else:
-                    n = TupleSorter.Node(item)
-                    head.children.append(n)
-                    n.parent = head
-        return head
                     
 uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")
 

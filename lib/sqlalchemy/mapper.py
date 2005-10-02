@@ -778,15 +778,11 @@ class PropertyLoader(MapperProperty):
                     clearkeys = True
                     for child in childlist.deleted_items():
                         self.primaryjoin.accept_visitor(setter)
-    
-        #print self.mapper.table.name + " postdep " + repr([str(v) for v in deplist.map.values()]) + " process_dep isdelete " + repr(delete)
 
     def _sync_foreign_keys(self, binary, obj, child, associationrow, clearkeys):
         """given a binary clause with an = operator joining two table columns, synchronizes the values 
         of the corresponding attributes within a parent object and a child object, or the attributes within an 
         an "association row" that represents an association link between the 'parent' and 'child' object."""
-        if obj is child:
-            raise "wha?"
         if binary.operator == '=':
             if binary.left.table == binary.right.table:
                 if binary.right is self.foreignkey:
@@ -796,8 +792,6 @@ class PropertyLoader(MapperProperty):
                 else:
                     raise "Cant determine direction for relationship %s = %s" % (binary.left.fullname, binary.right.fullname)
                 self.mapper._setattrbycolumn(child, self.foreignkey, self.parent._getattrbycolumn(obj, source))
-                print "set " + repr(id(child)) + child.__dict__['name'] + ":" + self.foreignkey.key + " to " + repr(id(obj)) + obj.__dict__['name'] + ":" + source.key 
-                #+ "\n" + repr(child.__dict__)
             else:
                 colmap = {binary.left.table : binary.left, binary.right.table : binary.right}
                 if colmap.has_key(self.parent.primarytable) and colmap.has_key(self.target):

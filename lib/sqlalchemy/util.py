@@ -318,4 +318,97 @@ class ScopedRegistry(object):
     def _clear_application(self):
         self.application = createfunc()
                 
+class DependencySorter(object):
+    """creates a "dependency tree" across a list of objects, using a series of 'dependency relationships'
+    expressed as a list of tuples to determine its shape.  the tuples are of the form (x,y) which indicate 
+    'y is dependent on x', as well as a list of 
+    elements which represent the full collection that x and y originate from"""
+    class Node:
+        def __init__(self, item):
+            #print "new node on " + str(item)
+            self.item = item
+            self.children = HashSet()
+            self.parent = None
+            self.circular = False
+        def __str__(self):
+            return self.safestr({})
+        def safestr(self, hash, indent = 0):
+            if hash.has_key(self):
+                return (' ' * indent) + "RECURSIVE:%s(%s, %s)" % (str(self.item), repr(id(self)), self.parent and repr(id(self.parent)) or 'None')
+            hash[self] = True
+            return (' ' * indent) + "%s(%s, %s)" % (str(self.item), repr(id(self)), self.parent and repr(id(self.parent)) or "None") + "\n" + string.join([n.safestr(hash, indent + 1) for n in self.children], '')
+
+    def __init__(self, tuples, allitems):
+        self.tuples = tuples
+        self.allitems = allitems
+    def sort(self):
+        (tuples, allitems) = (self.tuples, self.allitems)
+        nodes = {}
+        head = None
+        for tup in tuples:
+            (parent, child) = (tup[0], tup[1])
+            #print "tuple: " + str(parent) + " " + str(child)
+
+            # get parent node
+            try:
+                parentnode = nodes[parent]
+            except KeyError:
+                parentnode = DependencySorter.Node(parent)
+                nodes[parent] = parentnode
+
+            # if parent is child, mark "circular" attribute on the node
+            if parent is child:
+                parentnode.circular = True
+                # set head if its nothing
+                if head is None:
+                    head = parentnode
+                # nothing more to do for this one
+                continue
+
+            # get child node
+            try:
+                childnode = nodes[child]
+            except KeyError:
+                childnode = DependencySorter.Node(child)
+                nodes[child] = childnode
+
+            # set head if its nothing, move it up to the parent
+            # if its the child node
+            if head is None:
+                head = parentnode
+            elif head is childnode:
+                head = parentnode
+
+            # now see, if the parent is an ancestor of the child
+            c = childnode
+            while c is not None and c is not parentnode:
+                c = c.parent
+
+            # nope, so we have to move the child down from whereever
+            # it currently is to a child of the parent
+            if c is None:
+                if childnode.parent is not None:
+                    del childnode.parent.children[childnode]
+                    childnode.parent.children.append(parentnode)
+                parentnode.children.append(childnode)
+                childnode.parent = parentnode
+            #print str(head)
+
+        # go through the total list of items.  for those 
+        # that had no dependency tuples, and therefore are not
+        # in the tree, add them as head nodes in a line
+        newhead = None
+        for item in allitems:
+            if not nodes.has_key(item):
+                if newhead is None:
+                    newhead = DependencySorter.Node(item)
+                    if head is not None:
+                        head.parent = newhead
+                        newhead.children.append(head)
+                    head = newhead
+                else:
+                    n = TupleSorter.Node(item)
+                    head.children.append(n)
+                    n.parent = head
+        return head
             
