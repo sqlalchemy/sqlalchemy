@@ -524,8 +524,11 @@ class ColumnProperty(MapperProperty):
             #setattr(instance, self.key, row[self.columns[0].label])
         
 
-
 class PropertyLoader(MapperProperty):
+    LEFT = 0
+    RIGHT = 1
+    CENTER = 2
+
     """describes an object property that holds a single item or list of items that correspond to a related
     database table."""
     def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey = None, uselist = None, private = False, thiscol = None):
@@ -583,7 +586,9 @@ class PropertyLoader(MapperProperty):
             else:
                 self.foreignkey = w.dependent
 
-        if self.uselist is None and self.foreignkey is not None and self.foreignkey.table == self.parent.primarytable:
+        self.direction = self.get_direction()
+        
+        if self.uselist is None and self.direction == PropertyLoader.RIGHT:
             self.uselist = False
 
         if self.uselist is None:
@@ -594,6 +599,19 @@ class PropertyLoader(MapperProperty):
         if not hasattr(parent.class_, key):
             #print "regiser list col on class %s key %s" % (parent.class_.__name__, key)
             objectstore.uow().register_attribute(parent.class_, key, uselist = self.uselist)
+
+    def get_direction(self):
+        if self.thiscol is not None:
+            if self.thiscol.primary_key:
+                return PropertyLoader.LEFT
+            else:
+                return PropertyLoader.RIGHT
+        if self.secondaryjoin is not None:
+            return PropertyLoader.CENTER
+        elif self.foreignkey.table == self.target:
+            return PropertyLoader.LEFT
+        elif self.foreignkey.table == self.parent.primarytable:
+            return PropertyLoader.RIGHT
 
     class FindDependent(sql.ClauseVisitor):
         def __init__(self):
@@ -642,19 +660,18 @@ class PropertyLoader(MapperProperty):
 
             
     def register_dependencies(self, uowcommit):
-        if self.secondaryjoin is not None:
+        if self.direction == PropertyLoader.CENTER:
             # with many-to-many, set the parent as dependent on us, then the 
             # list of associations as dependent on the parent
             # if only a list changes, the parent mapper is the only mapper that
             # gets added to the "todo" list
             uowcommit.register_dependency(self.mapper, self.parent)
             uowcommit.register_task(self.parent, False, self, self.parent, False)
-        elif self.foreignkey.table == self.target:
+        elif self.direction == PropertyLoader.LEFT:
             uowcommit.register_dependency(self.parent, self.mapper)
             uowcommit.register_task(self.parent, False, self, self.parent, False)
             uowcommit.register_task(self.parent, True, self, self.parent, True)
-                
-        elif self.foreignkey.table == self.parent.primarytable:
+        elif self.direction == PropertyLoader.RIGHT:
             uowcommit.register_dependency(self.mapper, self.parent)
             uowcommit.register_task(self.mapper, False, self, self.parent, False)
             # TODO: private deletion thing for one-to-one relationship
@@ -671,22 +688,10 @@ class PropertyLoader(MapperProperty):
     def whose_dependent_on_who(self, obj1, obj2, uowcommit):
         if obj1 is obj2:
             return None
-        hist = self.get_object_dependencies(obj1, uowcommit)
-        if hist.history_contains(obj2):
-            if self.thiscol.primary_key:
-                return (obj1, obj2)
-            else:
-                return (obj2, obj1)
+        elif self.thiscol.primary_key:
+            return (obj1, obj2)
         else:
-            hist = self.get_object_dependencies(obj2, uowcommit)
-            if hist.history_contains(obj1):
-                if self.thiscol.primary_key:
-                    return (obj2, obj1)
-                else:
-                    return (obj1, obj2)
-            else:
-                return None
-            
+            return (obj2, obj1)
             
     def process_dependencies(self, deplist, uowcommit, delete = False):
         #print self.mapper.table.name + " " + repr(deplist.map.values()) + " process_dep isdelete " + repr(delete)
@@ -698,16 +703,13 @@ class PropertyLoader(MapperProperty):
         setter = BinaryVisitor(sync_foreign_keys)
 
         def getlist(obj, passive=True):
-            if self.uselist:
-                return uowcommit.uow.attributes.get_list_history(obj, self.key, passive = passive)
-            else: 
-                return uowcommit.uow.attributes.get_history(obj, self.key)
+            return self.get_object_dependencies(obj, uowcommit, passive)
             
         associationrow = {}
         
         # plugin point
         
-        if self.secondaryjoin is not None:
+        if self.direction == PropertyLoader.CENTER:
             secondary_delete = []
             secondary_insert = []
             if delete:
@@ -742,7 +744,7 @@ class PropertyLoader(MapperProperty):
                 if len(secondary_insert):
                     statement = self.secondary.insert()
                     statement.execute(*secondary_insert)
-        elif self.foreignkey.table == self.target:
+        elif self.direction == PropertyLoader.LEFT:
             if delete and not self.private:
                 updates = []
                 clearkeys = True
@@ -772,7 +774,7 @@ class PropertyLoader(MapperProperty):
                     clearkeys = True
                     for child in childlist.deleted_items():
                          self.primaryjoin.accept_visitor(setter)
-        elif self.foreignkey.table == self.parent.primarytable:
+        elif self.direction == PropertyLoader.RIGHT:
             for child in deplist:
                 childlist = getlist(child)
                 if childlist is None: return
