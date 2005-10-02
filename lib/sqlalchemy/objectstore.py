@@ -464,8 +464,7 @@ class UOWTask(object):
         t = UOWTask(self.mapper, self.isdelete, self.listonly)
         t.taskhash = d
         make_task_tree(head, t)
-        
-        t._print_circular()        
+        #t._print_circular()        
         return t
 
     def _print_circular(t):
