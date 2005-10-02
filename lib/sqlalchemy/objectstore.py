@@ -138,7 +138,13 @@ class UnitOfWork(object):
         self.attributes.register_attribute(class_, key, uselist)
         
     def attribute_set_callable(self, obj, key, func):
+        # TODO: gotta work this out when a list element is already there,
+        # etc.
         obj.__dict__[key] = func
+        try:
+            del self.attributes.attribute_history[obj][key]
+        except KeyError:
+            pass
 
     
     def register_clean(self, obj):
@@ -302,7 +308,6 @@ class UOWTransaction(object):
             task.mapper.register_dependencies(self)
         
         for task in self._sort_dependencies():
-            print "exec task: " + str(task)
             task.execute(self)
             
     def post_exec(self):
@@ -357,8 +362,6 @@ class UOWTransaction(object):
         res.reverse()
         tasklist += res
 
-        print repr(self.tasks.values())
-        print repr(tasklist)
         assert(len(self.tasks.values()) == len(tasklist)) # "sorted task list not the same size as original task list"
 
         import string,sys
@@ -434,60 +437,6 @@ class UOWTask(object):
         t = make_task()
         make_task_tree(head, t)
         return t
-        
-    def old_sort_circular_dependencies(self, trans):
-        dependents = {}
-        d = {}
-
-        def make_task():
-            t = UOWTask(self.mapper, self.isdelete, self.listonly)
-            t.dependencies = self.dependencies
-            t.taskhash = d
-            return t
-
-        head = make_task()
-        for obj in self.objects:
-            print "obj: " + str(obj)
-            task  = make_task()
-            d[obj] = task
-            if not dependents.has_key(obj):
-                head.objects.append(obj)
-            for dep in self.dependencies:
-                (processor, targettask) = dep
-                if targettask is self:
-                    childlist = processor.get_object_dependencies(obj, trans, passive = True)
-                    for o in childlist.added_items() + childlist.deleted_items():
-                        whosdep = processor.whose_dependent_on_who(obj, o, trans)
-                        if whosdep is not None:
-                            (child, parent) = whosdep
-                            if not d.has_key(parent):
-                                d[parent] = make_task()
-                            if dependents.has_key(child):
-                                p2 = dependents[child]
-                                wd2 = processor.whose_dependent_on_who(parent, p2, trans)
-                                
-                            d[parent].objects.append(child)
-                            dependents[child] = parent
-                            print "dependent obj: " + str(child) + " is dependent in relation " + str(obj) + " " + str(o)
-                            if head.objects.contains(child):
-                                del head.objects[child]
-
-        def printtask(t):
-            print "l1"
-            print repr([str(v) for v in t.objects])
-            for v in t.objects:
-                t2 = t.taskhash[v]
-                print "l2"
-                print repr([str(v2) for v2 in t2.objects])
-                for v3 in t2.objects:
-                    t3 = t.taskhash[v3]
-                    print "l3"
-                    print repr([str(v4) for v4 in t3.objects])
-#                printtask(t2)
-        print "sorted hierarchical tasks: "
-        printtask(head)
-        raise "hi"
-        return head
         
     def __str__(self):
         if self.isdelete:

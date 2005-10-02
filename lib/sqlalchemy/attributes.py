@@ -207,6 +207,7 @@ class AttributeManager(object):
         try:
             return self.attribute_history[obj][key]
         except KeyError, e:
+            # TODO: when an callable is re-set on an existing list element
             list_ = obj.__dict__.get(key, None)
             if callable(list_):
                 if passive:

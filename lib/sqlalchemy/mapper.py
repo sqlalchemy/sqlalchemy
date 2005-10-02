@@ -594,7 +594,7 @@ class PropertyLoader(MapperProperty):
         if self.uselist is None:
             self.uselist = True
                     
-        (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.table, self.primaryjoin, self.secondaryjoin)
+        (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.table, self.primaryjoin, self.secondaryjoin, self.thiscol)
                 
         if not hasattr(parent.class_, key):
             #print "regiser list col on class %s key %s" % (parent.class_.__name__, key)
@@ -833,15 +833,15 @@ class LazyLoader(PropertyLoader):
             objectstore.uow().attribute_set_callable(instance, self.key, LazyLoadInstance(self, row))
 
 
-def create_lazy_clause(table, primaryjoin, secondaryjoin):
+def create_lazy_clause(table, primaryjoin, secondaryjoin, thiscol):
     binds = {}
     def visit_binary(binary):
-        if isinstance(binary.left, schema.Column) and binary.left.table == table:
+        if isinstance(binary.left, schema.Column) and (thiscol is binary.left or (thiscol is None and binary.left.table is table)):
             binary.left = binds.setdefault(table.name + "_" + binary.left.name,
                     sql.BindParamClause(table.name + "_" + binary.left.name, None, shortname = binary.left.name))
             binary.swap()
 
-        if isinstance(binary.right, schema.Column) and binary.right.table == table:
+        if isinstance(binary.right, schema.Column) and (thiscol is binary.right or (thiscol is None and binary.right.table is table)):
             binary.right = binds.setdefault(table.name + "_" + binary.right.name,
                     sql.BindParamClause(table.name + "_" + binary.right.name, None, shortname = binary.right.name))
                     
