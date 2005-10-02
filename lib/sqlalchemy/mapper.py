@@ -694,12 +694,15 @@ class PropertyLoader(MapperProperty):
             return (obj2, obj1)
             
     def process_dependencies(self, deplist, uowcommit, delete = False):
-        #print self.mapper.table.name + " " + repr(deplist.map.values()) + " process_dep isdelete " + repr(delete)
+        print self.mapper.table.name + " " + repr([str(v) for v in deplist.map.values()]) + " process_dep isdelete " + repr(delete)
 
         # fucntion to set properties across a parent/child object plus an "association row",
         # based on a join condition
         def sync_foreign_keys(binary):
-            self._sync_foreign_keys(binary, obj, child, associationrow, clearkeys)
+            if self.direction == PropertyLoader.RIGHT:
+                self._sync_foreign_keys(binary, child, obj, associationrow, clearkeys)
+            else:
+                self._sync_foreign_keys(binary, obj, child, associationrow, clearkeys)
         setter = BinaryVisitor(sync_foreign_keys)
 
         def getlist(obj, passive=True):
@@ -744,8 +747,8 @@ class PropertyLoader(MapperProperty):
                 if len(secondary_insert):
                     statement = self.secondary.insert()
                     statement.execute(*secondary_insert)
-        elif self.direction == PropertyLoader.LEFT:
-            if delete and not self.private:
+        elif self.direction == PropertyLoader.LEFT and delete:
+            if not self.private:
                 updates = []
                 clearkeys = True
                 for obj in deplist:
@@ -763,33 +766,18 @@ class PropertyLoader(MapperProperty):
                         values[bind.shortname] = None
                     statement = self.target.update(self.lazywhere, values = values)
                     statement.execute(*updates)
-            else:
-                for obj in deplist:
-                    childlist = getlist(obj)
-                    if childlist is None: return
-                    uowcommit.register_saved_list(childlist)
-                    clearkeys = False
-                    for child in childlist.added_items():
-                        self.primaryjoin.accept_visitor(setter)
-                    clearkeys = True
-                    for child in childlist.deleted_items():
-                         self.primaryjoin.accept_visitor(setter)
-        elif self.direction == PropertyLoader.RIGHT:
-            for child in deplist:
-                childlist = getlist(child)
+        else:
+            for obj in deplist:
+                childlist = getlist(obj)
                 if childlist is None: return
                 uowcommit.register_saved_list(childlist)
                 clearkeys = False
-                added = childlist.added_items()
-                if len(added):
-                    for obj in added:
-                        self.primaryjoin.accept_visitor(setter)
-                else:
+                for child in childlist.added_items():
+                    self.primaryjoin.accept_visitor(setter)
+                if self.direction != PropertyLoader.RIGHT or len(childlist.added_items()) == 0:
                     clearkeys = True
-                    for obj in childlist.deleted_items():
+                    for child in childlist.deleted_items():
                         self.primaryjoin.accept_visitor(setter)
-        else:
-            raise " no foreign key ?"
     
         #print self.mapper.table.name + " postdep " + repr([str(v) for v in deplist.map.values()]) + " process_dep isdelete " + repr(delete)
 
@@ -797,6 +785,8 @@ class PropertyLoader(MapperProperty):
         """given a binary clause with an = operator joining two table columns, synchronizes the values 
         of the corresponding attributes within a parent object and a child object, or the attributes within an 
         an "association row" that represents an association link between the 'parent' and 'child' object."""
+        if obj is child:
+            raise "wha?"
         if binary.operator == '=':
             if binary.left.table == binary.right.table:
                 if binary.right is self.foreignkey:
@@ -805,8 +795,9 @@ class PropertyLoader(MapperProperty):
                     source = binary.right
                 else:
                     raise "Cant determine direction for relationship %s = %s" % (binary.left.fullname, binary.right.fullname)
-                #print "set " + repr(child) + ":" + self.foreignkey.key + " to " + repr(obj) + ":" + source.key
                 self.mapper._setattrbycolumn(child, self.foreignkey, self.parent._getattrbycolumn(obj, source))
+                print "set " + repr(id(child)) + child.__dict__['name'] + ":" + self.foreignkey.key + " to " + repr(id(obj)) + obj.__dict__['name'] + ":" + source.key 
+                #+ "\n" + repr(child.__dict__)
             else:
                 colmap = {binary.left.table : binary.left, binary.right.table : binary.right}
                 if colmap.has_key(self.parent.primarytable) and colmap.has_key(self.target):
@@ -820,18 +811,10 @@ class PropertyLoader(MapperProperty):
                 elif colmap.has_key(self.target) and colmap.has_key(self.secondary):
                     associationrow[colmap[self.secondary].key] = self.mapper._getattrbycolumn(child, colmap[self.target])
             
-
-# TODO: break out the lazywhere capability so that the main PropertyLoader can use it
-# to do child deletes
 class LazyLoader(PropertyLoader):
-
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
-            # TODO: get lazy callables to be stored within the unit of work?
-            # allows serializable ?  still need lazyload state to exist in the application
-            # when u deserialize tho
-            objectstore.uow().attribute_set_callable(instance, self.key, LazyLoadInstance(self, row))
-
+            objectstore.uow().register_callable(instance, self.key, LazyLoadInstance(self, row), uselist=self.uselist)
 
 def create_lazy_clause(table, primaryjoin, secondaryjoin, thiscol):
     binds = {}

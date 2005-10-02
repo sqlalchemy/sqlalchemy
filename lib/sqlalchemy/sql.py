@@ -220,12 +220,9 @@ class ClauseElement(object):
 
     def compile(self, engine = None, bindparams = None):
         """compiles this SQL expression using its underlying SQLEngine to produce
-        a Compiled object.  The actual SQL statement is the Compiled object's string representation.   
-        bindparams is an optional dictionary representing the bind parameters to be used with 
-        the statement.  Currently, only the compilations of INSERT and UPDATE statements
-        use the bind parameters, in order to determine which
-        table columns should be used in the statement."""
-
+        a Compiled object.  If no engine can be found, an ansisql engine is used.
+        bindparams is a dictionary representing the default bind parameters to be used with 
+        the statement.  """
         if engine is None:
             for f in self._get_from_objects():
                 engine = f.engine
@@ -237,6 +234,9 @@ class ClauseElement(object):
 
         return engine.compile(self, bindparams = bindparams)
 
+    def __str__(self):
+        return str(self.compile())
+        
     def execute(self, *multiparams, **params):
         """compiles and executes this SQL expression using its underlying SQLEngine.
         the given **params are used as bind parameters when compiling and executing the expression. 

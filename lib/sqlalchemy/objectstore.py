@@ -107,7 +107,9 @@ class UnitOfWork(object):
         self.new = util.HashSet(ordered = True)
         self.dirty = util.HashSet()
         self.modified_lists = util.HashSet()
-        self.deleted = util.HashSet()
+        # the delete list is ordered mostly so the unit tests can predict the argument list ordering.
+        # TODO: need stronger unit test fixtures....
+        self.deleted = util.HashSet(ordered = True)
         self.parent = parent
 
     def get(self, class_, *id):
@@ -136,17 +138,10 @@ class UnitOfWork(object):
         
     def register_attribute(self, class_, key, uselist):
         self.attributes.register_attribute(class_, key, uselist)
-        
-    def attribute_set_callable(self, obj, key, func):
-        # TODO: gotta work this out when a list element is already there,
-        # etc.
-        obj.__dict__[key] = func
-        try:
-            del self.attributes.attribute_history[obj][key]
-        except KeyError:
-            pass
 
-    
+    def register_callable(self, obj, key, func, uselist):
+        self.attributes.set_callable(obj, key, func, uselist)
+        
     def register_clean(self, obj):
         try:
             del self.dirty[obj]
@@ -405,7 +400,32 @@ class UOWTask(object):
     def sort_circular_dependencies(self, trans):
         allobjects = self.objects
         tuples = []
+        d = {}
+        def get_task(obj):
+            try:
+                return d[obj]
+            except KeyError:
+                t = UOWTask(self.mapper, self.isdelete, self.listonly)
+                t.taskhash = d
+                d[obj] = t
+                return t
+
+        dependencies = {}
+        def get_dependency_task(obj, processor):
+            try:
+                dp = dependencies[obj]
+            except KeyError:
+                dp = {}
+                dependencies[obj] = dp
+            try:
+                l = dp[processor]
+            except KeyError:
+                l = UOWTask(None, None, None)
+                dp[processor] = l
+            return l
+            
         for obj in self.objects:
+            parenttask = get_task(obj)
             for dep in self.dependencies:
                 (processor, targettask) = dep
                 if targettask is self:
@@ -414,29 +434,40 @@ class UOWTask(object):
                         whosdep = processor.whose_dependent_on_who(obj, o, trans)
                         if whosdep is not None:
                             tuples.append(whosdep)
+                            if whosdep[0] is obj:
+                                get_dependency_task(whosdep[0], processor).objects.append(whosdep[0])
+                            else:
+                                get_dependency_task(whosdep[0], processor).objects.append(whosdep[1])
+        
         head = TupleSorter(tuples, allobjects).sort()
         if head is None:
             return None
-
-        d = {}
-        def make_task():
-            t = UOWTask(self.mapper, self.isdelete, self.listonly)
-            t.dependencies = self.dependencies
-            t.taskhash = d
-            return t
         
         def make_task_tree(node, parenttask):
             if node is None:
                 return
             parenttask.objects.append(node.item)
-            t = make_task()
-            d[node.item] = t
+            if dependencies.has_key(node.item):
+                for processor, deptask in dependencies[node.item].iteritems():
+                    parenttask.dependencies.append((processor, deptask))
+            t = d[node.item]
             for n in node.children:
-                make_task_tree(n, t)
-        
-        t = make_task()
+                t2 = make_task_tree(n, t)
+            return t
+            
+        t = UOWTask(self.mapper, self.isdelete, self.listonly)
+        t.taskhash = d
         make_task_tree(head, t)
+        
+        t._print_circular()        
         return t
+
+    def _print_circular(t):
+        print "-----------------------------"
+        print "task objects: " + repr([str(v) for v in t.objects])
+        print "task depends: " + repr([(dt[0].key, [str(o) for o in dt[1].objects]) for dt in t.dependencies])
+        for o in t.objects:
+            t.taskhash[o]._print_circular()
         
     def __str__(self):
         if self.isdelete:

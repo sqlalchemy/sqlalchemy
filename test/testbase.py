@@ -1,4 +1,5 @@
 import unittest
+import StringIO
 
 echo = True
 
@@ -8,7 +9,20 @@ class PersistTest(unittest.TestCase):
     def echo(self, text):
         if echo:
             print text
-        
+    def capture_exec(self, db, callable_):
+        e = db.echo
+        b = db.logger
+        buffer = StringIO.StringIO()
+        db.logger = buffer
+        db.echo = True
+        try:
+            callable_()
+            if echo:
+                print buffer.getvalue()
+            return buffer.getvalue()
+        finally:
+            db.logger = b
+            db.echo = e
 
 class AssertMixin(PersistTest):
     def assert_result(self, result, class_, *objects):
@@ -29,7 +43,9 @@ class AssertMixin(PersistTest):
                     self.assert_row(value[0], getattr(rowobj, key), value[1])
             else:
                 self.assert_(getattr(rowobj, key) == value, "attribute %s value %s does not match %s" % (key, getattr(rowobj, key), value))
-
+    def assert_enginesql(self, db, callable_, result):
+        self.assert_(self.capture_exec(db, callable_) == result, result)
+        
 def runTests(suite):
     runner = unittest.TextTestRunner(verbosity = 2, descriptions =1)
     runner.run(suite)

@@ -22,7 +22,7 @@ import sqlalchemy.schema as schema
 import sqlalchemy.pool
 import sqlalchemy.util as util
 import sqlalchemy.sql as sql
-import StringIO
+import StringIO, sys
 import sqlalchemy.types as types
 
 def create_engine(name, *args ,**kwargs):
@@ -61,6 +61,7 @@ class SQLEngine(schema.SchemaEngine):
         self.context = util.ThreadLocal()
         self.tables = {}
         self.notes = {}
+        self.logger = sys.stdout
 
         
     def type_descriptor(self, typeobj):
@@ -206,7 +207,7 @@ class SQLEngine(schema.SchemaEngine):
         return ResultProxy(c, self.echo, typemap = typemap)
 
     def log(self, msg):
-        print msg
+        self.logger.write(msg + "\n")
 
 
 class ResultProxy:

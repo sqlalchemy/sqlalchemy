@@ -1,6 +1,7 @@
 from testbase import PersistTest, AssertMixin
 import unittest, sys, os
 from sqlalchemy.mapper import *
+import StringIO
 import sqlalchemy.objectstore as objectstore
 
 from tables import *
@@ -207,7 +208,18 @@ class SaveTest(AssertMixin):
         
         objectstore.uow().register_deleted(l[0])
         objectstore.uow().register_deleted(l[2])
-        objectstore.uow().commit()
+        res = self.capture_exec(db, lambda: objectstore.uow().commit())
+        state = None
+        for line in res.split('\n'):
+            if line == "DELETE FROM items WHERE items.item_id = :item_id":
+                self.assert_(state is None or state == 'addresses')
+            elif line == "DELETE FROM orders WHERE orders.order_id = :order_id":
+                state = 'orders'
+            elif line == "DELETE FROM email_addresses WHERE email_addresses.address_id = :address_id":
+                if state is None:
+                    state = 'addresses'
+            elif line == "DELETE FROM users WHERE users.user_id = :user_id":
+                self.assert_(state is not None)
         
     def testbackwardsonetoone(self):
         # test 'backwards'
@@ -238,8 +250,12 @@ class SaveTest(AssertMixin):
         objects[3].user = User()
         objects[3].user.user_name = 'imnewlyadded'
         
-        objectstore.uow().commit()
-        return
+        self.assert_enginesql(db, lambda: objectstore.uow().commit(), 
+"""INSERT INTO users (user_id, user_name) VALUES (:user_id, :user_name)
+{'user_id': None, 'user_name': 'imnewlyadded'}
+UPDATE email_addresses SET address_id=:address_id, user_id=:user_id, email_address=:email_address WHERE email_addresses.address_id = :address_id
+[{'email_address': 'imnew@foo.bar', 'address_id': 3, 'user_id': 3}, {'email_address': 'adsd5@llala.net', 'address_id': 4, 'user_id': None}]
+""")
         l = sql.select([users, addresses], sql.and_(users.c.user_id==addresses.c.address_id, addresses.c.address_id==a.address_id)).execute()
         self.echo( repr(l.fetchone().row))
         

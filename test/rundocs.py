@@ -57,7 +57,6 @@ User.mapper = assignmapper(users, properties = dict(
 
 # select
 user = User.mapper.select(User.c.user_name == 'fred jones')[0]
-print repr(user.__dict__['addresses'])
 address = user.addresses[0]
 
 # modify
