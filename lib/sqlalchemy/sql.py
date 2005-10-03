@@ -116,7 +116,10 @@ def subquery(alias, *args, **params):
     return Alias(Select(*args, **params), alias)
 
 def bindparam(key, value = None, type=None):
-    return BindParamClause(key, value, type=type)
+    if isinstance(key, schema.Column):
+        return BindParamClause(key.name, value, type=key.type)
+    else:
+        return BindParamClause(key, value, type=type)
 
 def text(text):
     return TextClause(text)
@@ -775,7 +778,7 @@ class UpdateBase(ClauseElement):
                 else:
                     col = key
                 try:
-                    parameters[key] = bindparam(col.name, value, type=col.type)
+                    parameters[key] = bindparam(col, value)
                 except KeyError:
                     del parameters[key]
         return parameters

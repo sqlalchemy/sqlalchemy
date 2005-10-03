@@ -324,7 +324,10 @@ class Mapper(object):
 #                print "SAVE_OBJ we are " + hash_key(self) + " obj: " +  obj.__class__.__name__ + repr(id(obj))
                 params = {}
                 for col in table.columns:
-                    params[col.key] = self._getattrbycolumn(obj, col)
+                    if col.primary_key:
+                        params[col.table.name + "_" + col.key] = self._getattrbycolumn(obj, col)
+                    else:
+                        params[col.key] = self._getattrbycolumn(obj, col)
 
                 if hasattr(obj, "_instance_key"):
                     update.append(params)
@@ -335,12 +338,11 @@ class Mapper(object):
                 #print "REGULAR UPDATES"
                 clause = sql.and_()
                 for col in self.primary_keys[table]:
-                    clause.clauses.append(col == sql.bindparam(col.key))
+                    clause.clauses.append(col == sql.bindparam(col.table.name + "_" + col.key))
                 statement = table.update(clause)
                 c = statement.execute(*update)
                 if c.cursor.rowcount != len(update):
                     raise "ConcurrencyError - updated rowcount does not match number of objects updated"
-            
             if len(insert):
                 statement = table.insert()
                 for rec in insert:
@@ -598,7 +600,7 @@ class PropertyLoader(MapperProperty):
                 
         if not hasattr(parent.class_, key):
             #print "regiser list col on class %s key %s" % (parent.class_.__name__, key)
-            objectstore.uow().register_attribute(parent.class_, key, uselist = self.uselist)
+            objectstore.uow().register_attribute(parent.class_, key, uselist = self.uselist, deleteremoved = self.private)
 
     def get_direction(self):
         if self.thiscol is not None:
@@ -808,7 +810,7 @@ class PropertyLoader(MapperProperty):
 class LazyLoader(PropertyLoader):
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
-            objectstore.uow().register_callable(instance, self.key, LazyLoadInstance(self, row), uselist=self.uselist)
+            objectstore.uow().register_callable(instance, self.key, LazyLoadInstance(self, row), uselist=self.uselist, deleteremoved = self.private)
 
 def create_lazy_clause(table, primaryjoin, secondaryjoin, thiscol):
     binds = {}

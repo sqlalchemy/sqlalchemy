@@ -195,6 +195,7 @@ class HistoryArraySet(UserList.UserList):
                 del self.records[item]
         except KeyError:
             pass
+        return True
     def commit(self):
         for key in self.records.keys():
             value = self.records[key]

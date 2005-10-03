@@ -26,23 +26,23 @@ class SmartProperty(object):
         self.manager = manager
     def attribute_registry(self):
         return self.manager
-    def property(self, key, uselist):
+    def property(self, key, uselist, **kwargs):
         def set_prop(obj, value):
             if uselist:
-                self.attribute_registry().set_list_attribute(obj, key, value)
+                self.attribute_registry().set_list_attribute(obj, key, value, **kwargs)
             else:
-                self.attribute_registry().set_attribute(obj, key, value)
+                self.attribute_registry().set_attribute(obj, key, value, **kwargs)
         def del_prop(obj):
             if uselist:
                 # TODO: this probably doesnt work right, deleting the list off an item
-                self.attribute_registry().delete_list_attribute(obj, key)
+                self.attribute_registry().delete_list_attribute(obj, key, **kwargs)
             else:
-                self.attribute_registry().delete_attribute(obj, key)
+                self.attribute_registry().delete_attribute(obj, key, **kwargs)
         def get_prop(obj):
             if uselist:
-                return self.attribute_registry().get_list_attribute(obj, key)
+                return self.attribute_registry().get_list_attribute(obj, key, **kwargs)
             else:
-                return self.attribute_registry().get_attribute(obj, key)
+                return self.attribute_registry().get_attribute(obj, key, **kwargs)
                 
         return property(get_prop, set_prop, del_prop)
 
@@ -50,7 +50,7 @@ class PropHistory(object):
     """manages the value of a particular scalar attribute on a particular object instance."""
     # make our own NONE to distinguish from "None"
     NONE = object()
-    def __init__(self, obj, key):
+    def __init__(self, obj, key, **kwargs):
         self.obj = obj
         self.key = key
         self.orig = PropHistory.NONE
@@ -116,7 +116,7 @@ class ListElement(util.HistoryArraySet):
         return self
     def __call__(self, *args, **kwargs):
         return self
-    def list_value_changed(self, obj, key, listval):
+    def list_value_changed(self, obj, key, item, listval, isdelete):
         pass    
     def setattr(self, value):
         self.obj.__dict__[self.key] = value
@@ -126,12 +126,12 @@ class ListElement(util.HistoryArraySet):
     def _setrecord(self, item):
         res = util.HistoryArraySet._setrecord(self, item)
         if res:
-            self.list_value_changed(self.obj, self.key, self)
+            self.list_value_changed(self.obj, self.key, item, self, False)
         return res
     def _delrecord(self, item):
         res = util.HistoryArraySet._delrecord(self, item)
         if res:
-            self.list_value_changed(self.obj, self.key, self)
+            self.list_value_changed(self.obj, self.key, item, self, True)
         return res
 
 class CallableProp(object):
@@ -140,12 +140,13 @@ class CallableProp(object):
     the AttributeManager.  When the attributemanager
     accesses the object attribute, either to get its history or its real value, the __call__ method
     is invoked which runs the underlying callable_ and sets the new value to the object attribute
-    via the manager."""
-    def __init__(self, callable_, obj, key, uselist = False):
+    via the manager, at which point the CallableProp itself is dereferenced."""
+    def __init__(self, callable_, obj, key, uselist = False, **kwargs):
         self.callable_ = callable_
         self.obj = obj
         self.key = key
         self.uselist = uselist
+        self.kwargs = kwargs
     def gethistory(self, manager, *args, **kwargs):
         self.__call__(manager, *args, **kwargs)
         return manager.attribute_history[self.obj][self.key]
@@ -154,12 +155,12 @@ class CallableProp(object):
             return None
         value = self.callable_()
         if self.uselist:
-            p = manager.create_list(self.obj, self.key, value)
+            p = manager.create_list(self.obj, self.key, value, **self.kwargs)
             manager.attribute_history[self.obj][self.key] = p
             return p
         else:
             self.obj.__dict__[self.key] = value
-            p = PropHistory(self.obj, self.key)
+            p = PropHistory(self.obj, self.key, **self.kwargs)
             manager.attribute_history[self.obj][self.key] = p
             return p
             
@@ -170,14 +171,14 @@ class AttributeManager(object):
 
     def value_changed(self, obj, key, value):
         pass
-    def create_prop(self, key, uselist):
-        return SmartProperty(self).property(key, uselist)
-    def create_list(self, obj, key, list_):
+    def create_prop(self, key, uselist, **kwargs):
+        return SmartProperty(self).property(key, uselist, **kwargs)
+    def create_list(self, obj, key, list_, **kwargs):
         return ListElement(obj, key, list_)
         
-    def get_attribute(self, obj, key):
+    def get_attribute(self, obj, key, **kwargs):
         try:
-            return self.get_history(obj, key)(self)
+            return self.get_history(obj, key, **kwargs)(self)
         except KeyError:
             pass
         try:
@@ -185,29 +186,29 @@ class AttributeManager(object):
         except KeyError:
             raise AttributeError(key)
 
-    def get_list_attribute(self, obj, key):
-        return self.get_list_history(obj, key)
+    def get_list_attribute(self, obj, key, **kwargs):
+        return self.get_list_history(obj, key, **kwargs)
         
-    def set_attribute(self, obj, key, value):
-        self.get_history(obj, key).setattr(value)
+    def set_attribute(self, obj, key, value, **kwargs):
+        self.get_history(obj, key, **kwargs).setattr(value)
         self.value_changed(obj, key, value)
     
-    def set_list_attribute(self, obj, key, value):
-        self.get_list_history(obj, key).setattr(value)
+    def set_list_attribute(self, obj, key, value, **kwargs):
+        self.get_list_history(obj, key, **kwargs).setattr(value)
         
-    def delete_attribute(self, obj, key):
-        self.get_history(obj, key).delattr()
+    def delete_attribute(self, obj, key, **kwargs):
+        self.get_history(obj, key, **kwargs).delattr()
         self.value_changed(obj, key, value)
 
-    def set_callable(self, obj, key, func, uselist):
+    def set_callable(self, obj, key, func, uselist, **kwargs):
         try:
             d = self.attribute_history[obj]
         except KeyError, e:
             d = {}
             self.attribute_history[obj] = d
-        d[key] = CallableProp(func, obj, key, uselist)
+        d[key] = CallableProp(func, obj, key, uselist, **kwargs)
         
-    def delete_list_attribute(self, obj, key):
+    def delete_list_attribute(self, obj, key, **kwargs):
         pass
         
     def rollback(self, obj = None):
@@ -242,22 +243,22 @@ class AttributeManager(object):
         except KeyError:
             pass
             
-    def get_history(self, obj, key):
+    def get_history(self, obj, key, **kwargs):
         try:
             return self.attribute_history[obj][key].gethistory(self)
         except KeyError, e:
             if e.args[0] is obj:
                 d = {}
                 self.attribute_history[obj] = d
-                p = PropHistory(obj, key)
+                p = PropHistory(obj, key, **kwargs)
                 d[key] = p
                 return p
             else:
-                p = PropHistory(obj, key)
+                p = PropHistory(obj, key, **kwargs)
                 self.attribute_history[obj][key] = p
                 return p
 
-    def get_list_history(self, obj, key, passive = False):
+    def get_list_history(self, obj, key, passive = False, **kwargs):
         try:
             return self.attribute_history[obj][key].gethistory(self, passive)
         except KeyError, e:
@@ -266,13 +267,13 @@ class AttributeManager(object):
             if e.args[0] is obj:
                 d = {}
                 self.attribute_history[obj] = d
-                p = self.create_list(obj, key, list_)
+                p = self.create_list(obj, key, list_, **kwargs)
                 d[key] = p
                 return p
             else:
-                p = self.create_list(obj, key, list_)
+                p = self.create_list(obj, key, list_, **kwargs)
                 self.attribute_history[obj][key] = p
                 return p
 
-    def register_attribute(self, class_, key, uselist):
-        setattr(class_, key, self.create_prop(key, uselist))
+    def register_attribute(self, class_, key, uselist, **kwargs):
+        setattr(class_, key, self.create_prop(key, uselist, **kwargs))

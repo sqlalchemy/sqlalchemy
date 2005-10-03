@@ -76,8 +76,13 @@ class UOWSmartProperty(attributes.SmartProperty):
         return uow().attributes
     
 class UOWListElement(attributes.ListElement):
-    def list_value_changed(self, obj, key, listval):
+    def __init__(self, obj, key, data=None, deleteremoved=False):
+        attributes.ListElement.__init__(self, obj, key, data=data)
+        self.deleteremoved = deleteremoved
+    def list_value_changed(self, obj, key, item, listval, isdelete):
         uow().modified_lists.append(self)
+        if isdelete and self.deleteremoved:
+            uow().register_deleted(item)
 
 class UOWAttributeManager(attributes.AttributeManager):
     def __init__(self, uow):
@@ -90,11 +95,11 @@ class UOWAttributeManager(attributes.AttributeManager):
         else:
             self.uow.register_new(obj)
 
-    def create_prop(self, key, uselist):
-        return UOWSmartProperty(self).property(key, uselist)
+    def create_prop(self, key, uselist, **kwargs):
+        return UOWSmartProperty(self).property(key, uselist, **kwargs)
 
-    def create_list(self, obj, key, list_):
-        return UOWListElement(obj, key, list_)
+    def create_list(self, obj, key, list_, **kwargs):
+        return UOWListElement(obj, key, list_, **kwargs)
         
 class UnitOfWork(object):
     def __init__(self, parent = None, is_begun = False):
@@ -136,11 +141,11 @@ class UnitOfWork(object):
         self._put(obj._instance_key, obj)
         self.register_dirty(obj)
         
-    def register_attribute(self, class_, key, uselist):
-        self.attributes.register_attribute(class_, key, uselist)
+    def register_attribute(self, class_, key, uselist, **kwargs):
+        self.attributes.register_attribute(class_, key, uselist, **kwargs)
 
-    def register_callable(self, obj, key, func, uselist):
-        self.attributes.set_callable(obj, key, func, uselist)
+    def register_callable(self, obj, key, func, uselist, **kwargs):
+        self.attributes.set_callable(obj, key, func, uselist, **kwargs)
         
     def register_clean(self, obj):
         try:
@@ -456,7 +461,7 @@ class UOWTask(object):
             if dependencies.has_key(node.item):
                 for processor, deptask in dependencies[node.item].iteritems():
                     parenttask.dependencies.append((processor, deptask))
-            t = d[node.item]
+            t = get_task(node.item)
             for n in node.children:
                 t2 = make_task_tree(n, t)
             return t

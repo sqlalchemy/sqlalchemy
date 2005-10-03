@@ -354,7 +354,13 @@ class CRUDTest(SQLTest):
         self.runtest(update(table, values = {table.c.name : table.c.id}), "UPDATE mytable SET name=mytable.myid")
         self.runtest(update(table, whereclause = table.c.name == bindparam('crit'), values = {table.c.name : 'hi'}), "UPDATE mytable SET name=:name WHERE mytable.name = :crit", params = {'crit' : 'notthere'})
         self.runtest(update(table, table.c.id == 12, values = {table.c.name : table.c.id}), "UPDATE mytable SET name=mytable.myid, description=:description WHERE mytable.myid = :mytable_myid", params = {'description':'test'})
-
+        self.runtest(update(table, table.c.id == 12, values = {table.c.id : 9}), "UPDATE mytable SET myid=:myid, description=:description WHERE mytable.myid = :mytable_myid", params = {'mytable_myid': 12, 'myid': 9, 'description': 'test'})
+        s = table.update(table.c.id == 12, values = {table.c.name : 'lala'})
+        print str(s)
+        c = s.compile(bindparams = {'mytable_id':9,'name':'h0h0'})
+        print str(c)
+        self.assert_(str(s) == str(c))
+        
     def testcorrelatedupdate(self):
         # test against a straight text subquery
         u = update(table, values = {table.c.name : text("select name from mytable where id=mytable.id")})
