@@ -100,7 +100,6 @@ class ListElement(util.HistoryArraySet):
         try:
             list_ = obj.__dict__[key]
             if data is not None:
-                list_.clear()
                 for d in data:
                     list_.append(d)
         except KeyError:
@@ -150,16 +149,21 @@ class CallableProp(object):
     def gethistory(self, manager, *args, **kwargs):
         self.__call__(manager, *args, **kwargs)
         return manager.attribute_history[self.obj][self.key]
-    def __call__(self, manager, passive=False):
+    def __call__(self, manager, passive=False, **kwargs):
         if passive:
             return None
-        value = self.callable_()
         if self.uselist:
+            if not self.obj.__dict__.has_key(self.key) or len(self.obj.__dict__[self.key]) == 0:
+                value = self.callable_()
+            else:
+                value = None
             p = manager.create_list(self.obj, self.key, value, **self.kwargs)
             manager.attribute_history[self.obj][self.key] = p
             return p
         else:
-            self.obj.__dict__[self.key] = value
+            if not self.obj.__dict__.has_key(self.key):
+                value = self.callable_()
+                self.obj.__dict__[self.key] = value
             p = PropHistory(self.obj, self.key, **self.kwargs)
             manager.attribute_history[self.obj][self.key] = p
             return p
@@ -245,7 +249,7 @@ class AttributeManager(object):
             
     def get_history(self, obj, key, **kwargs):
         try:
-            return self.attribute_history[obj][key].gethistory(self)
+            return self.attribute_history[obj][key].gethistory(self, **kwargs)
         except KeyError, e:
             if e.args[0] is obj:
                 d = {}
