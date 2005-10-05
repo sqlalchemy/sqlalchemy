@@ -235,7 +235,6 @@ class Mapper(object):
             row = cursor.fetchone()
             if row is None:
                 break
-            #self._instance(row, result)
             self._instance(row, imap, result)
         
         # store new stuff in the identity map
@@ -324,7 +323,7 @@ class Mapper(object):
 #                print "SAVE_OBJ we are " + hash_key(self) + " obj: " +  obj.__class__.__name__ + repr(id(obj))
                 params = {}
                 for col in table.columns:
-                    if col.primary_key:
+                    if col.primary_key and hasattr(obj, "_instance_key"):
                         params[col.table.name + "_" + col.key] = self._getattrbycolumn(obj, col)
                     else:
                         params[col.key] = self._getattrbycolumn(obj, col)
@@ -389,6 +388,7 @@ class Mapper(object):
             
     def _compile(self, whereclause = None, order_by = None, **options):
         statement = sql.select([self.table], whereclause, order_by = order_by)
+        # plugin point
         for key, value in self.props.iteritems():
             value.setup(key, statement, **options) 
         statement.use_labels = True
@@ -696,7 +696,7 @@ class PropertyLoader(MapperProperty):
             return (obj2, obj1)
             
     def process_dependencies(self, deplist, uowcommit, delete = False):
-        print self.mapper.table.name + " " + repr([str(v) for v in deplist.map.values()]) + " process_dep isdelete " + repr(delete)
+        #print self.mapper.table.name + " " + repr([str(v) for v in deplist.map.values()]) + " process_dep isdelete " + repr(delete)
 
         # fucntion to set properties across a parent/child object plus an "association row",
         # based on a join condition
@@ -810,7 +810,19 @@ class PropertyLoader(MapperProperty):
 class LazyLoader(PropertyLoader):
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
-            objectstore.uow().register_callable(instance, self.key, LazyLoadInstance(self, row), uselist=self.uselist, deleteremoved = self.private)
+            def lazyload():
+                params = {}
+                for key in self.lazybinds.keys():
+                    params[key] = row[key]
+                result = self.mapper.select(self.lazywhere, **params)
+                if self.uselist:
+                    return result
+                else:
+                    if len(result):
+                        return result[0]
+                    else:
+                        return None
+            objectstore.uow().register_callable(instance, self.key, lazyload, uselist=self.uselist, deleteremoved = self.private)
 
 def create_lazy_clause(table, primaryjoin, secondaryjoin, thiscol):
     binds = {}
@@ -833,24 +845,6 @@ def create_lazy_clause(table, primaryjoin, secondaryjoin, thiscol):
     lazywhere.accept_visitor(li)
     return (lazywhere, binds)
         
-class LazyLoadInstance(object):
-    """attached to a specific object instance to load related rows."""
-    def __init__(self, lazyloader, row):
-        self.params = {}
-        for key in lazyloader.lazybinds.keys():
-            self.params[key] = row[key]
-        self.mapper = lazyloader.mapper
-        self.lazywhere = lazyloader.lazywhere
-        self.uselist = lazyloader.uselist
-    def __call__(self):
-        result = self.mapper.select(self.lazywhere, **self.params)
-        if self.uselist:
-            return result
-        else:
-            if len(result):
-                return result[0]
-            else:
-                return None
 
 class EagerLoader(PropertyLoader):
     """loads related objects inline with a parent query."""
