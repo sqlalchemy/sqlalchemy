@@ -253,8 +253,8 @@ class SaveTest(AssertMixin):
         self.assert_enginesql(db, lambda: objectstore.uow().commit(), 
 """INSERT INTO users (user_id, user_name) VALUES (:user_id, :user_name)
 {'user_id': None, 'user_name': 'imnewlyadded'}
-UPDATE email_addresses SET address_id=:address_id, user_id=:user_id, email_address=:email_address WHERE email_addresses.address_id = :address_id
-[{'email_address': 'imnew@foo.bar', 'address_id': 3, 'user_id': 3}, {'email_address': 'adsd5@llala.net', 'address_id': 4, 'user_id': None}]
+UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE email_addresses.address_id = :email_addresses_address_id
+[{'email_address': 'imnew@foo.bar', 'user_id': 3, 'email_addresses_address_id': 3}, {'email_address': 'adsd5@llala.net', 'user_id': 6, 'email_addresses_address_id': 4}]
 """)
         l = sql.select([users, addresses], sql.and_(users.c.user_id==addresses.c.address_id, addresses.c.address_id==a.address_id)).execute()
         self.echo( repr(l.fetchone().row))
