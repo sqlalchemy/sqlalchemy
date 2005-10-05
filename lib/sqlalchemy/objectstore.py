@@ -171,6 +171,9 @@ class UnitOfWork(object):
             return True
         
     def register_deleted(self, obj):
+        try:
+            del self.dirty[obj]
+        except KeyError:pass
         self.deleted.append(obj)  
         mapper = object_mapper(obj)
         mapper.register_deleted(obj, self)
