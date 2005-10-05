@@ -171,9 +171,6 @@ class UnitOfWork(object):
             return True
         
     def register_deleted(self, obj):
-        try:
-            del self.dirty[obj]
-        except KeyError:pass
         self.deleted.append(obj)  
         mapper = object_mapper(obj)
         mapper.register_deleted(obj, self)
@@ -194,7 +191,7 @@ class UnitOfWork(object):
                     commit_context.append_task(obj)
         else:
             for obj in [n for n in self.new] + [d for d in self.dirty]:
-                #if obj.__class__.__name__ == 'Order': print "going to save.... " + obj.__class__.__name__ + repr(id(obj)) + repr(obj.__dict__)
+                #print "going to save.... " + obj.__class__.__name__ + repr(id(obj)) 
                 if self.deleted.contains(obj):
                     continue
                 commit_context.append_task(obj)
@@ -443,7 +440,8 @@ class UOWTask(object):
                 if self.isdelete:
                     childlist = childlist.unchanged_items() + childlist.deleted_items()
                 else:
-                    childlist = childlist.added_items() + childlist.deleted_items()
+                    #childlist = childlist.added_items() + childlist.deleted_items()
+                    childlist = childlist.added_items()
                 for o in childlist:
                     whosdep = processor.whose_dependent_on_who(obj, o, trans)
                     if whosdep is not None:
