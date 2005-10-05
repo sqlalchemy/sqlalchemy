@@ -97,6 +97,8 @@ class ListElement(util.HistoryArraySet):
     def __init__(self, obj, key, data=None):
         self.obj = obj
         self.key = key
+        # if we are given a list, try to behave nicely with an existing
+        # list that might be set on the object already
         try:
             list_ = obj.__dict__[key]
             if data is not None:
@@ -152,6 +154,11 @@ class CallableProp(object):
     def __call__(self, manager, passive=False, **kwargs):
         if passive:
             return None
+        # invoking a callable, affixing its data as a property
+        # on the item, and setting up the proper attribute manager
+        # on the object: if the object already has the attribute set, or has a list
+        # that is not of length zero, then skip the callable and dont change 
+        # the value.
         if self.uselist:
             if not self.obj.__dict__.has_key(self.key) or len(self.obj.__dict__[self.key]) == 0:
                 value = self.callable_()
@@ -161,9 +168,10 @@ class CallableProp(object):
             manager.attribute_history[self.obj][self.key] = p
             return p
         else:
-            if not self.obj.__dict__.has_key(self.key):
+            if self.obj.__dict__.get(self.key, None) is None:
                 value = self.callable_()
                 self.obj.__dict__[self.key] = value
+                
             p = PropHistory(self.obj, self.key, **self.kwargs)
             manager.attribute_history[self.obj][self.key] = p
             return p
@@ -202,7 +210,7 @@ class AttributeManager(object):
         
     def delete_attribute(self, obj, key, **kwargs):
         self.get_history(obj, key, **kwargs).delattr()
-        self.value_changed(obj, key, value)
+        self.value_changed(obj, key, None)
 
     def set_callable(self, obj, key, func, uselist, **kwargs):
         try:
