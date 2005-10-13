@@ -56,12 +56,12 @@ class PropHistory(object):
         self.orig = PropHistory.NONE
     def gethistory(self, *args, **kwargs):
         return self
-    def __call__(self, *args, **kwargs):
-        return self.obj.__dict__[self.key]
     def history_contains(self, obj):
         return self.orig is obj or self.obj.__dict__[self.key] is obj
     def setattr_clean(self, value):
         self.obj.__dict__[self.key] = value
+    def getattr(self):
+        return self.obj.__dict__[self.key]
     def setattr(self, value):
         if isinstance(value, list):
             raise ("assigning a list to scalar property '%s' on '%s' instance %d" % (self.key, self.obj.__class__.__name__, id(self.obj)))
@@ -115,8 +115,6 @@ class ListElement(util.HistoryArraySet):
 
     def gethistory(self, *args, **kwargs):
         return self
-    def __call__(self, *args, **kwargs):
-        return self
     def list_value_changed(self, obj, key, item, listval, isdelete):
         pass    
     def setattr(self, value):
@@ -142,40 +140,44 @@ class CallableProp(object):
     accesses the object attribute, either to get its history or its real value, the __call__ method
     is invoked which runs the underlying callable_ and sets the new value to the object attribute
     via the manager, at which point the CallableProp itself is dereferenced."""
-    def __init__(self, callable_, obj, key, uselist = False, **kwargs):
+    def __init__(self, manager, callable_, obj, key, uselist = False, **kwargs):
+        self.manager = manager
         self.callable_ = callable_
         self.obj = obj
         self.key = key
         self.uselist = uselist
         self.kwargs = kwargs
-    def gethistory(self, manager, *args, **kwargs):
-        self.__call__(manager, *args, **kwargs)
-        return manager.attribute_history[self.obj][self.key]
-    def __call__(self, manager, passive=False, **kwargs):
-        if passive:
-            return None
-        # invoking a callable, affixing its data as a property
-        # on the item, and setting up the proper attribute manager
-        # on the object: if the object already has the attribute set, or has a list
-        # that is not of length zero, then skip the callable and dont change 
-        # the value.
-        if self.uselist:
+
+    def gethistory(self, passive=False, *args, **kwargs):
+        if not self.uselist:
+            m = self.manager
+            self.getattr()
+            return m.attribute_history[self.obj][self.key]
+        else:
             if not self.obj.__dict__.has_key(self.key) or len(self.obj.__dict__[self.key]) == 0:
                 value = self.callable_()
             else:
                 value = None
-            p = manager.create_list(self.obj, self.key, value, **self.kwargs)
-            manager.attribute_history[self.obj][self.key] = p
+            p = self.manager.create_list(self.obj, self.key, value, **self.kwargs)
+            self.manager.attribute_history[self.obj][self.key] = p
+            self.manager = None
             return p
-        else:
-            if self.obj.__dict__.get(self.key, None) is None:
-                value = self.callable_()
-                self.obj.__dict__[self.key] = value
-                
-            p = PropHistory(self.obj, self.key, **self.kwargs)
-            manager.attribute_history[self.obj][self.key] = p
-            return p
-            
+
+    def getattr(self):
+        if self.obj.__dict__.get(self.key, None) is None:
+            value = self.callable_()
+            self.obj.__dict__[self.key] = value
+
+        p = PropHistory(self.obj, self.key, **self.kwargs)
+        self.manager.attribute_history[self.obj][self.key] = p
+        self.manager = None
+        return p
+
+    def commit(self):
+        pass
+    def rollback(self):
+        pass
+        
 class AttributeManager(object):
     """maintains a set of per-attribute callable/history manager objects for a set of objects."""
     def __init__(self):
@@ -190,7 +192,7 @@ class AttributeManager(object):
         
     def get_attribute(self, obj, key, **kwargs):
         try:
-            return self.get_history(obj, key, **kwargs)(self)
+            return self.get_history(obj, key, **kwargs).getattr()
         except KeyError:
             pass
         try:
@@ -218,7 +220,7 @@ class AttributeManager(object):
         except KeyError, e:
             d = {}
             self.attribute_history[obj] = d
-        d[key] = CallableProp(func, obj, key, uselist, **kwargs)
+        d[key] = CallableProp(self, func, obj, key, uselist, **kwargs)
         
     def delete_list_attribute(self, obj, key, **kwargs):
         pass
@@ -257,7 +259,7 @@ class AttributeManager(object):
             
     def get_history(self, obj, key, **kwargs):
         try:
-            return self.attribute_history[obj][key].gethistory(self, **kwargs)
+            return self.attribute_history[obj][key].gethistory(**kwargs)
         except KeyError, e:
             if e.args[0] is obj:
                 d = {}
@@ -272,7 +274,7 @@ class AttributeManager(object):
 
     def get_list_history(self, obj, key, passive = False, **kwargs):
         try:
-            return self.attribute_history[obj][key].gethistory(self, passive)
+            return self.attribute_history[obj][key].gethistory(passive)
         except KeyError, e:
             # TODO: when an callable is re-set on an existing list element
             list_ = obj.__dict__.get(key, None)
