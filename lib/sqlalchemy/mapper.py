@@ -44,10 +44,12 @@ def relation_mapper(class_, table=None, secondary=None, primaryjoin=None, second
     return relation_loader(mapper(class_, table, **kwargs), secondary, primaryjoin, secondaryjoin, **kwargs)
 
 class assignmapper(object):
-    def __init__(self, table, **kwargs):
+    def __init__(self, table, class_ = None, **kwargs):
         self.table = table
         self.kwargs = kwargs
-        
+        if class_:
+            self.__get__(None, class_)
+            
     def __get__(self, instance, owner):
         if not hasattr(self, 'mapper'):
             self.mapper = mapper(owner, self.table, **self.kwargs)
@@ -231,6 +233,13 @@ class Mapper(object):
     def _init_class(self):
         self.class_._mapper = self.hashkey
         self.class_.c = self.c
+        oldinit = self.class_.__init__
+        def init(self, *args, **kwargs):
+            if oldinit is not None:
+                oldinit(self, *args, **kwargs)
+            objectstore.uow().register_new(self)
+        self.class_.__init__ = init
+        
     def set_property(self, key, prop):
         self.props[key] = prop
         prop.init(key, self)
@@ -367,7 +376,8 @@ class Mapper(object):
                             else:
                                 self._setattrbycolumn(obj, col, primary_key)
                                 found = True
-
+                    self.extension.after_insert(self, obj)
+                    
     def delete_obj(self, objects, uow):
         for table in self.tables:
             delete = []
@@ -452,7 +462,8 @@ class Mapper(object):
                 if row[col.label] is None:
                     return None
             # plugin point
-            if self.extension.create_instance(self, row, imap, self.class_) is None:
+            instance = self.extension.create_instance(self, row, imap, self.class_)
+            if instance is None:
                 instance = self.class_()
             instance._mapper = self.hashkey
             instance._instance_key = identitykey
@@ -667,12 +678,11 @@ class PropertyLoader(MapperProperty):
     def register_deleted(self, obj, uow):
         if not self.private:
             return
-            
+
         if self.uselist:
             childlist = uow.attributes.get_list_history(obj, self.key, passive = False)
         else: 
             childlist = uow.attributes.get_history(obj, self.key)
-
         for child in childlist.deleted_items() + childlist.unchanged_items():
             uow.register_deleted(child)
 
@@ -987,7 +997,9 @@ class MapperExtension(object):
         return None
     def append_result(self, mapper, row, imap, result, instance, populate_existing=False):
         return True
-  
+    def after_insert(self, mapper, instance):
+        pass
+        
 def hash_key(obj):
     if obj is None:
         return 'None'
