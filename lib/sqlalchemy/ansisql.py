@@ -101,6 +101,9 @@ class ANSICompiler(sql.Compiled):
             self.strings[textclause] = "(" + textclause.text + ")"
         else:
             self.strings[textclause] = textclause.text
+
+    def visit_null(self, null):
+        self.strings[null] = 'NULL'
        
     def visit_compound(self, compound):
         if compound.operator is None:
