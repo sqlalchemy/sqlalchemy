@@ -124,6 +124,9 @@ def bindparam(key, value = None, type=None):
 def text(text):
     return TextClause(text)
 
+def null():
+    return Null()
+    
 def sequence():
     return Sequence()
 
@@ -158,6 +161,7 @@ class ClauseVisitor(schema.SchemaVisitor):
     def visit_alias(self, alias):pass
     def visit_select(self, select):pass
     def visit_join(self, join):pass
+    def visit_null(self, null):pass
     
 class Compiled(ClauseVisitor):
     """represents a compiled SQL expression.  the __str__ method of the Compiled object
@@ -330,15 +334,21 @@ class TextClause(ClauseElement):
     def __init__(self, text = ""):
         self.text = text
         self.parens = False
-        
-    def accept_visitor(self, visitor): visitor.visit_textclause(self)
-
+    def accept_visitor(self, visitor): 
+        visitor.visit_textclause(self)
     def hash_key(self):
         return "TextClause(%s)" % repr(self.text)
-        
     def _get_from_objects(self):
         return []
-        
+
+class Null(ClauseElement):
+    def accept_visitor(self, visitor):
+        visitor.visit_null(self)
+    def _get_from_objects(self):
+        return []
+    def hash_key(self):
+        return "Null"
+    
 class CompoundClause(ClauseElement):
     """represents a list of clauses joined by an operator"""
     def __init__(self, operator, *clauses):
@@ -536,7 +546,11 @@ class ColumnSelectable(Selectable):
     
     def _compare(self, operator, obj):
         if _is_literal(obj):
-            if self.column.table.name is None:
+            if obj is None:
+                if operator != '=':
+                    raise "Only '=' operator can be used with NULL"
+                return BinaryClause(self.column, null(), 'IS')
+            elif self.column.table.name is None:
                 obj = BindParamClause(self.name, obj, shortname = self.name, type = self.column.type)
             else:
                 obj = BindParamClause(self.column.table.name + "_" + self.name, obj, shortname = self.name, type = self.column.type)
