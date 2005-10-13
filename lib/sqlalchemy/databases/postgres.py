@@ -61,12 +61,13 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
             last_inserted_ids = []
             for primary_key in compiled.statement.table.primary_keys:
                 # pseudocode
-                if echo is True or self._echo:
-                    self.log(primary_key.sequence.text)
-                res = cursor.execute(primary_key.sequence.text)
-                newid = res.fetchrow()[0]
-                parameters[primary_key.key] = newid
-                last_inserted_ids.append(newid)
+                if parameters[primary_key.key] is None:
+                    if echo is True:
+                        self.log(primary_key.sequence.text)
+                    res = cursor.execute(primary_key.sequence.text)
+                    newid = res.fetchrow()[0]
+                    parameters[primary_key.key] = newid
+                    last_inserted_ids.append(newid)
             self.context.last_inserted_ids = last_inserted_ids
 
     def dbapi(self):

@@ -93,6 +93,7 @@ class UOWAttributeManager(attributes.AttributeManager):
         if hasattr(obj, '_instance_key'):
             self.uow.register_dirty(obj)
         else:
+            #raise "hi"
             self.uow.register_new(obj)
 
     def create_prop(self, key, uselist, **kwargs):
