@@ -92,35 +92,76 @@ TreeNode.mapper=assignmapper(tables.trees, properties=dict(
 ), extension = TreeLoader())
 TreeNode.mapper
 
+
 node2 = TreeNode('node2')
 node2.append('subnode1')
 node = TreeNode('rootnode')
-#node.root = node
 node.append('node1')
 node.append(node2)
 node.append('node3')
 node.children['node2'].append('subnode2')
+
+print "\n\n\n----------------------------"
+print "Created new tree structure:"
+print "----------------------------"
+
 print node._getstring(0, True)
-objectstore.commit()
-print "\n\n\n"
-node.append('node4')
+
+print "\n\n\n----------------------------"
+print "Committing:"
+print "----------------------------"
+
 objectstore.commit()
 
+print "\n\n\n----------------------------"
+print "Tree After Save:"
+print "----------------------------"
+
+print node._getstring(0, True)
+
+node.append('node4')
 node.children['node4'].append('subnode3')
 node.children['node4'].append('subnode4')
 node.children['node4'].children['subnode3'].append('subsubnode1')
-print node._getstring(0, True)
-#raise "hi"
 del node.children['node1']
+
+print "\n\n\n----------------------------"
+print "Modified the tree"
+print "(added node4, node4/subnode3, node4/subnode4,"
+print "node4/subnode3/subsubnode1, deleted node1):"
+print "----------------------------"
+
+print node._getstring(0, True)
+
+print "\n\n\n----------------------------"
+print "Committing:"
+print "----------------------------"
 objectstore.commit()
+
+print "\n\n\n----------------------------"
+print "Tree After Save:"
+print "----------------------------"
+
+print node._getstring(0, True)
 
 nodeid = node.id
 
+print "\n\n\n----------------------------"
+print "Clearing objectstore, selecting "
+print "tree new where root_id=%d:" % nodeid
+print "----------------------------"
+
 objectstore.clear()
-print "\n\n\n"
 t = TreeNode.mapper.select(TreeNode.c.root_id==nodeid, order_by=[TreeNode.c.id])[0]
 
+print "\n\n\n----------------------------"
+print "Full Tree:"
+print "----------------------------"
 print t._getstring(0, True)
+
+print "\n\n\n----------------------------"
+print "Marking root node as deleted and committing:"
+print "----------------------------"
 objectstore.delete(t)
 objectstore.commit()
 
