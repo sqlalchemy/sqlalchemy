@@ -276,9 +276,9 @@ class ScopedRegistry(object):
         self.application = createfunc()
         self.threadlocal = {}
         self.scopes = {
-                    'application' : {'call' : self._call_application, 'clear' : self._clear_application, 'set':self._set_application}, 
-                    'thread' : {'call' : self._call_thread, 'clear':self._clear_thread, 'set':self._set_thread}
-                    }
+            'application' : {'call' : self._call_application, 'clear' : self._clear_application, 'set':self._set_application}, 
+            'thread' : {'call' : self._call_thread, 'clear':self._clear_thread, 'set':self._set_thread}
+            }
 
     def __call__(self, scope = None):
         if scope is None:
@@ -323,7 +323,11 @@ class DependencySorter(object):
     """creates a "dependency tree" across a list of objects, using a series of 'dependency relationships'
     expressed as a list of tuples to determine its shape.  the tuples are of the form (x,y) which indicate 
     'y is dependent on x', as well as a list of 
-    elements which represent the full collection that x and y originate from"""
+    elements which represent the full collection of elements.
+    
+    If a tuple contains the same value dependent on itself, the corresponding node
+    is marked as "circular", indicating the node is dependent on itself.
+    """
     class Node:
         def __init__(self, item):
             #print "new node on " + str(item)
@@ -408,7 +412,7 @@ class DependencySorter(object):
                         newhead.children.append(head)
                     head = newhead
                 else:
-                    n = TupleSorter.Node(item)
+                    n = DependencySorter.Node(item)
                     head.children.append(n)
                     n.parent = head
         return head
