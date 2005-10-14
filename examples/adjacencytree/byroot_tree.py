@@ -105,7 +105,7 @@ objectstore.commit()
 print "\n\n\n"
 node.append('node4')
 objectstore.commit()
-raise "hi"
+
 node.children['node4'].append('subnode3')
 node.children['node4'].append('subnode4')
 node.children['node4'].children['subnode3'].append('subsubnode1')
@@ -114,11 +114,11 @@ print node._getstring(0, True)
 del node.children['node1']
 objectstore.commit()
 
-id = node.id
+nodeid = node.id
 
 objectstore.clear()
 print "\n\n\n"
-t = TreeNode.mapper.select(TreeNode.c.root_id==id, order_by=[TreeNode.c.id])[0]
+t = TreeNode.mapper.select(TreeNode.c.root_id==nodeid, order_by=[TreeNode.c.id])[0]
 
 print t._getstring(0, True)
 objectstore.delete(t)
