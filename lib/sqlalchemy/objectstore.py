@@ -98,7 +98,6 @@ class UOWAttributeManager(attributes.AttributeManager):
         if hasattr(obj, '_instance_key'):
             self.uow.register_dirty(obj)
         else:
-            #raise "hi"
             self.uow.register_new(obj)
 
     def create_prop(self, key, uselist, **kwargs):
@@ -348,7 +347,6 @@ class UOWTransaction(object):
             
         mappers = util.HashSet()
         for task in self.tasks.values():
-            #print "new node for " + str(task)
             mappers.append(task.mapper)
             bymapper[(task.mapper, task.isdelete)] = task
     
@@ -373,13 +371,23 @@ class UOWTask(object):
         self.dependencies = []
         self.iscircular = False
 
-    def append(self, obj, listonly = False):
+    def append(self, obj, listonly = False, childtask = None):
         """appends an object to this task, to be either saved or deleted
         depending on the 'isdelete' attribute of this UOWTask.  'listonly' indicates
         that the object should only be processed as a dependency and not actually saved/deleted.
-        if the object already exists without the 'listonly' flag, it is kept as is."""
-        self.objects[obj] = listonly and self.objects.get(obj, True)
-        #print "Task " + str(self) + " append object " + obj.__class__.__name__ + "/" + repr(id(obj)) + " listonly " + repr(listonly) + "/" + repr(self.objects[obj])        
+        if the object already exists with a 'listonly' flag of False, it is kept as is.
+        'childtask' is used internally when creating a hierarchical list of self-referential
+        tasks, to assign dependent operations at the per-object instead of per-task level."""
+        try:
+            rec = self.objects[obj]
+        except KeyError:
+            rec = {'listonly': True, 'childtask': None}
+            self.objects[obj] = rec
+        if not listonly:
+            rec['listonly'] = False
+        if childtask:
+            rec['childtask'] = childtask
+        #print "Task " + str(self) + " append object " + obj.__class__.__name__ + "/" + repr(id(obj)) + " listonly " + repr(listonly) + "/" + repr(self.objects[obj]['listonly'])        
         
     def execute(self, trans):
         """executes this UOWTask.  saves objects to be saved, processes all dependencies
@@ -393,7 +401,7 @@ class UOWTask(object):
                 task.execute_circular(trans)
             return
             
-        obj_list = [o for o, listonly in self.objects.iteritems() if not listonly]
+        obj_list = [o for o, rec in self.objects.iteritems() if not rec['listonly']]
         if not self.isdelete:
             self.mapper.save_obj(obj_list, trans)
         for dep in self.dependencies:
@@ -406,22 +414,27 @@ class UOWTask(object):
         if not self.isdelete:
             self.execute(trans)
         for obj in self.objects.keys():
-            childtask = self.taskhash[obj]
+            childtask = self.objects[obj]['childtask']
             childtask.execute_circular(trans)
         if self.isdelete:
             self.execute(trans)
             
     def _sort_circular_dependencies(self, trans):
+        """for a single task, creates a hierarchical tree of "subtasks" which associate
+        specific dependency actions with individual objects.  This is used for a
+        "circular" task, or a task where elements
+        of its object list contain dependencies on each other."""
+        
         allobjects = self.objects.keys()
         tuples = []
-        d = {}
+        
+        objecttotask = {}
         def get_task(obj):
             try:
-                return d[obj]
+                return objecttotask[obj]
             except KeyError:
                 t = UOWTask(self.mapper, self.isdelete)
-                t.taskhash = d
-                d[obj] = t
+                objecttotask[obj] = t
                 return t
 
         dependencies = {}
@@ -466,7 +479,7 @@ class UOWTask(object):
             return None
         
         def make_task_tree(node, parenttask):
-            parenttask.append(node.item, self.objects[node.item])
+            parenttask.append(node.item, self.objects[node.item]['listonly'], objecttotask[node.item])
             if dependencies.has_key(node.item):
                 for processor, deptask in dependencies[node.item].iteritems():
                     parenttask.dependencies.append((processor, deptask))
@@ -476,17 +489,16 @@ class UOWTask(object):
             return t
             
         t = UOWTask(self.mapper, self.isdelete)
-        t.taskhash = d
         make_task_tree(head, t)
         #t._print_circular()        
         return t
 
     def _print_circular(t):
         print "-----------------------------"
-        print "task objects: " + repr([str(v) + " listonly: " + repr(l) for v, l in t.objects.iteritems()])
+        print "task objects: " + repr([str(v) + " listonly: " + repr(l['listonly']) for v, l in t.objects.iteritems()])
         print "task depends: " + repr([(dt[0].key, [str(o) for o in dt[1].objects.keys()]) for dt in t.dependencies])
-        for o in t.objects:
-            t.taskhash[o]._print_circular()
+        for rec in t.objects.values():
+            rec['childtask']._print_circular()
         
     def __str__(self):
         if self.mapper is not None:
