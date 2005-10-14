@@ -46,6 +46,8 @@ class SaveTest(AssertMixin):
         orderitems.delete().execute()
         users.delete().execute()
         addresses.delete().execute()
+        itemkeywords.delete().execute()
+        
         db.echo = e
         
     def testbasic(self):
@@ -289,10 +291,43 @@ UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE 
         a2.email_address = 'somethingnew@foo.com'
 
         objectstore.uow().commit()
+
         
         addresstable = addresses.select(addresses.c.address_id == addressid).execute().fetchall()
         self.assert_(addresstable[0].row == (addressid, userid, 'somethingnew@foo.com'))
         self.assert_(u.user_id == userid and a2.address_id == addressid)
+
+    def testchildmanipulations(self):
+        """digs deeper into modifying the child items of an object to insure the correct
+        updates take place"""
+        m = mapper(User, users, properties = dict(
+            addresses = relation(Address, addresses, lazy = True)
+        ))
+        u1 = User()
+        u1.user_name = 'user1'
+        u1.addresses = []
+        a1 = Address()
+        a1.email_address = 'emailaddress1'
+        u1.addresses.append(a1)
+        u2 = User()
+        u2.user_name = 'user2'
+        u2.addresses = []
+        a2 = Address()
+        a2.email_address = 'emailaddress2'
+        u2.addresses.append(a2)
+
+        a3 = Address()
+        a3.email_address = 'emailaddress3'
+
+        objectstore.commit()
+        
+        self.echo("\n\n\n")
+        # modify user2 directly, append an address to user1.
+        # upon commit, user2 should be updated, user1 should not
+        u2.user_name = 'user2modified'
+        u1.addresses.append(a3)
+        del u1.addresses[0]
+        objectstore.commit()
 
     def _testalias(self):
         """tests that an alias of a table can be used in a mapper. 
@@ -334,6 +369,7 @@ UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE 
     def testmanytomany(self):
         items = orderitems
 
+        items.select().execute()
         m = mapper(Item, items, properties = dict(
                 keywords = relation(Keyword, keywords, itemkeywords, lazy = False),
             ))
@@ -370,6 +406,7 @@ UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE 
                 item.keywords.append(k)
 
         objectstore.uow().commit()
+        
         l = m.select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name, keywords.c.name])
         self.assert_result(l, *data)
 
