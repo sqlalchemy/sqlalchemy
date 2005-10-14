@@ -324,10 +324,16 @@ UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE 
         self.echo("\n\n\n")
         # modify user2 directly, append an address to user1.
         # upon commit, user2 should be updated, user1 should not
+        # both address1 and address3 should be updated
         u2.user_name = 'user2modified'
         u1.addresses.append(a3)
         del u1.addresses[0]
-        objectstore.commit()
+        self.assert_enginesql(db, lambda: objectstore.commit(), 
+"""UPDATE users SET user_name=:user_name WHERE users.user_id = :users_user_id
+[{'users_user_id': %d, 'user_name': 'user2modified'}]
+UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE email_addresses.address_id = :email_addresses_address_id
+[{'email_address': 'emailaddress3', 'user_id': %d, 'email_addresses_address_id': %d}, {'email_address': 'emailaddress1', 'user_id': None, 'email_addresses_address_id': %d}]
+""" % (u2.user_id, u1.user_id, a3.address_id, a1.address_id))
 
     def _testalias(self):
         """tests that an alias of a table can be used in a mapper. 
