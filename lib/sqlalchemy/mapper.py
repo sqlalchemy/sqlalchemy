@@ -719,16 +719,16 @@ class PropertyLoader(MapperProperty):
             # if only a list changes, the parent mapper is the only mapper that
             # gets added to the "todo" list
             uowcommit.register_dependency(self.mapper, self.parent)
-            uowcommit.register_task(self.parent, False, self, self.parent, False)
+            uowcommit.register_processor(self.parent, False, self, self.parent, False)
         elif self.direction == PropertyLoader.LEFT:
             uowcommit.register_dependency(self.parent, self.mapper)
-            uowcommit.register_task(self.parent, False, self, self.parent, False)
-            uowcommit.register_task(self.parent, True, self, self.parent, True)
+            uowcommit.register_processor(self.parent, False, self, self.parent, False)
+            uowcommit.register_processor(self.parent, True, self, self.parent, True)
         elif self.direction == PropertyLoader.RIGHT:
             uowcommit.register_dependency(self.mapper, self.parent)
-            uowcommit.register_task(self.mapper, False, self, self.parent, False)
+            uowcommit.register_processor(self.mapper, False, self, self.parent, False)
             # TODO: private deletion thing for one-to-one relationship
-            #uowcommit.register_task(self.mapper, True, self, self.parent, False)
+            #uowcommit.register_processor(self.mapper, True, self, self.parent, False)
         else:
             raise " no foreign key ?"
 
@@ -795,11 +795,15 @@ class PropertyLoader(MapperProperty):
                         secondary_delete.append(associationrow)
                     uowcommit.register_saved_list(childlist)
                 if len(secondary_delete):
+                    # TODO: precompile the delete/insert queries and store them as instance variables
+                    # on the PropertyLoader
                     statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key) for c in self.secondary.c]))
                     statement.execute(*secondary_delete)
                 if len(secondary_insert):
                     statement = self.secondary.insert()
                     statement.execute(*secondary_insert)
+        # TODO: shouldnt this be for all deletes?  propertyloader.RIGHT + delete should
+        # be explicitly named 
         elif self.direction == PropertyLoader.LEFT and delete:
             if not self.private:
                 updates = []
@@ -811,6 +815,7 @@ class PropertyLoader(MapperProperty):
                     updates.append(params)
                     childlist = getlist(obj, False)
                     for child in childlist.deleted_items() + childlist.unchanged_items():
+                        # TODO: if self.private, mark child objects to be deleted ?
                         self.primaryjoin.accept_visitor(setter)
                     uowcommit.register_deleted_list(childlist)
                 if len(updates):
