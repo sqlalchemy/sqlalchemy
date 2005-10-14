@@ -14,4 +14,8 @@ trees = Table('treenodes', engine,
     Column('node_name', String(50), nullable=False)
     )
     
+print "\n\n\n----------------------------"
+print "Creating Tree Table:"
+print "----------------------------"
+    
 trees.create()
