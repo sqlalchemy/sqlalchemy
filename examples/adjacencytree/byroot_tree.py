@@ -23,8 +23,18 @@ class NodeList(util.OrderedDict):
         return iter(self.values())
 
 class TreeNode(object):
-    """a rich Tree class which includes path-based operations"""
+    """a hierarchical Tree class, which adds the concept of a "root node".  The root is 
+    the topmost node in a tree, or in other words a node whose parent ID is NULL.  
+    All child nodes that are decendents of a particular root, as well as a root node itself, 
+    reference this root node.  
+    this is useful as a way to identify all nodes in a tree as belonging to a single
+    identifiable root.  Any node can return its root node and therefore the "tree" that it 
+    belongs to, and entire trees can be selected from the database in one query, by 
+    identifying their common root ID."""
+    
     def __init__(self, name):
+        """for data integrity, a TreeNode requires its name to be passed as a parameter
+        to its constructor, so there is no chance of a TreeNode that doesnt have a name."""
         self.children = NodeList(self)
         self.name = name
         self.root = self
@@ -36,26 +46,11 @@ class TreeNode(object):
         self.root = root
         for c in self.children:
             c._set_root(root)
-    def get_child_by_path(self, path):
-        node = self
-        try:
-            for token in path.split('/'):
-                node = node.children[token]
-            else:
-                return node
-        except KeyError:
-            return None
     def append(self, node):
         if isinstance(node, str):
             self.children.append(TreeNode(node))
         else:
             self.children.append(node)
-    def _get_path(self):
-        if self.parent is None:
-            return '/'
-        else:
-            return self.parent._get_path() + self.name + '/'
-    path = property(lambda s: s._path())
     def __str__(self):
         return self._getstring(0, False)
     def _getstring(self, level, expand = False):
@@ -63,15 +58,29 @@ class TreeNode(object):
         if expand:
             s += string.join([n._getstring(level+1, True) for n in self.children.values()], '')
         return s
+    def print_nodes(self):
+        return self._getstring(0, True)
         
 class TreeLoader(MapperExtension):
+    """an extension that will plug-in additional functionality to the Mapper."""
     def create_instance(self, mapper, row, imap, class_):
+        """creates an instance of a TreeNode.  since the TreeNode constructor requires
+        the 'name' argument, this method pulls the data from the database row directly."""
         return TreeNode(row[mapper.c.name.label], _mapper_nohistory=True)
     def after_insert(self, mapper, instance):
+        """runs after the insert of a new TreeNode row.  The primary key of the row is not determined
+        until the insert is complete, since most DB's use autoincrementing columns.  If this node is
+        the root node, we will take the new primary key and update it as the value of the node's 
+        "root ID" as well, since its root node is itself."""
         if instance.root is instance:
             mapper.primarytable.update(TreeNode.c.id==instance.id, values=dict(root_node_id=instance.id)).execute()
             instance.root_id = instance.id
     def append_result(self, mapper, row, imap, result, instance, populate_existing=False):
+        """runs as results from a SELECT statement are processed, and newly created or already-existing
+        instances that correspond to each row are appended to result lists.  This method will only
+        append root nodes to the result list, and will attach child nodes to their appropriate parent
+        node as they arrive from the select results.  This allows a SELECT statement which returns
+        both root and child nodes in one query to return a list of "roots"."""
         if instance.parent_id is None:
             result.append(instance)
         else:
@@ -105,7 +114,7 @@ print "\n\n\n----------------------------"
 print "Created new tree structure:"
 print "----------------------------"
 
-print node._getstring(0, True)
+print node.print_nodes()
 
 print "\n\n\n----------------------------"
 print "Committing:"
@@ -117,7 +126,7 @@ print "\n\n\n----------------------------"
 print "Tree After Save:"
 print "----------------------------"
 
-print node._getstring(0, True)
+print node.print_nodes()
 
 node.append('node4')
 node.children['node4'].append('subnode3')
@@ -131,7 +140,7 @@ print "(added node4, node4/subnode3, node4/subnode4,"
 print "node4/subnode3/subsubnode1, deleted node1):"
 print "----------------------------"
 
-print node._getstring(0, True)
+print node.print_nodes()
 
 print "\n\n\n----------------------------"
 print "Committing:"
@@ -142,7 +151,7 @@ print "\n\n\n----------------------------"
 print "Tree After Save:"
 print "----------------------------"
 
-print node._getstring(0, True)
+print node.print_nodes()
 
 nodeid = node.id
 
@@ -157,10 +166,11 @@ t = TreeNode.mapper.select(TreeNode.c.root_id==nodeid, order_by=[TreeNode.c.id])
 print "\n\n\n----------------------------"
 print "Full Tree:"
 print "----------------------------"
-print t._getstring(0, True)
+print t.print_nodes()
 
 print "\n\n\n----------------------------"
-print "Marking root node as deleted and committing:"
+print "Marking root node as deleted"
+print "and committing:"
 print "----------------------------"
 objectstore.delete(t)
 objectstore.commit()
