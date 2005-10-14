@@ -12,7 +12,7 @@ ECHO = testbase.echo
 DATA = True
 
 DBTYPE = 'sqlite_memory'
-DBTYPE = 'sqlite_file'
+#DBTYPE = 'sqlite_file'
 
 if DBTYPE == 'sqlite_memory':
     db = sqlalchemy.engine.create_engine('sqlite', ':memory:', {}, echo = testbase.echo)
