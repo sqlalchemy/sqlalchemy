@@ -357,7 +357,8 @@ class Mapper(object):
         self.columntoproperty[column][0].setattr(obj, value)
 
     def save_obj(self, objects, uow):
-        # try to get inserts to be en-masse with the "guess-the-id" thing maybe
+        """called by a UnitOfWork object to save objects, which involves either an INSERT
+        or an UPDATE statement for each table used by this mapper, for each element of the list."""
                 
         for table in self.tables:
             # loop thru tables in the outer loop, objects on the inner loop.
@@ -407,6 +408,8 @@ class Mapper(object):
                     self.extension.after_insert(self, obj)
                     
     def delete_obj(self, objects, uow):
+        """called by a UnitOfWork object to delete objects, which involves a
+        DELETE statement for each table used by this mapper, for each object in the list."""
         for table in self.tables:
             delete = []
             for obj in objects:
@@ -428,6 +431,9 @@ class Mapper(object):
                     raise "ConcurrencyError - updated rowcount does not match number of objects updated"
 
     def register_dependencies(self, *args, **kwargs):
+        """called by an instance of objectstore.UOWTransaction to register 
+        which mappers are dependent on which, as well as DependencyProcessor 
+        objects which will process lists of objects in between saves and deletes."""
         for prop in self.props.values():
             prop.register_dependencies(*args, **kwargs)
 
@@ -816,7 +822,7 @@ class PropertyLoader(MapperProperty):
         else:
             for obj in deplist:
                 if self.direction == PropertyLoader.RIGHT:
-                    task.requires_save(obj)
+                    task.append(obj)
                 childlist = getlist(obj)
                 if childlist is None: return
                 uowcommit.register_saved_list(childlist)
@@ -824,13 +830,13 @@ class PropertyLoader(MapperProperty):
                 for child in childlist.added_items():
                     self.primaryjoin.accept_visitor(setter)
                     if self.direction == PropertyLoader.LEFT:
-                        task.requires_save(child)
+                        task.append(child)
                 if self.direction != PropertyLoader.RIGHT or len(childlist.added_items()) == 0:
                     clearkeys = True
                     for child in childlist.deleted_items():
                         self.primaryjoin.accept_visitor(setter)
                         if self.direction == PropertyLoader.LEFT:
-                            task.requires_save(child)
+                            task.append(child)
 
     def _sync_foreign_keys(self, binary, obj, child, associationrow, clearkeys):
         """given a binary clause with an = operator joining two table columns, synchronizes the values 
