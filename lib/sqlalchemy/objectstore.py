@@ -178,6 +178,8 @@ class UnitOfWork(object):
     def register_deleted(self, obj):
         self.deleted.append(obj)  
         mapper = object_mapper(obj)
+        # TODO: should the cascading delete dependency thing
+        # happen wtihin PropertyLoader.process_dependencies ?
         mapper.register_deleted(obj, self)
 
     # TODO: tie in register_new/register_dirty with table transaction begins ?
@@ -191,25 +193,27 @@ class UnitOfWork(object):
         if len(objects):
             for obj in objects:
                 if self.deleted.contains(obj):
-                    commit_context.append_task(obj, isdelete=True)
+                    commit_context.register_object(obj, isdelete=True)
                 elif self.new.contains(obj) or self.dirty.contains(obj):
-                    commit_context.append_task(obj)
+                    commit_context.register_object(obj)
         else:
             for obj in [n for n in self.new] + [d for d in self.dirty]:
                 if self.deleted.contains(obj):
                     continue
-                commit_context.append_task(obj)
+                commit_context.register_object(obj)
             for item in self.modified_lists:
                 obj = item.obj
                 if self.deleted.contains(obj):
                     continue
-                commit_context.append_task(obj, listonly = True)
+                commit_context.register_object(obj, listonly = True)
                 for o in item.added_items() + item.deleted_items():
                     if self.deleted.contains(o):
                         continue
-                    commit_context.append_task(o, listonly = False)
+                    # TODO: why is listonly = False ?  shouldnt we set it
+                    # True and have the PropertyLoader determine if it needs update?
+                    commit_context.register_object(o, listonly = False)
             for obj in self.deleted:
-                commit_context.append_task(obj, isdelete=True)
+                commit_context.register_object(obj, isdelete=True)
                 
         engines = util.HashSet()
         for mapper in commit_context.mappers:
@@ -257,7 +261,14 @@ class UOWTransaction(object):
         self.deleted_objects = util.HashSet()
         self.deleted_lists = util.HashSet()
 
-    def append_task(self, obj, isdelete = False, listonly = False):
+    def register_object(self, obj, isdelete = False, listonly = False):
+        """adds an object to this UOWTransaction to be updated in the database.
+        'isdelete' indicates whether the object is to be deleted or saved (update/inserted).
+        'listonly', which should be specified with "isdelete=False", indicates that 
+        only this object's dependency relationships should be 
+        refreshed/updated to reflect a recent save/upcoming delete operation, but not a full
+        save/delete operation on the object itself, unless an additional save/delete registration 
+        is entered for the object."""
         mapper = object_mapper(obj)
         self.mappers.append(mapper)
         task = self.get_task_by_mapper(mapper, isdelete)
@@ -280,7 +291,7 @@ class UOWTransaction(object):
     def register_dependency(self, mapper, dependency):
         self.dependencies[(mapper, dependency)] = True
 
-    def register_task(self, mapper, isdelete, processor, mapperfrom, isdeletefrom):
+    def register_processor(self, mapper, isdelete, processor, mapperfrom, isdeletefrom):
         task = self.get_task_by_mapper(mapper, isdelete)
         targettask = self.get_task_by_mapper(mapperfrom, isdeletefrom)
         task.dependencies.append((processor, targettask))
@@ -305,6 +316,8 @@ class UOWTransaction(object):
             task.execute(self)
             
     def post_exec(self):
+        """after an execute/commit is completed, all of the objects and lists that have
+        been committed are updated in the parent UnitOfWork object to mark them as clean."""
         for obj in self.saved_objects:
             mapper = object_mapper(obj)
             obj._instance_key = mapper.instance_key(obj)
