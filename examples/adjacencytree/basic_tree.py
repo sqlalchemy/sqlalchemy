@@ -61,7 +61,7 @@ class TreeNode(object):
 # define the mapper.  we will make "convenient" property
 # names vs. the more verbose names in the table definition
 
-TreeNode.mapper=assignmapper(tables.trees, class_ = TreeNode, properties=dict(
+TreeNode.mapper=assignmapper(tables.trees, class_=TreeNode, properties=dict(
     id=tables.trees.c.node_id,
     name=tables.trees.c.node_name,
     parent_id=tables.trees.c.parent_node_id,
