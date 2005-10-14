@@ -374,14 +374,18 @@ class UOWTask(object):
         self.iscircular = False
 
     def append(self, obj, listonly = False):
+        """appends an object to this task, to be either saved or deleted
+        depending on the 'isdelete' attribute of this UOWTask.  'listonly' indicates
+        that the object should only be processed as a dependency and not actually saved/deleted.
+        if the object already exists without the 'listonly' flag, it is kept as is."""
         self.objects[obj] = listonly and self.objects.get(obj, True)
         #print "Task " + str(self) + " append object " + obj.__class__.__name__ + "/" + repr(id(obj)) + " listonly " + repr(listonly) + "/" + repr(self.objects[obj])        
         
-    def requires_save(self, obj):
-        self.objects[obj] = False
-        #print "Task " + str(self) + " requires " + (self.isdelete and "delete " or "save ") + obj.__class__.__name__ + "/" + repr(id(obj))
-        
     def execute(self, trans):
+        """executes this UOWTask.  saves objects to be saved, processes all dependencies
+        that have been registered, and deletes objects to be deleted.  If the UOWTask
+        has been marked as "circular", performs a circular dependency sort which creates 
+        a subtree of UOWTasks which are then executed hierarchically."""
         if self.iscircular:
             #print "creating circular task for " + str(self)
             task = self._sort_circular_dependencies(trans)
