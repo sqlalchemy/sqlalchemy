@@ -83,7 +83,12 @@ class UOWListElement(attributes.ListElement):
         uow().modified_lists.append(self)
         if isdelete and self.deleteremoved:
             uow().register_deleted(item)
-
+    def append(self, item, _mapper_nohistory = False):
+        if _mapper_nohistory:
+            self.append_nohistory(item)
+        else:
+            attributes.ListElement.append(self, item)
+            
 class UOWAttributeManager(attributes.AttributeManager):
     def __init__(self, uow):
         attributes.AttributeManager.__init__(self)
@@ -192,16 +197,18 @@ class UnitOfWork(object):
                     commit_context.append_task(obj)
         else:
             for obj in [n for n in self.new] + [d for d in self.dirty]:
-                #print "going to save.... " + obj.__class__.__name__ + repr(id(obj)) 
+                print "going to save.... " + obj.__class__.__name__ + repr(id(obj)) 
                 if self.deleted.contains(obj):
                     continue
                 commit_context.append_task(obj)
             for item in self.modified_lists:
                 obj = item.obj
-                #print "list on obj " + obj.__class__.__name__ + repr(id(obj)) + " is modified? " 
+                print "list on obj " + obj.__class__.__name__ + repr(id(obj)) + " is modified? " 
                 if self.deleted.contains(obj):
                     continue
                 commit_context.append_task(obj, listonly = True)
+                for o in item.added_items() + item.deleted_items():
+                    commit_context.append_task(o, listonly = False)
             for obj in self.deleted:
                 #print "going to delete.... " + repr(obj)
                 commit_context.add_item_to_delete(obj)
@@ -255,15 +262,15 @@ class UOWTransaction(object):
     def append_task(self, obj, listonly = False):
         mapper = object_mapper(obj)
         self.mappers.append(mapper)
-        #print "APPENDING TASK " + obj.__class__.__name__
         task = self.get_task_by_mapper(mapper, listonly = listonly)
-        task.objects.append(obj)
+        print "APPENDING TASK " + str(task)
+        task.append(obj)
 
     def add_item_to_delete(self, obj):
         mapper = object_mapper(obj)
         self.mappers.append(mapper)
         task = self.get_task_by_mapper(mapper, True)
-        task.objects.append(obj)
+        task.append(obj)
 
     def get_task_by_mapper(self, mapper, isdelete = False, listonly = None):
         try:
@@ -375,10 +382,18 @@ class UOWTask(object):
         self.dependencies = []
         self.listonly = listonly
         self.iscircular = False
-        #print "new task " + str(self)
-    
+        print "new task " + str(self)
+
+    def append(self, obj):
+        self.objects.append(obj)
+        
+    def requires_save(self, obj):
+        print "requires save! " + repr(obj)
+        pass
+        
     def execute(self, trans):
         if self.iscircular:
+            print "creating circular task for " + str(self)
             task = self._sort_circular_dependencies(trans)
             if task is not None:
                 task.execute_circular(trans)
@@ -389,7 +404,7 @@ class UOWTask(object):
             self.mapper.save_obj(obj_list, trans)
         for dep in self.dependencies:
             (processor, targettask) = dep
-            processor.process_dependencies(targettask.objects, trans, delete = self.isdelete)
+            processor.process_dependencies(targettask, targettask.objects, trans, delete = self.isdelete)
         if not self.listonly and self.isdelete:
             self.mapper.delete_obj(obj_list, trans)
 
@@ -425,7 +440,7 @@ class UOWTask(object):
             try:
                 l = dp[processor]
             except KeyError:
-                l = UOWTask(None, None, None)
+                l = UOWTask(None, None, True)
                 dp[processor] = l
             return l
             
@@ -448,9 +463,9 @@ class UOWTask(object):
                     if whosdep is not None:
                         tuples.append(whosdep)
                         if whosdep[0] is obj:
-                            get_dependency_task(whosdep[0], processor).objects.append(whosdep[0])
+                            get_dependency_task(whosdep[0], processor).append(whosdep[0])
                         else:
-                            get_dependency_task(whosdep[0], processor).objects.append(whosdep[1])
+                            get_dependency_task(whosdep[0], processor).append(whosdep[1])
         
         head = util.DependencySorter(tuples, allobjects).sort()
         if head is None:
@@ -459,7 +474,7 @@ class UOWTask(object):
         def make_task_tree(node, parenttask):
             if node is None:
                 return
-            parenttask.objects.append(node.item)
+            parenttask.append(node.item)
             if dependencies.has_key(node.item):
                 for processor, deptask in dependencies[node.item].iteritems():
                     parenttask.dependencies.append((processor, deptask))
@@ -471,7 +486,7 @@ class UOWTask(object):
         t = UOWTask(self.mapper, self.isdelete, self.listonly)
         t.taskhash = d
         make_task_tree(head, t)
-        #t._print_circular()        
+        t._print_circular()        
         return t
 
     def _print_circular(t):
@@ -482,10 +497,14 @@ class UOWTask(object):
             t.taskhash[o]._print_circular()
         
     def __str__(self):
-        if self.isdelete:
-            return self.mapper.primarytable.name + " deletes " + repr(self.listonly)
+        if self.mapper is not None:
+            mapperstr = self.mapper.primarytable.name
         else:
-            return self.mapper.primarytable.name + " saves " + repr(self.listonly)
+            mapperstr = "(no mapper)"
+        if self.isdelete:
+            return mapperstr + " deletes - listonly " + repr(self.listonly) + " " + repr(id(self))
+        else:
+            return mapperstr + " saves - listonly " + repr(self.listonly) + repr(id(self))
 
                     
 uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")

@@ -313,7 +313,7 @@ class Mapper(object):
         return objectstore.get_id_key(tuple(primary_keys), self.class_, self.primarytable)
     
     def instance_key(self, instance):
-        return self.identity_key(**[self._getattrbycolumn(instance, column) for column in self.primary_keys[self.table]])
+        return self.identity_key(*[self._getattrbycolumn(instance, column) for column in self.primary_keys[self.table]])
 
     def compile(self, whereclause = None, **options):
         """works like select, except returns the SQL statement object without 
