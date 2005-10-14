@@ -396,7 +396,6 @@ class Mapper(object):
                     (obj, params) = rec
                     statement.execute(**params)
                     primary_key = table.engine.last_inserted_ids()[0]
-                    print "GOT NEW ID " + repr(primary_key)
                     found = False
                     for col in self.primary_keys[table]:
                         if self._getattrbycolumn(obj, col) is None:
@@ -676,7 +675,6 @@ class PropertyLoader(MapperProperty):
                     if self.dependent is binary.right:
                         raise "bidirectional dependency not supported...specify foreignkey"
                     self.dependent = binary.left
-                
 
     def match_primaries(self, primary, secondary):
         crit = []
