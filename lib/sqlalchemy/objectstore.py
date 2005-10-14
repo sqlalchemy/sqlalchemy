@@ -191,7 +191,7 @@ class UnitOfWork(object):
         if len(objects):
             for obj in objects:
                 if self.deleted.contains(obj):
-                    commit_context.add_item_to_delete(obj)
+                    commit_context.append_task(obj, isdelete=True)
                 elif self.new.contains(obj) or self.dirty.contains(obj):
                     commit_context.append_task(obj)
         else:
@@ -205,9 +205,11 @@ class UnitOfWork(object):
                     continue
                 commit_context.append_task(obj, listonly = True)
                 for o in item.added_items() + item.deleted_items():
+                    if self.deleted.contains(o):
+                        continue
                     commit_context.append_task(o, listonly = False)
             for obj in self.deleted:
-                commit_context.add_item_to_delete(obj)
+                commit_context.append_task(obj, isdelete=True)
                 
         engines = util.HashSet()
         for mapper in commit_context.mappers:
@@ -255,17 +257,11 @@ class UOWTransaction(object):
         self.deleted_objects = util.HashSet()
         self.deleted_lists = util.HashSet()
 
-    def append_task(self, obj, listonly = False):
+    def append_task(self, obj, isdelete = False, listonly = False):
         mapper = object_mapper(obj)
         self.mappers.append(mapper)
-        task = self.get_task_by_mapper(mapper)
+        task = self.get_task_by_mapper(mapper, isdelete)
         task.append(obj, listonly)
-
-    def add_item_to_delete(self, obj):
-        mapper = object_mapper(obj)
-        self.mappers.append(mapper)
-        task = self.get_task_by_mapper(mapper, True)
-        task.append(obj)
 
     def get_task_by_mapper(self, mapper, isdelete = False):
         try:
