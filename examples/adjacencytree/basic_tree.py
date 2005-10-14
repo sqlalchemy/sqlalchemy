@@ -28,26 +28,11 @@ class TreeNode(object):
         self.parent = None
         self.id = None
         self.parent_id = None
-    def get_child_by_path(self, path):
-        node = self
-        try:
-            for token in path.split('/'):
-                node = node.children[token]
-            else:
-                return node
-        except KeyError:
-            return None
     def append(self, node):
         if isinstance(node, str):
             self.children.append(TreeNode(node))
         else:
             self.children.append(node)
-    def _get_path(self):
-        if self.parent is None:
-            return '/'
-        else:
-            return self.parent._get_path() + self.name + '/'
-    path = property(lambda s: s._path())
     def __str__(self):
         return self._getstring(0, False)
     def _getstring(self, level, expand = False):

@@ -15,6 +15,10 @@
 # along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
+"""
+the mapper package provides object-relational functionality, building upon the schema and sql packages
+and tying operations to class properties and constructors.
+"""
 import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
 import sqlalchemy.engine as engine
@@ -22,17 +26,20 @@ import sqlalchemy.util as util
 import sqlalchemy.objectstore as objectstore
 import random, copy, types
 
-__ALL__ = ['eagermapper', 'eagerloader', 'lazymapper', 'lazyloader', 'eagerload', 'lazyload', 'assignmapper', 'mapper', 'lazyloader', 'lazymapper', 'clear_mappers', 'objectstore', 'sql', 'MapperExtension']
+__ALL__ = ['eagermapper', 'eagerloader', 'lazymapper', 'lazyloader', 'eagerload', 'lazyload', 'assignmapper', 
+        'mapper', 'lazyloader', 'lazymapper', 'clear_mappers', 'objectstore', 'sql', 'MapperExtension']
 
 def relation(*args, **params):
+    """provides a relationship of a primary Mapper to a secondary Mapper, which corresponds to a parent-child
+    or associative table relationship."""
     if isinstance(args[0], type) and len(args) == 1:
-        return relation_loader(*args, **params)
+        return _relation_loader(*args, **params)
     elif isinstance(args[0], Mapper):
-        return relation_loader(*args, **params)
+        return _relation_loader(*args, **params)
     else:
-        return relation_mapper(*args, **params)
+        return _relation_mapper(*args, **params)
 
-def relation_loader(mapper, secondary = None, primaryjoin = None, secondaryjoin = None, lazy = True, **kwargs):
+def _relation_loader(mapper, secondary = None, primaryjoin = None, secondaryjoin = None, lazy = True, **kwargs):
     if lazy:
         return LazyLoader(mapper, secondary, primaryjoin, secondaryjoin, **kwargs)
     elif lazy is None:
@@ -40,10 +47,13 @@ def relation_loader(mapper, secondary = None, primaryjoin = None, secondaryjoin 
     else:
         return EagerLoader(mapper, secondary, primaryjoin, secondaryjoin, **kwargs)
     
-def relation_mapper(class_, table=None, secondary=None, primaryjoin=None, secondaryjoin=None, **kwargs):
-    return relation_loader(mapper(class_, table, **kwargs), secondary, primaryjoin, secondaryjoin, **kwargs)
+def _relation_mapper(class_, table=None, secondary=None, primaryjoin=None, secondaryjoin=None, **kwargs):
+    return _relation_loader(mapper(class_, table, **kwargs), secondary, primaryjoin, secondaryjoin, **kwargs)
 
 class assignmapper(object):
+    """provides a property object that will instantiate a Mapper for a given class the first
+    time it is called off of the object.  This is useful for attaching a Mapper to a class 
+    that has dependencies on other classes and tables which may not have been defined yet."""
     def __init__(self, table, class_ = None, **kwargs):
         self.table = table
         self.kwargs = kwargs
@@ -62,6 +72,7 @@ class assignmapper(object):
     
 _mappers = {}
 def mapper(class_, table = None, engine = None, autoload = False, *args, **params):
+    """returns a new or already cached Mapper object."""
     if table is None:
         return class_mapper(class_)
 
@@ -82,18 +93,30 @@ def clear_mappers():
     _mappers.clear()
         
 def eagerload(name):
-    return EagerLazySwitcher(name, toeager = True)
+    """returns a MapperOption that will convert the property of the given name
+    into an eager load.  Used with mapper.options()"""
+    return EagerLazyOption(name, toeager=True)
 
 def lazyload(name):
-    return EagerLazySwitcher(name, toeager = False)
+    """returns a MapperOption that will convert the property of the given name
+    into a lazy load.  Used with mapper.options()"""
+    return EagerLazyOption(name, toeager=False)
 
+def noload(name):
+    """returns a MapperOption that will convert the property of the given name
+    into a non-load.  Used with mapper.options()"""
+    return EagerLazyOption(name, toeager=None)
+    
 def object_mapper(object):
+    """given an object, returns the primary Mapper associated with the object
+    or the object's class."""
     try:
         return _mappers[object._mapper]
     except AttributeError:
         return class_mapper(object.__class__)
 
 def class_mapper(class_):
+    """given a class, returns the primary Mapper associated with the class."""
     try:
         return _mappers[class_._mapper]
     except KeyError:
@@ -101,8 +124,11 @@ def class_mapper(class_):
     except AttributeError:
         pass
         raise "Class '%s' has no mapper associated with it" % class_.__name__
+
         
 class Mapper(object):
+    """Persists object instances to and from schema.Table objects via the sql package.  Instances of this class
+    should be constructed through this package's mapper() or relation() function."""
     def __init__(self, 
                 hashkey, 
                 class_, 
@@ -235,9 +261,11 @@ class Mapper(object):
         self.class_.c = self.c
         oldinit = self.class_.__init__
         def init(self, *args, **kwargs):
+            nohist = kwargs.pop('_mapper_nohistory', False)
             if oldinit is not None:
                 oldinit(self, *args, **kwargs)
-            objectstore.uow().register_new(self)
+            if not nohist:
+                objectstore.uow().register_new(self)
         self.class_.__init__ = init
         
     def set_property(self, key, prop):
@@ -368,6 +396,7 @@ class Mapper(object):
                     (obj, params) = rec
                     statement.execute(**params)
                     primary_key = table.engine.last_inserted_ids()[0]
+                    print "GOT NEW ID " + repr(primary_key)
                     found = False
                     for col in self.primary_keys[table]:
                         if self._getattrbycolumn(obj, col) is None:
@@ -464,7 +493,7 @@ class Mapper(object):
             # plugin point
             instance = self.extension.create_instance(self, row, imap, self.class_)
             if instance is None:
-                instance = self.class_()
+                instance = self.class_(_mapper_nohistory=True)
             instance._mapper = self.hashkey
             instance._instance_key = identitykey
 
@@ -489,14 +518,6 @@ class Mapper(object):
         return instance
 
         
-class MapperOption:
-    """describes a modification to a Mapper in the context of making a copy
-    of it.  This is used to assist in the prototype pattern used by mapper.options()."""
-    def process(self, mapper):
-        raise NotImplementedError()
-    def hash_key(self):
-        return repr(self)
-
 class MapperProperty:
     """an element attached to a Mapper that describes and assists in the loading and saving 
     of an attribute on an object instance."""
@@ -721,7 +742,7 @@ class PropertyLoader(MapperProperty):
         else:
             return (obj2, obj1)
             
-    def process_dependencies(self, deplist, uowcommit, delete = False):
+    def process_dependencies(self, task, deplist, uowcommit, delete = False):
         #print self.mapper.table.name + " " + repr([str(v) for v in deplist.map.values()]) + " process_dep isdelete " + repr(delete)
 
         # fucntion to set properties across a parent/child object plus an "association row",
@@ -796,16 +817,22 @@ class PropertyLoader(MapperProperty):
                     statement.execute(*updates)
         else:
             for obj in deplist:
+                if self.direction == PropertyLoader.RIGHT:
+                    task.requires_save(obj)
                 childlist = getlist(obj)
                 if childlist is None: return
                 uowcommit.register_saved_list(childlist)
                 clearkeys = False
                 for child in childlist.added_items():
                     self.primaryjoin.accept_visitor(setter)
+                    if self.direction == PropertyLoader.LEFT:
+                        task.requires_save(child)
                 if self.direction != PropertyLoader.RIGHT or len(childlist.added_items()) == 0:
                     clearkeys = True
                     for child in childlist.deleted_items():
                         self.primaryjoin.accept_visitor(setter)
+                        if self.direction == PropertyLoader.LEFT:
+                            task.requires_save(child)
 
     def _sync_foreign_keys(self, binary, obj, child, associationrow, clearkeys):
         """given a binary clause with an = operator joining two table columns, synchronizes the values 
@@ -927,28 +954,42 @@ class EagerLoader(PropertyLoader):
             #setattr(instance, self.key, self.mapper._instance(row, imap))
             return
         elif isnew:
-            result_list = []
-            setattr(instance, self.key, result_list)
             result_list = getattr(instance, self.key)
+            result_list[:] = []
             result_list.commit()
+            ## TODO: whats this about ?
+            #result_list = []
+            #setattr(instance, self.key, result_list)
+            #result_list = getattr(instance, self.key)
+            #result_list.commit()
         else:
             result_list = getattr(instance, self.key)
             
         self.mapper._instance(row, imap, result_list)
-            
-class EagerLazySwitcher(MapperOption):
-    """an option that switches a PropertyLoader to be an EagerLoader"""
+
+class MapperOption:
+    """describes a modification to a Mapper in the context of making a copy
+    of it.  This is used to assist in the prototype pattern used by mapper.options()."""
+    def process(self, mapper):
+        raise NotImplementedError()
+    def hash_key(self):
+        return repr(self)
+
+class EagerLazyOption(MapperOption):
+    """an option that switches a PropertyLoader to be an EagerLoader or LazyLoader"""
     def __init__(self, key, toeager = True):
         self.key = key
         self.toeager = toeager
 
     def hash_key(self):
-        return "EagerLazySwitcher(%s, %s)" % (repr(self.key), repr(self.toeager))
+        return "EagerLazyOption(%s, %s)" % (repr(self.key), repr(self.toeager))
 
     def process(self, mapper):
         oldprop = mapper.props[self.key]
         if self.toeager:
             class_ = EagerLoader
+        elif self.toeager is None:
+            class_ = PropertyLoader
         else:
             class_ = LazyLoader
         mapper.set_property(self.key, class_(oldprop.mapper, oldprop.secondary, primaryjoin = oldprop.primaryjoin, secondaryjoin = oldprop.secondaryjoin))
