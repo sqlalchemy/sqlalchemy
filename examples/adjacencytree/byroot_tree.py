@@ -9,9 +9,10 @@ import string, sys
 add application-specific functionality to a Mapper object."""
 
 class NodeList(util.OrderedDict):
-    """extends an Ordered Dictionary, which is just a dictionary that returns its keys and values
-    in order upon iteration.  Adds functionality to automatically associate 
-    the parent of a TreeNode with itself, upon append to the parent's list of child nodes."""
+    """extends an Ordered Dictionary, which is just a dictionary that iterates its keys and values
+    in the order they were inserted.  Adds an "append" method, which appends a node to the 
+    dictionary as though it were a list, and also within append automatically associates 
+    the parent of a TreeNode with itself."""
     def __init__(self, parent):
         util.OrderedDict.__init__(self)
         self.parent = parent
@@ -35,8 +36,8 @@ class TreeNode(object):
     def __init__(self, name):
         """for data integrity, a TreeNode requires its name to be passed as a parameter
         to its constructor, so there is no chance of a TreeNode that doesnt have a name."""
-        self.children = NodeList(self)
         self.name = name
+        self.children = NodeList(self)
         self.root = self
         self.parent = None
         self.id = None
