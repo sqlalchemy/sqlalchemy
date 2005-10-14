@@ -59,14 +59,14 @@ class TreeNode(object):
     def __str__(self):
         return self._getstring(0, False)
     def _getstring(self, level, expand = False):
-        s = ('  ' * level) + "%s (%s,%s,%s)" % (self.name, self.id,self.parent_id,self.root_id) + '\n'
+        s = ('  ' * level) + "%s (%s,%s,%s, %d)" % (self.name, self.id,self.parent_id,self.root_id, id(self)) + '\n'
         if expand:
             s += string.join([n._getstring(level+1, True) for n in self.children.values()], '')
         return s
         
 class TreeLoader(MapperExtension):
     def create_instance(self, mapper, row, imap, class_):
-        return TreeNode(row[mapper.c.name.label])
+        return TreeNode(row[mapper.c.name.label], _mapper_nohistory=True)
     def after_insert(self, mapper, instance):
         if instance.root is instance:
             mapper.primarytable.update(TreeNode.c.id==instance.id, values=dict(root_node_id=instance.id)).execute()
@@ -76,7 +76,7 @@ class TreeLoader(MapperExtension):
             result.append(instance)
         else:
             parentnode = imap[mapper.identity_key(instance.parent_id)]
-            parentnode.children.append_nohistory(instance)
+            parentnode.children.append(instance, _mapper_nohistory=True)
         return False
             
 # define the mapper.  we will make "convenient" property
@@ -102,8 +102,10 @@ node.append('node3')
 node.children['node2'].append('subnode2')
 print node._getstring(0, True)
 objectstore.commit()
-#raise "hi"
+print "\n\n\n"
 node.append('node4')
+objectstore.commit()
+raise "hi"
 node.children['node4'].append('subnode3')
 node.children['node4'].append('subnode4')
 node.children['node4'].children['subnode3'].append('subsubnode1')
