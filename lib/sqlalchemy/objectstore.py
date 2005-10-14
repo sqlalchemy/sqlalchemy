@@ -321,7 +321,7 @@ class UOWTransaction(object):
     def post_exec(self):
         for obj in self.saved_objects:
             mapper = object_mapper(obj)
-            obj._instance_key = mapper.identity_key(obj)
+            obj._instance_key = mapper.instance_key(obj)
             self.uow.register_clean(obj)
 
         for obj in self.saved_lists:
@@ -378,14 +378,16 @@ class UOWTask(object):
     def __init__(self, mapper, isdelete = False, listonly = False):
         self.mapper = mapper
         self.isdelete = isdelete
-        self.objects = util.HashSet(ordered = True)
+#        self.objects = util.HashSet(ordered = True)
+        self.objects = util.OrderedDict()
         self.dependencies = []
         self.listonly = listonly
         self.iscircular = False
         print "new task " + str(self)
 
     def append(self, obj):
-        self.objects.append(obj)
+        #self.objects.append(obj)
+        self.objects[obj] = True
         
     def requires_save(self, obj):
         print "requires save! " + repr(obj)
@@ -399,26 +401,26 @@ class UOWTask(object):
                 task.execute_circular(trans)
             return
             
-        obj_list = self.objects
+        obj_list = self.objects.keys()
         if not self.listonly and not self.isdelete:
             self.mapper.save_obj(obj_list, trans)
         for dep in self.dependencies:
             (processor, targettask) = dep
-            processor.process_dependencies(targettask, targettask.objects, trans, delete = self.isdelete)
+            processor.process_dependencies(targettask, targettask.objects.keys(), trans, delete = self.isdelete)
         if not self.listonly and self.isdelete:
             self.mapper.delete_obj(obj_list, trans)
 
     def execute_circular(self, trans):
         if not self.isdelete:
             self.execute(trans)
-        for obj in self.objects:
+        for obj in self.objects.keys():
             childtask = self.taskhash[obj]
             childtask.execute_circular(trans)
         if self.isdelete:
             self.execute(trans)
             
     def _sort_circular_dependencies(self, trans):
-        allobjects = self.objects
+        allobjects = self.objects.keys()
         tuples = []
         d = {}
         def get_task(obj):
@@ -444,7 +446,7 @@ class UOWTask(object):
                 dp[processor] = l
             return l
             
-        for obj in self.objects:
+        for obj in allobjects:
             parenttask = get_task(obj)
             # TODO: we are doing this dependency sort which uses a lot of the 
             # concepts in mapper.PropertyLoader's more coarse-grained version.
@@ -491,8 +493,8 @@ class UOWTask(object):
 
     def _print_circular(t):
         print "-----------------------------"
-        print "task objects: " + repr([str(v) for v in t.objects])
-        print "task depends: " + repr([(dt[0].key, [str(o) for o in dt[1].objects]) for dt in t.dependencies])
+        print "task objects: " + repr([str(v) + " listonly: " + repr(l) for v, l in t.objects.iteritems()])
+        print "task depends: " + repr([(dt[0].key, [str(o) for o in dt[1].objects.keys()]) for dt in t.dependencies])
         for o in t.objects:
             t.taskhash[o]._print_circular()
         
