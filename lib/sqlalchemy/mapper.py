@@ -746,7 +746,7 @@ class PropertyLoader(MapperProperty):
             return (obj2, obj1)
             
     def process_dependencies(self, task, deplist, uowcommit, delete = False):
-        #print self.mapper.table.name + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete)
+        print self.mapper.table.name + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete)
 
         # fucntion to set properties across a parent/child object plus an "association row",
         # based on a join condition

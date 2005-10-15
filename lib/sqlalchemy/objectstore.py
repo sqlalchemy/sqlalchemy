@@ -374,7 +374,10 @@ class UOWTask(object):
         self.iscircular = False
         self.circular = None
         self.childtasks = []
-        
+
+    def is_empty(self):
+        return len(self.objects) == 0 and len(self.dependencies) == 0 and len(self.childtasks) == 0
+            
     def append(self, obj, listonly = False, childtask = None, isdelete = False):
         """appends an object to this task, to be either saved or deleted
         depending on the 'isdelete' attribute of this UOWTask.  'listonly' indicates
@@ -394,52 +397,43 @@ class UOWTask(object):
         if isdelete:
             rec.isdelete = True
         
-    def execute(self, trans, isdelete = False):
+    def execute(self, trans):
         """executes this UOWTask.  saves objects to be saved, processes all dependencies
-        that have been registered, and deletes objects to be deleted.  If the UOWTask
-        has been marked as "circular", performs a circular dependency sort which creates 
-        a subtree of UOWTasks which are then executed hierarchically."""
+        that have been registered, and deletes objects to be deleted. """
         if self.circular is not None:
             self.circular.execute(trans)
             return
 
-        print "executing " + repr(self)        
-        saved_obj_list = self.saved_objects()
-        deleted_obj_list = self.deleted_objects()
-        self.mapper.save_obj(saved_obj_list, trans)
-        for dep in self.dependencies:
+        self.mapper.save_obj(self.tosave_objects(), trans)
+        for dep in self.save_dependencies():
             (processor, targettask, isdelete) = dep
-            if isdelete:
-                continue
-            processor.process_dependencies(targettask, targettask.saved_objects(includelistonly=True), trans, delete = False)
-        for obj in self.saved_objects(includelistonly=True):
-            childtask = self.objects[obj].childtask
-            if childtask is not None:
-                childtask.execute(trans)
-        for dep in self.dependencies:
+            processor.process_dependencies(targettask, targettask.tosave_objects(), trans, delete = False)
+        for element in self.tosave_elements():
+            if element.childtask is not None:
+                element.childtask.execute(trans)
+        for dep in self.delete_dependencies():
             (processor, targettask, isdelete) = dep
-            if not isdelete:
-                continue
-            processor.process_dependencies(targettask, targettask.deleted_objects(includelistonly=True), trans, delete = True)
+            processor.process_dependencies(targettask, targettask.todelete_objects(), trans, delete = True)
         for child in self.childtasks:
             child.execute(trans)
-        for obj in self.deleted_objects(includelistonly=True):
-            childtask = self.objects[obj].childtask
-            if childtask is not None:
-                childtask.execute(trans)
-        self.mapper.delete_obj(deleted_obj_list, trans)
+        for element in self.todelete_elements():
+            if element.childtask is not None:
+                element.childtask.execute(trans)
+        self.mapper.delete_obj(self.todelete_objects(), trans)
 
-    def saved_objects(self, includelistonly=False):
-        if not includelistonly:
-            return [o for o, rec in self.objects.iteritems() if not rec.listonly and not rec.isdelete]
-        else:
-            return [o for o, rec in self.objects.iteritems() if not rec.isdelete]
-    def deleted_objects(self, includelistonly=False):
-        if not includelistonly:
-            return [o for o, rec in self.objects.iteritems() if not rec.listonly and rec.isdelete]
-        else:
-            return [o for o, rec in self.objects.iteritems() if rec.isdelete]
-            
+    def tosave_elements(self):
+        return [rec for rec in self.objects.values() if not rec.isdelete]
+    def todelete_elements(self):
+        return [rec for rec in self.objects.values() if rec.isdelete]
+    def tosave_objects(self):
+        return [o for o, rec in self.objects.iteritems() if not rec.listonly and not rec.isdelete]
+    def todelete_objects(self):
+        return [o for o, rec in self.objects.iteritems() if not rec.listonly and rec.isdelete]
+    def save_dependencies(self):
+        return [dep for dep in self.dependencies if not dep[2]]
+    def delete_dependencies(self):
+        return [dep for dep in self.dependencies if dep[2]]
+        
     def _sort_circular_dependencies(self, trans):
         """for a single task, creates a hierarchical tree of "subtasks" which associate
         specific dependency actions with individual objects.  This is used for a
@@ -473,14 +467,17 @@ class UOWTask(object):
             return l
 
         # TODO: rework, its putting too many things in places they shouldnt be            
-        for obj in allobjects:
+        for taskelement in self.objects.values():
             # go through all of the dependencies on this task, and organize them
             # into a hash where we isolate individual objects that depend on each
             # other.  then those individual object relationships will be grabbed
             # back into a hierarchical tree thing down below via make_task_tree.
+            obj = taskelement.obj
             parenttask = get_task(obj)
             for dep in self.dependencies:
                 (processor, targettask, isdelete) = dep
+                if taskelement.isdelete is not isdelete:
+                    continue
                 childlist = processor.get_object_dependencies(obj, trans, passive = True)
                 if isdelete:
                     childlist = childlist.unchanged_items() + childlist.deleted_items()
@@ -525,37 +522,40 @@ class UOWTask(object):
     def dump(self, indent=""):
         # TODO: what a mess !
         s = "\n" + indent + repr(self)
-        s += "\n" + indent + "  Save Elements:"
-        for o in self.objects.values():
-            if not o.listonly and not o.isdelete:
-                s += "\n     " + indent + repr(o)
-            if o.childtask is not None and len(o.childtask.objects) > 0 and len(o.childtask.dependencies) > 0:
-                s += "\n       " + indent + "  Circular Child Task:"
-                s += "\n" + o.childtask.dump("         " + indent)
-        s += "\n" + indent + "  Dependencies:"
-        for dt in self.dependencies:
-            s += "\n    " + indent + repr(dt[0].key) + "/" + (dt[2] and 'items to be deleted' or 'saved items')
-            if dt[2]:
-                val = [t for t in dt[1].objects.values() if t.isdelete]
-            else:
-                val = [t for t in dt[1].objects.values() if not t.isdelete]
-            for o in val:
-                s += "\n      " + indent + repr(o)
-        s += "\n" + indent + "  Child Tasks:"
-        for t in self.childtasks:
-            s += t.dump(depth + 2)
-        s += "\n" + indent + "  Circular Task:"
         if self.circular is not None:
-            s += self.circular.dump("  " + indent)
-        else:
-            s += "None"
-        s += "\n" + indent + "  Delete Elements:"
-        for o in self.objects.values():
-            if not o.listonly and o.isdelete:
-                s += "\n     " + indent + repr(o)
-            if o.childtask is not None and len(o.childtask.objects) > 0 and len(o.childtask.dependencies) > 0:
-                s += "\n       " + indent + "  Circular Child Task:"
-                s += "\n" + o.childtask.dump("         " + indent)
+            s += " Circular Representation:"
+            s += self.circular.dump(indent + "  ")
+            return s
+        saveobj = self.tosave_elements()
+        if len(saveobj) > 0:
+            s += "\n" + indent + "  Save Elements:"
+            for o in saveobj:
+                if not o.listonly:
+                    s += "\n     " + indent + repr(o)
+                if o.childtask is not None and not o.childtask.is_empty():
+                    s += o.childtask.dump("         " + indent)
+        if len(self.dependencies) > 0:
+            s += "\n" + indent + "  Dependencies:"
+            for dt in self.dependencies:
+                s += "\n    " + indent + repr(dt[0].key) + "/" + (dt[2] and 'items to be deleted' or 'saved items')
+                if dt[2]:
+                    val = [t for t in dt[1].objects.values() if t.isdelete]
+                else:
+                    val = [t for t in dt[1].objects.values() if not t.isdelete]
+                for o in val:
+                    s += "\n      " + indent + repr(o)
+        if len(self.childtasks) > 0:
+            s += "\n" + indent + "  Child Tasks:"
+            for t in self.childtasks:
+                s += t.dump(depth + 2)
+        deleteobj = self.todelete_elements()
+        if len(deleteobj) > 0:
+            s += "\n" + indent + "  Delete Elements:"
+            for o in self.objects.values():
+                if not o.listonly:
+                    s += "\n     " + indent + repr(o)
+                if o.childtask is not None and not o.childtask.is_empty():
+                    s += o.childtask.dump("         " + indent)
         return s
 
     def __repr__(self):

@@ -36,7 +36,7 @@ class TreeNode(object):
     def __str__(self):
         return self._getstring(0, False)
     def _getstring(self, level, expand = False):
-        s = ('  ' * level) + "%s (%s,%s)" % (self.name, self.id,self.parent_id) + '\n'
+        s = ('  ' * level) + "%s (%s,%s, %d)" % (self.name, self.id,self.parent_id,id(self)) + '\n'
         if expand:
             s += string.join([n._getstring(level+1, True) for n in self.children.values()], '')
         return s
@@ -54,6 +54,15 @@ TreeNode.mapper=assignmapper(tables.trees, class_=TreeNode, properties=dict(
     children=relation(TreeNode, primaryjoin=tables.trees.c.parent_node_id==tables.trees.c.node_id, thiscol=tables.trees.c.node_id, lazy=True, uselist=True, private=True),
 ))
 
+
+node = TreeNode('rootnode')
+node.append('node1')
+objectstore.commit()
+
+print node.print_nodes()
+del node.children['node1']
+objectstore.commit()
+sys.exit()
 
 node2 = TreeNode('node2')
 node2.append('subnode1')
