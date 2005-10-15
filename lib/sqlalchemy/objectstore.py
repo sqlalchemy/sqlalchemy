@@ -304,12 +304,6 @@ class UOWTransaction(object):
 
         head = self._sort_dependencies()
         head.execute(self)
-#        sorted = self._sort_dependencies()
-#        for task in sorted:
-#            task.execute(self, False)
-#        sorted.reverse()
-#        for task in sorted:
-#            task.execute(self, True)
             
     def post_exec(self):
         """after an execute/commit is completed, all of the objects and lists that have
@@ -337,21 +331,7 @@ class UOWTransaction(object):
     def _sort_dependencies(self):
         bymapper = {}
         
-        def sort(node, isdel, res):
-            #print "Sort: " + (node and str(node.item) or 'None')
-            if node is None:
-                return res
-            task = bymapper.get((node.item, isdel), None)
-            if task is not None:
-                res.append(task)
-                if node.circular:
-                    task.iscircular = True
-            for child in node.children:
-                sort(child, isdel, res)
-            return res
-
         def sort_hier(node):
-            #print "Sort: " + (node and str(node.item) or 'None')
             if node is None:
                 return None
             task = bymapper.get(node.item, None)
@@ -368,27 +348,14 @@ class UOWTransaction(object):
         for task in self.tasks.values():
             mappers.append(task.mapper)
             bymapper[task.mapper] = task
-            #bymapper[(task.mapper, task.isdelete)] = task
     
         head = util.DependencySorter(self.dependencies, mappers).sort()
-        #res = []
-        #tasklist = sort(head, False, res)
         task = sort_hier(head)
-
-#        res = []
-#        sort(head, True, res)
-#        res.reverse()
-#        tasklist += res
-
-#        assert(len(self.tasks.values()) == len(tasklist)) # "sorted task list not the same size as original task list"
-
         return task
-#        return tasklist
             
 class UOWTask(object):
-    def __init__(self, mapper, isdelete = False):
+    def __init__(self, mapper):
         self.mapper = mapper
-        self.isdelete = isdelete
         self.objects = util.OrderedDict()
         self.dependencies = []
         self.iscircular = False
@@ -412,7 +379,7 @@ class UOWTask(object):
             rec['childtask'] = childtask
         if isdelete:
             rec['isdelete'] = True
-        print "Task " + str(self) + " append object " + obj.__class__.__name__ + "/" + repr(id(obj)) + " listonly " + repr(listonly) + "/" + repr(self.objects[obj]['listonly'])
+        #print "Task " + str(self) + " append object " + obj.__class__.__name__ + "/" + repr(id(obj)) + " listonly " + repr(listonly) + "/" + repr(self.objects[obj]['listonly'])
         
     def execute(self, trans, isdelete = False):
         """executes this UOWTask.  saves objects to be saved, processes all dependencies
@@ -427,32 +394,37 @@ class UOWTask(object):
                 task.execute(trans)
             return
         
-        print "execute " + str(self)
         saved_obj_list = self.saved_objects()
         deleted_obj_list = self.deleted_objects()
         self.mapper.save_obj(saved_obj_list, trans)
         for dep in self.dependencies:
             (processor, targettask) = dep
-            processor.process_dependencies(targettask, targettask.saved_objects(), trans, delete = False)
-        for obj in saved_obj_list:
+            processor.process_dependencies(targettask, targettask.saved_objects(includelistonly=True), trans, delete = False)
+        for obj in self.saved_objects(includelistonly=True):
             childtask = self.objects[obj].get('childtask', None)
             if childtask is not None:
                 childtask.execute(trans)
-        for child in self.childtasks:
-            child.execute(trans)
         for dep in self.dependencies:
             (processor, targettask) = dep
-            processor.process_dependencies(targettask, targettask.deleted_objects(), trans, delete = True)
-        for obj in deleted_obj_list:
+            processor.process_dependencies(targettask, targettask.deleted_objects(includelistonly=True), trans, delete = True)
+        for child in self.childtasks:
+            child.execute(trans)
+        for obj in self.deleted_objects(includelistonly=True):
             childtask = self.objects[obj].get('childtask', None)
             if childtask is not None:
                 childtask.execute(trans)
         self.mapper.delete_obj(deleted_obj_list, trans)
 
-    def saved_objects(self):
-        return [o for o, rec in self.objects.iteritems() if not rec['listonly'] and not rec['isdelete']]
-    def deleted_objects(self):
-        return [o for o, rec in self.objects.iteritems() if not rec['listonly'] and rec['isdelete']]
+    def saved_objects(self, includelistonly=False):
+        if not includelistonly:
+            return [o for o, rec in self.objects.iteritems() if not rec['listonly'] and not rec['isdelete']]
+        else:
+            return [o for o, rec in self.objects.iteritems() if not rec['isdelete']]
+    def deleted_objects(self, includelistonly=False):
+        if not includelistonly:
+            return [o for o, rec in self.objects.iteritems() if not rec['listonly'] and rec['isdelete']]
+        else:
+            return [o for o, rec in self.objects.iteritems() if rec['isdelete']]
             
     def _sort_circular_dependencies(self, trans):
         """for a single task, creates a hierarchical tree of "subtasks" which associate
@@ -468,7 +440,7 @@ class UOWTask(object):
             try:
                 return objecttotask[obj]
             except KeyError:
-                t = UOWTask(self.mapper, self.isdelete)
+                t = UOWTask(self.mapper)
                 objecttotask[obj] = t
                 return t
 
@@ -482,7 +454,7 @@ class UOWTask(object):
             try:
                 l = dp[processor]
             except KeyError:
-                l = UOWTask(None, None)
+                l = UOWTask(None)
                 dp[processor] = l
             return l
             
@@ -543,10 +515,7 @@ class UOWTask(object):
             mapperstr = self.mapper.primarytable.name
         else:
             mapperstr = "(no mapper)"
-        if self.isdelete:
-            return mapperstr + "/deletes/" + repr(id(self))
-        else:
-            return mapperstr + "/saves/" + repr(id(self))
+        return mapperstr
 
                     
 uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")
