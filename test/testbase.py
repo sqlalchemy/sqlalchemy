@@ -53,6 +53,7 @@ class EngineAssert(object):
         self.realexec = engine.execute
         engine.execute = self.execute
         self.echo = engine.echo
+        self.logger = engine.logger
         self.set_assert_list(None, None)
     def __getattr__(self, key):
         return getattr(self.engine, key)
@@ -63,6 +64,7 @@ class EngineAssert(object):
             self.assert_list.reverse()
     def execute(self, statement, parameters, **kwargs):
         self.engine.echo = self.echo
+        self.engine.logger = self.logger
         if self.assert_list is not None:
             item = self.assert_list.pop()
             (query, params) = item
