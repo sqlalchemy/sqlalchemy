@@ -21,6 +21,7 @@ using the "identity map" pattern.  Also provides a "unit of work" object which t
 to objects so that they may be properly persisted within a transactional scope."""
 
 import thread
+import sqlalchemy
 import sqlalchemy.util as util
 import sqlalchemy.attributes as attributes
 import weakref
@@ -53,10 +54,6 @@ def get_row_key(row, class_, table, primary_keys):
     """
     return (class_, table, tuple([row[column.label] for column in primary_keys]))
 
-def mapper(*args, **params):
-    import sqlalchemy.mapper
-    return sqlalchemy.mapper.mapper(*args, **params)
-    
 def commit(*obj):
     uow().commit(*obj)
     
@@ -534,20 +531,18 @@ class UOWTask(object):
                     s += "\n     " + indent + repr(o)
                 if o.childtask is not None and not o.childtask.is_empty():
                     s += o.childtask.dump("         " + indent)
-        if len(self.dependencies) > 0:
-            s += "\n" + indent + "  Dependencies:"
-            for dt in self.dependencies:
-                s += "\n    " + indent + repr(dt[0].key) + "/" + (dt[2] and 'items to be deleted' or 'saved items')
-                if dt[2]:
-                    val = [t for t in dt[1].objects.values() if t.isdelete]
-                else:
-                    val = [t for t in dt[1].objects.values() if not t.isdelete]
-                for o in val:
-                    s += "\n      " + indent + repr(o)
+        save_dep = self.save_dependencies()
+        if len(save_dep) > 0:
+            s += "\n" + indent + "  Save Dependencies:"
+            s += self._dump_dependencies(save_dep, indent)
         if len(self.childtasks) > 0:
             s += "\n" + indent + "  Child Tasks:"
             for t in self.childtasks:
-                s += t.dump(depth + 2)
+                s += t.dump(indent + "    ")
+        delete_dep = self.delete_dependencies()
+        if len(delete_dep) > 0:
+            s += "\n" + indent + "  Delete Dependencies:"
+            s += self._dump_dependencies(delete_dep, indent)
         deleteobj = self.todelete_elements()
         if len(deleteobj) > 0:
             s += "\n" + indent + "  Delete Elements:"
@@ -558,14 +553,30 @@ class UOWTask(object):
                     s += o.childtask.dump("         " + indent)
         return s
 
+    def _dump_dependencies(self, dep, indent):
+        s = ""
+        for dt in dep:
+            s += "\n    " + indent + "process " + repr(dt[0].key) + " on:"
+#            s += "\n    " + indent + repr(dt[0].key) + "/" + (dt[2] and 'items to be deleted' or 'saved items')
+            if dt[2]:
+                val = [t for t in dt[1].objects.values() if t.isdelete]
+            else:
+                val = [t for t in dt[1].objects.values() if not t.isdelete]
+            for o in val:
+                s += "\n      " + indent + repr(o)
+        return s
+        
     def __repr__(self):
         return ("UOWTask/%d Table: '%s'" % (id(self), self.mapper and self.mapper.primarytable.name or '(none)'))
         
+def mapper(*args, **params):
+    return sqlalchemy.mapper.mapper(*args, **params)
+
+def object_mapper(obj):
+    return sqlalchemy.mapper.object_mapper(obj)
+
 
                     
 uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")
 
 
-def object_mapper(obj):
-    import sqlalchemy.mapper
-    return sqlalchemy.mapper.object_mapper(obj)
