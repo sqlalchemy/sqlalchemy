@@ -516,8 +516,7 @@ class UOWTask(object):
         make_task_tree(head, t)
         return t
 
-    def dump(self, depth=0):
-        indent = "  " * depth
+    def dump(self, indent=""):
         s = "\n" + indent + repr(self)
         s += "\n" + indent + "  Save Elements:"
         for o in self.objects.values():
@@ -525,8 +524,8 @@ class UOWTask(object):
                 continue
             s += "\n     " + indent + repr(o)
             if o.childtask is not None:
-                s += "\n" + indent + "  Circular Child Task:"
-                s += "\n" + o.childtask.dump(depth + 2)
+                s += "\n       " + indent + "  Circular Child Task:"
+                s += "\n" + o.childtask.dump("         " + indent)
         s += "\n" + indent + "  Dependencies:"
         for dt in self.dependencies:
             s += "\n    " + indent + repr(dt[0].key) + "/" + (dt[2] and 'items to be deleted' or 'saved items')
@@ -541,7 +540,7 @@ class UOWTask(object):
             s += t.dump(depth + 2)
         s += "\n" + indent + "  Circular Task:"
         if self.circular is not None:
-            s += self.circular.dump(depth + 2)
+            s += self.circular.dump("  " + indent)
         else:
             s += "None"
         s += "\n" + indent + "  Delete Elements:"
@@ -550,8 +549,8 @@ class UOWTask(object):
                 continue
             s += "\n     " + indent + repr(o)
             if o.childtask is not None:
-                s += "\n" + indent + "  Circular Child Task:"
-                s += "\n" + o.childtask.dump(depth + 2)
+                s += "\n       " + indent + "  Circular Child Task:"
+                s += "\n" + o.childtask.dump("         " + indent)
         return s
 
     def __repr__(self):
