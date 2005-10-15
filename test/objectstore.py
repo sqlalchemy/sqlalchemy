@@ -334,8 +334,7 @@ UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE 
         u2.user_name = 'user2modified'
         u1.addresses.append(a3)
         del u1.addresses[0]
-        objectstore.commit()
-        return
+        u1.addresses.foo = True
         self.assert_enginesql(db, lambda: objectstore.commit(), 
 """UPDATE users SET user_name=:user_name WHERE users.user_id = :users_user_id
 [{'users_user_id': %d, 'user_name': 'user2modified'}]
@@ -355,6 +354,7 @@ UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE 
         a1.user = u1
         objectstore.commit()
 
+        self.echo("\n\n\n")
         objectstore.delete(u1)
         a1.user = None
         objectstore.commit()
