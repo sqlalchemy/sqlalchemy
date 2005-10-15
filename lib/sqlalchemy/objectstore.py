@@ -471,7 +471,8 @@ class UOWTask(object):
                 l = UOWTask(None)
                 dp[(processor, isdelete)] = l
             return l
-            
+
+        # TODO: rework, its putting too many things in places they shouldnt be            
         for obj in allobjects:
             # go through all of the dependencies on this task, and organize them
             # into a hash where we isolate individual objects that depend on each
@@ -504,7 +505,10 @@ class UOWTask(object):
             return None
         
         def make_task_tree(node, parenttask):
-            parenttask.append(node.item, self.objects[node.item].listonly, objecttotask[node.item], isdelete=self.objects[node.item].isdelete)
+            circ = objecttotask[node.item]
+            #if len(circ.objects) == 0 and len(circ.dependencies) == 0:
+            #    circ = None
+            parenttask.append(node.item, self.objects[node.item].listonly, circ, isdelete=self.objects[node.item].isdelete)
             if dependencies.has_key(node.item):
                 for tup, deptask in dependencies[node.item].iteritems():
                     (processor, isdelete) = tup
@@ -525,7 +529,7 @@ class UOWTask(object):
         for o in self.objects.values():
             if not o.listonly and not o.isdelete:
                 s += "\n     " + indent + repr(o)
-            if o.childtask is not None:
+            if o.childtask is not None and len(o.childtask.objects) > 0 and len(o.childtask.dependencies) > 0:
                 s += "\n       " + indent + "  Circular Child Task:"
                 s += "\n" + o.childtask.dump("         " + indent)
         s += "\n" + indent + "  Dependencies:"
@@ -549,7 +553,7 @@ class UOWTask(object):
         for o in self.objects.values():
             if not o.listonly and o.isdelete:
                 s += "\n     " + indent + repr(o)
-            if o.childtask is not None:
+            if o.childtask is not None and len(o.childtask.objects) > 0 and len(o.childtask.dependencies) > 0:
                 s += "\n       " + indent + "  Circular Child Task:"
                 s += "\n" + o.childtask.dump("         " + indent)
         return s
