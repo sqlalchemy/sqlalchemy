@@ -209,9 +209,7 @@ class UnitOfWork(object):
                 for o in item.added_items() + item.deleted_items():
                     if self.deleted.contains(o):
                         continue
-                    # TODO: why is listonly = False ?  shouldnt we set it
-                    # True and have the PropertyLoader determine if it needs update?
-                    commit_context.register_object(o, listonly = False)
+                    commit_context.register_object(o, listonly=True)
             for obj in self.deleted:
                 commit_context.register_object(obj, isdelete=True)
                 
@@ -396,7 +394,7 @@ class UOWTask(object):
             rec['listonly'] = False
         if childtask:
             rec['childtask'] = childtask
-        #print "Task " + str(self) + " append object " + obj.__class__.__name__ + "/" + repr(id(obj)) + " listonly " + repr(listonly) + "/" + repr(self.objects[obj]['listonly'])        
+        print "Task " + str(self) + " append object " + obj.__class__.__name__ + "/" + repr(id(obj)) + " listonly " + repr(listonly) + "/" + repr(self.objects[obj]['listonly'])
         
     def execute(self, trans):
         """executes this UOWTask.  saves objects to be saved, processes all dependencies
@@ -409,7 +407,8 @@ class UOWTask(object):
             if task is not None:
                 task.execute_circular(trans)
             return
-            
+        
+        print "execute " + str(self)
         obj_list = [o for o, rec in self.objects.iteritems() if not rec['listonly']]
         if not self.isdelete:
             self.mapper.save_obj(obj_list, trans)
