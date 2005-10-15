@@ -129,6 +129,7 @@ print "----------------------------"
 
 print node.print_nodes()
 
+#node.name='newname'
 node.append('node4')
 node.children['node4'].append('subnode3')
 node.children['node4'].append('subnode4')
