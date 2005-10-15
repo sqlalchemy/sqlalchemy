@@ -3,7 +3,10 @@ import unittest, sys, os
 from sqlalchemy.mapper import *
 import StringIO
 import sqlalchemy.objectstore as objectstore
+import testbase
 
+echo = testbase.echo
+testbase.echo = False
 from tables import *
 
 keywords.delete().execute()
@@ -19,6 +22,8 @@ keywords.insert().execute(
 
 db.connection().commit()
 
+db.echo = echo
+testbase.echo = echo
 
 class HistoryTest(AssertMixin):
     def testattr(self):
@@ -144,7 +149,7 @@ class SaveTest(AssertMixin):
         u.address = a
         u.address.email_address = 'myonlyaddress@foo.com'
         objectstore.uow().commit()
-
+        self.echo("\n\n\n")
         objectstore.uow().register_deleted(u)
         objectstore.uow().commit()
         self.assert_(a.address_id is not None and a.user_id is None and not objectstore.uow().identity_map.has_key(u._instance_key) and objectstore.uow().identity_map.has_key(a._instance_key))
@@ -208,6 +213,7 @@ class SaveTest(AssertMixin):
             self.echo( repr(u.orders))
         self.assert_result(l, data[0], *data[1:])
         
+        self.echo("\n\n\n")
         objectstore.uow().register_deleted(l[0])
         objectstore.uow().register_deleted(l[2])
         res = self.capture_exec(db, lambda: objectstore.uow().commit())
@@ -334,6 +340,22 @@ UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE 
 UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE email_addresses.address_id = :email_addresses_address_id
 [{'email_address': 'emailaddress3', 'user_id': %d, 'email_addresses_address_id': %d}, {'email_address': 'emailaddress1', 'user_id': None, 'email_addresses_address_id': %d}]
 """ % (u2.user_id, u1.user_id, a3.address_id, a1.address_id))
+
+    def testbackwardsmanipulations(self):
+        m = mapper(Address, addresses, properties = dict(
+            user = relation(User, users, lazy = True, uselist = False)
+        ))
+        a1 = Address()
+        a1.email_address = 'emailaddress1'
+        u1 = User()
+        u1.user_name='user1'
+        
+        a1.user = u1
+        objectstore.commit()
+
+        objectstore.delete(u1)
+        a1.user = None
+        objectstore.commit()
 
     def _testalias(self):
         """tests that an alias of a table can be used in a mapper. 
