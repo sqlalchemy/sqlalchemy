@@ -724,6 +724,7 @@ class PropertyLoader(MapperProperty):
             uowcommit.register_dependency(self.parent, self.mapper)
             uowcommit.register_processor(self.parent, False, self, self.parent, False)
             uowcommit.register_processor(self.parent, True, self, self.parent, True)
+            #uowcommit.register_processor(self.mapper, False, self, self.parent, True)
         elif self.direction == PropertyLoader.RIGHT:
             uowcommit.register_dependency(self.mapper, self.parent)
             uowcommit.register_processor(self.mapper, False, self, self.parent, False)
@@ -802,32 +803,40 @@ class PropertyLoader(MapperProperty):
                 if len(secondary_insert):
                     statement = self.secondary.insert()
                     statement.execute(*secondary_insert)
-        # TODO: shouldnt this be for all deletes?  propertyloader.RIGHT + delete should
-        # be explicitly named 
+        elif self.direction == PropertyLoader.RIGHT and delete:
+            # head object is being deleted, and we manage a foreign key object.
+            # dont have to do anything to it.
+            pass
         elif self.direction == PropertyLoader.LEFT and delete:
-            if not self.private:
-                updates = []
-                clearkeys = True
-                for obj in deplist:
+            # head object is being deleted, and we manage its list of child objects
+            # the child objects have to have their foreign key to the parent set to NULL
+            if self.private:
+                # if we are privately managed, then all our objects should
+                # have been marked as "todelete" already and no attribute adjustment is needed
+                return
+            updates = []
+            clearkeys = True
+            for obj in deplist:
+                if not self.private:
                     params = {}
                     for bind in self.lazybinds.values():
                         params[bind.key] = self.parent._getattrbycolumn(obj, self.parent.table.c[bind.shortname])
                     updates.append(params)
-                    childlist = getlist(obj, False)
-                    for child in childlist.deleted_items() + childlist.unchanged_items():
-                        # TODO: if self.private, mark child objects to be deleted ?
-                        self.primaryjoin.accept_visitor(setter)
-                    uowcommit.register_deleted_list(childlist)
-                if len(updates):
-                    values = {}
-                    for bind in self.lazybinds.values():
-                        values[bind.shortname] = None
-                    statement = self.target.update(self.lazywhere, values = values)
-                    statement.execute(*updates)
+                childlist = getlist(obj, False)
+                for child in childlist.deleted_items() + childlist.unchanged_items():
+                    self.primaryjoin.accept_visitor(setter)
+                    uowcommit.register_object(child)
+                uowcommit.register_deleted_list(childlist)
+            if len(updates):
+                values = {}
+                for bind in self.lazybinds.values():
+                    values[bind.shortname] = None
+                statement = self.target.update(self.lazywhere, values = values)
+                statement.execute(*updates)
         else:
             for obj in deplist:
                 if self.direction == PropertyLoader.RIGHT:
-                    task.append(obj)
+                    uowcommit.register_object(obj)
                 childlist = getlist(obj)
                 if childlist is None: return
                 uowcommit.register_saved_list(childlist)
@@ -835,13 +844,13 @@ class PropertyLoader(MapperProperty):
                 for child in childlist.added_items():
                     self.primaryjoin.accept_visitor(setter)
                     if self.direction == PropertyLoader.LEFT:
-                        task.append(child)
+                        uowcommit.register_object(child)
                 if self.direction != PropertyLoader.RIGHT or len(childlist.added_items()) == 0:
                     clearkeys = True
                     for child in childlist.deleted_items():
                         self.primaryjoin.accept_visitor(setter)
                         if self.direction == PropertyLoader.LEFT:
-                            task.append(child)
+                            uowcommit.register_object(child)
 
     def _sync_foreign_keys(self, binary, obj, child, associationrow, clearkeys):
         """given a binary clause with an = operator joining two table columns, synchronizes the values 
