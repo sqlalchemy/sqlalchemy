@@ -402,7 +402,8 @@ class UOWTask(object):
         if self.circular is not None:
             self.circular.execute(trans)
             return
-        
+
+        print "executing " + repr(self)        
         saved_obj_list = self.saved_objects()
         deleted_obj_list = self.deleted_objects()
         self.mapper.save_obj(saved_obj_list, trans)
@@ -472,19 +473,17 @@ class UOWTask(object):
             return l
             
         for obj in allobjects:
+            # go through all of the dependencies on this task, and organize them
+            # into a hash where we isolate individual objects that depend on each
+            # other.  then those individual object relationships will be grabbed
+            # back into a hierarchical tree thing down below via make_task_tree.
             parenttask = get_task(obj)
-            # TODO: we are doing this dependency sort which uses a lot of the 
-            # concepts in mapper.PropertyLoader's more coarse-grained version.
-            # should consolidate the concept of "childlist/added/deleted/unchanged" "left/right"
-            # in one place
             for dep in self.dependencies:
                 (processor, targettask, isdelete) = dep
                 childlist = processor.get_object_dependencies(obj, trans, passive = True)
-                #childlist = childlist.unchanged_items() + childlist.deleted_items() + childlist.added_items()
                 if isdelete:
                     childlist = childlist.unchanged_items() + childlist.deleted_items()
                 else:
-                    #childlist = childlist.added_items() + childlist.deleted_items()
                     childlist = childlist.added_items()
                 for o in childlist:
                     if not self.objects.has_key(o):
@@ -496,7 +495,10 @@ class UOWTask(object):
                             get_dependency_task(whosdep[0], processor, isdelete).append(whosdep[0], isdelete=isdelete)
                         else:
                             get_dependency_task(whosdep[0], processor, isdelete).append(whosdep[1], isdelete=isdelete)
-        
+
+        for k, v in dependencies.iteritems():
+            print str(k), repr(v)
+
         head = util.DependencySorter(tuples, allobjects).sort()
         if head is None:
             return None
@@ -517,12 +519,12 @@ class UOWTask(object):
         return t
 
     def dump(self, indent=""):
+        # TODO: what a mess !
         s = "\n" + indent + repr(self)
         s += "\n" + indent + "  Save Elements:"
         for o in self.objects.values():
-            if o.listonly or o.isdelete:
-                continue
-            s += "\n     " + indent + repr(o)
+            if not o.listonly and not o.isdelete:
+                s += "\n     " + indent + repr(o)
             if o.childtask is not None:
                 s += "\n       " + indent + "  Circular Child Task:"
                 s += "\n" + o.childtask.dump("         " + indent)
@@ -545,9 +547,8 @@ class UOWTask(object):
             s += "None"
         s += "\n" + indent + "  Delete Elements:"
         for o in self.objects.values():
-            if o.listonly or not o.isdelete:
-                continue
-            s += "\n     " + indent + repr(o)
+            if not o.listonly and o.isdelete:
+                s += "\n     " + indent + repr(o)
             if o.childtask is not None:
                 s += "\n       " + indent + "  Circular Child Task:"
                 s += "\n" + o.childtask.dump("         " + indent)
