@@ -49,23 +49,24 @@ class AssertMixin(PersistTest):
 
 class EngineAssert(object):
     def __init__(self, engine):
-        self.__dict__['engine'] = engine
-        self.__dict__['realexec'] = engine.execute
+        self.engine = engine
+        self.realexec = engine.execute
+        engine.execute = self.execute
+        self.echo = engine.echo
         self.set_assert_list(None, None)
     def __getattr__(self, key):
         return getattr(self.engine, key)
-    def __setattr__(self, key, value):
-        setattr(self.__dict__['engine'], key, value)
     def set_assert_list(self, unittest, list):
-        self.__dict__['unittest'] = unittest
-        self.__dict__['assert_list'] = list
+        self.unittest = unittest
+        self.assert_list = list
+        if list is not None:
+            self.assert_list.reverse()
     def execute(self, statement, parameters, **kwargs):
-        # TODO: get this to work
-        if self.assert_list is None:
-            return
-        item = self.assert_list.pop()
-        (query, params) = item
-        self.unittest.assert_(statement == query and params == parameters)
+        self.engine.echo = self.echo
+        if self.assert_list is not None:
+            item = self.assert_list.pop()
+            (query, params) = item
+            self.unittest.assert_(statement == query and params == parameters, query + repr(params) + statement + repr(parameters))
         return self.realexec(statement, parameters, **kwargs)
         
 def runTests(suite):
