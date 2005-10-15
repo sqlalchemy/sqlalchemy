@@ -649,7 +649,6 @@ class PropertyLoader(MapperProperty):
         if self.uselist is None:
             self.uselist = True
                     
-        (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.table, self.primaryjoin, self.secondaryjoin, self.thiscol)
                 
         if not hasattr(parent.class_, key):
             #print "regiser list col on class %s key %s" % (parent.class_.__name__, key)
@@ -723,8 +722,7 @@ class PropertyLoader(MapperProperty):
         elif self.direction == PropertyLoader.LEFT:
             uowcommit.register_dependency(self.parent, self.mapper)
             uowcommit.register_processor(self.parent, False, self, self.parent, False)
-            uowcommit.register_processor(self.parent, True, self, self.parent, True)
-            #uowcommit.register_processor(self.mapper, False, self, self.parent, True)
+            uowcommit.register_processor(self.mapper, False, self, self.parent, True)
         elif self.direction == PropertyLoader.RIGHT:
             uowcommit.register_dependency(self.mapper, self.parent)
             uowcommit.register_processor(self.mapper, False, self, self.parent, False)
@@ -748,7 +746,7 @@ class PropertyLoader(MapperProperty):
             return (obj2, obj1)
             
     def process_dependencies(self, task, deplist, uowcommit, delete = False):
-        #print self.mapper.table.name + " " + repr([str(v) for v in deplist.map.values()]) + " process_dep isdelete " + repr(delete)
+        #print self.mapper.table.name + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete)
 
         # fucntion to set properties across a parent/child object plus an "association row",
         # based on a join condition
@@ -814,25 +812,13 @@ class PropertyLoader(MapperProperty):
                 # if we are privately managed, then all our objects should
                 # have been marked as "todelete" already and no attribute adjustment is needed
                 return
-            updates = []
             clearkeys = True
             for obj in deplist:
-                if not self.private:
-                    params = {}
-                    for bind in self.lazybinds.values():
-                        params[bind.key] = self.parent._getattrbycolumn(obj, self.parent.table.c[bind.shortname])
-                    updates.append(params)
                 childlist = getlist(obj, False)
                 for child in childlist.deleted_items() + childlist.unchanged_items():
                     self.primaryjoin.accept_visitor(setter)
                     uowcommit.register_object(child)
                 uowcommit.register_deleted_list(childlist)
-            if len(updates):
-                values = {}
-                for bind in self.lazybinds.values():
-                    values[bind.shortname] = None
-                statement = self.target.update(self.lazywhere, values = values)
-                statement.execute(*updates)
         else:
             for obj in deplist:
                 if self.direction == PropertyLoader.RIGHT:
@@ -882,6 +868,10 @@ class PropertyLoader(MapperProperty):
         pass
 
 class LazyLoader(PropertyLoader):
+    def init(self, key, parent):
+        PropertyLoader.init(self, key, parent)
+        (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.table, self.primaryjoin, self.secondaryjoin, self.thiscol)
+
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
             def lazyload():
