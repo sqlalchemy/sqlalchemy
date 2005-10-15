@@ -187,7 +187,6 @@ class SQLEngine(schema.SchemaEngine):
     def execute(self, statement, parameters, connection = None, echo = None, typemap = None, **kwargs):
         if parameters is None:
             parameters = {}
-
         if echo is True or self.echo:
             self.log(statement)
             self.log(repr(parameters))

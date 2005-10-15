@@ -737,7 +737,7 @@ class PropertyLoader(MapperProperty):
         else: 
             return uowcommit.uow.attributes.get_history(obj, self.key)
 
-    def whose_dependent_on_who(self, obj1, obj2, uowcommit):
+    def whose_dependent_on_who(self, obj1, obj2):
         if obj1 is obj2:
             return None
         elif self.thiscol.primary_key:
@@ -746,7 +746,7 @@ class PropertyLoader(MapperProperty):
             return (obj2, obj1)
             
     def process_dependencies(self, task, deplist, uowcommit, delete = False):
-        print self.mapper.table.name + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete)
+        #print self.mapper.table.name + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete)
 
         # fucntion to set properties across a parent/child object plus an "association row",
         # based on a join condition
@@ -778,8 +778,9 @@ class PropertyLoader(MapperProperty):
                     uowcommit.register_deleted_list(childlist)
             else:
                 for obj in deplist:
+                    print "obj: " + repr(obj)
                     childlist = getlist(obj)
-                    if childlist is None: return
+                    if childlist is None: continue
                     clearkeys = False
                     for child in childlist.added_items():
                         associationrow = {}
@@ -824,7 +825,7 @@ class PropertyLoader(MapperProperty):
                 if self.direction == PropertyLoader.RIGHT:
                     uowcommit.register_object(obj)
                 childlist = getlist(obj)
-                if childlist is None: return
+                if childlist is None: continue
                 uowcommit.register_saved_list(childlist)
                 clearkeys = False
                 for child in childlist.added_items():

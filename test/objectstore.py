@@ -444,8 +444,22 @@ UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE 
         k = Keyword()
         k.name = 'yellow'
         objects[5].keywords.append(k)
-        
-        objectstore.uow().commit()
+        db.set_assert_list(self, [
+            (
+                "INSERT INTO keywords (keyword_id, name) VALUES (:keyword_id, :name)", 
+                {'keyword_id': None, 'name': 'yellow'}
+            ),
+            (
+                "UPDATE items SET order_id=:order_id, item_name=:item_name WHERE items.item_id = :items_item_id",
+                [{'item_name': 'item4updated', 'order_id': None, 'items_item_id': objects[4].item_id}]
+            ),
+            ("INSERT INTO itemkeywords (item_id, keyword_id) VALUES (:item_id, :keyword_id)",
+            [{'item_id': objects[5].item_id, 'keyword_id': 11}]
+            )
+        ])
+        objectstore.commit()
+        db.set_assert_list(None, None)
+
         objects[2].keywords.append(k)
         self.echo("added: " + repr(objects[2].keywords.added_items()))
         objectstore.uow().commit()

@@ -24,6 +24,8 @@ elif DBTYPE == 'sqlite_file':
 elif DBTYPE == 'postgres':
     pass
 
+db = testbase.EngineAssert(db)
+
 users = Table('users', db,
     Column('user_id', Integer, primary_key = True),
     Column('user_name', String(20)),

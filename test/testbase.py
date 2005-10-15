@@ -1,5 +1,6 @@
 import unittest
 import StringIO
+import sqlalchemy.engine as engine
 
 echo = True
 
@@ -45,6 +46,27 @@ class AssertMixin(PersistTest):
                 self.assert_(getattr(rowobj, key) == value, "attribute %s value %s does not match %s" % (key, getattr(rowobj, key), value))
     def assert_enginesql(self, db, callable_, result):
         self.assert_(self.capture_exec(db, callable_) == result, result)
+
+class EngineAssert(object):
+    def __init__(self, engine):
+        self.__dict__['engine'] = engine
+        self.__dict__['realexec'] = engine.execute
+        self.set_assert_list(None, None)
+    def __getattr__(self, key):
+        return getattr(self.engine, key)
+    def __setattr__(self, key, value):
+        setattr(self.__dict__['engine'], key, value)
+    def set_assert_list(self, unittest, list):
+        self.__dict__['unittest'] = unittest
+        self.__dict__['assert_list'] = list
+    def execute(self, statement, parameters, **kwargs):
+        # TODO: get this to work
+        if self.assert_list is None:
+            return
+        item = self.assert_list.pop()
+        (query, params) = item
+        self.unittest.assert_(statement == query and params == parameters)
+        return self.realexec(statement, parameters, **kwargs)
         
 def runTests(suite):
     runner = unittest.TextTestRunner(verbosity = 2, descriptions =1)

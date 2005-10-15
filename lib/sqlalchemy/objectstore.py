@@ -404,13 +404,13 @@ class UOWTask(object):
         self.mapper.save_obj(self.tosave_objects(), trans)
         for dep in self.save_dependencies():
             (processor, targettask, isdelete) = dep
-            processor.process_dependencies(targettask, targettask.tosave_objects(), trans, delete = False)
+            processor.process_dependencies(targettask, [elem.obj for elem in targettask.tosave_elements()], trans, delete = False)
         for element in self.tosave_elements():
             if element.childtask is not None:
                 element.childtask.execute(trans)
         for dep in self.delete_dependencies():
             (processor, targettask, isdelete) = dep
-            processor.process_dependencies(targettask, targettask.todelete_objects(), trans, delete = True)
+            processor.process_dependencies(targettask, [elem.obj for elem in targettask.todelete_elements()], trans, delete = True)
         for child in self.childtasks:
             child.execute(trans)
         for element in self.todelete_elements():
@@ -463,7 +463,6 @@ class UOWTask(object):
                 dp[(processor, isdelete)] = l
             return l
 
-        # TODO: rework, its putting too many things in places they shouldnt be            
         for taskelement in self.objects.values():
             # go through all of the dependencies on this task, and organize them
             # into a hash where we isolate individual objects that depend on each
@@ -483,7 +482,7 @@ class UOWTask(object):
                 for o in childlist:
                     if not self.objects.has_key(o):
                         continue
-                    whosdep = processor.whose_dependent_on_who(obj, o, trans)
+                    whosdep = processor.whose_dependent_on_who(obj, o)
                     if whosdep is not None:
                         tuples.append(whosdep)
                         if whosdep[0] is obj:
@@ -500,8 +499,6 @@ class UOWTask(object):
         
         def make_task_tree(node, parenttask):
             circ = objecttotask[node.item]
-            #if len(circ.objects) == 0 and len(circ.dependencies) == 0:
-            #    circ = None
             parenttask.append(node.item, self.objects[node.item].listonly, circ, isdelete=self.objects[node.item].isdelete)
             if dependencies.has_key(node.item):
                 for tup, deptask in dependencies[node.item].iteritems():
@@ -517,7 +514,6 @@ class UOWTask(object):
         return t
 
     def dump(self, indent=""):
-        # TODO: what a mess !
         s = "\n" + indent + repr(self)
         if self.circular is not None:
             s += " Circular Representation:"
@@ -557,7 +553,6 @@ class UOWTask(object):
         s = ""
         for dt in dep:
             s += "\n    " + indent + "process " + repr(dt[0].key) + " on:"
-#            s += "\n    " + indent + repr(dt[0].key) + "/" + (dt[2] and 'items to be deleted' or 'saved items')
             if dt[2]:
                 val = [t for t in dt[1].objects.values() if t.isdelete]
             else:
@@ -574,8 +569,6 @@ def mapper(*args, **params):
 
 def object_mapper(obj):
     return sqlalchemy.mapper.object_mapper(obj)
-
-
                     
 uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")
 
