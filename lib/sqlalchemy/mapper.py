@@ -110,10 +110,11 @@ def noload(name):
 def object_mapper(object):
     """given an object, returns the primary Mapper associated with the object
     or the object's class."""
-    try:
-        return _mappers[object._mapper]
-    except AttributeError:
-        return class_mapper(object.__class__)
+    return class_mapper(object.__class__)
+#    try:
+#        return _mappers[object._mapper]
+#    except AttributeError:
+#        return class_mapper(object.__class__)
 
 def class_mapper(class_):
     """given a class, returns the primary Mapper associated with the class."""
@@ -499,7 +500,8 @@ class Mapper(object):
             instance = self.extension.create_instance(self, row, imap, self.class_)
             if instance is None:
                 instance = self.class_(_mapper_nohistory=True)
-            instance._mapper = self.hashkey
+            # attach mapper hashkey to the instance ?
+            #instance._mapper = self.hashkey
             instance._instance_key = identitykey
 
             imap[identitykey] = instance
@@ -746,7 +748,7 @@ class PropertyLoader(MapperProperty):
             return (obj2, obj1)
             
     def process_dependencies(self, task, deplist, uowcommit, delete = False):
-        #print self.mapper.table.name + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete)
+        print self.mapper.table.name + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete)
 
         # fucntion to set properties across a parent/child object plus an "association row",
         # based on a join condition

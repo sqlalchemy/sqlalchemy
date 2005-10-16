@@ -313,20 +313,32 @@ class SaveTest(AssertMixin):
         self.assert_(addresstable[0].row == (addressid, userid, 'somethingnew@foo.com'))
         self.assert_(u.user_id == userid and a2.address_id == addressid)
 
-    def testonetomany2(self):
+    def testmapperswitch(self):
+        """test that, if we change mappers, the new one gets used fully.  not sure if 
+        i want it to work that way, but probably."""
         users.insert().execute(
             dict(user_id = 7, user_name = 'jack'),
             dict(user_id = 8, user_name = 'ed'),
             dict(user_id = 9, user_name = 'fred')
         )
         db.connection().commit()
+
+        User.mapper = assignmapper(users)
+        User.mapper.select()
         User.mapper = assignmapper(users, properties = dict(
             addresses = relation(Address, addresses, lazy = False)
         ))
         u = User.mapper.select()
         u[0].addresses.append(Address())
         u[0].addresses[0].email_address='hi'
-        objectstore.commit()
+        self.assert_sql(db, lambda: objectstore.commit(), 
+                [
+                    (
+                    "INSERT INTO email_addresses (address_id, user_id, email_address) VALUES (:address_id, :user_id, :email_address)",
+                    {'email_address': 'hi', 'address_id': None, 'user_id': 7}
+                    ),
+                ]
+        )
 
     def testchildmanipulations(self):
         """digs deeper into modifying the child items of an object to insure the correct

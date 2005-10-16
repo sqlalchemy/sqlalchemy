@@ -61,7 +61,7 @@ class EngineAssert(object):
             (query, params) = item
             if callable(params):
                 params = params()
-            self.unittest.assert_(statement == query and params == parameters, query + repr(params) + statement + repr(parameters))
+            self.unittest.assert_(statement == query and params == parameters, "Testing for query '%s' params %s, received '%s' with params %s" % (query, repr(params), statement, repr(parameters)))
         return self.realexec(statement, parameters, **kwargs)
         
 def runTests(suite):
