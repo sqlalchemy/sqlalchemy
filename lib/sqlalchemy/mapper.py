@@ -619,9 +619,9 @@ class PropertyLoader(MapperProperty):
         return self._hash_key
 
     def init(self, key, parent):
-        if isinstance(self.argument, str):
-            self.mapper = object_mapper(self.argument)
-        elif isinstance(self.argument, type):
+        #if isinstance(self.argument, str):
+        #    self.mapper = object_mapper(self.argument)
+        if isinstance(self.argument, type):
             self.mapper = class_mapper(self.argument)
         else:
             self.mapper = self.argument
@@ -630,18 +630,18 @@ class PropertyLoader(MapperProperty):
         self.key = key
         self.parent = parent
 
-        if self.parent.table is self.target and self.thiscol is None:
-            raise "Circular relationship requires 'thiscol' parameter"
+        if self.parent.table is self.target and self.foreignkey is None:
+            raise "Circular relationship requires explicit 'foreignkey' parameter"
             
         # if join conditions were not specified, figure them out based on foreign keys
         if self.secondary is not None:
             if self.secondaryjoin is None:
-                self.secondaryjoin = self.match_primaries(self.target, self.secondary)
+                self.secondaryjoin = self._match_primaries(self.target, self.secondary)
             if self.primaryjoin is None:
-                self.primaryjoin = self.match_primaries(parent.table, self.secondary)
+                self.primaryjoin = self._match_primaries(parent.table, self.secondary)
         else:
             if self.primaryjoin is None:
-                self.primaryjoin = self.match_primaries(parent.table, self.target)
+                self.primaryjoin = self._match_primaries(parent.table, self.target)
         
         # if the foreign key wasnt specified and theres no assocaition table, try to figure
         # out who is dependent on who. we dont need all the foreign keys represented in the join,
@@ -649,14 +649,9 @@ class PropertyLoader(MapperProperty):
         if self.foreignkey is None and self.secondaryjoin is None:
             # else we usually will have a one-to-many where the secondary depends on the primary
             # but its possible that its reversed
-            w = PropertyLoader.FindDependent()
-            self.primaryjoin.accept_visitor(w)
-            if w.dependent is None:
-                raise "cant determine primary foreign key in the join relationship....specify foreignkey=<column>"
-            else:
-                self.foreignkey = w.dependent
+            self.foreignkey = self._find_dependent()
 
-        self.direction = self.get_direction()
+        self.direction = self._get_direction()
         
         if self.uselist is None and self.direction == PropertyLoader.RIGHT:
             self.uselist = False
@@ -664,39 +659,51 @@ class PropertyLoader(MapperProperty):
         if self.uselist is None:
             self.uselist = True
                     
+        self._compile_synchronizers()
                 
         if not hasattr(parent.class_, key):
             #print "regiser list col on class %s key %s" % (parent.class_.__name__, key)
             objectstore.uow().register_attribute(parent.class_, key, uselist = self.uselist, deleteremoved = self.private)
 
-    def get_direction(self):
-        if self.thiscol is not None:
-            if self.thiscol.primary_key:
-                return PropertyLoader.LEFT
-            else:
+    def _get_direction(self):
+#        if self.thiscol is not None:
+ #           if self.thiscol.primary_key:
+ #               return PropertyLoader.LEFT
+ #           else:
+ #               return PropertyLoader.RIGHT
+        if self.parent.primarytable is self.target:
+            if self.foreignkey.primary_key:
                 return PropertyLoader.RIGHT
-        if self.secondaryjoin is not None:
+            else:
+                return PropertyLoader.LEFT
+        elif self.secondaryjoin is not None:
             return PropertyLoader.CENTER
         elif self.foreignkey.table == self.target:
             return PropertyLoader.LEFT
         elif self.foreignkey.table == self.parent.primarytable:
             return PropertyLoader.RIGHT
 
-    class FindDependent(sql.ClauseVisitor):
-        def __init__(self):
-            self.dependent = None
-        def visit_binary(self, binary):
-            if binary.operator == '=':
-                if isinstance(binary.left, schema.Column) and binary.left.primary_key:
-                    if self.dependent is binary.left:
-                        raise "bidirectional dependency not supported...specify foreignkey"
-                    self.dependent = binary.right
-                elif isinstance(binary.right, schema.Column) and binary.right.primary_key:
-                    if self.dependent is binary.right:
-                        raise "bidirectional dependency not supported...specify foreignkey"
-                    self.dependent = binary.left
+    def _find_dependent(self):
+        dependent = [None]
+        def foo(binary):
+            if binary.operator != '=':
+                return
+            if isinstance(binary.left, schema.Column) and binary.left.primary_key:
+                if dependent[0] is binary.left:
+                    raise "bidirectional dependency not supported...specify foreignkey"
+                dependent[0] = binary.right
+            elif isinstance(binary.right, schema.Column) and binary.right.primary_key:
+                if dependent[0] is binary.right:
+                    raise "bidirectional dependency not supported...specify foreignkey"
+                dependent[0] = binary.left
+        visitor = BinaryVisitor(foo)
+        self.primaryjoin.accept_visitor(visitor)
+        if dependent[0] is None:
+            raise "cant determine primary foreign key in the join relationship....specify foreignkey=<column>"
+        else:
+            return dependent[0]
 
-    def match_primaries(self, primary, secondary):
+    def _match_primaries(self, primary, secondary):
         crit = []
         for fk in secondary.foreign_keys:
             if fk.column.table is primary:
@@ -713,6 +720,47 @@ class PropertyLoader(MapperProperty):
             return (crit[0])
         else:
             return sql.and_(*crit)
+
+    def _compile_synchronizers(self):
+        def compile(binary):
+            if binary.operator != '=':
+                return
+
+            if binary.left.table == binary.right.table:
+                if binary.left.primary_key:
+                    source = binary.left
+                    dest = binary.right
+                elif binary.right.primary_key:
+                    source = binary.right
+                    dest = binary.left
+                else:
+                    raise "Cant determine direction for relationship %s = %s" % (binary.left.fullname, binary.right.fullname)
+                if self.direction == PropertyLoader.LEFT:
+                    self.syncrules.append((self.parent, source, self.mapper, dest))
+                elif self.direction == PropertyLoader.RIGHT:
+                    self.syncrules.append((self.mapper, source, self.parent, dest))
+                else:
+                    raise "assert failed"
+            else:
+                colmap = {binary.left.table : binary.left, binary.right.table : binary.right}
+                if colmap.has_key(self.parent.primarytable) and colmap.has_key(self.target):
+                    if self.direction == PropertyLoader.LEFT:
+                        self.syncrules.append((self.parent, colmap[self.parent.primarytable], self.mapper, colmap[self.target]))
+                    elif self.direction == PropertyLoader.RIGHT:
+                        self.syncrules.append((self.mapper, colmap[self.target], self.parent, colmap[self.parent.primarytable]))
+                    else:
+                        raise "assert failed"
+                elif colmap.has_key(self.parent.primarytable) and colmap.has_key(self.secondary):
+                    self.syncrules.append((self.parent, colmap[self.parent.primarytable], PropertyLoader.LEFT, colmap[self.secondary]))
+                elif colmap.has_key(self.target) and colmap.has_key(self.secondary):
+                    self.syncrules.append((self.mapper, colmap[self.target], PropertyLoader.RIGHT, colmap[self.secondary]))
+
+        self.syncrules = []
+        processor = BinaryVisitor(compile)
+        self.primaryjoin.accept_visitor(processor)
+        if self.secondaryjoin is not None:
+            self.secondaryjoin.accept_visitor(processor)
+
 
     def register_deleted(self, obj, uow):
         if not self.private:
@@ -742,8 +790,6 @@ class PropertyLoader(MapperProperty):
         elif self.direction == PropertyLoader.RIGHT:
             uowcommit.register_dependency(self.mapper, self.parent)
             uowcommit.register_processor(self.mapper, False, self, self.parent, False)
-            # TODO: private deletion thing for one-to-one relationship
-            #uowcommit.register_processor(self.mapper, True, self, self.parent, False)
         else:
             raise " no foreign key ?"
 
@@ -756,7 +802,7 @@ class PropertyLoader(MapperProperty):
     def whose_dependent_on_who(self, obj1, obj2):
         if obj1 is obj2:
             return None
-        elif self.thiscol.primary_key:
+        elif self.direction == PropertyLoader.LEFT:
             return (obj1, obj2)
         else:
             return (obj2, obj1)
@@ -764,29 +810,21 @@ class PropertyLoader(MapperProperty):
     def process_dependencies(self, task, deplist, uowcommit, delete = False):
         #print self.mapper.table.name + " " + self.key + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
 
-        # fucntion to set properties across a parent/child object plus an "association row",
-        # based on a join condition
-        def sync_foreign_keys(binary):
-            self._sync_foreign_keys(binary, obj, child, associationrow, clearkeys)
-        setter = BinaryVisitor(sync_foreign_keys)
-
         def getlist(obj, passive=True):
             return self.get_object_dependencies(obj, uowcommit, passive)
-            
-        associationrow = {}
-        
+
         # plugin point
         
         if self.direction == PropertyLoader.CENTER:
             secondary_delete = []
             secondary_insert = []
+            associationrow = {}
             if delete:
                 for obj in deplist:
                     childlist = getlist(obj, False)
                     for child in childlist.deleted_items() + childlist.unchanged_items():
                         associationrow = {}
-                        self.primaryjoin.accept_visitor(setter)
-                        self.secondaryjoin.accept_visitor(setter)
+                        self._synchronize(obj, child, associationrow, False)
                         secondary_delete.append(associationrow)
                     uowcommit.register_deleted_list(childlist)
             else:
@@ -796,14 +834,12 @@ class PropertyLoader(MapperProperty):
                     clearkeys = False
                     for child in childlist.added_items():
                         associationrow = {}
-                        self.primaryjoin.accept_visitor(setter)
-                        self.secondaryjoin.accept_visitor(setter)
+                        self._synchronize(obj, child, associationrow, False)
                         secondary_insert.append(associationrow)
                     clearkeys = True
                     for child in childlist.deleted_items():
                         associationrow = {}
-                        self.primaryjoin.accept_visitor(setter)
-                        self.secondaryjoin.accept_visitor(setter)
+                        self._synchronize(obj, child, associationrow, True)
                         secondary_delete.append(associationrow)
                     uowcommit.register_saved_list(childlist)
                 if len(secondary_delete):
@@ -825,11 +861,10 @@ class PropertyLoader(MapperProperty):
                 # if we are privately managed, then all our objects should
                 # have been marked as "todelete" already and no attribute adjustment is needed
                 return
-            clearkeys = True
             for obj in deplist:
                 childlist = getlist(obj, False)
                 for child in childlist.deleted_items() + childlist.unchanged_items():
-                    self.primaryjoin.accept_visitor(setter)
+                    self._synchronize(obj, child, None, True)
                     uowcommit.register_object(child)
                 uowcommit.register_deleted_list(childlist)
         else:
@@ -839,97 +874,45 @@ class PropertyLoader(MapperProperty):
                 childlist = getlist(obj)
                 if childlist is None: continue
                 uowcommit.register_saved_list(childlist)
-                clearkeys = False
                 for child in childlist.added_items():
-                    self.primaryjoin.accept_visitor(setter)
+                    self._synchronize(obj, child, None, False)
                     if self.direction == PropertyLoader.LEFT:
                         uowcommit.register_object(child)
                 if self.direction != PropertyLoader.RIGHT or len(childlist.added_items()) == 0:
-                    clearkeys = True
                     for child in childlist.deleted_items():
-                        self.primaryjoin.accept_visitor(setter)
+                        self._synchronize(obj, child, None, True)
                         if self.direction == PropertyLoader.LEFT:
-                            uowcommit.register_object(child)
+                            uowcommit.register_object(child, isdelete=self.private)
 
-    def _sync_foreign_keys(self, binary, obj, child, associationrow, clearkeys):
-        """given a binary clause with an = operator joining two table columns, synchronizes the values 
-        of the corresponding attributes within a parent object and a child object, or the attributes within an 
-        an "association row" that represents an association link between the 'parent' and 'child' object."""
-        # TODO: precompile this into a list of simple property setters.  this will allow checking for
-        # all the proper columns to be set up when the mapper is constructed and should simplify the code
-        if binary.operator == '=':
-            if binary.left.table == binary.right.table:
-                if binary.right is self.foreignkey:
-                    source = binary.left
-                elif binary.left is self.foreignkey:
-                    source = binary.right
-                else:
-                    raise "Cant determine direction for relationship %s = %s" % (binary.left.fullname, binary.right.fullname)
-                if self.direction == PropertyLoader.LEFT:
-                    self.mapper._setattrbycolumn(child, self.foreignkey, self.parent._getattrbycolumn(obj, source))
-                elif self.direction == PropertyLoader.RIGHT:
-                    self.parent._setattrbycolumn(obj, self.foreignkey, self.mapper._getattrbycolumn(child, source))
-                else:
-                    raise "assert failed"
+                
+    def _synchronize(self, obj, child, associationrow, clearkeys):
+        if self.direction == PropertyLoader.LEFT:
+            source = obj
+            dest = child
+        elif self.direction == PropertyLoader.RIGHT:
+            source = child
+            dest = obj
+        elif self.direction == PropertyLoader.CENTER:
+            source = None
+            dest = associationrow
+
+        for rule in self.syncrules:
+            (smapper, scol, dmapper, dcol) = rule
+            if source is None:
+                if dmapper == PropertyLoader.LEFT:
+                    source = obj
+                elif dmapper == PropertyLoader.RIGHT:
+                    source = child
+
+            if clearkeys:
+                value = None
             else:
-                colmap = {binary.left.table : binary.left, binary.right.table : binary.right}
-                if colmap.has_key(self.parent.primarytable) and colmap.has_key(self.target):
-                    if self.direction == PropertyLoader.LEFT:
-                        print "set " + repr(child) + ":" + colmap[self.target].key + " to " + repr(obj) + ":" + colmap[self.parent.primarytable].key
-                        if clearkeys:
-                            self.mapper._setattrbycolumn(child, colmap[self.target], None)
-                        else:
-                            self.mapper._setattrbycolumn(child, colmap[self.target], self.parent._getattrbycolumn(obj, colmap[self.parent.primarytable]))
-                    elif self.direction == PropertyLoader.RIGHT:
-                        print "set " + repr(obj) + ":" + colmap[self.parent.primarytable].key + " to " + repr(child) + ":" + colmap[self.target].key
-                        if clearkeys:
-                            self.parent._setattrbycolumn(obj, colmap[self.parent.primarytable], None)
-                        else:
-                            self.parent._setattrbycolumn(obj, colmap[self.parent.primarytable], self.mapper._getattrbycolumn(child, colmap[self.target]))
-                    else:
-                        raise "assert failed"
-                elif colmap.has_key(self.parent.primarytable) and colmap.has_key(self.secondary):
-                    associationrow[colmap[self.secondary].key] = self.parent._getattrbycolumn(obj, colmap[self.parent.primarytable])
-                elif colmap.has_key(self.target) and colmap.has_key(self.secondary):
-                    associationrow[colmap[self.secondary].key] = self.mapper._getattrbycolumn(child, colmap[self.target])
+                value = smapper._getattrbycolumn(source, scol)
 
-    def _compile_synchronizer(self, binary, obj, child, associationrow, clearkeys):
-        if binary.operator == '=':
-            if binary.left.table == binary.right.table:
-                if binary.right is self.foreignkey:
-                    source = binary.left
-                elif binary.left is self.foreignkey:
-                    source = binary.right
-                else:
-                    raise "Cant determine direction for relationship %s = %s" % (binary.left.fullname, binary.right.fullname)
-                if self.direction == PropertyLoader.LEFT:
-                    self.mapper._setattrbycolumn(child, self.foreignkey, self.parent._getattrbycolumn(obj, source))
-                elif self.direction == PropertyLoader.RIGHT:
-                    self.parent._setattrbycolumn(obj, self.foreignkey, self.mapper._getattrbycolumn(child, source))
-                else:
-                    raise "assert failed"
+            if dest is associationrow:
+                associationrow[dcol.key] = value
             else:
-                colmap = {binary.left.table : binary.left, binary.right.table : binary.right}
-                if colmap.has_key(self.parent.primarytable) and colmap.has_key(self.target):
-                    if self.direction == PropertyLoader.LEFT:
-                        print "set " + repr(child) + ":" + colmap[self.target].key + " to " + repr(obj) + ":" + colmap[self.parent.primarytable].key
-                        if clearkeys:
-                            self.mapper._setattrbycolumn(child, colmap[self.target], None)
-                        else:
-                            self.mapper._setattrbycolumn(child, colmap[self.target], self.parent._getattrbycolumn(obj, colmap[self.parent.primarytable]))
-                    elif self.direction == PropertyLoader.RIGHT:
-                        print "set " + repr(obj) + ":" + colmap[self.parent.primarytable].key + " to " + repr(child) + ":" + colmap[self.target].key
-                        if clearkeys:
-                            self.parent._setattrbycolumn(obj, colmap[self.parent.primarytable], None)
-                        else:
-                            self.parent._setattrbycolumn(obj, colmap[self.parent.primarytable], self.mapper._getattrbycolumn(child, colmap[self.target]))
-                    else:
-                        raise "assert failed"
-                elif colmap.has_key(self.parent.primarytable) and colmap.has_key(self.secondary):
-                    associationrow[colmap[self.secondary].key] = self.parent._getattrbycolumn(obj, colmap[self.parent.primarytable])
-                elif colmap.has_key(self.target) and colmap.has_key(self.secondary):
-                    associationrow[colmap[self.secondary].key] = self.mapper._getattrbycolumn(child, colmap[self.target])
-
+                dmapper._setattrbycolumn(dest, dcol, value)
 
     def execute(self, instance, row, identitykey, imap, isnew):
         pass
@@ -937,7 +920,7 @@ class PropertyLoader(MapperProperty):
 class LazyLoader(PropertyLoader):
     def init(self, key, parent):
         PropertyLoader.init(self, key, parent)
-        (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.table, self.primaryjoin, self.secondaryjoin, self.thiscol)
+        (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.table, self.primaryjoin, self.secondaryjoin, self.foreignkey)
 
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
@@ -955,15 +938,16 @@ class LazyLoader(PropertyLoader):
                         return None
             objectstore.uow().register_callable(instance, self.key, lazyload, uselist=self.uselist, deleteremoved = self.private)
 
-def create_lazy_clause(table, primaryjoin, secondaryjoin, thiscol):
+def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     binds = {}
     def visit_binary(binary):
-        if isinstance(binary.left, schema.Column) and (thiscol is binary.left or (thiscol is None and binary.left.table is table)):
+        circular = binary.left.table is binary.right.table
+        if isinstance(binary.left, schema.Column) and ((not circular and binary.left.table is table) or foreignkey is binary.right):
             binary.left = binds.setdefault(table.name + "_" + binary.left.name,
                     sql.BindParamClause(table.name + "_" + binary.left.name, None, shortname = binary.left.name))
             binary.swap()
 
-        if isinstance(binary.right, schema.Column) and (thiscol is binary.right or (thiscol is None and binary.right.table is table)):
+        if isinstance(binary.right, schema.Column) and ((not circular and binary.right.table is table) or foreignkey is binary.left):
             binary.right = binds.setdefault(table.name + "_" + binary.right.name,
                     sql.BindParamClause(table.name + "_" + binary.right.name, None, shortname = binary.right.name))
                     
@@ -1017,7 +1001,7 @@ class EagerLoader(PropertyLoader):
         statement.append_column(self.target)
         for key, value in self.mapper.props.iteritems():
             if value is self:
-                raise "wha?"
+                raise "Cant use eager loading on a self-referential mapper relationship"
             value.setup(key, statement)
 
     def execute(self, instance, row, identitykey, imap, isnew):

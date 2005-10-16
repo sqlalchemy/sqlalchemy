@@ -33,6 +33,8 @@ class TreeNode(object):
             self.children.append(TreeNode(node))
         else:
             self.children.append(node)
+    def __repr__(self):
+        return self._getstring(0, False)
     def __str__(self):
         return self._getstring(0, False)
     def _getstring(self, level, expand = False):
@@ -51,18 +53,8 @@ TreeNode.mapper=assignmapper(tables.trees, class_=TreeNode, properties=dict(
     name=tables.trees.c.node_name,
     parent_id=tables.trees.c.parent_node_id,
     root_id=tables.trees.c.root_node_id,
-    children=relation(TreeNode, primaryjoin=tables.trees.c.parent_node_id==tables.trees.c.node_id, thiscol=tables.trees.c.node_id, lazy=True, uselist=True, private=True),
+    children=relation(TreeNode, primaryjoin=tables.trees.c.parent_node_id==tables.trees.c.node_id, foreignkey=tables.trees.c.parent_node_id, thiscol=tables.trees.c.node_id, lazy=True, uselist=True, private=True),
 ))
-
-
-node = TreeNode('rootnode')
-node.append('node1')
-objectstore.commit()
-
-print node.print_nodes()
-del node.children['node1']
-objectstore.commit()
-sys.exit()
 
 node2 = TreeNode('node2')
 node2.append('subnode1')
@@ -71,9 +63,24 @@ node.append('node1')
 node.append(node2)
 node.append('node3')
 node.children['node2'].append('subnode2')
+
+print "\n\n\n----------------------------"
+print "Created new tree structure:"
+print "----------------------------"
+
 print node.print_nodes()
 
+print "\n\n\n----------------------------"
+print "Committing:"
+print "----------------------------"
+
 objectstore.commit()
+
+print "\n\n\n----------------------------"
+print "Tree After Save:"
+print "----------------------------"
+
+print node.print_nodes()
 
 node.append('node4')
 node.children['node4'].append('subnode3')
@@ -81,21 +88,45 @@ node.children['node4'].append('subnode4')
 node.children['node4'].children['subnode3'].append('subsubnode1')
 del node.children['node1']
 
+print "\n\n\n----------------------------"
+print "Modified the tree"
+print "(added node4, node4/subnode3, node4/subnode4,"
+print "node4/subnode3/subsubnode1, deleted node1):"
+print "----------------------------"
+
 print node.print_nodes()
 
+print "\n\n\n----------------------------"
+print "Committing:"
+print "----------------------------"
 objectstore.commit()
 
-id = node.id
+#sys.exit()
+
+print "\n\n\n----------------------------"
+print "Tree After Save:"
+print "----------------------------"
+
+print node.print_nodes()
+
+nodeid = node.id
+
+print "\n\n\n----------------------------"
+print "Clearing objectstore, selecting "
+print "tree new where node_id=%d:" % nodeid
+print "----------------------------"
 
 objectstore.clear()
-print "\n\n\n"
+t = TreeNode.mapper.select(TreeNode.c.node_id==nodeid)[0]
 
-t = TreeNode.mapper.select(TreeNode.c.id == id)[0]
-
+print "\n\n\n----------------------------"
+print "Full Tree:"
+print "----------------------------"
 print t.print_nodes()
+
+print "\n\n\n----------------------------"
+print "Marking root node as deleted"
+print "and committing:"
+print "----------------------------"
 objectstore.delete(t)
 objectstore.commit()
-
-
-
-

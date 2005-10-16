@@ -135,6 +135,14 @@ class UnitOfWork(object):
         if hasattr(obj, "_instance_key"):
             del self.identity_map[obj._instance_key]
         del self.deleted[obj]
+        try:
+            del self.dirty[obj]
+        except KeyError:
+            pass
+        try:
+            del self.new[obj]
+        except KeyError:
+            pass
         self.attributes.remove(obj)
         
     def update(self, obj):

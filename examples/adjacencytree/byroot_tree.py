@@ -105,8 +105,8 @@ TreeNode.mapper=assignmapper(tables.trees, properties=dict(
     name=tables.trees.c.node_name,
     parent_id=tables.trees.c.parent_node_id,
     root_id=tables.trees.c.root_node_id,
-    root=relation(TreeNode, primaryjoin=tables.trees.c.root_node_id==tables.trees.c.node_id, thiscol=tables.trees.c.root_node_id, lazy=None, uselist=False),
-    children=relation(TreeNode, primaryjoin=tables.trees.c.parent_node_id==tables.trees.c.node_id, thiscol=tables.trees.c.node_id, lazy=None, uselist=True, private=True),
+    root=relation(TreeNode, primaryjoin=tables.trees.c.root_node_id==tables.trees.c.node_id, foreignkey=tables.trees.c.node_id, thiscol=tables.trees.c.root_node_id, lazy=None, uselist=False),
+    children=relation(TreeNode, primaryjoin=tables.trees.c.parent_node_id==tables.trees.c.node_id, foreignkey=tables.trees.c.parent_node_id, thiscol=tables.trees.c.node_id, lazy=None, uselist=True, private=True),
     data=relation(TreeData, tables.treedata, properties=dict(id=tables.treedata.c.data_id), private=True, lazy=False)
     
 ), extension = TreeLoader())
