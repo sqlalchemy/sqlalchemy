@@ -10,20 +10,7 @@ class PersistTest(unittest.TestCase):
     def echo(self, text):
         if echo:
             print text
-    def capture_exec(self, db, callable_):
-        e = db.echo
-        b = db.logger
-        buffer = StringIO.StringIO()
-        db.logger = buffer
-        db.echo = True
-        try:
-            callable_()
-            if echo:
-                print buffer.getvalue()
-            return buffer.getvalue()
-        finally:
-            db.logger = b
-            db.echo = e
+
 
 class AssertMixin(PersistTest):
     def assert_result(self, result, class_, *objects):
@@ -44,9 +31,13 @@ class AssertMixin(PersistTest):
                     self.assert_row(value[0], getattr(rowobj, key), value[1])
             else:
                 self.assert_(getattr(rowobj, key) == value, "attribute %s value %s does not match %s" % (key, getattr(rowobj, key), value))
-    def assert_enginesql(self, db, callable_, result):
-        self.assert_(self.capture_exec(db, callable_) == result, result)
-
+    def assert_sql(self, db, callable_, list):
+        db.set_assert_list(self, list)
+        try:
+            callable_()
+        finally:
+            db.set_assert_list(None, None)
+        
 class EngineAssert(object):
     def __init__(self, engine):
         self.engine = engine
@@ -68,6 +59,8 @@ class EngineAssert(object):
         if self.assert_list is not None:
             item = self.assert_list.pop()
             (query, params) = item
+            if callable(params):
+                params = params()
             self.unittest.assert_(statement == query and params == parameters, query + repr(params) + statement + repr(parameters))
         return self.realexec(statement, parameters, **kwargs)
         

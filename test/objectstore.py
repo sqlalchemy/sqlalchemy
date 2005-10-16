@@ -216,8 +216,11 @@ class SaveTest(AssertMixin):
         self.echo("\n\n\n")
         objectstore.uow().register_deleted(l[0])
         objectstore.uow().register_deleted(l[2])
+        objectstore.commit()
+        return
         res = self.capture_exec(db, lambda: objectstore.uow().commit())
         state = None
+        
         for line in res.split('\n'):
             if line == "DELETE FROM items WHERE items.item_id = :item_id":
                 self.assert_(state is None or state == 'addresses')
@@ -258,12 +261,19 @@ class SaveTest(AssertMixin):
         objects[3].user = User()
         objects[3].user.user_name = 'imnewlyadded'
         
-        self.assert_enginesql(db, lambda: objectstore.uow().commit(), 
-"""INSERT INTO users (user_id, user_name) VALUES (:user_id, :user_name)
-{'user_id': None, 'user_name': 'imnewlyadded'}
-UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE email_addresses.address_id = :email_addresses_address_id
-[{'email_address': 'imnew@foo.bar', 'user_id': 3, 'email_addresses_address_id': 3}, {'email_address': 'adsd5@llala.net', 'user_id': 6, 'email_addresses_address_id': 4}]
-""")
+        self.assert_sql(db, lambda: objectstore.uow().commit(), [
+                (
+                    "INSERT INTO users (user_id, user_name) VALUES (:user_id, :user_name)",
+                    {'user_id': None, 'user_name': 'imnewlyadded'}
+                ),
+                (
+                    "UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE email_addresses.address_id = :email_addresses_address_id",
+                    lambda: [
+                        {'email_address': 'imnew@foo.bar', 'user_id': objects[2].user.user_id, 'email_addresses_address_id': objects[2].address_id}, 
+                        {'email_address': 'adsd5@llala.net', 'user_id': objects[3].user.user_id, 'email_addresses_address_id': objects[3].address_id}
+                    ]
+                )
+        ])
         l = sql.select([users, addresses], sql.and_(users.c.user_id==addresses.c.address_id, addresses.c.address_id==a.address_id)).execute()
         self.echo( repr(l.fetchone().row))
         
@@ -303,6 +313,21 @@ UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE 
         self.assert_(addresstable[0].row == (addressid, userid, 'somethingnew@foo.com'))
         self.assert_(u.user_id == userid and a2.address_id == addressid)
 
+    def testonetomany2(self):
+        users.insert().execute(
+            dict(user_id = 7, user_name = 'jack'),
+            dict(user_id = 8, user_name = 'ed'),
+            dict(user_id = 9, user_name = 'fred')
+        )
+        db.connection().commit()
+        User.mapper = assignmapper(users, properties = dict(
+            addresses = relation(Address, addresses, lazy = False)
+        ))
+        u = User.mapper.select()
+        u[0].addresses.append(Address())
+        u[0].addresses[0].email_address='hi'
+        objectstore.commit()
+
     def testchildmanipulations(self):
         """digs deeper into modifying the child items of an object to insure the correct
         updates take place"""
@@ -335,12 +360,20 @@ UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE 
         u1.addresses.append(a3)
         del u1.addresses[0]
         u1.addresses.foo = True
-        self.assert_enginesql(db, lambda: objectstore.commit(), 
-"""UPDATE users SET user_name=:user_name WHERE users.user_id = :users_user_id
-[{'users_user_id': %d, 'user_name': 'user2modified'}]
-UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE email_addresses.address_id = :email_addresses_address_id
-[{'email_address': 'emailaddress3', 'user_id': %d, 'email_addresses_address_id': %d}, {'email_address': 'emailaddress1', 'user_id': None, 'email_addresses_address_id': %d}]
-""" % (u2.user_id, u1.user_id, a3.address_id, a1.address_id))
+        self.assert_sql(db, lambda: objectstore.commit(), 
+                [
+                    (
+                        "UPDATE users SET user_name=:user_name WHERE users.user_id = :users_user_id",
+                        [{'users_user_id': u2.user_id, 'user_name': 'user2modified'}]
+                    ),
+                    (
+                        "UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE email_addresses.address_id = :email_addresses_address_id",
+                        [
+                            {'email_address': 'emailaddress3', 'user_id': u1.user_id, 'email_addresses_address_id': a3.address_id}, 
+                            {'email_address': 'emailaddress1', 'user_id': None, 'email_addresses_address_id': a1.address_id}
+                        ]
+                    )
+                ])
 
     def testbackwardsmanipulations(self):
         m = mapper(Address, addresses, properties = dict(
@@ -444,7 +477,7 @@ UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE 
         k = Keyword()
         k.name = 'yellow'
         objects[5].keywords.append(k)
-        db.set_assert_list(self, [
+        self.assert_sql(db, lambda:objectstore.commit(), [
             (
                 "INSERT INTO keywords (keyword_id, name) VALUES (:keyword_id, :name)", 
                 {'keyword_id': None, 'name': 'yellow'}
@@ -454,11 +487,9 @@ UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE 
                 [{'item_name': 'item4updated', 'order_id': None, 'items_item_id': objects[4].item_id}]
             ),
             ("INSERT INTO itemkeywords (item_id, keyword_id) VALUES (:item_id, :keyword_id)",
-            [{'item_id': objects[5].item_id, 'keyword_id': 11}]
+            lambda: [{'item_id': objects[5].item_id, 'keyword_id': k.keyword_id}]
             )
         ])
-        objectstore.commit()
-        db.set_assert_list(None, None)
 
         objects[2].keywords.append(k)
         self.echo("added: " + repr(objects[2].keywords.added_items()))
