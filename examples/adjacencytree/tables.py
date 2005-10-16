@@ -11,11 +11,21 @@ trees = Table('treenodes', engine,
     Column('node_id', Integer, primary_key=True),
     Column('parent_node_id', Integer, ForeignKey('treenodes.node_id'), nullable=True),
     Column('root_node_id', Integer, ForeignKey('treenodes.node_id'), nullable=True),
-    Column('node_name', String(50), nullable=False)
+    Column('node_name', String(50), nullable=False),
+    Column('data_ident', Integer, ForeignKey('treedata.data_id'))
     )
+
+treedata = Table(
+    "treedata", engine, 
+    Column('data_id', Integer, primary_key=True),
+    Column('value', String(100), nullable=False)
+)
     
 print "\n\n\n----------------------------"
 print "Creating Tree Table:"
 print "----------------------------"
-    
+
+treedata.create()    
 trees.create()
+
+

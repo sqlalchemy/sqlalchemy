@@ -260,7 +260,6 @@ class SaveTest(AssertMixin):
         objects[2].email_address = 'imnew@foo.bar'
         objects[3].user = User()
         objects[3].user.user_name = 'imnewlyadded'
-        
         self.assert_sql(db, lambda: objectstore.uow().commit(), [
                 (
                     "INSERT INTO users (user_id, user_name) VALUES (:user_id, :user_name)",
@@ -276,7 +275,56 @@ class SaveTest(AssertMixin):
         ])
         l = sql.select([users, addresses], sql.and_(users.c.user_id==addresses.c.address_id, addresses.c.address_id==a.address_id)).execute()
         self.echo( repr(l.fetchone().row))
+
+    def testbackwardsnonmatch(self):
+        u2 = Table('users_nm', db,
+            Column('user_id', Integer, primary_key = True),
+            Column('user_name', String(20)),
+        )
+
+        a2 = Table('email_addresses_nm', db,
+            Column('address_id', Integer, primary_key = True),
+            Column('rel_user_id', Integer, ForeignKey(u2.c.user_id)),
+            Column('email_address', String(20)),
+        )
+        u2.create()
+        a2.create()
+        m = mapper(Address, a2, properties = dict(
+            user = relation(User, u2, lazy = True, uselist = False)
+        ))
+        data = [
+            {'user_name' : 'thesub' , 'email_address' : 'bar@foo.com'},
+            {'user_name' : 'assdkfj' , 'email_address' : 'thesdf@asdf.com'},
+        ]
+        objects = []
+        for elem in data:
+            a = Address()
+            a.email_address = elem['email_address']
+            a.user = User()
+            a.user.user_name = elem['user_name']
+            objects.append(a)
+        self.assert_sql(db, lambda: objectstore.commit(), [
+                (
+                    "INSERT INTO users_nm (user_id, user_name) VALUES (:user_id, :user_name)",
+                    {'user_id': None, 'user_name': 'thesub'}
+                ),
+                (
+                    "INSERT INTO users_nm (user_id, user_name) VALUES (:user_id, :user_name)",
+                    {'user_id': None, 'user_name': 'assdkfj'}
+                ),
+                (
+                "INSERT INTO email_addresses_nm (address_id, rel_user_id, email_address) VALUES (:address_id, :rel_user_id, :email_address)",
+                {'rel_user_id': 1, 'address_id': None, 'email_address': 'bar@foo.com'}
+                ),
+                (
+                "INSERT INTO email_addresses_nm (address_id, rel_user_id, email_address) VALUES (:address_id, :rel_user_id, :email_address)",
+                {'rel_user_id': 2, 'address_id': None, 'email_address': 'thesdf@asdf.com'}
+                )
+                ]
+        )
         
+        
+
     def testonetomany(self):
         """test basic save of one to many."""
         m = mapper(User, users, properties = dict(

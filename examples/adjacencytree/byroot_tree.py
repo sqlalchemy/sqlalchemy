@@ -52,6 +52,8 @@ class TreeNode(object):
             self.children.append(TreeNode(node))
         else:
             self.children.append(node)
+    def __repr__(self):
+        return self._getstring(0, False)
     def __str__(self):
         return self._getstring(0, False)
     def _getstring(self, level, expand = False):
@@ -89,6 +91,12 @@ class TreeLoader(MapperExtension):
             parentnode.children.append(instance, _mapper_nohistory=True)
         return False
             
+class TreeData(object):
+    def __init__(self, value=None):
+        self.id = None
+        self.value = value
+    def __repr__(self):
+        return "TreeData(%s, %s)" % (repr(self.id), repr(self.value))
 # define the mapper.  we will make "convenient" property
 # names vs. the more verbose names in the table definition
 
@@ -99,6 +107,8 @@ TreeNode.mapper=assignmapper(tables.trees, properties=dict(
     root_id=tables.trees.c.root_node_id,
     root=relation(TreeNode, primaryjoin=tables.trees.c.root_node_id==tables.trees.c.node_id, thiscol=tables.trees.c.root_node_id, lazy=None, uselist=False),
     children=relation(TreeNode, primaryjoin=tables.trees.c.parent_node_id==tables.trees.c.node_id, thiscol=tables.trees.c.node_id, lazy=None, uselist=True, private=True),
+    data=relation(TreeData, tables.treedata, properties=dict(id=tables.treedata.c.data_id), private=True, lazy=False)
+    
 ), extension = TreeLoader())
 TreeNode.mapper
 
@@ -109,7 +119,9 @@ node = TreeNode('rootnode')
 node.append('node1')
 node.append(node2)
 node.append('node3')
+node.children['node3'].data = TreeData('node 3s data')
 node.children['node2'].append('subnode2')
+node.children['node1'].data = TreeData('node 1s data')
 
 print "\n\n\n----------------------------"
 print "Created new tree structure:"
