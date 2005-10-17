@@ -818,7 +818,6 @@ class PropertyLoader(MapperProperty):
         if self.direction == PropertyLoader.CENTER:
             secondary_delete = []
             secondary_insert = []
-            associationrow = {}
             if delete:
                 for obj in deplist:
                     childlist = getlist(obj, False)
@@ -831,12 +830,10 @@ class PropertyLoader(MapperProperty):
                 for obj in deplist:
                     childlist = getlist(obj)
                     if childlist is None: continue
-                    clearkeys = False
                     for child in childlist.added_items():
                         associationrow = {}
                         self._synchronize(obj, child, associationrow, False)
                         secondary_insert.append(associationrow)
-                    clearkeys = True
                     for child in childlist.deleted_items():
                         associationrow = {}
                         self._synchronize(obj, child, associationrow, True)
@@ -897,17 +894,18 @@ class PropertyLoader(MapperProperty):
             dest = associationrow
 
         for rule in self.syncrules:
+            localsource = source
             (smapper, scol, dmapper, dcol) = rule
-            if source is None:
+            if localsource is None:
                 if dmapper == PropertyLoader.LEFT:
-                    source = obj
+                    localsource = obj
                 elif dmapper == PropertyLoader.RIGHT:
-                    source = child
+                    localsource = child
 
             if clearkeys:
                 value = None
             else:
-                value = smapper._getattrbycolumn(source, scol)
+                value = smapper._getattrbycolumn(localsource, scol)
 
             if dest is associationrow:
                 associationrow[dcol.key] = value

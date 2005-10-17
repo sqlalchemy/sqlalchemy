@@ -101,8 +101,6 @@ print "Committing:"
 print "----------------------------"
 objectstore.commit()
 
-#sys.exit()
-
 print "\n\n\n----------------------------"
 print "Tree After Save:"
 print "----------------------------"
