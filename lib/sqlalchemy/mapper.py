@@ -630,8 +630,8 @@ class PropertyLoader(MapperProperty):
         self.key = key
         self.parent = parent
 
-        if self.parent.table is self.target and self.foreignkey is None:
-            raise "Circular relationship requires explicit 'foreignkey' parameter"
+#        if self.parent.table is self.target and self.foreignkey is None:
+ #           raise "Circular relationship requires explicit 'foreignkey' parameter"
             
         # if join conditions were not specified, figure them out based on foreign keys
         if self.secondary is not None:
@@ -666,11 +666,6 @@ class PropertyLoader(MapperProperty):
             objectstore.uow().register_attribute(parent.class_, key, uselist = self.uselist, deleteremoved = self.private)
 
     def _get_direction(self):
-#        if self.thiscol is not None:
- #           if self.thiscol.primary_key:
- #               return PropertyLoader.LEFT
- #           else:
- #               return PropertyLoader.RIGHT
         if self.parent.primarytable is self.target:
             if self.foreignkey.primary_key:
                 return PropertyLoader.RIGHT

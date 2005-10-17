@@ -41,6 +41,7 @@ class TreeNode(object):
         self.root = self
         self.parent = None
         self.id = None
+        self.data =None
         self.parent_id = None
         self.root_id=None
     def _set_root(self, root):
@@ -57,7 +58,7 @@ class TreeNode(object):
     def __str__(self):
         return self._getstring(0, False)
     def _getstring(self, level, expand = False):
-        s = ('  ' * level) + "%s (%s,%s,%s, %d)" % (self.name, self.id,self.parent_id,self.root_id, id(self)) + '\n'
+        s = ('  ' * level) + "%s (%s,%s,%s, %d): %s" % (self.name, self.id,self.parent_id,self.root_id, id(self), repr(self.data)) + '\n'
         if expand:
             s += string.join([n._getstring(level+1, True) for n in self.children.values()], '')
         return s
@@ -97,16 +98,14 @@ class TreeData(object):
         self.value = value
     def __repr__(self):
         return "TreeData(%s, %s)" % (repr(self.id), repr(self.value))
-# define the mapper.  we will make "convenient" property
-# names vs. the more verbose names in the table definition
 
 TreeNode.mapper=assignmapper(tables.trees, properties=dict(
     id=tables.trees.c.node_id,
     name=tables.trees.c.node_name,
     parent_id=tables.trees.c.parent_node_id,
     root_id=tables.trees.c.root_node_id,
-    root=relation(TreeNode, primaryjoin=tables.trees.c.root_node_id==tables.trees.c.node_id, foreignkey=tables.trees.c.node_id, thiscol=tables.trees.c.root_node_id, lazy=None, uselist=False),
-    children=relation(TreeNode, primaryjoin=tables.trees.c.parent_node_id==tables.trees.c.node_id, foreignkey=tables.trees.c.parent_node_id, thiscol=tables.trees.c.node_id, lazy=None, uselist=True, private=True),
+    root=relation(TreeNode, primaryjoin=tables.trees.c.root_node_id==tables.trees.c.node_id, foreignkey=tables.trees.c.node_id, lazy=None, uselist=False),
+    children=relation(TreeNode, primaryjoin=tables.trees.c.parent_node_id==tables.trees.c.node_id, lazy=None, uselist=True, private=True),
     data=relation(TreeData, tables.treedata, properties=dict(id=tables.treedata.c.data_id), private=True, lazy=False)
     
 ), extension = TreeLoader())

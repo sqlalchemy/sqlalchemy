@@ -307,7 +307,7 @@ class UOWTransaction(object):
             task.mapper.register_dependencies(self)
 
         head = self._sort_dependencies()
-        print "Task dump:\n" + head.dump()
+        #print "Task dump:\n" + head.dump()
         head.execute(self)
             
     def post_exec(self):
@@ -497,9 +497,6 @@ class UOWTask(object):
                             get_dependency_task(whosdep[0], processor, isdelete).append(whosdep[0], isdelete=isdelete)
                         else:
                             get_dependency_task(whosdep[0], processor, isdelete).append(whosdep[1], isdelete=isdelete)
-
-        for k, v in dependencies.iteritems():
-            print str(k), repr(v)
 
         head = util.DependencySorter(tuples, allobjects).sort()
         if head is None:

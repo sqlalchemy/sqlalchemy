@@ -8,17 +8,17 @@
         engine = sqllite.engine(':memory:', {})
         
         users = Table('users', engine, 
-            Column('user_id', INTEGER, primary_key = True),
-            Column('user_name', VARCHAR(16), nullable = False),
-            Column('email_address', VARCHAR(60), key='email'),
-            Column('password', VARCHAR(20), nullable = False)
+            Column('user_id', Integer, primary_key = True),
+            Column('user_name', String(16), nullable = False),
+            Column('email_address', String(60), key='email'),
+            Column('password', String(20), nullable = False)
         )
         
         user_prefs = Table('user_prefs', engine, 
-            Column('pref_id', INTEGER, primary_key = True),
-            Column('user_id', INTEGER, nullable = False, foreign_key = ForeignKey(users.c.user_id))
-            Column('pref_name', VARCHAR(40), nullable = False),
-            Column('pref_value', VARCHAR(100))
+            Column('pref_id', Integer, primary_key = True),
+            Column('user_id', Integer, nullable = False, foreign_key = ForeignKey(users.c.user_id))
+            Column('pref_name', String(40), nullable = False),
+            Column('pref_value', String(100))
         )
         </&>
 
@@ -46,8 +46,8 @@
         <p>This works because when the Table constructor is called for a particular name and database engine, if the table has already been created then the instance returned will be the same as the original.  This is a <b>singleton</b> constructor:</p>
         <&|formatting.myt:code&>
         >>> news_articles = Table('news', engine, 
-        ... Column('article_id', INTEGER, primary_key = True),
-        ... Column('url', VARCHAR(250), nullable = False)
+        ... Column('article_id', Integer, primary_key = True),
+        ... Column('url', String(250), nullable = False)
         ... )
         >>> othertable = Table('news', engine)
         >>> othertable is news_articles

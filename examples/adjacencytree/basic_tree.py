@@ -53,7 +53,7 @@ TreeNode.mapper=assignmapper(tables.trees, class_=TreeNode, properties=dict(
     name=tables.trees.c.node_name,
     parent_id=tables.trees.c.parent_node_id,
     root_id=tables.trees.c.root_node_id,
-    children=relation(TreeNode, primaryjoin=tables.trees.c.parent_node_id==tables.trees.c.node_id, foreignkey=tables.trees.c.parent_node_id, thiscol=tables.trees.c.node_id, lazy=True, uselist=True, private=True),
+    children=relation(TreeNode, primaryjoin=tables.trees.c.parent_node_id==tables.trees.c.node_id, lazy=True, uselist=True, private=True),
 ))
 
 node2 = TreeNode('node2')
