@@ -10,7 +10,7 @@
 		'sqlconstruction',
 		'datamapping',
 		'adv_datamapping',
-		
+		'types',		
 		]
 
 </%python>
