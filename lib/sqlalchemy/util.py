@@ -212,7 +212,7 @@ class HistoryArraySet(UserList.UserList):
         self.data[:] = []
         self.records = {}
         for l in list:
-            self.append(l)
+            self.append_nohistory(l)
     def added_items(self):
         return [key for key in self.data if self.records[key] is True]
     def deleted_items(self):
