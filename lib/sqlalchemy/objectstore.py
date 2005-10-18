@@ -70,7 +70,7 @@ def has_key(key):
 
 class UOWSmartProperty(attributes.SmartProperty):
     def attribute_registry(self):
-        return uow().attributes
+        return global_attributes
     
 class UOWListElement(attributes.ListElement):
     def __init__(self, obj, key, data=None, deleteremoved=False):
@@ -109,11 +109,10 @@ class UnitOfWork(object):
         self.is_begun = is_begun
         if parent is not None:
             self.identity_map = parent.identity_map
-            self.attributes = parent.attributes
         else:
             self.identity_map = {}
-            self.attributes = UOWAttributeManager()
             
+        self.attributes = global_attributes
         self.new = util.HashSet(ordered = True)
         self.dirty = util.HashSet()
         self.modified_lists = util.HashSet()
@@ -582,5 +581,5 @@ def object_mapper(obj):
     return sqlalchemy.mapper.object_mapper(obj)
                     
 uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")
-
+global_attributes = UOWAttributeManager()
 
