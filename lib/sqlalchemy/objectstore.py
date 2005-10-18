@@ -87,15 +87,16 @@ class UOWListElement(attributes.ListElement):
             attributes.ListElement.append(self, item)
             
 class UOWAttributeManager(attributes.AttributeManager):
-    def __init__(self, uow):
+    def __init__(self):
+        # TODO: cleanup the double indirection between UOWSmartProperty, UnitOfWork, and UOWAttributeManager
         attributes.AttributeManager.__init__(self)
-        self.uow = uow
+        #self.uow = uow
         
     def value_changed(self, obj, key, value):
         if hasattr(obj, '_instance_key'):
-            self.uow.register_dirty(obj)
+            uow().register_dirty(obj)
         else:
-            self.uow.register_new(obj)
+            uow().register_new(obj)
 
     def create_prop(self, key, uselist, **kwargs):
         return UOWSmartProperty(self).property(key, uselist, **kwargs)
@@ -111,7 +112,7 @@ class UnitOfWork(object):
             self.attributes = parent.attributes
         else:
             self.identity_map = {}
-            self.attributes = UOWAttributeManager(self)
+            self.attributes = UOWAttributeManager()
             
         self.new = util.HashSet(ordered = True)
         self.dirty = util.HashSet()
@@ -345,10 +346,12 @@ class UOWTransaction(object):
             if node is None:
                 return None
             task = bymapper.get(node.item, None)
-            if task is not None:
-                if node.circular:
-                    task.circular = task._sort_circular_dependencies(self)
-                    task.iscircular = True
+            if task is None:
+                task = UOWTask(node.item)
+                bymapper[node.item] = task
+            if node.circular:
+                task.circular = task._sort_circular_dependencies(self)
+                task.iscircular = True
             for child in node.children:
                 t = sort_hier(child)
                 if t is not None:
