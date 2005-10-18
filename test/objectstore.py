@@ -552,8 +552,17 @@ class SaveTest(AssertMixin):
         ])
 
         objects[2].keywords.append(k)
-        self.echo("added: " + repr(objects[2].keywords.added_items()))
-        objectstore.uow().commit()
+        del objects[5].keywords[1]
+        self.assert_sql(db, lambda:objectstore.commit(), [
+                (
+                    "DELETE FROM itemkeywords WHERE itemkeywords.item_id = :item_id AND itemkeywords.keyword_id = :keyword_id",
+                    [{'item_id': 6, 'keyword_id': 6}]
+                ),
+                (   
+                    "INSERT INTO itemkeywords (item_id, keyword_id) VALUES (:item_id, :keyword_id)",
+                    [{'item_id': 3, 'keyword_id': 11}]
+                )
+        ])
         
     def testassociation(self):
         class IKAssociation(object):

@@ -74,6 +74,8 @@ class AttributesTest(PersistTest):
         print repr(u.__dict__)
         print repr(u.addresses[0].__dict__)
         self.assert_(u.user_id == 7 and u.user_name == 'john' and u.addresses[0].email_address == 'lala@123.com')
+        self.assert_(len(u.addresses.unchanged_items()) == 1)
 
+        
 if __name__ == "__main__":
     unittest.main()
