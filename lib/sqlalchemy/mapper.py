@@ -831,7 +831,7 @@ class PropertyLoader(MapperProperty):
                         secondary_insert.append(associationrow)
                     for child in childlist.deleted_items():
                         associationrow = {}
-                        self._synchronize(obj, child, associationrow, True)
+                        self._synchronize(obj, child, associationrow, False)
                         secondary_delete.append(associationrow)
                     uowcommit.register_saved_list(childlist)
                 if len(secondary_delete):
