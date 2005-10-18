@@ -108,15 +108,15 @@ class UnitOfWork(object):
         self.is_begun = is_begun
         if parent is not None:
             self.identity_map = parent.identity_map
+            self.attributes = parent.attributes
         else:
             self.identity_map = {}
-        self.attributes = UOWAttributeManager(self)
+            self.attributes = UOWAttributeManager(self)
+            
         self.new = util.HashSet(ordered = True)
         self.dirty = util.HashSet()
         self.modified_lists = util.HashSet()
-        # the delete list is ordered mostly so the unit tests can predict the argument list ordering.
-        # TODO: need stronger unit test fixtures....
-        self.deleted = util.HashSet(ordered = True)
+        self.deleted = util.HashSet()
         self.parent = parent
 
     def get(self, class_, *id):
@@ -248,6 +248,8 @@ class UnitOfWork(object):
     def rollback(self):
         if not self.is_begun:
             raise "UOW transaction is not begun"
+        # TODO: locate only objects that are dirty/new/deleted in this UOW,
+        # roll only those back.
         self.attributes.rollback()
         uow.set(self.parent)
             
@@ -308,7 +310,8 @@ class UOWTransaction(object):
 
         head = self._sort_dependencies()
         #print "Task dump:\n" + head.dump()
-        head.execute(self)
+        if head is not None:
+            head.execute(self)
             
     def post_exec(self):
         """after an execute/commit is completed, all of the objects and lists that have
