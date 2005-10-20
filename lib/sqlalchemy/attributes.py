@@ -152,14 +152,14 @@ class CallableProp(object):
         if not self.uselist:
             m = self.manager
             self.getattr()
-            return m.attribute_history[self.obj][self.key]
+            return m.attribute_history(self.obj)[self.key]
         else:
             if not self.obj.__dict__.has_key(self.key) or len(self.obj.__dict__[self.key]) == 0:
                 value = self.callable_()
             else:
                 value = None
             p = self.manager.create_list(self.obj, self.key, value, **self.kwargs)
-            self.manager.attribute_history[self.obj][self.key] = p
+            self.manager.attribute_history(self.obj)[self.key] = p
             self.manager = None
             return p
 
@@ -169,7 +169,7 @@ class CallableProp(object):
             self.obj.__dict__[self.key] = value
 
         p = PropHistory(self.obj, self.key, **self.kwargs)
-        self.manager.attribute_history[self.obj][self.key] = p
+        self.manager.attribute_history(self.obj)[self.key] = p
         self.manager = None
         return p
 
@@ -177,11 +177,12 @@ class CallableProp(object):
         pass
     def rollback(self):
         pass
-        
+
+            
 class AttributeManager(object):
     """maintains a set of per-attribute callable/history manager objects for a set of objects."""
     def __init__(self):
-        self.attribute_history = {}
+        pass
 
     def value_changed(self, obj, key, value):
         pass
@@ -215,79 +216,58 @@ class AttributeManager(object):
         self.value_changed(obj, key, None)
 
     def set_callable(self, obj, key, func, uselist, **kwargs):
-        try:
-            d = self.attribute_history[obj]
-        except KeyError, e:
-            d = {}
-            self.attribute_history[obj] = d
-        d[key] = CallableProp(self, func, obj, key, uselist, **kwargs)
+        self.attribute_history(obj)[key] = CallableProp(self, func, obj, key, uselist, **kwargs)
         
     def delete_list_attribute(self, obj, key, **kwargs):
         pass
         
-    def rollback(self, obj = None):
-        if obj is None:
-            for attr in self.attribute_history.values():
-                for hist in attr.values():
-                    hist.rollback()
-        else:
+    def rollback(self, *obj):
+        for o in obj:
             try:
-                attributes = self.attribute_history[obj]
+                attributes = self.attribute_history(o)
                 for hist in attributes.values():
                     hist.rollback()
             except KeyError:
                 pass
 
-    def commit(self, obj = None):
-        if obj is None:
-            for attr in self.attribute_history.values():
-                for hist in attr.values():
-                    hist.commit()
-        else:
+    def commit(self, *obj):
+        for o in obj:
             try:
-                attributes = self.attribute_history[obj]
+                attributes = self.attribute_history(o)
                 for hist in attributes.values():
                     hist.commit()
             except KeyError:
                 pass
                 
     def remove(self, obj):
-        try:
-            del self.attribute_history[obj]
-        except KeyError:
-            pass
+        pass
             
     def get_history(self, obj, key, **kwargs):
         try:
-            return self.attribute_history[obj][key].gethistory(**kwargs)
+            return self.attribute_history(obj)[key].gethistory(**kwargs)
         except KeyError, e:
-            if e.args[0] is obj:
-                d = {}
-                self.attribute_history[obj] = d
-                p = PropHistory(obj, key, **kwargs)
-                d[key] = p
-                return p
-            else:
-                p = PropHistory(obj, key, **kwargs)
-                self.attribute_history[obj][key] = p
-                return p
+            p = PropHistory(obj, key, **kwargs)
+            self.attribute_history(obj)[key] = p
+            return p
 
     def get_list_history(self, obj, key, passive = False, **kwargs):
         try:
-            return self.attribute_history[obj][key].gethistory(passive)
+            return self.attribute_history(obj)[key].gethistory(passive)
         except KeyError, e:
             # TODO: when an callable is re-set on an existing list element
             list_ = obj.__dict__.get(key, None)
-            if e.args[0] is obj:
-                d = {}
-                self.attribute_history[obj] = d
-                p = self.create_list(obj, key, list_, **kwargs)
-                d[key] = p
-                return p
-            else:
-                p = self.create_list(obj, key, list_, **kwargs)
-                self.attribute_history[obj][key] = p
-                return p
+            p = self.create_list(obj, key, list_, **kwargs)
+            self.attribute_history(obj)[key] = p
+            return p
 
+    def attribute_history(self, obj):
+        try:
+            attr = obj.__dict__['_managed_attributes']
+        except KeyError:
+            attr = {}
+            obj.__dict__['_managed_attributes'] = attr
+        return attr
+        
     def register_attribute(self, class_, key, uselist, **kwargs):
         setattr(class_, key, self.create_prop(key, uselist, **kwargs))
+

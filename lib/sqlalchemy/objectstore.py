@@ -68,10 +68,6 @@ def delete(*obj):
 def has_key(key):
     return uow().identity_map.has_key(key)
 
-class UOWSmartProperty(attributes.SmartProperty):
-    def attribute_registry(self):
-        return global_attributes
-    
 class UOWListElement(attributes.ListElement):
     def __init__(self, obj, key, data=None, deleteremoved=False):
         attributes.ListElement.__init__(self, obj, key, data=data)
@@ -88,18 +84,13 @@ class UOWListElement(attributes.ListElement):
             
 class UOWAttributeManager(attributes.AttributeManager):
     def __init__(self):
-        # TODO: cleanup the double indirection between UOWSmartProperty, UnitOfWork, and UOWAttributeManager
         attributes.AttributeManager.__init__(self)
-        #self.uow = uow
         
     def value_changed(self, obj, key, value):
         if hasattr(obj, '_instance_key'):
             uow().register_dirty(obj)
         else:
             uow().register_new(obj)
-
-    def create_prop(self, key, uselist, **kwargs):
-        return UOWSmartProperty(self).property(key, uselist, **kwargs)
 
     def create_list(self, obj, key, list_, **kwargs):
         return UOWListElement(obj, key, list_, **kwargs)
@@ -143,6 +134,7 @@ class UnitOfWork(object):
             del self.new[obj]
         except KeyError:
             pass
+        self.attributes.commit(obj)
         self.attributes.remove(obj)
         
     def update(self, obj):
@@ -167,6 +159,7 @@ class UnitOfWork(object):
         except KeyError:
             pass
         self._put(obj._instance_key, obj)
+        self.attributes.commit(obj)
         
     def register_new(self, obj):
         self.new.append(obj)
@@ -237,7 +230,6 @@ class UnitOfWork(object):
             e.commit()
             
         commit_context.post_exec()
-        self.attributes.commit()
         
         if self.parent:
             uow.set(self.parent)
@@ -250,7 +242,8 @@ class UnitOfWork(object):
             raise "UOW transaction is not begun"
         # TODO: locate only objects that are dirty/new/deleted in this UOW,
         # roll only those back.
-        self.attributes.rollback()
+        for obj in self.deleted + self.dirty + self.new:
+            self.attributes.rollback(obj)
         uow.set(self.parent)
             
 class UOWTransaction(object):
@@ -323,6 +316,7 @@ class UOWTransaction(object):
 
         for obj in self.saved_lists:
             try:
+                obj.commit()
                 del self.uow.modified_lists[obj]
             except KeyError:
                 pass
@@ -332,6 +326,7 @@ class UOWTransaction(object):
         
         for obj in self.deleted_lists:
             try:
+                obj.commit()
                 del self.uow.modified_lists[obj]
             except KeyError:
                 pass
@@ -579,7 +574,8 @@ def mapper(*args, **params):
 
 def object_mapper(obj):
     return sqlalchemy.mapper.object_mapper(obj)
-                    
+
+
 global_attributes = UOWAttributeManager()
 uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")
 
