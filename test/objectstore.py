@@ -88,6 +88,7 @@ class SaveTest(AssertMixin):
         # select both
         #objectstore.clear()
         userlist = m.select(users.c.user_id.in_(u.user_id, u2.user_id), order_by=[users.c.user_name])
+        print repr(u.user_id), repr(userlist[0].user_id), repr(userlist[0].user_name)
         self.assert_(u.user_id == userlist[0].user_id and userlist[0].user_name == 'modifiedname')
         self.assert_(u2.user_id == userlist[1].user_id and userlist[1].user_name == 'savetester2')
 
@@ -533,6 +534,7 @@ class SaveTest(AssertMixin):
         l = m.select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name, keywords.c.name])
         self.assert_result(l, *data)
 
+        print "\n\n\n"
         objects[4].item_name = 'item4updated'
         k = Keyword()
         k.name = 'yellow'
@@ -552,15 +554,16 @@ class SaveTest(AssertMixin):
         ])
 
         objects[2].keywords.append(k)
+        dkid = objects[5].keywords[1].keyword_id
         del objects[5].keywords[1]
         self.assert_sql(db, lambda:objectstore.commit(), [
                 (
                     "DELETE FROM itemkeywords WHERE itemkeywords.item_id = :item_id AND itemkeywords.keyword_id = :keyword_id",
-                    [{'item_id': 6, 'keyword_id': 6}]
+                    [{'item_id': objects[5].item_id, 'keyword_id': dkid}]
                 ),
                 (   
                     "INSERT INTO itemkeywords (item_id, keyword_id) VALUES (:item_id, :keyword_id)",
-                    [{'item_id': 3, 'keyword_id': 11}]
+                    lambda: [{'item_id': objects[2].item_id, 'keyword_id': k.keyword_id}]
                 )
         ])
         
