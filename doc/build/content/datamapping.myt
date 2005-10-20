@@ -11,9 +11,9 @@
         
         # table <& formatting.myt:link, path="metadata", text="metadata" &>
         users = Table('users', engine, 
-            Column('user_id', INTEGER, primary_key = True),
-            Column('user_name', VARCHAR(16), nullable = False),
-            Column('password', VARCHAR(20), nullable = False)
+            Column('user_id', Integer, primary_key = True),
+            Column('user_name', String(16), nullable = False),
+            Column('password', String(20), nullable = False)
         )
         
         # class definition with mapper (mapper can also be separate)
@@ -52,9 +52,9 @@ password=:password WHERE users.user_id = :user_id
         <&|formatting.myt:code&>
         # second table <& formatting.myt:link, path="metadata", text="metadata" &>
         addresses = Table('email_addresses', engine,
-            Column('address_id', INT, primary_key = True),
-            Column('user_id', INT, foreign_key = ForeignKey(users.c.user_id)),
-            Column('email_address', VARCHAR(20)),
+            Column('address_id', Integer, primary_key = True),
+            Column('user_id', Integer, foreign_key = ForeignKey(users.c.user_id)),
+            Column('email_address', String(20)),
         )
         
         # second class definition
@@ -109,7 +109,7 @@ email_address=:email_address WHERE email_addresses.address_id = :address_id
 
 [{'email_address': 'fredjones@foo.com', 'address_id': 1, 'user_id': 1}]
 
-INSERT INTO email_addresses (address_id, user_id, email_address) 
+INSERT IntegerO email_addresses (address_id, user_id, email_address) 
 VALUES (:address_id, :user_id, :email_address)
 
 {'email_address': 'freddy@hi.org', 'address_id': None, 'user_id': 1}
@@ -123,18 +123,18 @@ VALUES (:address_id, :user_id, :email_address)
         <&|formatting.myt:code&>
         # a table to store a user's preferences for a site
         prefs = Table('user_prefs', engine,
-            Column('pref_id', INT, primary_key = True),
-            Column('stylename', VARCHAR(20)),
+            Column('pref_id', Integer, primary_key = True),
+            Column('stylename', String(20)),
             Column('save_password', BOOLEAN, nullable = False),
             Column('timezone', CHAR(3), nullable = False)
         )
 
         # user table gets 'preference_id' column added
         users = Table('users', engine, 
-            Column('user_id', INTEGER, primary_key = True),
-            Column('user_name', VARCHAR(16), nullable = False),
-            Column('password', VARCHAR(20), nullable = False),
-            Column('preference_id', INTEGER, foreign_key = ForeignKey(prefs.c.pref_id))
+            Column('user_id', Integer, primary_key = True),
+            Column('user_name', String(16), nullable = False),
+            Column('password', String(20), nullable = False),
+            Column('preference_id', Integer, foreign_key = ForeignKey(prefs.c.pref_id))
         )
         
         # class definition for preferences
@@ -173,7 +173,7 @@ WHERE user_prefs.pref_id = :pref_id
 
 [{'timezone': u'EST', 'stylename': 'bluesteel', 'save_password': 1, 'pref_id': 1}]
 
-INSERT INTO email_addresses (address_id, user_id, email_address) 
+INSERT IntegerO email_addresses (address_id, user_id, email_address) 
 VALUES (:address_id, :user_id, :email_address)
 
 {'email_address': 'freddy@hi.org', 'address_id': None, 'user_id': 1}
@@ -183,57 +183,70 @@ VALUES (:address_id, :user_id, :email_address)
 
 <&|doclib.myt:item, name="manytomany", description="Many to Many" &>
         <&|formatting.myt:code&>
-            # create articles table.  note the usage of "key=<synonym>" to redefine the
-            # names of properties that will be used on the object.
-            articles = Table('articles', engine,
-                Column('article_id', INT, primary_key = True),
-                Column('article_headline', key='headline', VARCHAR(150)),
-                Column('article_body', key='body', CLOB),
-            )
-            
-            keywords = Table('keywords', engine,
-                Column('keyword_id', INT, primary_key = True),
-                Column('name', VARCHAR(50))
-            )
+    articles = Table('articles', engine,
+        Column('article_id', Integer, primary_key = True),
+        Column('article_headline', String(150), key='headline'),
+        Column('article_body', CLOB, key='body'),
+    )
 
-            itemkeywords = Table('article_keywords', engine,
-                Column('article_id', INT, foreign_key = ForeignKey(articles.c.article_id)),
-                Column('keyword_id', INT, foreign_key = ForeignKey(keywords.c.keyword_id))
-            )
-            
-            # class definitions
-            class Article:pass
-            
-            class Keyword:
-                def __init__(self, name = None):
-                    self.name = name
-                    
-            # create mapper.  we will eager load keywords.  
-            m = mapper(Article, articles, properties = dict(
-                keywords = relation(Keyword.mapper, itemkeywords, lazy=False)
+    keywords = Table('keywords', engine,
+        Column('keyword_id', Integer, primary_key = True),
+        Column('name', String(50))
+    )
+
+    itemkeywords = Table('article_keywords', engine,
+        Column('article_id', Integer, ForeignKey(articles.c.article_id)),
+        Column('keyword_id', Integer, ForeignKey(keywords.c.keyword_id))
+    )
+
+    articles.create()
+    keywords.create()
+    itemkeywords.create()
+
+    # class definitions
+    class Keyword(object):
+        def __init__(self, name = None):
+            self.name = name
+        mapper = assignmapper(keywords)
+
+    class Article(object):
+        def __init__(self):
+            self.keywords = []
+        mapper = assignmapper(articles, properties = dict(
+            keywords = relation(Keyword.mapper, itemkeywords, lazy=False)
             ))
-            
-            # select articles based on some keywords.  the extra selection criterion 
-            # won't get in the way of the separate eager load of all the article's keywords
-            articles = m.select(sql.and_(keywords.c.keyword_id==articles.c.article_id, keywords.c.keyword_name.in_('politics', 'entertainment')))
-            
-            # modify
-            del articles.keywords[articles.keywords.index('politics')]
-            articles.keywords.append(Keyword('topstories'))
-            articles.keywords.append(Keyword('government'))
-            
-            # commit.  individual INSERT/DELETE operations will take place only for the list
-            # elements that changed.
-            objectstore.commit()
+
+    article = Article()
+    article.headline = 'a headline'
+    article.body = 'this is the body'
+    article.keywords.append(Keyword('politics'))
+    article.keywords.append(Keyword('entertainment'))
+    objectstore.commit()
+
+    # select articles based on some keywords.  the extra selection criterion 
+    # won't get in the way of the separate eager load of all the article's keywords
+    articles = Article.mapper.select(sql.and_(keywords.c.keyword_id==articles.c.article_id, keywords.c.name.in_('politics', 'entertainment')))
+
+    # modify
+    a = articles[0]
+    del a.keywords[:]
+    a.keywords.append(Keyword('topstories'))
+    a.keywords.append(Keyword('government'))
+
+    # commit.  individual INSERT/DELETE operations will take place only for the list
+    # elements that changed.
+    objectstore.commit()
+
+
         </&>
         
         <p>Many to Many can also be done with an Association object, that adds additional information about how two items are related:</p>
         <&|formatting.myt:code&>
             # add "attached_by" column which will reference the user who attached this keyword
             itemkeywords = Table('article_keywords', engine,
-                Column('article_id', INT, foreign_key = ForeignKey(articles.c.article_id)),
-                Column('keyword_id', INT, foreign_key = ForeignKey(keywords.c.keyword_id)),
-                Column('attached_by', INT, foreign_key = ForeignKey(users.c.user_id))
+                Column('article_id', Integer, foreign_key = ForeignKey(articles.c.article_id)),
+                Column('keyword_id', Integer, foreign_key = ForeignKey(keywords.c.keyword_id)),
+                Column('attached_by', Integer, foreign_key = ForeignKey(users.c.user_id))
             )
 
             # define an association class
