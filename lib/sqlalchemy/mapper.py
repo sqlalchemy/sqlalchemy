@@ -277,20 +277,32 @@ class Mapper(object):
         prop.init(key, self)
 
     
-    def instances(self, cursor, db):
+    def instances(self, cursor, *mappers):
         result = util.HistoryArraySet()
+        if len(mappers):
+            otherresults = []
+            for m in mappers:
+                otherresults.append(util.HistoryArraySet())
+                
         imap = {}
         while True:
             row = cursor.fetchone()
             if row is None:
                 break
             self._instance(row, imap, result)
-        
+            i = 0
+            for m in mappers:
+                m._instance(row, imap, otherresults[i])
+                i+=1
+                
         # store new stuff in the identity map
         for value in imap.values():
             objectstore.uow().register_clean(value)
-            
-        return result
+
+        if len(mappers):
+            return result + otherresults
+        else:
+            return result
 
     def get(self, *ident):
         """returns an instance of the object based on the given identifier, or None
@@ -469,7 +481,7 @@ class Mapper(object):
 
     def _select_statement(self, statement, **params):
         statement.use_labels = True
-        return self.instances(statement.execute(**params), statement.engine)
+        return self.instances(statement.execute(**params))
 
     def _identity_key(self, row):
         return objectstore.get_row_key(row, self.class_, self.primarytable, self.primary_keys[self.table])
