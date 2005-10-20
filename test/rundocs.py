@@ -100,9 +100,9 @@ users.insert().execute(
 
 
 addresses = Table('email_addresses', engine,
-    Column('address_id', INT, primary_key = True),
-    Column('user_id', INT, ForeignKey(users.c.user_id)),
-    Column('email_address', VARCHAR(20)),
+    Column('address_id', Integer, primary_key = True),
+    Column('user_id', Integer, ForeignKey(users.c.user_id)),
+    Column('email_address', String(20)),
 )
 addresses.drop()
 addresses.create()
@@ -128,4 +128,61 @@ user.preferences.stylename = 'bluesteel'
 user.addresses.append(Address('freddy@hi.org'))
 
 # commit
+objectstore.commit()
+
+
+
+articles = Table('articles', engine,
+    Column('article_id', Integer, primary_key = True),
+    Column('article_headline', String(150), key='headline'),
+    Column('article_body', CLOB, key='body'),
+)
+
+keywords = Table('keywords', engine,
+    Column('keyword_id', Integer, primary_key = True),
+    Column('name', String(50))
+)
+
+itemkeywords = Table('article_keywords', engine,
+    Column('article_id', Integer, ForeignKey(articles.c.article_id)),
+    Column('keyword_id', Integer, ForeignKey(keywords.c.keyword_id))
+)
+
+articles.create()
+keywords.create()
+itemkeywords.create()
+
+# class definitions
+class Keyword(object):
+    def __init__(self, name = None):
+        self.name = name
+    mapper = assignmapper(keywords)
+    
+class Article(object):
+    def __init__(self):
+        self.keywords = []
+    mapper = assignmapper(articles, properties = dict(
+        keywords = relation(Keyword.mapper, itemkeywords, lazy=False)
+        ))
+Article.mapper
+
+article = Article()
+article.headline = 'a headline'
+article.body = 'this is the body'
+article.keywords.append(Keyword('politics'))
+article.keywords.append(Keyword('entertainment'))
+objectstore.commit()
+
+# select articles based on some keywords.  the extra selection criterion 
+# won't get in the way of the separate eager load of all the article's keywords
+alist = Article.mapper.select(sql.and_(keywords.c.keyword_id==articles.c.article_id, keywords.c.name.in_('politics', 'entertainment')))
+
+# modify
+a = alist[0]
+del a.keywords[:]
+a.keywords.append(Keyword('topstories'))
+a.keywords.append(Keyword('government'))
+
+# commit.  individual INSERT/DELETE operations will take place only for the list
+# elements that changed.
 objectstore.commit()
