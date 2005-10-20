@@ -580,6 +580,6 @@ def mapper(*args, **params):
 def object_mapper(obj):
     return sqlalchemy.mapper.object_mapper(obj)
                     
-uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")
 global_attributes = UOWAttributeManager()
+uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")
 
