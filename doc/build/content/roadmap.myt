@@ -7,10 +7,10 @@
 Start
   |
   |
-  |--- Establishing Transparent Connection Pooling
+  |--- <&formatting.myt:link, path="pooling_establishing" &>
   |              |
   |              |
-  |              |------ Connection Pooling Configuration
+  |              |------ <&formatting.myt:link, path="pooling_configuration" &>
   |                                         |              
   |                                         |
   +--- <&formatting.myt:link, path="dbengine_establishing" &>       |
@@ -29,10 +29,13 @@ Start
                                    |                                      |                
                                    |                                      |                                  
                                    +---- <&formatting.myt:link, path="datamapping"&>               |                
-                                                   |                      |  
-                                                   |                      |              
-                                                   +----------- Advanced Data Mapping
-                                                                           
-                                                   
+                                   |               |                      |  
+                                   |               |                      |  
+                                   |         <&formatting.myt:link, path="unitofwork"&>                 |              
+                                   |               |                      |              
+                                   |               |                      |              
+                                   |               +----------- <&formatting.myt:link, path="adv_datamapping"&>
+                                   |                                       
+                                   +----- <&formatting.myt:link, path="types"&>
 </pre>
 </&>
