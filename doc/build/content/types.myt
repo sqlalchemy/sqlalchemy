@@ -1,5 +1,9 @@
 <%flags>inherit='document_base.myt'</%flags>
 <&|doclib.myt:item, name="types", description="The Types System" &>
+<p>The package <span class="codeline">sqlalchemy.types</span> defines the datatype identifiers which may be used when defining <&formatting.myt:link, path="metadata", text="table metadata"&>.  This package includes a set of generic types, a set of SQL-specific subclasses of those types, and a small extension system used by specific database connectors to adapt these generic types into database-specific type objects.
+</p>
+<&|doclib.myt:item, name="standard", description="Built-in Types" &>
+
 <p>SQLAlchemy comes with a set of standard generic datatypes, which are defined as classes.  They are specified to table meta data using either the class itself, or an instance of the class.  Creating an instance of the class allows you to specify parameters for the type, such as string length, numerical precision, etc. 
 </p>
 <p>The standard set of generic types are:</p>
@@ -28,6 +32,7 @@ class BLOB(Binary): pass
 class BOOLEAN(Boolean): pass
 </&>
 <p>When using a specific database engine, these types are adapted even further via a set of database-specific subclasses defined by the database engine.</p>
+</&>
 
 <&|doclib.myt:item, name="custom", description="Creating your Own Types" &>
 <p>Types also support pre-processing of query parameters as well as post-processing of result set data.  You can make your own type classes and specify them just like the standard types:</p>
