@@ -53,7 +53,7 @@ password=:password WHERE users.user_id = :user_id
         # second table <& formatting.myt:link, path="metadata", text="metadata" &>
         addresses = Table('email_addresses', engine,
             Column('address_id', Integer, primary_key = True),
-            Column('user_id', Integer, foreign_key = ForeignKey(users.c.user_id)),
+            Column('user_id', Integer, ForeignKey("users.user_id")),
             Column('email_address', String(20)),
         )
         
@@ -134,7 +134,7 @@ VALUES (:address_id, :user_id, :email_address)
             Column('user_id', Integer, primary_key = True),
             Column('user_name', String(16), nullable = False),
             Column('password', String(20), nullable = False),
-            Column('preference_id', Integer, foreign_key = ForeignKey(prefs.c.pref_id))
+            Column('preference_id', Integer, ForeignKey("prefs.pref_id"))
         )
         
         # class definition for preferences
@@ -195,8 +195,8 @@ VALUES (:address_id, :user_id, :email_address)
     )
 
     itemkeywords = Table('article_keywords', engine,
-        Column('article_id', Integer, ForeignKey(articles.c.article_id)),
-        Column('keyword_id', Integer, ForeignKey(keywords.c.keyword_id))
+        Column('article_id', Integer, ForeignKey("articles.article_id")),
+        Column('keyword_id', Integer, ForeignKey("keywords.keyword_id"))
     )
 
     articles.create()

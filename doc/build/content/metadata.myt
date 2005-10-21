@@ -1,7 +1,7 @@
 <%flags>inherit='document_base.myt'</%flags>
 <&|doclib.myt:item, name="metadata", description="Database Meta Data" &>
     <&|doclib.myt:item, name="tables", description="Describing Tables with MetaData" &>
-    <p>The core of SQLAlchemy's query and object mapping operations is table metadata, which are Python objects that describe tables.  Metadata objects can be created by explicitly naming the table and all its properties, using the Table, Column, and ForeignKey objects: </p>
+    <p>The core of SQLAlchemy's query and object mapping operations is table metadata, which are Python objects that describe tables.  Metadata objects can be created by explicitly naming the table and all its properties, using the Table, Column, and ForeignKey objects imported from <span class="codeline">sqlalchemy.schema</span>, and datatype identifiers imported from <&formatting.myt:link, path="types", text="sqlalchemy.types"&>: </p>
         <&|formatting.myt:code&>
         from sqlalchemy.schema import *
         import sqlalchemy.sqlite as sqlite
@@ -16,7 +16,7 @@
         
         user_prefs = Table('user_prefs', engine, 
             Column('pref_id', Integer, primary_key = True),
-            Column('user_id', Integer, nullable = False, foreign_key = ForeignKey(users.c.user_id))
+            Column('user_id', Integer, nullable = False, ForeignKey("users.user_id"))
             Column('pref_name', String(40), nullable = False),
             Column('pref_value', String(100))
         )
@@ -59,4 +59,11 @@
     </&>
     <&|doclib.myt:item, name="building", description="Building and Dropping Database Tables" &>
     </&>
+
+    <&|doclib.myt:item, name="adapting", description="Adapting Tables to Alternate Engines" &>
+    </&>
+
+    <&|doclib.myt:item, name="sequences", description="Defining Sequences" &>
+    </&>
+
 </&>
