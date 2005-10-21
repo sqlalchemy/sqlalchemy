@@ -10,31 +10,33 @@ __ALL__ = ['db', 'users', 'addresses', 'orders', 'orderitems', 'keywords', 'item
 
 ECHO = testbase.echo
 DATA = True
-
-DBTYPE = 'sqlite_memory'
+CREATE = False
+#CREATE = True
+#DBTYPE = 'sqlite_memory'
+DBTYPE = 'postgres'
 #DBTYPE = 'sqlite_file'
 
 if DBTYPE == 'sqlite_memory':
     db = sqlalchemy.engine.create_engine('sqlite', ':memory:', {}, echo = testbase.echo)
 elif DBTYPE == 'sqlite_file':
     import sqlalchemy.databases.sqlite as sqllite
-    if os.access('querytest.db', os.F_OK):
-        os.remove('querytest.db')
+#    if os.access('querytest.db', os.F_OK):
+ #       os.remove('querytest.db')
     db = sqlalchemy.engine.create_engine('sqlite', 'querytest.db', {}, echo = testbase.echo)
 elif DBTYPE == 'postgres':
-    pass
+    db = sqlalchemy.engine.create_engine('postgres', {'database':'test', 'host':'127.0.0.1', 'user':'scott', 'password':'tiger'}, echo=testbase.echo)
 
 db = testbase.EngineAssert(db)
 
 users = Table('users', db,
     Column('user_id', Integer, primary_key = True),
-    Column('user_name', String(20)),
+    Column('user_name', String(40)),
 )
 
 addresses = Table('email_addresses', db,
     Column('address_id', Integer, primary_key = True),
     Column('user_id', Integer, ForeignKey(users.c.user_id)),
-    Column('email_address', String(20)),
+    Column('email_address', String(40)),
 )
 
 orders = Table('orders', db,
@@ -60,25 +62,32 @@ itemkeywords = Table('itemkeywords', db,
     Column('keyword_id', INT, ForeignKey("keywords"))
 )
 
-users.create()
+if CREATE:
+    users.create()
+    addresses.create()
+    orders.create()
+    orderitems.create()
+    keywords.create()
+    itemkeywords.create()
+
 
 if DATA:
+    itemkeywords.delete().execute()
+    keywords.delete().execute()
+    orderitems.delete().execute()
+    orders.delete().execute()
+    addresses.delete().execute()
+    users.delete().execute()
     users.insert().execute(
         dict(user_id = 7, user_name = 'jack'),
         dict(user_id = 8, user_name = 'ed'),
         dict(user_id = 9, user_name = 'fred')
     )
-
-addresses.create()
-if DATA:
     addresses.insert().execute(
         dict(address_id = 1, user_id = 7, email_address = "jack@bean.com"),
         dict(address_id = 2, user_id = 8, email_address = "ed@wood.com"),
         dict(address_id = 3, user_id = 8, email_address = "ed@lala.com")
     )
-
-orders.create()
-if DATA:
     orders.insert().execute(
         dict(order_id = 1, user_id = 7, description = 'order 1', isopen=0),
         dict(order_id = 2, user_id = 9, description = 'order 2', isopen=0),
@@ -86,9 +95,6 @@ if DATA:
         dict(order_id = 4, user_id = 9, description = 'order 4', isopen=1),
         dict(order_id = 5, user_id = 7, description = 'order 5', isopen=0)
     )
-
-orderitems.create()
-if DATA:
     orderitems.insert().execute(
         dict(item_id=1, order_id=2, item_name='item 1'),
         dict(item_id=3, order_id=3, item_name='item 3'),
@@ -96,9 +102,6 @@ if DATA:
         dict(item_id=5, order_id=3, item_name='item 5'),
         dict(item_id=4, order_id=3, item_name='item 4')
     )
-
-keywords.create()
-if DATA:
     keywords.insert().execute(
         dict(keyword_id=1, name='blue'),
         dict(keyword_id=2, name='red'),
@@ -108,9 +111,6 @@ if DATA:
         dict(keyword_id=6, name='round'),
         dict(keyword_id=7, name='square')
     )
-
-itemkeywords.create()
-if DATA:
     itemkeywords.insert().execute(
         dict(keyword_id=2, item_id=1),
         dict(keyword_id=2, item_id=2),
@@ -122,6 +122,7 @@ if DATA:
         dict(keyword_id=5, item_id=2),
         dict(keyword_id=4, item_id=3)
     )
+
 db.connection().commit()
 
 

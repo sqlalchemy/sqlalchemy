@@ -6,9 +6,10 @@ import sqlalchemy.objectstore as objectstore
 import testbase
 
 echo = testbase.echo
-testbase.echo = False
+#testbase.echo = False
 from tables import *
 
+itemkeywords.delete().execute()
 keywords.delete().execute()
 keywords.insert().execute(
     dict(keyword_id=1, name='blue'),
@@ -47,11 +48,11 @@ class SaveTest(AssertMixin):
         db.echo = False
         objectstore.clear()
         clear_mappers()
-        orders.delete().execute()
-        orderitems.delete().execute()
-        users.delete().execute()
-        addresses.delete().execute()
         itemkeywords.delete().execute()
+        orderitems.delete().execute()
+        orders.delete().execute()
+        addresses.delete().execute()
+        users.delete().execute()
         
         db.echo = e
         

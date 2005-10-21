@@ -141,12 +141,12 @@ class SQLiteCompiler(ansisql.ANSICompiler):
 
 class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column):
-        colspec = column.name + " " + column.column.type.get_col_spec()
-        if not column.column.nullable:
+        colspec = column.name + " " + column.type.get_col_spec()
+        if not column.nullable:
             colspec += " NOT NULL"
-        if column.column.primary_key:
+        if column.primary_key:
             colspec += " PRIMARY KEY"
-        if column.column.foreign_key:
-            colspec += " REFERENCES %s(%s)" % (column.column.foreign_key.column.table.name, column.column.foreign_key.column.name) 
+        if column.foreign_key:
+            colspec += " REFERENCES %s(%s)" % (column.foreign_key.column.table.name, column.foreign_key.column.name) 
         return colspec
 

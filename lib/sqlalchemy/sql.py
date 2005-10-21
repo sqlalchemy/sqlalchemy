@@ -463,6 +463,11 @@ class Join(Selectable):
 
     primary_keys = property (lambda self: [c for c in self.left.columns if c.primary_key] + [c for c in self.right.columns if c.primary_key])
 
+
+    def group_parenthesized(self):
+        """indicates if this Selectable requires parenthesis when grouped into a compound statement"""
+        return False
+
     def hash_key(self):
         return "Join(%s, %s, %s, %s)" % (repr(self.left.hash_key()), repr(self.right.hash_key()), repr(self.onclause.hash_key()), repr(self.isouter))
 

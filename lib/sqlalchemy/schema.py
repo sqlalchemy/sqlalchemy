@@ -80,7 +80,7 @@ class Table(SchemaItem):
         self.name = name
         self.columns = OrderedProperties()
         self.c = self.columns
-        self.foreign_keys = OrderedProperties()
+        self.foreign_keys = []
         self.primary_keys = []
         self.engine = engine
         self._impl = self.engine.tableimpl(self)
@@ -204,7 +204,6 @@ class ForeignKey(SchemaItem):
             else:
                 self._column = self._colspec
 
-            self.parent.table.foreign_keys[self._column.key] = self
         return self._column
             
     column = property(lambda s: s._init_column())
@@ -212,6 +211,7 @@ class ForeignKey(SchemaItem):
     def _set_parent(self, column):
         self.parent = column
         self.parent.foreign_key = self
+        self.parent.table.foreign_keys.append(self)
         
 class Sequence(SchemaItem):
     """represents a sequence, which applies to Oracle and Postgres databases."""

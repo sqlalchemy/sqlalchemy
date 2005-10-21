@@ -138,8 +138,11 @@ class ANSICompiler(sql.Compiled):
         while self.binds.setdefault(key, bindparam) is not bindparam:
             key = "%s_%d" % (bindparam.key, count)
             count += 1
-        self.strings[bindparam] = ":" + key
+        self.strings[bindparam] = self.bindparam_string(key)
 
+    def bindparam_string(self, name):
+        return ":" + name
+        
     def visit_alias(self, alias):
         self.froms[alias] = self.get_from_text(alias.selectable) + " " + alias.name
         self.strings[alias] = self.get_str(alias.selectable)
@@ -221,7 +224,7 @@ class ANSICompiler(sql.Compiled):
             self.binds[b.shortname] = b
             
         text = ("INSERT INTO " + insert_stmt.table.name + " (" + string.join([c[0].name for c in colparams], ', ') + ")" +
-         " VALUES (" + string.join([":" + c[1].key for c in colparams], ', ') + ")")
+         " VALUES (" + string.join([self.bindparam_string(c[1].key) for c in colparams], ', ') + ")")
          
         self.strings[insert_stmt] = text
 
@@ -231,7 +234,7 @@ class ANSICompiler(sql.Compiled):
             if isinstance(p, BindParamClause):
                 self.binds[p.key] = p
                 self.binds[p.shortname] = p
-                return ":" + p.key
+                return self.bindparam_string(p.key)
             else:
                 p.accept_visitor(self)
                 if isinstance(p, ClauseElement):

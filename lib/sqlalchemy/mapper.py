@@ -397,9 +397,17 @@ class Mapper(object):
                 
 #                print "SAVE_OBJ we are " + hash_key(self) + " obj: " +  obj.__class__.__name__ + repr(id(obj))
                 params = {}
+
                 for col in table.columns:
-                    if col.primary_key and hasattr(obj, "_instance_key"):
-                        params[col.table.name + "_" + col.key] = self._getattrbycolumn(obj, col)
+                    if col.primary_key:
+                        if hasattr(obj, "_instance_key"):
+                            params[col.table.name + "_" + col.key] = self._getattrbycolumn(obj, col)
+                        else:
+                            # its an INSERT - if its NULL, leave it out as pgsql doesnt 
+                            # like it for an autoincrement
+                            value = self._getattrbycolumn(obj, col)
+                            if value is not None:
+                                params[col.key] = value
                     else:
                         params[col.key] = self._getattrbycolumn(obj, col)
 
@@ -730,7 +738,7 @@ class PropertyLoader(MapperProperty):
 
     def _compile_synchronizers(self):
         def compile(binary):
-            if binary.operator != '=':
+            if binary.operator != '=' or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
                 return
 
             if binary.left.table == binary.right.table:
@@ -998,7 +1006,11 @@ class EagerLoader(PropertyLoader):
             towrap = self.parent.table
 
         if self.secondaryjoin is not None:
-            statement._outerjoin = sql.outerjoin(towrap, self.secondary, self.secondaryjoin).outerjoin(self.target, self.primaryjoin)
+            print self.secondary.name
+            print str(self.secondaryjoin)
+            print self.target.name
+            print str(self.primaryjoin)
+            statement._outerjoin = sql.outerjoin(towrap, self.secondary, self.primaryjoin).outerjoin(self.target, self.secondaryjoin)
         else:
             statement._outerjoin = towrap.outerjoin(self.target, self.primaryjoin)
 

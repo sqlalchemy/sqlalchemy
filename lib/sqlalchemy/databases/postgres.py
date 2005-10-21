@@ -15,47 +15,87 @@
 # along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-import sys, StringIO, string
+import sys, StringIO, string, types, re
 
 import sqlalchemy.sql as sql
+import sqlalchemy.engine as engine
 import sqlalchemy.schema as schema
 import sqlalchemy.ansisql as ansisql
+import sqlalchemy.types as sqltypes
 from sqlalchemy.ansisql import *
 
+class PGNumeric(sqltypes.Numeric):
+    def get_col_spec(self):
+        return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
+class PGInteger(sqltypes.Integer):
+    def get_col_spec(self):
+        return "INTEGER"
+class PGDateTime(sqltypes.DateTime):
+    def get_col_spec(self):
+        return "TIMESTAMP"
+class PGText(sqltypes.TEXT):
+    def get_col_spec(self):
+        return "TEXT"
+class PGString(sqltypes.String):
+    def get_col_spec(self):
+        return "VARCHAR(%(length)s)" % {'length' : self.length}
+class PGChar(sqltypes.CHAR):
+    def get_col_spec(self):
+        return "CHAR(%(length)s)" % {'length' : self.length}
+class PGBinary(sqltypes.Binary):
+    def get_col_spec(self):
+        return "BLOB"
+class PGBoolean(sqltypes.Boolean):
+    def get_col_spec(self):
+        return "BOOLEAN"
+        
 colspecs = {
-    schema.INT : "INTEGER",
-    schema.CHAR : "CHAR(%(length)s)",
-    schema.VARCHAR : "VARCHAR(%(length)s)",
-    schema.TEXT : "TEXT",
-    schema.FLOAT : "NUMERIC(%(precision)s, %(length)s)",
-    schema.DECIMAL : "NUMERIC(%(precision)s, %(length)s)",
-    schema.TIMESTAMP : "TIMESTAMP",
-    schema.DATETIME : "TIMESTAMP",
-    schema.CLOB : "TEXT",
-    schema.BLOB : "BLOB",
-    schema.BOOLEAN : "BOOLEAN",
+    sqltypes.Integer : PGInteger,
+    sqltypes.Numeric : PGNumeric,
+    sqltypes.DateTime : PGDateTime,
+    sqltypes.String : PGString,
+    sqltypes.Binary : PGBinary,
+    sqltypes.Boolean : PGBoolean,
+    sqltypes.TEXT : PGText,
+    sqltypes.CHAR: PGChar,
 }
 
-
-def engine(**params):
-    return PGSQLEngine(**params)
+def engine(opts, **params):
+    return PGSQLEngine(opts, **params)
 
 class PGSQLEngine(ansisql.ANSISQLEngine):
-    def __init__(self, **params):
+    def __init__(self, opts, module = None, **params):
+        if module is None:
+            self.module = __import__('psycopg2')
+        else:
+            self.module = module
+        self.opts = opts or {}
         ansisql.ANSISQLEngine.__init__(self, **params)
 
     def connect_args(self):
-        return [[], {}]
+        return [[], self.opts]
 
-    def compile(self, statement, bindparams):
-        compiler = PGCompiler(self, statement, bindparams)
-        statement.accept_visitor(compiler)
-        return compiler
+
+    def type_descriptor(self, typeobj):
+        return sqltypes.adapt_type(typeobj, colspecs)
 
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
 
+    def compiler(self, statement, bindparams):
+        return PGCompiler(self, statement, bindparams)
+
+    def schemagenerator(self, proxy, **params):
+        return PGSchemaGenerator(proxy, **params)
+
+    def reflecttable(self, table):
+        raise "not implemented"
+        
+    def last_inserted_ids(self):
+        return self.context.last_inserted_ids
+
     def pre_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
+        if True: return
         if compiled is None: return
         if getattr(compiled, "isinsert", False):
             last_inserted_ids = []
@@ -70,25 +110,33 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
                     last_inserted_ids.append(newid)
             self.context.last_inserted_ids = last_inserted_ids
 
-    def dbapi(self):
-        return None
-#        return psycopg
+    def post_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
+        if compiled is None: return
+        if getattr(compiled, "isinsert", False):
+            self.context.last_inserted_ids = [cursor.lastrowid]
 
-    def columnimpl(self, column):
-        return PGColumnImpl(column)
+    def dbapi(self):
+        return self.module
 
     def reflecttable(self, table):
         raise NotImplementedError()
 
 class PGCompiler(ansisql.ANSICompiler):
-    pass
+    def bindparam_string(self, name):
+        return "%(" + name + ")s"
 
-class PGColumnImpl(sql.ColumnSelectable):
-    def get_specification(self):
-        coltype = self.column.type
-        if isinstance(coltype, types.ClassType):
-            key = coltype
+class PGSchemaGenerator(ansisql.ANSISchemaGenerator):
+    def get_column_specification(self, column):
+        colspec = column.name
+        if column.primary_key and isinstance(column.type, types.Integer):
+            colspec += " SERIAL"
         else:
-            key = coltype.__class__
+            colspec += " " + column.column.type.get_col_spec()
 
-        return self.name + " " + colspecs[key] % {'precision': getattr(coltype, 'precision', None), 'length' : getattr(coltype, 'length', None)}
+        if not column.nullable:
+            colspec += " NOT NULL"
+        if column.primary_key:
+            colspec += " PRIMARY KEY"
+        if column.foreign_key:
+            colspec += " REFERENCES %s(%s)" % (column.column.foreign_key.column.table.name, column.column.foreign_key.column.name) 
+        return colspec
