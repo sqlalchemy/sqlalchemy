@@ -112,6 +112,8 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
             self.context.last_inserted_ids = last_inserted_ids
 
     def _executemany(self, c, statement, parameters):
+        """we need accurate rowcounts for updates, inserts and deletes.  psycopg2 is not nice enough
+        to produce this correctly for an executemany, so we do our own executemany here."""
         rowcount = 0
         for param in parameters:
             c.execute(statement, param)
@@ -121,11 +123,15 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
     def post_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
         if compiled is None: return
         if getattr(compiled, "isinsert", False):
-            # psycopg wants to make it hard on us and give us an OID.  well, pre-select a sequence,
-            # or post-select the row, I guess not much diff.
+            # psycopg wants to return internal rowids, which I guess is what DBAPI2 really 
+            # specifies.
+            # well then post exec to get the row.  I guess this could be genericised to 
+            # be for all inserts somehow if the "rowid" col could be gotten off a table.
             table = compiled.statement.table
             if len(table.primary_keys):
                 # TODO: cache this statement against the table to avoid multiple re-compiles
+                # TODO: instead of "oid" have the Table object have a "rowid_col" property
+                # that gives this col generically
                 row = sql.select(table.primary_keys, sql.ColumnClause("oid",table) == bindparam('oid', cursor.lastrowid) ).execute().fetchone()
                 self.context.last_inserted_ids = [v for v in row]
 
