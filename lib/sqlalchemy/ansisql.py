@@ -93,6 +93,9 @@ class ANSICompiler(sql.Compiled):
         else:
             self.strings[column] = "%s.%s" % (column.table.name, column.name)
 
+    def visit_columnclause(self, column):
+        self.strings[column] = "%s.%s" % (column.table.name, column.text)
+
     def visit_fromclause(self, fromclause):
         self.froms[fromclause] = fromclause.from_name
 
