@@ -32,6 +32,7 @@ class SaveTest(AssertMixin):
         db.echo = testbase.echo
     def tearDownAll(self):
         db.echo = False
+        db.commit()
         tables.drop()
         db.echo = testbase.echo
         
@@ -55,6 +56,7 @@ class SaveTest(AssertMixin):
 
     def tearDown(self):
         db.echo = False
+        db.commit()
         tables.delete()
         db.echo = testbase.echo
         
@@ -309,23 +311,26 @@ class SaveTest(AssertMixin):
             objects.append(a)
         self.assert_sql(db, lambda: objectstore.commit(), [
                 (
-                    "INSERT INTO users_nm (user_id, user_name) VALUES (:user_id, :user_name)",
-                    {'user_id': None, 'user_name': 'thesub'}
+                    "INSERT INTO users_nm (user_name) VALUES (:user_name)",
+                    {'user_name': 'thesub'}
                 ),
                 (
-                    "INSERT INTO users_nm (user_id, user_name) VALUES (:user_id, :user_name)",
-                    {'user_id': None, 'user_name': 'assdkfj'}
+                    "INSERT INTO users_nm (user_name) VALUES (:user_name)",
+                    {'user_name': 'assdkfj'}
                 ),
                 (
-                "INSERT INTO email_addresses_nm (address_id, rel_user_id, email_address) VALUES (:address_id, :rel_user_id, :email_address)",
-                {'rel_user_id': 1, 'address_id': None, 'email_address': 'bar@foo.com'}
+                "INSERT INTO email_addresses_nm (rel_user_id, email_address) VALUES (:rel_user_id, :email_address)",
+                {'rel_user_id': 1, 'email_address': 'bar@foo.com'}
                 ),
                 (
-                "INSERT INTO email_addresses_nm (address_id, rel_user_id, email_address) VALUES (:address_id, :rel_user_id, :email_address)",
-                {'rel_user_id': 2, 'address_id': None, 'email_address': 'thesdf@asdf.com'}
+                "INSERT INTO email_addresses_nm (rel_user_id, email_address) VALUES (:rel_user_id, :email_address)",
+                {'rel_user_id': 2, 'email_address': 'thesdf@asdf.com'}
                 )
                 ]
         )
+        a2.drop()
+        u2.drop()
+        db.commit()
         
         
 
