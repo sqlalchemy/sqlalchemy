@@ -96,6 +96,7 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
 
     def pre_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
         if True: return
+        # if a sequence was explicitly defined we do it here
         if compiled is None: return
         if getattr(compiled, "isinsert", False):
             last_inserted_ids = []
@@ -113,7 +114,12 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
     def post_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
         if compiled is None: return
         if getattr(compiled, "isinsert", False):
-            self.context.last_inserted_ids = [cursor.lastrowid]
+            # psycopg wants to make it hard on us and give us an OID.  well, pre-select a sequence,
+            # or post-select the row, I guess not much diff.
+            table = compiled.statement.table
+            if len(table.primary_keys):
+                row = sql.select(table.primary_keys, sql.ColumnClause("oid",table) == bindparam('oid', cursor.lastrowid) ).execute().fetchone()
+                self.context.last_inserted_ids = [v for v in row]
 
     def dbapi(self):
         return self.module
