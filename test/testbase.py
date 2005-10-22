@@ -71,7 +71,18 @@ class EngineAssert(object):
             self.unittest.assert_(statement == query and params == parameters, "Testing for query '%s' params %s, received '%s' with params %s" % (query, repr(params), statement, repr(parameters)))
         return self.realexec(statement, parameters, **kwargs)
         
-def runTests(suite):
-    runner = unittest.TextTestRunner(verbosity = 2, descriptions =1)
-    runner.run(suite)
-
+def runTests(*modules):
+    for m in modules:
+        if m.__dict__.has_key('startUp'):
+            m.startUp()
+        s = suite(m)
+        runner = unittest.TextTestRunner(verbosity = 2, descriptions =1)
+        runner.run(s)
+        if m.__dict__.has_key('tearDown'):
+            m.tearDown()
+    
+def suite(modules):
+    alltests = unittest.TestSuite()
+    for module in map(__import__, modules):
+        alltests.addTest(unittest.findTestCases(module))
+    return alltests
