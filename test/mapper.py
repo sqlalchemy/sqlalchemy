@@ -9,6 +9,60 @@ from tables import *
 
 db.echo = testbase.echo
 
+itemkeywords.delete().execute()
+keywords.delete().execute()
+orderitems.delete().execute()
+orders.delete().execute()
+addresses.delete().execute()
+users.delete().execute()
+users.insert().execute(
+    dict(user_id = 7, user_name = 'jack'),
+    dict(user_id = 8, user_name = 'ed'),
+    dict(user_id = 9, user_name = 'fred')
+)
+addresses.insert().execute(
+    dict(address_id = 1, user_id = 7, email_address = "jack@bean.com"),
+    dict(address_id = 2, user_id = 8, email_address = "ed@wood.com"),
+    dict(address_id = 3, user_id = 8, email_address = "ed@lala.com")
+)
+orders.insert().execute(
+    dict(order_id = 1, user_id = 7, description = 'order 1', isopen=0),
+    dict(order_id = 2, user_id = 9, description = 'order 2', isopen=0),
+    dict(order_id = 3, user_id = 7, description = 'order 3', isopen=1),
+    dict(order_id = 4, user_id = 9, description = 'order 4', isopen=1),
+    dict(order_id = 5, user_id = 7, description = 'order 5', isopen=0)
+)
+orderitems.insert().execute(
+    dict(item_id=1, order_id=2, item_name='item 1'),
+    dict(item_id=3, order_id=3, item_name='item 3'),
+    dict(item_id=2, order_id=2, item_name='item 2'),
+    dict(item_id=5, order_id=3, item_name='item 5'),
+    dict(item_id=4, order_id=3, item_name='item 4')
+)
+keywords.insert().execute(
+    dict(keyword_id=1, name='blue'),
+    dict(keyword_id=2, name='red'),
+    dict(keyword_id=3, name='green'),
+    dict(keyword_id=4, name='big'),
+    dict(keyword_id=5, name='small'),
+    dict(keyword_id=6, name='round'),
+    dict(keyword_id=7, name='square')
+)
+itemkeywords.insert().execute(
+    dict(keyword_id=2, item_id=1),
+    dict(keyword_id=2, item_id=2),
+    dict(keyword_id=4, item_id=1),
+    dict(keyword_id=6, item_id=1),
+    dict(keyword_id=7, item_id=2),
+    dict(keyword_id=6, item_id=3),
+    dict(keyword_id=3, item_id=3),
+    dict(keyword_id=5, item_id=2),
+    dict(keyword_id=4, item_id=3)
+)
+
+db.connection().commit()
+
+
 class MapperTest(AssertMixin):
     
     def setUp(self):

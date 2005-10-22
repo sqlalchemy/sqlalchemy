@@ -45,13 +45,13 @@ class SaveTest(AssertMixin):
         users.delete().execute()
         keywords.delete().execute()
         keywords.insert().execute(
-            dict(keyword_id=1, name='blue'),
-            dict(keyword_id=2, name='red'),
-            dict(keyword_id=3, name='green'),
-            dict(keyword_id=4, name='big'),
-            dict(keyword_id=5, name='small'),
-            dict(keyword_id=6, name='round'),
-            dict(keyword_id=7, name='square')
+            dict(name='blue'),
+            dict(name='red'),
+            dict(name='green'),
+            dict(name='big'),
+            dict(name='small'),
+            dict(name='round'),
+            dict(name='square')
         )
         db.connection().commit()        
         db.echo = e
