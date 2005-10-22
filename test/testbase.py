@@ -1,6 +1,8 @@
 import unittest
 import StringIO
 import sqlalchemy.engine as engine
+import re
+import sqlalchemy.databases.postgres as postgres
 
 echo = True
 
@@ -56,11 +58,16 @@ class EngineAssert(object):
     def execute(self, statement, parameters, **kwargs):
         self.engine.echo = self.echo
         self.engine.logger = self.logger
-        if self.assert_list is not None:
+        
+        if self.assert_list is not None and not (isinstance(self.engine, postgres.PGSQLEngine) and re.match(r'oid', statement, re.S)):
             item = self.assert_list.pop()
             (query, params) = item
             if callable(params):
                 params = params()
+                
+            if isinstance(self.engine, postgres.PGSQLEngine):
+                query = re.sub(r':([\w_]+)', r"%(\1)s", query)
+
             self.unittest.assert_(statement == query and params == parameters, "Testing for query '%s' params %s, received '%s' with params %s" % (query, repr(params), statement, repr(parameters)))
         return self.realexec(statement, parameters, **kwargs)
         

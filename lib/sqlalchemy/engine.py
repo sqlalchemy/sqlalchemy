@@ -250,6 +250,8 @@ class RowProxy:
     def __init__(self, parent, row):
         self.parent = parent
         self.row = row
+    def __iter__(self):
+        return iter(self.row)
     def __eq__(self, other):
         return (other is self) or (other == tuple([self.parent._get_col(self.row, key) for key in range(0, len(self.row))]))
     def __repr__(self):
