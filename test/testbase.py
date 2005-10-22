@@ -59,7 +59,7 @@ class EngineAssert(object):
         self.engine.echo = self.echo
         self.engine.logger = self.logger
         
-        if self.assert_list is not None and not (isinstance(self.engine, postgres.PGSQLEngine) and re.match(r'oid', statement, re.S)):
+        if self.assert_list is not None and not (isinstance(self.engine, postgres.PGSQLEngine) and re.search(r'%\(oid\)s', statement, re.S)):
             item = self.assert_list.pop()
             (query, params) = item
             if callable(params):

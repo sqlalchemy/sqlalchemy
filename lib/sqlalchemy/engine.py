@@ -199,20 +199,28 @@ class SQLEngine(schema.SchemaEngine):
 
         self.pre_exec(connection, c, statement, parameters, echo = echo, **kwargs)
         if isinstance(parameters, list):
-            c.executemany(statement, parameters)
+            self._executemany(c, statement, parameters)
         else:
-            c.execute(statement, parameters)
+            self._execute(c, statement, parameters)
         self.post_exec(connection, c, statement, parameters, echo = echo, **kwargs)
-        return ResultProxy(c, self.echo, typemap = typemap)
+        return ResultProxy(c, self, typemap = typemap)
 
+    def _execute(self, c, statement, parameters):
+        c.execute(statement, parameters)
+        self.context.rowcount = c.rowcount
+    def _executemany(self, c, statement, parameters):
+        c.executemany(statement, parameters)
+        self.context.rowcount = c.rowcount
+    
     def log(self, msg):
         self.logger.write(msg + "\n")
 
 
 class ResultProxy:
-    def __init__(self, cursor, echo = False, typemap = None):
+    def __init__(self, cursor, engine, typemap = None):
         self.cursor = cursor
-        self.echo = echo
+        self.echo = engine.echo
+        self.rowcount = engine.context.rowcount
         metadata = cursor.description
         self.props = {}
         i = 0
