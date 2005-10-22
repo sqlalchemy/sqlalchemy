@@ -130,7 +130,6 @@ class Column(SchemaItem):
         
     original = property(lambda s: s._orig or s)
     engine = property(lambda s: s.table.engine)
-    
         
     def _set_parent(self, table):
         table.columns[self.key] = self

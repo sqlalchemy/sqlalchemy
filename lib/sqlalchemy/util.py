@@ -24,19 +24,17 @@ class OrderedProperties(object):
     """
     def __init__(self):
         self.__dict__['_list'] = []
-            
     def keys(self):
         return self._list
-        
     def __iter__(self):
         return iter([self[x] for x in self._list])
-    
     def __setitem__(self, key, object):
         setattr(self, key, object)
-        
     def __getitem__(self, key):
         return getattr(self, key)
-        
+    def __delitem__(self, key):
+        delattr(self, key)
+        del self._list[self._list.index(key)]
     def __setattr__(self, key, object):
         if not hasattr(self, key):
             self._list.append(key)

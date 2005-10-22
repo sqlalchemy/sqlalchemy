@@ -54,20 +54,42 @@ def get_row_key(row, class_, table, primary_keys):
     """
     return (class_, table, tuple([row[column.label] for column in primary_keys]))
 
+def begin():
+    """begins a new UnitOfWork transaction.  the next commit will affect only
+    objects that are created, modified, or deleted following the begin statement."""
+    uow().begin()
+    
 def commit(*obj):
+    """commits the current UnitOfWork transaction.  if a transaction was begun 
+    via begin(), commits only those objects that were created, modified, or deleted
+    since that begin statement.  otherwise commits all objects that have been
+    changed."""
     uow().commit(*obj)
     
 def clear():
+    """removes all current UnitOfWorks and IdentityMaps for this thread and 
+    establishes a new one.  It is probably a good idea to discard all
+    current mapped object instances, as they are no longer in the Identity Map."""
     uow.set(UnitOfWork())
 
 def delete(*obj):
+    """registers the given objects as to be deleted upon the next commit"""
     uw = uow()
     for o in obj:
         uw.register_deleted(o)
     
 def has_key(key):
+    """returns True if the current thread-local IdentityMap contains the given instance key"""
     return uow().identity_map.has_key(key)
 
+def has_instance(instance):
+    """returns True if the current thread-local IdentityMap contains the given instance"""
+    return uow().identity_map.has_key(instance_key(instance))
+
+def instance_key(instance):
+    """returns the IdentityMap key for the given instance"""
+    return object_mapper(instance).instance_key(instance)
+    
 class UOWListElement(attributes.ListElement):
     def __init__(self, obj, key, data=None, deleteremoved=False):
         attributes.ListElement.__init__(self, obj, key, data=data)

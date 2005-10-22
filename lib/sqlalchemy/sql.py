@@ -401,7 +401,6 @@ class CompoundClause(ClauseElement):
     """represents a list of clauses joined by an operator"""
     def __init__(self, operator, *clauses):
         self.operator = operator
-        self.fromobj = []
         self.clauses = []
         self.parens = False
         for c in clauses:
@@ -418,7 +417,6 @@ class CompoundClause(ClauseElement):
         elif isinstance(clause, CompoundClause):
             clause.parens = True
         self.clauses.append(clause)
-        self.fromobj += clause._get_from_objects()
 
     def accept_visitor(self, visitor):
         for c in self.clauses:
@@ -426,7 +424,10 @@ class CompoundClause(ClauseElement):
         visitor.visit_compound(self)
 
     def _get_from_objects(self):
-        return self.fromobj
+        f = []
+        for c in self.clauses:
+            f += c._get_from_objects()
+        return f
         
     def hash_key(self):
         return string.join([c.hash_key() for c in self.clauses], self.operator)
@@ -621,9 +622,13 @@ class TableImpl(Selectable):
     def __init__(self, table):
         self.table = table
         self.id = self.table.name
+        self.rowid_column = schema.Column(self.table.engine.rowid_column_name(), types.Integer)
+        self.rowid_column._set_parent(table)
+        del self.table.c[self.rowid_column.key]
         
     def get_from_text(self):
         return self.table.name
+    
         
     def group_parenthesized(self):
         return False

@@ -5,15 +5,9 @@ import StringIO
 import sqlalchemy.objectstore as objectstore
 import testbase
 
-echo = testbase.echo
-#testbase.echo = False
 from tables import *
+import tables
 
-
-db.connection().commit()
-
-db.echo = echo
-testbase.echo = echo
 
 class HistoryTest(AssertMixin):
     def testattr(self):
@@ -32,18 +26,21 @@ class HistoryTest(AssertMixin):
         
 class SaveTest(AssertMixin):
 
-    def setUp(self):
-        e = db.echo
+    def setUpAll(self):
         db.echo = False
-        objectstore.clear()
-        clear_mappers()
+        tables.create()
+        db.echo = testbase.echo
+    def tearDownAll(self):
+        db.echo = False
+        tables.drop()
+        db.echo = testbase.echo
         
-        itemkeywords.delete().execute()
-        orderitems.delete().execute()
-        orders.delete().execute()
-        addresses.delete().execute()
-        users.delete().execute()
-        keywords.delete().execute()
+    def setUp(self):
+        db.echo = False
+        # remove all history/identity maps etc.
+        objectstore.clear()
+        # remove all mapperes
+        clear_mappers()
         keywords.insert().execute(
             dict(name='blue'),
             dict(name='red'),
@@ -53,8 +50,13 @@ class SaveTest(AssertMixin):
             dict(name='round'),
             dict(name='square')
         )
-        db.connection().commit()        
-        db.echo = e
+        db.commit()        
+        db.echo = testbase.echo
+
+    def tearDown(self):
+        db.echo = False
+        tables.delete()
+        db.echo = testbase.echo
         
     def testbasic(self):
         # save two users

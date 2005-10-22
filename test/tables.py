@@ -10,16 +10,14 @@ __ALL__ = ['db', 'users', 'addresses', 'orders', 'orderitems', 'keywords', 'item
 
 ECHO = testbase.echo
 
-DBTYPE = 'sqlite_memory'
-#DBTYPE = 'postgres'
+#DBTYPE = 'sqlite_memory'
+DBTYPE = 'postgres'
 #DBTYPE = 'sqlite_file'
 
 if DBTYPE == 'sqlite_memory':
     db = sqlalchemy.engine.create_engine('sqlite', ':memory:', {}, echo = testbase.echo)
 elif DBTYPE == 'sqlite_file':
     import sqlalchemy.databases.sqlite as sqllite
-#    if os.access('querytest.db', os.F_OK):
- #       os.remove('querytest.db')
     db = sqlalchemy.engine.create_engine('sqlite', 'querytest.db', {}, echo = testbase.echo)
 elif DBTYPE == 'postgres':
     db = sqlalchemy.engine.create_engine('postgres', {'database':'test', 'host':'127.0.0.1', 'user':'scott', 'password':'tiger'}, echo=testbase.echo)
@@ -67,6 +65,7 @@ def create():
     orderitems.create()
     keywords.create()
     itemkeywords.create()
+    db.commit()
     
 def drop():
     itemkeywords.drop()
@@ -75,14 +74,22 @@ def drop():
     orders.drop()
     addresses.drop()
     users.drop()
-
-def data():
+    db.commit()
+    
+def delete():
     itemkeywords.delete().execute()
     keywords.delete().execute()
     orderitems.delete().execute()
     orders.delete().execute()
     addresses.delete().execute()
     users.delete().execute()
+    
+def data():
+    delete()
+    
+    # with SQLITE, the OID column of a table defaults to the primary key, if it has one.
+    # so to database-neutrally get rows back in "insert order" based on OID, we
+    # have to also put the primary keys in order for the purpose of these tests
     users.insert().execute(
         dict(user_id = 7, user_name = 'jack'),
         dict(user_id = 8, user_name = 'ed'),
@@ -102,10 +109,10 @@ def data():
     )
     orderitems.insert().execute(
         dict(item_id=1, order_id=2, item_name='item 1'),
-        dict(item_id=3, order_id=3, item_name='item 3'),
         dict(item_id=2, order_id=2, item_name='item 2'),
+        dict(item_id=3, order_id=3, item_name='item 3'),
+        dict(item_id=4, order_id=3, item_name='item 4'),
         dict(item_id=5, order_id=3, item_name='item 5'),
-        dict(item_id=4, order_id=3, item_name='item 4')
     )
     keywords.insert().execute(
         dict(keyword_id=1, name='blue'),

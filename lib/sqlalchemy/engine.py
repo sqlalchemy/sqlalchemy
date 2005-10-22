@@ -78,6 +78,10 @@ class SQLEngine(schema.SchemaEngine):
     def compiler(self, statement, bindparams):
         raise NotImplementedError()
 
+    def rowid_column_name(self):
+        """returns the ROWID column name for this engine."""
+        return "oid"
+
     def create(self, table, **params):
         table.accept_visitor(self.schemagenerator(self.proxy(), **params))
 

@@ -90,8 +90,16 @@ def mapper(class_, table = None, engine = None, autoload = False, *args, **param
         return _mappers[hashkey]
 
 def clear_mappers():
+    """removes all mappers that have been created thus far.  when new mappers are 
+    created, they will be assigned to their classes as their primary mapper."""
     _mappers.clear()
-        
+
+def clear_mapper(m):
+    """removes the given mapper from the storage of mappers.  when a new mapper is 
+    created for the previous mapper's class, it will be used as that classes' 
+    new primary mapper."""
+    del _mappers[m.hash_key]
+    
 def eagerload(name):
     """returns a MapperOption that will convert the property of the given name
     into an eager load.  Used with mapper.options()"""
@@ -261,16 +269,20 @@ class Mapper(object):
         return self.hashkey
 
     def _init_class(self):
+        """sets up our classes' overridden __init__ method, this mappers hash key as its '_mapper' property,
+        and our columns as its 'c' property.  if the class already had a mapper, the old __init__ method
+        is kept the same."""
+        if not hasattr(self.class_, '_mapper'):
+            oldinit = self.class_.__init__
+            def init(self, *args, **kwargs):
+                nohist = kwargs.pop('_mapper_nohistory', False)
+                if oldinit is not None:
+                    oldinit(self, *args, **kwargs)
+                if not nohist:
+                    objectstore.uow().register_new(self)
+            self.class_.__init__ = init
         self.class_._mapper = self.hashkey
         self.class_.c = self.c
-        oldinit = self.class_.__init__
-        def init(self, *args, **kwargs):
-            nohist = kwargs.pop('_mapper_nohistory', False)
-            if oldinit is not None:
-                oldinit(self, *args, **kwargs)
-            if not nohist:
-                objectstore.uow().register_new(self)
-        self.class_.__init__ = init
         
     def set_property(self, key, prop):
         self.props[key] = prop
@@ -938,7 +950,11 @@ class LazyLoader(PropertyLoader):
                 params = {}
                 for key in self.lazybinds.keys():
                     params[key] = row[key]
-                result = self.mapper.select(self.lazywhere, **params)
+                if self.secondary is not None:
+                    order_by = [self.secondary.rowid_column]
+                else:
+                    order_by = [self.target.rowid_column]
+                result = self.mapper.select(self.lazywhere, order_by=order_by,**params)
                 if self.uselist:
                     return result
                 else:
