@@ -10,8 +10,8 @@ __ALL__ = ['db', 'users', 'addresses', 'orders', 'orderitems', 'keywords', 'item
 
 ECHO = testbase.echo
 
-#DBTYPE = 'sqlite_memory'
-DBTYPE = 'postgres'
+DBTYPE = 'sqlite_memory'
+#DBTYPE = 'postgres'
 #DBTYPE = 'sqlite_file'
 
 if DBTYPE == 'sqlite_memory':

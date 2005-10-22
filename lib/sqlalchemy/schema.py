@@ -124,6 +124,7 @@ class Column(SchemaItem):
         self.key = kwargs.get('key', name)
         self.primary_key = kwargs.get('primary_key', False)
         self.nullable = kwargs.get('nullable', not self.primary_key)
+        self.hidden = kwargs.get('hidden', False)
         self.foreign_key = None
         self.sequence = None
         self._orig = None
@@ -132,9 +133,10 @@ class Column(SchemaItem):
     engine = property(lambda s: s.table.engine)
         
     def _set_parent(self, table):
-        table.columns[self.key] = self
-        if self.primary_key:
-            table.primary_keys.append(self)
+        if not self.hidden:
+            table.columns[self.key] = self
+            if self.primary_key:
+                table.primary_keys.append(self)
         self.table = table
         if self.table.engine is not None:
             self.type = self.table.engine.type_descriptor(self.type)

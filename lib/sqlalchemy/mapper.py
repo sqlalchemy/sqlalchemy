@@ -486,6 +486,7 @@ class Mapper(object):
             
     def _compile(self, whereclause = None, order_by = None, **options):
         statement = sql.select([self.table], whereclause, order_by = order_by)
+        statement.order_by(self.primarytable.rowid_column)
         # plugin point
         for key, value in self.props.iteritems():
             value.setup(key, statement, **options) 
@@ -1024,8 +1025,10 @@ class EagerLoader(PropertyLoader):
             print self.target.name
             print str(self.primaryjoin)
             statement._outerjoin = sql.outerjoin(towrap, self.secondary, self.primaryjoin).outerjoin(self.target, self.secondaryjoin)
+            statement.order_by(self.secondary.rowid_column)
         else:
             statement._outerjoin = towrap.outerjoin(self.target, self.primaryjoin)
+            statement.order_by(self.target.rowid_column)
 
         statement.append_from(statement._outerjoin)
         statement.append_column(self.target)

@@ -509,7 +509,8 @@ class Join(Selectable):
         # TODO: if no onclause, do NATURAL JOIN
         self.onclause = onclause
         self.isouter = isouter
-
+        self.rowid_column = self.left.rowid_column
+        
     primary_keys = property (lambda self: [c for c in self.left.columns if c.primary_key] + [c for c in self.right.columns if c.primary_key])
 
 
@@ -550,6 +551,7 @@ class Alias(Selectable):
         self.name = alias
         self.id = self.name
         self.count = 0
+        self.rowid_column = self.selectable.rowid_column._make_proxy(self)
         for co in selectable.columns:
             co._make_proxy(self)
 
@@ -622,9 +624,8 @@ class TableImpl(Selectable):
     def __init__(self, table):
         self.table = table
         self.id = self.table.name
-        self.rowid_column = schema.Column(self.table.engine.rowid_column_name(), types.Integer)
+        self.rowid_column = schema.Column(self.table.engine.rowid_column_name(), types.Integer, hidden=True)
         self.rowid_column._set_parent(table)
-        del self.table.c[self.rowid_column.key]
         
     def get_from_text(self):
         return self.table.name
@@ -772,7 +773,11 @@ class Select(Selectable):
         visitor.visit_select(self)
     
     def order_by(self, *clauses):
-        self.append_clause("ORDER BY", ClauseList(*clauses))
+        if not hasattr(self, 'order_by_clause'):
+            self.order_by_clause = ClauseList(*clauses)
+            self.append_clause("ORDER BY", self.order_by_clause)
+        else:
+            self.order_by_clause.clauses += clauses
         
     def select(self, whereclauses = None, **params):
         return select([self], whereclauses, **params)
