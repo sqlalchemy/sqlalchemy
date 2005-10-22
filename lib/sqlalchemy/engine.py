@@ -58,7 +58,7 @@ class SQLEngine(schema.SchemaEngine):
         (cargs, cparams) = self.connect_args()
         self._pool = sqlalchemy.pool.manage(self.dbapi()).get_pool(*cargs, **cparams)
         self.echo = echo
-        self.context = util.ThreadLocal()
+        self.context = util.ThreadLocal(raiseerror=False)
         self.tables = {}
         self.notes = {}
         self.logger = sys.stdout
@@ -168,6 +168,8 @@ class SQLEngine(schema.SchemaEngine):
             self.do_rollback(self.context.transaction)
             self.context.transaction = None
             self.context.tcount = None
+        else:
+            self.do_rollback(self.connection())
             
     def commit(self):
         if self.context.transaction is not None:
@@ -177,7 +179,9 @@ class SQLEngine(schema.SchemaEngine):
                 self.do_commit(self.context.transaction)
                 self.context.transaction = None
                 self.context.tcount = None
-
+        else:
+            self.do_commit(self.connection())
+            
     def pre_exec(self, connection, cursor, statement, parameters, many = False, echo = None, **kwargs):
         pass
 

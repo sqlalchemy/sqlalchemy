@@ -101,15 +101,19 @@ class OrderedDict(dict):
 
 class ThreadLocal(object):
     """an object in which attribute access occurs only within the context of the current thread"""
-    def __init__(self):
-        object.__setattr__(self, 'tdict', {})
-    def __getattribute__(self, key):
+    def __init__(self, raiseerror = True):
+        self.__dict__['_tdict'] = {}
+        self.__dict__['_raiseerror'] = raiseerror
+    def __getattr__(self, key):
         try:
-            return object.__getattribute__(self, 'tdict')["%d_%s" % (thread.get_ident(), key)]
+            return self._tdict["%d_%s" % (thread.get_ident(), key)]
         except KeyError:
-            raise AttributeError(key)
+            if self._raiseerror:
+                raise AttributeError(key)
+            else:
+                return None
     def __setattr__(self, key, value):
-        object.__getattribute__(self, 'tdict')["%d_%s" % (thread.get_ident(), key)] = value
+        self._tdict["%d_%s" % (thread.get_ident(), key)] = value
 
 class HashSet(object):
     """implements a Set."""

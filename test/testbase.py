@@ -1,7 +1,7 @@
 import unittest
 import StringIO
 import sqlalchemy.engine as engine
-import re
+import re, sys
 import sqlalchemy.databases.postgres as postgres
 
 echo = True
@@ -12,7 +12,10 @@ class PersistTest(unittest.TestCase):
     def echo(self, text):
         if echo:
             print text
-
+    def setUpAll(self):
+        pass
+    def tearDownAll(self):
+        pass
 
 class AssertMixin(PersistTest):
     def assert_result(self, result, class_, *objects):
@@ -70,19 +73,50 @@ class EngineAssert(object):
 
             self.unittest.assert_(statement == query and params == parameters, "Testing for query '%s' params %s, received '%s' with params %s" % (query, repr(params), statement, repr(parameters)))
         return self.realexec(statement, parameters, **kwargs)
-        
-def runTests(*modules):
-    for m in modules:
-        if m.__dict__.has_key('startUp'):
-            m.startUp()
-        s = suite(m)
-        runner = unittest.TextTestRunner(verbosity = 2, descriptions =1)
-        runner.run(s)
-        if m.__dict__.has_key('tearDown'):
-            m.tearDown()
+
+
+class TTestSuite(unittest.TestSuite):
+        def __init__(self, tests=()):
+            if len(tests) >0 and isinstance(tests[0], PersistTest):
+                self._initTest = tests[0]
+            else:
+                self._initTest = None
+            unittest.TestSuite.__init__(self, tests)
+
+        def run(self, result):
+            try:
+                if self._initTest is not None:
+                    self._initTest.setUpAll()
+            except:
+                result.addError(self._initTest, self.__exc_info())
+                pass
+            try:
+                return unittest.TestSuite.run(self, result)
+            finally:
+                try:
+                    if self._initTest is not None:
+                        self._initTest.tearDownAll()
+                except:
+                    result.addError(self._initTest, self.__exc_info())
+                    pass
+
+        def __exc_info(self):
+            """Return a version of sys.exc_info() with the traceback frame
+               minimised; usually the top level of the traceback frame is not
+               needed.
+               ripped off out of unittest module since its double __
+            """
+            exctype, excvalue, tb = sys.exc_info()
+            if sys.platform[:4] == 'java': ## tracebacks look different in Jython
+                return (exctype, excvalue, tb)
+            return (exctype, excvalue, tb)
+
+
+unittest.TestLoader.suiteClass = TTestSuite
+                    
+def runTests(suite):
+    runner = unittest.TextTestRunner(verbosity = 2, descriptions =1)
+    runner.run(suite)
     
-def suite(modules):
-    alltests = unittest.TestSuite()
-    for module in map(__import__, modules):
-        alltests.addTest(unittest.findTestCases(module))
-    return alltests
+def main():
+    unittest.main()

@@ -6,68 +6,23 @@ import sqlalchemy.objectstore as objectstore
 
 
 from tables import *
+import tables
 
-db.echo = testbase.echo
-
-itemkeywords.delete().execute()
-keywords.delete().execute()
-orderitems.delete().execute()
-orders.delete().execute()
-addresses.delete().execute()
-users.delete().execute()
-users.insert().execute(
-    dict(user_id = 7, user_name = 'jack'),
-    dict(user_id = 8, user_name = 'ed'),
-    dict(user_id = 9, user_name = 'fred')
-)
-addresses.insert().execute(
-    dict(address_id = 1, user_id = 7, email_address = "jack@bean.com"),
-    dict(address_id = 2, user_id = 8, email_address = "ed@wood.com"),
-    dict(address_id = 3, user_id = 8, email_address = "ed@lala.com")
-)
-orders.insert().execute(
-    dict(order_id = 1, user_id = 7, description = 'order 1', isopen=0),
-    dict(order_id = 2, user_id = 9, description = 'order 2', isopen=0),
-    dict(order_id = 3, user_id = 7, description = 'order 3', isopen=1),
-    dict(order_id = 4, user_id = 9, description = 'order 4', isopen=1),
-    dict(order_id = 5, user_id = 7, description = 'order 5', isopen=0)
-)
-orderitems.insert().execute(
-    dict(item_id=1, order_id=2, item_name='item 1'),
-    dict(item_id=3, order_id=3, item_name='item 3'),
-    dict(item_id=2, order_id=2, item_name='item 2'),
-    dict(item_id=5, order_id=3, item_name='item 5'),
-    dict(item_id=4, order_id=3, item_name='item 4')
-)
-keywords.insert().execute(
-    dict(keyword_id=1, name='blue'),
-    dict(keyword_id=2, name='red'),
-    dict(keyword_id=3, name='green'),
-    dict(keyword_id=4, name='big'),
-    dict(keyword_id=5, name='small'),
-    dict(keyword_id=6, name='round'),
-    dict(keyword_id=7, name='square')
-)
-itemkeywords.insert().execute(
-    dict(keyword_id=2, item_id=1),
-    dict(keyword_id=2, item_id=2),
-    dict(keyword_id=4, item_id=1),
-    dict(keyword_id=6, item_id=1),
-    dict(keyword_id=7, item_id=2),
-    dict(keyword_id=6, item_id=3),
-    dict(keyword_id=3, item_id=3),
-    dict(keyword_id=5, item_id=2),
-    dict(keyword_id=4, item_id=3)
-)
-
-db.connection().commit()
-
-
-class MapperTest(AssertMixin):
-    
+class MapperSuperTest(AssertMixin):
+    def setUpAll(self):
+        db.echo = False
+        tables.create()
+        tables.data()
+        db.echo = testbase.echo
+    def tearDownAll(self):
+        db.echo = False
+        tables.drop()
+        db.echo = testbase.echo
     def setUp(self):
         objectstore.clear()
 
+    
+class MapperTest(MapperSuperTest):
     def testget(self):
         m = mapper(User, users)
         self.assert_(m.get(19) is None)
@@ -116,10 +71,7 @@ class MapperTest(AssertMixin):
             {'user_id' : 9, 'addresses' : (Address, [])}
             )
 
-class PropertyTest(AssertMixin):
-    def setUp(self):
-        objectstore.clear()
-
+class PropertyTest(MapperSuperTest):
     def testbasic(self):
         """tests that you can create mappers inline with class definitions"""
         class _Address(object):
@@ -154,9 +106,7 @@ class PropertyTest(AssertMixin):
         
         self.echo(repr(AddressUser.mapper.select(AddressUser.c.user_name == 'jack')))
             
-class LazyTest(AssertMixin):
-    def setUp(self):
-        objectstore.clear()
+class LazyTest(MapperSuperTest):
 
     def testbasic(self):
         """tests a basic one-to-many lazy load"""
@@ -206,11 +156,7 @@ class LazyTest(AssertMixin):
             {'item_id' : 2, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 5}, {'keyword_id' : 7}])},
         )
 
-class EagerTest(AssertMixin):
-    
-    def setUp(self):
-        objectstore.clear()
-
+class EagerTest(MapperSuperTest):
     def testbasic(self):
         """tests a basic one-to-many eager load"""
         
@@ -365,16 +311,16 @@ class EagerTest(AssertMixin):
         l = m.select(order_by=[items.c.item_id, keywords.c.keyword_id])
         self.assert_result(l, Item, 
             {'item_id' : 1, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 4}, {'keyword_id' : 6}])},
-            {'item_id' : 2, 'keywords' : (Keyword, [{'keyword_id' : 2, 'name':'red'}, {'keyword_id' : 5, 'name':'small'}, {'keyword_id' : 7, 'name':'square'}])},
-            {'item_id' : 3, 'keywords' : (Keyword, [{'keyword_id' : 3,'name':'green'}, {'keyword_id' : 4,'name':'big'}, {'keyword_id' : 6,'name':'round'}])},
+            {'item_id' : 2, 'keywords' : (Keyword, [{'keyword_id' : 2, 'name':'red'}, {'keyword_id' : 7, 'name':'square'}, {'keyword_id' : 5, 'name':'small'}])},
+            {'item_id' : 3, 'keywords' : (Keyword, [{'keyword_id' : 6,'name':'round'}, {'keyword_id' : 3,'name':'green'}, {'keyword_id' : 4,'name':'big'}])},
             {'item_id' : 4, 'keywords' : (Keyword, [])},
             {'item_id' : 5, 'keywords' : (Keyword, [])}
         )
         
-        l = m.select(and_(keywords.c.name == 'red', keywords.c.keyword_id == itemkeywords.c.keyword_id, items.c.item_id==itemkeywords.c.item_id), order_by=[items.c.item_id, keywords.c.keyword_id])
+        l = m.select(and_(keywords.c.name == 'red', keywords.c.keyword_id == itemkeywords.c.keyword_id, items.c.item_id==itemkeywords.c.item_id))
         self.assert_result(l, Item, 
             {'item_id' : 1, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 4}, {'keyword_id' : 6}])},
-            {'item_id' : 2, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 5}, {'keyword_id' : 7}])},
+            {'item_id' : 2, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 7}, {'keyword_id' : 5}])},
         )
     
     def testoneandmany(self):
@@ -396,12 +342,12 @@ class EagerTest(AssertMixin):
                 {'item_id':2, 'item_name':'item 2','keywords' : (Keyword, [{'keyword_id' : 2, 'name':'red'}, {'keyword_id' : 7, 'name':'square'}, {'keyword_id' : 5, 'name':'small'}])}
                ])},
             {'order_id' : 3, 'items': (Item, [
-                {'item_id':3, 'item_name':'item 3'}, 
+                {'item_id':3, 'item_name':'item 3', 'keywords' : (Keyword, [{'keyword_id' : 6, 'name':'round'}, {'keyword_id' : 3, 'name':'green'}, {'keyword_id' : 4, 'name':'big'}])}, 
                 {'item_id':4, 'item_name':'item 4'}, 
                 {'item_id':5, 'item_name':'item 5'}
                ])},
         )
         
         
-if __name__ == "__main__":
-    testbase.runTests()
+if __name__ == "__main__":    
+    testbase.main()
