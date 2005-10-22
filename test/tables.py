@@ -9,7 +9,7 @@ import testbase
 __ALL__ = ['db', 'users', 'addresses', 'orders', 'orderitems', 'keywords', 'itemkeywords']
 
 ECHO = testbase.echo
-DATA = True
+DATA = False
 CREATE = False
 #CREATE = True
 #DBTYPE = 'sqlite_memory'
