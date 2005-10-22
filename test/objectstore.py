@@ -9,17 +9,6 @@ echo = testbase.echo
 #testbase.echo = False
 from tables import *
 
-itemkeywords.delete().execute()
-keywords.delete().execute()
-keywords.insert().execute(
-    dict(keyword_id=1, name='blue'),
-    dict(keyword_id=2, name='red'),
-    dict(keyword_id=3, name='green'),
-    dict(keyword_id=4, name='big'),
-    dict(keyword_id=5, name='small'),
-    dict(keyword_id=6, name='round'),
-    dict(keyword_id=7, name='square')
-)
 
 db.connection().commit()
 
@@ -48,12 +37,23 @@ class SaveTest(AssertMixin):
         db.echo = False
         objectstore.clear()
         clear_mappers()
+        
         itemkeywords.delete().execute()
         orderitems.delete().execute()
         orders.delete().execute()
         addresses.delete().execute()
         users.delete().execute()
-        
+        keywords.delete().execute()
+        keywords.insert().execute(
+            dict(keyword_id=1, name='blue'),
+            dict(keyword_id=2, name='red'),
+            dict(keyword_id=3, name='green'),
+            dict(keyword_id=4, name='big'),
+            dict(keyword_id=5, name='small'),
+            dict(keyword_id=6, name='round'),
+            dict(keyword_id=7, name='square')
+        )
+        db.connection().commit()        
         db.echo = e
         
     def testbasic(self):
@@ -542,8 +542,8 @@ class SaveTest(AssertMixin):
         objects[5].keywords.append(k)
         self.assert_sql(db, lambda:objectstore.commit(), [
             (
-                "INSERT INTO keywords (keyword_id, name) VALUES (:keyword_id, :name)", 
-                {'keyword_id': None, 'name': 'yellow'}
+                "INSERT INTO keywords (name) VALUES (:name)", 
+                {'name': 'yellow'}
             ),
             (
                 "UPDATE items SET order_id=:order_id, item_name=:item_name WHERE items.item_id = :items_item_id",
