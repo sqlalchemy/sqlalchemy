@@ -404,4 +404,4 @@ class EagerTest(AssertMixin):
         
         
 if __name__ == "__main__":
-    unittest.main()
+    testbase.runTests()
