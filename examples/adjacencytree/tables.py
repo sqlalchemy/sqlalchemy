@@ -1,7 +1,8 @@
 from sqlalchemy.schema import *
 import sqlalchemy.engine
 
-engine = sqlalchemy.engine.create_engine('sqlite', ':memory:', {}, echo = True)
+#engine = sqlalchemy.engine.create_engine('sqlite', ':memory:', {}, echo = True)
+engine = sqlalchemy.engine.create_engine('postgres', {'database':'test', 'host':'127.0.0.1', 'user':'scott', 'password':'tiger'}, echo=True)
 
 """create the treenodes table.  This is ia basic adjacency list model table.
 One additional column, "root_node_id", references a "root node" row and is used
@@ -25,7 +26,7 @@ print "\n\n\n----------------------------"
 print "Creating Tree Table:"
 print "----------------------------"
 
-treedata.create()    
-trees.create()
+#treedata.create()    
+#trees.create()
 
 
