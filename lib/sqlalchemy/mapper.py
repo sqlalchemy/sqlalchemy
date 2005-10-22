@@ -423,8 +423,8 @@ class Mapper(object):
                     clause.clauses.append(col == sql.bindparam(col.table.name + "_" + col.key))
                 statement = table.update(clause)
                 c = statement.execute(*update)
-                if c.cursor.rowcount != len(update):
-                    raise "ConcurrencyError - updated rowcount does not match number of objects updated"
+                if c.rowcount != len(update):
+                    raise "ConcurrencyError - updated rowcount %d does not match number of objects updated %d" % (c.cursor.rowcount, len(update))
             if len(insert):
                 statement = table.insert()
                 for rec in insert:
@@ -458,8 +458,8 @@ class Mapper(object):
                     clause.clauses.append(col == sql.bindparam(col.key))
                 statement = table.delete(clause)
                 c = statement.execute(*delete)
-                if c.cursor.rowcount != len(delete):
-                    raise "ConcurrencyError - updated rowcount does not match number of objects updated"
+                if c.rowcount != len(delete):
+                    raise "ConcurrencyError - updated rowcount %d does not match number of objects updated %d" % (c.cursor.rowcount, len(delete))
 
     def register_dependencies(self, *args, **kwargs):
         """called by an instance of objectstore.UOWTransaction to register 
