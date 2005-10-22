@@ -430,15 +430,12 @@ class Mapper(object):
                 for rec in insert:
                     (obj, params) = rec
                     statement.execute(**params)
-                    primary_key = table.engine.last_inserted_ids()[0]
-                    found = False
+                    primary_keys = table.engine.last_inserted_ids()
+                    i = 0
                     for col in self.primary_keys[table]:
                         if self._getattrbycolumn(obj, col) is None:
-                            if found:
-                                raise "Only one primary key per inserted row can be set via autoincrement/sequence"
-                            else:
-                                self._setattrbycolumn(obj, col, primary_key)
-                                found = True
+                            self._setattrbycolumn(obj, col, primary_keys[i])
+                        i+=1
                     self.extension.after_insert(self, obj)
                     
     def delete_obj(self, objects, uow):
