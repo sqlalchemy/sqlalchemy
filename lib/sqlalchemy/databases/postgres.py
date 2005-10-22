@@ -111,6 +111,13 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
                     last_inserted_ids.append(newid)
             self.context.last_inserted_ids = last_inserted_ids
 
+    def _executemany(self, c, statement, parameters):
+        rowcount = 0
+        for param in parameters:
+            c.execute(statement, param)
+            rowcount += c.rowcount
+        self.context.rowcount = rowcount
+
     def post_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
         if compiled is None: return
         if getattr(compiled, "isinsert", False):
@@ -118,6 +125,7 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
             # or post-select the row, I guess not much diff.
             table = compiled.statement.table
             if len(table.primary_keys):
+                # TODO: cache this statement against the table to avoid multiple re-compiles
                 row = sql.select(table.primary_keys, sql.ColumnClause("oid",table) == bindparam('oid', cursor.lastrowid) ).execute().fetchone()
                 self.context.last_inserted_ids = [v for v in row]
 
