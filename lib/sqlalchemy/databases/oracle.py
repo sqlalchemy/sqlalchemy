@@ -112,7 +112,7 @@ class OracleSQLEngine(ansisql.ANSISQLEngine):
             for primary_key in compiled.statement.table.primary_keys:
                 if not parameters.has_key(primary_key.key) or parameters[primary_key.key] is None:
                     if primary_key.sequence is None:
-			raise "Oracle primary key columns require schema.Sequence to create ids"
+                        raise "Oracle primary key columns require schema.Sequence to create ids"
                     if echo is True or self.echo:
                         self.log("select %s.nextval from dual" % primary_key.sequence.name)
                     cursor.execute("select %s.nextval from dual" % primary_key.sequence.name)
