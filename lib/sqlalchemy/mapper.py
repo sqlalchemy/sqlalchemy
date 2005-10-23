@@ -811,7 +811,7 @@ class PropertyLoader(MapperProperty):
         elif self.direction == PropertyLoader.LEFT:
             uowcommit.register_dependency(self.parent, self.mapper)
             uowcommit.register_processor(self.parent, False, self, self.parent, False)
-            uowcommit.register_processor(self.mapper, False, self, self.parent, True)
+            uowcommit.register_processor(self.parent, False, self, self.parent, True)
         elif self.direction == PropertyLoader.RIGHT:
             uowcommit.register_dependency(self.mapper, self.parent)
             uowcommit.register_processor(self.mapper, False, self, self.parent, False)

@@ -297,7 +297,7 @@ class UOWTransaction(object):
         try:
             return self.tasks[mapper]
         except KeyError:
-            return self.tasks.setdefault(mapper, UOWTask(mapper))
+            return UOWTask(self, mapper)
             
     def register_dependency(self, mapper, dependency):
         self.dependencies[(mapper, dependency)] = True
@@ -363,7 +363,7 @@ class UOWTransaction(object):
                 return None
             task = bymapper.get(node.item, None)
             if task is None:
-                task = UOWTask(node.item)
+                task = UOWTask(self, node.item)
                 bymapper[node.item] = task
             if node.circular:
                 task.circular = task._sort_circular_dependencies(self)
@@ -394,7 +394,9 @@ class UOWTaskElement(object):
         return "UOWTaskElement/%d: %s/%d %s" % (id(self), self.obj.__class__.__name__, id(self.obj), (self.listonly and 'listonly' or (self.isdelete and 'delete' or 'save')) )
         
 class UOWTask(object):
-    def __init__(self, mapper):
+    def __init__(self, uowtransaction, mapper):
+        uowtransaction.tasks[mapper] = self
+        self.uowtransaction = uowtransaction
         self.mapper = mapper
         self.objects = util.OrderedDict()
         self.dependencies = []
@@ -423,7 +425,7 @@ class UOWTask(object):
             rec.childtask = childtask
         if isdelete:
             rec.isdelete = True
-        
+
     def execute(self, trans):
         """executes this UOWTask.  saves objects to be saved, processes all dependencies
         that have been registered, and deletes objects to be deleted. """
@@ -475,7 +477,7 @@ class UOWTask(object):
             try:
                 return objecttotask[obj]
             except KeyError:
-                t = UOWTask(self.mapper)
+                t = UOWTask(trans, self.mapper)
                 objecttotask[obj] = t
                 return t
 
@@ -489,7 +491,7 @@ class UOWTask(object):
             try:
                 l = dp[(processor, isdelete)]
             except KeyError:
-                l = UOWTask(None)
+                l = UOWTask(trans, None)
                 dp[(processor, isdelete)] = l
             return l
 
@@ -536,7 +538,7 @@ class UOWTask(object):
                 t2 = make_task_tree(n, t)
             return t
             
-        t = UOWTask(self.mapper)
+        t = UOWTask(trans, self.mapper)
         make_task_tree(head, t)
         return t
 
