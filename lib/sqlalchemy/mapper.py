@@ -312,7 +312,7 @@ class Mapper(object):
             objectstore.uow().register_clean(value)
 
         if len(mappers):
-            return result + otherresults
+            return [result] + otherresults
         else:
             return result
 
@@ -375,9 +375,21 @@ class Mapper(object):
         in this case, the developer must insure that an adequate set of columns exists in the 
         rowset with which to build new object instances."""
         if arg is not None and isinstance(arg, sql.Select):
-            return self._select_statement(arg, **params)
+            return self.select_statement(arg, **params)
         else:
-            return self._select_whereclause(arg, **params)
+            return self.select_whereclause(arg, **params)
+
+    def select_whereclause(self, whereclause = None, order_by = None, **params):
+        statement = self._compile(whereclause, order_by = order_by)
+        return self.select_statement(statement, **params)
+
+    def select_statement(self, statement, **params):
+        statement.use_labels = True
+        return self.instances(statement.execute(**params))
+
+    def select_text(self, text, **params):
+        t = sql.text(text, engine=self.primarytable.engine)
+        return self.instances(t.execute(**params))
 
     def _getattrbycolumn(self, obj, column):
         try:
@@ -494,13 +506,6 @@ class Mapper(object):
         statement.use_labels = True
         return statement
 
-    def _select_whereclause(self, whereclause = None, order_by = None, **params):
-        statement = self._compile(whereclause, order_by = order_by)
-        return self._select_statement(statement, **params)
-
-    def _select_statement(self, statement, **params):
-        statement.use_labels = True
-        return self.instances(statement.execute(**params))
 
     def _identity_key(self, row):
         return objectstore.get_row_key(row, self.class_, self.primarytable, self.primary_keys[self.table])
@@ -539,7 +544,7 @@ class Mapper(object):
             # check if primary keys in the result are None - this indicates 
             # an instance of the object is not present in the row
             for col in self.primary_keys[self.table]:
-                if row[col.label] is None:
+                if row[col] is None:
                     return None
             # plugin point
             instance = self.extension.create_instance(self, row, imap, self.class_)
@@ -622,8 +627,7 @@ class ColumnProperty(MapperProperty):
 
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
-            instance.__dict__[self.key] = row[self.columns[0].label]
-            #setattr(instance, self.key, row[self.columns[0].label])
+            instance.__dict__[self.key] = row[self.columns[0]]
         
 
 class PropertyLoader(MapperProperty):

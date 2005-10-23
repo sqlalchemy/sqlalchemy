@@ -117,7 +117,6 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
             return None
             
     def pre_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
-        # if a sequence was explicitly defined we do it here
         if compiled is None: return
         if getattr(compiled, "isinsert", False):
             if isinstance(parameters, list):

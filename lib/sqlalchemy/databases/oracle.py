@@ -40,7 +40,7 @@ class OracleDateTime(sqltypes.DateTime):
         return "DATE"
 class OracleText(sqltypes.TEXT):
     def get_col_spec(self):
-        return "TEXT"
+        return "CLOB"
 class OracleString(sqltypes.String):
     def get_col_spec(self):
         return "VARCHAR(%(length)s)" % {'length' : self.length}

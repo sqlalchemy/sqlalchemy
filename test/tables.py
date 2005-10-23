@@ -159,6 +159,8 @@ class Address(object):
         return "Address: " + repr(getattr(self, 'address_id', None)) + " " + repr(getattr(self, 'user_id', None)) + " " + repr(self.email_address)
 
 class Order(object):
+    def __init__(self):
+        self.isopen=0
     def __repr__(self):
         return "Order: " + repr(self.description) + " " + repr(self.isopen) + " " + repr(getattr(self, 'items', None))
 

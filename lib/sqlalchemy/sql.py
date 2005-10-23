@@ -121,8 +121,8 @@ def bindparam(key, value = None, type=None):
     else:
         return BindParamClause(key, value, type=type)
 
-def text(text):
-    return TextClause(text)
+def text(text, engine=None):
+    return TextClause(text, engine=engine)
 
 def null():
     return Null()
@@ -383,9 +383,10 @@ class BindParamClause(ClauseElement):
 class TextClause(ClauseElement):
     """represents any plain text WHERE clause or full SQL statement"""
     
-    def __init__(self, text = ""):
+    def __init__(self, text = "", engine=None):
         self.text = text
         self.parens = False
+        self.engine = engine
     def accept_visitor(self, visitor): 
         visitor.visit_textclause(self)
     def hash_key(self):

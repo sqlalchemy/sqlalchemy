@@ -124,7 +124,7 @@ class SQLEngine(schema.SchemaEngine):
         connection.commit()
 
     def proxy(self):
-        return lambda s, p = None: self.execute(s, p, commit=True)
+        return lambda s, p = None: self.execute(s, p)
 
     def connection(self):
         return self._pool.connect()
@@ -172,8 +172,6 @@ class SQLEngine(schema.SchemaEngine):
             self.do_rollback(self.context.transaction)
             self.context.transaction = None
             self.context.tcount = None
-        else:
-            self.do_rollback(self.connection())
             
     def commit(self):
         if self.context.transaction is not None:
@@ -183,8 +181,6 @@ class SQLEngine(schema.SchemaEngine):
                 self.do_commit(self.context.transaction)
                 self.context.transaction = None
                 self.context.tcount = None
-        else:
-            self.do_commit(self.connection())
             
     def pre_exec(self, connection, cursor, statement, parameters, many = False, echo = None, **kwargs):
         pass
@@ -202,19 +198,23 @@ class SQLEngine(schema.SchemaEngine):
         else:
             c = connection.cursor()
 
-        self.pre_exec(connection, c, statement, parameters, echo = echo, **kwargs)
+        try:
+            self.pre_exec(connection, c, statement, parameters, echo = echo, **kwargs)
 
-        if echo is True or self.echo:
-            self.log(statement)
-            self.log(repr(parameters))
-
-        if isinstance(parameters, list):
-            self._executemany(c, statement, parameters)
-        else:
-            self._execute(c, statement, parameters)
-        self.post_exec(connection, c, statement, parameters, echo = echo, **kwargs)
-        if commit:
-            connection.commit()
+            if echo is True or self.echo:
+                self.log(statement)
+                self.log(repr(parameters))
+            if isinstance(parameters, list):
+                self._executemany(c, statement, parameters)
+            else:
+                self._execute(c, statement, parameters)
+            self.post_exec(connection, c, statement, parameters, echo = echo, **kwargs)
+            if commit or self.context.transaction is None:
+                self.do_commit(connection)
+        except:
+            self.do_rollback(connection)
+            # TODO: wrap DB exceptions ?
+            raise
         return ResultProxy(c, self, typemap = typemap)
 
     def _execute(self, c, statement, parameters):
@@ -247,7 +247,18 @@ class ResultProxy:
                 i+=1
 
     def _get_col(self, row, key):
-        rec = self.props[key.lower()]
+        if isinstance(key, schema.Column):
+            try:
+                rec = self.props[key.label.lower()]
+            except KeyError:
+                try:
+                    rec = self.props[key.key.lower()]
+                except KeyError:
+                    rec = self.props[key.name.lower()]
+        elif isinstance(key, str):
+            rec = self.props[key.lower()]
+        else:
+            rec = self.props[key]
         return rec[0].convert_result_value(row[rec[1]])
         
     def fetchall(self):

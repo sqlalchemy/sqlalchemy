@@ -52,7 +52,7 @@ def get_row_key(row, class_, table, primary_keys):
     may be synonymous with the table argument or can be a larger construct containing that table.
     return value: a tuple object which is used as an identity key.
     """
-    return (class_, table, tuple([row[column.label] for column in primary_keys]))
+    return (class_, table, tuple([row[column] for column in primary_keys]))
 
 def begin():
     """begins a new UnitOfWork transaction.  the next commit will affect only
