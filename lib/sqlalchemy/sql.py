@@ -225,7 +225,7 @@ class ClauseElement(object):
         return self
 
 
-    def compile(self, engine = None, bindparams = None):
+    def compile(self, engine = None, bindparams = None, typemap=None):
         """compiles this SQL expression using its underlying SQLEngine to produce
         a Compiled object.  If no engine can be found, an ansisql engine is used.
         bindparams is a dictionary representing the default bind parameters to be used with 
@@ -239,7 +239,7 @@ class ClauseElement(object):
                 engine = ansisql.engine()
                 #raise "no engine supplied, and no engine could be located within the clauses!"
 
-        return engine.compile(self, bindparams = bindparams)
+        return engine.compile(self, bindparams = bindparams, typemap=typemap)
 
     def __str__(self):
         return str(self.compile())

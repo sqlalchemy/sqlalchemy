@@ -88,8 +88,8 @@ class SQLEngine(schema.SchemaEngine):
     def drop(self, table, **params):
         table.accept_visitor(self.schemadropper(self.proxy(), **params))
 
-    def compile(self, statement, bindparams):
-        compiler = self.compiler(statement, bindparams)
+    def compile(self, statement, bindparams, **kwargs):
+        compiler = self.compiler(statement, bindparams, **kwargs)
         statement.accept_visitor(compiler)
         return compiler
 
@@ -103,14 +103,19 @@ class SQLEngine(schema.SchemaEngine):
         return sql.ColumnSelectable(column)
 
     def last_inserted_ids(self):
-        """returns a thread-local map of the generated primary keys corresponding to the most recent
-        insert statement.  keys are the names of columns."""
+        """returns a thread-local list of the primary keys for the last insert statement executed.
+        This does not apply to straight textual clauses; only to sql.Insert objects compiled against 
+        a schema.Table object, which are executed via statement.execute().  The order of items in the list
+        is the same as that of the Table's 'primary_keys' attribute."""
         raise NotImplementedError()
 
     def connect_args(self):
+        """subclasses override this method to provide a two-item tuple containing the *args and **kwargs used
+        to establish a connection."""
         raise NotImplementedError()
 
     def dbapi(self):
+        """subclasses override this method to provide the DBAPI module used to establish connections."""
         raise NotImplementedError()
 
     def do_begin(self, connection):
@@ -123,10 +128,11 @@ class SQLEngine(schema.SchemaEngine):
         """implementations might want to put logic here for turning autocommit on/off, etc."""
         connection.commit()
 
-    def proxy(self):
-        return lambda s, p = None: self.execute(s, p)
+    def proxy(self, **kwargs):
+        return lambda s, p = None: self.execute(s, p, **kwargs)
 
     def connection(self):
+        """returns a managed DBAPI connection from this SQLEngine's connection pool."""
         return self._pool.connect()
 
     def multi_transaction(self, tables, func):
@@ -189,6 +195,28 @@ class SQLEngine(schema.SchemaEngine):
         pass
 
     def execute(self, statement, parameters, connection = None, echo = None, typemap = None, commit=False, **kwargs):
+        """executes the given string-based SQL statement with the given parameters.  This is a direct interface to a
+        DBAPI connection object.  The parameters may be a dictionary, or an array of dictionaries.  If an array
+        of dictionaries is sent, executemany will be performed on the cursor instead of execute.
+        
+        If the current thread has specified a transaction begin() for this engine, the statement will be executed
+        in the context of the current transactional connection.  Otherwise, a commit() will be performed immediately
+        after execution, since the local pooled connection is returned to the pool after execution without a transaction
+        set up.
+        
+        In all error cases, a rollback() is immediately performed on the connection before propigating the 
+        exception outwards.
+        
+        Other options include:
+        
+        connection  -  a DBAPI connection to use for the execute.  If None, a connection is pulled from this
+                       engine's connection pool.
+        echo        -  enables echo for this execution, which causes all SQL and parameters to be dumped to the
+                       engine's logging output before execution.
+        typemap     -  a map of column names mapped to sqlalchemy.types.TypeEngine objects.  These will be
+                       passed to the created ResultProxy to perform post-processing on result-set values.               
+        commit      -  if True, will automatically commit the statement after completion.           
+                       """
         if parameters is None:
             parameters = {}
 
@@ -225,10 +253,21 @@ class SQLEngine(schema.SchemaEngine):
         self.context.rowcount = c.rowcount
     
     def log(self, msg):
+        """logs a message using this SQLEngine's logger stream."""
         self.logger.write(msg + "\n")
 
 
 class ResultProxy:
+    """wraps a DBAPI cursor object to provide access to row columns based on integer position, case-insensitive column name,
+    or by schema.Column object. e.g.:
+    
+    row = fetchone()
+    col1 = row[0]    # access via integer position
+    col2 = row['col2']   # access via name
+    col3 = row[mytable.c.mycol]   # access via Column object.  
+                                  #the Column's 'label', 'key', and 'name' properties are searched in that order.
+    
+    """
     def __init__(self, cursor, engine, typemap = None):
         self.cursor = cursor
         self.echo = engine.echo
@@ -262,6 +301,7 @@ class ResultProxy:
         return rec[0].convert_result_value(row[rec[1]])
         
     def fetchall(self):
+        """fetches all rows, just like DBAPI cursor.fetchall()."""
         l = []
         while True:
             v = self.fetchone()
@@ -270,6 +310,7 @@ class ResultProxy:
             l.append(v)
             
     def fetchone(self):
+        """fetches one row, just like DBAPI cursor.fetchone()."""
         row = self.cursor.fetchone()
         if row is not None:
             if self.echo: print repr(row)
@@ -278,6 +319,7 @@ class ResultProxy:
             return None
 
 class RowProxy:
+    """proxies a single cursor row for a parent ResultProxy."""
     def __init__(self, parent, row):
         self.parent = parent
         self.row = row

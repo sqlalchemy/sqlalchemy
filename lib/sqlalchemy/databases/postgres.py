@@ -90,8 +90,8 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
 
-    def compiler(self, statement, bindparams):
-        return PGCompiler(self, statement, bindparams)
+    def compiler(self, statement, bindparams, **kwargs):
+        return PGCompiler(self, statement, bindparams, **kwargs)
 
     def schemagenerator(self, proxy, **params):
         return PGSchemaGenerator(proxy, **params)

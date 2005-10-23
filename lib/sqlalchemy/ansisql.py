@@ -48,13 +48,13 @@ class ANSISQLEngine(sqlalchemy.engine.SQLEngine):
 
 
 class ANSICompiler(sql.Compiled):
-    def __init__(self, engine, statement, bindparams):
+    def __init__(self, engine, statement, bindparams, typemap=None, **kwargs):
         sql.Compiled.__init__(self, engine, statement, bindparams)
         self.binds = {}
         self.froms = {}
         self.wheres = {}
         self.strings = {}
-        self.typemap = {}
+        self.typemap = typemap or {}
         self.isinsert = False
         
     def get_from_text(self, obj):
@@ -157,9 +157,9 @@ class ANSICompiler(sql.Compiled):
             for co in c.columns:
                 inner_columns.append(co)
                 if select.use_labels:
-                    self.typemap[co.label] = co.type
+                    self.typemap.setdefault(co.label, co.type)
                 else:
-                    self.typemap[co.key] = co.type
+                    self.typemap.setdefault(co.key, co.type)
                 
         if select.use_labels:
             collist = string.join(["%s AS %s" % (c.fullname, c.label) for c in inner_columns], ', ')

@@ -93,8 +93,8 @@ class OracleSQLEngine(ansisql.ANSISQLEngine):
     def rowid_column_name(self):
         return "rowid"
 
-    def compiler(self, statement, bindparams):
-        return OracleCompiler(self, statement, bindparams)
+    def compiler(self, statement, bindparams, **kwargs):
+        return OracleCompiler(self, statement, bindparams, **kwargs)
 
     def schemagenerator(self, proxy, **params):
         return OracleSchemaGenerator(proxy, **params)
