@@ -109,19 +109,17 @@ class OracleSQLEngine(ansisql.ANSISQLEngine):
 
     def pre_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
         # if a sequence was explicitly defined we do it here
-	if True: return
         if compiled is None: return
         if getattr(compiled, "isinsert", False):
             for primary_key in compiled.statement.table.primary_keys:
                 if primary_key.sequence is not None and not primary_key.sequence.optional and parameters[primary_key.key] is None:
                     if echo is True or self.echo:
-                        self.log("select nextval('%s')" % primary_key.sequence.name)
-                    cursor.execute("select nextval('%s')" % primary_key.sequence.name)
+                        self.log("select %s.nextval from dual" % primary_key.sequence.name)
+                    cursor.execute("select %s.nextval from dual" % primary_key.sequence.name)
                     newid = cursor.fetchone()[0]
                     parameters[primary_key.key] = newid
 
     def post_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
-	if True: return
         if compiled is None: return
         if getattr(compiled, "isinsert", False):
             table = compiled.statement.table

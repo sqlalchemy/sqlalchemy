@@ -58,9 +58,7 @@ class Pool(object):
         try:
             return self._threadconns[thread.get_ident()]
         except KeyError:
-            print "HEY"
             agent = ConnectionFairy(self)
-            print "HO"
             self._threadconns[thread.get_ident()] = agent
             return agent
             
@@ -86,7 +84,6 @@ class ConnectionFairy:
     def __getattr__(self, key):
         return getattr(self.connection, key)
     def __del__(self):
-        print "LALA"
         if self.connection is not None:
             self.pool.return_conn(self.connection)
             self.pool = None
