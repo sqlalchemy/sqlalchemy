@@ -242,12 +242,12 @@ class ResultProxy:
                     rec = (typemap.get(item[0], types.NULLTYPE), i)
                 else:
                     rec = (types.NULLTYPE, i)
-                self.props[item[0]] = rec
+                self.props[item[0].lower()] = rec
                 self.props[i] = rec
                 i+=1
 
     def _get_col(self, row, key):
-        rec = self.props[key]
+        rec = self.props[key.lower()]
         return rec[0].convert_result_value(row[rec[1]])
         
     def fetchall(self):
