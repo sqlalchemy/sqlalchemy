@@ -378,16 +378,22 @@ class SaveTest(AssertMixin):
             dict(user_id = 8, user_name = 'ed'),
             dict(user_id = 9, user_name = 'fred')
         )
-        db.connection().commit()
+        db.commit()
 
+        # mapper with just users table
         User.mapper = assignmapper(users)
         User.mapper.select()
+        oldmapper = User.mapper
+        # now a mapper with the users table plus a relation to the addresses
         User.mapper = assignmapper(users, properties = dict(
             addresses = relation(Address, addresses, lazy = False)
         ))
+        self.assert_(oldmapper is not User.mapper)
         u = User.mapper.select()
         u[0].addresses.append(Address())
         u[0].addresses[0].email_address='hi'
+        
+        # insure that upon commit, the new mapper with the address relation is used
         self.assert_sql(db, lambda: objectstore.commit(), 
                 [
                     (

@@ -324,7 +324,7 @@ class UOWTransaction(object):
             task.mapper.register_dependencies(self)
 
         head = self._sort_dependencies()
-        #print "Task dump:\n" + head.dump()
+        print "Task dump:\n" + head.dump()
         if head is not None:
             head.execute(self)
             
@@ -395,7 +395,8 @@ class UOWTaskElement(object):
         
 class UOWTask(object):
     def __init__(self, uowtransaction, mapper):
-        uowtransaction.tasks[mapper] = self
+        if uowtransaction is not None:
+            uowtransaction.tasks[mapper] = self
         self.uowtransaction = uowtransaction
         self.mapper = mapper
         self.objects = util.OrderedDict()
@@ -430,15 +431,20 @@ class UOWTask(object):
         """executes this UOWTask.  saves objects to be saved, processes all dependencies
         that have been registered, and deletes objects to be deleted. """
         if self.circular is not None:
+            print "CIRCULAR !"
             self.circular.execute(trans)
+            print "CIRCULAR DONE !"
             return
 
+        print "task " + str(self) + " tosave: " + repr(self.tosave_objects())
         self.mapper.save_obj(self.tosave_objects(), trans)
         for dep in self.save_dependencies():
             (processor, targettask, isdelete) = dep
             processor.process_dependencies(targettask, [elem.obj for elem in targettask.tosave_elements()], trans, delete = False)
+            print "processed dependencies on " + repr([elem.obj for elem in targettask.tosave_elements()])
         for element in self.tosave_elements():
             if element.childtask is not None:
+                print "execute elem childtask " + str(element.childtask)
                 element.childtask.execute(trans)
         for dep in self.delete_dependencies():
             (processor, targettask, isdelete) = dep
@@ -477,7 +483,7 @@ class UOWTask(object):
             try:
                 return objecttotask[obj]
             except KeyError:
-                t = UOWTask(trans, self.mapper)
+                t = UOWTask(None, self.mapper)
                 objecttotask[obj] = t
                 return t
 
@@ -491,7 +497,7 @@ class UOWTask(object):
             try:
                 l = dp[(processor, isdelete)]
             except KeyError:
-                l = UOWTask(trans, None)
+                l = UOWTask(None, None)
                 dp[(processor, isdelete)] = l
             return l
 
@@ -538,7 +544,7 @@ class UOWTask(object):
                 t2 = make_task_tree(n, t)
             return t
             
-        t = UOWTask(trans, self.mapper)
+        t = UOWTask(None, self.mapper)
         make_task_tree(head, t)
         return t
 
@@ -550,7 +556,7 @@ class UOWTask(object):
             return s
         saveobj = self.tosave_elements()
         if len(saveobj) > 0:
-            s += "\n" + indent + "  Save Elements:"
+            s += "\n" + indent + "  Save Elements:(%d)" % len(saveobj)
             for o in saveobj:
                 if not o.listonly:
                     s += "\n     " + indent + repr(o)

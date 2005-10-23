@@ -7,6 +7,7 @@ import sqlalchemy.databases.postgres as postgres
 echo = True
 
 class PersistTest(unittest.TestCase):
+    """persist base class, provides default setUpAll, tearDownAll and echo functionality"""
     def __init__(self, *args, **params):
         unittest.TestCase.__init__(self, *args, **params)
     def echo(self, text):
@@ -18,6 +19,8 @@ class PersistTest(unittest.TestCase):
         pass
 
 class AssertMixin(PersistTest):
+    """given a list-based structure of keys/properties which represent information within an object structure, and
+    a list of actual objects, asserts that the list of objects corresponds to the structure."""
     def assert_result(self, result, class_, *objects):
         if echo:
             print repr(result)
@@ -44,6 +47,7 @@ class AssertMixin(PersistTest):
             db.set_assert_list(None, None)
         
 class EngineAssert(object):
+    """decorates a SQLEngine object to match the incoming queries against a set of assertions."""
     def __init__(self, engine):
         self.engine = engine
         self.realexec = engine.execute
@@ -76,40 +80,41 @@ class EngineAssert(object):
 
 
 class TTestSuite(unittest.TestSuite):
-        def __init__(self, tests=()):
-            if len(tests) >0 and isinstance(tests[0], PersistTest):
-                self._initTest = tests[0]
-            else:
-                self._initTest = None
-            unittest.TestSuite.__init__(self, tests)
+    """override unittest.TestSuite to provide per-TestCase class setUpAll() and tearDownAll() functionality"""
+    def __init__(self, tests=()):
+        if len(tests) >0 and isinstance(tests[0], PersistTest):
+            self._initTest = tests[0]
+        else:
+            self._initTest = None
+        unittest.TestSuite.__init__(self, tests)
 
-        def run(self, result):
+    def run(self, result):
+        try:
+            if self._initTest is not None:
+                self._initTest.setUpAll()
+        except:
+            result.addError(self._initTest, self.__exc_info())
+            pass
+        try:
+            return unittest.TestSuite.run(self, result)
+        finally:
             try:
                 if self._initTest is not None:
-                    self._initTest.setUpAll()
+                    self._initTest.tearDownAll()
             except:
                 result.addError(self._initTest, self.__exc_info())
                 pass
-            try:
-                return unittest.TestSuite.run(self, result)
-            finally:
-                try:
-                    if self._initTest is not None:
-                        self._initTest.tearDownAll()
-                except:
-                    result.addError(self._initTest, self.__exc_info())
-                    pass
 
-        def __exc_info(self):
-            """Return a version of sys.exc_info() with the traceback frame
-               minimised; usually the top level of the traceback frame is not
-               needed.
-               ripped off out of unittest module since its double __
-            """
-            exctype, excvalue, tb = sys.exc_info()
-            if sys.platform[:4] == 'java': ## tracebacks look different in Jython
-                return (exctype, excvalue, tb)
+    def __exc_info(self):
+        """Return a version of sys.exc_info() with the traceback frame
+           minimised; usually the top level of the traceback frame is not
+           needed.
+           ripped off out of unittest module since its double __
+        """
+        exctype, excvalue, tb = sys.exc_info()
+        if sys.platform[:4] == 'java': ## tracebacks look different in Jython
             return (exctype, excvalue, tb)
+        return (exctype, excvalue, tb)
 
 
 unittest.TestLoader.suiteClass = TTestSuite
