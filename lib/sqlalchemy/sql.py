@@ -26,29 +26,40 @@ import string
 __ALL__ = ['textclause', 'select', 'join', 'and_', 'or_', 'union', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'bindparam', 'sequence']
 
 def desc(column):
-    """returns a descending ORDER BY clause element"""
+    """returns a descending ORDER BY clause element, e.g.:
+    
+    order_by = [desc(table1.mycol)]
+    """    
     return CompoundClause(None, column, "DESC")
 
 def asc(column):
-    """returns an ascending ORDER BY clause element"""
+    """returns an ascending ORDER BY clause element, e.g.:
+    
+    order_by = [asc(table1.mycol)]
+    """
     return CompoundClause(None, column, "ASC")
 
 def outerjoin(left, right, onclause, **kwargs):
     """returns an OUTER JOIN clause element, given the left and right hand expressions,
-    as well as the ON condition's expression.  When chaining joins together, the previous JOIN
-    expression should be specified as the left side of this JOIN expression."""
+    as well as the ON condition's expression.  To chain joins together, use the resulting
+    Join object's "join()" or "outerjoin()" methods."""
     return Join(left, right, onclause, isouter = True, **kwargs)
 
 def join(left, right, onclause, **kwargs):
     """returns a JOIN clause element (regular inner join), given the left and right hand expressions,
-    as well as the ON condition's expression.  When chaining joins together, the previous JOIN
-    expression should be specified as the left side of this JOIN expression."""
+    as well as the ON condition's expression.  To chain joins together, use the resulting
+    Join object's "join()" or "outerjoin()" methods."""
     return Join(left, right, onclause, **kwargs)
 
 def select(columns, whereclause = None, from_obj = [], **kwargs):
-    """returns a SELECT clause element, given a list of columns and/or selectable items to select
-    columns from, an optional expression for the WHERE clause, an optional list of "FROM" objects
-    to select from, and additional parameters."""
+    """returns a SELECT clause element.
+    
+    'columns' is a list of columns and/or selectable items to select columns from
+    'whereclause' is a text or ClauseElement expression which will form the WHERE clause
+    'from_obj' is an list of additional "FROM" objects, such as Join objects, which will 
+    extend or override the default "from" objects created from the column list and the whereclause.
+    **kwargs - additional parameters for the Select object.
+    """
     return Select(columns, whereclause = whereclause, from_obj = from_obj, **kwargs)
 
 def insert(table, values = None, **kwargs):
@@ -93,6 +104,11 @@ def update(table, whereclause = None, values = None, **kwargs):
     return Update(table, whereclause, values, **kwargs)
 
 def delete(table, whereclause = None, **kwargs):
+    """returns a DELETE clause element.  
+    
+    'table' is the table to be updated.
+    'whereclause' is a ClauseElement describing the WHERE condition of the UPDATE statement.
+    """
     return Delete(table, whereclause, **kwargs)
 
 def and_(*clauses):

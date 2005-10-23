@@ -32,7 +32,7 @@ proxies = {}
 
 def manage(module, **params):
     """given a DBAPI2 module and pool management parameters, returns a proxy for the module that will
-    automatically pool connections."""
+    automatically pool connections.  Options are delivered to an underlying DBProxy object."""
     try:
         return proxies[module]
     except KeyError:
