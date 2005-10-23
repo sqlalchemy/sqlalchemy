@@ -324,8 +324,8 @@ class ScopedRegistry(object):
 class DependencySorter(object):
     """creates a "dependency tree" across a list of objects, using a series of 'dependency relationships'
     expressed as a list of tuples to determine its shape.  the tuples are of the form (x,y) which indicate 
-    'y is dependent on x', as well as a list of 
-    elements which represent the full collection of elements.
+    'y is dependent on x'.
+    a list of additional elements who may or may not be expressed within the tuples is also supplied.
     
     If a tuple contains the same value dependent on itself, the corresponding node
     is marked as "circular", indicating the node is dependent on itself.

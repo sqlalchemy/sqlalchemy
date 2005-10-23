@@ -32,7 +32,7 @@ class DependencySortTest(PersistTest):
             (node4, subnode4)
         ]
         head = util.DependencySorter(tuples, []).sort()
-        print str(head)
+        print "\n" + str(head)
 
     def testsort2(self):
         node1 = thingy('node1')
@@ -45,6 +45,7 @@ class DependencySortTest(PersistTest):
         tuples = [
             (node1, node2),
             (node3, node4),
+            (node4, node5),
             (node5, node6),
             (node6, node2)
         ]
