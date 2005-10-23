@@ -20,6 +20,14 @@ class PoolTest(PersistTest):
         self.assert_(connection.cursor() is not None)
         self.assert_(connection is connection2)
         self.assert_(connection2 is not connection3)
+
+    def testbadargs(self):
+        manager = pool.manage(sqlite)
+
+        try:
+            connection = manager.connect(None)
+        except:
+            pass
     
     def testnonthreadlocalmanager(self):
         manager = pool.manage(sqlite, use_threadlocal = False)
