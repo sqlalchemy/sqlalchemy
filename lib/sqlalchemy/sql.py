@@ -647,8 +647,8 @@ class TableImpl(Selectable):
     def select(self, whereclauses = None, **params):
         return select([self.table], whereclauses, **params)
 
-    def insert(self, select = None):
-        return insert(self.table, select = select)
+    def insert(self, values = None):
+        return insert(self.table, values=values)
 
     def update(self, whereclause = None, values = None):
         return update(self.table, whereclause, values)
@@ -882,10 +882,10 @@ class UpdateBase(ClauseElement):
         return engine.compile(self, bindparams)
 
 class Insert(UpdateBase):
-    def __init__(self, table, parameters = None, **params):
+    def __init__(self, table, values=None, **params):
         self.table = table
         self.select = None
-        self.parameters = self._process_colparams(parameters)
+        self.parameters = self._process_colparams(values)
         self.engine = self.table.engine
         
     def accept_visitor(self, visitor):
@@ -895,10 +895,10 @@ class Insert(UpdateBase):
         visitor.visit_insert(self)
 
 class Update(UpdateBase):
-    def __init__(self, table, whereclause, parameters = None, **params):
+    def __init__(self, table, whereclause, values=None, **params):
         self.table = table
         self.whereclause = whereclause
-        self.parameters = self._process_colparams(parameters)
+        self.parameters = self._process_colparams(values)
         self.engine = self.table.engine
 
     def accept_visitor(self, visitor):
