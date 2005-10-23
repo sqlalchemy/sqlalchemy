@@ -195,9 +195,6 @@ class SQLEngine(schema.SchemaEngine):
     def execute(self, statement, parameters, connection = None, echo = None, typemap = None, commit=False, **kwargs):
         if parameters is None:
             parameters = {}
-        if echo is True or self.echo:
-            self.log(statement)
-            self.log(repr(parameters))
 
         if connection is None:
             connection = self.connection()
@@ -206,6 +203,11 @@ class SQLEngine(schema.SchemaEngine):
             c = connection.cursor()
 
         self.pre_exec(connection, c, statement, parameters, echo = echo, **kwargs)
+
+        if echo is True or self.echo:
+            self.log(statement)
+            self.log(repr(parameters))
+
         if isinstance(parameters, list):
             self._executemany(c, statement, parameters)
         else:

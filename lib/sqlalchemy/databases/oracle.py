@@ -37,7 +37,7 @@ class OracleInteger(sqltypes.Integer):
         return "INTEGER"
 class OracleDateTime(sqltypes.DateTime):
     def get_col_spec(self):
-        return "TIMESTAMP"
+        return "DATE"
 class OracleText(sqltypes.TEXT):
     def get_col_spec(self):
         return "TEXT"
@@ -95,36 +95,36 @@ class OracleSQLEngine(ansisql.ANSISQLEngine):
 
     def schemagenerator(self, proxy, **params):
         return OracleSchemaGenerator(proxy, **params)
+    def schemadropper(self, proxy, **params):
+        return OracleSchemaDropper(proxy, **params)
 
     def reflecttable(self, table):
         raise "not implemented"
 
     def last_inserted_ids(self):
-        table = self.context.last_inserted_table
-        if self.context.lastrowid is not None and table is not None and len(table.primary_keys):
-            row = sql.select(table.primary_keys, table.rowid_column == self.context.lastrowid).execute().fetchone()
-            return [v for v in row]
-        else:
-            return None
+	return self.context.last_inserted_ids
 
     def pre_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
         # if a sequence was explicitly defined we do it here
         if compiled is None: return
         if getattr(compiled, "isinsert", False):
+            last_inserted_ids = []
             for primary_key in compiled.statement.table.primary_keys:
-                if primary_key.sequence is not None and not primary_key.sequence.optional and parameters[primary_key.key] is None:
+                if not parameters.has_key(primary_key.key) or parameters[primary_key.key] is None:
+                    if primary_key.sequence is None:
+			raise "Oracle primary key columns require schema.Sequence to create ids"
                     if echo is True or self.echo:
                         self.log("select %s.nextval from dual" % primary_key.sequence.name)
                     cursor.execute("select %s.nextval from dual" % primary_key.sequence.name)
                     newid = cursor.fetchone()[0]
                     parameters[primary_key.key] = newid
+                    if compiled.statement.parameters is not None:
+			compiled.statement.parameters[primary_key.key] = bindparam(primary_key.key)
+                last_inserted_ids.append(parameters[primary_key.key])
+            self.context.last_inserted_ids = last_inserted_ids
 
     def post_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
-        if compiled is None: return
-        if getattr(compiled, "isinsert", False):
-            table = compiled.statement.table
-            self.context.last_inserted_table = table
-            self.context.lastrowid = cursor.lastrowid
+	pass
 
     def _executemany(self, c, statement, parameters):
         rowcount = 0
@@ -192,6 +192,11 @@ class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):
 
     def visit_sequence(self, sequence):
         self.append("CREATE SEQUENCE %s" % sequence.name)
-	print "HI"
         self.execute()
-	print "THERE"
+
+class OracleSchemaDropper(ansisql.ANSISchemaDropper):
+    def visit_sequence(self, sequence):
+        if not sequence.optional:
+            self.append("DROP SEQUENCE %s" % sequence.name)
+            self.execute()
+
