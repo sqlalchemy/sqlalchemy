@@ -324,7 +324,7 @@ class UOWTransaction(object):
             task.mapper.register_dependencies(self)
 
         head = self._sort_dependencies()
-        print "Task dump:\n" + head.dump()
+        #print "Task dump:\n" + head.dump()
         if head is not None:
             head.execute(self)
             
@@ -434,15 +434,12 @@ class UOWTask(object):
             self.circular.execute(trans)
             return
 
-#        print "task " + str(self) + " tosave: " + repr(self.tosave_objects())
         self.mapper.save_obj(self.tosave_objects(), trans)
         for dep in self.save_dependencies():
             (processor, targettask, isdelete) = dep
             processor.process_dependencies(targettask, [elem.obj for elem in targettask.tosave_elements()], trans, delete = False)
- #           print "processed dependencies on " + repr([elem.obj for elem in targettask.tosave_elements()])
         for element in self.tosave_elements():
             if element.childtask is not None:
-#                print "execute elem childtask " + str(element.childtask)
                 element.childtask.execute(trans)
         for dep in self.delete_dependencies():
             (processor, targettask, isdelete) = dep

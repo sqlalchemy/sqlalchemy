@@ -26,8 +26,11 @@ from sqlalchemy.ansisql import *
 try:
     import psycopg2 as psycopg
 except:
-    import psycopg
-
+    try:
+        import psycopg
+    except:
+        psycopg = None
+        
 class PGNumeric(sqltypes.Numeric):
     def get_col_spec(self):
         return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
@@ -70,8 +73,9 @@ def engine(opts, **params):
 class PGSQLEngine(ansisql.ANSISQLEngine):
     def __init__(self, opts, module = None, **params):
         if module is None:
-            self.module = __import__('psycopg2')
-            #self.module = psycopg
+            if psycopg is None:
+                raise "Couldnt locate psycopg1 or psycopg2: specify postgres module argument"
+            self.module = psycopg
         else:
             self.module = module
         self.opts = opts or {}

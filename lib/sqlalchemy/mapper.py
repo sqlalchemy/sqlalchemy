@@ -443,11 +443,12 @@ class Mapper(object):
                     (obj, params) = rec
                     statement.execute(**params)
                     primary_keys = table.engine.last_inserted_ids()
-                    i = 0
-                    for col in self.primary_keys[table]:
-                        if self._getattrbycolumn(obj, col) is None:
-                            self._setattrbycolumn(obj, col, primary_keys[i])
-                        i+=1
+                    if primary_keys is not None:
+                        i = 0
+                        for col in self.primary_keys[table]:
+                            if self._getattrbycolumn(obj, col) is None:
+                                self._setattrbycolumn(obj, col, primary_keys[i])
+                            i+=1
                     self.extension.after_insert(self, obj)
                     
     def delete_obj(self, objects, uow):
