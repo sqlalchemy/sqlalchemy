@@ -109,22 +109,27 @@ class OracleSQLEngine(ansisql.ANSISQLEngine):
 
     def pre_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
         # if a sequence was explicitly defined we do it here
-        if compiled is None or isinstance(parameters, list): return
+        if compiled is None: return
         if getattr(compiled, "isinsert", False):
-            last_inserted_ids = []
-            for primary_key in compiled.statement.table.primary_keys:
-                if not parameters.has_key(primary_key.key) or parameters[primary_key.key] is None:
-                    if primary_key.sequence is None:
-                        raise "Column '%s.%s': Oracle primary key columns require schema.Sequence to create ids" % (primary_key.table.name, primary_key.name)
-                    if echo is True or self.echo:
-                        self.log("select %s.nextval from dual" % primary_key.sequence.name)
-                    cursor.execute("select %s.nextval from dual" % primary_key.sequence.name)
-                    newid = cursor.fetchone()[0]
-                    parameters[primary_key.key] = newid
-                    if compiled.statement.parameters is not None:
-			compiled.statement.parameters[primary_key.key] = bindparam(primary_key.key)
-                last_inserted_ids.append(parameters[primary_key.key])
-            self.context.last_inserted_ids = last_inserted_ids
+            if isinstance(parameters, list):
+                plist = parameters
+            else:
+                plist = [parameters]
+            for param in plist:
+                last_inserted_ids = []
+                for primary_key in compiled.statement.table.primary_keys:
+                    if not param.has_key(primary_key.key) or param[primary_key.key] is None:
+                        if primary_key.sequence is None:
+                            raise "Column '%s.%s': Oracle primary key columns require schema.Sequence to create ids" % (primary_key.table.name, primary_key.name)
+                        if echo is True or self.echo:
+                            self.log("select %s.nextval from dual" % primary_key.sequence.name)
+                        cursor.execute("select %s.nextval from dual" % primary_key.sequence.name)
+                        newid = cursor.fetchone()[0]
+                        param[primary_key.key] = newid
+                        #if compiled.statement.parameters is not None:
+                         #   compiled.statement.parameters[primary_key.key] = bindparam(primary_key.key)
+                    last_inserted_ids.append(param[primary_key.key])
+                self.context.last_inserted_ids = last_inserted_ids
 
     def post_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
 	pass
