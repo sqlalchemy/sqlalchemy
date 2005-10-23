@@ -171,7 +171,7 @@ class OracleCompiler(ansisql.ANSICompiler):
         
     def visit_insert(self, insert):
         for c in insert.table.primary_keys:
-            if c.sequence is not None and not c.sequence.optional:
+            if not self.bindparams.has_key(c.key):
                 self.bindparams[c.key] = None
                 #if not insert.parameters.has_key(c.key):
                  #   insert.parameters[c.key] = sql.bindparam(c.key)
