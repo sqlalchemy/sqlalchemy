@@ -283,7 +283,11 @@ class CompareMixin(object):
         return self._compare('LIKE', other)
 
     def in_(self, *other):
-        if _is_literal(other[0]):
+        if len(other) == 0:
+            return self.__eq__(None)
+        elif len(other) == 1:
+            return self.__eq__(other[0])
+        elif _is_literal(other[0]):
             return self._compare('IN', CompoundClause(',', other))
         else:
             return self._compare('IN', union(*other))

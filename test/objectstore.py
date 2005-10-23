@@ -268,8 +268,8 @@ class SaveTest(AssertMixin):
         objects[3].user.user_name = 'imnewlyadded'
         self.assert_sql(db, lambda: objectstore.uow().commit(), [
                 (
-                    "INSERT INTO users (user_id, user_name) VALUES (:user_id, :user_name)",
-                    {'user_id': None, 'user_name': 'imnewlyadded'}
+                    "INSERT INTO users (user_name) VALUES (:user_name)",
+                    {'user_name': 'imnewlyadded'}
                 ),
                 (
                     "UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE email_addresses.address_id = :email_addresses_address_id",
@@ -391,8 +391,8 @@ class SaveTest(AssertMixin):
         self.assert_sql(db, lambda: objectstore.commit(), 
                 [
                     (
-                    "INSERT INTO email_addresses (address_id, user_id, email_address) VALUES (:address_id, :user_id, :email_address)",
-                    {'email_address': 'hi', 'address_id': None, 'user_id': 7}
+                    "INSERT INTO email_addresses (user_id, email_address) VALUES (:user_id, :email_address)",
+                    {'email_address': 'hi', 'user_id': 7}
                     ),
                 ]
         )
