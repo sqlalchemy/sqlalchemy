@@ -165,8 +165,12 @@ class Column(SchemaItem):
         c._impl = self.engine.columnimpl(c)
         return c
 
-    def accept_visitor(self, visitor): 
-        return visitor.visit_column(self)
+    def accept_visitor(self, visitor):
+        if self.sequence is not None:
+            self.sequence.accept_visitor(visitor)
+        if self.foreign_key is not None:
+            self.foreign_key.accept_visitor(visitor)
+        visitor.visit_column(self)
 
     def __lt__(self, other): return self._impl.__lt__(other)
     def __le__(self, other): return self._impl.__le__(other)
@@ -208,7 +212,10 @@ class ForeignKey(SchemaItem):
         return self._column
             
     column = property(lambda s: s._init_column())
-    
+
+    def accept_visitor(self, visitor):
+        visitor.visit_foreign_key(self)
+        
     def _set_parent(self, column):
         self.parent = column
         self.parent.foreign_key = self
@@ -216,11 +223,12 @@ class ForeignKey(SchemaItem):
         
 class Sequence(SchemaItem):
     """represents a sequence, which applies to Oracle and Postgres databases."""
-    def __init__(self, name, start = None, increment = None):
+    def __init__(self, name, start = None, increment = None, optional=False):
         self.name = name
         self.start = start
         self.increment = increment
-    def _set_parent(self, column, key):
+        self.optional=optional
+    def _set_parent(self, column):
         self.column = column
         self.column.sequence = self
     def accept_visitor(self, visitor):
@@ -236,14 +244,14 @@ class SchemaEngine(object):
         raise NotImplementedError()
         
 class SchemaVisitor(object):
-        """base class for an object that traverses across Schema objects"""
+    """base class for an object that traverses across Schema objects"""
 
-        def visit_schema(self, schema):pass
-        def visit_table(self, table):pass
-        def visit_column(self, column):pass
-        def visit_foreign_key(self, join):pass
-        def visit_index(self, index):pass
-        def visit_sequence(self, sequence):pass
+    def visit_schema(self, schema):pass
+    def visit_table(self, table):pass
+    def visit_column(self, column):pass
+    def visit_foreign_key(self, join):pass
+    def visit_index(self, index):pass
+    def visit_sequence(self, sequence):pass
 
             
             

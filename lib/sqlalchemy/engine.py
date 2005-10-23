@@ -124,7 +124,7 @@ class SQLEngine(schema.SchemaEngine):
         connection.commit()
 
     def proxy(self):
-        return lambda s, p = None: self.execute(s, p)
+        return lambda s, p = None: self.execute(s, p, commit=True)
 
     def connection(self):
         return self._pool.connect()
@@ -192,7 +192,7 @@ class SQLEngine(schema.SchemaEngine):
     def post_exec(self, connection, cursor, statement, parameters, many = False, echo = None, **kwargs):
         pass
 
-    def execute(self, statement, parameters, connection = None, echo = None, typemap = None, **kwargs):
+    def execute(self, statement, parameters, connection = None, echo = None, typemap = None, commit=False, **kwargs):
         if parameters is None:
             parameters = {}
         if echo is True or self.echo:
@@ -200,8 +200,8 @@ class SQLEngine(schema.SchemaEngine):
             self.log(repr(parameters))
 
         if connection is None:
-            poolconn = self.connection()
-            c = poolconn.cursor()
+            connection = self.connection()
+            c = connection.cursor()
         else:
             c = connection.cursor()
 
@@ -211,6 +211,8 @@ class SQLEngine(schema.SchemaEngine):
         else:
             self._execute(c, statement, parameters)
         self.post_exec(connection, c, statement, parameters, echo = echo, **kwargs)
+        if commit:
+            connection.commit()
         return ResultProxy(c, self, typemap = typemap)
 
     def _execute(self, c, statement, parameters):

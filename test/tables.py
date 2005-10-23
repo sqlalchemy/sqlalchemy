@@ -25,12 +25,12 @@ elif DBTYPE == 'postgres':
 db = testbase.EngineAssert(db)
 
 users = Table('users', db,
-    Column('user_id', Integer, primary_key = True),
+    Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key = True),
     Column('user_name', String(40)),
 )
 
 addresses = Table('email_addresses', db,
-    Column('address_id', Integer, primary_key = True),
+    Column('address_id', Integer, Sequence('address_id_seq', optional=True), primary_key = True),
     Column('user_id', Integer, ForeignKey(users.c.user_id)),
     Column('email_address', String(40)),
 )
@@ -65,7 +65,6 @@ def create():
     orderitems.create()
     keywords.create()
     itemkeywords.create()
-    db.commit()
     
 def drop():
     itemkeywords.drop()
@@ -74,7 +73,6 @@ def drop():
     orders.drop()
     addresses.drop()
     users.drop()
-    db.commit()
     
 def delete():
     itemkeywords.delete().execute()
@@ -83,6 +81,7 @@ def delete():
     orders.delete().execute()
     addresses.delete().execute()
     users.delete().execute()
+    db.commit()
     
 def data():
     delete()

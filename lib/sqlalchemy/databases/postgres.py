@@ -84,7 +84,6 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
     def connect_args(self):
         return [[], self.opts]
 
-
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
 
@@ -97,6 +96,9 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
     def schemagenerator(self, proxy, **params):
         return PGSchemaGenerator(proxy, **params)
 
+    def schemadropper(self, proxy, **params):
+        return PGSchemaDropper(proxy, **params)
+        
     def reflecttable(self, table):
         raise "not implemented"
         
@@ -109,21 +111,16 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
             return None
             
     def pre_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
-        if True: return
         # if a sequence was explicitly defined we do it here
         if compiled is None: return
         if getattr(compiled, "isinsert", False):
-            last_inserted_ids = []
             for primary_key in compiled.statement.table.primary_keys:
-                # pseudocode
-                if parameters[primary_key.key] is None:
-                    if echo is True:
-                        self.log(primary_key.sequence.text)
-                    res = cursor.execute(primary_key.sequence.text)
-                    newid = res.fetchrow()[0]
+                if primary_key.sequence is not None and not primary_key.sequence.optional and parameters[primary_key.key] is None:
+                    if echo is True or self.echo:
+                        self.log("select nextval('%s')" % primary_key.sequence.name)
+                    cursor.execute("select nextval('%s')" % primary_key.sequence.name)
+                    newid = cursor.fetchone()[0]
                     parameters[primary_key.key] = newid
-                    last_inserted_ids.append(newid)
-            self.context.last_inserted_ids = last_inserted_ids
 
     def _executemany(self, c, statement, parameters):
         """we need accurate rowcounts for updates, inserts and deletes.  psycopg2 is not nice enough
@@ -151,13 +148,21 @@ class PGCompiler(ansisql.ANSICompiler):
     def bindparam_string(self, name):
         return "%(" + name + ")s"
 
+    def visit_insert(self, insert):
+        for c in insert.table.primary_keys:
+            if c.sequence is not None and not c.sequence.optional:
+                self.bindparams[c.key] = None
+                #if not insert.parameters.has_key(c.key):
+                 #   insert.parameters[c.key] = sql.bindparam(c.key)
+        return ansisql.ANSICompiler.visit_insert(self, insert)
+        
 class PGSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column):
         colspec = column.name
-        if column.primary_key and isinstance(column.type, types.Integer):
+        if column.primary_key and isinstance(column.type, types.Integer) and (column.sequence is None or column.sequence.optional):
             colspec += " SERIAL"
         else:
-            colspec += " " + column.column.type.get_col_spec()
+            colspec += " " + column.type.get_col_spec()
 
         if not column.nullable:
             colspec += " NOT NULL"
@@ -166,3 +171,14 @@ class PGSchemaGenerator(ansisql.ANSISchemaGenerator):
         if column.foreign_key:
             colspec += " REFERENCES %s(%s)" % (column.column.foreign_key.column.table.name, column.column.foreign_key.column.name) 
         return colspec
+
+    def visit_sequence(self, sequence):
+        if not sequence.optional:
+            self.append("CREATE SEQUENCE %s" % sequence.name)
+            self.execute()
+            
+class PGSchemaDropper(ansisql.ANSISchemaDropper):
+    def visit_sequence(self, sequence):
+        if not sequence.optional:
+            self.append("DROP SEQUENCE %s" % sequence.name)
+            self.execute()

@@ -637,7 +637,7 @@ class SaveTest(AssertMixin):
                 item.keywords.append(ik)
 
         objectstore.uow().commit()
-
+        objectstore.clear()
         l = m.select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name, keywords.c.name])
         self.assert_result(l, *data)
 

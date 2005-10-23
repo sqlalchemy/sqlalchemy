@@ -23,22 +23,105 @@ import sqlalchemy.schema as schema
 import sqlalchemy.ansisql as ansisql
 from sqlalchemy.ansisql import *
 
+try:
+    import cx_Oracle
+except:
+    cx_Oracle = None
+        
+class OracleNumeric(sqltypes.Numeric):
+    def get_col_spec(self):
+        return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
+class OracleInteger(sqltypes.Integer):
+    def get_col_spec(self):
+        return "INTEGER"
+class OracleDateTime(sqltypes.DateTime):
+    def get_col_spec(self):
+        return "TIMESTAMP"
+class OracleText(sqltypes.TEXT):
+    def get_col_spec(self):
+        return "TEXT"
+class OracleString(sqltypes.String):
+    def get_col_spec(self):
+        return "VARCHAR(%(length)s)" % {'length' : self.length}
+class OracleChar(sqltypes.CHAR):
+    def get_col_spec(self):
+        return "CHAR(%(length)s)" % {'length' : self.length}
+class OracleBinary(sqltypes.Binary):
+    def get_col_spec(self):
+        return "BLOB"
+class OracleBoolean(sqltypes.Boolean):
+    def get_col_spec(self):
+        return "BOOLEAN"
+        
+colspecs = {
+    sqltypes.Integer : OracleInteger,
+    sqltypes.Numeric : OracleNumeric,
+    sqltypes.DateTime : OracleDateTime,
+    sqltypes.String : OracleString,
+    sqltypes.Binary : OracleBinary,
+    sqltypes.Boolean : OracleBoolean,
+    sqltypes.TEXT : OracleText,
+    sqltypes.CHAR: OracleChar,
+}
 
 def engine(**params):
     return OracleSQLEngine(**params)
     
 class OracleSQLEngine(ansisql.ANSISQLEngine):
-    def __init__(self, use_ansi = True, **params):
+    def __init__(self, opts, use_ansi = True, module = None, **params):
         self._use_ansi = use_ansi
         ansisql.ANSISQLEngine.__init__(self, **params)
+        self.opts = {}
+        if module is None:
+            self.module = cx_Oracle
+        else:
+            self.module = module
 
+    def dbapi(self):
+        return self.module
+
+    def connect_args(self):
+        return [[], self.opts]
+        
     def compile(self, statement, bindparams):
         compiler = OracleCompiler(self, statement, bindparams, use_ansi = self._use_ansi)
         statement.accept_visitor(compiler)
         return compiler
-        
-    def create_connection(self):
-        raise NotImplementedError()
+
+    def type_descriptor(self, typeobj):
+        return sqltypes.adapt_type(typeobj, colspecs)
+
+    def last_inserted_ids(self):
+        return self.context.last_inserted_ids
+
+    def compiler(self, statement, bindparams):
+        return OracleCompiler(self, statement, bindparams)
+
+    def schemagenerator(self, proxy, **params):
+        return OracleSchemaGenerator(proxy, **params)
+
+    def reflecttable(self, table):
+        raise "not implemented"
+
+    def last_inserted_ids(self):
+        table = self.context.last_inserted_table
+        if self.context.lastrowid is not None and table is not None and len(table.primary_keys):
+            row = sql.select(table.primary_keys, table.rowid_column == self.context.lastrowid).execute().fetchone()
+            return [v for v in row]
+        else:
+            return None
+
+    def pre_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
+        pass
+    def post_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
+        pass
+
+    def _executemany(self, c, statement, parameters):
+        rowcount = 0
+        for param in parameters:
+            c.execute(statement, param)
+            rowcount += c.rowcount
+        self.context.rowcount = rowcount
 
 class OracleCompiler(ansisql.ANSICompiler):
     """oracle compiler modifies the lexical structure of Select statements to work under 
@@ -77,3 +160,19 @@ class OracleCompiler(ansisql.ANSICompiler):
             self.strings[column] = "%s.%s" % (column.table.name, column.name)
         
 
+class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):
+    def get_column_specification(self, column):
+        colspec = column.name
+        colspec += " " + column.type.get_col_spec()
+
+        if not column.nullable:
+            colspec += " NOT NULL"
+        if column.primary_key:
+            colspec += " PRIMARY KEY"
+        if column.foreign_key:
+            colspec += " REFERENCES %s(%s)" % (column.column.foreign_key.column.table.name, column.column.foreign_key.column.name) 
+        return colspec
+
+    def visit_sequence(self, sequence):
+        self.append("CREATE SEQUENCE %s" % sequence.name)
+        self.execute()
