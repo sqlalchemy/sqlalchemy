@@ -88,7 +88,19 @@ class TTestSuite(unittest.TestSuite):
             self._initTest = None
         unittest.TestSuite.__init__(self, tests)
 
+    def do_run(self, result):
+	"""nice job unittest !  you switched __call__ and run() between py2.3 and 2.4 thereby
+	making straight subclassing impossible !"""
+        for test in self._tests:
+            if result.shouldStop:
+                break
+            test(result)
+        return result
+
     def run(self, result):
+        return self(result)
+
+    def __call__(self, result):
         try:
             if self._initTest is not None:
                 self._initTest.setUpAll()
@@ -96,7 +108,7 @@ class TTestSuite(unittest.TestSuite):
             result.addError(self._initTest, self.__exc_info())
             pass
         try:
-            return unittest.TestSuite.run(self, result)
+            return self.do_run(result)
         finally:
             try:
                 if self._initTest is not None:
@@ -115,7 +127,6 @@ class TTestSuite(unittest.TestSuite):
         if sys.platform[:4] == 'java': ## tracebacks look different in Jython
             return (exctype, excvalue, tb)
         return (exctype, excvalue, tb)
-
 
 unittest.TestLoader.suiteClass = TTestSuite
                     

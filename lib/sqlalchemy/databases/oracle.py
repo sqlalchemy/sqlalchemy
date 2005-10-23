@@ -204,7 +204,6 @@ class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):
 
 class OracleSchemaDropper(ansisql.ANSISchemaDropper):
     def visit_sequence(self, sequence):
-        if not sequence.optional:
-            self.append("DROP SEQUENCE %s" % sequence.name)
-            self.execute()
+        self.append("DROP SEQUENCE %s" % sequence.name)
+        self.execute()
 
