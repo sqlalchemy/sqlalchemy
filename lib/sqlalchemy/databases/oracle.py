@@ -105,10 +105,9 @@ class OracleSQLEngine(ansisql.ANSISQLEngine):
         raise "not implemented"
 
     def last_inserted_ids(self):
-	return self.context.last_inserted_ids
+        return self.context.last_inserted_ids
 
     def pre_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
-        # if a sequence was explicitly defined we do it here
         if compiled is None: return
         if getattr(compiled, "isinsert", False):
             if isinstance(parameters, list):
@@ -126,13 +125,11 @@ class OracleSQLEngine(ansisql.ANSISQLEngine):
                         cursor.execute("select %s.nextval from dual" % primary_key.sequence.name)
                         newid = cursor.fetchone()[0]
                         param[primary_key.key] = newid
-                        #if compiled.statement.parameters is not None:
-                         #   compiled.statement.parameters[primary_key.key] = bindparam(primary_key.key)
                     last_inserted_ids.append(param[primary_key.key])
                 self.context.last_inserted_ids = last_inserted_ids
 
     def post_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
-	pass
+        pass
 
     def _executemany(self, c, statement, parameters):
         rowcount = 0
@@ -178,11 +175,13 @@ class OracleCompiler(ansisql.ANSICompiler):
             self.strings[column] = "%s.%s" % (column.table.name, column.name)
         
     def visit_insert(self, insert):
+        """inserts are required to have the primary keys be explicitly present.
+         mapper will by default not put them in the insert statement to comply
+         with autoincrement fields that require they not be present.  so, 
+         put them all in for all primary key columns."""
         for c in insert.table.primary_keys:
             if not self.bindparams.has_key(c.key):
                 self.bindparams[c.key] = None
-                #if not insert.parameters.has_key(c.key):
-                 #   insert.parameters[c.key] = sql.bindparam(c.key)
         return ansisql.ANSICompiler.visit_insert(self, insert)
 
 class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):

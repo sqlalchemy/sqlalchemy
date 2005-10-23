@@ -103,6 +103,12 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         raise "not implemented"
         
     def last_inserted_ids(self):
+        # if we used sequences or already had all values for the last inserted row,
+        # return that list
+        if self.context.last_inserted_ids is not None:
+            return self.context.last_inserted_ids
+        
+        # else we have to use lastrowid and select the most recently inserted row    
         table = self.context.last_inserted_table
         if self.context.lastrowid is not None and table is not None and len(table.primary_keys):
             row = sql.select(table.primary_keys, table.rowid_column == self.context.lastrowid).execute().fetchone()
@@ -114,13 +120,34 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         # if a sequence was explicitly defined we do it here
         if compiled is None: return
         if getattr(compiled, "isinsert", False):
-            for primary_key in compiled.statement.table.primary_keys:
-                if primary_key.sequence is not None and not primary_key.sequence.optional and parameters[primary_key.key] is None:
-                    if echo is True or self.echo:
-                        self.log("select nextval('%s')" % primary_key.sequence.name)
-                    cursor.execute("select nextval('%s')" % primary_key.sequence.name)
-                    newid = cursor.fetchone()[0]
-                    parameters[primary_key.key] = newid
+            if isinstance(parameters, list):
+                plist = parameters
+            else:
+                plist = [parameters]
+            # inserts are usually one at a time.  but if we got a list of parameters,
+            # it will calculate last_inserted_ids for just the last row in the list. 
+            # TODO: why not make last_inserted_ids a 2D array since we have to explicitly sequence
+            # it or post-select anyway   
+            for param in plist:
+                last_inserted_ids = []
+                need_lastrowid=False
+                for primary_key in compiled.statement.table.primary_keys:
+                    if not param.has_key(primary_key.key) or param[primary_key.key] is None:
+                        if primary_key.sequence is not None and not primary_key.sequence.optional:
+                            if echo is True or self.echo:
+                                self.log("select nextval('%s')" % primary_key.sequence.name)
+                            cursor.execute("select nextval('%s')" % primary_key.sequence.name)
+                            newid = cursor.fetchone()[0]
+                            param[primary_key.key] = newid
+                            last_inserted_ids.append(param[primary_key.key])
+                        else:
+                            need_lastrowid = True
+                    else:
+                        last_inserted_ids.append(param[primary_key.key])
+                if need_lastrowid:
+                    self.context.last_inserted_ids = None
+                else:
+                    self.context.last_inserted_ids = last_inserted_ids
 
     def _executemany(self, c, statement, parameters):
         """we need accurate rowcounts for updates, inserts and deletes.  psycopg2 is not nice enough
@@ -149,11 +176,13 @@ class PGCompiler(ansisql.ANSICompiler):
         return "%(" + name + ")s"
 
     def visit_insert(self, insert):
+        """inserts are required to have the primary keys be explicitly present.
+         mapper will by default not put them in the insert statement to comply
+         with autoincrement fields that require they not be present.  so, 
+         put them all in for columns where sequence usage is defined."""
         for c in insert.table.primary_keys:
             if c.sequence is not None and not c.sequence.optional:
                 self.bindparams[c.key] = None
-                #if not insert.parameters.has_key(c.key):
-                 #   insert.parameters[c.key] = sql.bindparam(c.key)
         return ansisql.ANSICompiler.visit_insert(self, insert)
         
 class PGSchemaGenerator(ansisql.ANSISchemaGenerator):
