@@ -193,26 +193,34 @@ class SQLEngine(schema.SchemaEngine):
         pass
 
     def execute(self, statement, parameters, connection = None, echo = None, typemap = None, commit=False, **kwargs):
+	print "I AM HERE"
         if parameters is None:
             parameters = {}
         if echo is True or self.echo:
             self.log(statement)
             self.log(repr(parameters))
 
+	print "LOGGED"
         if connection is None:
             connection = self.connection()
+            #connection = self.dbapi().connect(**self.connect_args()[1])
             c = connection.cursor()
         else:
             c = connection.cursor()
 
+	print "CONNECTION"
         self.pre_exec(connection, c, statement, parameters, echo = echo, **kwargs)
+	print "LALA"
         if isinstance(parameters, list):
             self._executemany(c, statement, parameters)
         else:
             self._execute(c, statement, parameters)
+	print "FOO"
         self.post_exec(connection, c, statement, parameters, echo = echo, **kwargs)
         if commit:
+            print "HOHO"
             connection.commit()
+        print "EEP"
         return ResultProxy(c, self, typemap = typemap)
 
     def _execute(self, c, statement, parameters):
