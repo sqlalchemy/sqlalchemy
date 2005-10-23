@@ -3,7 +3,7 @@ from sqlalchemy.schema import *
 from sqlalchemy.sql import *
 import sqlalchemy.util as util
 import tables
-import string, sys
+import string, sys, time
 
 """a more advanced example of basic_tree.py.  illustrates MapperExtension objects which
 add application-specific functionality to a Mapper object."""
@@ -79,7 +79,7 @@ class TreeLoader(MapperExtension):
         if instance.root is instance:
             mapper.primarytable.update(TreeNode.c.id==instance.id, values=dict(root_node_id=instance.id)).execute()
             instance.root_id = instance.id
-    def append_result(self, mapper, row, imap, result, instance, populate_existing=False):
+    def append_result(self, mapper, row, imap, result, instance, isnew, populate_existing=False):
         """runs as results from a SELECT statement are processed, and newly created or already-existing
         instances that correspond to each row are appended to result lists.  This method will only
         append root nodes to the result list, and will attach child nodes to their appropriate parent
@@ -88,8 +88,9 @@ class TreeLoader(MapperExtension):
         if instance.parent_id is None:
             result.append(instance)
         else:
-            parentnode = imap[mapper.identity_key(instance.parent_id)]
-            parentnode.children.append(instance, _mapper_nohistory=True)
+            if isnew or populate_existing:
+                parentnode = imap[mapper.identity_key(instance.parent_id)]
+                parentnode.children.append(instance, _mapper_nohistory=True)
         return False
             
 class TreeData(object):

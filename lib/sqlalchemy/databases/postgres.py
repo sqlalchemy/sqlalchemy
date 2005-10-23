@@ -23,6 +23,10 @@ import sqlalchemy.schema as schema
 import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
 from sqlalchemy.ansisql import *
+try:
+    import psycopg2 as psycopg
+except:
+    import psycopg
 
 class PGNumeric(sqltypes.Numeric):
     def get_col_spec(self):
@@ -67,6 +71,7 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
     def __init__(self, opts, module = None, **params):
         if module is None:
             self.module = __import__('psycopg2')
+            #self.module = psycopg
         else:
             self.module = module
         self.opts = opts or {}

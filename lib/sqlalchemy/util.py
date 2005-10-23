@@ -16,7 +16,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 __ALL__ = ['OrderedProperties', 'OrderedDict']
-import thread, weakref, UserList
+import thread, weakref, UserList,string
 
 class OrderedProperties(object):
     """an object that maintains the order in which attributes are set upon it.
@@ -399,7 +399,6 @@ class DependencySorter(object):
                     childnode.parent.children.append(parentnode)
                 parentnode.children.append(childnode)
                 childnode.parent = parentnode
-            #print str(head)
 
         # go through the total list of items.  for those 
         # that had no dependency tuples, and therefore are not
@@ -417,5 +416,6 @@ class DependencySorter(object):
                     n = DependencySorter.Node(item)
                     head.children.append(n)
                     n.parent = head
+        #print str(head)
         return head
             

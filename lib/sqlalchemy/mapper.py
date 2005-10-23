@@ -518,6 +518,7 @@ class Mapper(object):
         if objectstore.uow().has_key(identitykey):
             instance = objectstore.uow()._get(identitykey)
 
+            isnew = False
             if populate_existing:
                 isnew = not imap.has_key(identitykey)
                 if isnew:
@@ -525,7 +526,7 @@ class Mapper(object):
                 for prop in self.props.values():
                     prop.execute(instance, row, identitykey, imap, isnew)
 
-            if self.extension.append_result(self, row, imap, result, instance, populate_existing=populate_existing):
+            if self.extension.append_result(self, row, imap, result, instance, isnew, populate_existing=populate_existing):
                 if result is not None:
                     result.append_nohistory(instance)
 
@@ -561,7 +562,7 @@ class Mapper(object):
         for prop in self.props.values():
             prop.execute(instance, row, identitykey, imap, isnew)
 
-        if self.extension.append_result(self, row, imap, result, instance, populate_existing=populate_existing):
+        if self.extension.append_result(self, row, imap, result, instance, isnew, populate_existing=populate_existing):
             if result is not None:
                 result.append_nohistory(instance)
             
@@ -1128,7 +1129,7 @@ class BinaryVisitor(sql.ClauseVisitor):
 class MapperExtension(object):
     def create_instance(self, mapper, row, imap, class_):
         return None
-    def append_result(self, mapper, row, imap, result, instance, populate_existing=False):
+    def append_result(self, mapper, row, imap, result, instance, isnew, populate_existing=False):
         return True
     def after_insert(self, mapper, instance):
         pass

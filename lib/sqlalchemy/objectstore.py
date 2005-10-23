@@ -431,20 +431,18 @@ class UOWTask(object):
         """executes this UOWTask.  saves objects to be saved, processes all dependencies
         that have been registered, and deletes objects to be deleted. """
         if self.circular is not None:
-            print "CIRCULAR !"
             self.circular.execute(trans)
-            print "CIRCULAR DONE !"
             return
 
-        print "task " + str(self) + " tosave: " + repr(self.tosave_objects())
+#        print "task " + str(self) + " tosave: " + repr(self.tosave_objects())
         self.mapper.save_obj(self.tosave_objects(), trans)
         for dep in self.save_dependencies():
             (processor, targettask, isdelete) = dep
             processor.process_dependencies(targettask, [elem.obj for elem in targettask.tosave_elements()], trans, delete = False)
-            print "processed dependencies on " + repr([elem.obj for elem in targettask.tosave_elements()])
+ #           print "processed dependencies on " + repr([elem.obj for elem in targettask.tosave_elements()])
         for element in self.tosave_elements():
             if element.childtask is not None:
-                print "execute elem childtask " + str(element.childtask)
+#                print "execute elem childtask " + str(element.childtask)
                 element.childtask.execute(trans)
         for dep in self.delete_dependencies():
             (processor, targettask, isdelete) = dep
@@ -553,6 +551,7 @@ class UOWTask(object):
         if self.circular is not None:
             s += " Circular Representation:"
             s += self.circular.dump(indent + "  ")
+            s += "\n----------------------"
             return s
         saveobj = self.tosave_elements()
         if len(saveobj) > 0:
