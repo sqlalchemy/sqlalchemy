@@ -35,7 +35,7 @@ class SQLTest(PersistTest):
         c = clause.compile(engine, params)
         self.echo("\n" + str(c) + repr(c.get_params()))
         cc = re.sub(r'\n', '', str(c))
-        self.assert_(cc == result)
+        self.assert_(cc == result, str(c) + "\n does not match \n" + result)
 
 class SelectTest(SQLTest):
 
@@ -271,10 +271,10 @@ FROM myothertable UNION SELECT thirdtable.userid, thirdtable.otherstuff FROM thi
         self.runtest(query, 
             "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername \
 FROM mytable LEFT OUTER JOIN myothertable ON mytable.myid = myothertable.otherid \
-WHERE mytable.name = :mytable_name AND mytable.myid = :mytable_myid AND \
-myothertable.othername != :myothertable_othername AND \
+WHERE mytable.name = %(mytable_name)s AND mytable.myid = %(mytable_myid)s AND \
+myothertable.othername != %(myothertable_othername)s AND \
 EXISTS (select yay from foo where boo = lar)",
-            engine = postgres.engine())
+            engine = postgres.engine({}))
 
 
         self.runtest(query, 
@@ -282,7 +282,7 @@ EXISTS (select yay from foo where boo = lar)",
 FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid(+) AND \
 mytable.name = :mytable_name AND mytable.myid = :mytable_myid AND \
 myothertable.othername != :myothertable_othername AND EXISTS (select yay from foo where boo = lar)",
-            engine = oracle.engine(use_ansi = False))
+            engine = oracle.engine({}, use_ansi = False))
 
     def testbindparam(self):
         self.runtest(select(

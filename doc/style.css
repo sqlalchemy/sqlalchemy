@@ -114,8 +114,9 @@ a:hover {color:#700000;}
 .codepoplink {
 	font-weight:bold;
 	font-family: verdana, sans-serif;
-	font-size:12px;
+	font-size:11px;
 	color:#000000;
 	border:1px solid;
-	padding:2px 8px 2px 8px;
+	padding:1px 2px 1px 2px;
+	margin:0px 0px 0px 15px;
 }

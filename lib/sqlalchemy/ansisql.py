@@ -37,8 +37,8 @@ class ANSISQLEngine(sqlalchemy.engine.SQLEngine):
     def schemadropper(self, proxy, **params):
         return ANSISchemaDropper(proxy, **params)
 
-    def compiler(self, statement, bindparams):
-        return ANSICompiler(self, statement, bindparams)
+    def compiler(self, statement, bindparams, **kwargs):
+        return ANSICompiler(self, statement, bindparams, **kwargs)
     
     def connect_args(self):
         return ([],{})

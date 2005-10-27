@@ -94,7 +94,7 @@ class OracleSQLEngine(ansisql.ANSISQLEngine):
         return "rowid"
 
     def compiler(self, statement, bindparams, **kwargs):
-        return OracleCompiler(self, statement, bindparams, **kwargs)
+        return OracleCompiler(self, statement, bindparams, use_ansi=self._use_ansi, **kwargs)
 
     def schemagenerator(self, proxy, **params):
         return OracleSchemaGenerator(proxy, **params)
@@ -153,8 +153,10 @@ class OracleCompiler(ansisql.ANSICompiler):
             
         self.froms[join] = self.get_from_text(join.left) + ", " + self.get_from_text(join.right)
         self.wheres[join] = join.onclause
-        
+
+        print "check1"
         if join.isouter:
+            print "check2"
             # if outer join, push on the right side table as the current "outertable"
             outertable = self._outertable
             self._outertable = join.right

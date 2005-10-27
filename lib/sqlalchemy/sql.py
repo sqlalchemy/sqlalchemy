@@ -301,7 +301,7 @@ class CompareMixin(object):
     def in_(self, *other):
         if len(other) == 0:
             return self.__eq__(None)
-        elif len(other) == 1:
+        elif len(other) == 1 and not isinstance(other[0], Selectable):
             return self.__eq__(other[0])
         elif _is_literal(other[0]):
             return self._compare('IN', CompoundClause(',', other))
@@ -321,7 +321,7 @@ class ColumnClause(ClauseElement, CompareMixin):
     def __init__(self, text, selectable):
         self.text = text
         self.table = selectable
-        self._impl = ColumnSelectable(self)
+        self._impl = ColumnImpl(self)
         self.type = types.NullTypeEngine()
         
     columns = property(lambda self: [self])
@@ -355,7 +355,7 @@ class ColumnClause(ClauseElement, CompareMixin):
     def _make_proxy(self, selectable, name = None):
         c = ColumnClause(self.text or name, selectable)
         selectable.columns[c.key] = c
-        c._impl = ColumnSelectable(c)
+        c._impl = ColumnImpl(c)
         return c
 
 class FromClause(ClauseElement):
@@ -494,8 +494,7 @@ class BinaryClause(ClauseElement):
         self.right = c
         
 class Selectable(FromClause):
-    """represents a column list-holding object, like a table or subquery.  can be used anywhere
-    a Table is used."""
+    """represents a column list-holding object, like a table, alias or subquery.  can be used anywhere a Table is used."""
     
     c = property(lambda self: self.columns)
 
@@ -503,7 +502,7 @@ class Selectable(FromClause):
         raise NotImplementedError()
     
     def select(self, whereclauses = None, **params):
-        raise NotImplementedError()
+        return select([self], whereclauses, **params)
 
     def join(self, right, *args, **kwargs):
         return Join(self, right, *args, **kwargs)
@@ -534,10 +533,9 @@ class Join(Selectable):
         
     primary_keys = property (lambda self: [c for c in self.left.columns if c.primary_key] + [c for c in self.right.columns if c.primary_key])
 
-
     def group_parenthesized(self):
         """indicates if this Selectable requires parenthesis when grouped into a compound statement"""
-        return False
+        return True
 
     def hash_key(self):
         return "Join(%s, %s, %s, %s)" % (repr(self.left.hash_key()), repr(self.right.hash_key()), repr(self.onclause.hash_key()), repr(self.isouter))
@@ -593,12 +591,10 @@ class Alias(Selectable):
         
     engine = property(lambda s: s.selectable.engine)
 
-    def select(self, whereclauses = None, **params):
-        return select([self], whereclauses, **params)
 
 
 
-class ColumnSelectable(Selectable, CompareMixin):
+class ColumnImpl(Selectable, CompareMixin):
     """Selectable implementation that gets attached to a schema.Column object."""
     
     def __init__(self, column):
@@ -613,6 +609,8 @@ class ColumnSelectable(Selectable, CompareMixin):
             self.label = self.column.name
             self.fullname = self.column.name
 
+    engine = property(lambda s: s.column.engine)
+    
     def copy_container(self):
         return self.column
 
@@ -696,6 +694,7 @@ class Select(Selectable):
         self.name = None
         self.whereclause = whereclause
         self._engine = engine
+        self.rowid_column = None
         
         # indicates if this select statement is a subquery inside of a WHERE clause
         # note this is different from a subquery inside the FROM list
@@ -728,6 +727,8 @@ class Select(Selectable):
 
         for f in column._get_from_objects():
             self.froms.setdefault(f.id, f)
+            if self.rowid_column is None and hasattr(f, 'rowid_column'):
+                self.rowid_column = f.rowid_column._make_proxy(self)
 
         for co in column.columns:
             if self.use_labels:

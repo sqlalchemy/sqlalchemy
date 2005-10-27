@@ -15,8 +15,7 @@
 # along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-"""builds upon the schema and sql packages to provide a central object for tying schema objects
-and sql constructs to database-specific query compilation and execution"""
+"""builds upon the schema and sql packages to provide a central object for tying schema objects and sql constructs to database-specific query compilation and execution"""
 
 import sqlalchemy.schema as schema
 import sqlalchemy.pool
@@ -26,30 +25,37 @@ import StringIO, sys
 import sqlalchemy.types as types
 
 def create_engine(name, *args ,**kwargs):
+    """creates a new SQLEngine instance.
+    
+    name - the type of engine to load, i.e. 'sqlite', 'postgres', 'oracle'
+    *args, **kwargs - sent directly to the specific engine instance as connect arguments, options.
+    """
     module = getattr(__import__('sqlalchemy.databases.%s' % name).databases, name)
     return module.engine(*args, **kwargs)
 
 class SchemaIterator(schema.SchemaVisitor):
     """a visitor that can gather text into a buffer and execute the contents of the buffer."""
     def __init__(self, sqlproxy, **params):
+        """initializes this SchemaIterator and initializes its buffer.
+        
+        sqlproxy - a callable function returned by SQLEngine.proxy(), which executes a statement plus optional parameters.
+        """
         self.sqlproxy = sqlproxy
         self.buffer = StringIO.StringIO()
 
-    def run(self):
-        raise NotImplementedError()
-
     def append(self, s):
+        """appends content to the SchemaIterator's query buffer."""
         self.buffer.write(s)
         
     def execute(self):
+        """executes the contents of the SchemaIterator's buffer using its sql proxy and clears out the buffer."""
         try:
             return self.sqlproxy(self.buffer.getvalue())
         finally:
             self.buffer.truncate(0)
 
 class SQLEngine(schema.SchemaEngine):
-    """base class for a series of database-specific engines.  serves as an abstract factory for
-    implementation objects as well as database connections, transactions, SQL generators, etc."""
+    """base class for a series of database-specific engines.  serves as an abstract factory for implementation objects as well as database connections, transactions, SQL generators, etc."""
     
     def __init__(self, pool = None, echo = False, logger = None, **params):
         # get a handle on the connection pool via the connect arguments
@@ -89,30 +95,34 @@ class SQLEngine(schema.SchemaEngine):
         return "oid"
 
     def create(self, table, **params):
+        """creates a table given a schema.Table object."""
         table.accept_visitor(self.schemagenerator(self.proxy(), **params))
 
     def drop(self, table, **params):
+        """drops a table given a schema.Table object."""
         table.accept_visitor(self.schemadropper(self.proxy(), **params))
 
     def compile(self, statement, bindparams, **kwargs):
+        """given a sql.ClauseElement statement plus optional bind parameters, creates a new instance of this engine's SQLCompiler, compiles the ClauseElement, and returns the newly compiled object."""
         compiler = self.compiler(statement, bindparams, **kwargs)
         statement.accept_visitor(compiler)
         return compiler
 
     def reflecttable(self, table):
+        """given a Table object, reflects its columns and properties from the database."""
         raise NotImplementedError()
 
     def tableimpl(self, table):
+        """returns a new sql.TableImpl object to correspond to the given Table object."""
         return sql.TableImpl(table)
 
     def columnimpl(self, column):
-        return sql.ColumnSelectable(column)
+        """returns a new sql.ColumnImpl object to correspond to the given Column object."""
+        return sql.ColumnImpl(column)
 
     def last_inserted_ids(self):
         """returns a thread-local list of the primary keys for the last insert statement executed.
-        This does not apply to straight textual clauses; only to sql.Insert objects compiled against 
-        a schema.Table object, which are executed via statement.execute().  The order of items in the list
-        is the same as that of the Table's 'primary_keys' attribute."""
+        This does not apply to straight textual clauses; only to sql.Insert objects compiled against a schema.Table object, which are executed via statement.execute().  The order of items in the list is the same as that of the Table's 'primary_keys' attribute."""
         raise NotImplementedError()
 
     def connect_args(self):
