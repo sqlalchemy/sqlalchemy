@@ -11,9 +11,9 @@
 
 
 <& pydoc.myt:obj_doc, obj=schema &>
-<& pydoc.myt:obj_doc, obj=engine.SQLEngine &>
+<& pydoc.myt:obj_doc, obj=engine, classes=[engine.SQLEngine, engine.ResultProxy, engine.RowProxy] &>
 <& pydoc.myt:obj_doc, obj=sql &>
-<& pydoc.myt:obj_doc, obj=pool &>
+<& pydoc.myt:obj_doc, obj=pool, classes=[pool.DBProxy, pool.Pool, pool.QueuePool] &>
 <& pydoc.myt:obj_doc, obj=mapper &>
-<& pydoc.myt:obj_doc, obj=objectstore &>
+<& pydoc.myt:obj_doc, obj=objectstore, classes=[objectstore.UnitOfWork] &>
 </&>

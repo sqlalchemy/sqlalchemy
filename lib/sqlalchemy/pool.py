@@ -21,7 +21,7 @@ on a thread local basis.  Also provides a DBAPI2 transparency layer so that pool
 be managed automatically, based on module type and connect arguments,
  simply by calling regular DBAPI connect() methods."""
 
-import Queue, weakref, string
+import Queue, weakref, string, cPickle
 
 try:
     import thread
@@ -32,7 +32,23 @@ proxies = {}
 
 def manage(module, **params):
     """given a DBAPI2 module and pool management parameters, returns a proxy for the module that will
-    automatically pool connections.  Options are delivered to an underlying DBProxy object."""
+    automatically pool connections.  Options are delivered to an underlying DBProxy object.
+
+    Arguments:
+    module : a DBAPI2 database module.
+    
+    Options:
+    echo=False : if set to True, connections being pulled and retrieved from/to the pool will be logged to the standard output, as well as pool sizing information.
+
+    use_threadlocal=True : if set to True, repeated calls to connect() within the same application thread will be guaranteed to return the same connection object, if one has already been retrieved from the pool and has not been returned yet. This allows code to retrieve a connection from the pool, and then while still holding on to that connection, to call other functions which also ask the pool for a connection of the same arguments; those functions will act upon the same connection that the calling method is using.
+
+    poolclass=QueuePool : the default class used by the pool module to provide pooling. QueuePool uses the Python Queue.Queue class to maintain a list of available connections.
+
+    pool_size=5 : used by QueuePool - the size of the pool to be maintained. This is the largest number of connections that will be kept persistently in the pool. Note that the pool begins with no connections; once this number of connections is requested, that number of connections will remain.
+
+    max_overflow=10 : the maximum overflow size of the pool. When the number of checked-out connections reaches the size set in pool_size, additional connections will be returned up to this limit. When those additional connections are returned to the pool, they are disconnected and discarded. It follows then that the total number of simultaneous connections the pool will allow is pool_size + max_overflow, and the total number of "sleeping" connections the pool will allow is pool_size. max_overflow can be set to -1 to indicate no overflow limit; no limit will be placed on the total number of concurrent connections.
+    
+    """
     try:
         return proxies[module]
     except KeyError:
@@ -71,7 +87,7 @@ class Pool(object):
     def log(self, msg):
         print msg
 
-class ConnectionFairy:
+class ConnectionFairy(object):
     def __init__(self, pool):
         self.pool = pool
         try:
@@ -89,7 +105,7 @@ class ConnectionFairy:
             self.pool = None
             self.connection = None
             
-class CursorFairy:
+class CursorFairy(object):
     def __init__(self, parent, cursor):
         self.parent = parent
         self.cursor = cursor
@@ -147,7 +163,7 @@ class QueuePool(Pool):
         return self._pool.maxsize - self._pool.qsize() + self._overflow
         
 
-class DBProxy:
+class DBProxy(object):
     """proxies a DBAPI2 connect() call to a pooled connection keyed to the specific connect parameters."""
     
     def __init__(self, module, poolclass = QueuePool, **params):
@@ -186,5 +202,5 @@ class DBProxy:
         return self.get_pool(*args, **params).connect()
     
     def _serialize(self, *args, **params):
-        return string.join([repr(a) for a in args], "&") + "&" + string.join(["%s=%s" % (key, repr(value)) for key, value in params.iteritems()], "&")    
+        return cPickle.dumps([args, params])
 
