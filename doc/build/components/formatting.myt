@@ -198,7 +198,7 @@
 
 
 <%method paramtable>
-    <table cellspacing="0">
+    <table cellspacing="0" width="100%">
     <% m.content() %>
     </table>
 </%method>
