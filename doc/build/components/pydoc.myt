@@ -12,8 +12,10 @@
         if not isclass:
             if hasattr(obj, '__ALL__'):
                 objects = obj.__ALL__
+                sort = False
             else:
                 objects = obj.__dict__.keys()
+                sort = True
             if functions is None:
                 functions = [getattr(obj, x, None) 
                     for x in objects 
@@ -21,7 +23,8 @@
                         (isinstance(getattr(obj,x), types.FunctionType))
                         and not getattr(obj,x).__name__[0] == '_'
                     ]
-                functions.sort(lambda a, b: cmp(a.__name__, b.__name__))
+                if sort:
+                    functions.sort(lambda a, b: cmp(a.__name__, b.__name__))
             if classes is None:
                 classes = [getattr(obj, x, None) 
                     for x in objects 
@@ -30,26 +33,38 @@
                         or isinstance(getattr(obj,x), types.ClassType))
                         and not getattr(obj,x).__name__[0] == '_'
                     ]
-                classes.sort(lambda a, b: cmp(a.__name__, b.__name__))
+                if sort:
+                    classes.sort(lambda a, b: cmp(a.__name__, b.__name__))
         else:
             if functions is None:
-                functions = [getattr(obj, x).im_func for x in obj.__dict__.keys() if isinstance(getattr(obj,x), types.MethodType) and not getattr(obj,x).__name__[0] == '_']
+                functions = [getattr(obj, x).im_func for x in obj.__dict__.keys() if isinstance(getattr(obj,x), types.MethodType) 
+                    and 
+                    (getattr(obj, x).__name__ == '__init__' or not getattr(obj,x).__name__[0] == '_')
+                ]
                 functions.sort(lambda a, b: cmp(a.__name__, b.__name__))
             if classes is None:
                 classes = []
             
         if isclass:
             description = "Class " + name
+            if hasattr(obj, '__mro__'):
+                description += "(" + obj.__mro__[1].__name__ + ")"
         else:
             description = "Module " + name
     </%init>
 
 <&|doclib.myt:item, name=obj.__name__, description=description &>
+<&|formatting.myt:formatplain&><% obj.__doc__ %></&><br/>
 
-<% obj.__doc__ %>
-<% (obj.__doc__ and "<br/><br/>" or '') %>
-
-% if len(functions):
+% if not isclass and len(functions):
+<&|doclib.myt:item, name="modfunc", description="Module Functions" &>
+<&|formatting.myt:paramtable&>
+%   for func in functions:
+    <& SELF:function_doc, func=func &>
+%
+</&>
+</&>
+% elif len(functions):
 <&|formatting.myt:paramtable&>
 %   for func in functions:
     <& SELF:function_doc, func=func &>
@@ -58,15 +73,14 @@
 %
 
 % if len(classes):
-    <h3>Classes</h3>
 <&|formatting.myt:paramtable&>
 %   for class_ in classes:
       <& SELF:obj_doc, obj=class_ &>
 %   
 </&>
 %    
-
 </&>
+
 
 </%method>
 
@@ -92,6 +106,6 @@
     </%init>
     
     <&| formatting.myt:function_doc, name="def " + func.__name__, arglist=argstrings &>
-    <% func.__doc__ %>
+    <&|formatting.myt:formatplain&><% func.__doc__ %></&>
     </&>
 </%method>
