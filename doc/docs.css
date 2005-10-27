@@ -168,3 +168,14 @@
 	padding:0px 0px 3px 0px;
 }
 
+.docstring {
+	margin-left:15px;
+	margin-bottom:5px;
+	margin-top:5px;
+}
+
+.darkcell {
+	margin:0px 0px 10px 0px;
+	padding:4px 4px 4px 4px;
+	background-color: #D2D2D2;
+}
