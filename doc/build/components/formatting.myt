@@ -187,6 +187,16 @@
 </div>
 </%method>
 
+<%method formatplain>
+    <%filter>
+        import re
+        f = re.sub(r'(.+)\n\n',r"<p>\1</p>",f, re.S)
+        f = re.sub(r'\n', r'<br/>\n', f, re.S)
+        return f
+    </%filter>
+<% m.content() %>
+</%method>
+
 <%method itemlink trim="both">
     <%args>
     item
@@ -198,48 +208,11 @@
 
 
 <%method paramtable>
-    <table cellspacing="0" width="100%">
+    <table cellspacing="0" cellpadding="0" width="100%">
     <% m.content() %>
     </table>
 </%method>
 
-<%method param>
-        <%args>
-        name
-        classname
-        type
-    users = 'all'
-        default = None
-    version = None
-        </%args>
-% if default is None: default = 'None'
-
-<&|SELF:fliprow, flip=True &>
-    <td valign="top">
-    <A name="<% m.comp('doclib.myt:current').path %>_<% name %>"></a>
-    <b><% name %></b> (<% type %>)</td>
-    <td align="right" width="40%">
-        <div style="text-align:left">
-% if users is not None:
-        for users: <% users %><br/>
-%
-        default: <% default %><br/>
-        used by: <% classname %>
-% if version:
-        <br/>since version: <% version %>
-%
-        </div>
-    </td>
-</&>
-
-<&|SELF:fliprow, flip=False &>
-    <td colspan="2">
-    <p style="margin-left:15px;margin-bottom:5px;margin-top:5px"><% m.content() %></p>
-
-    </td>
-</&>
-
-</%method>
 
 <%method function_doc>
     <%args>
@@ -248,55 +221,15 @@
         arglist = []
         rettype = None
     </%args>
-    <&|SELF:fliprow, flip=True&>
+    <tr>
     <td>
-    <A name="<% m.comp('doclib.myt:current').path %>_<% name %>"></a>
-    <b><% name %>(<% string.join(map(lambda k: "<i>%s</i>" % k, arglist), ", ")%>)</b></td>
+        <div class="darkcell">
+        <A name="<% m.comp('doclib.myt:current').path %>_<% name %>"></a>
+        <b><% name %>(<% string.join(map(lambda k: "<i>%s</i>" % k, arglist), ", ")%>)</b>
+        <div class="docstring"><% m.content() %></div>
+        </div>
     </td>
-    </&>
-    <&|SELF:fliprow, flip=False&>
-    <td colspan="2"><div style="margin-left:15px;margin-bottom:5px;margin-top:5px"><% m.content() %>
-%   if alt is not None:
-    <br/><br/><b>Also called as:</b> <% alt %>
-%
-    </div>
-    
-    </td>
-    </&>
-</%method>
-
-<%method member_doc>
-    <%args>
-        name = ""
-        type = None
-    </%args>
-    <&|SELF:fliprow, flip=True&>
-    <td>
-    <A name="<% m.comp('doclib.myt:current').path %>_<% name %>"></a>
-    <b><% name %></b></td>
-    </td><td></td>
-    </&>
-    <&|SELF:fliprow, flip=False&>
-    <td colspan="2"><div style="margin-left:15px;margin-bottom:5px;margin-top:5px"><% m.content() %>
-    </div>
-    
-    </td>
-    </&>
-</%method>
-
-
-<%method fliprow trim="both">
-    <%args>flip=True</%args>
-    <%python>
-        flipper = m.get_attribute("formatflipper")
-        if flipper is None: 
-            flipper = Value("light")
-            m.set_attribute("formatflipper", flipper)
-    </%python>
-    
-% if flip: flipper({"light":"dark", "dark": "light"}[flipper()])
-    <tr class="<% flipper() %>"><% m.content() %></tr>
-   
+    </tr>
 </%method>
 
 <%method codeline trim="both">

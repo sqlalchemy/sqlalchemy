@@ -111,6 +111,7 @@ class Table(SchemaItem):
         try:
             return engine.tables[self.name]
         except:
+            args = []
             for c in self.columns:
                 args.append(c.copy())
             return Table(self.name, engine, *args)
