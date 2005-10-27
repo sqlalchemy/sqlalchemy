@@ -8,7 +8,7 @@ component_root = [
 doccomp = ['document_base.myt']
 output = os.path.dirname(os.getcwd())
 
-sys.path = ['./lib/'] + sys.path
+sys.path = ['../../lib', './lib/'] + sys.path
 
 import documentgen
 
