@@ -159,10 +159,11 @@ class Column(SchemaItem):
          #   c.name = name
          #   c.key = name
         # TODO: do we want the same foreign_key object here ?  
-        c = Column(name or self.name, self.type, key = name or self.key, primary_key = self.primary_key, foreign_key = self.foreign_key, sequence = self.sequence)
+        c = Column(name or self.name, self.type, key = name or self.key, primary_key = self.primary_key, foreign_key = self.foreign_key, sequence = self.sequence, hidden=self.hidden)
         c.table = selectable
         c._orig = self.original
-        selectable.columns[c.key] = c
+        if not c.hidden:
+            selectable.columns[c.key] = c
         c._impl = self.engine.columnimpl(c)
         return c
 
