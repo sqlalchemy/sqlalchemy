@@ -51,17 +51,23 @@ class SQLEngine(schema.SchemaEngine):
     """base class for a series of database-specific engines.  serves as an abstract factory for
     implementation objects as well as database connections, transactions, SQL generators, etc."""
     
-    def __init__(self, pool = None, echo = False, **params):
+    def __init__(self, pool = None, echo = False, logger = None, **params):
         # get a handle on the connection pool via the connect arguments
         # this insures the SQLEngine instance integrates with the pool referenced
         # by direct usage of pool.manager(<module>).connect(*args, **params)
         (cargs, cparams) = self.connect_args()
-        self._pool = sqlalchemy.pool.manage(self.dbapi()).get_pool(*cargs, **cparams)
+        if pool is None:
+            self._pool = sqlalchemy.pool.manage(self.dbapi(), **params).get_pool(*cargs, **cparams)
+        else:
+            self._pool = pool
         self.echo = echo
         self.context = util.ThreadLocal(raiseerror=False)
         self.tables = {}
         self.notes = {}
-        self.logger = sys.stdout
+        if logger is None:
+            self.logger = sys.stdout
+        else:
+            self.logger = logger
 
         
     def type_descriptor(self, typeobj):
