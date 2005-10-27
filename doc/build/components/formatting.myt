@@ -296,6 +296,7 @@
     
 % if flip: flipper({"light":"dark", "dark": "light"}[flipper()])
     <tr class="<% flipper() %>"><% m.content() %></tr>
+   
 </%method>
 
 <%method codeline trim="both">
