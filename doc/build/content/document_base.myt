@@ -12,6 +12,7 @@
         'unitofwork',
         'adv_datamapping',
         'types',
+        'docstrings',
         ]
 
 </%python>
