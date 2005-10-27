@@ -9,7 +9,7 @@
         import sqlalchemy.databases.sqlite as sqlite
         engine = sqlite.engine(':memory:', {})
         
-        # table <& formatting.myt:link, path="metadata", text="metadata" &>
+        # table metadata
         users = Table('users', engine, 
             Column('user_id', Integer, primary_key = True),
             Column('user_name', String(16), nullable = False),
@@ -50,7 +50,7 @@ password=:password WHERE users.user_id = :user_id
 <&|doclib.myt:item, name="onetomany", description="One to Many" &>
 
         <&|formatting.myt:code&>
-        # second table <& formatting.myt:link, path="metadata", text="metadata" &>
+        # second table metadata
         addresses = Table('email_addresses', engine,
             Column('address_id', Integer, primary_key = True),
             Column('user_id', Integer, ForeignKey("users.user_id")),
@@ -65,7 +65,8 @@ password=:password WHERE users.user_id = :user_id
             mapper = assignmapper(addresses)
         
     
-        # give the User class a new Mapper referencing addresses.  "private=True" means deletions of the user
+        # give the User class a new Mapper referencing addresses.  
+        # "private=True" means deletions of the user
         # will cascade down to the child Address objects
         User.mapper = assignmapper(users, properties = dict(
             relation(Address.mapper, lazy=True, private=True)
@@ -125,7 +126,7 @@ VALUES (:address_id, :user_id, :email_address)
         prefs = Table('user_prefs', engine,
             Column('pref_id', Integer, primary_key = True),
             Column('stylename', String(20)),
-            Column('save_password', BOOLEAN, nullable = False),
+            Column('save_password', Boolean, nullable = False),
             Column('timezone', CHAR(3), nullable = False)
         )
 
@@ -163,7 +164,9 @@ WHERE users.user_name = :users_user_name
         
         # modify
         user.preferences.stylename = 'bluesteel'
-        user.addresses.append(Address('freddy@hi.org'))
+        user.addresses.append(Address('freddy@hi.org')) <&|formatting.myt:codepopper, link="sql" &>
+        # put "lazy load addresses" sql here
+        </&>
         
         # commit
         objectstore.commit() <&|formatting.myt:codepopper, link="sql" &>
@@ -173,7 +176,7 @@ WHERE user_prefs.pref_id = :pref_id
 
 [{'timezone': u'EST', 'stylename': 'bluesteel', 'save_password': 1, 'pref_id': 1}]
 
-INSERT IntegerO email_addresses (address_id, user_id, email_address) 
+INSERT INTO email_addresses (address_id, user_id, email_address) 
 VALUES (:address_id, :user_id, :email_address)
 
 {'email_address': 'freddy@hi.org', 'address_id': None, 'user_id': 1}
@@ -186,7 +189,7 @@ VALUES (:address_id, :user_id, :email_address)
     articles = Table('articles', engine,
         Column('article_id', Integer, primary_key = True),
         Column('article_headline', String(150), key='headline'),
-        Column('article_body', CLOB, key='body'),
+        Column('article_body', Text, key='body'),
     )
 
     keywords = Table('keywords', engine,
@@ -212,9 +215,12 @@ VALUES (:address_id, :user_id, :email_address)
     class Article(object):
         def __init__(self):
             self.keywords = []
-        mapper = assignmapper(articles, properties = dict(
+        
+        
+    Article.mapper = mapper(Article, articles, properties = dict(
             keywords = relation(Keyword.mapper, itemkeywords, lazy=False)
-            ))
+            )
+        )
 
     article = Article()
     article.headline = 'a headline'
@@ -244,13 +250,13 @@ VALUES (:address_id, :user_id, :email_address)
         <&|formatting.myt:code&>
             # add "attached_by" column which will reference the user who attached this keyword
             itemkeywords = Table('article_keywords', engine,
-                Column('article_id', Integer, foreign_key = ForeignKey(articles.c.article_id)),
-                Column('keyword_id', Integer, foreign_key = ForeignKey(keywords.c.keyword_id)),
-                Column('attached_by', Integer, foreign_key = ForeignKey(users.c.user_id))
+                Column('article_id', Integer, ForeignKey("articles.article_id")),
+                Column('keyword_id', Integer, ForeignKey("keywords.keyword_id")),
+                Column('attached_by', Integer, ForeignKey("users.user_id"))
             )
 
             # define an association class
-            class KeywordAssociation:pass
+            class KeywordAssociation(object):pass
             
             # define the mapper. when we load an article, we always want to get the keywords via
             # eager loading.  but the user who added each keyword, we usually dont need so specify 
@@ -260,14 +266,21 @@ VALUES (:address_id, :user_id, :email_address)
                     keyword = relation(Keyword, keywords, lazy = False),
                     user = relation(User, users, lazy = True)
                     )
-                ))
+                )
+                )
             )
-            # bonus step - well, we do want to load the users in one shot, so modify the mapper via an option.
+            
+            # bonus step - well, we do want to load the users in one shot, 
+            # so modify the mapper via an option.
             # this returns a new mapper with the option switched on.
             m2 = mapper.options(eagerload('user'))
             
             # select by keyword again
-            articles = m.select(sql.and_(keywords.c.keyword_id==articles.c.article_id, keywords.c.keyword_name == 'jacks_stories'))
+            articles = m.select(
+                        sql.and_(
+                            keywords.c.keyword_id==articles.c.article_id, 
+                            keywords.c.keyword_name == 'jacks_stories'
+                        ))
             
             # user is available
             for a in articles:
