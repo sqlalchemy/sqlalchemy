@@ -1,6 +1,8 @@
 <%method obj_doc>
     <%args>
         obj
+        functions = None
+        classes = None
     </%args>
     <%init>
         import types
@@ -12,55 +14,61 @@
                 objects = obj.__ALL__
             else:
                 objects = obj.__dict__.keys()
-            functions = [getattr(obj, x, None) 
-                for x in objects 
-                if getattr(obj,x,None) is not None and 
-                    (isinstance(getattr(obj,x), types.FunctionType))
-                    and not getattr(obj,x).__name__[0] == '_'
-                ]
-            classes = [getattr(obj, x, None) 
-                for x in objects 
-                if getattr(obj,x,None) is not None and 
-                    (isinstance(getattr(obj,x), types.TypeType) 
-                    or isinstance(getattr(obj,x), types.ClassType))
-                    and not getattr(obj,x).__name__[0] == '_'
-                ]
+            if functions is None:
+                functions = [getattr(obj, x, None) 
+                    for x in objects 
+                    if getattr(obj,x,None) is not None and 
+                        (isinstance(getattr(obj,x), types.FunctionType))
+                        and not getattr(obj,x).__name__[0] == '_'
+                    ]
+                functions.sort(lambda a, b: cmp(a.__name__, b.__name__))
+            if classes is None:
+                classes = [getattr(obj, x, None) 
+                    for x in objects 
+                    if getattr(obj,x,None) is not None and 
+                        (isinstance(getattr(obj,x), types.TypeType) 
+                        or isinstance(getattr(obj,x), types.ClassType))
+                        and not getattr(obj,x).__name__[0] == '_'
+                    ]
+                classes.sort(lambda a, b: cmp(a.__name__, b.__name__))
         else:
-            functions = [getattr(obj, x).im_func for x in obj.__dict__.keys() if isinstance(getattr(obj,x), types.MethodType) and not getattr(obj,x).__name__[0] == '_']
-            classes = []
+            if functions is None:
+                functions = [getattr(obj, x).im_func for x in obj.__dict__.keys() if isinstance(getattr(obj,x), types.MethodType) and not getattr(obj,x).__name__[0] == '_']
+                functions.sort(lambda a, b: cmp(a.__name__, b.__name__))
+            if classes is None:
+                classes = []
             
-        functions.sort(lambda a, b: cmp(a.__name__, b.__name__))
-        classes.sort(lambda a, b: cmp(a.__name__, b.__name__))
+        if isclass:
+            description = "Class " + name
+        else:
+            description = "Module " + name
     </%init>
 
-<h2>
-% if isclass:
-    Class <% name %>
-% else:
-    Module <% name %>
-%
-</h2>
-<% obj.__doc__ %>
-<br/>
+<&|doclib.myt:item, name=obj.__name__, description=description &>
 
+<% obj.__doc__ %>
+<% (obj.__doc__ and "<br/><br/>" or '') %>
+
+% if len(functions):
 <&|formatting.myt:paramtable&>
-% if not isclass and len(functions):
-    <h3>Module Functions</h3>
 %   for func in functions:
-hi
     <& SELF:function_doc, func=func &>
 %
+</&>
 %
 
 % if len(classes):
     <h3>Classes</h3>
+<&|formatting.myt:paramtable&>
 %   for class_ in classes:
       <& SELF:obj_doc, obj=class_ &>
 %   
-%    
 </&>
-</%method>
+%    
 
+</&>
+
+</%method>
 
 <%method function_doc>
     <%args>func</%args>
@@ -72,21 +80,17 @@ hi
         varkw = argspec[2]
         defaults = argspec[3] or ()
         argstrings = []
-        i = 0
-        for arg in argnames:
-            try:
-                default = defaults[i]
-                argstrings.append("%s=%s" % (arg, repr(default)))
-                i +=1
-            except IndexError:
-                argstrings.append(arg)
+        for i in range(0, len(argnames)):
+            if i >= len(argnames) - len(defaults):
+                argstrings.append("%s=%s" % (argnames[i], repr(defaults[i - (len(argnames) - len(defaults))])))
+            else:
+                argstrings.append(argnames[i])
         if varargs is not None:
            argstrings.append("*%s" % varargs)
         if varkw is not None:
            argstrings.append("**%s" % varkw)
     </%init>
     
-    huh ? <% repr(func) |h %>
     <&| formatting.myt:function_doc, name="def " + func.__name__, arglist=argstrings &>
     <% func.__doc__ %>
     </&>
