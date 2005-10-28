@@ -22,7 +22,7 @@ Start
                    +---- <&formatting.myt:link, path="metadata_tables" &>
                                    |
                                    |
-                                   |---- <&formatting.myt:link, path="metadata_building" &>
+                                   |---- <&formatting.myt:link, path="metadata_creating" &>
                                    | 
                                    |    
                                    |---- <&formatting.myt:link, path="sql" &>
