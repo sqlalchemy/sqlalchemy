@@ -77,6 +77,30 @@ ischema_names = {
     'bytea' : PGBinary,
 }
 
+generic_engine = ansisql.engine()
+gen_columns = schema.Table("columns", generic_engine,
+    Column("table_schema", String),
+    Column("table_name", String),
+    Column("column_name", String),
+    Column("is_nullable", Integer),
+    Column("data_type", String),
+    Column("ordinal_position", Integer),
+    schema="information_schema")
+    
+gen_constraints = schema.Table("table_constraints", generic_engine,
+    Column("table_schema", String),
+    Column("table_name", String),
+    Column("constraint_name", String),
+    Column("constraint_type", String),
+    schema="information_schema")
+
+gen_column_constraints = schema.Table("constraint_column_usage", generic_engine,
+    Column("table_schema", String),
+    Column("table_name", String),
+    Column("column_name", String),
+    Column("constraint_name", String),
+    schema="information_schema")
+
 def engine(opts, **params):
     return PGSQLEngine(opts, **params)
 
@@ -178,29 +202,9 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         return self.module
 
     def reflecttable(self, table):
-        
-        columns = schema.Table("columns", table.engine,
-            Column("table_schema", String),
-            Column("table_name", String),
-            Column("column_name", String),
-            Column("is_nullable", Integer),
-            Column("data_type", String),
-            Column("ordinal_position", Integer),
-            schema="information_schema")
-            
-        constraints = schema.Table("table_constraints", table.engine,
-            Column("table_schema", String),
-            Column("table_name", String),
-            Column("constraint_name", String),
-            Column("constraint_type", String),
-            schema="information_schema")
-
-        column_constraints = schema.Table("constraint_column_usage", table.engine,
-            Column("table_schema", String),
-            Column("table_name", String),
-            Column("column_name", String),
-            Column("constraint_name", String),
-            schema="information_schema")
+        columns = gen_columns.toengine(table.engine)
+        constraints = gen_constraints.toengine(table.engine)
+        column_constraints = gen_column_constraints.toengine(table.engine)
         
         s = columns.select(columns.c.table_name==table.name, order_by=[columns.c.ordinal_position])
 
@@ -231,20 +235,16 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
             if row is None:
                 break
             print "row! " + repr(row)
-            continue
-            (name, type, nullable, primary_key) = (row[1], row[2].upper(), not row[3], row[5])
+            (name, type, nullable, primary_key) = (row[columns.c.column_name], row[columns.c.data_type], not row[columns.c.is_nullable], row[constraints.c.constraint_type] is not None)
 
-            match = re.match(r'(\w+)(\(.*?\))?', type)
-            coltype = match.group(1)
-            args = match.group(2)
+            #match = re.match(r'(\w+)(\(.*?\))?', type)
+            #coltype = match.group(1)
+            #args = match.group(2)
 
             #print "coltype: " + repr(coltype) + " args: " + repr(args)
-            coltype = pragma_names[coltype]
-            if args is not None:
-                args = re.findall(r'(\d+)', args)
-                #print "args! " +repr(args)
-                coltype = coltype(*args)
+            coltype = ischema_names[type]
             table.append_item(schema.Column(name, coltype, primary_key = primary_key, nullable = nullable))
+        return
         c = self.execute("PRAGMA foreign_key_list(" + table.name + ")", {})
         while True:
             row = c.fetchone()

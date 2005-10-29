@@ -120,7 +120,7 @@ class Table(SchemaItem):
             args = []
             for c in self.columns:
                 args.append(c.copy())
-            return Table(self.name, engine, *args)
+            return Table(self.name, engine, schema=self.schema, *args)
 
 class Column(SchemaItem):
     """represents a column in a database table."""
@@ -155,7 +155,11 @@ class Column(SchemaItem):
 
     def copy(self):
         """creates a copy of this Column, unitialized"""
-        return Column(self.name, self.type, key = self.key, primary_key = self.primary_key, foreign_key = self.foreign_key.copy(), sequence = self.sequence)
+        if self.foreign_key is None:
+            fk = None
+        else:
+            fk = self.foreign_key.copy()
+        return Column(self.name, self.type, key = self.key, primary_key = self.primary_key, foreign_key = fk, sequence = self.sequence)
         
     def _make_proxy(self, selectable, name = None):
         """creates a copy of this Column, initialized the way this Column is"""
