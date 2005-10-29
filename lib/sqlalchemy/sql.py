@@ -768,6 +768,8 @@ class Select(Selectable):
         for r in fromclause._get_from_objects():
             self.froms[r.id] = r
         
+    def append_join(self, joinon, right, whereclause, **params):
+        self.append_from(self.froms[joinon], right, whereclause, **params)
 
     def append_clause(self, keyword, clause):
         if type(clause) == str:

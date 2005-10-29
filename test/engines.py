@@ -54,7 +54,7 @@ class EngineTest(PersistTest):
         # clear out table registry
         db.tables.clear()
 
-#        users = Table('users', db, autoload = True)
+        users = Table('users', db, autoload = True)
         addresses = Table('email_addresses', db, autoload = True)
 
         users.drop()

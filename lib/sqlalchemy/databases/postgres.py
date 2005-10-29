@@ -67,6 +67,16 @@ colspecs = {
     sqltypes.CHAR: PGChar,
 }
 
+ischema_names = {
+    'integer' : PGInteger,
+    'character varying' : PGString,
+    'character' : PGChar,
+    'text' : PGText,
+    'numeric' : PGNumeric,
+    'timestamp without time zone' : PGDateTime,
+    'bytea' : PGBinary,
+}
+
 def engine(opts, **params):
     return PGSQLEngine(opts, **params)
 
@@ -191,9 +201,10 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
             Column("column_name", String),
             Column("constraint_name", String),
             schema="information_schema")
-            
-        s = columns.select(columns.c.table_name==table.name,
-            from_obj=[sql.join(columns, column_constraints, 
+        
+        s = columns.select(columns.c.table_name==table.name, order_by=[columns.c.ordinal_position])
+
+        s.append_from(sql.join(columns, column_constraints, 
                 sql.and_(
                         columns.c.table_name==column_constraints.c.table_name,
                         columns.c.table_schema==column_constraints.c.table_schema,
@@ -204,9 +215,10 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
                         column_constraints.c.table_schema==constraints.c.table_schema,
                         column_constraints.c.constraint_name==constraints.c.constraint_name,
                         constraints.c.constraint_type=='PRIMARY KEY'
-                    ), isouter=True)],
-            order_by=[columns.c.ordinal_position])
+                    ), isouter=True)),
+                    
         s.append_column(constraints.c.constraint_type)    
+
         if table.schema is not None:
             s.append_whereclause(columns.c.table_schema==table.schema)
         else:
