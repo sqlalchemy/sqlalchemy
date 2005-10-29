@@ -89,7 +89,7 @@ class Table(SchemaItem):
     def reload_values(self, *args):
         self.columns = OrderedProperties()
         self.c = self.columns
-        self.foreign_keys = OrderedProperties()
+        self.foreign_keys = []
         self.primary_keys = []
         self._impl = self.engine.tableimpl(self)
         self._init_items(*args)
