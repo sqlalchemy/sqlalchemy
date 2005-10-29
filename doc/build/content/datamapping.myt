@@ -245,9 +245,13 @@ INSERT INTO article_keywords (article_id, keyword_id) VALUES (:article_id, :keyw
 [{'keyword_id': 1, 'article_id': 1}, {'keyword_id': 2, 'article_id': 1}]
 </&>
 
-    # select articles based on some keywords.  the extra selection criterion 
-    # won't get in the way of the separate eager load of all the article's keywords
-    articles = Article.mapper.select(sql.and_(keywords.c.keyword_id==itemkeywords.c.keyword_id, itemkeywords.c.article_id==articles.c.article_id, keywords.c.name.in_('politics', 'entertainment')))    <&|formatting.myt:codepopper, link="sql" &>
+    # select articles based on some keywords.  to select against joined criterion, we specify the
+    # join condition explicitly.  the tables in the extra joined criterion 
+    # will be given aliases at the SQL level so that they don't interfere with those of the JOIN
+    # already used for the eager load.
+    articles = Article.mapper.select(sql.and_(keywords.c.keyword_id==itemkeywords.c.keyword_id, 
+    itemkeywords.c.article_id==articles.c.article_id, 
+    keywords.c.name.in_('politics', 'entertainment')))    <&|formatting.myt:codepopper, link="sql" &>
 SELECT articles.article_id AS articles_article_id, 
 articles.article_headline AS articles_article_headline, 
 articles.article_body AS articles_article_body, 
