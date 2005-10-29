@@ -175,7 +175,10 @@ objectstore.commit()
 
 # select articles based on some keywords.  the extra selection criterion 
 # won't get in the way of the separate eager load of all the article's keywords
-alist = Article.mapper.select(sql.and_(keywords.c.keyword_id==articles.c.article_id, keywords.c.name.in_('politics', 'entertainment')))
+alist = Article.mapper.select(sql.and_(
+                keywords.c.keyword_id==itemkeywords.c.keyword_id, 
+                itemkeywords.c.article_id==articles.c.article_id,
+                keywords.c.name.in_('politics', 'entertainment')))
 
 # modify
 a = alist[0]
@@ -186,3 +189,51 @@ a.keywords.append(Keyword('government'))
 # commit.  individual INSERT/DELETE operations will take place only for the list
 # elements that changed.
 objectstore.commit()
+
+
+clear_mappers()
+itemkeywords.drop()
+itemkeywords = Table('article_keywords', engine,
+    Column('article_id', Integer, ForeignKey("articles.article_id")),
+    Column('keyword_id', Integer, ForeignKey("keywords.keyword_id")),
+    Column('attached_by', Integer, ForeignKey("users.user_id"))
+, redefine=True)
+itemkeywords.create()
+
+# define an association class
+class KeywordAssociation(object):pass
+
+# define the mapper. when we load an article, we always want to get the keywords via
+# eager loading.  but the user who added each keyword, we usually dont need so specify 
+# lazy loading for that.
+m = mapper(Article, articles, properties=dict(
+    keywords = relation(KeywordAssociation, itemkeywords, lazy = False, 
+        primary_keys=[itemkeywords.c.article_id, itemkeywords.c.keyword_id], 
+        properties=dict(
+            keyword = relation(Keyword, keywords, lazy = False),
+            user = relation(User, users, lazy = True)
+        )
+    )
+    )
+)
+
+# bonus step - well, we do want to load the users in one shot, 
+# so modify the mapper via an option.
+# this returns a new mapper with the option switched on.
+m2 = m.options(eagerload('keywords.user'))
+
+# select by keyword again
+alist = m2.select(
+            sql.and_(
+                keywords.c.keyword_id==itemkeywords.c.keyword_id, 
+                itemkeywords.c.article_id==articles.c.article_id,
+                keywords.c.name == 'jacks_stories'
+            ))
+
+# user is available
+for a in alist:
+    for k in a.keywords:
+        if k.keyword.name == 'jacks_stories':
+            print k.user.user_name
+
+
