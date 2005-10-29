@@ -27,10 +27,10 @@
         user = User.mapper.select(User.c.user_name == 'fred')[0]  <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
 users.password AS users_password 
-FROM users WHERE users.user_name = :users_user_name
+FROM users 
+WHERE users.user_name = :users_user_name ORDER BY users.oid
 
 {'users_user_name': 'fred'}
-
         </&>
         # modify
         user.user_name = 'fred jones'
@@ -75,21 +75,21 @@ password=:password WHERE users.user_id = :user_id
         # select
         user = User.mapper.select(User.c.user_name == 'fred jones')[0] <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
-users.password AS users_password FROM users
-WHERE users.user_name = :users_user_name
+users.password AS users_password 
+FROM users 
+WHERE users.user_name = :users_user_name ORDER BY users.oid
 
 {'users_user_name': 'fred jones'}
 </&>
 address = user.addresses[0] <&|formatting.myt:codepopper, link="sql" &>
-
 SELECT email_addresses.address_id AS email_addresses_address_id, 
 email_addresses.user_id AS email_addresses_user_id, 
 email_addresses.email_address AS email_addresses_email_address 
-FROM email_addresses
-WHERE email_addresses.user_id = :users_user_id
+FROM email_addresses 
+WHERE email_addresses.user_id = :users_user_id 
+ORDER BY email_addresses.oid, email_addresses.oid
 
 {'users_user_id': 1}
-
 </&>
         
         # modify
@@ -99,7 +99,6 @@ WHERE email_addresses.user_id = :users_user_id
         
         # commit
         objectstore.commit() <&|formatting.myt:codepopper, link="sql" &>
-
 UPDATE users SET user_id=:user_id, user_name=:user_name, 
 password=:password WHERE users.user_id = :user_id
 
@@ -114,7 +113,6 @@ INSERT IntegerO email_addresses (address_id, user_id, email_address)
 VALUES (:address_id, :user_id, :email_address)
 
 {'email_address': 'freddy@hi.org', 'address_id': None, 'user_id': 1}
-
 </&>
     </&>
 </&>
@@ -152,20 +150,26 @@ VALUES (:address_id, :user_id, :email_address)
         user = m.select(users.c.user_name == 'fred')[0] <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
 users.password AS users_password, users.preference_id AS users_preference_id, 
-user_prefs.pref_id AS user_prefs_pref_id, 
-user_prefs.stylename AS user_prefs_stylename, 
-user_prefs.save_password AS user_prefs_save_password, 
-user_prefs.timezone AS user_prefs_timezone
-FROM users 
-LEFT OUTER JOIN user_prefs ON user_prefs.pref_id = users.preference_id
-WHERE users.user_name = :users_user_name
+user_prefs.pref_id AS user_prefs_pref_id, user_prefs.stylename AS user_prefs_stylename, 
+user_prefs.save_password AS user_prefs_save_password, user_prefs.timezone AS user_prefs_timezone 
+FROM users LEFT OUTER JOIN user_prefs ON user_prefs.pref_id = users.preference_id 
+WHERE users.user_name = :users_user_name ORDER BY users.oid, user_prefs.oid
+
+{'users_user_name': 'fred'}
         </&>
         save_password = user.preferences.save_password
         
         # modify
         user.preferences.stylename = 'bluesteel'
         user.addresses.append(Address('freddy@hi.org')) <&|formatting.myt:codepopper, link="sql" &>
-        # put "lazy load addresses" sql here
+SELECT email_addresses.address_id AS email_addresses_address_id, 
+email_addresses.user_id AS email_addresses_user_id, 
+email_addresses.email_address AS email_addresses_email_address 
+FROM email_addresses 
+WHERE email_addresses.user_id = :users_user_id 
+ORDER BY email_addresses.oid, email_addresses.oid
+
+{'users_user_id': 1}
         </&>
         
         # commit
@@ -202,10 +206,6 @@ VALUES (:address_id, :user_id, :email_address)
         Column('keyword_id', Integer, ForeignKey("keywords.keyword_id"))
     )
 
-    articles.create()
-    keywords.create()
-    itemkeywords.create()
-
     # class definitions
     class Keyword(object):
         def __init__(self, name = None):
@@ -227,12 +227,40 @@ VALUES (:address_id, :user_id, :email_address)
     article.body = 'this is the body'
     article.keywords.append(Keyword('politics'))
     article.keywords.append(Keyword('entertainment'))
-    objectstore.commit()
+    objectstore.commit()   <&|formatting.myt:codepopper, link="sql" &>
+INSERT INTO keywords (name) VALUES (:name)
+
+{'name': 'politics'}
+
+INSERT INTO keywords (name) VALUES (:name)
+
+{'name': 'entertainment'}
+
+INSERT INTO articles (article_headline, article_body) VALUES (:article_headline, :article_body)
+
+{'article_body': 'this is the body', 'article_headline': 'a headline'}
+
+INSERT INTO article_keywords (article_id, keyword_id) VALUES (:article_id, :keyword_id)
+
+[{'keyword_id': 1, 'article_id': 1}, {'keyword_id': 2, 'article_id': 1}]
+</&>
 
     # select articles based on some keywords.  the extra selection criterion 
     # won't get in the way of the separate eager load of all the article's keywords
-    articles = Article.mapper.select(sql.and_(keywords.c.keyword_id==articles.c.article_id, keywords.c.name.in_('politics', 'entertainment')))
-
+    articles = Article.mapper.select(sql.and_(keywords.c.keyword_id==itemkeywords.c.keyword_id, itemkeywords.c.article_id==articles.c.article_id, keywords.c.name.in_('politics', 'entertainment')))    <&|formatting.myt:codepopper, link="sql" &>
+SELECT articles.article_id AS articles_article_id, 
+articles.article_headline AS articles_article_headline, 
+articles.article_body AS articles_article_body, 
+keywords.keyword_id AS keywords_keyword_id, 
+keywords.name AS keywords_name 
+FROM keywords keywords_6fca, article_keywords article_keywords_75c8, 
+articles LEFT OUTER JOIN article_keywords ON articles.article_id = article_keywords.article_id 
+LEFT OUTER JOIN keywords ON keywords.keyword_id = article_keywords.keyword_id 
+WHERE keywords_6fca.keyword_id = article_keywords_75c8.keyword_id 
+AND article_keywords_75c8.article_id = articles.article_id 
+AND keywords_6fca.name IN ('politics', 'entertainment') 
+ORDER BY articles.oid, article_keywords.oid
+</&>
     # modify
     a = articles[0]
     del a.keywords[:]
@@ -241,8 +269,25 @@ VALUES (:address_id, :user_id, :email_address)
 
     # commit.  individual INSERT/DELETE operations will take place only for the list
     # elements that changed.
-    objectstore.commit()
+    objectstore.commit()      <&|formatting.myt:codepopper, link="sql" &>
+INSERT INTO keywords (name) VALUES (:name)
 
+{'name': 'topstories'}
+
+INSERT INTO keywords (name) VALUES (:name)
+
+{'name': 'government'}
+
+DELETE FROM article_keywords 
+WHERE article_keywords.article_id = :article_id 
+AND article_keywords.keyword_id = :keyword_id
+
+[{'keyword_id': 1, 'article_id': 1}, {'keyword_id': 2, 'article_id': 1}]
+
+INSERT INTO article_keywords (article_id, keyword_id) VALUES (:article_id, :keyword_id)
+
+[{'keyword_id': 3, 'article_id': 1}, {'keyword_id': 4, 'article_id': 1}]
+</&>
 
         </&>
         
@@ -273,17 +318,40 @@ VALUES (:address_id, :user_id, :email_address)
             # bonus step - well, we do want to load the users in one shot, 
             # so modify the mapper via an option.
             # this returns a new mapper with the option switched on.
-            m2 = mapper.options(eagerload('user'))
+            m2 = mapper.options(eagerload('keywords.user'))
             
             # select by keyword again
-            articles = m.select(
+            alist = m2.select(
                         sql.and_(
-                            keywords.c.keyword_id==articles.c.article_id, 
-                            keywords.c.keyword_name == 'jacks_stories'
-                        ))
+                            keywords.c.keyword_id==itemkeywords.c.keyword_id, 
+                            itemkeywords.c.article_id==articles.c.article_id,
+                            keywords.c.name == 'jacks_stories'
+                        ))    
+
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT articles.article_id AS articles_article_id, 
+articles.article_headline AS articles_article_headline, 
+articles.article_body AS articles_article_body, 
+article_keywords.article_id AS article_keywords_article_id, 
+article_keywords.keyword_id AS article_keywords_keyword_id, 
+article_keywords.attached_by AS article_keywords_attached_by, 
+users.user_id AS users_user_id, users.user_name AS users_user_name, 
+users.password AS users_password, users.preference_id AS users_preference_id, 
+keywords.keyword_id AS keywords_keyword_id, keywords.name AS keywords_name 
+FROM article_keywords article_keywords_3a64, keywords keywords_11b7, 
+articles LEFT OUTER JOIN article_keywords ON articles.article_id = article_keywords.article_id 
+LEFT OUTER JOIN users ON users.user_id = article_keywords.attached_by 
+LEFT OUTER JOIN keywords ON keywords.keyword_id = article_keywords.keyword_id 
+WHERE keywords_11b7.keyword_id = article_keywords_3a64.keyword_id 
+AND article_keywords_3a64.article_id = articles.article_id 
+AND keywords_11b7.name = :keywords_name 
+ORDER BY articles.oid, article_keywords.oid, users.oid, keywords.oid
+
+{'keywords_name': 'jacks_stories'}
+</&>                        
             
             # user is available
-            for a in articles:
+            for a in alist:
                 for k in a.keywords:
                     if k.keyword.name == 'jacks_stories':
                         print k.user.user_name
