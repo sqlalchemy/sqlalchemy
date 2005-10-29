@@ -5,176 +5,143 @@ What is SQLAlchemy ?
 
 SQLAlchemy is:
 
-	- everything you need to work with SQL and database APIs in Python.
+	- the Python SQL toolkit and Object Relational Mapper for 
+	application developers and programmers who require the full power of SQL.
 
-	- the first Python library with clear and unambiguous support for enterprise-level
-	persistence patterns, such as (as defined by Fowler):  Data Mapper, Identity Map,
-	Table Meta-Data, and Unit of Work.
+	- a library that provides enterprise-level persistence patterns: 
+	eager loading of multiple types of objects using outer joins, 
+	Data Mapper, Unit of Work, all-or-nothing commits, bind parameters 
+	used for all literal values, batched updates and deletes.
 
 	- a set of distinct tools that build upon each other.  The lower level tools, such as
-	the connection pool or the transparent registry, can be used completely independently
-	of the higher levels, such as the SQL construction language.  The higher level tools,
-	such as the Data Mapper, allow plenty of spaces with which to manipulate its
-	functioning at a lower level.
+	the connection pool and its registry, can be used completely independently
+	of the higher levels, such as data mapping.  Higher levels always provide
+	ways to affect and expose the lower levels, when customization is required.
 
 	- extremely easy to use for basic tasks, such as: get a thread-safe and pooled
 	connection to a database, perform SQL queries constructed from Python expressions,
-	persist a set of objects to their corresponding tables.
+	load a bunch of objects from the database, modify their data, and commit
+	only everything that changed in one transaction-safe operation.
 
 	- powerful enough to use for complicated tasks, such as: load objects and their child
-	objects all in one query via eager loading, utilize the full power of ANSI SQL plus
-	vendor-specific extensions via Python expressions, combine multiple tables together
-	to load whole sets of otherwise unrelated objects from a set of rows.
+	objects all in one query via eager loading, map objects to any 
+	SQL expression, combine multiple tables together to load whole sets of related or
+	unrelated objects from any result set.
 
 	- high performing, allowing pre-compilation of SQL queries, heavy usage of bind
 	parameters which allow a database to cache its queries more effectively.
 
-	- extensible.  Query-generators contain many hooks and open ends at which vendor-
-	specific syntaxes and augment or replace the standard ANSI syntaxes.
+	- extensible.  Query compilation, data mapping, the typing system, interaction 
+	with DBAPIs can be extended and augmented in many ways.
+
+SQLAlchemy's Philosophy:
+
+	- A SQL database row and an object instance are not the same thing.  A list 
+	of rows is not a table, and a table is not a class.  The intricate relationships 
+	between objects and the rows that store them should be managed as automatically 
+	and as intelligently as possible, but always decoupled.  An object need not 
+	have a row, a row need not have only one object.  SQL databases behave less
+	and less like object collections the more size and performance start to matter;
+	object collections behave less and less like tables and rows the more abstraction
+	starts to matter.  SQLAlchemy aims to be ready for both.
 
 SQLAlchemy includes:
 
-	- a connection pool
+	- a connection pool, with the ability to transparently "wrap" any DBAPI module's
+	connect() method into a thread-local and pooled resource.
 
-	- a transparent connection pool registry
+	- Python function-based query construction.  Allows not just straight boolean
+	expressions, but also table aliases, selectable subqueries, create/update/insert/
+	delete queries, correlated updates, correlated EXISTS clauses, UNION clauses, inner
+	and outer joins, bind parameters, free mixing of literal text within expressions, 
+	as little or as much as desired.  Query-compilation is vendor-specific;  the same
+	query object can be compiled into any number of resulting SQL strings depending
+	on its compilation algorithm.  
 
-	- a library that allows the construction of SQL queries, of any complexity, including
-	the full capabilities of ANSI SQL as well as vendor-specific extensions,  using
-	Python objects and expressions.
+	- a table-meta-data description system, which can automatically load table data, or allow
+	it to be described.  Tables, foreign key constraints, and sequences can be created
+	or dropped.  
 
-	- a table-meta-data and database-meta-data description system.
+	- support for Postgres (psycopg1/2), Oracle (cx_Oracle), SQLite (pysqlite) --
+	MySQL is up next.
 
-	- a database creator/dropper
+	- support for sequences to generate primary keys externally to the INSERT
+	statement they apply to.  Can be specified so that they 
+	transparently take effect only for databases that support them.  
+	Sequences, auto-incrementing columns, and explicit 
+	primary key attributes can be combined within one object.
+
+	- a lastrowid accessor that returns an ordered array of all primary keys for the row 
+	just inserted, works identically across all databases, whether inserts are done
+	via sequences, SERIAL, or autoincrements.
 
 	- an Object Relational Mapper that supports the Data Mapper algorithm, objects
 	created across multiple tables, lazy or eager loading of related objects.
 
-	- an Active Record adapter for the above Data Mapper algorithm
-
 	- an Identity Map, which stores a singleton instance of an object loaded from the
 	database based on its key, or keys.
 
-	- a Unit Of Work system which stores SQL operations into queues, with deferred
-	execution. this is used for session-spanning transactions
+	- a Unit Of Work system which organizes pending CRUD operations into queues and 
+	commits them all in one batch.  Performs a topological "dependency sort" of all 
+	items to be committed and deleted and groups redundant statements together.
+	This produces the maxiumum efficiency and transaction safety, and minimizes 
+	chances of deadlocks.  Modeled after Fowler's "Unit of Work" pattern as well as 
+	Java Hibernate.
+
+	- optimistic "concurrency" checking built in - if an UPDATE or DELETE doesn't
+	report the expected number of rows, an exception is thrown, the whole transaction
+	is rolled back.
+
+	- automatic thread-local operation for: pooled connections, identity maps,
+	transactional contexts, units of work
+
+	- can roll back object attributes to their pre-modified state.
 
 SQLAlchemy has the advantages:
 
-	- since DataMapper separates the database metadata from object instances, persisted
-	objects contain only your data, and nothing else.  no subclassing requirement exists.
-	Object hierarchies can be totally persisted with SQLAlchemy with no dependencies
-	whatsoever.  They also retain their ability to be pickled for usage in various
-	caching systems and session objects.
+	- database mapping and class design are totally separate.  Persisted objects
+	have no subclassing requirement (other than 'object') and are POPO's : plain
+	old Python objects.  They retain serializability (pickling) for usage in various
+	caching systems and session objects.  SQLAlchemy "decorates" classes
+	with non-intrusive property accessors to automatically log object creates
+	and modifications with the UnitOfWork engine, as well as track attribute
+	histories.
 
-	- the IdentityMap can key objects based on tables that have multiple primary keys.
+	- Custom list classes can be used with eagerly or lazily loaded child object
+	lists.  
 
-	- objects are loaded from rows, which can be created from anywhere.  any bizarre
+	- support for multiple primary keys, as well as support for "association" 
+	objects that represent the middle of a "many-to-many" relationship.
+
+	- support for self-referential mappers.  Adjacency list structures can be created,
+	saved, and deleted with proper cascading, with no extra programming.  
+
+	- support for mapping objects from multiple tables, joins, and arbitrary 
+	select statements.
+
+	- any number of mappers can be created for a particular class, for classes that
+	are persisted in more than one way.  Mappers can create copies of themselves
+	with modified behavior, different combinations of lazy/eager loaded properties.
+
+	- an extension interface allows mapping behavior to be augmented or replaced
+	within all mapping functions.
+
+	- data mapping can be used in a row-based manner.  any bizarre hyper-optimized
 	query that you or your DBA can cook up, you can run in SQLAlchemy, and as long as it
-	returns the expected columns within a rowset, you can get your objects from it.  If
-	your rowset defines multiple kinds of objects within each row, you can get all of
-	them from each row.
+	returns the expected columns within a rowset, you can get your objects from it.  
+	For a rowset that contains more than one kind of object per row, multiple mappers
+	can be chained together to return multiple object instance lists from a single
+	database round trip.  
 
-	- all generated queries, whether or not the developer defines literal values within
-	them, are compiled to use bind parameters for all literals.  This way databases can
-	maximally optimize query caching.
+	- all generated queries are compiled to use bind parameters for all literals.  
+	This way databases can maximally optimize query caching.
 
-What does SQLAlchemy look like so far ?
-
-	The SQL construction API's architecture is complete, as is the connection pooling and
-	connection registry.  The architecture to allow more kinds of SQL clauses is built,
-	and the PySQLite engine is working.
-
-Well, what does that look like ?
-
-Cool things you can do with SQLAlchemy
-----------------------------------------
-
-# first, some imports
-from sqlalchemy.sql import *
-from sqlalchemy.schema import *
+	- a type system that allows pre- and post- processing of data, both at the bind
+	parameter and the result set level.  User-defined types can be freely
+	mixed with built-in types.  Generic types as well as SQL-specific types
+	are available.
 
 
-# make a database engine based on sqlite
-import sqlalchemy.databases.sqlite as sqlite_db
-db = sqlite_db.engine('foo.db', pool_size = 10, max_overflow = 5)
+To install:
 
-# define metadata for a table
-
-users = Table('users', db,
-	Column('user_id', INT),
-	Column('user_name', VARCHAR(20)),
-	Column('password', CHAR(10))
-)
-
-
-# select rows from the table
-
-query = users.select()
-cursor = query.execute()
-rows = cursor.fetchall()
-
-
-# select rows from the table where user_name=='ed'
-rows = users.select(users.c.user_name == 'ed').execute().fetchall()
-
-# make a query  with a bind param
-query = select([users], users.c.user_id == bindparam('userid'))
-
-# execute with params
-rows = query.execute(userid = 7).fetchall()
-
-
-# make another table
-addresses = Table('addresses', db, 
-	Column('address_id', INT),
-	Column('user_id', INT),
-	Column('street', VARCHAR(20)),
-	Column('city', VARCHAR(20)),
-	Column('state', CHAR(2)),
-	Column('zip', CHAR(5))
-)
-
-# no, really, make this table in the DB via CREATE
-addresses.build()
-
-
-# make a nonsensical query that selects from an outer join, and 
-# throws in a literally-defined EXISTS clause 
-query = select(
-	[users, addresses],
-	and_(
-	    addresses.c.street == 'Green Street',
-            addresses.c.city == 'New York',
-	    users.c.user_id != 12,
-	    "EXISTS (select 1 from special_table where user_id=users.user_id)"
-	),
-	from_obj = [ outerjoin(users, addresses, addresses.user_id==users.user_id) ]
-	)
-
-
-# insert into a table
-users.insert().execute(user_id = 7, user_name = 'jack')
-
-# update the table
-users.update(users.c.user_id == 7).execute(user_name = 'fred')
-
-
-# get DBAPI connections from the higher-level engine
-c = db.connection()
-
-
-# use the connection pooling via the transparent manager:
-
-# import a real DBAPI database
-from pysqlite2 import dbapi2 as sqlite
-
-# make an implicit pool around it
-import sqlalchemy.pool as pool
-sqlite = pool.manage(sqlite, pool_size = 10, max_overflow = 5, use_threadlocal = True)
-
-# get a pooled connection local to the current thread
-c = sqlite.connect('foo.db')
-cursor = c.cursor()
-
-# return the connection to the pool
-cursor = None
-c = None	
+	python setup.py install
