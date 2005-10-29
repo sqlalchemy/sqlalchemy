@@ -1040,7 +1040,7 @@ class EagerLoader(PropertyLoader):
         statement.append_column(self.target)
         for key, value in self.mapper.props.iteritems():
             if value is self:
-                raise "Cant use eager loading on a self-referential mapper relationship"
+                raise "Cant use eager loading on a self-referential mapper relationship " + str(self.mapper) + " " + key + repr(self.mapper.props)
             value.setup(key, statement)
 
     def execute(self, instance, row, identitykey, imap, isnew):
@@ -1083,14 +1083,24 @@ class EagerLazyOption(MapperOption):
         return "EagerLazyOption(%s, %s)" % (repr(self.key), repr(self.toeager))
 
     def process(self, mapper):
-        oldprop = mapper.props[self.key]
+
+        tup = self.key.split('.', 1)
+        key = tup[0]
+        oldprop = mapper.props[key]
+
+        if len(tup) > 1:
+            submapper = mapper.props[key].mapper
+            submapper = submapper.options(EagerLazyOption(tup[1], self.toeager))
+        else:
+            submapper = oldprop.mapper
+            
         if self.toeager:
             class_ = EagerLoader
         elif self.toeager is None:
             class_ = PropertyLoader
         else:
             class_ = LazyLoader
-        mapper.set_property(self.key, class_(oldprop.mapper, oldprop.secondary, primaryjoin = oldprop.primaryjoin, secondaryjoin = oldprop.secondaryjoin))
+        mapper.set_property(key, class_(submapper, oldprop.secondary, primaryjoin = oldprop.primaryjoin, secondaryjoin = oldprop.secondaryjoin))
 
 class Aliasizer(sql.ClauseVisitor):
     """converts a table instance within an expression to be an alias of that table."""
