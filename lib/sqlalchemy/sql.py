@@ -750,7 +750,12 @@ class Select(Selectable):
         for f in self.whereclause._get_from_objects():
             self.froms.setdefault(f.id, f)
 
-   
+    def append_whereclause(self, clause):
+        if self.whereclause is not None:
+            self.whereclause = and_(self.whereclause, clause)
+        else:
+            self.whereclause = clause
+        
     def clear_from(self, id):
         self.append_from(FromClause(from_name = None, from_key = id))
         

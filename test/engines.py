@@ -16,7 +16,8 @@ import unittest, re
 class EngineTest(PersistTest):
     def testsqlitetableops(self):
         import sqlalchemy.databases.sqlite as sqllite
-        db = sqllite.engine(':memory:', {}, echo = testbase.echo)
+#        db = sqllite.engine(':memory:', {}, echo = testbase.echo)
+        db = postgres.engine({'database':'test', 'host':'127.0.0.1', 'user':'scott', 'password':'tiger'}, echo = testbase.echo)
         self.do_tableops(db)
         
     def do_tableops(self, db):
@@ -41,6 +42,9 @@ class EngineTest(PersistTest):
             Column('remote_user_id', Integer, foreign_key = ForeignKey(users.c.user_id)),
             Column('email_address', String(20)),
         )
+
+        users.drop()
+        addresses.drop()
         
 #        users.c.parent_user_id.set_foreign_key(ForeignKey(users.c.user_id))
 
@@ -50,7 +54,7 @@ class EngineTest(PersistTest):
         # clear out table registry
         db.tables.clear()
 
-        users = Table('users', db, autoload = True)
+#        users = Table('users', db, autoload = True)
         addresses = Table('email_addresses', db, autoload = True)
 
         users.drop()
