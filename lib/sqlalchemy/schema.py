@@ -61,7 +61,7 @@ class TableSingleton(type):
         except KeyError:
             if kwargs.get('mustexist', False):
                 raise "Table '%s' not defined" % name
-            table = type.__call__(self, name, engine, *args)
+            table = type.__call__(self, name, engine, *args, **kwargs)
             engine.tables[name] = table
             # load column definitions from the database if 'autoload' is defined
             # we do it after the table is in the singleton dictionary to support
@@ -76,7 +76,7 @@ class Table(SchemaItem):
     """represents a relational database table."""
     __metaclass__ = TableSingleton
     
-    def __init__(self, name, engine, *args):
+    def __init__(self, name, engine, *args, **kwargs):
         self.name = name
         self.columns = OrderedProperties()
         self.c = self.columns
@@ -85,6 +85,12 @@ class Table(SchemaItem):
         self.engine = engine
         self._impl = self.engine.tableimpl(self)
         self._init_items(*args)
+        self.schema = kwargs.get('schema', None)
+        if self.schema:
+            self.fullname = "%s.%s" % (self.schema, self.name)
+        else:
+            self.fullname = self.name
+            
 
     def reload_values(self, *args):
         self.columns = OrderedProperties()

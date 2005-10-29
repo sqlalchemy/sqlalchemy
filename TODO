@@ -1,32 +1,25 @@
 TODO:
 
+real exception classes instead of "raise 'string'"
 
-mapper can take a row-processing/object instantiating function, without expensive construction
-
-lazy/eager loaders added to mapper via a list instaed of dictionary (do we ?)
+lazy/eager loaders added to mapper via list arguments instead of dict?
 
 clean up select test suite
 
-horizontal lazy/eager loaders for one object across tables - add it to existing lazy/eager loader
-this will add a lot to SmartProperty since it needs to support a list of properties that all trigger
-one lazy loader
+horizontal lazy loaders - this loads the data from an additional table
+into the same object upon hitting any of its properties.
 
-simple table inheritance
+Oracle module - table reflection
 
-Oracle module
-
-Postgres module
+Postgres module - table reflection
 
 MySQL module
 
 INSERT from a SELECT
 
-extension types, like pickle type, user-defined types
-
 generator functions returned from select() to handle [:] slices dynamically ?
 
-make ResultProxy standard return value, get cursor accessible off of it and metadata stuff optional
+examples
 
-figure out why metadata doesnt work for sqllite row
-
-type bind param handling and result row handling
+external functions able to be placed within a UOW's transaction commit; either at the head, or 
+based on dependencies to other mappers, individual objects

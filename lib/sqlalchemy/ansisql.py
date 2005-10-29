@@ -201,9 +201,8 @@ class ANSICompiler(sql.Compiled):
 
         self.froms[select] = "(" + text + ")"
 
-
     def visit_table(self, table):
-        self.froms[table] = table.name
+        self.froms[table] = table.fullname
         self.strings[table] = ""
 
     def visit_join(self, join):
@@ -226,7 +225,7 @@ class ANSICompiler(sql.Compiled):
             self.binds[b.key] = b
             self.binds[b.shortname] = b
             
-        text = ("INSERT INTO " + insert_stmt.table.name + " (" + string.join([c[0].name for c in colparams], ', ') + ")" +
+        text = ("INSERT INTO " + insert_stmt.table.fullname + " (" + string.join([c[0].name for c in colparams], ', ') + ")" +
          " VALUES (" + string.join([self.bindparam_string(c[1].key) for c in colparams], ', ') + ")")
          
         self.strings[insert_stmt] = text
@@ -245,7 +244,7 @@ class ANSICompiler(sql.Compiled):
                 else:
                     return self.get_str(p)
                 
-        text = "UPDATE " + update_stmt.table.name + " SET " + string.join(["%s=%s" % (c[0].name, create_param(c[1])) for c in colparams], ', ')
+        text = "UPDATE " + update_stmt.table.fullname + " SET " + string.join(["%s=%s" % (c[0].name, create_param(c[1])) for c in colparams], ', ')
         
         if update_stmt.whereclause:
             text += " WHERE " + self.get_str(update_stmt.whereclause)
@@ -253,7 +252,7 @@ class ANSICompiler(sql.Compiled):
         self.strings[update_stmt] = text
 
     def visit_delete(self, delete_stmt):
-        text = "DELETE FROM " + delete_stmt.table.name
+        text = "DELETE FROM " + delete_stmt.table.fullname
         
         if delete_stmt.whereclause:
             text += " WHERE " + self.get_str(delete_stmt.whereclause)
@@ -270,7 +269,7 @@ class ANSISchemaGenerator(sqlalchemy.engine.SchemaIterator):
         raise NotImplementedError()
         
     def visit_table(self, table):
-        self.append("\nCREATE TABLE " + table.name + "(")
+        self.append("\nCREATE TABLE " + table.fullname + "(")
         
         separator = "\n"
         
@@ -287,7 +286,7 @@ class ANSISchemaGenerator(sqlalchemy.engine.SchemaIterator):
     
 class ANSISchemaDropper(sqlalchemy.engine.SchemaIterator):
     def visit_table(self, table):
-        self.append("\nDROP TABLE " + table.name)
+        self.append("\nDROP TABLE " + table.fullname)
         self.execute()
 
 

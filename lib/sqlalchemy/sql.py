@@ -837,6 +837,14 @@ class UpdateBase(ClauseElement):
         if parameters is None:
             return None
 
+        if isinstance(parameters, list) or isinstance(parameters, tuple):
+            pp = {}
+            i = 0
+            for c in self.table.c:
+                pp[c.key] = parameters[i]
+                i +=1
+            parameters = pp
+            
         for key in parameters.keys():
             value = parameters[key]
             if isinstance(value, Select):

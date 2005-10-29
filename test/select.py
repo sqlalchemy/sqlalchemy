@@ -30,13 +30,23 @@ table3 = Table(
     Column('otherstuff', Integer),
 )
 
+table4 = Table(
+    'remotetable', db,
+    Column('rem_id', Integer, primary_key=True),
+    Column('datatype_id', Integer),
+    Column('value', String(20)),
+    schema = 'remote_owner'
+)
+
 class SQLTest(PersistTest):
-    def runtest(self, clause, result, engine = None, params = None):
+    def runtest(self, clause, result, engine = None, params = None, checkparams = None):
         c = clause.compile(engine, params)
         self.echo("\n" + str(c) + repr(c.get_params()))
         cc = re.sub(r'\n', '', str(c))
         self.assert_(cc == result, str(c) + "\n does not match \n" + result)
-
+        if checkparams is not None:
+            self.assert_(c.get_params() == checkparams, "params dont match")
+            
 class SelectTest(SQLTest):
 
     def testtext(self):
@@ -341,6 +351,13 @@ class CRUDTest(SQLTest):
             insert(table, dict(id = 3, name = 'jack')), 
             "INSERT INTO mytable (myid, name) VALUES (:myid, :name)"
         )
+
+        # test with a tuple of params instead of named
+        self.runtest(
+            insert(table, (3, 'jack', 'mydescription')), 
+            "INSERT INTO mytable (myid, name, description) VALUES (:myid, :name, :description)",
+            checkparams = {'myid':3, 'name':'jack', 'description':'mydescription'}
+        )
         
         # insert with a subselect provided 
         #self.runtest(
@@ -374,6 +391,24 @@ class CRUDTest(SQLTest):
     def testdelete(self):
         self.runtest(delete(table, table.c.id == 7), "DELETE FROM mytable WHERE mytable.myid = :mytable_myid")
         
+class SchemaTest(SQLTest):
+    def testselect(self):
+        self.runtest(table4.select(), "SELECT remotetable.rem_id, remotetable.datatype_id, remotetable.value FROM remote_owner.remotetable")
+        self.runtest(table4.select(and_(table4.c.datatype_id==7, table4.c.value=='hi')), "SELECT remotetable.rem_id, remotetable.datatype_id, remotetable.value FROM remote_owner.remotetable WHERE remotetable.datatype_id = :remotetable_datatype_id AND remotetable.value = :remotetable_value")
 
+        s = table4.select(and_(table4.c.datatype_id==7, table4.c.value=='hi'))
+        s.use_labels = True
+        self.runtest(s, "SELECT remotetable.rem_id AS remotetable_rem_id, remotetable.datatype_id AS remotetable_datatype_id, remotetable.value AS remotetable_value FROM remote_owner.remotetable WHERE remotetable.datatype_id = :remotetable_datatype_id AND remotetable.value = :remotetable_value")
+
+    def testalias(self):
+        a = alias(table4, 'remtable')
+        self.runtest(a.select(a.c.datatype_id==7), "SELECT remtable.rem_id, remtable.datatype_id, remtable.value FROM remote_owner.remotetable remtable WHERE remtable.datatype_id = :remtable_datatype_id")
+        
+    def testupdate(self):
+        self.runtest(table4.update(table4.c.value=='test', values={table4.c.datatype_id:12}), "UPDATE remote_owner.remotetable SET datatype_id=:datatype_id WHERE remotetable.value = :remotetable_value")
+        
+    def testinsert(self):
+        self.runtest(table4.insert(values=(2, 5, 'test')), "INSERT INTO remote_owner.remotetable (rem_id, datatype_id, value) VALUES (:rem_id, :datatype_id, :value)")
+        
 if __name__ == "__main__":
     unittest.main()        
