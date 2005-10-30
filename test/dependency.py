@@ -61,15 +61,15 @@ class DependencySortTest(PersistTest):
             (node1, node2),
             (node3, node2)
         ]
-        head1 = util.DependencySorter(tuples, [node1, node2, node3]).sort()
+#        head1 = util.DependencySorter(tuples, [node1, node2, node3]).sort()
         head2 = util.DependencySorter(tuples, [node3, node1, node2]).sort()
-        head3 = util.DependencySorter(tuples, [node3, node2, node1]).sort()
+ #       head3 = util.DependencySorter(tuples, [node3, node2, node1]).sort()
         
         # TODO: figure out a "node == node2" function
         #self.assert_(str(head1) == str(head2) == str(head3))
-        print "\n" + str(head1)
+  #      print "\n" + str(head1)
         print "\n" + str(head2)
-        print "\n" + str(head3)
+   #     print "\n" + str(head3)
 
     def testsort4(self):
         node1 = thingy('keywords')

@@ -713,7 +713,7 @@ class Select(Selectable):
         self.use_labels = use_labels
         self.id = "Select(%d)" % id(self)
         self.name = None
-        self.whereclause = whereclause
+        self.whereclause = None
         self._engine = engine
         self.rowid_column = None
         
@@ -729,8 +729,8 @@ class Select(Selectable):
             self.append_column(c)
             
         if whereclause is not None:
-            self.set_whereclause(whereclause)
-    
+            self.append_whereclause(whereclause)
+
         for f in from_obj:
             self.append_from(f)
 
@@ -757,25 +757,24 @@ class Select(Selectable):
             else:
                 co._make_proxy(self)
 
-    def set_whereclause(self, whereclause):
+    def append_whereclause(self, whereclause):
         if type(whereclause) == str:
-            self.whereclause = TextClause(whereclause)
+            whereclause = TextClause(whereclause)
 
         class CorrelatedVisitor(ClauseVisitor):
             def visit_select(s, select):
                 for f in self.froms.keys():
                     select.clear_from(f)
                     select.issubquery = True
-        self.whereclause.accept_visitor(CorrelatedVisitor())
 
-        self.whereclause._process_from_dict(self.froms, False)
-
-    def append_whereclause(self, clause):
-        if self.whereclause is not None:
-            self.whereclause = and_(self.whereclause, clause)
-        else:
-            self.whereclause = clause
+        whereclause.accept_visitor(CorrelatedVisitor())
+        whereclause._process_from_dict(self.froms, False)
         
+        if self.whereclause is not None:
+            self.whereclause = and_(self.whereclause, whereclause)
+        else:
+            self.whereclause = whereclause
+
     def clear_from(self, id):
         self.append_from(FromClause(from_name = None, from_key = id))
         

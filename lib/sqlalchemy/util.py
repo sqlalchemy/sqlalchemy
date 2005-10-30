@@ -56,6 +56,15 @@ class OrderedDict(dict):
     def clear(self):
         self.list = []
         dict.clear(self)
+    
+    def toend(self, key):
+        # TODO: optimize this 
+        try:
+            del self.list[self.list.index(key)]
+            self.list.append(key)
+            print "toend: " + repr(key)
+        except ValueError:
+            raise KeyError(key)
         
     def update(self, dict):
         for key in dict.keys():
@@ -337,6 +346,11 @@ class DependencySorter(object):
             self.children = HashSet()
             self.parent = None
             self.circular = False
+        def append(self, node):
+            if node.parent is not None:
+                del node.parent.children[node]
+            self.children.append(node)
+            node.parent = self
         def __str__(self):
             return self.safestr({})
         def safestr(self, hash, indent = 0):
@@ -381,12 +395,17 @@ class DependencySorter(object):
             # nope, so we have to move the child down from whereever
             # it currently is to a child of the parent
             if c is None:
-                for c in parentnode.children:
-                    c.parent = root
-                    root.children.append(c)
-                    del parentnode.children[c]
-                root.parent = parentnode
-                parentnode.children.append(root)
+                if childnode.parent is None:
+                    print "moving down " + str(childnode.item) + ", has no parent"
+                    parentnode.append(childnode)
+                else:
+                    print "item " + str(childnode.item)  + " has a parent " +  str(childnode.parent.item)
+                    for c in parentnode.children:
+                        c.parent = root
+                        root.children.append(c)
+                        del parentnode.children[c]
+                    root.parent = parentnode
+                    parentnode.children.append(root)
         
         # now we have a collection of subtrees which represent dependencies.
         # go through the collection root nodes wire them together into one tree        

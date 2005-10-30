@@ -281,7 +281,7 @@ class UOWTransaction(object):
         self.deleted_objects = util.HashSet()
         self.deleted_lists = util.HashSet()
 
-    def register_object(self, obj, isdelete = False, listonly = False):
+    def register_object(self, obj, isdelete = False, listonly = False, **kwargs):
         """adds an object to this UOWTransaction to be updated in the database.
         'isdelete' indicates whether the object is to be deleted or saved (update/inserted).
         'listonly', indicates that only this object's dependency relationships should be 
@@ -291,7 +291,7 @@ class UOWTransaction(object):
         mapper = object_mapper(obj)
         self.mappers.append(mapper)
         task = self.get_task_by_mapper(mapper)
-        task.append(obj, listonly, isdelete=isdelete)
+        task.append(obj, listonly, isdelete=isdelete, **kwargs)
 
     def get_task_by_mapper(self, mapper):
         try:
@@ -324,7 +324,7 @@ class UOWTransaction(object):
             task.mapper.register_dependencies(self)
 
         head = self._sort_dependencies()
-        #print "Task dump:\n" + head.dump()
+        print "Task dump:\n" + head.dump()
         if head is not None:
             head.execute(self)
             
@@ -408,7 +408,7 @@ class UOWTask(object):
     def is_empty(self):
         return len(self.objects) == 0 and len(self.dependencies) == 0 and len(self.childtasks) == 0
             
-    def append(self, obj, listonly = False, childtask = None, isdelete = False):
+    def append(self, obj, listonly = False, childtask = None, isdelete = False, sort=False):
         """appends an object to this task, to be either saved or deleted
         depending on the 'isdelete' attribute of this UOWTask.  'listonly' indicates
         that the object should only be processed as a dependency and not actually saved/deleted.
@@ -417,6 +417,8 @@ class UOWTask(object):
         tasks, to assign dependent operations at the per-object instead of per-task level."""
         try:
             rec = self.objects[obj]
+            if sort:
+                self.objects.toend(obj)
         except KeyError:
             rec = UOWTaskElement(obj)
             self.objects[obj] = rec
