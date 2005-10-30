@@ -87,7 +87,7 @@ gen_columns = schema.Table("columns", generic_engine,
     Column("ordinal_position", Integer),
     Column("character_maximum_length", Integer),
     Column("numeric_precision", Integer),
-    Column("numeric_precision_radix", Integer),
+    Column("numeric_scale", Integer),
     schema="information_schema")
     
 gen_constraints = schema.Table("table_constraints", generic_engine,
@@ -237,14 +237,14 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
             if row is None:
                 break
             #print "row! " + repr(row)
-            (name, type, nullable, primary_key, charlen, numericprec, numericradix) = (
+            (name, type, nullable, primary_key, charlen, numericprec, numericscale) = (
                 row[columns.c.column_name], 
                 row[columns.c.data_type], 
                 not row[columns.c.is_nullable], 
                 row[constraints.c.constraint_type] is not None,
                 row[columns.c.character_maximum_length],
                 row[columns.c.numeric_precision],
-                row[columns.c.numeric_precision_radix],
+                row[columns.c.numeric_scale],
                 )
 
             #match = re.match(r'(\w+)(\(.*?\))?', type)
