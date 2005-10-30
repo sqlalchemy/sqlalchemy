@@ -563,7 +563,7 @@ class UOWTask(object):
             s += "\n" + indent + "  Save Dependencies:"
             s += self._dump_dependencies(save_dep, indent)
         if len(self.childtasks) > 0:
-            s += "\n" + indent + "  Child Tasks:"
+            s += "\n" + indent + "  Child Tasks:(%d)" % len(self.childtasks)
             for t in self.childtasks:
                 s += t.dump(indent + "    ")
         delete_dep = self.delete_dependencies()

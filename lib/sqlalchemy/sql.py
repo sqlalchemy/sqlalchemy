@@ -230,6 +230,10 @@ class ClauseElement(object):
         raise NotImplementedError(repr(self))
     def _get_from_objects(self):
         raise NotImplementedError(repr(self))
+    def _process_from_dict(self, data):
+        for f in self._get_from_objects():
+            data[f.id] = f
+        data[self.id] = self
     def accept_visitor(self, visitor):
         raise NotImplementedError(repr(self))
 
@@ -550,6 +554,11 @@ class Join(Selectable):
         visitor.visit_join(self)
 
     engine = property(lambda s:s.left.engine or s.right.engine)
+
+    def _process_from_dict(self, data):
+        for f in self._get_from_objects():
+            data[f.id] = f
+        data[self.id] = self
         
     def _get_from_objects(self):
         m = {}
@@ -763,14 +772,14 @@ class Select(Selectable):
         if type(fromclause) == str:
             fromclause = FromClause(from_name = fromclause)
 
+        fromclause._process_from_dict(self.froms)
+        return
+        
         self.froms[fromclause.id] = fromclause
 
         for r in fromclause._get_from_objects():
             self.froms[r.id] = r
         
-    def append_join(self, joinon, right, whereclause, **params):
-        self.append_from(self.froms[joinon], right, whereclause, **params)
-
     def append_clause(self, keyword, clause):
         if type(clause) == str:
             clause = TextClause(clause)

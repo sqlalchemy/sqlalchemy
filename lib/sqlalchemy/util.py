@@ -380,17 +380,25 @@ class DependencySorter(object):
             # now see, if the parent is an ancestor of the child
             c = childnode
             while c is not None and c is not parentnode:
+                root = c
                 c = c.parent
 
             # nope, so we have to move the child down from whereever
             # it currently is to a child of the parent
             if c is None:
-                parentnode.append(childnode)
+                for c in parentnode.children:
+                    c.parent = root
+                    root.children.append(c)
+                    del parentnode.children[c]
+                root.parent = parentnode
+                parentnode.children.append(root)
+                print str(parentnode)
         
         # now we have a collection of subtrees which represent dependencies.
         # go through the collection root nodes wire them together into one tree        
         head = None
         for node in nodes.values():
+            print "hi1:" + str(node)
             if node.parent is None:
                 if head is not None:
                     head.append(node)

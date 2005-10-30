@@ -52,7 +52,41 @@ class DependencySortTest(PersistTest):
         head = util.DependencySorter(tuples, [node7]).sort()
         print "\n" + str(head)
 
+    def testsort3(self):
+        ['Mapper|Keyword|keywords,Mapper|IKAssociation|itemkeywords', 'Mapper|Item|items,Mapper|IKAssociation|itemkeywords']
+        node1 = thingy('keywords')
+        node2 = thingy('itemkeyowrds')
+        node3 = thingy('items')
+        tuples = [
+            (node1, node2),
+            (node3, node2)
+        ]
+        head1 = util.DependencySorter(tuples, [node1, node2, node3]).sort()
+        head2 = util.DependencySorter(tuples, [node3, node1, node2]).sort()
+        head3 = util.DependencySorter(tuples, [node3, node2, node1]).sort()
+        
+        # TODO: figure out a "node == node2" function
+        #self.assert_(str(head1) == str(head2) == str(head3))
+        print "\n" + str(head1)
+        print "\n" + str(head2)
+        print "\n" + str(head3)
 
+    def testsort4(self):
+        node1 = thingy('keywords')
+        node2 = thingy('itemkeyowrds')
+        node3 = thingy('items')
+        node4 = thingy('lala')
+        node5 = thingy('hoho')
+        
+        tuples = [
+            (node1, node2),
+            (node5, node3),
+            (node4, node2),
+            (node3, node2),
+            
+        ]
+        head = util.DependencySorter(tuples, []).sort()
+        print "\n" + str(head)
 
 if __name__ == "__main__":
     unittest.main()

@@ -450,6 +450,7 @@ class Mapper(object):
                 if c.rowcount != len(update):
                     raise "ConcurrencyError - updated rowcount %d does not match number of objects updated %d" % (c.cursor.rowcount, len(update))
             if len(insert):
+                import sys
                 statement = table.insert()
                 for rec in insert:
                     (obj, params) = rec
@@ -458,8 +459,13 @@ class Mapper(object):
                     if primary_keys is not None:
                         i = 0
                         for col in self.primary_keys[table]:
+                    #        print "col: " + table.name + "." + col.key + " val: " + repr(self._getattrbycolumn(obj, col))
                             if self._getattrbycolumn(obj, col) is None:
-                                self._setattrbycolumn(obj, col, primary_keys[i])
+                                try:
+                                    self._setattrbycolumn(obj, col, primary_keys[i])
+                                except IndexError:
+                                    print "LALALA col: " + table.name + "." + col.key + " val: " + repr(self._getattrbycolumn(obj, col))
+                                    raise
                             i+=1
                     self.extension.after_insert(self, obj)
                     

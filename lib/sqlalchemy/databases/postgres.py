@@ -206,22 +206,21 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         constraints = gen_constraints.toengine(table.engine)
         column_constraints = gen_column_constraints.toengine(table.engine)
         
-        s = columns.select(columns.c.table_name==table.name, order_by=[columns.c.ordinal_position])
-
-        s.append_from(sql.join(columns, column_constraints, 
-                sql.and_(
-                        columns.c.table_name==column_constraints.c.table_name,
-                        columns.c.table_schema==column_constraints.c.table_schema,
-                        columns.c.column_name==column_constraints.c.column_name,
-                    ), 
-                isouter=True).join(constraints, 
-                    sql.and_(
-                        column_constraints.c.table_schema==constraints.c.table_schema,
-                        column_constraints.c.constraint_name==constraints.c.constraint_name,
-                        constraints.c.constraint_type=='PRIMARY KEY'
-                    ), isouter=True)),
-                    
-        s.append_column(constraints.c.constraint_type)    
+        s = select([columns, constraints.c.constraint_type], 
+            columns.c.table_name==table.name, 
+            order_by=[columns.c.ordinal_position],
+            from_obj=[sql.join(columns, column_constraints, 
+                              sql.and_(
+                                      columns.c.table_name==column_constraints.c.table_name,
+                                      columns.c.table_schema==column_constraints.c.table_schema,
+                                      columns.c.column_name==column_constraints.c.column_name,
+                                  ), 
+                              isouter=True).join(constraints, 
+                                  sql.and_(
+                                      column_constraints.c.table_schema==constraints.c.table_schema,
+                                      column_constraints.c.constraint_name==constraints.c.constraint_name,
+                                      constraints.c.constraint_type=='PRIMARY KEY'
+                                  ), isouter=True)])
 
         if table.schema is not None:
             s.append_whereclause(columns.c.table_schema==table.schema)
