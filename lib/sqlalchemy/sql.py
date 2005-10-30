@@ -556,14 +556,17 @@ class Join(Selectable):
 
     engine = property(lambda s:s.left.engine or s.right.engine)
 
+    class JoinMarker(FromClause):
+        def __init__(self, id, join):
+            FromClause.__init__(self, from_key=id)
+            self.join = join
+            
     def _process_from_dict(self, data, asfrom):
         for f in self.onclause._get_from_objects():
             data[f.id] = f
         for f in self.left._get_from_objects() + self.right._get_from_objects():
-            # mark the object as a "blank" from that wont be printed
-            # TODO: now, when one of the existing froms is also a join that should be
-            # joined to us, join up to it.
-            data[f.id] = FromClause(from_key=f.id)
+            # mark the object as a "blank" "from" that wont be printed
+            data[f.id] = Join.JoinMarker(f.id, self)
         # a JOIN always impacts the final FROM list of a select statement
         data[self.id] = self
         
@@ -700,7 +703,7 @@ class Select(Selectable):
         self.columns = util.OrderedProperties()
         self.froms = util.OrderedDict()
         self.use_labels = use_labels
-        self.id = id(self)
+        self.id = "Select(%d)" % id(self)
         self.name = None
         self.whereclause = whereclause
         self._engine = engine

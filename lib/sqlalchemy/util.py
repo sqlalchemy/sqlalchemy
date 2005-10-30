@@ -337,11 +337,6 @@ class DependencySorter(object):
             self.children = HashSet()
             self.parent = None
             self.circular = False
-        def append(self, node):
-            if node.parent is not None:
-                del node.parent.children[node]
-            self.children.append(node)
-            node.parent = self
         def __str__(self):
             return self.safestr({})
         def safestr(self, hash, indent = 0):
@@ -392,13 +387,11 @@ class DependencySorter(object):
                     del parentnode.children[c]
                 root.parent = parentnode
                 parentnode.children.append(root)
-                print str(parentnode)
         
         # now we have a collection of subtrees which represent dependencies.
         # go through the collection root nodes wire them together into one tree        
         head = None
         for node in nodes.values():
-            print "hi1:" + str(node)
             if node.parent is None:
                 if head is not None:
                     head.append(node)
