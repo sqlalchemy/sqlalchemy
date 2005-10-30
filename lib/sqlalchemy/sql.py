@@ -230,10 +230,11 @@ class ClauseElement(object):
         raise NotImplementedError(repr(self))
     def _get_from_objects(self):
         raise NotImplementedError(repr(self))
-    def _process_from_dict(self, data):
+    def _process_from_dict(self, data, asfrom):
         for f in self._get_from_objects():
-            data[f.id] = f
-        data[self.id] = self
+            data.setdefault(f.id, f)
+        if asfrom:
+            data[self.id] = self
     def accept_visitor(self, visitor):
         raise NotImplementedError(repr(self))
 
@@ -372,7 +373,7 @@ class FromClause(ClauseElement):
     def _get_from_objects(self):
         # this could also be [self], at the moment it doesnt matter to the Select object
         return []
-
+        
     engine = property(lambda s: None)
     
     def hash_key(self):
@@ -555,20 +556,19 @@ class Join(Selectable):
 
     engine = property(lambda s:s.left.engine or s.right.engine)
 
-    def _process_from_dict(self, data):
-        for f in self._get_from_objects():
+    def _process_from_dict(self, data, asfrom):
+        for f in self.onclause._get_from_objects():
             data[f.id] = f
+        for f in self.left._get_from_objects() + self.right._get_from_objects():
+            # mark the object as a "blank" from that wont be printed
+            # TODO: now, when one of the existing froms is also a join that should be
+            # joined to us, join up to it.
+            data[f.id] = FromClause(from_key=f.id)
+        # a JOIN always impacts the final FROM list of a select statement
         data[self.id] = self
         
     def _get_from_objects(self):
-        m = {}
-        for x in self.onclause._get_from_objects():
-            m[x.id] = x
-        result = [self] + [FromClause(from_key = c.id) for c in self.left._get_from_objects() + self.right._get_from_objects()]
-        for x in result:
-            m[x.id] = x
-        result = m.values()
-        return result
+        return [self] + self.onclause._get_from_objects() + self.left._get_from_objects() + self.right._get_from_objects()
         
 class Alias(Selectable):
     def __init__(self, selectable, alias = None):
@@ -658,7 +658,8 @@ class TableImpl(Selectable):
     def get_from_text(self):
         return self.table.name
     
-        
+    engine = property(lambda s: s.table.engine)
+    
     def group_parenthesized(self):
         return False
     
@@ -734,8 +735,8 @@ class Select(Selectable):
 
         self._raw_columns.append(column)
 
+        column._process_from_dict(self.froms, False)
         for f in column._get_from_objects():
-            self.froms.setdefault(f.id, f)
             if self.rowid_column is None and hasattr(f, 'rowid_column'):
                 self.rowid_column = f.rowid_column._make_proxy(self)
 
@@ -756,8 +757,7 @@ class Select(Selectable):
                     select.issubquery = True
         self.whereclause.accept_visitor(CorrelatedVisitor())
 
-        for f in self.whereclause._get_from_objects():
-            self.froms.setdefault(f.id, f)
+        self.whereclause._process_from_dict(self.froms, False)
 
     def append_whereclause(self, clause):
         if self.whereclause is not None:
@@ -772,13 +772,7 @@ class Select(Selectable):
         if type(fromclause) == str:
             fromclause = FromClause(from_name = fromclause)
 
-        fromclause._process_from_dict(self.froms)
-        return
-        
-        self.froms[fromclause.id] = fromclause
-
-        for r in fromclause._get_from_objects():
-            self.froms[r.id] = r
+        fromclause._process_from_dict(self.froms, True)
         
     def append_clause(self, keyword, clause):
         if type(clause) == str:
@@ -788,13 +782,7 @@ class Select(Selectable):
         
     def compile(self, engine = None, bindparams = None):
         if engine is None:
-            if self.engine is None:
-                for f in self.froms.values():
-                    self.engine = f.engine
-                    if self.engine is not None: break
-                    
             engine = self.engine
-            
         if engine is None:
             raise "no engine supplied, and no engine could be located within the clauses!"
 
@@ -826,10 +814,10 @@ class Select(Selectable):
         
         if self._engine:
             return self._engine
-            
+        
         for f in self.froms.values():
             e = f.engine
-            if e:
+            if e is not None:
                 return e
             
         return None

@@ -200,19 +200,19 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
         "SELECT t.myid, t.name, t.description, foo.f FROM mytable t, (select f from bar where lala=heyhey) foo WHERE foo.f = t.id")
 
     def testjoin(self):
-        self.runtest(
-            join(table2, table, table.c.id == table2.c.id).select(),
-            "SELECT myothertable.otherid, myothertable.othername, mytable.myid, mytable.name, mytable.description \
-FROM myothertable, mytable WHERE mytable.myid = myothertable.otherid"
-        )
+    #    self.runtest(
+     #       join(table2, table, table.c.id == table2.c.id).select(),
+      #      "SELECT myothertable.otherid, myothertable.othername, mytable.myid, mytable.name, mytable.description \
+#FROM myothertable, mytable WHERE mytable.myid = myothertable.otherid"
+ #       )
 
-        self.runtest(
-            select(
-                [table],
-                from_obj = [join(table, table2, table.c.id == table2.c.id)]
-            ),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable JOIN myothertable ON mytable.myid = myothertable.otherid")
-        
+  #      self.runtest(
+   #         select(
+    #            [table],
+     #           from_obj = [join(table, table2, table.c.id == table2.c.id)]
+      #      ),
+       # "SELECT mytable.myid, mytable.name, mytable.description FROM mytable JOIN myothertable ON mytable.myid = myothertable.otherid")
+
         self.runtest(
             select(
                 [join(join(table, table2, table.c.id == table2.c.id), table3, table.c.id == table3.c.id)
