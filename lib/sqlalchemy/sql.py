@@ -208,6 +208,12 @@ class Compiled(ClauseVisitor):
             params = self.get_params(**params)
         return self.engine.execute(str(self), params, compiled = self, typemap = self.typemap)
 
+    def scalar(self, *multiparams, **params):
+        """executes this compiled object via the execute() method, then 
+        returns the first column of the first row.  Useful for executing functions,
+        sequences, rowcounts, etc."""
+        return self.execute(*multiparams, **params).fetchone()[0]
+        
 class ClauseElement(object):
     """base class for elements of a programmatically constructed SQL expression.
     
@@ -277,9 +283,11 @@ class ClauseElement(object):
         c = self.compile(e, bindparams = bindparams)
         return c.execute(*multiparams, **params)
 
-    def result(self, **params):
-        """the same as execute(), except a RowProxy object is returned instead of a DBAPI cursor."""
-        raise NotImplementedError()
+    def scalar(self, *multiparams, **params):
+        """executes this SQL expression via the execute() method, then 
+        returns the first column of the first row.  Useful for executing functions,
+        sequences, rowcounts, etc."""
+        return self.execute(*multiparams, **params).fetchone()[0]
 
 class CompareMixin(object):
     def __lt__(self, other):

@@ -85,6 +85,9 @@ gen_columns = schema.Table("columns", generic_engine,
     Column("is_nullable", Integer),
     Column("data_type", String),
     Column("ordinal_position", Integer),
+    Column("character_maximum_length", Integer),
+    Column("numeric_precision", Integer),
+    Column("numeric_precision_radix", Integer),
     schema="information_schema")
     
 gen_constraints = schema.Table("table_constraints", generic_engine,
@@ -208,24 +211,24 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         
         s = select([columns, constraints.c.constraint_type], 
             columns.c.table_name==table.name, 
-            order_by=[columns.c.ordinal_position],
-            from_obj=[sql.join(columns, column_constraints, 
+            order_by=[columns.c.ordinal_position])
+            
+        s.append_from(sql.outerjoin(columns, column_constraints, 
                               sql.and_(
                                       columns.c.table_name==column_constraints.c.table_name,
                                       columns.c.table_schema==column_constraints.c.table_schema,
                                       columns.c.column_name==column_constraints.c.column_name,
-                                  ), 
-                              isouter=True).join(constraints, 
+                                  )).outerjoin(constraints, 
                                   sql.and_(
                                       column_constraints.c.table_schema==constraints.c.table_schema,
                                       column_constraints.c.constraint_name==constraints.c.constraint_name,
                                       constraints.c.constraint_type=='PRIMARY KEY'
-                                  ), isouter=True)])
+                                  )))
 
         if table.schema is not None:
             s.append_whereclause(columns.c.table_schema==table.schema)
         else:
-            current_schema = text("select current_schema()", table.engine).execute().fetchone()[0]
+            current_schema = text("select current_schema()", table.engine).scalar()
             s.append_whereclause(columns.c.table_schema==current_schema)
 
         c = s.execute()
@@ -233,8 +236,16 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
             row = c.fetchone()
             if row is None:
                 break
-            print "row! " + repr(row)
-            (name, type, nullable, primary_key) = (row[columns.c.column_name], row[columns.c.data_type], not row[columns.c.is_nullable], row[constraints.c.constraint_type] is not None)
+            #print "row! " + repr(row)
+            (name, type, nullable, primary_key, charlen, numericprec, numericradix) = (
+                row[columns.c.column_name], 
+                row[columns.c.data_type], 
+                not row[columns.c.is_nullable], 
+                row[constraints.c.constraint_type] is not None,
+                row[columns.c.character_maximum_length],
+                row[columns.c.numeric_precision],
+                row[columns.c.numeric_precision_radix],
+                )
 
             #match = re.match(r'(\w+)(\(.*?\))?', type)
             #coltype = match.group(1)
