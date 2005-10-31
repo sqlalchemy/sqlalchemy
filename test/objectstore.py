@@ -279,7 +279,7 @@ class SaveTest(AssertMixin):
                     ]
                 )
         ])
-        l = sql.select([users, addresses], sql.and_(users.c.user_id==addresses.c.address_id, addresses.c.address_id==a.address_id)).execute()
+        l = sql.select([users, addresses], sql.and_(users.c.user_id==addresses.c.address_id, addresses.c.address_id==a.address_id), use_labels=True).execute()
         self.echo( repr(l.fetchone().row))
 
     def testbackwardsnonmatch(self):

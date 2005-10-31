@@ -278,7 +278,7 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
                 row[column_constraints.c.table_name],
                 row[column_constraints.c.column_name]
             )
-            print "type %s on column %s to remote %s.%s.%s" % (type, constrained_column, referred_schema, referred_table, referred_column) 
+            #print "type %s on column %s to remote %s.%s.%s" % (type, constrained_column, referred_schema, referred_table, referred_column) 
             if type=='PRIMARY KEY':
                 table.c[constrained_column]._set_primary_key()
             elif type=='FOREIGN KEY':

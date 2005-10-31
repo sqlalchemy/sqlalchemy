@@ -6,12 +6,13 @@ import testbase
 from sqlalchemy.schema import *
 import sqlalchemy
 
-#db = sqlalchemy.engine.create_engine('postgres', {'database':'test', 'host':'127.0.0.1', 'user':'scott', 'password':'tiger'}, echo=testbase.echo)
-db = sqlalchemy.engine.create_engine('oracle', {'dsn':os.environ['DSN'], 'user':os.environ['USER'], 'password':os.environ['PASSWORD']}, echo=testbase.echo)
 
 class SequenceTest(PersistTest):
 
     def setUp(self):
+        db = sqlalchemy.engine.create_engine('postgres', {'database':'test', 'host':'127.0.0.1', 'user':'scott', 'password':'tiger'}, echo=testbase.echo)
+        #db = sqlalchemy.engine.create_engine('oracle', {'dsn':os.environ['DSN'], 'user':os.environ['USER'], 'password':os.environ['PASSWORD']}, echo=testbase.echo)
+
         self.table = Table("cartitems", db, 
             Column("cart_id", Integer, Sequence('cart_id_seq'), primary_key=True),
             Column("description", String(40)),

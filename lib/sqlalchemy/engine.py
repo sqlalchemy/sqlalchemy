@@ -301,7 +301,7 @@ class ResultProxy:
                 else:
                     rec = (types.NULLTYPE, i)
                 if self.props.setdefault(item[0].lower(), rec) is not rec:
-                    raise "Duplicate column name '%s' in result set! use use_labels on select statement" % (item[0].lower())
+                    raise "Duplicate column name '%s' in result set! try 'use_labels' option on select statement" % (item[0].lower())
                 self.props[i] = rec
                 i+=1
 
