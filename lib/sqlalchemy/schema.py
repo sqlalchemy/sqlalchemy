@@ -47,22 +47,31 @@ class SchemaItem(object):
             raise AttributeError(key)
         return getattr(self._impl, key)
 
-
+def _get_table_key(engine, name, schema):
+    if schema is not None and schema == engine.get_default_schema_name():
+        schema = None
+    if schema is None:
+        return name
+    else:
+        return schema + "." + name
+        
 class TableSingleton(type):
     def __call__(self, name, engine, *args, **kwargs):
         try:
-            table = engine.tables[name]
+            schema = kwargs.get('schema', None)
+            key = _get_table_key(engine, name, schema)
+            table = engine.tables[key]
             if len(args):
                 if kwargs.get('redefine', False):
                     table.reload_values(*args)
                 else:
-                    raise "Table '%s' is already defined. specify 'redefine=True' to remap columns" % name
+                    raise "Table '%s.%s' is already defined. specify 'redefine=True' to remap columns" % (schema, name)
             return table
         except KeyError:
             if kwargs.get('mustexist', False):
-                raise "Table '%s' not defined" % name
+                raise "Table '%s.%s' not defined" % (schema, name)
             table = type.__call__(self, name, engine, *args, **kwargs)
-            engine.tables[name] = table
+            engine.tables[key] = table
             # load column definitions from the database if 'autoload' is defined
             # we do it after the table is in the singleton dictionary to support
             # circular foreign keys
@@ -86,7 +95,7 @@ class Table(SchemaItem):
         self._impl = self.engine.tableimpl(self)
         self._init_items(*args)
         self.schema = kwargs.get('schema', None)
-        if self.schema:
+        if self.schema is not None:
             self.fullname = "%s.%s" % (self.schema, self.name)
         else:
             self.fullname = self.name
@@ -112,15 +121,18 @@ class Table(SchemaItem):
             c.accept_visitor(visitor)
         return visitor.visit_table(self)
 
-    def toengine(self, engine):
+    def toengine(self, engine, schema=None):
         """returns a singleton instance of this Table with a different engine"""
         try:
-            return engine.tables[self.name]
+            if schema is None:
+                schema = self.schema
+            key = _get_table_key(engine, self.name, schema)
+            return engine.tables[key]
         except:
             args = []
             for c in self.columns:
                 args.append(c.copy())
-            return Table(self.name, engine, schema=self.schema, *args)
+            return Table(self.name, engine, schema=schema, *args)
 
 class Column(SchemaItem):
     """represents a column in a database table."""
@@ -138,7 +150,12 @@ class Column(SchemaItem):
         
     original = property(lambda s: s._orig or s)
     engine = property(lambda s: s.table.engine)
-        
+    
+    def _set_primary_key(self):
+        self.primary_key = True
+        self.nullable = False
+        self.table.primary_keys.append(self)
+            
     def _set_parent(self, table):
         if not self.hidden:
             table.columns[self.key] = self

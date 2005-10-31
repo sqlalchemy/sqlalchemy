@@ -120,6 +120,9 @@ class SQLEngine(schema.SchemaEngine):
         """returns a new sql.ColumnImpl object to correspond to the given Column object."""
         return sql.ColumnImpl(column)
 
+    def get_default_schema_name(self):
+        return None
+        
     def last_inserted_ids(self):
         """returns a thread-local list of the primary keys for the last insert statement executed.
         This does not apply to straight textual clauses; only to sql.Insert objects compiled against a schema.Table object, which are executed via statement.execute().  The order of items in the list is the same as that of the Table's 'primary_keys' attribute."""
@@ -297,7 +300,8 @@ class ResultProxy:
                     rec = (typemap.get(item[0], types.NULLTYPE), i)
                 else:
                     rec = (types.NULLTYPE, i)
-                self.props[item[0].lower()] = rec
+                if self.props.setdefault(item[0].lower(), rec) is not rec:
+                    raise "Duplicate column name '%s' in result set! use use_labels on select statement" % (item[0].lower())
                 self.props[i] = rec
                 i+=1
 

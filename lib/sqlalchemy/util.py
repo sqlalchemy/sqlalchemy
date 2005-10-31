@@ -359,8 +359,8 @@ class DependencySorter(object):
             while n.parent is not None:
                 n = n.parent
             return n
-        def get_highest_sibling(self, node):
-            """returns the highest ancestor node of this one which is either the root node, or the common parent of this node and the given node"""
+        def get_sibling_ancestor(self, node):
+            """returns the node which is an ancestor of this node and is a sibling of the given node, or else returns this node's root node."""
             n = self
             while n.parent is not None and n.parent is not node.parent:
                 n = n.parent
@@ -376,6 +376,7 @@ class DependencySorter(object):
     def __init__(self, tuples, allitems):
         self.tuples = tuples
         self.allitems = allitems
+        
     def sort(self):
         (tuples, allitems) = (self.tuples, self.allitems)
         
@@ -413,7 +414,7 @@ class DependencySorter(object):
                 raise "Circular dependency detected"
             elif not childnode.is_descendant_of(parentnode):
                 # if relationship doesnt exist, connect nodes together
-                root = childnode.get_highest_sibling(parentnode)
+                root = childnode.get_sibling_ancestor(parentnode)
                 parentnode.append(root)
 
         # now we have a collection of subtrees which represent dependencies.

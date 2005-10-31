@@ -46,6 +46,8 @@ def adapt_type(typeobj, colspecs):
     return typeobj.adapt(typeobj.__class__)
     
 class NullTypeEngine(TypeEngine):
+    def __init__(self, *args, **kwargs):
+        pass
     def get_col_spec(self):
         raise NotImplementedError()
     def convert_bind_param(self, value):

@@ -104,6 +104,13 @@ gen_column_constraints = schema.Table("constraint_column_usage", generic_engine,
     Column("constraint_name", String),
     schema="information_schema")
 
+gen_key_constraints = schema.Table("key_column_usage", generic_engine,
+    Column("table_schema", String),
+    Column("table_name", String),
+    Column("column_name", String),
+    Column("constraint_name", String),
+    schema="information_schema")
+
 def engine(opts, **params):
     return PGSQLEngine(opts, **params)
 
@@ -138,6 +145,11 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         
     def reflecttable(self, table):
         raise "not implemented"
+
+    def get_default_schema_name(self):
+        if not hasattr(self, '_default_schema_name'):
+            self._default_schema_name = text("select current_schema()", self).scalar()
+        return self._default_schema_name
         
     def last_inserted_ids(self):
         # if we used sequences or already had all values for the last inserted row,
@@ -205,65 +217,73 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         return self.module
 
     def reflecttable(self, table):
-        columns = gen_columns.toengine(table.engine)
-        constraints = gen_constraints.toengine(table.engine)
-        column_constraints = gen_column_constraints.toengine(table.engine)
-        
-        s = select([columns, constraints.c.constraint_type], 
-            columns.c.table_name==table.name, 
-            order_by=[columns.c.ordinal_position])
-            
-        s.append_from(sql.outerjoin(columns, column_constraints, 
-                              sql.and_(
-                                      columns.c.table_name==column_constraints.c.table_name,
-                                      columns.c.table_schema==column_constraints.c.table_schema,
-                                      columns.c.column_name==column_constraints.c.column_name,
-                                  )).outerjoin(constraints, 
-                                  sql.and_(
-                                      column_constraints.c.table_schema==constraints.c.table_schema,
-                                      column_constraints.c.constraint_name==constraints.c.constraint_name,
-                                      constraints.c.constraint_type=='PRIMARY KEY'
-                                  )))
+        columns = gen_columns.toengine(self)
+        constraints = gen_constraints.toengine(self)
+        column_constraints = gen_column_constraints.toengine(self)
+        key_constraints = gen_key_constraints.toengine(self)
 
         if table.schema is not None:
-            s.append_whereclause(columns.c.table_schema==table.schema)
+            current_schema = table.schema
         else:
-            current_schema = text("select current_schema()", table.engine).scalar()
-            s.append_whereclause(columns.c.table_schema==current_schema)
-
+            current_schema = self.get_default_schema_name()
+        
+        s = select([columns], 
+            sql.and_(columns.c.table_name==table.name,
+            columns.c.table_schema==current_schema),
+            order_by=[columns.c.ordinal_position])
+            
         c = s.execute()
         while True:
             row = c.fetchone()
             if row is None:
                 break
             #print "row! " + repr(row)
-            (name, type, nullable, primary_key, charlen, numericprec, numericscale) = (
+            (name, type, nullable, charlen, numericprec, numericscale) = (
                 row[columns.c.column_name], 
                 row[columns.c.data_type], 
-                not row[columns.c.is_nullable], 
-                row[constraints.c.constraint_type] is not None,
+                row[columns.c.is_nullable] == 'YES', 
                 row[columns.c.character_maximum_length],
                 row[columns.c.numeric_precision],
                 row[columns.c.numeric_scale],
                 )
 
-            #match = re.match(r'(\w+)(\(.*?\))?', type)
-            #coltype = match.group(1)
-            #args = match.group(2)
-
-            #print "coltype: " + repr(coltype) + " args: " + repr(args)
+            args = []
+            for a in (charlen, numericprec, numericscale):
+                if a is not None:
+                    args.append(a)
             coltype = ischema_names[type]
-            table.append_item(schema.Column(name, coltype, primary_key = primary_key, nullable = nullable))
-        return
-        c = self.execute("PRAGMA foreign_key_list(" + table.name + ")", {})
+            #print "coltype " + repr(coltype) + " args " +  repr(args)
+            coltype = coltype(*args)
+            table.append_item(schema.Column(name, coltype, nullable = nullable))
+
+        s = select([
+            constraints.c.constraint_type,
+            column_constraints,
+            key_constraints
+            ], 
+            sql.and_(
+                key_constraints.c.constraint_name==column_constraints.c.constraint_name,
+                column_constraints.c.constraint_name==constraints.c.constraint_name,
+                constraints.c.table_name==table.name, constraints.c.table_schema==current_schema)
+        , use_labels=True)
+        c = s.execute()
         while True:
             row = c.fetchone()
             if row is None:
                 break
-            (tablename, localcol, remotecol) = (row[2], row[3], row[4])
-            #print "row! " + repr(row)
-            remotetable = Table(tablename, self, autoload = True)
-            table.c[localcol].foreign_key = schema.ForeignKey(remotetable.c[remotecol])
+            (type, constrained_column, referred_schema, referred_table, referred_column) = (
+                row[constraints.c.constraint_type],
+                row[key_constraints.c.column_name],
+                row[column_constraints.c.table_schema],
+                row[column_constraints.c.table_name],
+                row[column_constraints.c.column_name]
+            )
+            print "type %s on column %s to remote %s.%s.%s" % (type, constrained_column, referred_schema, referred_table, referred_column) 
+            if type=='PRIMARY KEY':
+                table.c[constrained_column]._set_primary_key()
+            elif type=='FOREIGN KEY':
+                remotetable = Table(referred_table, self, autoload = True, schema=referred_schema)
+                table.c[constrained_column].foreign_key = schema.ForeignKey(remotetable.c[referred_column])
 
 class PGCompiler(ansisql.ANSICompiler):
     def bindparam_string(self, name):

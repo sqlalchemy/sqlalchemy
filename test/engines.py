@@ -2,6 +2,7 @@
 import sqlalchemy.ansisql as ansisql
 import sqlalchemy.databases.postgres as postgres
 import sqlalchemy.databases.oracle as oracle
+import sqlalchemy.databases.sqlite as sqllite
 
 db = ansisql.engine()
 
@@ -14,9 +15,11 @@ import unittest, re
 
 
 class EngineTest(PersistTest):
-    def testsqlitetableops(self):
-        import sqlalchemy.databases.sqlite as sqllite
-#        db = sqllite.engine(':memory:', {}, echo = testbase.echo)
+    def testsqlite(self):
+        db = sqllite.engine(':memory:', {}, echo = testbase.echo)
+        self.do_tableops(db)
+
+    def testpostgres(self):
         db = postgres.engine({'database':'test', 'host':'127.0.0.1', 'user':'scott', 'password':'tiger'}, echo = testbase.echo)
         self.do_tableops(db)
         
@@ -30,7 +33,7 @@ class EngineTest(PersistTest):
             Column('test3', TEXT),
             Column('test4', DECIMAL, nullable = False),
             Column('test5', TIMESTAMP),
-            Column('parent_user_id', INT, foreign_key = ForeignKey('users.user_id')),
+            Column('parent_user_id', INT, ForeignKey('users.user_id')),
             Column('test6', DATETIME, nullable = False),
             Column('test7', CLOB),
             Column('test8', BLOB),
@@ -39,13 +42,10 @@ class EngineTest(PersistTest):
 
         addresses = Table('email_addresses', db,
             Column('address_id', Integer, primary_key = True),
-            Column('remote_user_id', Integer, foreign_key = ForeignKey(users.c.user_id)),
+            Column('remote_user_id', Integer, ForeignKey(users.c.user_id)),
             Column('email_address', String(20)),
         )
 
-        users.drop()
-        addresses.drop()
-        
 #        users.c.parent_user_id.set_foreign_key(ForeignKey(users.c.user_id))
 
         users.create()
@@ -54,14 +54,19 @@ class EngineTest(PersistTest):
         # clear out table registry
         db.tables.clear()
 
-        users = Table('users', db, autoload = True)
-        addresses = Table('email_addresses', db, autoload = True)
+        try:
+            users = Table('users', db, autoload = True)
+            addresses = Table('email_addresses', db, autoload = True)
+        finally:
+            addresses.drop()
+            users.drop()
 
-        users.drop()
-        addresses.drop()
-        
         users.create()
         addresses.create()
+
+        addresses.drop()
+        users.drop()
+        
         
 if __name__ == "__main__":
     unittest.main()        
