@@ -57,15 +57,6 @@ class OrderedDict(dict):
         self.list = []
         dict.clear(self)
     
-    def toend(self, key):
-        # TODO: optimize this 
-        try:
-            del self.list[self.list.index(key)]
-            self.list.append(key)
-            print "toend: " + repr(key)
-        except ValueError:
-            raise KeyError(key)
-        
     def update(self, dict):
         for key in dict.keys():
             self.__setitem__(key, dict[key])
@@ -340,6 +331,7 @@ class DependencySorter(object):
     is marked as "circular", indicating the node is dependent on itself.
     """
     class Node:
+        """represents a node in a tree.  stores an 'item' which represents the dependent thing we are talking about.  if node 'a' is an ancestor node of node 'b', it means 'a's item is *not* dependent on that of 'b'."""
         def __init__(self, item):
             #print "new node on " + str(item)
             self.item = item
@@ -347,10 +339,32 @@ class DependencySorter(object):
             self.parent = None
             self.circular = False
         def append(self, node):
+            """appends the given node as a child on this node.  removes the node from its preexisting parent."""
             if node.parent is not None:
                 del node.parent.children[node]
             self.children.append(node)
             node.parent = self
+        def is_descendant_of(self, node):
+            """returns true if this node is a descendant of the given node"""
+            n = self
+            while n is not None:
+                if n is node:
+                    return True
+                else:
+                    n = n.parent
+            return False
+        def get_root(self):
+            """returns the highest ancestor node of this node, i.e. which has no parent"""
+            n = self
+            while n.parent is not None:
+                n = n.parent
+            return n
+        def get_highest_sibling(self, node):
+            """returns the highest ancestor node of this one which is either the root node, or the common parent of this node and the given node"""
+            n = self
+            while n.parent is not None and n.parent is not node.parent:
+                n = n.parent
+            return n
         def __str__(self):
             return self.safestr({})
         def safestr(self, hash, indent = 0):
@@ -385,28 +399,23 @@ class DependencySorter(object):
 
             # get child node
             childnode = nodes[child]
-                    
-            # now see, if the parent is an ancestor of the child
-            c = childnode
-            while c is not None and c is not parentnode:
-                root = c
-                c = c.parent
+            
+            if parentnode.parent is childnode:
+                # check for "a switch"
+                t = parentnode.item
+                parentnode.item = childnode.item
+                childnode.item = t
+                nodes[parentnode.item] = parentnode
+                nodes[childnode.item] = childnode
+            elif parentnode.is_descendant_of(childnode):
+                # check for a line thats backwards with nodes in between, this is a 
+                # circular dependency (although confirmation on this would be helpful)
+                raise "Circular dependency detected"
+            elif not childnode.is_descendant_of(parentnode):
+                # if relationship doesnt exist, connect nodes together
+                root = childnode.get_highest_sibling(parentnode)
+                parentnode.append(root)
 
-            # nope, so we have to move the child down from whereever
-            # it currently is to a child of the parent
-            if c is None:
-                if childnode.parent is None:
-                    print "moving down " + str(childnode.item) + ", has no parent"
-                    parentnode.append(childnode)
-                else:
-                    print "item " + str(childnode.item)  + " has a parent " +  str(childnode.parent.item)
-                    for c in parentnode.children:
-                        c.parent = root
-                        root.children.append(c)
-                        del parentnode.children[c]
-                    root.parent = parentnode
-                    parentnode.children.append(root)
-        
         # now we have a collection of subtrees which represent dependencies.
         # go through the collection root nodes wire them together into one tree        
         head = None

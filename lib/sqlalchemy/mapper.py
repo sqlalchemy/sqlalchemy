@@ -911,7 +911,7 @@ class PropertyLoader(MapperProperty):
                 for child in childlist.added_items():
                     self._synchronize(obj, child, None, False)
                     if self.direction == PropertyLoader.LEFT:
-                        uowcommit.register_object(child, sort=True)
+                        uowcommit.register_object(child)
                 if self.direction != PropertyLoader.RIGHT or len(childlist.added_items()) == 0:
                     for child in childlist.deleted_items():
                         self._synchronize(obj, child, None, True)

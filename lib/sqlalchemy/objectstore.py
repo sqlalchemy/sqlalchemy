@@ -324,7 +324,7 @@ class UOWTransaction(object):
             task.mapper.register_dependencies(self)
 
         head = self._sort_dependencies()
-        print "Task dump:\n" + head.dump()
+        #print "Task dump:\n" + head.dump()
         if head is not None:
             head.execute(self)
             
@@ -408,7 +408,7 @@ class UOWTask(object):
     def is_empty(self):
         return len(self.objects) == 0 and len(self.dependencies) == 0 and len(self.childtasks) == 0
             
-    def append(self, obj, listonly = False, childtask = None, isdelete = False, sort=False):
+    def append(self, obj, listonly = False, childtask = None, isdelete = False):
         """appends an object to this task, to be either saved or deleted
         depending on the 'isdelete' attribute of this UOWTask.  'listonly' indicates
         that the object should only be processed as a dependency and not actually saved/deleted.
@@ -417,8 +417,6 @@ class UOWTask(object):
         tasks, to assign dependent operations at the per-object instead of per-task level."""
         try:
             rec = self.objects[obj]
-            if sort:
-                self.objects.toend(obj)
         except KeyError:
             rec = UOWTaskElement(obj)
             self.objects[obj] = rec
