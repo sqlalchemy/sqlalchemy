@@ -141,6 +141,7 @@ class ANSICompiler(sql.Compiled):
         while self.binds.setdefault(key, bindparam) is not bindparam:
             key = "%s_%d" % (bindparam.key, count)
             count += 1
+        bindparam.key = key
         self.strings[bindparam] = self.bindparam_string(key)
 
     def bindparam_string(self, name):
