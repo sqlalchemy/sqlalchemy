@@ -11,8 +11,6 @@ into the same object upon hitting any of its properties.
 
 Oracle module - table reflection
 
-Postgres module - table reflection
-
 MySQL module
 
 INSERT from a SELECT
@@ -23,3 +21,5 @@ examples
 
 external functions able to be placed within a UOW's transaction commit; either at the head, or 
 based on dependencies to other mappers, individual objects
+
+between() operator
