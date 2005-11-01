@@ -287,6 +287,12 @@ class ResultProxy:
                                   #the Column's 'label', 'key', and 'name' properties are searched in that order.
     
     """
+    class AmbiguousColumn(object):
+        def __init__(self, key):
+            self.key = key
+        def convert_result_value(self, arg):
+            raise "Ambiguous column name '%s' in result set! try 'use_labels' option on select statement." % (self.key)
+    
     def __init__(self, cursor, engine, typemap = None):
         self.cursor = cursor
         self.echo = engine.echo
@@ -301,7 +307,7 @@ class ResultProxy:
                 else:
                     rec = (types.NULLTYPE, i)
                 if self.props.setdefault(item[0].lower(), rec) is not rec:
-                    raise "Duplicate column name '%s' in result set! try 'use_labels' option on select statement" % (item[0].lower())
+                    self.props[item[0].lower()] = (ResultProxy.AmbiguousColumn(item[0].lower()), 0)
                 self.props[i] = rec
                 i+=1
 
