@@ -159,7 +159,7 @@ AND users.fullname = :users_fullname
 </&>
 
                 # IN clause
-                c = users.select(users.c.user_name.in('jack', 'ed', 'fred')).execute()  <&|formatting.myt:codepopper, link="sql" &>
+                c = users.select(users.c.user_name.in_('jack', 'ed', 'fred')).execute()  <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.fullname, users.email_address
 FROM users WHERE users.user_name IN ('jack', 'ed', 'fred')
 </&>
@@ -178,11 +178,11 @@ WHERE users.user_id = addresses.address_id
                 # selection criterion.  The WHERE criterion adds it to the FROM list 
                 # automatically.
                 c = select([users], and_(
-                    users.c.user_id==addresses.c.address_id,
+                    users.c.user_id==addresses.c.user_id,
                     users.c.user_name=='fred'
-                )).execute()    <&|formatting.myt:codepopper, link="sql" &>
+                )).execute()                      <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.fullname, users.email_address
-FROM users, addresses WHERE users.user_id = addresses.address_id 
+FROM users, addresses WHERE users.user_id = addresses.user_id 
 AND users.user_name = :users_user_name
 {'users_user_name': 'fred'}                
 </&>
@@ -200,18 +200,21 @@ AND users.user_name = :users_user_name
         </&>
 
         <&|doclib.myt:item, name="orderby", description="Order By" &>
-        <P>The ORDER BY clause of a select statement can be specified as individual columns to order by within an array and specified via the <span class="codeline">order_by</span> parameter, and optional usage of the asc() and desc() functions:
+        <P>The ORDER BY clause of a select statement can be specified as individual columns to order by within an array     specified via the <span class="codeline">order_by</span> parameter, and optional usage of the asc() and desc() functions:
             <&|formatting.myt:code &>
                 # straight order by
                 c = users.select(order_by=[users.c.fullname]).execute() <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.fullname, users.email_address
 FROM users ORDER BY users.fullname                
 </&>        
-
-                # descending/ascending order by
-                c = users.select(order_by=[desc(users.c.fullname), users.c.user_name]).execute() <&|formatting.myt:codepopper, link="sql" &>
+                # descending/ascending order by on multiple columns
+                c = users.select(
+                        users.c.user_name>'J', 
+                        order_by=[desc(users.c.fullname), asc(users.c.user_name)]).execute() <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.fullname, users.email_address
-FROM users ORDER BY users.fullname DESC, users.user_name
+FROM users WHERE users.user_name > :users_user_name 
+ORDER BY users.fullname DESC, users.user_name ASC
+{'users_user_name':'J'}
 </&>        
             </&>        
         </&>
