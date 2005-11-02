@@ -1,11 +1,11 @@
 <%flags>inherit='document_base.myt'</%flags>
 <&|doclib.myt:item, name="pooling", description="Connection Pooling" &>
-    <p>At the base of any database helper library is a system of efficiently acquiring connections to the database.  Since the establishment of a database connection is typically a somewhat expensive operation, an application needs a way to get at database connections repeatedly without incurring the full overhead each time.  Particularly for server-side web applications, a connection pool is the standard way to maintain a "pool" of database connections which are used over and over again among many requests.  Connection pools typcially are configured to maintain a certain "size", which represents how many connections can be used simultaneously without resorting to creating more newly-established connections.
+    <p>At the base of any database helper library is a system of efficiently acquiring connections to the database.  Since the establishment of a database connection is typically a somewhat expensive operation, an application needs a way to get at database connections repeatedly without incurring the full overhead each time.  Particularly for server-side web applications, a connection pool is the standard way to maintain a "pool" of database connections which are used over and over again among many requests.  Connection pools typically are configured to maintain a certain "size", which represents how many connections can be used simultaneously without resorting to creating more newly-established connections.
     </p>
     <p>SQLAlchemy includes a pooling module that can be used completely independently of the rest of the toolset.  This section describes how it can be used on its own, as well as the available options.  If SQLAlchemy is being used more fully, the connection pooling described below occurs automatically.  The options are still available, though, so this core feature is a good place to start.
     </p>
     <&|doclib.myt:item, name="establishing", description="Establishing a Transparent Connection Pool" &>
-    Any DBAPI module can be "proxied" through the connection pool using the following technique:
+    Any DBAPI module can be "proxied" through the connection pool using the following technique (note that the usage of 'psycopg2' is <b>just an example</b>; substitute whatever DBAPI module you'd like):
     
     <&|formatting.myt:code&>
     import sqlalchemy.pool as pool
