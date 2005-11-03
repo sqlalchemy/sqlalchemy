@@ -1,30 +1,33 @@
 <%flags>inherit='document_base.myt'</%flags>
 <&|doclib.myt:item, name="datamapping", description="Basic Data Mapping" &>
+<p>Data mapping describes the process of defining Mapper objects, which associate table metadata with user-defined classes.  When a Mapper is created for a particular class, all of the columns defined in the table metadata are assigned to the class as <b>property</b> objects, which are accessors that transparently <b>decorate</b> the process of setting and getting attributes off an instance of that class.  These property accessors keep track of changes to these attributes, which result in a save operation of the object later on, when the application "commits" the current transactional context (known as a <b>Unit of Work</b>).  A similar decorator is attached to the classes' <span class="codeline">__init__()</span> method to mark a newly created object as "new" with the Unit of Work.</p>
+<p>The Mapper also provides the interface by which instances of the object are loaded from the database.  The primary method for this is its <span class="codeline">select()</span> method, which has similar arguments to a <span class="codeline">sqlalchemy.sql.Select</span> object.  But this select method executes automatically and returns results, instead of awaiting an execute() call.  And instead of returning a cursor-like object, it returns an array of objects.</p>
 
-<&|doclib.myt:item, name="synopsis", description="Synopsis" &>
-
+<p>The three elements to be defined, i.e. the Table metadata, the user-defined class, and the Mapper, are typically defined as module-level variables, and may be defined in any fashion suitable to the application, with the only requirement being that the class and table metadata are described before the mapper.  For the sake of example, we will be defining these elements close together, but this should not be construed as a requirement; since SQLAlchemy is not a framework, those decisions are left to the developer, or a framework that builds upon SQLAlchemy.
+</p>
+<&|doclib.myt:item, name="example", description="Basic Example" &>
         <&|formatting.myt:code&>
         from sqlalchemy.schema import *
         from sqlalchemy.mapper import *
         import sqlalchemy.databases.sqlite as sqlite
-        engine = sqlite.engine(':memory:', {})
+        engine = sqlite.engine('mydb', {})
         
         # table metadata
         users = Table('users', engine, 
-            Column('user_id', Integer, primary_key = True),
-            Column('user_name', String(16), nullable = False),
-            Column('password', String(20), nullable = False)
+            Column('user_id', Integer, primary_key=True),
+            Column('user_name', String(16)),
+            Column('password', String(20))
         )
-        
-        # class definition with mapper (mapper can also be separate)
+
+        # class definition 
         class User(object):
-            def __init__(self):
-                pass
+            pass
     
-            mapper = assignmapper(users)
+        # create a mapper
+        usermapper = mapper(User, users)
         
         # select
-        user = User.mapper.select(User.c.user_name == 'fred')[0]  <&|formatting.myt:codepopper, link="sql" &>
+        user = usermapper.select(users.c.user_name == 'fred')[0]  <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
 users.password AS users_password 
 FROM users 
@@ -35,7 +38,7 @@ WHERE users.user_name = :users_user_name ORDER BY users.oid
         # modify
         user.user_name = 'fred jones'
         
-        # commit
+        # commit - saves everything that changed
         objectstore.commit() <&|formatting.myt:codepopper, link="sql" &>
 
 UPDATE users SET user_id=:user_id, user_name=:user_name, 
@@ -44,7 +47,193 @@ password=:password WHERE users.user_id = :user_id
 [{'user_name': 'fred jones', 'password': u'45nfss', 'user_id': 1}]        
         </&>
         
+        
     </&>
+    <p>For convenience's sake, the Mapper can be attached as an attribute on the class itself as well:</p>
+        <&|formatting.myt:code&>
+            User.mapper = mapper(User, users)
+            
+            userlist = User.mapper.select(users.c.user_id==12)
+        </&>
+    <p>In addition, when a mapper is assigned to a class, it also attaches a special property accessor <span class="codeline">c</span> to the class itself, which can be used just like the table metadata to access the columns of the table:</p>
+        <&|formatting.myt:code&>
+            User.mapper = mapper(User, users)
+            
+            userlist = User.mapper.select(User.c.user_id==12)
+        </&>    
+
+        
+    <p>When a mapper is created, the target class also has its <span class="codeline">__init__()</span> method decorated to mark new objects as "new", in addition to tracking changes to properties.  The attribute representing the primary key of the table is handled automatically by SQLAlchemy as well:</p>
+        <&|formatting.myt:code&>
+            User.mapper = mapper(User, users)
+
+            # create a new User
+            myuser = User()
+            myuser.user_name = 'jane'
+            myuser.password = 'hello123'
+
+            # create another new User      
+            myuser2 = User()
+            myuser2.user_name = 'ed'
+            myuser2.password = 'lalalala'
+
+            # load a third User from the database            
+            myuser3 = User.mapper.select(User.c.user_name=='fred')[0]  <&|formatting.myt:codepopper, link="sql" &>
+SELECT users.user_id AS users_user_id, 
+users.user_name AS users_user_name, users.password AS users_password
+FROM users WHERE users.user_name = :users_user_name
+{'users_user_name': 'fred'}
+</&>
+            myuser3.user_name = 'fredjones'
+
+            # save all changes            
+            objectstore.commit()   <&|formatting.myt:codepopper, link="sql" &>
+UPDATE users SET user_name=:user_name, password=:password 
+WHERE users.user_id =:users_user_id
+[{'password': u'hoho', 'users_user_id': 1, 'user_name': 'fredjones'}]
+
+INSERT INTO users (user_name, password) VALUES (:user_name, :password)
+{'password': 'hello123', 'user_name': 'jane'}
+
+INSERT INTO users (user_name, password) VALUES (:user_name, :password)
+{'password': 'lalalala', 'user_name': 'ed'}
+</&>
+        </&>
+    <p>In the examples above, we defined a User class with basically no properties or methods.  Theres no particular reason it has to be this way, the class can explicitly set up whatever properties it wants, whether or not they will be managed by the mapper.  It can also specify a constructor, with the restriction that the constructor is able to function with no arguments being passed to it (this restriction can be lifted with some extra parameters to the mapper; more on that later):</p>
+        <&|formatting.myt:code&>
+            class User(object):
+                def __init__(self, user_name = None, password = None):
+                    self.user_id = None
+                    self.user_name = user_name
+                    self.password = password
+                def get_name(self):
+                    return self.user_name
+                def __repr__(self):
+                    return "User id %s name %s password %s" % (repr(self.user_id), 
+                        repr(self.user_name), repr(self.password))
+            User.mapper = mapper(User, users)
+
+            u = User('john', 'foo')
+            objectstore.commit()  <&|formatting.myt:codepopper, link="sql" &>INSERT INTO users (user_name, password) VALUES (:user_name, :password)
+{'password': 'foo', 'user_name': 'john'}
+
+</&>
+            >>> u
+            User id 1 name 'john' password 'foo'
+                
+        </&>
+
+
+</&>
+
+<&|doclib.myt:item, name="relations", description="Defining and Using Relationships" &>
+<p>So that covers how to map the columns in a table to an object, how to load objects, create new ones, and save changes.  The next step is how to define an object's relationships to other database-persisted objects.  This is done via the <span class="codeline">relation</span> function provided by the mapper module.  So with our User class, lets also define the User has having one or more mailing addresses.  First, the table metadata:</p>
+        <&|formatting.myt:code&>
+        from sqlalchemy.schema import *
+        from sqlalchemy.mapper import *
+        import sqlalchemy.databases.sqlite as sqlite
+        engine = sqlite.engine('mydb', {})
+        
+        # define user table
+        users = Table('users', engine, 
+            Column('user_id', Integer, primary_key=True),
+            Column('user_name', String(16)),
+            Column('password', String(20))
+        )
+        
+        # define user address table
+        addresses = Table('addresses', engine,
+            Column('address_id', Integer, primary_key=True),
+            Column('user_id', Integer, ForeignKey("users.user_id")),
+            Column('street', String(100)),
+            Column('city', String(80)),
+            Column('state', String(2)),
+            Column('zip', String(10))
+        )
+        </&>
+<p>Of importance here is the addresses table's definition of a <b>foreign key</b> relationship to the users table, relating the user_id column into a parent-child relationship.  When a Mapper wants to indicate a relation of one object to another, this ForeignKey object is the default method by which the relationship is determined (although if you didn't define ForeignKeys, or you want to specify explicit relationship columns, that is available as well).</p>
+<p>So then lets define two classes, the familiar User class, as well as an Address class:
+
+        <&|formatting.myt:code&>
+            class User(object):
+                def __init__(self, user_name = None, password = None):
+                    self.user_name = user_name
+                    self.password = password
+                    
+            class Address(object):
+                def __init__(self, street=None, city=None, state=None, zip=None):
+                    self.street = street
+                    self.city = city
+                    self.state = state
+                    self.zip = zip
+        </&>
+<p>And then a Mapper that will define a relationship of the User and the Address classes to each other as well as their table metadata.  We will add an additional mapper keyword argument <span class="codeline">properties</span> which is a dictionary relating the name of an object property to a database relationship, in this case a <span class="codeline">relation</span> object which will define a new mapper for the Address class:</p>
+        <&|formatting.myt:code&>
+            User.mapper = mapper(User, users, properties = {
+                                'addresses' : relation(Address, addresses)
+                            }
+                          )
+        </&>
+<p>Lets do some operations with these classes and see what happens:</p>
+
+        <&|formatting.myt:code&>
+            u = User('jane', 'hihilala')
+            u.addresses.append(Address('123 anywhere street', 'big city', 'UT', '76543'))
+            u.addresses.append(Address('1 Park Place', 'some other city', 'OK', '83923'))
+
+            objectstore.commit()   
+
+<&|formatting.myt:poppedcode, link="sql" &>INSERT INTO users (user_name, password) VALUES (:user_name, :password)
+{'password': 'hihilala', 'user_name': 'jane'}
+
+INSERT INTO addresses (user_id, street, city, state, zip) VALUES (:user_id, :street, :city, :state, :zip)
+{'city': 'big city', 'state': 'UT', 'street': '123 anywhere street', 'user_id':1, 'zip': '76543'}
+
+INSERT INTO addresses (user_id, street, city, state, zip) VALUES (:user_id, :street, :city, :state, :zip)
+{'city': 'some other city', 'state': 'OK', 'street': '1 Park Place', 'user_id':1, 'zip': '83923'}
+</&>
+        </&>
+<p>A lot just happened there!  The Mapper object figured out how to relate rows in the addresses table to the users table, and also upon commit had to determine the proper order in which to insert rows.  After the insert, all the User and Address objects have all their new primary and foreign keys populated.</p>
+
+<p>Also notice that when we created a Mapper on the User class which defined an 'addresses' relation, the newly created User instance magically had an "addresses" attribute which behaved like a list.   This list is in reality an instance of <span class="codeline">sqlalchemy.util.HistoryArraySet</span>, which fulfills the full set of Python list accessors, but maintains a <b>unique</b> set of objects (based on their in-memory identity), and also tracks additions and deletions to the list:</p>
+        <&|formatting.myt:code&>
+            del u.addresses[1]
+            u.addresses.append(Address('27 New Place', 'Houston', 'TX', '34839'))
+
+            objectstore.commit()    
+
+<&|formatting.myt:poppedcode, link="sql" &>UPDATE addresses SET user_id=:user_id, street=:street, 
+city=:city, state=:state, zip=:zip WHERE addresses.address_id = :addresses_address_id
+[{'city': 'some other city', 'user_id': None, 'zip': '83923', 
+'state': 'OK', 'street': '1 Park Place', 'addresses_address_id': 2}]
+
+INSERT INTO addresses (user_id, street, city, state, zip) 
+VALUES (:user_id, :street, :city, :state, :zip)
+{'city': 'Houston', 'state': 'TX', 'street': '27 New Place', 'user_id': 1, 'zip': '34839'}
+</&>            
+
+        </&>
+<p>So our one address that was removed from the list, was updated to have a user_id of <span class="codeline">None</span>, and a new address object was inserted to correspond to the new Address added to the User.  But now, theres a mailing address with no user_id floating around in the database of no use to anyone.  How can we avoid this ?  This is acheived by using the <span class="codeline">private=True</span> parameter of <span class="codeline">relation</span>:
+
+        <&|formatting.myt:code&>
+            User.mapper = mapper(User, users, properties = {
+                                'addresses' : relation(Address, addresses, private=True)
+                            }
+                          )
+            del u.addresses[1]
+            u.addresses.append(Address('27 New Place', 'Houston', 'TX', '34839'))
+
+            objectstore.commit()    <&|formatting.myt:poppedcode, link="sql" &>
+INSERT INTO addresses (user_id, street, city, state, zip) 
+VALUES (:user_id, :street, :city, :state, :zip)
+{'city': 'Houston', 'state': 'TX', 'street': '27 New Place', 'user_id': 1, 'zip': '34839'}
+
+DELETE FROM addresses WHERE addresses.address_id = :address_id
+[{'address_id': 2}]
+</&>            
+
+        </&>
+<p>In this case, with the private flag set, the element that was removed from the addresses list was also removed from the database.  By specifying the <span class="codeline">private</span> flag on a relation, it is indicated to the Mapper that these related objects exist only as children of the parent object, otherwise should be deleted.</p>
 </&>
 
 <&|doclib.myt:item, name="onetomany", description="One to Many" &>
