@@ -278,9 +278,15 @@ WHERE addresses.user_id = :users_user_id ORDER BY addresses.oid
         </&>
     </&>
     <&|doclib.myt:item, name="eagerload", description="Selecting from Relationships: Eager Load" &>
-        <p>With just a single parameter specified to the relation object, the parent and child SQL queries can be joined together.
+        <p>With just a single parameter "lazy=False" specified to the relation object, the parent and child SQL queries can be joined together.
 
         <&|formatting.myt:code&>
+    User.mapper = mapper(User, users, properties = {
+                        'addresses' : relation(Address, addresses, lazy=False)
+                    }
+                  )
+
+    user = User.mapper.select(User.c.user_name=='jane')[0]
 
 <&|formatting.myt:poppedcode, link="sql" &>SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
 users.password AS users_password, 
@@ -291,6 +297,10 @@ FROM users LEFT OUTER JOIN addresses ON users.user_id = addresses.user_id
 WHERE users.user_name = :users_user_name ORDER BY users.oid, addresses.oid
 {'users_user_name': 'jane'}
 </&>
+
+    for a in user.addresses:  
+        print repr(a)
+
         </&>
         
     </&>
