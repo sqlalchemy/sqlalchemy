@@ -1,5 +1,6 @@
 <%flags>inherit='document_base.myt'</%flags>
 <&|doclib.myt:item, name="sql", description="Constructing SQL Queries via Python Expressions" &>
+    <p><b>Note:</b> This section describes how to use SQLAlchemy to construct SQL queries and receive result sets.  It does <b>not</b> cover the object relational mapping capabilities of SQLAlchemy; that is covered later on in <&formatting.myt:link, path="datamapping"&>.  However, both areas of functionality work very similarly in how selection criterion is constructed, so if you are interested just in ORM, you should probably skim through basic <&formatting.myt:link, path="sql_select_whereclause"&> construction before moving on.</p>
     <p>Once you have used the <span class="codeline">sqlalchemy.schema</span> module to construct your tables and/or reflect them from the database, performing SQL queries using those table meta data objects is done via the <span class="codeline">sqlalchemy.sql</span> package.  This package defines a large set of classes, each of which represents a particular kind of lexical construct within a SQL query; all are descendants of the common base class <span class="codeline">sqlalchemy.sql.ClauseElement</span>.  A full query is represented via a structure of ClauseElements.  A set of reasonably intuitive creation functions is provided by the <span class="codeline">sqlalchemy.sql</span> package to create these structures; these functions are described in the rest of this section. </p>
     
     <p>To execute a query, you create its structure, then call the resulting structure's <span class="codeline">execute()</span> method, which returns a cursor-like object (more on that later).  This method can be repeated as necessary.  A ClauseElement is actually compiled into a string representation by an underlying SQLEngine object; this object is located by searching through the ClauseElement structure for a Table object, which provides a reference to its SQLEngine.  
@@ -20,7 +21,7 @@
         # a table that stores mailing addresses associated with a specific user
         addresses = Table('addresses', db,
             Column('address_id', Integer, primary_key = True),
-            Column('user_id', Integer, ForeignKey(users.c.user_id)),
+            Column('user_id', Integer, ForeignKey("users.user_id")),
             Column('street', String(100)),
             Column('city', String(80)),
             Column('state', String(2)),
