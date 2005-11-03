@@ -321,6 +321,7 @@ javascript:togglePopbox('<% name %>', '<% show %>', '<% hide %>')
 <div id="<% name %>_div" class="<% class_ %>" style="display:none;"><% m.content().strip() %></div>
 </%method>
 
+
 <%method codepopper trim="both">
     <%args>
         link
@@ -330,4 +331,8 @@ javascript:togglePopbox('<% name %>', '<% show %>', '<% hide %>')
     </%init>
     '''PYESC<& SELF:link, href=href, text=link, class_="codepoplink" &>PYESC'''
     '''PYESC<&|SELF:popbox, class_="codepop" &><% m.content() %></&>PYESC'''
+</%method>
+
+<%method poppedcode trim="both">
+    '''PYESC<div class="codepop" &><% m.content() %></div>PYESC'''
 </%method>

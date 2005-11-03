@@ -7,7 +7,7 @@
 Start
   |
   |
-  |--- <&formatting.myt:link, path="pooling_establishing" &>
+  |--- <&formatting.myt:link, path="pooling" &>
   |              |
   |              |
   |              |------ <&formatting.myt:link, path="pooling_configuration" &>
