@@ -147,7 +147,10 @@ class UnitOfWork(object):
     def _remove_deleted(self, obj):
         if hasattr(obj, "_instance_key"):
             del self.identity_map[obj._instance_key]
-        del self.deleted[obj]
+        try:            
+            del self.deleted[obj]
+        except KeyError:
+            pass
         try:
             del self.dirty[obj]
         except KeyError:

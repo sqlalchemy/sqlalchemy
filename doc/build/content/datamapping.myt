@@ -1,6 +1,8 @@
 <%flags>inherit='document_base.myt'</%flags>
 <&|doclib.myt:item, name="datamapping", description="Basic Data Mapping" &>
-<p>Data mapping describes the process of defining Mapper objects, which associate table metadata with user-defined classes.  When a Mapper is created for a particular class, all of the columns defined in the table metadata are assigned to the class as <b>property</b> objects, which are accessors that transparently <b>decorate</b> the process of setting and getting attributes off an instance of that class.  These property accessors keep track of changes to these attributes, which result in a save operation of the object later on, when the application "commits" the current transactional context (known as a <b>Unit of Work</b>).  A similar decorator is attached to the classes' <span class="codeline">__init__()</span> method to mark a newly created object as "new" with the Unit of Work.</p>
+<p>Data mapping describes the process of defining Mapper objects, which associate table metadata with user-defined classes.  The Mapper's role is to perform SQL operations upon the database, associating individual table rows with instances of those classes, and individual database columns with properties upon those instances, for the purposes of transparently associating in-memory objects with a persistent database representation. </p>
+
+<p>When a Mapper is created for a particular class, all of the columns defined in the table metadata are assigned to the class as <b>property</b> objects, which are accessors that transparently <b>decorate</b> the process of setting and getting attributes off an instance of that class.  These property accessors keep track of changes to these attributes, which result in a save operation of the object later on, when the application "commits" the current transactional context (known as a <b>Unit of Work</b>).  A similar decorator is attached to the classes' <span class="codeline">__init__()</span> method to mark a newly created object as "new" with the Unit of Work.</p>
 <p>The Mapper also provides the interface by which instances of the object are loaded from the database.  The primary method for this is its <span class="codeline">select()</span> method, which has similar arguments to a <span class="codeline">sqlalchemy.sql.Select</span> object.  But this select method executes automatically and returns results, instead of awaiting an execute() call.  And instead of returning a cursor-like object, it returns an array of objects.</p>
 
 <p>The three elements to be defined, i.e. the Table metadata, the user-defined class, and the Mapper, are typically defined as module-level variables, and may be defined in any fashion suitable to the application, with the only requirement being that the class and table metadata are described before the mapper.  For the sake of example, we will be defining these elements close together, but this should not be construed as a requirement; since SQLAlchemy is not a framework, those decisions are left to the developer, or a framework that builds upon SQLAlchemy.
@@ -195,7 +197,7 @@ INSERT INTO addresses (user_id, street, city, state, zip) VALUES (:user_id, :str
         </&>
 <p>A lot just happened there!  The Mapper object figured out how to relate rows in the addresses table to the users table, and also upon commit had to determine the proper order in which to insert rows.  After the insert, all the User and Address objects have all their new primary and foreign keys populated.</p>
 
-<p>Also notice that when we created a Mapper on the User class which defined an 'addresses' relation, the newly created User instance magically had an "addresses" attribute which behaved like a list.   This list is in reality an instance of <span class="codeline">sqlalchemy.util.HistoryArraySet</span>, which fulfills the full set of Python list accessors, but maintains a <b>unique</b> set of objects (based on their in-memory identity), and also tracks additions and deletions to the list:</p>
+<p>Also notice that when we created a Mapper on the User class which defined an 'addresses' relation, the newly created User instance magically had an "addresses" attribute which behaved like a list.   This list is in reality a property accessor function, which returns an instance of <span class="codeline">sqlalchemy.util.HistoryArraySet</span>, which fulfills the full set of Python list accessors, but maintains a <b>unique</b> set of objects (based on their in-memory identity), and also tracks additions and deletions to the list:</p>
         <&|formatting.myt:code&>
             del u.addresses[1]
             u.addresses.append(Address('27 New Place', 'Houston', 'TX', '34839'))
@@ -234,6 +236,67 @@ DELETE FROM addresses WHERE addresses.address_id = :address_id
 
         </&>
 <p>In this case, with the private flag set, the element that was removed from the addresses list was also removed from the database.  By specifying the <span class="codeline">private</span> flag on a relation, it is indicated to the Mapper that these related objects exist only as children of the parent object, otherwise should be deleted.</p>
+
+    <&|doclib.myt:item, name="lazyload", description="Selecting from Relationships: Lazy Load" &>
+    <P>We've seen how the <span class="codeline">relation</span> specifier affects the saving of an object and its child items, how does it affect selecting them?  By default, the relation keyword indicates that the related property should be attached a <b>Lazy Loader</b> when instances of the parent object are loaded from the database; this is just a callable function that when accessed will invoke a second SQL query to load the child objects of the parent.</p>
+    
+        <&|formatting.myt:code&>
+            # define a mapper
+            User.mapper = mapper(User, users, properties = {
+                              'addresses' : relation(Address, addresses, private=True)
+                            })
+        
+            # select users where username is 'jane', get the first element of the list
+            # this will incur a load operation for the parent table
+            user = User.mapper.select(User.c.user_name=='jane')[0]   
+            
+<&|formatting.myt:poppedcode, link="sql" &>SELECT users.user_id AS users_user_id, 
+users.user_name AS users_user_name, users.password AS users_password
+FROM users WHERE users.user_name = :users_user_name ORDER BY users.oid
+{'users_user_name': 'jane'}
+</&>
+
+            # iterate through the User object's addresses.  this will incur an
+            # immediate load of those child items
+            for a in user.addresses:    
+<&|formatting.myt:poppedcode, link="sql" &>SELECT addresses.address_id AS addresses_address_id, 
+addresses.user_id AS addresses_user_id, addresses.street AS addresses_street, 
+addresses.city AS addresses_city, addresses.state AS addresses_state, 
+addresses.zip AS addresses_zip FROM addresses
+WHERE addresses.user_id = :users_user_id ORDER BY addresses.oid
+{'users_user_id': 1}</&>            
+                print repr(a)
+        </&>    
+        <&|doclib.myt:item, name="refreshing", description="How to Refresh the List?" &>
+        <p>Once the child list of Address objects is loaded, it is done loading for the lifetime of the object instance.  Changes to the list will not be interfered with by subsequent loads, and upon commit those changes will be saved.  Similarly, if a new User object is created and child Address objects added, a subsequent select operation which happens to touch upon that User instance, will also not affect the child list, since it is already loaded.</p>
+        
+        <p>The issue of when the mapper actually gets brand new objects from the database versus when it assumes the in-memory version is fine the way it is, is a subject of <b>transactional scope</b>.  Described in more detail in the Unit of Work section, for now it should be noted that the total storage of all newly created and selected objects, <b>within the scope of the current thread</b>, can be reset via releasing or otherwise disregarding all current object instances, and calling:</p>
+        <&|formatting.myt:code&>
+            objectstore.clear()
+        </&>
+        <p>This operation will clear out all currently mapped object instances, and subsequent select statements will load fresh copies from the databse.</p>
+        </&>
+    </&>
+    <&|doclib.myt:item, name="eagerload", description="Selecting from Relationships: Eager Load" &>
+        <p>With just a single parameter specified to the relation object, the parent and child SQL queries can be joined together.
+
+        <&|formatting.myt:code&>
+
+<&|formatting.myt:poppedcode, link="sql" &>SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
+users.password AS users_password, 
+addresses.address_id AS addresses_address_id, addresses.user_id AS addresses_user_id, 
+addresses.street AS addresses_street, addresses.city AS addresses_city, 
+addresses.state AS addresses_state, addresses.zip AS addresses_zip
+FROM users LEFT OUTER JOIN addresses ON users.user_id = addresses.user_id
+WHERE users.user_name = :users_user_name ORDER BY users.oid, addresses.oid
+{'users_user_name': 'jane'}
+</&>
+        </&>
+        
+    </&>
+    <&|doclib.myt:item, name="options", description="Switching Lazy/Eager, No Load" &>
+    </&>
+
 </&>
 
 <&|doclib.myt:item, name="onetomany", description="One to Many" &>
