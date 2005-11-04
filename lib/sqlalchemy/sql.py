@@ -23,7 +23,7 @@ import sqlalchemy.util as util
 import sqlalchemy.types as types
 import string
 
-__ALL__ = ['textclause', 'select', 'join', 'and_', 'or_', 'union', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'bindparam', 'sequence']
+__ALL__ = ['textclause', 'select', 'join', 'and_', 'or_', 'union', 'unionall', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'bindparam', 'sequence']
 
 def desc(column):
     """returns a descending ORDER BY clause element, e.g.:
@@ -125,6 +125,9 @@ def exists(*args, **params):
 def union(*selects, **params):
     return _compound_select('UNION', *selects, **params)
 
+def union_all(*selects, **params):
+    return _compound_select('UNION ALL', *selects, **params)
+
 def alias(*args, **params):
     return Alias(*args, **params)
 
@@ -178,6 +181,7 @@ class ClauseVisitor(schema.SchemaVisitor):
     def visit_select(self, select):pass
     def visit_join(self, join):pass
     def visit_null(self, null):pass
+    def visit_clauselist(self, list):pass
     
 class Compiled(ClauseVisitor):
     """represents a compiled SQL expression.  the __str__ method of the Compiled object
@@ -523,6 +527,9 @@ class Selectable(FromClause):
     def outerjoin(self, right, *args, **kwargs):
         return Join(self, right, isouter = True, *args, **kwargs)
 
+    def alias(self, name):
+        return Alias(self, name)
+        
     def group_parenthesized(self):
         """indicates if this Selectable requires parenthesis when grouped into a compound statement"""
         return True
@@ -679,6 +686,9 @@ class TableImpl(Selectable):
     
     def outerjoin(self, right, *args, **kwargs):
         return Join(self.table, right, isouter = True, *args, **kwargs)
+
+    def alias(self, name):
+        return Alias(self.table, name)
             
     def select(self, whereclauses = None, **params):
         return select([self.table], whereclauses, **params)
@@ -709,7 +719,7 @@ class Select(Selectable):
     the ability to execute itself and return a result set."""
     def __init__(self, columns, whereclause = None, from_obj = [], group_by = None, order_by = None, use_labels = False, engine = None):
         self.columns = util.OrderedProperties()
-        self.froms = util.OrderedDict()
+        self._froms = util.OrderedDict()
         self.use_labels = use_labels
         self.id = "Select(%d)" % id(self)
         self.name = None
@@ -724,6 +734,7 @@ class Select(Selectable):
         self._text = None
         self._raw_columns = []
         self._clauses = []
+        self._correlated = None
         
         for c in columns:
             self.append_column(c)
@@ -740,17 +751,26 @@ class Select(Selectable):
         if order_by:
             self.order_by(*order_by)
 
+    class CorrelatedVisitor(ClauseVisitor):
+        def __init__(self, select):
+            self.select = select
+        def visit_select(self, select):
+            if select is self.select:
+                return
+            select.issubquery = True
+            select._correlated = self.select._froms
+
     def append_column(self, column):
         if _is_literal(column):
             column = ColumnClause(str(column), self)
 
         self._raw_columns.append(column)
 
-        column._process_from_dict(self.froms, False)
+        column._process_from_dict(self._froms, False)
         for f in column._get_from_objects():
             if self.rowid_column is None and hasattr(f, 'rowid_column'):
                 self.rowid_column = f.rowid_column._make_proxy(self)
-
+        
         for co in column.columns:
             if self.use_labels:
                 co._make_proxy(self, name = co.label)
@@ -761,14 +781,9 @@ class Select(Selectable):
         if type(whereclause) == str:
             whereclause = TextClause(whereclause)
 
-        class CorrelatedVisitor(ClauseVisitor):
-            def visit_select(s, select):
-                for f in self.froms.keys():
-                    select.clear_from(f)
-                    select.issubquery = True
-
-        whereclause.accept_visitor(CorrelatedVisitor())
-        whereclause._process_from_dict(self.froms, False)
+        visitor = Select.CorrelatedVisitor(self)
+        whereclause.accept_visitor(visitor)
+        whereclause._process_from_dict(self._froms, False)
         
         if self.whereclause is not None:
             self.whereclause = and_(self.whereclause, whereclause)
@@ -782,7 +797,7 @@ class Select(Selectable):
         if type(fromclause) == str:
             fromclause = FromClause(from_name = fromclause)
 
-        fromclause._process_from_dict(self.froms, True)
+        fromclause._process_from_dict(self._froms, True)
         
     def append_clause(self, keyword, clause):
         if type(clause) == str:
@@ -796,10 +811,18 @@ class Select(Selectable):
         if engine is None:
             raise "no engine supplied, and no engine could be located within the clauses!"
 
+        # TODO: this has issues
+        #visitor = Select.CorrelatedVisitor(self)
+        #self.accept_visitor(visitor)
+
         return engine.compile(self, bindparams)
 
+    def _get_froms(self):
+        return [f for f in self._froms.values() if self._correlated is None or not self._correlated.has_key(f.id)]
+    froms = property(lambda s: s._get_froms())
+    
     def accept_visitor(self, visitor):
-        for f in self.froms.values():
+        for f in self.froms:
             f.accept_visitor(visitor)
         if self.whereclause is not None:
             self.whereclause.accept_visitor(visitor)
@@ -825,7 +848,7 @@ class Select(Selectable):
         if self._engine:
             return self._engine
         
-        for f in self.froms.values():
+        for f in self.froms:
             e = f.engine
             if e is not None:
                 return e

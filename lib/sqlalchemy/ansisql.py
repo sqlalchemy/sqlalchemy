@@ -118,7 +118,7 @@ class ANSICompiler(sql.Compiled):
             self.strings[compound] = "(" + string.join([self.get_str(c) for c in compound.clauses], sep) + ")"
         else:
             self.strings[compound] = string.join([self.get_str(c) for c in compound.clauses], sep)
-
+        
     def visit_clauselist(self, list):
         self.strings[list] = string.join([self.get_str(c) for c in list.clauses], ', ')
         
@@ -172,7 +172,7 @@ class ANSICompiler(sql.Compiled):
         whereclause = select.whereclause
         
         froms = []
-        for f in select.froms.values():
+        for f in select.froms:
 
             # special thingy used by oracle to redefine a join
             w = self.get_whereclause(f)

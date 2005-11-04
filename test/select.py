@@ -156,7 +156,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") s
         # create a select for a join of two tables.  use_labels means the column names will have
         # labels tablename_columnname, which become the column keys accessible off the Selectable object.
         # also, only use one column from the second table and all columns from the first table.
-        q = select([table, table2.c.id], table.c.id == table2.c.id, use_labels = False)
+        q = select([table, table2.c.id], table.c.id == table2.c.id, use_labels = True)
         
         # make an alias of the "selectable".  column names stay the same (i.e. the labels), table name "changes" to "t2view".
         a = alias(q, 't2view')
