@@ -29,7 +29,8 @@
         usermapper = mapper(User, users)
         
         # select
-        user = usermapper.select(users.c.user_name == 'fred')[0]  <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>user = usermapper.select(users.c.user_name == 'fred')[0]  
+<&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
 users.password AS users_password 
 FROM users 
@@ -41,8 +42,8 @@ WHERE users.user_name = :users_user_name ORDER BY users.oid
         user.user_name = 'fred jones'
         
         # commit - saves everything that changed
-        objectstore.commit() <&|formatting.myt:codepopper, link="sql" &>
-
+<&formatting.myt:poplink&>objectstore.commit() 
+<&|formatting.myt:codepopper, link="sql" &>
 UPDATE users SET user_id=:user_id, user_name=:user_name, 
 password=:password WHERE users.user_id = :user_id
 
@@ -80,7 +81,8 @@ password=:password WHERE users.user_id = :user_id
             myuser2.password = 'lalalala'
 
             # load a third User from the database            
-            myuser3 = User.mapper.select(User.c.user_name=='fred')[0]  <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>myuser3 = User.mapper.select(User.c.user_name=='fred')[0]  
+<&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id AS users_user_id, 
 users.user_name AS users_user_name, users.password AS users_password
 FROM users WHERE users.user_name = :users_user_name
@@ -89,7 +91,8 @@ FROM users WHERE users.user_name = :users_user_name
             myuser3.user_name = 'fredjones'
 
             # save all changes            
-            objectstore.commit()   <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>objectstore.commit()   
+<&|formatting.myt:codepopper, link="sql" &>
 UPDATE users SET user_name=:user_name, password=:password 
 WHERE users.user_id =:users_user_id
 [{'password': u'hoho', 'users_user_id': 1, 'user_name': 'fredjones'}]
@@ -116,9 +119,10 @@ INSERT INTO users (user_name, password) VALUES (:user_name, :password)
             User.mapper = mapper(User, users)
 
             u = User('john', 'foo')
-            objectstore.commit()  <&|formatting.myt:codepopper, link="sql" &>INSERT INTO users (user_name, password) VALUES (:user_name, :password)
+<&formatting.myt:poplink&>objectstore.commit()  
+<&|formatting.myt:codepopper, link="sql" &>
+INSERT INTO users (user_name, password) VALUES (:user_name, :password)
 {'password': 'foo', 'user_name': 'john'}
-
 </&>
             >>> u
             User id 1 name 'john' password 'foo'
@@ -184,7 +188,6 @@ INSERT INTO users (user_name, password) VALUES (:user_name, :password)
             u.addresses.append(Address('1 Park Place', 'some other city', 'OK', '83923'))
 
             objectstore.commit()   
-
 <&|formatting.myt:poppedcode, link="sql" &>INSERT INTO users (user_name, password) VALUES (:user_name, :password)
 {'password': 'hihilala', 'user_name': 'jane'}
 
@@ -335,7 +338,8 @@ WHERE users.user_name = :users_user_name ORDER BY users.oid, addresses.oid
         ))
         
         # select
-        user = User.mapper.select(User.c.user_name == 'fred jones')[0] <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>user = User.mapper.select(User.c.user_name == 'fred jones')[0] 
+<&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
 users.password AS users_password 
 FROM users 
@@ -343,7 +347,8 @@ WHERE users.user_name = :users_user_name ORDER BY users.oid
 
 {'users_user_name': 'fred jones'}
 </&>
-address = user.addresses[0] <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>address = user.addresses[0] 
+<&|formatting.myt:codepopper, link="sql" &>
 SELECT email_addresses.address_id AS email_addresses_address_id, 
 email_addresses.user_id AS email_addresses_user_id, 
 email_addresses.email_address AS email_addresses_email_address 
@@ -360,7 +365,8 @@ ORDER BY email_addresses.oid, email_addresses.oid
         user.addresses.append(Address('freddy@hi.org'))
         
         # commit
-        objectstore.commit() <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>objectstore.commit() 
+<&|formatting.myt:codepopper, link="sql" &>
 UPDATE users SET user_id=:user_id, user_name=:user_name, 
 password=:password WHERE users.user_id = :user_id
 
@@ -409,7 +415,8 @@ VALUES (:address_id, :user_id, :email_address)
         ))
         
         # select
-        user = m.select(users.c.user_name == 'fred')[0] <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>user = m.select(users.c.user_name == 'fred')[0] 
+<&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
 users.password AS users_password, users.preference_id AS users_preference_id, 
 user_prefs.pref_id AS user_prefs_pref_id, user_prefs.stylename AS user_prefs_stylename, 
@@ -423,7 +430,8 @@ WHERE users.user_name = :users_user_name ORDER BY users.oid, user_prefs.oid
         
         # modify
         user.preferences.stylename = 'bluesteel'
-        user.addresses.append(Address('freddy@hi.org')) <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>user.addresses.append(Address('freddy@hi.org')) 
+<&|formatting.myt:codepopper, link="sql" &>
 SELECT email_addresses.address_id AS email_addresses_address_id, 
 email_addresses.user_id AS email_addresses_user_id, 
 email_addresses.email_address AS email_addresses_email_address 
@@ -435,6 +443,7 @@ ORDER BY email_addresses.oid, email_addresses.oid
         </&>
         
         # commit
+            <&formatting.myt:poplink&>
         objectstore.commit() <&|formatting.myt:codepopper, link="sql" &>
 UPDATE user_prefs SET pref_id=:pref_id, stylename=:stylename, 
 save_password=:save_password, timezone=:timezone 
@@ -489,6 +498,7 @@ VALUES (:address_id, :user_id, :email_address)
     article.body = 'this is the body'
     article.keywords.append(Keyword('politics'))
     article.keywords.append(Keyword('entertainment'))
+            <&formatting.myt:poplink&>
     objectstore.commit()   <&|formatting.myt:codepopper, link="sql" &>
 INSERT INTO keywords (name) VALUES (:name)
 
@@ -513,6 +523,7 @@ INSERT INTO article_keywords (article_id, keyword_id) VALUES (:article_id, :keyw
     # already used for the eager load.
     articles = Article.mapper.select(sql.and_(keywords.c.keyword_id==itemkeywords.c.keyword_id, 
     itemkeywords.c.article_id==articles.c.article_id, 
+            <&formatting.myt:poplink&>
     keywords.c.name.in_('politics', 'entertainment')))    <&|formatting.myt:codepopper, link="sql" &>
 SELECT articles.article_id AS articles_article_id, 
 articles.article_headline AS articles_article_headline, 
@@ -535,7 +546,9 @@ ORDER BY articles.oid, article_keywords.oid
 
     # commit.  individual INSERT/DELETE operations will take place only for the list
     # elements that changed.
-    objectstore.commit()      <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>    
+    objectstore.commit()   
+<&|formatting.myt:codepopper &>
 INSERT INTO keywords (name) VALUES (:name)
 
 {'name': 'topstories'}
@@ -555,6 +568,7 @@ INSERT INTO article_keywords (article_id, keyword_id) VALUES (:article_id, :keyw
 [{'keyword_id': 3, 'article_id': 1}, {'keyword_id': 4, 'article_id': 1}]
 </&>
 
+    
         </&>
         
         <p>Many to Many can also be done with an Association object, that adds additional information about how two items are related:</p>
@@ -587,6 +601,7 @@ INSERT INTO article_keywords (article_id, keyword_id) VALUES (:article_id, :keyw
             m2 = mapper.options(eagerload('keywords.user'))
             
             # select by keyword again
+            <&formatting.myt:poplink&>
             alist = m2.select(
                         sql.and_(
                             keywords.c.keyword_id==itemkeywords.c.keyword_id, 
