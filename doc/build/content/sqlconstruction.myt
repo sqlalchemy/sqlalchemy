@@ -93,6 +93,42 @@ SELECT users.user_id, users.user_name, users.fullname, users.email_address FROM 
             cursor = c.cursor
             
         </&>
+        <&|doclib.myt:item, name="labels", description="Using Column Labels" &>
+        <p>A common need when writing statements that reference multiple tables is to create labels for columns, thereby separating columns from different tables with the same name.  The Select construct supports automatic generation of column labels via the <span class="codeline">use_labels=True</span> parameter:</p>
+        <&|formatting.myt:code&>
+            
+<&formatting.myt:poplink&>c = select([users, addresses], 
+    users.c.user_id==addresses.c.address_id, 
+    use_labels=True).execute()  
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
+users.password AS users_password, addresses.address_id AS addresses_address_id, 
+addresses.user_id AS addresses_user_id, addresses.street AS addresses_street, 
+addresses.city AS addresses_city, addresses.state AS addresses_state, 
+addresses.zip AS addresses_zip
+FROM users, addresses
+WHERE users.user_id = addresses.address_id
+{}
+</&>
+</&>
+        <p>If you want to use a different label, you can also try using an alias:</p>
+        <&|formatting.myt:code&>
+
+        person = users.alias('person')
+        <&formatting.myt:poplink&>c = select([person, addresses], 
+            person.c.user_id==addresses.c.address_id, 
+            use_labels=True).execute()  
+        
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT person.user_id AS person_user_id, person.user_name AS person_user_name, 
+person.password AS person_password, addresses.address_id AS addresses_address_id,
+ addresses.user_id AS addresses_user_id, addresses.street AS addresses_street, 
+ addresses.city AS addresses_city, addresses.state AS addresses_state, 
+ addresses.zip AS addresses_zip FROM users person, addresses
+WHERE person.user_id = addresses.address_id
+</&>
+        </&>    
+        </&>
         
         <&|doclib.myt:item, name="columns", description="Table/Column Specification" &>
             <P>Calling <span class="codeline">select</span> off a table automatically generates a column clause which includes all the table's columns, in the order they are specified in the source Table object.</p>
@@ -248,9 +284,10 @@ WHERE addresses.user_id = users.user_id
             </&>
         <p>There is also an explicit join constructor, which is used like this:</p>
             <&|formatting.myt:code &>
-<&formatting.myt:poplink&>addresses.select(from_obj=[
-                    addresses.join(users, addresses.c.user_id==users.c.user_id)
-                ]).execute() 
+<&formatting.myt:poplink&>\
+addresses.select(from_obj=[
+            addresses.join(users, addresses.c.user_id==users.c.user_id)
+        ]).execute() 
 <&|formatting.myt:codepopper, link="sql" &>
 SELECT addresses.address_id, addresses.user_id, addresses.street, addresses.city, 
 addresses.state, addresses.zip 
@@ -263,10 +300,9 @@ FROM addresses JOIN users ON addresses.user_id = users.user_id
         <p>A join can be created on its own using the <span class="codeline">join</span> or <span class="codeline">outerjoin</span> functions, or can be created off of an existing Table or other selectable unit via the <span class="codeline">join</span> or <span class="codeline">outerjoin</span> methods:</p>
         
             <&|formatting.myt:code &>
-<&formatting.myt:poplink&>\
-select([users, addresses], from_obj=[
-    outerjoin(users, addresses, users.c.user_id==addresses.c.address_id)
-]).execute() 
+            <&formatting.myt:poplink&>select([users, addresses], from_obj=[
+                outerjoin(users, addresses, users.c.user_id==addresses.c.address_id)
+            ]).execute() 
 <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.password, addresses.address_id, 
 addresses.user_id, addresses.street, addresses.city, addresses.state, addresses.zip
@@ -274,12 +310,11 @@ FROM users LEFT OUTER JOIN addresses ON users.user_id = addresses.address_id
 {}                
 </&>
 
-<&formatting.myt:poplink&>\
-users.select(keywords.c.name=='running', from_obj=[
-    users.join(
-        userkeywords, userkeywords.c.user_id==users.c.user_id).join(
-            keywords, keywords.c.keyword_id==userkeywords.c.keyword_id)
-    ]).execute()   
+            <&formatting.myt:poplink&>users.select(keywords.c.name=='running', from_obj=[
+            users.join(
+                userkeywords, userkeywords.c.user_id==users.c.user_id).join(
+                    keywords, keywords.c.keyword_id==userkeywords.c.keyword_id)
+            ]).execute()   
 <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.password FROM users 
 JOIN userkeywords ON userkeywords.user_id = users.user_id 
@@ -291,11 +326,100 @@ WHERE keywords.name = :keywords_name
             
     </&>
     <&|doclib.myt:item, name="alias", description="Table Aliases" &>
+    <p>Aliases are used primarily when you want to use the same table more than once as a FROM expression in a statement:</p>
+    
+            <&|formatting.myt:code &>
+                address_b = addresses.alias('addressb')
+
+                <&formatting.myt:poplink&># select users who have an address on Green street as well as Orange street
+                users.select(and_(
+                    users.c.user_id==addresses.c.user_id,
+                    addresses.c.street.like('%Green%'),
+                    users.c.user_id==address_b.c.user_id,
+                    address_b.c.street.like('%Orange%')
+                    ))
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT users.user_id, users.user_name, users.password
+FROM users, addresses, addresses addressb
+WHERE users.user_id = addresses.user_id 
+AND addresses.street LIKE :addresses_street 
+AND users.user_id = addressb.user_id 
+AND addressb.street LIKE :addressb_street
+{'addressb_street': '%Orange%', 'addresses_street': '%Green%'}
+</&>
+            </&>    
     </&>
     <&|doclib.myt:item, name="subqueries", description="Subqueries" &>
-        <&|doclib.myt:item, name="fromclause", description="Subqueries as FROM Clauses" &>
+    <p>SQLAlchemy allows the creation of select statements from not just Table objects, but from a whole class of objects that implement the <span class="codeline">Selectable</span> interface.  This includes Tables, Aliases, Joins and Selects.  Therefore, if you have a Select, you can select from the Select:</p>
+    
+            <&|formatting.myt:code &>
+                >>> s = users.select()
+                >>> str(s)
+                SELECT users.user_id, users.user_name, users.password FROM users
+
+                >>> s = s.select()
+                >>> str(s)
+                SELECT user_id, user_name, password
+                FROM (SELECT users.user_id, users.user_name, users.password FROM users)                
+                
+            </&>
+        <p>From there, one can see that a Select object can be used within other Selects just like a Table:
+        </p>
+            <&|formatting.myt:code &>
+                # select user ids for all users whos name starts with a "p"
+                s = select([users.c.user_id], users.c.user_name.like('p%'))
+            
+                # now select all addresses for those users
+                <&formatting.myt:poplink&>addresses.select(addresses.c.address_id.in_(s)).execute()
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT addresses.address_id, addresses.user_id, addresses.street, 
+addresses.city, addresses.state, addresses.zip
+FROM addresses WHERE addresses.address_id IN 
+(SELECT users.user_id FROM users WHERE users.user_name LIKE :users_user_name)
+{'users_user_name': 'p%'}</&>
+            </&>
+        <p>Any Select, Join, or Alias object supports the same column accessors as a Table:
+        </p>
+        <&|formatting.myt:code &>
+            >>> s = users.select()
+            >>> [c.key for c in s.columns]
+            ['user_id', 'user_name', 'password']            
+        </&> 
+        
+        <p>
+        When you use <span class="codeline">use_labels=True</span> in a Select object, the label version of the column names become the keys of the accessible columns.  In effect you can create your own "view objects":
+        </p>
+        <&|formatting.myt:code &>
+                s = select([users, addresses], users.c.user_id==addresses.c.user_id, use_labels=True)
+
+                <&formatting.myt:poplink&>select([
+                        s.c.users_user_name, s.c.addresses_street, s.c.addresses_zip
+                        ], s.c.addresses_city=='San Francisco').execute()
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT users_user_name, addresses_street, addresses_zip
+FROM (SELECT users.user_id AS users_user_id, users.user_name AS users_user_name,
+ users.password AS users_password, addresses.address_id AS addresses_address_id,
+ addresses.user_id AS addresses_user_id, addresses.street AS addresses_street, 
+ addresses.city AS addresses_city, addresses.state AS addresses_state, 
+ addresses.zip AS addresses_zip
+FROM users, addresses
+WHERE users.user_id = addresses.user_id)
+WHERE addresses_city = :addresses_city
+{'addresses_city': 'San Francisco'}
+</&>
         </&>
+        
         <&|doclib.myt:item, name="correlated", description="Correlated Subqueries" &>
+        <&|formatting.myt:code &>
+        <&formatting.myt:poplink&>s = select([addresses.c.street], addresses.c.user_id==users.c.user_id).alias('s')
+        select([users, s.c.street], from_obj=[s]).execute()
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT users.user_id, users.user_name, users.password, s.street
+FROM users, (SELECT addresses.street FROM addresses
+WHERE addresses.user_id = users.user_id) s
+{}        
+</&>
+</&>
         </&>
         <&|doclib.myt:item, name="exists", description="EXISTS Clauses" &>
         </&>
