@@ -55,7 +55,8 @@
             s = users.select()
             
             # then, call execute on the Select object:
-            c = s.execute() <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>c = s.execute() 
+<&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.fullname, users.email_address FROM users
 {}
 </&>
@@ -68,7 +69,8 @@ SELECT users.user_id, users.user_name, users.fullname, users.email_address FROM 
         
         <&|formatting.myt:code&>
             # select rows, get resulting ResultProxy object
-            c = users.select().execute()  <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>c = users.select().execute()  
+<&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.fullname, users.email_address FROM users
 {}
 </&>
@@ -97,12 +99,14 @@ SELECT users.user_id, users.user_name, users.fullname, users.email_address FROM 
             <p>But in addition to selecting all the columns off a single table, any set of columns can be specified, as well as full tables, and any combination of the two:</p>
             <&|formatting.myt:code&>
                 # individual columns
-                c = select([users.c.user_id, users.c.user_name]).execute()  <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>c = select([users.c.user_id, users.c.user_name]).execute()  
+<&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name FROM users
 {}
 </&>
                 # full tables
-                c = select([users, addresses]).execute()  <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>c = select([users, addresses]).execute()  
+<&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.fullname, 
 users.email_address, addresses.address_id, addresses.user_id, 
 addresses.street, addresses.city, addresses.state, addresses.zip
@@ -110,7 +114,8 @@ FROM users, addresses
 {}
 </&>
                 # combinations
-                c = select([users, addresses.c.zip]).execute()  <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>c = select([users, addresses.c.zip]).execute()  
+<&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.fullname, 
 users.email_address, addresses.zip FROM users, addresses
 {}
@@ -124,7 +129,8 @@ users.email_address, addresses.zip FROM users, addresses
             <p>WHERE conditions are constructed using column objects, literal values, and functions defined in the <span class="codeline">sqlalchemy.sql</span> module.  Column objects override the standard Python operators to provide clause compositional objects, which compile down to SQL operations:
             
             <&|formatting.myt:code&>
-                c = users.select(users.c.user_id == 7).execute()  <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>c = users.select(users.c.user_id == 7).execute()  
+<&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.fullname, 
 users.email_address FROM users
 WHERE users.user_id = :users_user_id
@@ -136,14 +142,16 @@ WHERE users.user_id = :users_user_id
             <P>More where clauses:</p>
             <&|formatting.myt:code&>
                 # another comparison operator
-                c = select([users], users.c.user_id>7).execute() <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>c = select([users], users.c.user_id>7).execute() 
+<&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.fullname, 
 users.email_address FROM users WHERE users.user_id > :users_user_id
 {'users_user_id': 7}
 </&>
 
                 # OR keyword
-                c = users.select(or_(users.c.user_name=='jack', users.c.user_name=='ed')).execute()  <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>c = users.select(or_(users.c.user_name=='jack', users.c.user_name=='ed')).execute()  
+<&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.fullname, users.email_address
 FROM users WHERE users.user_name = :users_user_name 
 OR users.user_name = :users_user_name_1
@@ -152,7 +160,8 @@ OR users.user_name = :users_user_name_1
 </&>
 
                 # AND keyword
-                c = users.select(and_(users.c.user_name=='jack', users.c.fullname=='ed')).execute()  <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>c = users.select(and_(users.c.user_name=='jack', users.c.fullname=='ed')).execute()  
+<&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.fullname, users.email_address
 FROM users WHERE users.user_name = :users_user_name 
 AND users.fullname = :users_fullname
@@ -160,13 +169,15 @@ AND users.fullname = :users_fullname
 </&>
 
                 # IN clause
-                c = users.select(users.c.user_name.in_('jack', 'ed', 'fred')).execute()  <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>c = users.select(users.c.user_name.in_('jack', 'ed', 'fred')).execute()  
+<&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.fullname, users.email_address
 FROM users WHERE users.user_name IN ('jack', 'ed', 'fred')
 </&>
                 
                 # join users and addresses together
-                c = select([users, addresses], users.c.user_id==addresses.c.address_id).execute()  <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>c = select([users, addresses], users.c.user_id==addresses.c.address_id).execute()  
+<&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.fullname, users.email_address, 
 addresses.address_id, addresses.user_id, addresses.street, addresses.city, 
 addresses.state, addresses.zip
@@ -178,10 +189,11 @@ WHERE users.user_id = addresses.address_id
                 # join users and addresses together, but dont specify "addresses" in the 
                 # selection criterion.  The WHERE criterion adds it to the FROM list 
                 # automatically.
-                c = select([users], and_(
+<&formatting.myt:poplink&>c = select([users], and_(
                     users.c.user_id==addresses.c.user_id,
                     users.c.user_name=='fred'
-                )).execute()                      <&|formatting.myt:codepopper, link="sql" &>
+                )).execute()
+<&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.fullname, users.email_address
 FROM users, addresses WHERE users.user_id = addresses.user_id 
 AND users.user_name = :users_user_name
@@ -204,14 +216,16 @@ AND users.user_name = :users_user_name
         <P>The ORDER BY clause of a select statement can be specified as individual columns to order by within an array     specified via the <span class="codeline">order_by</span> parameter, and optional usage of the asc() and desc() functions:
             <&|formatting.myt:code &>
                 # straight order by
-                c = users.select(order_by=[users.c.fullname]).execute() <&|formatting.myt:codepopper, link="sql" &>
+<&formatting.myt:poplink&>c = users.select(order_by=[users.c.fullname]).execute() 
+<&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.fullname, users.email_address
 FROM users ORDER BY users.fullname                
 </&>        
                 # descending/ascending order by on multiple columns
-                c = users.select(
+<&formatting.myt:poplink&>c = users.select(
                         users.c.user_name>'J', 
-                        order_by=[desc(users.c.fullname), asc(users.c.user_name)]).execute() <&|formatting.myt:codepopper, link="sql" &>
+                        order_by=[desc(users.c.fullname), asc(users.c.user_name)]).execute() 
+<&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.fullname, users.email_address
 FROM users WHERE users.user_name > :users_user_name 
 ORDER BY users.fullname DESC, users.user_name ASC
@@ -219,10 +233,62 @@ ORDER BY users.fullname DESC, users.user_name ASC
 </&>        
             </&>        
         </&>
-
     </&>
 
     <&|doclib.myt:item, name="join", description="Inner and Outer Joins" &>
+        <p>As some of the examples indicated above, a regular inner join can be implicitly stated, just like in a SQL expression, by just specifying the tables to be joined as well as their join conditions:</p>
+            <&|formatting.myt:code &>
+<&formatting.myt:poplink&>addresses.select(addresses.c.user_id==users.c.user_id).execute() 
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT addresses.address_id, addresses.user_id, addresses.street, 
+addresses.city, addresses.state, addresses.zip FROM addresses, users
+WHERE addresses.user_id = users.user_id
+{}                   
+</&>                   
+            </&>
+        <p>There is also an explicit join constructor, which is used like this:</p>
+            <&|formatting.myt:code &>
+<&formatting.myt:poplink&>addresses.select(from_obj=[
+                    addresses.join(users, addresses.c.user_id==users.c.user_id)
+                ]).execute() 
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT addresses.address_id, addresses.user_id, addresses.street, addresses.city, 
+addresses.state, addresses.zip 
+FROM addresses JOIN users ON addresses.user_id = users.user_id
+{}                
+</&>                
+            </&>
+        <p>Notice that this is the first example where the FROM criterion of the select statement is explicitly specified.  In most cases, the FROM criterion is automatically determined from the columns requested as well as the WHERE clause.  The <span class="codeline">from_obj</span> keyword argument indicates a list of explicit FROM clauses to be used in the statement.</p>
+        
+        <p>A join can be created on its own using the <span class="codeline">join</span> or <span class="codeline">outerjoin</span> functions, or can be created off of an existing Table or other selectable unit via the <span class="codeline">join</span> or <span class="codeline">outerjoin</span> methods:</p>
+        
+            <&|formatting.myt:code &>
+<&formatting.myt:poplink&>\
+select([users, addresses], from_obj=[
+    outerjoin(users, addresses, users.c.user_id==addresses.c.address_id)
+]).execute() 
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT users.user_id, users.user_name, users.password, addresses.address_id, 
+addresses.user_id, addresses.street, addresses.city, addresses.state, addresses.zip
+FROM users LEFT OUTER JOIN addresses ON users.user_id = addresses.address_id
+{}                
+</&>
+
+<&formatting.myt:poplink&>\
+users.select(keywords.c.name=='running', from_obj=[
+    users.join(
+        userkeywords, userkeywords.c.user_id==users.c.user_id).join(
+            keywords, keywords.c.keyword_id==userkeywords.c.keyword_id)
+    ]).execute()   
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT users.user_id, users.user_name, users.password FROM users 
+JOIN userkeywords ON userkeywords.user_id = users.user_id 
+JOIN keywords ON keywords.keyword_id = userkeywords.keyword_id
+WHERE keywords.name = :keywords_name
+{'keywords_name': 'running'}                
+</&>
+            </&>
+            
     </&>
     <&|doclib.myt:item, name="alias", description="Table Aliases" &>
     </&>
