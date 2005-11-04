@@ -755,6 +755,7 @@ class Select(Selectable):
         def __init__(self, select):
             self.select = select
         def visit_select(self, select):
+            print "visit"
             if select is self.select:
                 return
             select.issubquery = True
@@ -766,10 +767,14 @@ class Select(Selectable):
 
         self._raw_columns.append(column)
 
-        column._process_from_dict(self._froms, False)
+
         for f in column._get_from_objects():
+# TODO
+#            visitor = Select.CorrelatedVisitor(self)
+#            f.accept_visitor(visitor)
             if self.rowid_column is None and hasattr(f, 'rowid_column'):
                 self.rowid_column = f.rowid_column._make_proxy(self)
+        column._process_from_dict(self._froms, False)
         
         for co in column.columns:
             if self.use_labels:
@@ -797,6 +802,9 @@ class Select(Selectable):
         if type(fromclause) == str:
             fromclause = FromClause(from_name = fromclause)
 
+#        visitor = Select.CorrelatedVisitor(self)
+#        fromclause.accept_visitor(visitor)
+
         fromclause._process_from_dict(self._froms, True)
         
     def append_clause(self, keyword, clause):
@@ -810,10 +818,6 @@ class Select(Selectable):
             engine = self.engine
         if engine is None:
             raise "no engine supplied, and no engine could be located within the clauses!"
-
-        # TODO: this has issues
-        #visitor = Select.CorrelatedVisitor(self)
-        #self.accept_visitor(visitor)
 
         return engine.compile(self, bindparams)
 
