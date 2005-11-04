@@ -251,7 +251,7 @@
         whitespace = None
         for line in lines:
             if whitespace is None:
-                match = re.match(r"^([ ]+)", line)
+                match = re.match(r"^([ ]*).+", line)
                 if match is not None:
                     whitespace = match.group(1)
 
@@ -321,15 +321,17 @@ javascript:togglePopbox('<% name %>', '<% show %>', '<% hide %>')
 <div id="<% name %>_div" class="<% class_ %>" style="display:none;"><% m.content().strip() %></div>
 </%method>
 
-
-<%method codepopper trim="both">
+<%method poplink trim="both">
     <%args>
-        link
+        link='sql'
     </%args>
     <%init>
         href = m.scomp('SELF:popboxlink')
     </%init>
     '''PYESC<& SELF:link, href=href, text=link, class_="codepoplink" &>PYESC'''
+</%method>
+
+<%method codepopper trim="both">
     '''PYESC<&|SELF:popbox, class_="codepop" &><% m.content() %></&>PYESC'''
 </%method>
 
