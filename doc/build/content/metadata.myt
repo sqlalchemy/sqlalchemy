@@ -111,6 +111,7 @@
     <&|doclib.myt:item, name="creating", description="Creating and Dropping Database Tables" &>
     <p>Creating and dropping is easy, just use the <span class="codeline">create()</span> and <span class="codeline">drop()</span> methods:
         <&|formatting.myt:code&>
+            <&formatting.myt:poplink&>
             employees = Table('employees', engine, 
                 Column('employee_id', Integer, primary_key=True),
                 Column('employee_name', String(60), nullable=False, key='name'),
@@ -125,6 +126,7 @@ CREATE TABLE employees(
 
 {}            </&>
             
+            <&formatting.myt:poplink&>
             employees.drop() <&|formatting.myt:codepopper, link="sql" &>
 DROP TABLE employees
 {}            </&>
