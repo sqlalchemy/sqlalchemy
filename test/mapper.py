@@ -10,7 +10,7 @@ import tables
 
 class MapperSuperTest(AssertMixin):
     def setUpAll(self):
-        db.echo = False
+#        db.echo = False
         tables.create()
         tables.data()
         db.echo = testbase.echo
