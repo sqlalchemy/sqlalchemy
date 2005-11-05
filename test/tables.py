@@ -15,10 +15,10 @@ DBTYPE = 'sqlite_memory'
 #DBTYPE = 'sqlite_file'
 
 if DBTYPE == 'sqlite_memory':
-    db = sqlalchemy.engine.create_engine('sqlite', ':memory:', {}, echo = testbase.echo)
+    db = sqlalchemy.engine.create_engine('sqlite', {'filename':':memory:'}, echo = testbase.echo)
 elif DBTYPE == 'sqlite_file':
     import sqlalchemy.databases.sqlite as sqllite
-    db = sqlalchemy.engine.create_engine('sqlite', 'querytest.db', {}, echo = testbase.echo)
+    db = sqlalchemy.engine.create_engine('sqlite', {'filename':'querytest.db'}, echo = testbase.echo)
 elif DBTYPE == 'postgres':
     db = sqlalchemy.engine.create_engine('postgres', {'database':'test', 'host':'127.0.0.1', 'user':'scott', 'password':'tiger'}, echo=testbase.echo)
 

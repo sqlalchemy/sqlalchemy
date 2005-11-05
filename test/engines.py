@@ -16,7 +16,7 @@ import unittest, re
 
 class EngineTest(PersistTest):
     def testsqlite(self):
-        db = sqllite.engine(':memory:', {}, echo = testbase.echo)
+        db = sqllite.engine({'filename':':memory'}, echo = testbase.echo)
         self.do_tableops(db)
 
     def testpostgres(self):

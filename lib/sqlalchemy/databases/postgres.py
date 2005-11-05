@@ -114,6 +114,16 @@ gen_key_constraints = schema.Table("key_column_usage", generic_engine,
 def engine(opts, **params):
     return PGSQLEngine(opts, **params)
 
+def descriptor():
+    return {'name':'postgres',
+    'description':'PostGres',
+    'arguments':[
+        ('user',"Database Username",None),
+        ('password',"Database Password",None),
+        ('database',"Database Name",None),
+        ('host',"Hostname", None),
+    ]}
+
 class PGSQLEngine(ansisql.ANSISQLEngine):
     def __init__(self, opts, module = None, **params):
         if module is None:

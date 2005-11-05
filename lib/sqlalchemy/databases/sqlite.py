@@ -73,12 +73,19 @@ pragma_names = {
     'BLOB' : SLBinary,
 }
 
-def engine(filename, opts, **params):
-    return SQLiteSQLEngine(filename, opts, **params)
+def engine(opts, **params):
+    return SQLiteSQLEngine(opts, **params)
 
+def descriptor():
+    return {'name':'sqlite',
+    'description':'SQLite',
+    'arguments':[
+        ('filename', "Database Filename",None)
+    ]}
+    
 class SQLiteSQLEngine(ansisql.ANSISQLEngine):
-    def __init__(self, filename, opts, **params):
-        self.filename = filename
+    def __init__(self, opts, **params):
+        self.filename = opts.pop('filename')
         self.opts = opts or {}
         ansisql.ANSISQLEngine.__init__(self, **params)
 

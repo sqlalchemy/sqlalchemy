@@ -67,6 +67,15 @@ colspecs = {
 
 def engine(*args, **params):
     return OracleSQLEngine(*args, **params)
+
+def descriptor():
+    return {'name':'oracle',
+    'description':'Oracle',
+    'arguments':[
+        ('dsn', 'Data Source Name', None),
+        ('user', 'Username', None),
+        ('password', 'Password', None)
+    ]}
     
 class OracleSQLEngine(ansisql.ANSISQLEngine):
     def __init__(self, opts, use_ansi = True, module = None, **params):

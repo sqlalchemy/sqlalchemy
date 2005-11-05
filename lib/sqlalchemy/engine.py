@@ -23,6 +23,7 @@ import sqlalchemy.util as util
 import sqlalchemy.sql as sql
 import StringIO, sys
 import sqlalchemy.types as types
+import sqlalchemy.databases
 
 def create_engine(name, *args ,**kwargs):
     """creates a new SQLEngine instance.
@@ -33,6 +34,13 @@ def create_engine(name, *args ,**kwargs):
     module = getattr(__import__('sqlalchemy.databases.%s' % name).databases, name)
     return module.engine(*args, **kwargs)
 
+def engine_descriptors():
+    result = []
+    for module in sqlalchemy.databases.__ALL__:
+        module = getattr(__import__('sqlalchemy.databases.%s' % module).databases, module)
+        result.append(module.descriptor())
+    return result
+    
 class SchemaIterator(schema.SchemaVisitor):
     """a visitor that can gather text into a buffer and execute the contents of the buffer."""
     def __init__(self, sqlproxy, **params):

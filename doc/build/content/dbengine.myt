@@ -17,10 +17,10 @@
     import sqlalchemy.engine as engine
 
     # sqlite in memory    
-    sqlite_engine = engine.create_engine('sqlite', ':memory:', {}, **opts)
+    sqlite_engine = engine.create_engine('sqlite', {'filename':':memory:'}, **opts)
     
     # sqlite using a file
-    sqlite_engine = engine.create_engine('sqlite', 'querytest.db', {}, **opts)
+    sqlite_engine = engine.create_engine('sqlite', {'filename':'querytest.db'}, **opts)
 
     # postgres
     postgres_engine = engine.create_engine('postgres', 
