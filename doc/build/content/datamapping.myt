@@ -11,8 +11,6 @@
         <&|formatting.myt:code&>
         from sqlalchemy.schema import *
         from sqlalchemy.mapper import *
-        import sqlalchemy.databases.sqlite as sqlite
-        engine = sqlite.engine('mydb', {})
         
         # table metadata
         users = Table('users', engine, 
