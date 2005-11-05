@@ -286,9 +286,6 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
                 table.c[constrained_column].foreign_key = schema.ForeignKey(remotetable.c[referred_column])
 
 class PGCompiler(ansisql.ANSICompiler):
-    def bindparam_string(self, name):
-        return "%(" + name + ")s"
-
     def visit_insert(self, insert):
         """inserts are required to have the primary keys be explicitly present.
          mapper will by default not put them in the insert statement to comply
