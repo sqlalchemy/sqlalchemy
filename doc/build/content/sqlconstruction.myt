@@ -1,11 +1,11 @@
 <%flags>inherit='document_base.myt'</%flags>
 <&|doclib.myt:item, name="sql", description="Constructing SQL Queries via Python Expressions" &>
-    <p><b>Note:</b> This section describes how to use SQLAlchemy to construct SQL queries and receive result sets.  It does <b>not</b> cover the object relational mapping capabilities of SQLAlchemy; that is covered later on in <&formatting.myt:link, path="datamapping"&>.  However, both areas of functionality work very similarly in how selection criterion is constructed, so if you are interested just in ORM, you should probably skim through basic <&formatting.myt:link, path="sql_select_whereclause"&> construction before moving on.</p>
+    <p><b>Note:</b> This section describes how to use SQLAlchemy to construct SQL queries and receive result sets.  It does <b>not</b> cover the object relational mapping capabilities of SQLAlchemy; that is covered later on in <&formatting.myt:link, path="datamapping"&>.  However, both areas of functionality work similarly in how selection criterion is constructed, so if you are interested just in ORM, you should probably skim through basic <&formatting.myt:link, path="sql_select_whereclause"&> construction before moving on.</p>
     <p>Once you have used the <span class="codeline">sqlalchemy.schema</span> module to construct your tables and/or reflect them from the database, performing SQL queries using those table meta data objects is done via the <span class="codeline">sqlalchemy.sql</span> package.  This package defines a large set of classes, each of which represents a particular kind of lexical construct within a SQL query; all are descendants of the common base class <span class="codeline">sqlalchemy.sql.ClauseElement</span>.  A full query is represented via a structure of ClauseElements.  A set of reasonably intuitive creation functions is provided by the <span class="codeline">sqlalchemy.sql</span> package to create these structures; these functions are described in the rest of this section. </p>
     
-    <p>To execute a query, you create its structure, then call the resulting structure's <span class="codeline">execute()</span> method, which returns a cursor-like object (more on that later).  This method can be repeated as necessary.  A ClauseElement is actually compiled into a string representation by an underlying SQLEngine object; this object is located by searching through the ClauseElement structure for a Table object, which provides a reference to its SQLEngine.  
+    <p>To execute a query, you create its structure, then call the resulting structure's <span class="codeline">execute()</span> method, which returns a cursor-like object (more on that later).  This method can be repeated as necessary.  A ClauseElement is compiled into a string representation by an underlying SQLEngine object; the ClauseElement locates this engine by searching through its child items for a Table object, which provides a reference to its SQLEngine. 
     </p>    
-    <p>In all examples, bind parameters are illustrated as dictionaries.  SQLAlchemy supports DBAPI's which require positional parameters by converting named parameter dictionaries into lists right before execution; so SQLAlchemy functions and methods always expect named parameter dictionaries regardless of DBAPI being used.  In the case of specifying literal SQL strings with databases that require positional arguments, it is safe to use "Pyformat" arguments (i.e. "%(name)s"), which are internally converted upon compilation into "?", "%s", or ":<number>"  upon compilation.</p>
+    <p>In all examples, bind parameters are illustrated as dictionaries.  SQLAlchemy supports DBAPI's which require positional parameters by converting named parameter dictionaries into lists right before execution; so SQLAlchemy functions and methods always expect named parameter dictionaries regardless of DBAPI being used.  In the case of specifying literal SQL strings with positional DBAPIs, it is safe to use "Pyformat" arguments (i.e. "%(name)s"), which are internally converted upon compilation into "?", "%s", or "<% ":<number>"|h%>".</p>
     <p>For this section, we will assume the following tables:
        <&|formatting.myt:code&>
         from sqlalchemy.schema import *
@@ -66,7 +66,7 @@ SELECT users.user_id, users.user_name, users.password FROM users
             SELECT users.user_id, users.user_name, users.password FROM users
 
         </&>
-        <p>The object returned by the execute call is a <span class="codeline">sqlalchemy.engine.ResultProxy</span> object, which acts very much like a DBAPI <span class="codeline">cursor</span> object in the context of a result set, except that the rows returned can address their columns by ordinal position, column name, or even column object:</p>
+        <p>The object returned by the execute call is a <span class="codeline">sqlalchemy.engine.ResultProxy</span> object, which acts much like a DBAPI <span class="codeline">cursor</span> object in the context of a result set, except that the rows returned can address their columns by ordinal position, column name, or even column object:</p>
         
         <&|formatting.myt:code&>
             # select rows, get resulting ResultProxy object
@@ -125,7 +125,7 @@ SELECT person.user_id AS person_user_id, person.user_name AS person_user_name,
 person.password AS person_password, addresses.address_id AS addresses_address_id,
  addresses.user_id AS addresses_user_id, addresses.street AS addresses_street, 
  addresses.city AS addresses_city, addresses.state AS addresses_state, 
- addresses.zip AS addresses_zip FROM users person, addresses
+ addresses.zip AS addresses_zip FROM users AS person, addresses
 WHERE person.user_id = addresses.address_id
 </&>
         </&>    
@@ -538,7 +538,7 @@ FROM users WHERE users.user_name = :username
     <p><span class="codeline">executemany()</span> is also available, but that applies more to INSERT/UPDATE/DELETE, described later.</p>
     <P>The generation of bind parameters is performed specific to the engine being used.  The examples in this document all show "named" parameters like those used in sqlite and oracle.  Depending on the parameter type specified by the DBAPI module, the correct bind parameter scheme will be used.</p>
     <&|doclib.myt:item, name="precompiling", description="Precompiling a Query" &>
-    <p>By throwing the <span class="codeline">compile()</span> method onto the end of any query object, the query can be "compiled" by the DBEngine into a <span class="codeline">sqlalchemy.sql.Compiled</span> object just once, and the resulting compiled object reused, which eliminates repeated internal compilation of the SQL string:</p>
+    <p>By throwing the <span class="codeline">compile()</span> method onto the end of any query object, the query can be "compiled" by the SQLEngine into a <span class="codeline">sqlalchemy.sql.Compiled</span> object just once, and the resulting compiled object reused, which eliminates repeated internal compilation of the SQL string:</p>
         <&|formatting.myt:code &>
             s = users.select(users.c.user_name==bindparam('username')).compile()
             s.execute(username='fred')
@@ -548,7 +548,7 @@ FROM users WHERE users.user_name = :username
     </&>
     </&>
     <&|doclib.myt:item, name="textual", description="Literal Text Blocks" &>
-        <p>The sql package tries to allow free textual placement in as many ways as possible.  In the examples below, note that the from_obj parameter is used only when no other information exists within the select object with which to determine table metadata.  Also note that in a query where there isnt even table metadata used, the DBEngine to be used for the query has to be explicitly specified:
+        <p>The sql package tries to allow free textual placement in as many ways as possible.  In the examples below, note that the from_obj parameter is used only when no other information exists within the select object with which to determine table metadata.  Also note that in a query where there isnt even table metadata used, the SQLEngine to be used for the query has to be explicitly specified:
         <&|formatting.myt:code &>
             # strings as column clauses
             <&formatting.myt:poplink&>select(["user_id", "user_name"], from_obj=[users]).execute()
