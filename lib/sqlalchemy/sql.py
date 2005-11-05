@@ -683,6 +683,12 @@ class TableImpl(Selectable):
     
     def group_parenthesized(self):
         return False
+
+    def _process_from_dict(self, data, asfrom):
+        for f in self._get_from_objects():
+            data.setdefault(f.id, f)
+        if asfrom:
+            data[self.id] = self.table
     
     def join(self, right, *args, **kwargs):
         return Join(self.table, right, *args, **kwargs)
@@ -720,7 +726,7 @@ class TableImpl(Selectable):
 class Select(Selectable):
     """finally, represents a SELECT statement, with appendable clauses, as well as 
     the ability to execute itself and return a result set."""
-    def __init__(self, columns, whereclause = None, from_obj = [], group_by = None, order_by = None, use_labels = False, engine = None):
+    def __init__(self, columns, whereclause = None, from_obj = [], group_by = None, order_by = None, use_labels = False, distinct=False, engine = None):
         self.columns = util.OrderedProperties()
         self._froms = util.OrderedDict()
         self.use_labels = use_labels
@@ -735,7 +741,8 @@ class Select(Selectable):
         # indicates if this select statement is a subquery as a criterion
         # inside of a WHERE clause
         self.is_where = False
-        
+
+        self.distinct = distinct
         self._text = None
         self._raw_columns = []
         self._clauses = []
