@@ -136,8 +136,9 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
             table.c[localcol].foreign_key = schema.ForeignKey(remotetable.c[remotecol])
             
 class SQLiteCompiler(ansisql.ANSICompiler):
-    pass
-
+    def __init__(self, *args, **params):
+        params.setdefault('paramstyle', 'named')
+        ansisql.ANSICompiler.__init__(self, *args, **params)
 
 class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column):
