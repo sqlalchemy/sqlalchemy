@@ -762,6 +762,23 @@ WHERE users.user_name = :users_user_name AND keywords.name IN ('jack', 'foo')
 
         </&>
         <&|doclib.myt:item, name="correlated", description="Correlated Updates" &>
+        <p>A correlated update lets you update a table using selection from another table, or the same table:</p>
+        <&|formatting.myt:code &>
+            s = select([addresses.c.city], addresses.c.user_id==users.c.user_id)
+            <&formatting.myt:poplink&>users.update(
+                    and_(users.c.user_id>10, users.c.user_id<20), 
+                    values={users.c.user_name:s}
+                    ).execute()
+
+            <&|formatting.myt:codepopper, link="sql" &>
+            UPDATE users SET user_name=(SELECT addresses.city 
+            FROM addresses 
+            WHERE addresses.user_id = users.user_id) 
+            WHERE users.user_id > :users_user_id AND users.user_id < :users_user_id_1
+            {'users_user_id_1': 20, 'users_user_id': 10}
+            </&>
+
+        </&>
         </&>
     </&>
     <&|doclib.myt:item, name="delete", description="Deletes" &>
