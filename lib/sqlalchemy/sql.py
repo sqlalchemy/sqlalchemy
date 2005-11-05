@@ -23,7 +23,7 @@ import sqlalchemy.util as util
 import sqlalchemy.types as types
 import string
 
-__ALL__ = ['textclause', 'select', 'join', 'and_', 'or_', 'union', 'unionall', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'bindparam', 'sequence']
+__ALL__ = ['textclause', 'select', 'join', 'and_', 'or_', 'not_', 'union', 'unionall', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'bindparam', 'sequence']
 
 def desc(column):
     """returns a descending ORDER BY clause element, e.g.:
@@ -118,6 +118,10 @@ def or_(*clauses):
     clause = _compound_clause('OR', *clauses)
     return clause
 
+def not_(clause):
+    clause.parens=True
+    return BinaryClause(TextClause("NOT"), clause, None)
+    
 def exists(*args, **params):
     s = select(*args, **params)
     return BinaryClause(TextClause("EXISTS"), s, None)
