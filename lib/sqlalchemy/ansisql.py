@@ -148,7 +148,7 @@ class ANSICompiler(sql.Compiled):
         return ":" + name
         
     def visit_alias(self, alias):
-        self.froms[alias] = self.get_from_text(alias.selectable) + " " + alias.name
+        self.froms[alias] = self.get_from_text(alias.selectable) + " AS " + alias.name
         self.strings[alias] = self.get_str(alias.selectable)
 
     def visit_select(self, select):
