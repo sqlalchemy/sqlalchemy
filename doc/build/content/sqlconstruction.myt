@@ -204,6 +204,18 @@ AND users.password = :users_password
 {'users_user_name': 'jack', 'users_password': 'dog'}
 </&>
 
+                # NOT keyword
+                <&formatting.myt:poplink&>c = users.select(not_(
+                        or_(users.c.user_name=='jack', users.c.password=='dog')
+                    )).execute()  
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT users.user_id, users.user_name, users.password 
+FROM users 
+WHERE NOT (users.user_name = :users_user_name 
+    OR users.password = :users_password)
+{'users_user_name': 'jack', 'users_password': 'dog'}
+</&>
+                
                 # IN clause
 <&formatting.myt:poplink&>c = users.select(users.c.user_name.in_('jack', 'ed', 'fred')).execute()  
 <&|formatting.myt:codepopper, link="sql" &>
@@ -603,7 +615,8 @@ select user_name from users
 {}
 </&>            
             
-            # a straight text query like the one above is also available directly off the engine:
+            # a straight text query like the one above is also available directly off the engine
+            # (though youre going to have to drop down to the DBAPI's style of bind params)
             <&formatting.myt:poplink&>db.execute(
                     "select user_name from users where user_id=:user_id", 
                     {'user_id':7}).execute()
@@ -782,5 +795,15 @@ WHERE users.user_name = :users_user_name AND keywords.name IN ('jack', 'foo')
         </&>
     </&>
     <&|doclib.myt:item, name="delete", description="Deletes" &>
+    <p>A delete is formulated like an update, except theres no values:</p>
+    <&|formatting.myt:code &>
+        users.delete(users.c.user_id==7).execute()
+        users.delete(users.c.user_name.like(bindparam('name'))).execute(
+                {'name':'%Jack%'},
+                {'name':'%Ed%'},
+                {'name':'%Jane%'},
+            )
+        users.delete(exists())
+    </&>
     </&>
 </&>
