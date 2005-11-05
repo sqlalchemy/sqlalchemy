@@ -106,6 +106,7 @@ class SQLEngine(schema.SchemaEngine):
         """given a sql.ClauseElement statement plus optional bind parameters, creates a new instance of this engine's SQLCompiler, compiles the ClauseElement, and returns the newly compiled object."""
         compiler = self.compiler(statement, bindparams, **kwargs)
         statement.accept_visitor(compiler)
+        compiler.after_compile()
         return compiler
 
     def reflecttable(self, table):
@@ -251,7 +252,7 @@ class SQLEngine(schema.SchemaEngine):
             if echo is True or self.echo:
                 self.log(statement)
                 self.log(repr(parameters))
-            if isinstance(parameters, list):
+            if isinstance(parameters, list) and len(parameters) > 0 and (isinstance(parameters[0], list) or isinstance(parameters[0], dict)):
                 self._executemany(c, statement, parameters)
             else:
                 self._execute(c, statement, parameters)
