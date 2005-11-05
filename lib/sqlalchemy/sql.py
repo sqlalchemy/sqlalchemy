@@ -529,7 +529,10 @@ class Selectable(FromClause):
 
     def alias(self, name):
         return Alias(self, name)
-        
+    def union(self, other, **kwargs):
+        return union(self, other, **kwargs)
+    def union_all(self, other, **kwargs):
+        return union_all(self, other, **kwargs)
     def group_parenthesized(self):
         """indicates if this Selectable requires parenthesis when grouped into a compound statement"""
         return True
@@ -817,7 +820,6 @@ class Select(Selectable):
     def compile(self, engine = None, bindparams = None):
         if engine is None:
             engine = self.engine
-        print "ok, and engine is " + repr(self.engine)
         if engine is None:
             raise "no engine supplied, and no engine could be located within the clauses!"
 
@@ -855,12 +857,9 @@ class Select(Selectable):
             return self._engine
         
         for f in self._froms.values():
-            print repr(self) + " looking in " + repr(f)
             e = f.engine
-            print " and its " + repr(e)
             if e is not None: 
                 self._engine = e
-                print "returning it !"
                 return e
             
         return None
