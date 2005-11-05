@@ -14,8 +14,7 @@
         users = Table('users', db,
             Column('user_id', Integer, primary_key = True),
             Column('user_name', String(40)),
-            Column('fullname', String(100)),
-            Column('email_address', String(80))
+            Column('password', String(80))
         )
 
         # a table that stores mailing addresses associated with a specific user
@@ -57,12 +56,12 @@
             # then, call execute on the Select object:
 <&formatting.myt:poplink&>c = s.execute() 
 <&|formatting.myt:codepopper, link="sql" &>
-SELECT users.user_id, users.user_name, users.fullname, users.email_address FROM users
+SELECT users.user_id, users.user_name, users.password FROM users
 {}
 </&>
             # the SQL text of any clause object can also be viewed via the str() call:
             >>> str(s)
-            SELECT users.user_id, users.user_name, users.fullname, users.email_address FROM users
+            SELECT users.user_id, users.user_name, users.password FROM users
 
         </&>
         <p>The object returned by the execute call is a <span class="codeline">sqlalchemy.engine.ResultProxy</span> object, which acts very much like a DBAPI <span class="codeline">cursor</span> object in the context of a result set, except that the rows returned can address their columns by ordinal position, column name, or even column object:</p>
@@ -71,7 +70,7 @@ SELECT users.user_id, users.user_name, users.fullname, users.email_address FROM 
             # select rows, get resulting ResultProxy object
 <&formatting.myt:poplink&>c = users.select().execute()  
 <&|formatting.myt:codepopper, link="sql" &>
-SELECT users.user_id, users.user_name, users.fullname, users.email_address FROM users
+SELECT users.user_id, users.user_name, users.password FROM users
 {}
 </&>
             # get one row
@@ -84,7 +83,7 @@ SELECT users.user_id, users.user_name, users.fullname, users.email_address FROM 
             user_name = row['user_name']
             
             # or column object
-            fullname = row[users.c.fullname]
+            password = row[users.c.password]
             
             # rowproxy object also supports fetchall()
             rows = c.fetchall()
@@ -143,8 +142,8 @@ SELECT users.user_id, users.user_name FROM users
                 # full tables
 <&formatting.myt:poplink&>c = select([users, addresses]).execute()  
 <&|formatting.myt:codepopper, link="sql" &>
-SELECT users.user_id, users.user_name, users.fullname, 
-users.email_address, addresses.address_id, addresses.user_id, 
+SELECT users.user_id, users.user_name, users.password, 
+addresses.address_id, addresses.user_id, 
 addresses.street, addresses.city, addresses.state, addresses.zip
 FROM users, addresses
 {}
@@ -152,8 +151,8 @@ FROM users, addresses
                 # combinations
 <&formatting.myt:poplink&>c = select([users, addresses.c.zip]).execute()  
 <&|formatting.myt:codepopper, link="sql" &>
-SELECT users.user_id, users.user_name, users.fullname, 
-users.email_address, addresses.zip FROM users, addresses
+SELECT users.user_id, users.user_name, users.password, 
+addresses.zip FROM users, addresses
 {}
 </&>                
             </&>            
@@ -167,9 +166,8 @@ users.email_address, addresses.zip FROM users, addresses
             <&|formatting.myt:code&>
 <&formatting.myt:poplink&>c = users.select(users.c.user_id == 7).execute()  
 <&|formatting.myt:codepopper, link="sql" &>
-SELECT users.user_id, users.user_name, users.fullname, 
-users.email_address FROM users
-WHERE users.user_id = :users_user_id
+SELECT users.user_id, users.user_name, users.password, 
+FROM users WHERE users.user_id = :users_user_id
 {'users_user_id': 7}                
 </&>                
             </&>
@@ -180,15 +178,15 @@ WHERE users.user_id = :users_user_id
                 # another comparison operator
 <&formatting.myt:poplink&>c = select([users], users.c.user_id>7).execute() 
 <&|formatting.myt:codepopper, link="sql" &>
-SELECT users.user_id, users.user_name, users.fullname, 
-users.email_address FROM users WHERE users.user_id > :users_user_id
+SELECT users.user_id, users.user_name, users.password, 
+FROM users WHERE users.user_id > :users_user_id
 {'users_user_id': 7}
 </&>
 
                 # OR keyword
 <&formatting.myt:poplink&>c = users.select(or_(users.c.user_name=='jack', users.c.user_name=='ed')).execute()  
 <&|formatting.myt:codepopper, link="sql" &>
-SELECT users.user_id, users.user_name, users.fullname, users.email_address
+SELECT users.user_id, users.user_name, users.password 
 FROM users WHERE users.user_name = :users_user_name 
 OR users.user_name = :users_user_name_1
 {'users_user_name_1': 'ed', 'users_user_name': 'jack'}
@@ -196,25 +194,25 @@ OR users.user_name = :users_user_name_1
 </&>
 
                 # AND keyword
-<&formatting.myt:poplink&>c = users.select(and_(users.c.user_name=='jack', users.c.fullname=='ed')).execute()  
+<&formatting.myt:poplink&>c = users.select(and_(users.c.user_name=='jack', users.c.password=='dog')).execute()  
 <&|formatting.myt:codepopper, link="sql" &>
-SELECT users.user_id, users.user_name, users.fullname, users.email_address
+SELECT users.user_id, users.user_name, users.password
 FROM users WHERE users.user_name = :users_user_name 
-AND users.fullname = :users_fullname
-{'users_user_name': 'jack', 'users_fullname': 'ed'}
+AND users.password = :users_password
+{'users_user_name': 'jack', 'users_password': 'dog'}
 </&>
 
                 # IN clause
 <&formatting.myt:poplink&>c = users.select(users.c.user_name.in_('jack', 'ed', 'fred')).execute()  
 <&|formatting.myt:codepopper, link="sql" &>
-SELECT users.user_id, users.user_name, users.fullname, users.email_address
+SELECT users.user_id, users.user_name, users.password
 FROM users WHERE users.user_name IN ('jack', 'ed', 'fred')
 </&>
                 
                 # join users and addresses together
 <&formatting.myt:poplink&>c = select([users, addresses], users.c.user_id==addresses.c.address_id).execute()  
 <&|formatting.myt:codepopper, link="sql" &>
-SELECT users.user_id, users.user_name, users.fullname, users.email_address, 
+SELECT users.user_id, users.user_name, users.password,  
 addresses.address_id, addresses.user_id, addresses.street, addresses.city, 
 addresses.state, addresses.zip
 FROM users, addresses
@@ -230,7 +228,7 @@ WHERE users.user_id = addresses.address_id
                     users.c.user_name=='fred'
                 )).execute()
 <&|formatting.myt:codepopper, link="sql" &>
-SELECT users.user_id, users.user_name, users.fullname, users.email_address
+SELECT users.user_id, users.user_name, users.password
 FROM users, addresses WHERE users.user_id = addresses.user_id 
 AND users.user_name = :users_user_name
 {'users_user_name': 'fred'}                
@@ -252,19 +250,19 @@ AND users.user_name = :users_user_name
         <P>The ORDER BY clause of a select statement can be specified as individual columns to order by within an array     specified via the <span class="codeline">order_by</span> parameter, and optional usage of the asc() and desc() functions:
             <&|formatting.myt:code &>
                 # straight order by
-<&formatting.myt:poplink&>c = users.select(order_by=[users.c.fullname]).execute() 
+<&formatting.myt:poplink&>c = users.select(order_by=[users.c.user_name]).execute() 
 <&|formatting.myt:codepopper, link="sql" &>
-SELECT users.user_id, users.user_name, users.fullname, users.email_address
-FROM users ORDER BY users.fullname                
+SELECT users.user_id, users.user_name, users.password
+FROM users ORDER BY users.user_name                
 </&>        
                 # descending/ascending order by on multiple columns
 <&formatting.myt:poplink&>c = users.select(
                         users.c.user_name>'J', 
-                        order_by=[desc(users.c.fullname), asc(users.c.user_name)]).execute() 
+                        order_by=[desc(users.c.user_id), asc(users.c.user_name)]).execute() 
 <&|formatting.myt:codepopper, link="sql" &>
-SELECT users.user_id, users.user_name, users.fullname, users.email_address
+SELECT users.user_id, users.user_name, users.password
 FROM users WHERE users.user_name > :users_user_name 
-ORDER BY users.fullname DESC, users.user_name ASC
+ORDER BY users.user_id DESC, users.user_name ASC
 {'users_user_name':'J'}
 </&>        
             </&>        

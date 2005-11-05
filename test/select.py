@@ -38,6 +38,22 @@ table4 = Table(
     schema = 'remote_owner'
 )
 
+users = Table('users', db,
+    Column('user_id', Integer, primary_key = True),
+    Column('user_name', String(40)),
+    Column('password', String(10)),
+)
+
+addresses = Table('addresses', db,
+    Column('address_id', Integer, primary_key = True),
+    Column('user_id', Integer, ForeignKey("users.user_id")),
+    Column('street', String(100)),
+    Column('city', String(80)),
+    Column('state', String(2)),
+    Column('zip', String(10))
+)
+
+
 class SQLTest(PersistTest):
     def runtest(self, clause, result, engine = None, params = None, checkparams = None):
         c = clause.compile(engine, params)
@@ -63,16 +79,16 @@ class SelectTest(SQLTest):
 myothertable.othername FROM mytable, myothertable")
 
     def testsubquery(self):
-        s = select([table], table.c.name == 'jack')
-        self.runtest(
-            select(
-                [s],
-                s.c.id == 7
-            )
-            ,
-        "SELECT myid, name, description FROM (SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.name = :mytable_name) WHERE myid = :myid")
+#        s = select([table], table.c.name == 'jack')
+ #       self.runtest(
+  #          select(
+   #             [s],
+#                s.c.id == 7
+#            )
+ #           ,
+  #      "SELECT myid, name, description FROM (SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.name = :mytable_name) WHERE myid = :myid")
         
-        sq = Select([table])
+        sq = select([table])
         self.runtest(
             sq.select(),
             "SELECT myid, name, description FROM (SELECT mytable.myid, mytable.name, mytable.description FROM mytable)"
@@ -315,19 +331,25 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
 
     def testcorrelatedsubquery(self):
         self.runtest(
-            select([table], table.c.id == select([table2.c.id], table.c.name == table2.c.name)),
+            table.select(table.c.id == select([table2.c.id], table.c.name == table2.c.name)),
             "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = (SELECT myothertable.otherid FROM myothertable WHERE mytable.name = myothertable.othername)"
         )
 
         self.runtest(
-            select([table], exists([1], table2.c.id == table.c.id)),
+            table.select(exists([1], table2.c.id == table.c.id)),
             "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE EXISTS (SELECT 1 FROM myothertable WHERE myothertable.otherid = mytable.myid)"
         )
 
-        s = subquery('sq2', [table], exists([1], table2.c.id == table.c.id))
+        talias = table.alias('ta')
+        s = subquery('sq2', [talias], exists([1], table2.c.id == talias.c.id))
         self.runtest(
             select([s, table])
-        ,"SELECT sq2.myid, sq2.name, sq2.description, mytable.myid, mytable.name, mytable.description FROM (SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE EXISTS (SELECT 1 FROM myothertable WHERE myothertable.otherid = mytable.myid)) sq2, mytable")
+            ,"SELECT sq2.myid, sq2.name, sq2.description, mytable.myid, mytable.name, mytable.description FROM (SELECT ta.myid, ta.name, ta.description FROM mytable ta WHERE EXISTS (SELECT 1 FROM myothertable WHERE myothertable.otherid = ta.myid)) sq2, mytable")
+
+        s = select([addresses.c.street], addresses.c.user_id==users.c.user_id).alias('s')
+        self.runtest(
+            select([users, s.c.street], from_obj=[s]),
+            """SELECT users.user_id, users.user_name, users.password, s.street FROM users, (SELECT addresses.street FROM addresses WHERE addresses.user_id = users.user_id) s""")
 
     def testin(self):
         self.runtest(select([table], table.c.id.in_(1, 2, 3)),
