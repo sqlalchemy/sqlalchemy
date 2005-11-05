@@ -79,14 +79,21 @@ class SelectTest(SQLTest):
 myothertable.othername FROM mytable, myothertable")
 
     def testsubquery(self):
-#        s = select([table], table.c.name == 'jack')
- #       self.runtest(
-  #          select(
-   #             [s],
-#                s.c.id == 7
-#            )
- #           ,
-  #      "SELECT myid, name, description FROM (SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.name = :mytable_name) WHERE myid = :myid")
+
+        # TODO: a subquery in a column clause.
+        #self.runtest(
+        #    select([table, select([table2.c.id])]),
+        #    """"""
+        #)
+
+        s = select([table], table.c.name == 'jack')
+        self.runtest(
+            select(
+                [s],
+                s.c.id == 7
+            )
+            ,
+        "SELECT myid, name, description FROM (SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.name = :mytable_name) WHERE myid = :myid")
         
         sq = select([table])
         self.runtest(

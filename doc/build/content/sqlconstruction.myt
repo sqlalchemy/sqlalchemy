@@ -361,28 +361,13 @@ AND addressb.street LIKE :addressb_street
                 FROM (SELECT users.user_id, users.user_name, users.password FROM users)                
                 
             </&>
-        <p>From there, one can see that a Select object can be used within other Selects just like a Table:
-        </p>
-            <&|formatting.myt:code &>
-                # select user ids for all users whos name starts with a "p"
-                s = select([users.c.user_id], users.c.user_name.like('p%'))
-            
-                # now select all addresses for those users
-                <&formatting.myt:poplink&>addresses.select(addresses.c.address_id.in_(s)).execute()
-<&|formatting.myt:codepopper, link="sql" &>
-SELECT addresses.address_id, addresses.user_id, addresses.street, 
-addresses.city, addresses.state, addresses.zip
-FROM addresses WHERE addresses.address_id IN 
-(SELECT users.user_id FROM users WHERE users.user_name LIKE :users_user_name)
-{'users_user_name': 'p%'}</&>
-            </&>
-        <p>Any Select, Join, or Alias object supports the same column accessors as a Table:
-        </p>
+        <p>Any Select, Join, or Alias object supports the same column accessors as a Table:</p>
         <&|formatting.myt:code &>
             >>> s = users.select()
             >>> [c.key for c in s.columns]
             ['user_id', 'user_name', 'password']            
         </&> 
+
         
         <p>
         When you use <span class="codeline">use_labels=True</span> in a Select object, the label version of the column names become the keys of the accessible columns.  In effect you can create your own "view objects":
@@ -406,25 +391,159 @@ WHERE addresses_city = :addresses_city
 {'addresses_city': 'San Francisco'}
 </&>
         </&>
+        <p>To specify a SELECT statement as one of the selectable units in a FROM clause, it usually should be given an alias.</p>
+        <&|formatting.myt:code &>
+            <&formatting.myt:poplink&>s = users.select().alias('users')
+            select([addresses, s]).execute()
+
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT addresses.address_id, addresses.user_id, addresses.street, addresses.city, 
+addresses.state, addresses.zip, u.user_id, u.user_name, u.password 
+FROM addresses, 
+(SELECT users.user_id, users.user_name, users.password FROM users) AS u
+{}
+</&>
+        </&>
+        
+        <p>Select objects can be used in a WHERE condition, in operators such as IN:</p>
+            <&|formatting.myt:code &>
+                # select user ids for all users whos name starts with a "p"
+                s = select([users.c.user_id], users.c.user_name.like('p%'))
+            
+                # now select all addresses for those users
+                <&formatting.myt:poplink&>addresses.select(addresses.c.address_id.in_(s)).execute()
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT addresses.address_id, addresses.user_id, addresses.street, 
+addresses.city, addresses.state, addresses.zip
+FROM addresses WHERE addresses.address_id IN 
+(SELECT users.user_id FROM users WHERE users.user_name LIKE :users_user_name)
+{'users_user_name': 'p%'}</&>
+            </&>
+
+        <P>The sql package supports embedding select statements into other select statements as the criterion in a WHERE condition, or as one of the "selectable" objects in the FROM list of the query.  It does not at the moment directly support embedding a SELECT statement as one of the column criterion for a statement, although this can be achieved via direct text insertion, described later.</p>
+        
         
         <&|doclib.myt:item, name="correlated", description="Correlated Subqueries" &>
+        <P>When a select object is embedded inside of another select object, and both objects reference the same table, SQLAlchemy makes the assumption that the table should be correlated from the child query to the parent query.
         <&|formatting.myt:code &>
-        <&formatting.myt:poplink&>s = select([addresses.c.street], addresses.c.user_id==users.c.user_id).alias('s')
-        select([users, s.c.street], from_obj=[s]).execute()
-<&|formatting.myt:codepopper, link="sql" &>
-SELECT users.user_id, users.user_name, users.password, s.street
-FROM users, (SELECT addresses.street FROM addresses
-WHERE addresses.user_id = users.user_id) s
-{}        
-</&>
+        # make an alias of a regular select.   
+        s = select([addresses.c.street], addresses.c.user_id==users.c.user_id).alias('s')
+        >>> str(s)
+        SELECT addresses.street FROM addresses, users 
+        WHERE addresses.user_id = users.user_id
+        
+        # now embed that select into another one.  the "users" table is removed from
+        # the embedded query's FROM list and is instead correlated to the parent query
+        s2 = select([users, s.c.street])
+        >>> str(s2)
+        SELECT users.user_id, users.user_name, users.password, s.street
+        FROM users, (SELECT addresses.street FROM addresses
+        WHERE addresses.user_id = users.user_id) s
 </&>
         </&>
         <&|doclib.myt:item, name="exists", description="EXISTS Clauses" &>
+        <p>An EXISTS clause can function as a higher-scaling version of an IN clause, and is usually used in a correlated fashion:</p>
+        <&|formatting.myt:code &>
+            # find all users who have an address on Green street:
+            <&formatting.myt:poplink&>users.select(
+                        exists(
+                            [addresses.c.address_id], 
+                            and_(
+                                addresses.c.user_id==users.c.user_id, 
+                                addresses.c.street.like('%Green%')
+                            )
+                        ))
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT users.user_id, users.user_name, users.password 
+FROM users WHERE EXISTS (SELECT addresses.address_id 
+FROM addresses WHERE addresses.user_id = users.user_id 
+AND addresses.street LIKE :addresses_street)
+{'addresses_street': '%Green%'}
+</&>
+        </&>
         </&>
     </&>
     <&|doclib.myt:item, name="unions", description="Unions" &>
+    <p>Unions come in two flavors, UNION and UNION ALL, which are available via module level functions or methods off a Selectable:</p>
+        <&|formatting.myt:code &>
+            <&formatting.myt:poplink&>union(
+                    addresses.select(addresses.c.street=='123 Green Street'),
+                    addresses.select(addresses.c.street=='44 Park Ave.'),
+                    addresses.select(addresses.c.street=='3 Mill Road'),
+                    order_by=[addresses.c.street]
+                ).execute()
+
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT addresses.address_id, addresses.user_id, addresses.street, 
+addresses.city, addresses.state, addresses.zip 
+FROM addresses WHERE addresses.street = :addresses_street 
+UNION 
+SELECT addresses.address_id, addresses.user_id, addresses.street, 
+addresses.city, addresses.state, addresses.zip 
+FROM addresses WHERE addresses.street = :addresses_street_1 
+UNION 
+SELECT addresses.address_id, addresses.user_id, addresses.street, 
+addresses.city, addresses.state, addresses.zip 
+FROM addresses WHERE addresses.street = :addresses_street_2 
+ORDER BY addresses.street
+{'addresses_street_1': '44 Park Ave.', 
+'addresses_street': '123 Green Street', 
+'addresses_street_2': '3 Mill Road'}
+</&>
+
+            <&formatting.myt:poplink&>users.select(
+                    users.c.user_id==7
+                  ).union_all(
+                      users.select(
+                          users.c.user_id==9
+                      ), 
+                      order_by=[users.c.user_id]   # order_by is an argument to union_all()
+                  ).execute()        
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT users.user_id, users.user_name, users.password 
+FROM users WHERE users.user_id = :users_user_id 
+UNION ALL 
+SELECT users.user_id, users.user_name, users.password 
+FROM users WHERE users.user_id = :users_user_id_1 
+ORDER BY users.user_id
+{'users_user_id_1': 9, 'users_user_id': 7}
+</&>
+        </&>
     </&>
     <&|doclib.myt:item, name="bindparams", description="Custom Bind Parameters" &>
+    <p>Throughout all these examples, SQLAlchemy is busy creating bind parameters wherever literal expressions occur.  You can also specify your own bind parameters with your own names, and use the same statement repeatedly:</p>
+    <&|formatting.myt:code &>
+        s = users.select(users.c.user_name==bindparam('username'))
+        <&formatting.myt:poplink&>s.execute(username='fred')
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT users.user_id, users.user_name, users.password 
+FROM users WHERE users.user_name = :username
+{'username': 'fred'}
+</&>
+        <&formatting.myt:poplink&>s.execute(username='jane')
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT users.user_id, users.user_name, users.password 
+FROM users WHERE users.user_name = :username
+{'username': 'jane'}
+</&>
+        <&formatting.myt:poplink&>s.execute(username='mary')
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT users.user_id, users.user_name, users.password 
+FROM users WHERE users.user_name = :username
+{'username': 'mary'}
+</&>
+    </&>
+    <p><span class="codeline">executemany()</span> is also available, but that applies more to INSERT/UPDATE/DELETE, described later.</p>
+
+    <&|doclib.myt:item, name="precompiling", description="Precompiling a Query" &>
+    <p>By throwing the <span class="codeline">compile()</span> method onto the end of any query object, the query can be "compiled" by the DBEngine into a <span class="codeline">sqlalchemy.sql.Compiled</span> object just once, and the resulting compiled object reused, which eliminates repeated internal compilation of the SQL string:</p>
+        <&|formatting.myt:code &>
+            s = users.select(users.c.user_name==bindparam('username')).compile()
+            s.execute(username='fred')
+            s.execute(username='jane')
+            s.execute(username='mary')
+        </&>
+    </&>
     </&>
     <&|doclib.myt:item, name="textual", description="Literal Text Blocks" &>
     </&>
