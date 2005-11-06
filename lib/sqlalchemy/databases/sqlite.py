@@ -87,6 +87,7 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
     def __init__(self, opts, **params):
         self.filename = opts.pop('filename')
         self.opts = opts or {}
+        params['poolclass'] = sqlalchemy.pool.SingletonThreadPool
         ansisql.ANSISQLEngine.__init__(self, **params)
 
     def post_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
