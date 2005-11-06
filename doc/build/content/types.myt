@@ -35,19 +35,19 @@ class BOOLEAN(Boolean): pass
 </&>
 
 <&|doclib.myt:item, name="custom", description="Creating your Own Types" &>
-<p>Types also support pre-processing of query parameters as well as post-processing of result set data.  You can make your own type classes and specify them just like the standard types:</p>
+<p>Types also support pre-processing of query parameters as well as post-processing of result set data.  You can make your own classes to perform these operations.  They are specified by subclassing the desired type class as well as the special mixin TypeDecorator, which manages the adaptation of the underlying type to a database-specific type:</p>
 <&|formatting.myt:code&>
     import sqlalchemy.types as types
 
-    class MyType(types.String):
-        """basic type that subclasses String, prefixes values with "PREFIX:" on 
+    class MyType(types.TypeDecorator, types.String):
+        """basic type that decorates String, prefixes values with "PREFIX:" on 
         the way in and strips it off on the way out."""
         def convert_bind_param(self, value):
             return "PREFIX:" + value
         def convert_result_value(self, value):
             return value[7:]
 </&>
-<p>Another example, which illustrates a fully defined datatype:</p>
+<p>Another example, which illustrates a fully defined datatype.  This just overrides the base type class TypeEngine:</p>
 <&|formatting.myt:code&>
     import sqlalchemy.types as types
 

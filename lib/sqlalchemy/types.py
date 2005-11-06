@@ -15,7 +15,7 @@
 # along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-__ALL__ = [
+__ALL__ = [ 'TypeEngine', 'TypeDecorator', 'NullTypeEngine',
             'INT', 'CHAR', 'VARCHAR', 'TEXT', 'FLOAT', 'DECIMAL', 
             'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN', 'String', 'Integer', 'Numeric', 'DateTime', 'Binary', 'Boolean', 'NULLTYPE'
             ]
@@ -55,6 +55,16 @@ class NullTypeEngine(TypeEngine):
     def convert_result_value(self, value):
         return value
 
+class TypeDecorator(object):
+    def get_col_spec(self):
+        return self.extended.get_col_spec()
+    def adapt(self, typeobj):
+        t = self.__class__.__mro__[2]
+        print repr(t)
+        c = self.__class__()
+        c.extended = t.adapt(self, typeobj)
+        return c
+    
 class String(NullTypeEngine):
     def __init__(self, length = None):
         self.length = length
