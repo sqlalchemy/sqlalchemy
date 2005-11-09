@@ -99,8 +99,7 @@ class Table(SchemaItem):
             self.fullname = "%s.%s" % (self.schema, self.name)
         else:
             self.fullname = self.name
-            
-
+    
     def reload_values(self, *args):
         self.columns = OrderedProperties()
         self.c = self.columns
