@@ -322,16 +322,19 @@ class ScopedRegistry(object):
         self.application = createfunc()
                 
 class DependencySorter(object):
-    """creates a "dependency tree" across a list of objects, using a series of 'dependency relationships'
-    expressed as a list of tuples to determine its shape.  the tuples are of the form (x,y) which indicate 
-    'y is dependent on x'.
-    a list of additional elements who may or may not be expressed within the tuples is also supplied.
+    """creates a "dependency tree" across a list of objects, using a series of 
+    'dependency relationships' expressed as a list of tuples to determine its shape.  
+    the tuples are of the form (x,y) which indicate 'y is dependent on x'.
+    a list of additional elements who may or may not be expressed within the tuples 
+    is also supplied.
     
     If a tuple contains the same value dependent on itself, the corresponding node
     is marked as "circular", indicating the node is dependent on itself.
     """
     class Node:
-        """represents a node in a tree.  stores an 'item' which represents the dependent thing we are talking about.  if node 'a' is an ancestor node of node 'b', it means 'a's item is *not* dependent on that of 'b'."""
+        """represents a node in a tree.  stores an 'item' which represents the 
+        dependent thing we are talking about.  if node 'a' is an ancestor node of 
+        node 'b', it means 'a's item is *not* dependent on that of 'b'."""
         def __init__(self, item):
             #print "new node on " + str(item)
             self.item = item
@@ -339,7 +342,8 @@ class DependencySorter(object):
             self.parent = None
             self.circular = False
         def append(self, node):
-            """appends the given node as a child on this node.  removes the node from its preexisting parent."""
+            """appends the given node as a child on this node.  removes the node from 
+            its preexisting parent."""
             if node.parent is not None:
                 del node.parent.children[node]
             self.children.append(node)
@@ -360,7 +364,8 @@ class DependencySorter(object):
                 n = n.parent
             return n
         def get_sibling_ancestor(self, node):
-            """returns the node which is an ancestor of this node and is a sibling of the given node, or else returns this node's root node."""
+            """returns the node which is an ancestor of this node and is a sibling 
+            of the given node, or else returns this node's root node."""
             n = self
             while n.parent is not None and n.parent is not node.parent:
                 n = n.parent
