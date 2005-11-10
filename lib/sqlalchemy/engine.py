@@ -15,7 +15,8 @@
 # along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-"""builds upon the schema and sql packages to provide a central object for tying schema objects and sql constructs to database-specific query compilation and execution"""
+"""builds upon the schema and sql packages to provide a central object for tying schema
+objects and sql constructs to database-specific query compilation and execution"""
 
 import sqlalchemy.schema as schema
 import sqlalchemy.pool
@@ -29,7 +30,9 @@ def create_engine(name, *args ,**kwargs):
     """creates a new SQLEngine instance.
     
     name - the type of engine to load, i.e. 'sqlite', 'postgres', 'oracle'
-    *args, **kwargs - sent directly to the specific engine instance as connect arguments, options.
+    
+    *args, **kwargs - sent directly to the specific engine instance as connect arguments,
+    options.
     """
     module = getattr(__import__('sqlalchemy.databases.%s' % name).databases, name)
     return module.engine(*args, **kwargs)
@@ -46,7 +49,8 @@ class SchemaIterator(schema.SchemaVisitor):
     def __init__(self, sqlproxy, **params):
         """initializes this SchemaIterator and initializes its buffer.
         
-        sqlproxy - a callable function returned by SQLEngine.proxy(), which executes a statement plus optional parameters.
+        sqlproxy - a callable function returned by SQLEngine.proxy(), which executes a
+        statement plus optional parameters.
         """
         self.sqlproxy = sqlproxy
         self.buffer = StringIO.StringIO()
@@ -56,14 +60,17 @@ class SchemaIterator(schema.SchemaVisitor):
         self.buffer.write(s)
         
     def execute(self):
-        """executes the contents of the SchemaIterator's buffer using its sql proxy and clears out the buffer."""
+        """executes the contents of the SchemaIterator's buffer using its sql proxy and
+        clears out the buffer."""
         try:
             return self.sqlproxy(self.buffer.getvalue())
         finally:
             self.buffer.truncate(0)
 
 class SQLEngine(schema.SchemaEngine):
-    """base class for a series of database-specific engines.  serves as an abstract factory for implementation objects as well as database connections, transactions, SQL generators, etc."""
+    """base class for a series of database-specific engines.  serves as an abstract factory
+    for implementation objects as well as database connections, transactions, SQL generators,
+    etc."""
     
     def __init__(self, pool = None, echo = False, logger = None, **params):
         # get a handle on the connection pool via the connect arguments
@@ -111,7 +118,9 @@ class SQLEngine(schema.SchemaEngine):
         table.accept_visitor(self.schemadropper(self.proxy(), **params))
 
     def compile(self, statement, bindparams, **kwargs):
-        """given a sql.ClauseElement statement plus optional bind parameters, creates a new instance of this engine's SQLCompiler, compiles the ClauseElement, and returns the newly compiled object."""
+        """given a sql.ClauseElement statement plus optional bind parameters, creates a new
+        instance of this engine's SQLCompiler, compiles the ClauseElement, and returns the
+        newly compiled object."""
         compiler = self.compiler(statement, bindparams, **kwargs)
         statement.accept_visitor(compiler)
         compiler.after_compile()
@@ -138,19 +147,22 @@ class SQLEngine(schema.SchemaEngine):
         raise NotImplementedError()
 
     def connect_args(self):
-        """subclasses override this method to provide a two-item tuple containing the *args and **kwargs used
-        to establish a connection."""
+        """subclasses override this method to provide a two-item tuple containing the *args
+        and **kwargs used to establish a connection."""
         raise NotImplementedError()
 
     def dbapi(self):
-        """subclasses override this method to provide the DBAPI module used to establish connections."""
+        """subclasses override this method to provide the DBAPI module used to establish
+        connections."""
         raise NotImplementedError()
 
     def do_begin(self, connection):
-        """implementations might want to put logic here for turning autocommit on/off, etc."""
+        """implementations might want to put logic here for turning autocommit on/off,
+        etc."""
         pass
     def do_rollback(self, connection):
-        """implementations might want to put logic here for turning autocommit on/off, etc."""
+        """implementations might want to put logic here for turning autocommit on/off,
+        etc."""
         connection.rollback()
     def do_commit(self, connection):
         """implementations might want to put logic here for turning autocommit on/off, etc."""
@@ -223,28 +235,33 @@ class SQLEngine(schema.SchemaEngine):
         pass
 
     def execute(self, statement, parameters, connection = None, echo = None, typemap = None, commit=False, **kwargs):
-        """executes the given string-based SQL statement with the given parameters.  This is a direct interface to a
-        DBAPI connection object.  The parameters may be a dictionary, or an array of dictionaries.  If an array
-        of dictionaries is sent, executemany will be performed on the cursor instead of execute.
-        
-        If the current thread has specified a transaction begin() for this engine, the statement will be executed
-        in the context of the current transactional connection.  Otherwise, a commit() will be performed immediately
-        after execution, since the local pooled connection is returned to the pool after execution without a transaction
-        set up.
-        
-        In all error cases, a rollback() is immediately performed on the connection before propigating the 
-        exception outwards.
-        
+        """executes the given string-based SQL statement with the given parameters.  This is
+        a direct interface to a DBAPI connection object.  The parameters may be a dictionary,
+        or an array of dictionaries.  If an array of dictionaries is sent, executemany will
+        be performed on the cursor instead of execute.
+
+        If the current thread has specified a transaction begin() for this engine, the
+        statement will be executed in the context of the current transactional connection.
+        Otherwise, a commit() will be performed immediately after execution, since the local
+        pooled connection is returned to the pool after execution without a transaction set
+        up.
+
+        In all error cases, a rollback() is immediately performed on the connection before
+        propigating the exception outwards.
+
         Other options include:
-        
-        connection  -  a DBAPI connection to use for the execute.  If None, a connection is pulled from this
-                       engine's connection pool.
-        echo        -  enables echo for this execution, which causes all SQL and parameters to be dumped to the
-                       engine's logging output before execution.
-        typemap     -  a map of column names mapped to sqlalchemy.types.TypeEngine objects.  These will be
-                       passed to the created ResultProxy to perform post-processing on result-set values.               
-        commit      -  if True, will automatically commit the statement after completion.           
-                       """
+
+        connection  -  a DBAPI connection to use for the execute.  If None, a connection is
+                       pulled from this engine's connection pool.
+
+        echo        -  enables echo for this execution, which causes all SQL and parameters
+                       to be dumped to the engine's logging output before execution.
+
+        typemap     -  a map of column names mapped to sqlalchemy.types.TypeEngine objects.
+                       These will be passed to the created ResultProxy to perform
+                       post-processing on result-set values.
+
+        commit      -  if True, will automatically commit the statement after completion. """
         if parameters is None:
             parameters = {}
 
@@ -286,14 +303,15 @@ class SQLEngine(schema.SchemaEngine):
 
 
 class ResultProxy:
-    """wraps a DBAPI cursor object to provide access to row columns based on integer position, case-insensitive column name,
-    or by schema.Column object. e.g.:
+    """wraps a DBAPI cursor object to provide access to row columns based on integer
+    position, case-insensitive column name, or by schema.Column object. e.g.:
     
     row = fetchone()
     col1 = row[0]    # access via integer position
     col2 = row['col2']   # access via name
     col3 = row[mytable.c.mycol]   # access via Column object.  
-                                  #the Column's 'label', 'key', and 'name' properties are searched in that order.
+                                  #the Column's 'label', 'key', and 'name' properties are
+                                  # searched in that order.
     
     """
     class AmbiguousColumn(object):
