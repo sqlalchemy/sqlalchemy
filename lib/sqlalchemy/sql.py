@@ -46,9 +46,9 @@ def outerjoin(left, right, onclause, **kwargs):
     return Join(left, right, onclause, isouter = True, **kwargs)
 
 def join(left, right, onclause, **kwargs):
-    """returns a JOIN clause element (regular inner join), given the left and right hand expressions,
-    as well as the ON condition's expression.  To chain joins together, use the resulting
-    Join object's "join()" or "outerjoin()" methods."""
+    """returns a JOIN clause element (regular inner join), given the left and right 
+    hand expressions, as well as the ON condition's expression.  To chain joins 
+    together, use the resulting Join object's "join()" or "outerjoin()" methods."""
     return Join(left, right, onclause, **kwargs)
 
 def select(columns, whereclause = None, from_obj = [], **kwargs):
@@ -57,7 +57,8 @@ def select(columns, whereclause = None, from_obj = [], **kwargs):
     'columns' is a list of columns and/or selectable items to select columns from
     'whereclause' is a text or ClauseElement expression which will form the WHERE clause
     'from_obj' is an list of additional "FROM" objects, such as Join objects, which will 
-    extend or override the default "from" objects created from the column list and the whereclause.
+    extend or override the default "from" objects created from the column list and the 
+    whereclause.
     **kwargs - additional parameters for the Select object.
     """
     return Select(columns, whereclause = whereclause, from_obj = from_obj, **kwargs)
@@ -66,19 +67,19 @@ def insert(table, values = None, **kwargs):
     """returns an INSERT clause element.
     
     'table' is the table to be inserted into.
-    'values' is a dictionary which specifies the column specifications of the INSERT, and is optional.  
-    If left as None, the
-    column specifications are determined from the bind parameters used during the compile phase of the
-    INSERT statement.  If the bind parameters also are None during the compile phase, then the column
+    'values' is a dictionary which specifies the column specifications of the INSERT, 
+    and is optional.  If left as None, the column specifications are determined from the 
+    bind parameters used during the compile phase of the INSERT statement.  If the 
+    bind parameters also are None during the compile phase, then the column
     specifications will be generated from the full list of table columns.
 
-    If both 'values' and compile-time bind parameters are present, the compile-time bind parameters
-    override the information specified within 'values' on a per-key basis.
+    If both 'values' and compile-time bind parameters are present, the compile-time 
+    bind parameters override the information specified within 'values' on a per-key basis.
 
     The keys within 'values' can be either Column objects or their string identifiers.  
     Each key may reference one of: a literal data value (i.e. string, number, etc.), a Column object,
-    or a SELECT statement.  If a SELECT statement is specified which references this INSERT statement's
-    table, the statement will be correlated against the INSERT statement.  
+    or a SELECT statement.  If a SELECT statement is specified which references this INSERT 
+    statement's table, the statement will be correlated against the INSERT statement.  
     """
     return Insert(table, values, **kwargs)
 
@@ -87,19 +88,19 @@ def update(table, whereclause = None, values = None, **kwargs):
     
     'table' is the table to be updated.
     'whereclause' is a ClauseElement describing the WHERE condition of the UPDATE statement.
-    'values' is a dictionary which specifies the SET conditions of the UPDATE, and is optional.  
-    If left as None, the
-    SET conditions are determined from the bind parameters used during the compile phase of the
-    UPDATE statement.  If the bind parameters also are None during the compile phase, then the SET
-    conditions will be generated from the full list of table columns.
-    
-    If both 'values' and compile-time bind parameters are present, the compile-time bind parameters
-    override the information specified within 'values' on a per-key basis.
-    
-    The keys within 'values' can be either Column objects or their string identifiers.  
-    Each key may reference one of: a literal data value (i.e. string, number, etc.), a Column object,
-    or a SELECT statement.  If a SELECT statement is specified which references this UPDATE statement's
-    table, the statement will be correlated against the UPDATE statement.  
+    'values' is a dictionary which specifies the SET conditions of the UPDATE, and is
+    optional. If left as None, the SET conditions are determined from the bind parameters
+    used during the compile phase of the UPDATE statement.  If the bind parameters also are
+    None during the compile phase, then the SET conditions will be generated from the full
+    list of table columns.
+
+    If both 'values' and compile-time bind parameters are present, the compile-time bind
+    parameters override the information specified within 'values' on a per-key basis.
+
+    The keys within 'values' can be either Column objects or their string identifiers. Each
+    key may reference one of: a literal data value (i.e. string, number, etc.), a Column
+    object, or a SELECT statement.  If a SELECT statement is specified which references this
+    UPDATE statement's table, the statement will be correlated against the UPDATE statement.
     """
     return Update(table, whereclause, values, **kwargs)
 
@@ -189,11 +190,11 @@ class ClauseVisitor(schema.SchemaVisitor):
     
 class Compiled(ClauseVisitor):
     """represents a compiled SQL expression.  the __str__ method of the Compiled object
-    should produce the actual text of the statement.  Compiled objects are specific to the database
-    library that created them, and also may or may not be specific to the columns referenced 
-    within a particular set of bind parameters.  In no case should the Compiled object be dependent
-    on the actual values of those bind parameters, even though it may reference those values
-    as defaults."""
+    should produce the actual text of the statement.  Compiled objects are specific to the
+    database library that created them, and also may or may not be specific to the columns
+    referenced within a particular set of bind parameters.  In no case should the Compiled
+    object be dependent on the actual values of those bind parameters, even though it may
+    reference those values as defaults."""
 
     def __init__(self, engine, statement, bindparams):
         self.engine = engine
@@ -233,15 +234,17 @@ class ClauseElement(object):
     """
 
     def hash_key(self):
-        """returns a string that uniquely identifies the concept this ClauseElement represents.
-        
-        two ClauseElements can have the same value for hash_key() iff they both correspond to the 
-        exact same generated SQL.  This allows the hash_key() values of a collection of ClauseElements
-        to be constructed into a larger identifying string for the purpose of caching a SQL expression.
-        
-        Note that since ClauseElements may be mutable, the hash_key() value is subject to change
-        if the underlying structure of the ClauseElement changes."""
-        raise NotImplementedError(repr(self))
+        """returns a string that uniquely identifies the concept this ClauseElement
+        represents.
+
+        two ClauseElements can have the same value for hash_key() iff they both correspond to
+        the exact same generated SQL.  This allows the hash_key() values of a collection of
+        ClauseElements to be constructed into a larger identifying string for the purpose of
+        caching a SQL expression.
+
+        Note that since ClauseElements may be mutable, the hash_key() value is subject to
+        change if the underlying structure of the ClauseElement changes.""" raise
+        NotImplementedError(repr(self))
     def _get_from_objects(self):
         raise NotImplementedError(repr(self))
     def _process_from_dict(self, data, asfrom):
@@ -253,10 +256,10 @@ class ClauseElement(object):
         raise NotImplementedError(repr(self))
 
     def copy_container(self):
-        """should return a copy of this ClauseElement, iff this ClauseElement contains other 
-        ClauseElements.  Otherwise, it should be left alone to return self.  This is used to create
-        copies of expression trees that still reference the same "leaf nodes".  The new structure
-        can then be restructured without affecting the original."""
+        """should return a copy of this ClauseElement, iff this ClauseElement contains other
+        ClauseElements.  Otherwise, it should be left alone to return self.  This is used to
+        create copies of expression trees that still reference the same "leaf nodes".  The
+        new structure can then be restructured without affecting the original."""
         return self
 
 
@@ -280,9 +283,9 @@ class ClauseElement(object):
         return str(self.compile())
         
     def execute(self, *multiparams, **params):
-        """compiles and executes this SQL expression using its underlying SQLEngine.
-        the given **params are used as bind parameters when compiling and executing the expression. 
-        the DBAPI cursor object is returned."""
+        """compiles and executes this SQL expression using its underlying SQLEngine. the
+        given **params are used as bind parameters when compiling and executing the
+        expression. the DBAPI cursor object is returned."""
         e = self.engine
         if len(multiparams):
             bindparams = multiparams[0]
@@ -538,7 +541,8 @@ class Selectable(FromClause):
     def union_all(self, other, **kwargs):
         return union_all(self, other, **kwargs)
     def group_parenthesized(self):
-        """indicates if this Selectable requires parenthesis when grouped into a compound statement"""
+        """indicates if this Selectable requires parenthesis when grouped into a compound
+        statement"""
         return True
         
 class Join(Selectable):
@@ -561,7 +565,8 @@ class Join(Selectable):
     primary_keys = property (lambda self: [c for c in self.left.columns if c.primary_key] + [c for c in self.right.columns if c.primary_key])
 
     def group_parenthesized(self):
-        """indicates if this Selectable requires parenthesis when grouped into a compound statement"""
+        """indicates if this Selectable requires parenthesis when grouped into a compound
+        statement"""
         return True
 
     def hash_key(self):
@@ -770,7 +775,8 @@ class Select(Selectable):
             self.order_by(*order_by)
 
     class CorrelatedVisitor(ClauseVisitor):
-        """visits a clause, locates any Select clauses, and tells them that they should correlate their FROM list to that of their parent."""
+        """visits a clause, locates any Select clauses, and tells them that they should
+        correlate their FROM list to that of their parent."""
         def __init__(self, select, is_where):
             self.select = select
             self.is_where = is_where
