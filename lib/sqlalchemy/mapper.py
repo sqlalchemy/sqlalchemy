@@ -16,8 +16,8 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-the mapper package provides object-relational functionality, building upon the schema and sql packages
-and tying operations to class properties and constructors.
+the mapper package provides object-relational functionality, building upon the schema and sql
+packages and tying operations to class properties and constructors.
 """
 import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
@@ -30,8 +30,8 @@ __ALL__ = ['eagermapper', 'eagerloader', 'lazymapper', 'lazyloader', 'eagerload'
         'mapper', 'lazyloader', 'lazymapper', 'clear_mappers', 'objectstore', 'sql', 'MapperExtension']
 
 def relation(*args, **params):
-    """provides a relationship of a primary Mapper to a secondary Mapper, which corresponds to a parent-child
-    or associative table relationship."""
+    """provides a relationship of a primary Mapper to a secondary Mapper, which corresponds
+    to a parent-child or associative table relationship."""
     if isinstance(args[0], type) and len(args) == 1:
         return _relation_loader(*args, **params)
     elif isinstance(args[0], Mapper):
@@ -52,7 +52,7 @@ def _relation_mapper(class_, table=None, secondary=None, primaryjoin=None, secon
 
 class assignmapper(object):
     """provides a property object that will instantiate a Mapper for a given class the first
-    time it is called off of the object.  This is useful for attaching a Mapper to a class 
+    time it is called off of the object.  This is useful for attaching a Mapper to a class
     that has dependencies on other classes and tables which may not have been defined yet."""
     def __init__(self, table, class_ = None, **kwargs):
         self.table = table
@@ -136,8 +136,9 @@ def class_mapper(class_):
 
         
 class Mapper(object):
-    """Persists object instances to and from schema.Table objects via the sql package.  Instances of this class
-    should be constructed through this package's mapper() or relation() function."""
+    """Persists object instances to and from schema.Table objects via the sql package.
+    Instances of this class should be constructed through this package's mapper() or
+    relation() function."""
     def __init__(self, 
                 hashkey, 
                 class_, 
@@ -269,9 +270,9 @@ class Mapper(object):
         return self.hashkey
 
     def _init_class(self):
-        """sets up our classes' overridden __init__ method, this mappers hash key as its '_mapper' property,
-        and our columns as its 'c' property.  if the class already had a mapper, the old __init__ method
-        is kept the same."""
+        """sets up our classes' overridden __init__ method, this mappers hash key as its
+        '_mapper' property, and our columns as its 'c' property.  if the class already had a
+        mapper, the old __init__ method is kept the same."""
         if not hasattr(self.class_, '_mapper'):
             oldinit = self.class_.__init__
             def init(self, *args, **kwargs):
@@ -407,8 +408,9 @@ class Mapper(object):
         self.columntoproperty[column][0].setattr(obj, value)
 
     def save_obj(self, objects, uow):
-        """called by a UnitOfWork object to save objects, which involves either an INSERT
-        or an UPDATE statement for each table used by this mapper, for each element of the list."""
+        """called by a UnitOfWork object to save objects, which involves either an INSERT or
+        an UPDATE statement for each table used by this mapper, for each element of the
+        list."""
                 
         for table in self.tables:
             # loop thru tables in the outer loop, objects on the inner loop.
@@ -517,12 +519,11 @@ class Mapper(object):
         return objectstore.get_row_key(row, self.class_, self.primarytable, self.primary_keys[self.table])
 
     def _instance(self, row, imap, result = None, populate_existing = False):
-        """pulls an object instance from the given row and appends it to the given result list.
-        if the instance already exists in the given identity map, its not added.  in either
-        case, executes all the property loaders on the instance to also process extra information
-        in the row."""
+        """pulls an object instance from the given row and appends it to the given result
+        list. if the instance already exists in the given identity map, its not added.  in
+        either case, executes all the property loaders on the instance to also process extra
+        information in the row."""
 
-            
         # look in main identity map.  if its there, we dont do anything to it,
         # including modifying any of its related items lists, as its already
         # been exposed to being modified by the application.
@@ -585,8 +586,8 @@ class MapperProperty:
     """an element attached to a Mapper that describes and assists in the loading and saving 
     of an attribute on an object instance."""
     def execute(self, instance, row, identitykey, imap, isnew):
-        """called when the mapper receives a row.  instance is the parent instance corresponding
-        to the row. """
+        """called when the mapper receives a row.  instance is the parent instance
+        corresponding to the row. """
         raise NotImplementedError()
     def _copy(self):
         raise NotImplementedError()
@@ -641,8 +642,8 @@ class PropertyLoader(MapperProperty):
     RIGHT = 1
     CENTER = 2
 
-    """describes an object property that holds a single item or list of items that correspond to a related
-    database table."""
+    """describes an object property that holds a single item or list of items that correspond
+    to a related database table."""
     def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey = None, uselist = None, private = False, thiscol = None, **kwargs):
         self.uselist = uselist
         self.argument = argument
