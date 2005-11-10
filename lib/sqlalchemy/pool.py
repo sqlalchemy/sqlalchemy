@@ -31,22 +31,40 @@ except:
 proxies = {}
 
 def manage(module, **params):
-    """given a DBAPI2 module and pool management parameters, returns a proxy for the module that will
-    automatically pool connections.  Options are delivered to an underlying DBProxy object.
+    """given a DBAPI2 module and pool management parameters, returns a proxy for the module
+    that will automatically pool connections.  Options are delivered to an underlying DBProxy
+    object.
 
     Arguments:
     module : a DBAPI2 database module.
     
     Options:
-    echo=False : if set to True, connections being pulled and retrieved from/to the pool will be logged to the standard output, as well as pool sizing information.
+    echo=False : if set to True, connections being pulled and retrieved from/to the pool will
+    be logged to the standard output, as well as pool sizing information.
 
-    use_threadlocal=True : if set to True, repeated calls to connect() within the same application thread will be guaranteed to return the same connection object, if one has already been retrieved from the pool and has not been returned yet. This allows code to retrieve a connection from the pool, and then while still holding on to that connection, to call other functions which also ask the pool for a connection of the same arguments; those functions will act upon the same connection that the calling method is using.
+    use_threadlocal=True : if set to True, repeated calls to connect() within the same
+    application thread will be guaranteed to return the same connection object, if one has
+    already been retrieved from the pool and has not been returned yet. This allows code to
+    retrieve a connection from the pool, and then while still holding on to that connection,
+    to call other functions which also ask the pool for a connection of the same arguments;
+    those functions will act upon the same connection that the calling method is using.
 
-    poolclass=QueuePool : the default class used by the pool module to provide pooling. QueuePool uses the Python Queue.Queue class to maintain a list of available connections.
+    poolclass=QueuePool : the default class used by the pool module to provide pooling.
+    QueuePool uses the Python Queue.Queue class to maintain a list of available connections.
 
-    pool_size=5 : used by QueuePool - the size of the pool to be maintained. This is the largest number of connections that will be kept persistently in the pool. Note that the pool begins with no connections; once this number of connections is requested, that number of connections will remain.
+    pool_size=5 : used by QueuePool - the size of the pool to be maintained. This is the
+    largest number of connections that will be kept persistently in the pool. Note that the
+    pool begins with no connections; once this number of connections is requested, that
+    number of connections will remain.
 
-    max_overflow=10 : the maximum overflow size of the pool. When the number of checked-out connections reaches the size set in pool_size, additional connections will be returned up to this limit. When those additional connections are returned to the pool, they are disconnected and discarded. It follows then that the total number of simultaneous connections the pool will allow is pool_size + max_overflow, and the total number of "sleeping" connections the pool will allow is pool_size. max_overflow can be set to -1 to indicate no overflow limit; no limit will be placed on the total number of concurrent connections.
+    max_overflow=10 : the maximum overflow size of the pool. When the number of checked-out
+    connections reaches the size set in pool_size, additional connections will be returned up
+    to this limit. When those additional connections are returned to the pool, they are
+    disconnected and discarded. It follows then that the total number of simultaneous
+    connections the pool will allow is pool_size + max_overflow, and the total number of
+    "sleeping" connections the pool will allow is pool_size. max_overflow can be set to -1 to
+    indicate no overflow limit; no limit will be placed on the total number of concurrent
+    connections.
     
     """
     try:
@@ -113,7 +131,8 @@ class CursorFairy(object):
         return getattr(self.cursor, key)
 
 class SingletonThreadPool(Pool):
-    """Maintains one connection per each thread, never moving to another thread.  this is used for SQLite and other databases with a similar restriction."""
+    """Maintains one connection per each thread, never moving to another thread.  this is
+    used for SQLite and other databases with a similar restriction."""
     def __init__(self, creator, **params):
         params['use_threadlocal'] = False
         Pool.__init__(self, **params)
@@ -182,7 +201,8 @@ class QueuePool(Pool):
         
 
 class DBProxy(object):
-    """proxies a DBAPI2 connect() call to a pooled connection keyed to the specific connect parameters."""
+    """proxies a DBAPI2 connect() call to a pooled connection keyed to the specific connect
+    parameters."""
     
     def __init__(self, module, poolclass = QueuePool, **params):
         """
@@ -212,11 +232,12 @@ class DBProxy(object):
             return pool
         
     def connect(self, *args, **params):
-        """connects to a database using this DBProxy's module and the given connect arguments.  if the
-        arguments match an existing pool, the connection will be returned from the pool's current 
-        thread-local connection instance, or if there is no thread-local connection instance it will
-        be checked out from the set of pooled connections.  If the pool has no available connections
-        and allows new connections to be created, a new database connection will be made."""
+        """connects to a database using this DBProxy's module and the given connect
+        arguments.  if the arguments match an existing pool, the connection will be returned
+        from the pool's current thread-local connection instance, or if there is no
+        thread-local connection instance it will be checked out from the set of pooled
+        connections.  If the pool has no available connections and allows new connections to
+        be created, a new database connection will be made."""
         return self.get_pool(*args, **params).connect()
     
     def _serialize(self, *args, **params):
