@@ -20,8 +20,9 @@ import sqlalchemy.util as util
 import weakref
 
 class SmartProperty(object):
-    """attaches AttributeManager functionality to the property accessors of a class.  all instances
-    of the class will retrieve and modify their properties via an AttributeManager."""
+    """attaches AttributeManager functionality to the property accessors of a class.  all
+    instances of the class will retrieve and modify their properties via an
+    AttributeManager."""
     def __init__(self, manager):
         self.manager = manager
     def attribute_registry(self):
