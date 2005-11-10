@@ -16,9 +16,9 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 
-"""maintains all currently loaded objects in memory,
-using the "identity map" pattern.  Also provides a "unit of work" object which tracks changes
-to objects so that they may be properly persisted within a transactional scope."""
+"""maintains all currently loaded objects in memory, using the "identity map" pattern.  Also
+provides a "unit of work" object which tracks changes to objects so that they may be properly
+persisted within a transactional scope."""
 
 import thread
 import sqlalchemy
@@ -28,29 +28,34 @@ import weakref
 import string
 
 def get_id_key(ident, class_, table):
-    """returns an identity-map key for use in storing/retrieving an item from the identity map, given
-    a tuple of the object's primary key values.
+    """returns an identity-map key for use in storing/retrieving an item from the identity
+    map, given a tuple of the object's primary key values.
+
+    ident - a tuple of primary key values corresponding to the object to be stored.  these
+    values should be in the same order as the primary keys of the table 
     
-    ident - a tuple of primary key values corresponding to the object to be stored.  these values
-    should be in the same order as the primary keys of the table
     class_ - a reference to the object's class
+
     table - a Table object where the object's primary fields are stored.
-    selectable - a Selectable object which represents all the object's column-based fields.  this Selectable
-    may be synonymous with the table argument or can be a larger construct containing that table.
-    return value: a tuple object which is used as an identity key.
-    """
+
+    selectable - a Selectable object which represents all the object's column-based fields.
+    this Selectable may be synonymous with the table argument or can be a larger construct
+    containing that table. return value: a tuple object which is used as an identity key. """
     return (class_, repr(table), tuple(ident))
 def get_row_key(row, class_, table, primary_keys):
-    """returns an identity-map key for use in storing/retrieving an item from the identity map, given
-    a result set row.
-    
-    row - a sqlalchemy.dbengine.RowProxy instance or other map corresponding result-set column
-    names to their values within a row.
+    """returns an identity-map key for use in storing/retrieving an item from the identity
+    map, given a result set row.
+
+    row - a sqlalchemy.dbengine.RowProxy instance or other map corresponding result-set
+    column names to their values within a row.
+
     class_ - a reference to the object's class
+
     table - a Table object where the object's primary fields are stored.
-    selectable - a Selectable object which represents all the object's column-based fields.  this Selectable
-    may be synonymous with the table argument or can be a larger construct containing that table.
-    return value: a tuple object which is used as an identity key.
+
+    selectable - a Selectable object which represents all the object's column-based fields.
+    this Selectable may be synonymous with the table argument or can be a larger construct
+    containing that table. return value: a tuple object which is used as an identity key.
     """
     return (class_, repr(table), tuple([row[column] for column in primary_keys]))
 
@@ -163,8 +168,8 @@ class UnitOfWork(object):
         self.attributes.remove(obj)
         
     def update(self, obj):
-        """called to add an object to this UnitOfWork as though it were loaded from the DB, but is
-        actually coming from somewhere else, like a web session or similar."""
+        """called to add an object to this UnitOfWork as though it were loaded from the DB,
+        but is actually coming from somewhere else, like a web session or similar."""
         self._put(obj._instance_key, obj)
         self.register_dirty(obj)
         
@@ -286,11 +291,13 @@ class UOWTransaction(object):
 
     def register_object(self, obj, isdelete = False, listonly = False, **kwargs):
         """adds an object to this UOWTransaction to be updated in the database.
+
         'isdelete' indicates whether the object is to be deleted or saved (update/inserted).
-        'listonly', indicates that only this object's dependency relationships should be 
+
+        'listonly', indicates that only this object's dependency relationships should be
         refreshed/updated to reflect a recent save/upcoming delete operation, but not a full
-        save/delete operation on the object itself, unless an additional save/delete registration 
-        is entered for the object."""
+        save/delete operation on the object itself, unless an additional save/delete
+        registration is entered for the object."""
         mapper = object_mapper(obj)
         self.mappers.append(mapper)
         task = self.get_task_by_mapper(mapper)
@@ -412,12 +419,12 @@ class UOWTask(object):
         return len(self.objects) == 0 and len(self.dependencies) == 0 and len(self.childtasks) == 0
             
     def append(self, obj, listonly = False, childtask = None, isdelete = False):
-        """appends an object to this task, to be either saved or deleted
-        depending on the 'isdelete' attribute of this UOWTask.  'listonly' indicates
-        that the object should only be processed as a dependency and not actually saved/deleted.
-        if the object already exists with a 'listonly' flag of False, it is kept as is.
-        'childtask' is used internally when creating a hierarchical list of self-referential
-        tasks, to assign dependent operations at the per-object instead of per-task level."""
+        """appends an object to this task, to be either saved or deleted depending on the
+        'isdelete' attribute of this UOWTask.  'listonly' indicates that the object should
+        only be processed as a dependency and not actually saved/deleted. if the object
+        already exists with a 'listonly' flag of False, it is kept as is. 'childtask' is used
+        internally when creating a hierarchical list of self-referential tasks, to assign
+        dependent operations at the per-object instead of per-task level."""
         try:
             rec = self.objects[obj]
         except KeyError:
