@@ -243,8 +243,8 @@ class ClauseElement(object):
         caching a SQL expression.
 
         Note that since ClauseElements may be mutable, the hash_key() value is subject to
-        change if the underlying structure of the ClauseElement changes.""" raise
-        NotImplementedError(repr(self))
+        change if the underlying structure of the ClauseElement changes.""" 
+	raise NotImplementedError(repr(self))
     def _get_from_objects(self):
         raise NotImplementedError(repr(self))
     def _process_from_dict(self, data, asfrom):
