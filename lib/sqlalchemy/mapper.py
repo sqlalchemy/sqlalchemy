@@ -364,7 +364,15 @@ class Mapper(object):
                 option.process(mapper)
             return _mappers.setdefault(hashkey, mapper)
 
-    
+    def selectone(self, *args, **params):
+        """works like select(), but only returns the first result by itself, or None if no 
+        objects returned."""
+        ret = self.select(*args, **params)
+        if len(ret):
+            return ret[0]
+        else:
+            return None
+            
     def select(self, arg = None, **params):
         """selects instances of the object from the database.  
         
