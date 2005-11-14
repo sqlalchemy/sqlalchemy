@@ -260,6 +260,17 @@ class Mapper(object):
         
     engines = property(lambda s: [t.engine for t in s.tables])
 
+    def add_property(self, key, prop):
+        if isinstance(prop, schema.Column):
+            self.columns[key] = prop
+            prop = ColumnProperty(prop)
+        self.props[key] = prop
+        if isinstance(prop, ColumnProperty):
+            for col in prop.columns:
+                proplist = self.columntoproperty.setdefault(col.original, [])
+                proplist.append(prop)
+        prop.init(key, self)
+        
     def _init_properties(self):
         [prop.init(key, self) for key, prop in self.props.iteritems()]
         
@@ -819,6 +830,7 @@ class PropertyLoader(MapperProperty):
 
         if self.uselist:
             childlist = uow.attributes.get_history(obj, self.key, passive = False)
+            print "W00P RD on", repr(obj), "list=", repr([repr(k.__dict__) for k in childlist])
         else: 
             childlist = uow.attributes.get_history(obj, self.key)
         for child in childlist.deleted_items() + childlist.unchanged_items():

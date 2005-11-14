@@ -336,7 +336,7 @@ class UOWTransaction(object):
             task.mapper.register_dependencies(self)
 
         head = self._sort_dependencies()
-        print "Task dump:\n" + head.dump()
+        #print "Task dump:\n" + head.dump()
         if head is not None:
             head.execute(self)
             
