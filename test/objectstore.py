@@ -659,8 +659,8 @@ class SaveTest(AssertMixin):
         objectstore.commit()
         print repr(u.__dict__.get('addresses', None))
 #        objectstore.clear()
-#        objectstore.delete(u)
- #       objectstore.commit()
+        objectstore.delete(u)
+        objectstore.commit()
         
 
 if __name__ == "__main__":

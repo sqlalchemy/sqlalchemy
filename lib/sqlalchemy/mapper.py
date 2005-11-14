@@ -475,11 +475,7 @@ class Mapper(object):
                         for col in self.primary_keys[table]:
                     #        print "col: " + table.name + "." + col.key + " val: " + repr(self._getattrbycolumn(obj, col))
                             if self._getattrbycolumn(obj, col) is None:
-                                try:
-                                    self._setattrbycolumn(obj, col, primary_keys[i])
-                                except IndexError:
-                                    print "LALALA col: " + table.name + "." + col.key + " val: " + repr(self._getattrbycolumn(obj, col))
-                                    raise
+                                self._setattrbycolumn(obj, col, primary_keys[i])
                             i+=1
                     self.extension.after_insert(self, obj)
                     
@@ -723,7 +719,6 @@ class PropertyLoader(MapperProperty):
             #objectstore.uow().register_attribute(parent.class_, key, uselist = self.uselist, deleteremoved = self.private)
     
     def _set_class_attribute(self, class_, key):
-        print "SET NORMAL CA", key
         objectstore.uow().register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private)
         
     def _get_direction(self):
@@ -823,9 +818,7 @@ class PropertyLoader(MapperProperty):
             return
 
         if self.uselist:
-            print repr(obj), "deleted, getting listm, right now its", repr(obj.__dict__.get(self.key, None))
-            childlist = uow.attributes.get_list_history(obj, self.key, passive = False)
-            print "and its", repr(childlist)
+            childlist = uow.attributes.get_history(obj, self.key, passive = False)
         else: 
             childlist = uow.attributes.get_history(obj, self.key)
         for child in childlist.deleted_items() + childlist.unchanged_items():
@@ -852,10 +845,7 @@ class PropertyLoader(MapperProperty):
             raise " no foreign key ?"
 
     def get_object_dependencies(self, obj, uowcommit, passive = True):
-        if self.uselist:
-            return uowcommit.uow.attributes.get_list_history(obj, self.key, passive = passive)
-        else: 
-            return uowcommit.uow.attributes.get_history(obj, self.key)
+        return uowcommit.uow.attributes.get_history(obj, self.key, passive = passive)
 
     def whose_dependent_on_who(self, obj1, obj2):
         if obj1 is obj2:
@@ -981,7 +971,6 @@ class LazyLoader(PropertyLoader):
         (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.table, self.primaryjoin, self.secondaryjoin, self.foreignkey)
 
     def _set_class_attribute(self, class_, key):
-        print "SET DYNAMIC CA,", key
         objectstore.uow().register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private, create_prop=lambda i: self.setup_loader(i))
 
     def setup_loader(self, instance):
@@ -1080,10 +1069,10 @@ class EagerLoader(PropertyLoader):
             towrap = self.parent.table
 
         if self.secondaryjoin is not None:
-            print self.secondary.name
-            print str(self.secondaryjoin)
-            print self.target.name
-            print str(self.primaryjoin)
+            #print self.secondary.name
+            #print str(self.secondaryjoin)
+            #print self.target.name
+            #print str(self.primaryjoin)
             statement._outerjoin = sql.outerjoin(towrap, self.secondary, self.primaryjoin).outerjoin(self.target, self.secondaryjoin)
             statement.order_by(self.secondary.rowid_column)
         else:
