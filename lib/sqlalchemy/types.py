@@ -78,6 +78,8 @@ class String(NullTypeEngine):
         
 class Integer(NullTypeEngine):
     """integer datatype"""
+    # TODO: do string bind params need int(value) performed before sending ?  
+    # seems to be not needed with SQLite, Postgres
     pass
 
 class Numeric(NullTypeEngine):

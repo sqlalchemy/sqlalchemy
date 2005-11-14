@@ -28,6 +28,7 @@ class SmartProperty(object):
     def attribute_registry(self):
         return self.manager
     def property(self, key, uselist, **kwargs):
+        print "NEW SMART PROP", key, repr(kwargs)
         def set_prop(obj, value):
             if uselist:
                 self.attribute_registry().set_list_attribute(obj, key, value, **kwargs)
@@ -156,9 +157,14 @@ class CallableProp(object):
             return m.attribute_history(self.obj)[self.key]
         else:
             if not self.obj.__dict__.has_key(self.key) or len(self.obj.__dict__[self.key]) == 0:
+                if passive:
+                    print "HI YES"
+                    return None
+                print "doing CALLABLE for key", self.key
                 value = self.callable_()
             else:
                 value = None
+            print "WHATEVER THING", self.key
             p = self.manager.create_list(self.obj, self.key, value, **self.kwargs)
             self.manager.attribute_history(self.obj)[self.key] = p
             self.manager = None
@@ -218,6 +224,9 @@ class AttributeManager(object):
 
     def set_callable(self, obj, key, func, uselist, **kwargs):
         self.attribute_history(obj)[key] = CallableProp(self, func, obj, key, uselist, **kwargs)
+    
+    def create_callable(self, obj, key, func, uselist, **kwargs):
+        return CallableProp(self, func, obj, key, uselist, **kwargs)
         
     def delete_list_attribute(self, obj, key, **kwargs):
         pass
@@ -243,23 +252,34 @@ class AttributeManager(object):
     def remove(self, obj):
         pass
             
-    def get_history(self, obj, key, **kwargs):
+    def get_history(self, obj, key, create_prop = None, **kwargs):
         try:
             return self.attribute_history(obj)[key].gethistory(**kwargs)
         except KeyError, e:
-            p = PropHistory(obj, key, **kwargs)
-            self.attribute_history(obj)[key] = p
-            return p
+            if create_prop is not None:
+                p = self.create_callable(obj, key, create_prop(obj), uselist=False, **kwargs)
+                self.attribute_history(obj)[key] = p
+                return p.gethistory(**kwargs)
+            else:
+                p = PropHistory(obj, key, **kwargs)
+                self.attribute_history(obj)[key] = p
+                return p
 
-    def get_list_history(self, obj, key, passive = False, **kwargs):
+    def get_list_history(self, obj, key, passive = False, create_prop = None, **kwargs):
         try:
             return self.attribute_history(obj)[key].gethistory(passive)
         except KeyError, e:
+            print "GETLISTHISTORY", key, repr(passive), repr(create_prop)
             # TODO: when an callable is re-set on an existing list element
-            list_ = obj.__dict__.get(key, None)
-            p = self.create_list(obj, key, list_, **kwargs)
-            self.attribute_history(obj)[key] = p
-            return p
+            if create_prop is not None:
+                p = self.create_callable(obj, key, create_prop(obj), uselist=True, **kwargs)
+                self.attribute_history(obj)[key] = p
+                return p.gethistory(passive)
+            else:
+                list_ = obj.__dict__.get(key, None)
+                p = self.create_list(obj, key, list_, **kwargs)
+                self.attribute_history(obj)[key] = p
+                return p
 
     def attribute_history(self, obj):
         try:

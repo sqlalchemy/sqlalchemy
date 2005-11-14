@@ -255,7 +255,7 @@ class Mapper(object):
                 if not self.props.has_key(key):
                     self.props[key] = prop._copy()
                 
-        if not hasattr(self.class_, '_mapper') or self.is_primary or not _mappers.has_key(self.class_._mapper):
+        if not hasattr(self.class_, '_mapper') or self.is_primary or not _mappers.has_key(self.class_._mapper) or (inherits is not None and inherits._is_primary_mapper()):
             self._init_class()
         
     engines = property(lambda s: [t.engine for t in s.tables])
@@ -269,6 +269,10 @@ class Mapper(object):
     def hash_key(self):
         return self.hashkey
 
+    def _is_primary_mapper(self):
+#        return True
+        return getattr(self.class_, '_mapper') == self.hashkey
+        
     def _init_class(self):
         """sets up our classes' overridden __init__ method, this mappers hash key as its
         '_mapper' property, and our columns as its 'c' property.  if the class already had a
@@ -636,7 +640,7 @@ class ColumnProperty(MapperProperty):
     def init(self, key, parent):
         self.key = key
         # establish a SmartProperty property manager on the object for this key
-        if not hasattr(parent.class_, key):
+        if parent._is_primary_mapper():
             #print "regiser col on class %s key %s" % (parent.class_.__name__, key)
             objectstore.uow().register_attribute(parent.class_, key, uselist = False)
 
@@ -712,10 +716,16 @@ class PropertyLoader(MapperProperty):
                     
         self._compile_synchronizers()
                 
-        if not hasattr(parent.class_, key):
+        #if not hasattr(parent.class_, key):
             #print "regiser list col on class %s key %s" % (parent.class_.__name__, key)
-            objectstore.uow().register_attribute(parent.class_, key, uselist = self.uselist, deleteremoved = self.private)
-
+        if parent._is_primary_mapper():
+            self._set_class_attribute(parent.class_, key)
+            #objectstore.uow().register_attribute(parent.class_, key, uselist = self.uselist, deleteremoved = self.private)
+    
+    def _set_class_attribute(self, class_, key):
+        print "SET NORMAL CA", key
+        objectstore.uow().register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private)
+        
     def _get_direction(self):
         if self.parent.primarytable is self.target:
             if self.foreignkey.primary_key:
@@ -813,7 +823,9 @@ class PropertyLoader(MapperProperty):
             return
 
         if self.uselist:
+            print repr(obj), "deleted, getting listm, right now its", repr(obj.__dict__.get(self.key, None))
             childlist = uow.attributes.get_list_history(obj, self.key, passive = False)
+            print "and its", repr(childlist)
         else: 
             childlist = uow.attributes.get_history(obj, self.key)
         for child in childlist.deleted_items() + childlist.unchanged_items():
@@ -912,12 +924,14 @@ class PropertyLoader(MapperProperty):
                 uowcommit.register_deleted_list(childlist)
         else:
             for obj in deplist:
+                #print "PROCESS:", repr(obj)
                 if self.direction == PropertyLoader.RIGHT:
                     uowcommit.register_object(obj)
-                childlist = getlist(obj)
+                childlist = getlist(obj, passive=True)
                 if childlist is None: continue
                 uowcommit.register_saved_list(childlist)
                 for child in childlist.added_items():
+                    #print "parent", repr(obj), "child", repr(child), "EOF"
                     self._synchronize(obj, child, None, False)
                     if self.direction == PropertyLoader.LEFT:
                         uowcommit.register_object(child)
@@ -966,37 +980,62 @@ class LazyLoader(PropertyLoader):
         PropertyLoader.init(self, key, parent)
         (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.table, self.primaryjoin, self.secondaryjoin, self.foreignkey)
 
-    def execute(self, instance, row, identitykey, imap, isnew):
-        if isnew:
-            def lazyload():
-                params = {}
-                for key in self.lazybinds.keys():
-                    params[key] = row[key]
+    def _set_class_attribute(self, class_, key):
+        print "SET DYNAMIC CA,", key
+        objectstore.uow().register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private, create_prop=lambda i: self.setup_loader(i))
+
+    def setup_loader(self, instance):
+        def lazyload():
+            params = {}
+            allparams = True
+            #print "setting up loader, lazywhere", str(self.lazywhere)
+            for col, bind in self.lazybinds.iteritems():
+                if self.direction == PropertyLoader.RIGHT:
+                    params[bind.key] = self.mapper._getattrbycolumn(instance, col)
+                    #print "getting attr", col.table.name + "." + col.key, "off instance", repr(instance), "and its", params[bind.key]
+                else:
+                    params[bind.key] = self.parent._getattrbycolumn(instance, col)
+                if params[bind.key] is None:
+                    allparams = False
+                    break
+            if allparams:
                 if self.secondary is not None:
                     order_by = [self.secondary.rowid_column]
                 else:
                     order_by = []
                 result = self.mapper.select(self.lazywhere, order_by=order_by,**params)
-                if self.uselist:
-                    return result
+            else:
+                result = []
+            if self.uselist:
+                return result
+            else:
+                if len(result):
+                    return result[0]
                 else:
-                    if len(result):
-                        return result[0]
-                    else:
-                        return None
-            objectstore.uow().register_callable(instance, self.key, lazyload, uselist=self.uselist, deleteremoved = self.private)
+                    return None
+        return lazyload
+#        objectstore.uow().register_callable(instance, self.key, lazyload, uselist=self.uselist, deleteremoved = self.private)
+        
+    def execute(self, instance, row, identitykey, imap, isnew):
+        if isnew:
+            return
+    #        lazyload = self.setup_loader(instance)
+    #        objectstore.uow().register_callable(instance, self.key, lazyload, uselist=self.uselist, deleteremoved = self.private)
+ #           self.setup_loader(instance)
 
 def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     binds = {}
     def visit_binary(binary):
         circular = binary.left.table is binary.right.table
         if isinstance(binary.left, schema.Column) and ((not circular and binary.left.table is table) or foreignkey is binary.right):
-            binary.left = binds.setdefault(table.name + "_" + binary.left.name,
+#            binary.left = binds.setdefault(table.name + "_" + binary.left.name,
+            binary.left = binds.setdefault(binary.left,
                     sql.BindParamClause(table.name + "_" + binary.left.name, None, shortname = binary.left.name))
             binary.swap()
 
         if isinstance(binary.right, schema.Column) and ((not circular and binary.right.table is table) or foreignkey is binary.left):
-            binary.right = binds.setdefault(table.name + "_" + binary.right.name,
+#            binary.right = binds.setdefault(table.name + "_" + binary.right.name,
+            binary.right = binds.setdefault(binary.right,
                     sql.BindParamClause(table.name + "_" + binary.right.name, None, shortname = binary.right.name))
                     
     if secondaryjoin is not None:

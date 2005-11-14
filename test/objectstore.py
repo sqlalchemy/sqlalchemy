@@ -641,7 +641,27 @@ class SaveTest(AssertMixin):
         l = m.select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name, keywords.c.name])
         self.assert_result(l, *data)
 
-
+    def testbidirectional(self):
+        m1 = mapper(User, users, properties={
+            'addresses':relation(Address, addresses, lazy=True, private=True)
+        }, is_primary=True)
+        
+        m2 = mapper(Address, addresses, properties = dict(
+            user = relation(User, users, lazy = False)
+        ), is_primary=True)
+ 
+        u = User()
+        print repr(u.__dict__.get('addresses', None))
+        u.user_name = 'test'
+        a = Address()
+        a.email_address = 'testaddress'
+        a.user = u
+        objectstore.commit()
+        print repr(u.__dict__.get('addresses', None))
+#        objectstore.clear()
+#        objectstore.delete(u)
+ #       objectstore.commit()
+        
 
 if __name__ == "__main__":
     unittest.main()

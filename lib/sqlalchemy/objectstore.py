@@ -298,6 +298,7 @@ class UOWTransaction(object):
         refreshed/updated to reflect a recent save/upcoming delete operation, but not a full
         save/delete operation on the object itself, unless an additional save/delete
         registration is entered for the object."""
+#        print "RO", str(obj), str(isdelete), str(listonly)
         mapper = object_mapper(obj)
         self.mappers.append(mapper)
         task = self.get_task_by_mapper(mapper)
@@ -313,6 +314,7 @@ class UOWTransaction(object):
         self.dependencies[(mapper, dependency)] = True
 
     def register_processor(self, mapper, isdelete, processor, mapperfrom, isdeletefrom):
+        print "RP", str(mapper), str(isdelete), str(processor), str(mapperfrom)
         task = self.get_task_by_mapper(mapper)
         targettask = self.get_task_by_mapper(mapperfrom)
         task.dependencies.append((processor, targettask, isdeletefrom))
@@ -334,7 +336,7 @@ class UOWTransaction(object):
             task.mapper.register_dependencies(self)
 
         head = self._sort_dependencies()
-        #print "Task dump:\n" + head.dump()
+        print "Task dump:\n" + head.dump()
         if head is not None:
             head.execute(self)
             

@@ -20,6 +20,7 @@ class MapperSuperTest(AssertMixin):
         db.echo = testbase.echo
     def setUp(self):
         objectstore.clear()
+        clear_mappers()
 
     
 class MapperTest(MapperSuperTest):
