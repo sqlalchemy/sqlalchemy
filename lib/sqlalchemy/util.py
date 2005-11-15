@@ -431,6 +431,6 @@ class DependencySorter(object):
                     head.append(node)
                 else:
                     head = node
-
+        #print str(head)
         return head
             
