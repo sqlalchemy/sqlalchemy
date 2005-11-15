@@ -566,8 +566,7 @@ class UOWTask(object):
         if len(saveobj) > 0:
             s += "\n" + indent + "  Save Elements:(%d)" % len(saveobj)
             for o in saveobj:
-                if not o.listonly:
-                    s += "\n     " + indent + repr(o)
+                s += "\n     " + indent + repr(o)
                 if o.childtask is not None and not o.childtask.is_empty():
                     s += o.childtask.dump("         " + indent)
         save_dep = self.save_dependencies()
@@ -586,8 +585,7 @@ class UOWTask(object):
         if len(deleteobj) > 0:
             s += "\n" + indent + "  Delete Elements:"
             for o in self.objects.values():
-                if not o.listonly:
-                    s += "\n     " + indent + repr(o)
+                s += "\n     " + indent + repr(o)
                 if o.childtask is not None and not o.childtask.is_empty():
                     s += o.childtask.dump("         " + indent)
         return s

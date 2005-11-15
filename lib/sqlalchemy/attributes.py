@@ -254,7 +254,7 @@ class AttributeManager(object):
         
     def register_attribute(self, class_, key, uselist, create_prop = None, **kwargs):
         # create a function, that will create this object attribute when its first called
-        def createprop(obj, **kwargs):
+        def createprop(obj):
             if create_prop is not None:
                 # create the object attribute as a callable
                 p = self.create_callable(obj, key, create_prop(obj), uselist=uselist, **kwargs)
