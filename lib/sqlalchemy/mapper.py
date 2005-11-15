@@ -991,6 +991,9 @@ class LazyLoader(PropertyLoader):
         # in the case that those properties are saved in some other way to the DB in the same transaction that this object
         # is also saved.
         #
+        # hey and it also removes the callable from being attached to the object instance itself- objects with lazy
+        # laoders can be pickled !
+        #
         # test case:  make two mappers, A and B.  A has a "one-to-many" relation to B, B has a "one-to-one" relation
         # to A.  create a new object for "A", call it "Ao".  
         # 
@@ -1013,10 +1016,7 @@ class LazyLoader(PropertyLoader):
             allparams = True
             #print "setting up loader, lazywhere", str(self.lazywhere)
             for col, bind in self.lazybinds.iteritems():
-                if self.direction == PropertyLoader.RIGHT:
-                    params[bind.key] = self.parent._getattrbycolumn(instance, col)
-                else:
-                    params[bind.key] = self.parent._getattrbycolumn(instance, col)
+                params[bind.key] = self.parent._getattrbycolumn(instance, col)
                 if params[bind.key] is None:
                     allparams = False
                     break
