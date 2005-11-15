@@ -1039,11 +1039,14 @@ class LazyLoader(PropertyLoader):
         
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
-            # when new rows are processed, we re-set a lazyloader on the instance.  this is because the constructors
-            # of an object might try to access its lazy-properties, which will result in nothing being returned
-            # since we havent mapped anything into the instance yet.
-            lazyload = self.setup_loader(instance)
-            objectstore.uow().register_callable(instance, self.key, lazyload, uselist=self.uselist, deleteremoved = self.private, live=self.live)
+            # when new rows are processed, we remove the managed attribute list from our object property, 
+            # which has the effect of the class-level lazyloader being reset. this is because the constructors
+            # of an object, called upon object creation when the instance is created from a result set,
+            # might try to access its lazy-properties, which will result in nothing being returned.
+            # then the instance gets its state loaded from the row, but the lazyload was already triggered;
+            # thus this step, occuring only when the instance was just loaded from a row,
+            # insures that it will be triggered even if the constructor already triggered it.
+            objectstore.uow().attributes.reset_history(instance, self.key)
  
 def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     binds = {}
