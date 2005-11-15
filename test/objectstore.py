@@ -642,23 +642,34 @@ class SaveTest(AssertMixin):
         self.assert_result(l, *data)
 
     def testbidirectional(self):
-        m1 = mapper(User, users, properties={
-            'addresses':relation(Address, addresses, lazy=True, private=True)
-        }, is_primary=True)
+        m1 = mapper(User, users, is_primary=True)
         
         m2 = mapper(Address, addresses, properties = dict(
-            user = relation(User, users, lazy = False)
+            user = relation(m1, lazy = False)
         ), is_primary=True)
+        
+        # "live" means, when "addresses" is accessed, do a DB call every time
+        m1.add_property('addresses', relation(m2, private=True, lazy=True, live=True))
  
         u = User()
-        print repr(u.__dict__.get('addresses', None))
+        print repr(u.addresses)
         u.user_name = 'test'
         a = Address()
         a.email_address = 'testaddress'
         a.user = u
         objectstore.commit()
-        print repr(u.__dict__.get('addresses', None))
-#        objectstore.clear()
+        print repr(u.addresses)
+        print repr(u.addresses)
+        x = False
+        try:
+            u.addresses.append('hi')
+            x = True
+        except:
+            pass
+            
+        if x:
+            self.assert_(False, "User addresses element should be read-only")
+        
         objectstore.delete(u)
         objectstore.commit()
         
