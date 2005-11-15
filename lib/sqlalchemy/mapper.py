@@ -980,7 +980,7 @@ class PropertyLoader(MapperProperty):
 class LazyLoader(PropertyLoader):
     def init(self, key, parent):
         PropertyLoader.init(self, key, parent)
-        (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.table, self.primaryjoin, self.secondaryjoin, self.foreignkey)
+        (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.table, self.primaryjoin, self.secondaryjoin, self.foreignkey, self.direction)
 
     def _set_class_attribute(self, class_, key):
         objectstore.uow().register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private, create_prop=lambda i: self.setup_loader(i))
@@ -992,8 +992,8 @@ class LazyLoader(PropertyLoader):
             #print "setting up loader, lazywhere", str(self.lazywhere)
             for col, bind in self.lazybinds.iteritems():
                 if self.direction == PropertyLoader.RIGHT:
-                    params[bind.key] = self.mapper._getattrbycolumn(instance, col)
-                    #print "getting attr", col.table.name + "." + col.key, "off instance", repr(instance), "and its", params[bind.key]
+                    params[bind.key] = self.parent._getattrbycolumn(instance, col)
+                    print "getting attr", col.table.name + "." + col.key, "off instance", repr(instance), "and its", params[bind.key]
                 else:
                     params[bind.key] = self.parent._getattrbycolumn(instance, col)
                 if params[bind.key] is None:
@@ -1024,19 +1024,26 @@ class LazyLoader(PropertyLoader):
     #        objectstore.uow().register_callable(instance, self.key, lazyload, uselist=self.uselist, deleteremoved = self.private)
  #           self.setup_loader(instance)
 
-def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
+def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey, direction):
     binds = {}
     def visit_binary(binary):
+        #print "LEFT", binary.left.table.name, binary.left.key, "RIGHT", binary.right.table.name, binary.right.key, "FKEY", foreignkey.table.name, foreignkey.key
         circular = binary.left.table is binary.right.table
         if isinstance(binary.left, schema.Column) and ((not circular and binary.left.table is table) or foreignkey is binary.right):
-#            binary.left = binds.setdefault(table.name + "_" + binary.left.name,
-            binary.left = binds.setdefault(binary.left,
+            if direction == PropertyLoader.RIGHT:
+                key = binary.right
+            else:
+                key = binary.left
+            binary.left = binds.setdefault(key,
                     sql.BindParamClause(table.name + "_" + binary.left.name, None, shortname = binary.left.name))
             binary.swap()
 
         if isinstance(binary.right, schema.Column) and ((not circular and binary.right.table is table) or foreignkey is binary.left):
-#            binary.right = binds.setdefault(table.name + "_" + binary.right.name,
-            binary.right = binds.setdefault(binary.right,
+            if direction == PropertyLoader.RIGHT:
+                key = binary.left
+            else:
+                key = binary.right
+            binary.right = binds.setdefault(key,
                     sql.BindParamClause(table.name + "_" + binary.right.name, None, shortname = binary.right.name))
                     
     if secondaryjoin is not None:
