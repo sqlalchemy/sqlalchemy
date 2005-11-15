@@ -314,7 +314,7 @@ class UOWTransaction(object):
         self.dependencies[(mapper, dependency)] = True
 
     def register_processor(self, mapper, isdelete, processor, mapperfrom, isdeletefrom):
-        print "RP", str(mapper), str(isdelete), str(processor), str(mapperfrom)
+        #print "RP", str(mapper), str(isdelete), str(processor), str(mapperfrom)
         task = self.get_task_by_mapper(mapper)
         targettask = self.get_task_by_mapper(mapperfrom)
         task.dependencies.append((processor, targettask, isdeletefrom))
