@@ -831,7 +831,7 @@ class PropertyLoader(MapperProperty):
 
         if self.uselist:
             childlist = uow.attributes.get_history(obj, self.key, passive = False)
-            print "W00P RD on", repr(obj), "list=", repr([repr(k.__dict__) for k in childlist])
+            #print "W00P RD on", repr(obj), "list=", repr([repr(k.__dict__) for k in childlist])
         else: 
             childlist = uow.attributes.get_history(obj, self.key)
         for child in childlist.deleted_items() + childlist.unchanged_items():
@@ -981,7 +981,7 @@ class PropertyLoader(MapperProperty):
 class LazyLoader(PropertyLoader):
     def init(self, key, parent):
         PropertyLoader.init(self, key, parent)
-        (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.table, self.primaryjoin, self.secondaryjoin, self.foreignkey, self.direction)
+        (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.table, self.primaryjoin, self.secondaryjoin, self.foreignkey)
 
     def _set_class_attribute(self, class_, key):
         # sets an attribute on the mapped class, which will call setup_loader off this object when the attribute is first accessed.
@@ -1028,26 +1028,17 @@ class LazyLoader(PropertyLoader):
             lazyload = self.setup_loader(instance)
             objectstore.uow().register_callable(instance, self.key, lazyload, uselist=self.uselist, deleteremoved = self.private)
  
-def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey, direction):
+def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     binds = {}
     def visit_binary(binary):
-        #print "LEFT", binary.left.table.name, binary.left.key, "RIGHT", binary.right.table.name, binary.right.key, "FKEY", foreignkey.table.name, foreignkey.key
         circular = binary.left.table is binary.right.table
-        if isinstance(binary.left, schema.Column) and ((not circular and binary.left.table is table) or foreignkey is binary.right):
-            if direction == PropertyLoader.RIGHT:
-                key = binary.right
-            else:
-                key = binary.left
-            binary.left = binds.setdefault(key,
+        if isinstance(binary.left, schema.Column) and ((not circular and binary.left.table is table) or (circular and foreignkey is binary.right)):
+            binary.left = binds.setdefault(binary.left,
                     sql.BindParamClause(table.name + "_" + binary.left.name, None, shortname = binary.left.name))
             binary.swap()
 
-        if isinstance(binary.right, schema.Column) and ((not circular and binary.right.table is table) or foreignkey is binary.left):
-            if direction == PropertyLoader.RIGHT:
-                key = binary.left
-            else:
-                key = binary.right
-            binary.right = binds.setdefault(key,
+        if isinstance(binary.right, schema.Column) and ((not circular and binary.right.table is table) or (circular and foreignkey is binary.left)):
+            binary.right = binds.setdefault(binary.right,
                     sql.BindParamClause(table.name + "_" + binary.right.name, None, shortname = binary.right.name))
                     
     if secondaryjoin is not None:
@@ -1057,6 +1048,7 @@ def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey, direction)
     lazywhere = lazywhere.copy_container()
     li = BinaryVisitor(visit_binary)
     lazywhere.accept_visitor(li)
+    print "LAZYLOAD:", str(lazywhere), repr(binds)
     return (lazywhere, binds)
         
 
