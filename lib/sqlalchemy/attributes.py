@@ -248,6 +248,12 @@ class AttributeManager(object):
             obj.__dict__['_managed_attributes'] = attr
         return attr
 
+    def reset_history(self, obj, key):
+        try:
+            del self.attribute_history(obj)[key]
+        except KeyError:
+            pass
+        
     def class_managed(self, class_):
         try:
             attr = getattr(class_, '_class_managed_attributes')
