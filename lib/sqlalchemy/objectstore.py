@@ -96,8 +96,8 @@ def instance_key(instance):
     return object_mapper(instance).instance_key(instance)
     
 class UOWListElement(attributes.ListElement):
-    def __init__(self, obj, key, data=None, deleteremoved=False):
-        attributes.ListElement.__init__(self, obj, key, data=data)
+    def __init__(self, obj, key, data=None, deleteremoved=False, **kwargs):
+        attributes.ListElement.__init__(self, obj, key, data=data, **kwargs)
         self.deleteremoved = deleteremoved
     def list_value_changed(self, obj, key, item, listval, isdelete):
         uow().modified_lists.append(self)
