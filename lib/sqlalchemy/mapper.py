@@ -664,7 +664,7 @@ class PropertyLoader(MapperProperty):
 
     """describes an object property that holds a single item or list of items that correspond
     to a related database table."""
-    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey = None, uselist = None, private = False, thiscol = None, **kwargs):
+    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey = None, uselist = None, private = False, thiscol = None, live=False, **kwargs):
         self.uselist = uselist
         self.argument = argument
         self.secondary = secondary
@@ -673,6 +673,7 @@ class PropertyLoader(MapperProperty):
         self.foreignkey = foreignkey
         self.private = private
         self.thiscol = thiscol
+        self.live = live
         self._hash_key = "%s(%s, %s, %s, %s, %s, %s, %s)" % (self.__class__.__name__, hash_key(self.argument), hash_key(secondary), hash_key(primaryjoin), hash_key(secondaryjoin), hash_key(foreignkey), repr(uselist), repr(private))
 
     def _copy(self):
@@ -986,7 +987,25 @@ class LazyLoader(PropertyLoader):
     def _set_class_attribute(self, class_, key):
         # sets an attribute on the mapped class, which will call setup_loader off this object when the attribute is first accessed.
         # setup_loader then creates a "lazyload" callable that is called second.
-        objectstore.uow().register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private, create_prop=lambda i: self.setup_loader(i))
+        # this "early setup" is so that an object that wasnt even loaded from the DB can still "lazy load" its properties,
+        # in the case that those properties are saved in some other way to the DB in the same transaction that this object
+        # is also saved.
+        #
+        # test case:  make two mappers, A and B.  A has a "one-to-many" relation to B, B has a "one-to-one" relation
+        # to A.  create a new object for "A", call it "Ao".  
+        # 
+        # then, create a new object for B, call it "Bo".  attach "Ao" to it as its "one-to-one".  then commit.  Ao is saved, Bo 
+        # is saved with its relation to Ao.  Now, Ao's list of B's should have Bo in it, or be able to lazy load.  since it wasnt
+        # loaded from a loadfromrow type of call, the lazy loader must be attached at the object-construction level, not the
+        # result-processing level.
+        #
+        # problem: if you make Ao, then randomly try to access its child list, then that child list gets executed with nothing,
+        # and still puts the object into an invalid state.  Or, if you get Ao from the DB, access its child list, then later 
+        # save an object via the "reverse" relationship; Ao's child list is still invalid.
+        #
+        # when users create a bi-directional dependency, we might want to put a "loadalways" or "live" flag or something on a property
+        # loader, so that one of the props can be more "read-only" and always read from the DB when its accessed.
+        objectstore.uow().register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private, live=self.live, create_prop=lambda i: self.setup_loader(i))
 
     def setup_loader(self, instance):
         def lazyload():
@@ -996,7 +1015,6 @@ class LazyLoader(PropertyLoader):
             for col, bind in self.lazybinds.iteritems():
                 if self.direction == PropertyLoader.RIGHT:
                     params[bind.key] = self.parent._getattrbycolumn(instance, col)
-                    print "getting attr", col.table.name + "." + col.key, "off instance", repr(instance), "and its", params[bind.key]
                 else:
                     params[bind.key] = self.parent._getattrbycolumn(instance, col)
                 if params[bind.key] is None:
@@ -1018,7 +1036,6 @@ class LazyLoader(PropertyLoader):
                 else:
                     return None
         return lazyload
-#        objectstore.uow().register_callable(instance, self.key, lazyload, uselist=self.uselist, deleteremoved = self.private)
         
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
@@ -1026,7 +1043,7 @@ class LazyLoader(PropertyLoader):
             # of an object might try to access its lazy-properties, which will result in nothing being returned
             # since we havent mapped anything into the instance yet.
             lazyload = self.setup_loader(instance)
-            objectstore.uow().register_callable(instance, self.key, lazyload, uselist=self.uselist, deleteremoved = self.private)
+            objectstore.uow().register_callable(instance, self.key, lazyload, uselist=self.uselist, deleteremoved = self.private, live=self.live)
  
 def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     binds = {}
@@ -1048,7 +1065,6 @@ def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     lazywhere = lazywhere.copy_container()
     li = BinaryVisitor(visit_binary)
     lazywhere.accept_visitor(li)
-    print "LAZYLOAD:", str(lazywhere), repr(binds)
     return (lazywhere, binds)
         
 
