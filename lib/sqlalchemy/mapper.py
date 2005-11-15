@@ -418,6 +418,7 @@ class Mapper(object):
     def _getattrbycolumn(self, obj, column):
         try:
             prop = self.columntoproperty[column]
+            #print "prop: ", repr(prop[0]), prop[0].key
         except KeyError:
             try:
                 prop = self.props[column.key]
@@ -983,6 +984,8 @@ class LazyLoader(PropertyLoader):
         (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.table, self.primaryjoin, self.secondaryjoin, self.foreignkey, self.direction)
 
     def _set_class_attribute(self, class_, key):
+        # sets an attribute on the mapped class, which will call setup_loader off this object when the attribute is first accessed.
+        # setup_loader then creates a "lazyload" callable that is called second.
         objectstore.uow().register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private, create_prop=lambda i: self.setup_loader(i))
 
     def setup_loader(self, instance):
@@ -1019,11 +1022,12 @@ class LazyLoader(PropertyLoader):
         
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
-            return
-    #        lazyload = self.setup_loader(instance)
-    #        objectstore.uow().register_callable(instance, self.key, lazyload, uselist=self.uselist, deleteremoved = self.private)
- #           self.setup_loader(instance)
-
+            # when new rows are processed, we re-set a lazyloader on the instance.  this is because the constructors
+            # of an object might try to access its lazy-properties, which will result in nothing being returned
+            # since we havent mapped anything into the instance yet.
+            lazyload = self.setup_loader(instance)
+            objectstore.uow().register_callable(instance, self.key, lazyload, uselist=self.uselist, deleteremoved = self.private)
+ 
 def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey, direction):
     binds = {}
     def visit_binary(binary):
