@@ -88,7 +88,7 @@ class PropHistory(object):
 
 class ListElement(util.HistoryArraySet):
     """manages the value of a particular list-based attribute on a particular object instance."""
-    def __init__(self, obj, key, data=None):
+    def __init__(self, obj, key, data=None, **kwargs):
         self.obj = obj
         self.key = key
         # if we are given a list, try to behave nicely with an existing
@@ -105,7 +105,7 @@ class ListElement(util.HistoryArraySet):
                 list_ = []
             obj.__dict__[key] = []
             
-        util.HistoryArraySet.__init__(self, list_)
+        util.HistoryArraySet.__init__(self, list_, **kwargs)
 
     def gethistory(self, *args, **kwargs):
         return self
@@ -134,12 +134,13 @@ class CallableProp(object):
     accesses the object attribute, either to get its history or its real value, the __call__ method
     is invoked which runs the underlying callable_ and sets the new value to the object attribute
     via the manager, at which point the CallableProp itself is dereferenced."""
-    def __init__(self, manager, callable_, obj, key, uselist = False, **kwargs):
+    def __init__(self, manager, callable_, obj, key, uselist = False, live = False, **kwargs):
         self.manager = manager
         self.callable_ = callable_
         self.obj = obj
         self.key = key
         self.uselist = uselist
+        self.live = live
         self.kwargs = kwargs
 
     def gethistory(self, passive=False, *args, **kwargs):
@@ -152,16 +153,19 @@ class CallableProp(object):
 
             p = PropHistory(self.obj, self.key, **self.kwargs)
         else:
-            if not self.obj.__dict__.has_key(self.key) or len(self.obj.__dict__[self.key]) == 0:
+            if self.live or not self.obj.__dict__.has_key(self.key) or len(self.obj.__dict__[self.key]) == 0:
                 if passive:
                     return None
                 value = self.callable_()
             else:
                 value = None
-            p = self.manager.create_list(self.obj, self.key, value, **self.kwargs)
-
-        self.manager.attribute_history(self.obj)[self.key] = p
-        self.manager = None
+            p = self.manager.create_list(self.obj, self.key, value, readonly=self.live, **self.kwargs)
+        
+        if not self.live:
+            # set the new history list as the new attribute, discards ourself
+            self.manager.attribute_history(self.obj)[self.key] = p
+            self.manager = None
+            # unless we are "live", in which case we stay around to execute again
         return p
 
     def commit(self):
@@ -180,7 +184,7 @@ class AttributeManager(object):
     def create_prop(self, key, uselist, **kwargs):
         return SmartProperty(self).property(key, uselist)
     def create_list(self, obj, key, list_, **kwargs):
-        return ListElement(obj, key, list_)
+        return ListElement(obj, key, list_, **kwargs)
         
     def get_attribute(self, obj, key, **kwargs):
         try:
