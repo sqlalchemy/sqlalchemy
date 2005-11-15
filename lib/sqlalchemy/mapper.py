@@ -847,14 +847,14 @@ class PropertyLoader(MapperProperty):
             # if only a list changes, the parent mapper is the only mapper that
             # gets added to the "todo" list
             uowcommit.register_dependency(self.mapper, self.parent)
-            uowcommit.register_processor(self.parent, False, self, self.parent, False)
+            uowcommit.register_processor(self.parent, self, self.parent, False)
         elif self.direction == PropertyLoader.LEFT:
             uowcommit.register_dependency(self.parent, self.mapper)
-            uowcommit.register_processor(self.parent, False, self, self.parent, False)
-            uowcommit.register_processor(self.parent, False, self, self.parent, True)
+            uowcommit.register_processor(self.parent, self, self.parent, False)
+            uowcommit.register_processor(self.parent, self, self.parent, True)
         elif self.direction == PropertyLoader.RIGHT:
             uowcommit.register_dependency(self.mapper, self.parent)
-            uowcommit.register_processor(self.mapper, False, self, self.parent, False)
+            uowcommit.register_processor(self.mapper, self, self.parent, False)
         else:
             raise " no foreign key ?"
 
