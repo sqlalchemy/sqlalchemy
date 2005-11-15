@@ -277,6 +277,8 @@ class UnitOfWork(object):
         uow.set(self.parent)
             
 class UOWTransaction(object):
+    """handles the details of organizing and executing transaction tasks 
+    during a UnitOfWork object's commit() operation."""
     def __init__(self, uow):
         self.uow = uow
 
@@ -305,18 +307,32 @@ class UOWTransaction(object):
         task.append(obj, listonly, isdelete=isdelete, **kwargs)
 
     def get_task_by_mapper(self, mapper):
+        """every individual mapper involved in the transaction has a single
+        corresponding UOWTask object, which stores all the operations involved
+        with that mapper as well as operations dependent on those operations.
+        this method returns or creates the single per-transaction instance of
+        UOWTask that exists for that mapper."""
         try:
             return self.tasks[mapper]
         except KeyError:
             return UOWTask(self, mapper)
             
     def register_dependency(self, mapper, dependency):
+        """called by mapper.PropertyLoader to register the objects handled by
+        one mapper being dependent on the objects handled by another."""
         self.dependencies[(mapper, dependency)] = True
 
-    def register_processor(self, mapper, isdelete, processor, mapperfrom, isdeletefrom):
-        #print "RP", str(mapper), str(isdelete), str(processor), str(mapperfrom)
+    def register_processor(self, mapper, processor, mapperfrom, isdeletefrom):
+        """called by mapper.PropertyLoader to register itself as a "processor", which
+        will be associated with a particular UOWTask, and be given a list of "dependent"
+        objects corresponding to another UOWTask to be processed, either after that secondary
+        task saves its objects or before it deletes its objects."""
+        # when the task from "mapper" executes, take the objects from the task corresponding
+        # to "mapperfrom"'s list of save/delete objects, and send them to "processor"
+        # for dependency processing
         task = self.get_task_by_mapper(mapper)
         targettask = self.get_task_by_mapper(mapperfrom)
+        # this tuple will become a UOWDependencyProcessor in a later release
         task.dependencies.append((processor, targettask, isdeletefrom))
 
     def register_saved_object(self, obj):
@@ -336,7 +352,7 @@ class UOWTransaction(object):
             task.mapper.register_dependencies(self)
 
         head = self._sort_dependencies()
-        #print "Task dump:\n" + head.dump()
+        print "Task dump:\n" + head.dump()
         if head is not None:
             head.execute(self)
             
@@ -397,6 +413,11 @@ class UOWTransaction(object):
 
 
 class UOWTaskElement(object):
+    """an element within a UOWTask.  corresponds to a single object instance
+    to be saved, deleted, or just part of the transaction as a placeholder for 
+    further dependencies (i.e. 'listonly').
+    in the case of self-referential mappers, may also store a "childtask", which is a
+    UOWTask containing objects dependent on this element's object instance."""
     def __init__(self, obj):
         self.obj = obj
         self.listonly = True
@@ -404,7 +425,14 @@ class UOWTaskElement(object):
         self.isdelete = False
     def __repr__(self):
         return "UOWTaskElement/%d: %s/%d %s" % (id(self), self.obj.__class__.__name__, id(self.obj), (self.listonly and 'listonly' or (self.isdelete and 'delete' or 'save')) )
-        
+
+class UOWDependencyProcessor(object):
+    """this class is going to replace the tuple that we put into task.dependencies,
+    strictly for clarity."""
+    def __init__(self, processor, targettask, isdeletefrom):
+        pass
+#    task.dependencies.append((processor, targettask, isdeletefrom))
+    
 class UOWTask(object):
     def __init__(self, uowtransaction, mapper):
         if uowtransaction is not None:
@@ -480,7 +508,10 @@ class UOWTask(object):
         """for a single task, creates a hierarchical tree of "subtasks" which associate
         specific dependency actions with individual objects.  This is used for a
         "circular" task, or a task where elements
-        of its object list contain dependencies on each other."""
+        of its object list contain dependencies on each other.
+        
+        this is not the normal case; this logic only kicks in when something like 
+        a hierarchical tree is being represented."""
         
         allobjects = self.objects.keys()
         tuples = []
@@ -540,13 +571,12 @@ class UOWTask(object):
             return None
         
         def make_task_tree(node, parenttask):
-            circ = objecttotask[node.item]
-            parenttask.append(node.item, self.objects[node.item].listonly, circ, isdelete=self.objects[node.item].isdelete)
+            t = objecttotask[node.item]
+            parenttask.append(node.item, self.objects[node.item].listonly, t, isdelete=self.objects[node.item].isdelete)
             if dependencies.has_key(node.item):
                 for tup, deptask in dependencies[node.item].iteritems():
                     (processor, isdelete) = tup
                     parenttask.dependencies.append((processor, deptask, isdelete))
-            t = get_task(node.item)
             for n in node.children:
                 t2 = make_task_tree(n, t)
             return t
@@ -571,7 +601,7 @@ class UOWTask(object):
                     s += o.childtask.dump("         " + indent)
         save_dep = self.save_dependencies()
         if len(save_dep) > 0:
-            s += "\n" + indent + "  Save Dependencies:"
+            s += "\n" + indent + "  Process after Save:"
             s += self._dump_dependencies(save_dep, indent)
         if len(self.childtasks) > 0:
             s += "\n" + indent + "  Child Tasks:(%d)" % len(self.childtasks)
@@ -579,12 +609,12 @@ class UOWTask(object):
                 s += t.dump(indent + "    ")
         delete_dep = self.delete_dependencies()
         if len(delete_dep) > 0:
-            s += "\n" + indent + "  Delete Dependencies:"
+            s += "\n" + indent + "  Process before Delete:"
             s += self._dump_dependencies(delete_dep, indent)
         deleteobj = self.todelete_elements()
         if len(deleteobj) > 0:
-            s += "\n" + indent + "  Delete Elements:"
-            for o in self.objects.values():
+            s += "\n" + indent + "  Delete Elements:(%d)" % len(deleteobj)
+            for o in deleteobj:
                 s += "\n     " + indent + repr(o)
                 if o.childtask is not None and not o.childtask.is_empty():
                     s += o.childtask.dump("         " + indent)
@@ -593,13 +623,12 @@ class UOWTask(object):
     def _dump_dependencies(self, dep, indent):
         s = ""
         for dt in dep:
-            s += "\n    " + indent + "process " + repr(dt[0].key) + " on:"
             if dt[2]:
                 val = [t for t in dt[1].objects.values() if t.isdelete]
             else:
                 val = [t for t in dt[1].objects.values() if not t.isdelete]
             for o in val:
-                s += "\n      " + indent + repr(o)
+                s += "\n      " + indent + repr(dt[0].key) + " on " + repr(o)
         return s
         
     def __repr__(self):
