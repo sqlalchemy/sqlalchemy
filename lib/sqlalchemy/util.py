@@ -144,7 +144,7 @@ class HistoryArraySet(UserList.UserList):
     """extends a UserList to provide unique-set functionality as well as history-aware 
     functionality, including information about what list elements were modified, 
     as well as rollback capability."""
-    def __init__(self, data = None):
+    def __init__(self, data = None, readonly=False):
         # stores the array's items as keys, and a value of True, False or None indicating
         # added, deleted, or unchanged for that item
         self.records = OrderedDict()
@@ -156,6 +156,7 @@ class HistoryArraySet(UserList.UserList):
                 self.records[item] = None
         else:
             self.data = []
+        self.readonly=readonly
     def __getattr__(self, attr):
         """proxies unknown HistoryArraySet methods and attributes to the underlying
         data array.  this allows custom list classes to be used."""
@@ -178,6 +179,8 @@ class HistoryArraySet(UserList.UserList):
     def __hash__(self):
         return id(self)
     def _setrecord(self, item):
+        if self.readonly:
+            raise "This list is read only"
         try:
             val = self.records[item]
             if val is True or val is None:
@@ -189,6 +192,8 @@ class HistoryArraySet(UserList.UserList):
             self.records[item] = True
             return True
     def _delrecord(self, item):
+        if self.readonly:
+            raise "This list is read only"
         try:
             val = self.records[item]
             if val is None:
