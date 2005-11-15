@@ -129,11 +129,13 @@ class LazyTest(MapperSuperTest):
 
     def testbackwardsonetoone(self):
         m = mapper(Address, addresses, properties = dict(
-            user = relation(User, users, primaryjoin = users.c.user_id == addresses.c.user_id, lazy = True)
+            user = relation(User, users, properties = {'id':users.c.user_id}, primaryjoin = users.c.user_id == addresses.c.user_id, lazy = True)
         ))
         l = m.select(addresses.c.address_id == 1)
         self.echo(repr(l))
+        print repr(l[0].__dict__)
         self.echo(repr(l[0].user))
+        self.assert_(l[0].user is not None)
 
     def testmanytomany(self):
         """tests a many-to-many lazy load"""
