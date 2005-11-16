@@ -24,6 +24,7 @@ import sqlalchemy.schema as schema
 import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
 from sqlalchemy.ansisql import *
+import datetime,time
 
 from pysqlite2 import dbapi2 as sqlite
 
@@ -36,6 +37,12 @@ class SLInteger(sqltypes.Integer):
 class SLDateTime(sqltypes.DateTime):
     def get_col_spec(self):
         return "TIMESTAMP"
+    def convert_result_value(self, value):
+        (value, microsecond) = value.split('.')
+        microsecond = int(microsecond)
+        tup = time.strptime(value, "%Y-%m-%d %H:%M:%S")
+        return datetime.datetime(microsecond=microsecond, *tup[0:6])
+
 class SLText(sqltypes.TEXT):
     def get_col_spec(self):
         return "TEXT"
