@@ -155,8 +155,9 @@ class CallableProp(object):
         else:
             if self.live or not self.obj.__dict__.has_key(self.key) or len(self.obj.__dict__[self.key]) == 0:
                 if passive:
-                    return None
-                value = self.callable_()
+                    value =  None
+                else:
+                    value = self.callable_()
             else:
                 value = None
             p = self.manager.create_list(self.obj, self.key, value, readonly=self.live, **self.kwargs)
@@ -267,6 +268,7 @@ class AttributeManager(object):
         def createprop(obj):
             if create_prop is not None:
                 # create the object attribute as a callable
+                # TODO: too much indirection here, figure out cleaner way
                 p = self.create_callable(obj, key, create_prop(obj), uselist=uselist, **kwargs)
                 self.attribute_history(obj)[key] = p
                 return p

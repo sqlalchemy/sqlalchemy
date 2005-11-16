@@ -664,7 +664,7 @@ class PropertyLoader(MapperProperty):
 
     """describes an object property that holds a single item or list of items that correspond
     to a related database table."""
-    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey = None, uselist = None, private = False, thiscol = None, live=False, **kwargs):
+    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey = None, uselist = None, private = False, thiscol = None, live=False, isoption=False, **kwargs):
         self.uselist = uselist
         self.argument = argument
         self.secondary = secondary
@@ -674,6 +674,7 @@ class PropertyLoader(MapperProperty):
         self.private = private
         self.thiscol = thiscol
         self.live = live
+        self.isoption = isoption
         self._hash_key = "%s(%s, %s, %s, %s, %s, %s, %s)" % (self.__class__.__name__, hash_key(self.argument), hash_key(secondary), hash_key(primaryjoin), hash_key(secondaryjoin), hash_key(foreignkey), repr(uselist), repr(private))
 
     def _copy(self):
@@ -727,11 +728,17 @@ class PropertyLoader(MapperProperty):
                 
         #if not hasattr(parent.class_, key):
             #print "regiser list col on class %s key %s" % (parent.class_.__name__, key)
-        if parent._is_primary_mapper():
+        if self._is_primary():
             self._set_class_attribute(parent.class_, key)
-            #objectstore.uow().register_attribute(parent.class_, key, uselist = self.uselist, deleteremoved = self.private)
     
+    def _is_primary(self):
+        """a return value of True indicates we are the primary PropertyLoader for this loader's
+        attribute on our mapper's class.  It means we can set the object's attribute behavior
+        at the class level.  otherwise we have to set attribute behavior on a per-instance level."""
+        return self.parent._is_primary_mapper and not self.isoption
+        
     def _set_class_attribute(self, class_, key):
+        """sets attribute behavior on our target class."""
         objectstore.uow().register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private)
         
     def _get_direction(self):
@@ -977,7 +984,12 @@ class PropertyLoader(MapperProperty):
                 dmapper._setattrbycolumn(dest, dcol, value)
 
     def execute(self, instance, row, identitykey, imap, isnew):
-        pass
+        if self._is_primary():
+            return
+        if self.uselist:
+            setattr(instance, self.key, [])
+        else:
+            setattr(instance, self.key, None)
 
 class LazyLoader(PropertyLoader):
     def init(self, key, parent):
@@ -1039,14 +1051,10 @@ class LazyLoader(PropertyLoader):
         
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
-            # when new rows are processed, we remove the managed attribute list from our object property, 
-            # which has the effect of the class-level lazyloader being reset. this is because the constructors
-            # of an object, called upon object creation when the instance is created from a result set,
-            # might try to access its lazy-properties, which will result in nothing being returned.
-            # then the instance gets its state loaded from the row, but the lazyload was already triggered;
-            # thus this step, occuring only when the instance was just loaded from a row,
-            # insures that it will be triggered even if the constructor already triggered it.
-            objectstore.uow().attributes.reset_history(instance, self.key)
+            if not self._is_primary:
+                objectstore.uow().register_callable(obj, self.key, self.setup_loader(obj), self.uselist)
+            else:
+                objectstore.uow().attributes.reset_history(instance, self.key)
  
 def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     binds = {}
@@ -1177,7 +1185,7 @@ class EagerLazyOption(MapperOption):
             class_ = PropertyLoader
         else:
             class_ = LazyLoader
-        mapper.set_property(key, class_(submapper, oldprop.secondary, primaryjoin = oldprop.primaryjoin, secondaryjoin = oldprop.secondaryjoin))
+        mapper.set_property(key, class_(submapper, oldprop.secondary, primaryjoin = oldprop.primaryjoin, secondaryjoin = oldprop.secondaryjoin, foreignkey=oldprop.foreignkey, uselist=oldprop.uselist, private=oldprop.private, live=oldprop.live, isoption=True ))
 
 class Aliasizer(sql.ClauseVisitor):
     """converts a table instance within an expression to be an alias of that table."""
