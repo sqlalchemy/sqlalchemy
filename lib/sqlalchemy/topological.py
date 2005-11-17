@@ -1,8 +1,9 @@
 import string
 
 class QueueDependencySorter(object):
-    """this is a topological sort from wikipedia.  its very stable, though it creates a straight-line
-    list of elements and doesn't let me group non-dependent actions together."""
+    """this is a topological sort from wikipedia.  its very stable.  it creates a straight-line
+    list of elements, then a second pass groups non-dependent actions together to build
+    more of a tree structure with siblings."""
     class Node:
         """represents a node in a tree.  stores an 'item' which represents the 
         dependent thing we are talking about.  if node 'a' is an ancestor node of 
@@ -11,6 +12,7 @@ class QueueDependencySorter(object):
             self.item = item
             self.circular = False
             self.edges = {}
+            self.dependencies = {}
             self.children = []
         def __str__(self):
             return self.safestr()
@@ -28,13 +30,18 @@ class QueueDependencySorter(object):
     def sort(self):
         (tuples, allitems) = (self.tuples, self.allitems)
 
+        #print "\n---------------------------------\n"        
+        #print repr([t for t in tuples])
+        #print repr([a for a in allitems])
+        #print "\n---------------------------------\n"        
+
         nodes = {}
         edges = {}
         for item in allitems + [t[0] for t in tuples] + [t[1] for t in tuples]:
             if not nodes.has_key(item):
                 node = QueueDependencySorter.Node(item)
                 nodes[item] = node
-                edges[node] = []
+                edges[node] = {}
         
         for t in tuples:
             if t[0] is t[1]:
@@ -42,7 +49,8 @@ class QueueDependencySorter(object):
                 continue
             childnode = nodes[t[1]]
             parentnode = nodes[t[0]]
-            edges[parentnode].append(childnode)
+            edges[parentnode][childnode] = True
+            parentnode.dependencies[childnode] = True
             childnode.edges[parentnode] = True
 
         queue = []
@@ -59,21 +67,24 @@ class QueueDependencySorter(object):
             nodeedges = edges.pop(node, None)
             if nodeedges is None:
                 continue
-            for childnode in nodeedges:
+            for childnode in nodeedges.keys():
                 del childnode.edges[node]
                 if len(childnode.edges) == 0:
                     queue.append(childnode)
 
             
-        print repr(output)
+        #print repr(output)
         head = None
         node = None
         for o in output:
             if head is None:
                 head = o
+                node = o
             else:
+                for x in node.children:
+                    if x.dependencies.has_key(o):
+                        node = x
                 node.children.append(o)
-            node = o
         return head
 
 
@@ -81,7 +92,8 @@ class TreeDependencySorter(object):
     """
     this is my first topological sorting algorithm.  its crazy, but matched my thinking
     at the time.  it also creates the kind of structure I want.  but, I am not 100% sure
-    it works in all cases since I always did really poorly in linear algebra.
+    it works in all cases since I always did really poorly in linear algebra.  anyway,
+    I got the other one above to produce a tree structure too so we should be OK.
     """
     class Node:
         """represents a node in a tree.  stores an 'item' which represents the 
