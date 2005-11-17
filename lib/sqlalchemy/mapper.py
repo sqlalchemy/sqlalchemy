@@ -986,10 +986,7 @@ class PropertyLoader(MapperProperty):
     def execute(self, instance, row, identitykey, imap, isnew):
         if self._is_primary():
             return
-        if self.uselist:
-            setattr(instance, self.key, [])
-        else:
-            setattr(instance, self.key, None)
+        objectstore.global_attributes.create_history(instance, self.key, self.uselist)
 
 class LazyLoader(PropertyLoader):
     def init(self, key, parent):
@@ -997,30 +994,8 @@ class LazyLoader(PropertyLoader):
         (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.table, self.primaryjoin, self.secondaryjoin, self.foreignkey)
 
     def _set_class_attribute(self, class_, key):
-        # sets an attribute on the mapped class, which will call setup_loader off this object when the attribute is first accessed.
-        # setup_loader then creates a "lazyload" callable that is called second.
-        # this "early setup" is so that an object that wasnt even loaded from the DB can still "lazy load" its properties,
-        # in the case that those properties are saved in some other way to the DB in the same transaction that this object
-        # is also saved.
-        #
-        # hey and it also removes the callable from being attached to the object instance itself- objects with lazy
-        # laoders can be pickled !
-        #
-        # test case:  make two mappers, A and B.  A has a "one-to-many" relation to B, B has a "one-to-one" relation
-        # to A.  create a new object for "A", call it "Ao".  
-        # 
-        # then, create a new object for B, call it "Bo".  attach "Ao" to it as its "one-to-one".  then commit.  Ao is saved, Bo 
-        # is saved with its relation to Ao.  Now, Ao's list of B's should have Bo in it, or be able to lazy load.  since it wasnt
-        # loaded from a loadfromrow type of call, the lazy loader must be attached at the object-construction level, not the
-        # result-processing level.
-        #
-        # problem: if you make Ao, then randomly try to access its child list, then that child list gets executed with nothing,
-        # and still puts the object into an invalid state.  Or, if you get Ao from the DB, access its child list, then later 
-        # save an object via the "reverse" relationship; Ao's child list is still invalid.
-        #
-        # when users create a bi-directional dependency, we might want to put a "loadalways" or "live" flag or something on a property
-        # loader, so that one of the props can be more "read-only" and always read from the DB when its accessed.
-        objectstore.uow().register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private, live=self.live, create_prop=lambda i: self.setup_loader(i))
+        # establish a class-level lazy loader on our class
+        objectstore.global_attributes.register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private, live=self.live, callable_=lambda i: self.setup_loader(i))
 
     def setup_loader(self, instance):
         def lazyload():
@@ -1051,10 +1026,15 @@ class LazyLoader(PropertyLoader):
         
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
-            if not self._is_primary:
-                objectstore.uow().register_callable(obj, self.key, self.setup_loader(obj), self.uselist)
+            # new object instance being loaded from a result row
+            if not self._is_primary():
+                # we are not the primary manager for this attribute on this class - set up a per-instance lazyloader,
+                # which will override the class-level behavior
+                objectstore.global_attributes.create_history(instance, self.key, self.uselist, callable_=self.setup_loader(instance))
             else:
-                objectstore.uow().attributes.reset_history(instance, self.key)
+                # we are the primary manager for this attribute on this class - reset its per-instance attribute state, 
+                # so that the class-level lazy loader is executed when next referenced on this instance
+                objectstore.global_attributes.reset_history(instance, self.key)
  
 def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     binds = {}
@@ -1131,20 +1111,14 @@ class EagerLoader(PropertyLoader):
     def execute(self, instance, row, identitykey, imap, isnew):
         """receive a row.  tell our mapper to look for a new object instance in the row, and attach
         it to a list on the parent instance."""
+        if isnew:
+            h = objectstore.global_attributes.create_history(instance, self.key, self.uselist)
+            
         if not self.uselist:
-            # TODO: check for multiple values on single-element child element ?
-            instance.__dict__[self.key] = self.mapper._instance(row, imap)
-            #setattr(instance, self.key, self.mapper._instance(row, imap))
+            h.setattr(self.mapper._instance(row, imap))
             return
         elif isnew:
-            result_list = getattr(instance, self.key)
-            result_list[:] = []
-            result_list.commit()
-            ## TODO: whats this about ?
-            #result_list = []
-            #setattr(instance, self.key, result_list)
-            #result_list = getattr(instance, self.key)
-            #result_list.commit()
+            result_list = h
         else:
             result_list = getattr(instance, self.key)
             
