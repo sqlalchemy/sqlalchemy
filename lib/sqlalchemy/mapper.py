@@ -119,10 +119,6 @@ def object_mapper(object):
     """given an object, returns the primary Mapper associated with the object
     or the object's class."""
     return class_mapper(object.__class__)
-#    try:
-#        return _mappers[object._mapper]
-#    except AttributeError:
-#        return class_mapper(object.__class__)
 
 def class_mapper(class_):
     """given a class, returns the primary Mapper associated with the class."""
@@ -153,6 +149,19 @@ class Mapper(object):
                 extension = None,
                 **kwargs):
 
+        self.copyargs = {
+            'class_':class_,
+            'table':table,
+            'primarytable':primarytable,
+            'scope':scope,
+            'properties':properties,
+            'primary_keys':primary_keys,
+            'is_primary':False,
+            'inherits':inherits,
+            'inherit_condition':inherit_condition,
+            'extension':extension
+        }
+        
         if extension is None:
             self.extension = MapperExtension()
         else:
@@ -272,7 +281,9 @@ class Mapper(object):
         prop.init(key, self)
         
     def _init_properties(self):
-        [prop.init(key, self) for key, prop in self.props.iteritems()]
+        for key, prop in self.props.iteritems():
+            if getattr(prop, 'key', None) is None:
+                prop.init(key, self)
         
     def __str__(self):
         return "Mapper|" + self.class_.__name__ + "|" + self.primarytable.name
@@ -281,7 +292,6 @@ class Mapper(object):
         return self.hashkey
 
     def _is_primary_mapper(self):
-#        return True
         return getattr(self.class_, '_mapper') == self.hashkey
         
     def _init_class(self):
@@ -367,14 +377,15 @@ class Mapper(object):
 
     def options(self, *options):
         """uses this mapper as a prototype for a new mapper with different behavior.
-        *options is a list of options directives, which include eagerload() and lazyload()"""
+        *options is a list of options directives, which include eagerload(), lazyload(), and noload()"""
 
         hashkey = hash_key(self) + "->" + repr([hash_key(o) for o in options])
-        #print "HASHKEY: " + hashkey
         try:
             return _mappers[hashkey]
         except KeyError:
-            mapper = copy.copy(self)
+            mapper = Mapper(hashkey, **self.copyargs)
+            mapper._init_properties()
+
             for option in options:
                 option.process(mapper)
             return _mappers.setdefault(hashkey, mapper)
@@ -418,7 +429,6 @@ class Mapper(object):
     def _getattrbycolumn(self, obj, column):
         try:
             prop = self.columntoproperty[column]
-            #print "prop: ", repr(prop[0]), prop[0].key
         except KeyError:
             try:
                 prop = self.props[column.key]
@@ -684,8 +694,6 @@ class PropertyLoader(MapperProperty):
         return self._hash_key
 
     def init(self, key, parent):
-        #if isinstance(self.argument, str):
-        #    self.mapper = object_mapper(self.argument)
         if isinstance(self.argument, type):
             self.mapper = class_mapper(self.argument)
         else:
@@ -695,9 +703,6 @@ class PropertyLoader(MapperProperty):
         self.key = key
         self.parent = parent
 
-#        if self.parent.table is self.target and self.foreignkey is None:
- #           raise "Circular relationship requires explicit 'foreignkey' parameter"
-            
         # if join conditions were not specified, figure them out based on foreign keys
         if self.secondary is not None:
             if self.secondaryjoin is None:
@@ -839,7 +844,6 @@ class PropertyLoader(MapperProperty):
 
         if self.uselist:
             childlist = uow.attributes.get_history(obj, self.key, passive = False)
-            #print "W00P RD on", repr(obj), "list=", repr([repr(k.__dict__) for k in childlist])
         else: 
             childlist = uow.attributes.get_history(obj, self.key)
         for child in childlist.deleted_items() + childlist.unchanged_items():
@@ -986,6 +990,7 @@ class PropertyLoader(MapperProperty):
     def execute(self, instance, row, identitykey, imap, isnew):
         if self._is_primary():
             return
+        #print "PLAIN PROPLOADER EXEC NON-PRIAMRY", repr(id(self)), repr(self.mapper.class_), self.key
         objectstore.global_attributes.create_history(instance, self.key, self.uselist)
 
 class LazyLoader(PropertyLoader):
@@ -995,6 +1000,7 @@ class LazyLoader(PropertyLoader):
 
     def _set_class_attribute(self, class_, key):
         # establish a class-level lazy loader on our class
+        #print "SETCLASSATTR LAZY", repr(class_), key
         objectstore.global_attributes.register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private, live=self.live, callable_=lambda i: self.setup_loader(i))
 
     def setup_loader(self, instance):
@@ -1028,12 +1034,16 @@ class LazyLoader(PropertyLoader):
         if isnew:
             # new object instance being loaded from a result row
             if not self._is_primary():
+                #print "EXEC NON-PRIAMRY", repr(self.mapper.class_), self.key
                 # we are not the primary manager for this attribute on this class - set up a per-instance lazyloader,
                 # which will override the class-level behavior
                 objectstore.global_attributes.create_history(instance, self.key, self.uselist, callable_=self.setup_loader(instance))
             else:
+                #print "EXEC PRIMARY", repr(self.mapper.class_), self.key
                 # we are the primary manager for this attribute on this class - reset its per-instance attribute state, 
-                # so that the class-level lazy loader is executed when next referenced on this instance
+                # so that the class-level lazy loader is executed when next referenced on this instance.
+                # this usually is not needed unless the constructor of the object referenced the attribute before we got 
+                # to load data into it.
                 objectstore.global_attributes.reset_history(instance, self.key)
  
 def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
@@ -1091,10 +1101,6 @@ class EagerLoader(PropertyLoader):
             towrap = self.parent.table
 
         if self.secondaryjoin is not None:
-            #print self.secondary.name
-            #print str(self.secondaryjoin)
-            #print self.target.name
-            #print str(self.primaryjoin)
             statement._outerjoin = sql.outerjoin(towrap, self.secondary, self.primaryjoin).outerjoin(self.target, self.secondaryjoin)
             statement.order_by(self.secondary.rowid_column)
         else:
@@ -1111,7 +1117,10 @@ class EagerLoader(PropertyLoader):
     def execute(self, instance, row, identitykey, imap, isnew):
         """receive a row.  tell our mapper to look for a new object instance in the row, and attach
         it to a list on the parent instance."""
+        
         if isnew:
+            # new row loaded from the database.  initialize a blank container on the instance.
+            # this will override any per-class lazyloading type of stuff.
             h = objectstore.global_attributes.create_history(instance, self.key, self.uselist)
             
         if not self.uselist:
@@ -1152,7 +1161,7 @@ class EagerLazyOption(MapperOption):
             submapper = submapper.options(EagerLazyOption(tup[1], self.toeager))
         else:
             submapper = oldprop.mapper
-            
+        
         if self.toeager:
             class_ = EagerLoader
         elif self.toeager is None:
