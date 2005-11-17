@@ -10,7 +10,7 @@ import tables
 
 class MapperSuperTest(AssertMixin):
     def setUpAll(self):
-#        db.echo = False
+        db.echo = False
         tables.create()
         tables.data()
         db.echo = testbase.echo
@@ -53,7 +53,9 @@ class MapperTest(MapperSuperTest):
         m = mapper(User, users, properties = dict(
             addresses = relation(Address, addresses, lazy = True)
         ))
+#        l = m.select()
         l = m.options(eagerload('addresses')).select()
+
         self.assert_result(l, User,
             {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
             {'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}])},

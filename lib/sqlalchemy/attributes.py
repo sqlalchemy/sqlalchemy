@@ -105,7 +105,7 @@ class ListElement(util.HistoryArraySet):
                 list_ = []
             obj.__dict__[key] = []
             
-        util.HistoryArraySet.__init__(self, list_, **kwargs)
+        util.HistoryArraySet.__init__(self, list_, readonly=kwargs.get('readonly', False))
 
     def gethistory(self, *args, **kwargs):
         return self
@@ -181,19 +181,19 @@ class AttributeManager(object):
         pass
 
     def value_changed(self, obj, key, value):
+        """subclasses override this method to provide functionality upon an attribute change of value."""
         pass
+        
     def create_prop(self, key, uselist, **kwargs):
         return SmartProperty(self).property(key, uselist)
     def create_list(self, obj, key, list_, **kwargs):
         return ListElement(obj, key, list_, **kwargs)
+    def create_callable(self, obj, key, func, uselist, **kwargs):
+        return CallableProp(self, func, obj, key, uselist, **kwargs)
         
     def get_attribute(self, obj, key, **kwargs):
         try:
             return self.get_history(obj, key, **kwargs).getattr()
-        except KeyError:
-            pass
-        try:
-            return obj.__dict__[key]
         except KeyError:
             raise AttributeError(key)
 
@@ -207,12 +207,6 @@ class AttributeManager(object):
     def delete_attribute(self, obj, key, **kwargs):
         self.get_history(obj, key, **kwargs).delattr()
         self.value_changed(obj, key, None)
-
-    def set_callable(self, obj, key, func, uselist, **kwargs):
-        self.attribute_history(obj)[key] = CallableProp(self, func, obj, key, uselist, **kwargs)
-    
-    def create_callable(self, obj, key, func, uselist, **kwargs):
-        return CallableProp(self, func, obj, key, uselist, **kwargs)
         
     def rollback(self, *obj):
         for o in obj:
@@ -234,8 +228,13 @@ class AttributeManager(object):
                 
     def remove(self, obj):
         pass
-            
-    def get_history(self, obj, key, create_prop = None, passive=False, **kwargs):
+
+    def create_history(self, obj, key, uselist, callable_=None, **kwargs):
+        p = self.create_history_container(obj, key, uselist, callable_=callable_, **kwargs)
+        self.attribute_history(obj)[key] = p
+        return p
+
+    def get_history(self, obj, key, passive=False, **kwargs):
         try:
             return self.attribute_history(obj)[key].gethistory(passive=passive, **kwargs)
         except KeyError, e:
@@ -262,25 +261,27 @@ class AttributeManager(object):
             attr = {}
             class_._class_managed_attributes = attr
         return attr
+
+
+    def create_history_container(self, obj, key, uselist, callable_ = None, **kwargs):
+        if callable_ is not None:
+            return self.create_callable(obj, key, callable_, uselist=uselist, **kwargs)
+        elif not uselist:
+            return PropHistory(obj, key, **kwargs)
+        else:
+            list_ = obj.__dict__.get(key, None)
+            return self.create_list(obj, key, list_, **kwargs)
         
-    def register_attribute(self, class_, key, uselist, create_prop = None, **kwargs):
+    def register_attribute(self, class_, key, uselist, callable_=None, **kwargs):
         # create a function, that will create this object attribute when its first called
         def createprop(obj):
-            if create_prop is not None:
-                # create the object attribute as a callable
-                # TODO: too much indirection here, figure out cleaner way
-                p = self.create_callable(obj, key, create_prop(obj), uselist=uselist, **kwargs)
-                self.attribute_history(obj)[key] = p
-                return p
-            elif not uselist:
-                p = PropHistory(obj, key, **kwargs)
-                self.attribute_history(obj)[key] = p
-                return p
+            if callable_ is not None: 
+                func = callable_(obj)
             else:
-                list_ = obj.__dict__.get(key, None)
-                p = self.create_list(obj, key, list_, **kwargs)
-                self.attribute_history(obj)[key] = p
-                return p
+                func = None
+            p = self.create_history_container(obj, key, uselist, callable_=func, **kwargs)
+            self.attribute_history(obj)[key] = p
+            return p
         
         self.class_managed(class_)[key] = createprop
         setattr(class_, key, self.create_prop(key, uselist))
