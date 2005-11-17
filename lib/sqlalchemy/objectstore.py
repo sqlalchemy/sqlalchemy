@@ -643,4 +643,3 @@ def object_mapper(obj):
 
 global_attributes = UOWAttributeManager()
 uow = util.ScopedRegistry(lambda: UnitOfWork(), "thread")
-
