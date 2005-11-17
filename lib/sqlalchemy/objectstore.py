@@ -300,7 +300,7 @@ class UOWTransaction(object):
         refreshed/updated to reflect a recent save/upcoming delete operation, but not a full
         save/delete operation on the object itself, unless an additional save/delete
         registration is entered for the object."""
-#        print "RO", str(obj), str(isdelete), str(listonly)
+        #print "RO", str(obj), str(isdelete), str(listonly)
         mapper = object_mapper(obj)
         self.mappers.append(mapper)
         task = self.get_task_by_mapper(mapper)
@@ -444,7 +444,8 @@ class UOWTask(object):
         self.iscircular = False
         self.circular = None
         self.childtasks = []
-
+        #print "NEW TASK", repr(self)
+        
     def is_empty(self):
         return len(self.objects) == 0 and len(self.dependencies) == 0 and len(self.childtasks) == 0
             
@@ -551,6 +552,7 @@ class UOWTask(object):
                 if taskelement.isdelete is not isdelete:
                     continue
                 childlist = processor.get_object_dependencies(obj, trans, passive = True)
+                #print "GETING LIST OFF PROC", processor.key, "OBJ", repr(obj)
                 if isdelete:
                     childlist = childlist.unchanged_items() + childlist.deleted_items()
                 else:
