@@ -202,6 +202,8 @@ class AttributeManager(object):
         return self.get_history(obj, key, **kwargs)
         
     def set_attribute(self, obj, key, value, **kwargs):
+        if key == 'parent' and value is not None and value.__class__.__name__ != 'Comment':
+            raise "wha?"
         self.get_history(obj, key, **kwargs).setattr(value)
         self.value_changed(obj, key, value)
     
