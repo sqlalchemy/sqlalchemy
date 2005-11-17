@@ -200,7 +200,8 @@ class Mapper(object):
         if primary_keys is not None:
             for k in primary_keys:
                 self.primary_keys.setdefault(k.table, []).append(k)
-                self.primary_keys.setdefault(self.table, []).append(k)
+                if k.table != self.table:
+                    self.primary_keys.setdefault(self.table, []).append(k)
         else:
             for t in self.tables + [self.table]:
                 try:
@@ -512,13 +513,15 @@ class Mapper(object):
                     continue
                 else:
                     delete.append(params)
-                for col in table.primary_keys:
+                for col in self.primary_keys[table]:
                     params[col.key] = self._getattrbycolumn(obj, col)
                 uow.register_deleted_object(obj)
             if len(delete):
                 clause = sql.and_()
                 for col in self.primary_keys[table]:
+                    print "adding clause for primary key", table.name, "col", col.key
                     clause.clauses.append(col == sql.bindparam(col.key))
+                print "so heres the clause", str(clause)
                 statement = table.delete(clause)
                 c = statement.execute(*delete)
                 if c.rowcount != len(delete):
@@ -952,7 +955,12 @@ class PropertyLoader(MapperProperty):
                         uowcommit.register_object(child)
                 if self.direction != PropertyLoader.RIGHT or len(childlist.added_items()) == 0:
                     for child in childlist.deleted_items():
-                        self._synchronize(obj, child, None, True)
+                        if not self.private:
+                            # TODO: we arent sync'ing if this child object
+                            # is to be deleted.  this is because if its an "association"
+                            # object, it needs its data in order to be located.  
+                            # need more explicit support for "association" objects.
+                            self._synchronize(obj, child, None, True)
                         if self.direction == PropertyLoader.LEFT:
                             uowcommit.register_object(child, isdelete=self.private)
 
@@ -1124,7 +1132,8 @@ class EagerLoader(PropertyLoader):
             h = objectstore.global_attributes.create_history(instance, self.key, self.uselist)
             
         if not self.uselist:
-            h.setattr(self.mapper._instance(row, imap))
+            if isnew:
+                h.setattr(self.mapper._instance(row, imap))
             return
         elif isnew:
             result_list = h
