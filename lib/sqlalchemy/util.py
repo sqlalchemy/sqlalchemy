@@ -17,6 +17,7 @@
 
 __ALL__ = ['OrderedProperties', 'OrderedDict']
 import thread, weakref, UserList,string
+import sqlalchemy.topological as topological
 
 class OrderedProperties(object):
     """an object that maintains the order in which attributes are set upon it.
@@ -326,116 +327,5 @@ class ScopedRegistry(object):
     def _clear_application(self):
         self.application = createfunc()
                 
-class DependencySorter(object):
-    """creates a "dependency tree" across a list of objects, using a series of 
-    'dependency relationships' expressed as a list of tuples to determine its shape.  
-    the tuples are of the form (x,y) which indicate 'y is dependent on x'.
-    a list of additional elements who may or may not be expressed within the tuples 
-    is also supplied.
-    
-    If a tuple contains the same value dependent on itself, the corresponding node
-    is marked as "circular", indicating the node is dependent on itself.
-    """
-    class Node:
-        """represents a node in a tree.  stores an 'item' which represents the 
-        dependent thing we are talking about.  if node 'a' is an ancestor node of 
-        node 'b', it means 'a's item is *not* dependent on that of 'b'."""
-        def __init__(self, item):
-            #print "new node on " + str(item)
-            self.item = item
-            self.children = HashSet()
-            self.parent = None
-            self.circular = False
-        def append(self, node):
-            """appends the given node as a child on this node.  removes the node from 
-            its preexisting parent."""
-            if node.parent is not None:
-                del node.parent.children[node]
-            self.children.append(node)
-            node.parent = self
-        def is_descendant_of(self, node):
-            """returns true if this node is a descendant of the given node"""
-            n = self
-            while n is not None:
-                if n is node:
-                    return True
-                else:
-                    n = n.parent
-            return False
-        def get_root(self):
-            """returns the highest ancestor node of this node, i.e. which has no parent"""
-            n = self
-            while n.parent is not None:
-                n = n.parent
-            return n
-        def get_sibling_ancestor(self, node):
-            """returns the node which is an ancestor of this node and is a sibling 
-            of the given node, or else returns this node's root node."""
-            n = self
-            while n.parent is not None and n.parent is not node.parent:
-                n = n.parent
-            return n
-        def __str__(self):
-            return self.safestr({})
-        def safestr(self, hash, indent = 0):
-            if hash.has_key(self):
-                return (' ' * indent) + "RECURSIVE:%s(%s, %s)" % (str(self.item), repr(id(self)), self.parent and repr(id(self.parent)) or 'None')
-            hash[self] = True
-            return (' ' * indent) + "%s  (idself=%s, idparent=%s)" % (str(self.item), repr(id(self)), self.parent and repr(id(self.parent)) or "None") + "\n" + string.join([n.safestr(hash, indent + 1) for n in self.children], '')
-
-    def __init__(self, tuples, allitems):
-        self.tuples = tuples
-        self.allitems = allitems
-        
-    def sort(self):
-        (tuples, allitems) = (self.tuples, self.allitems)
-        
-        nodes = {}
-        # make nodes for all the items and store in the hash
-        for item in allitems + [t[0] for t in tuples] + [t[1] for t in tuples]:
-            if not nodes.has_key(item):
-                nodes[item] = DependencySorter.Node(item)
-
-        # loop through tuples
-        for tup in tuples:
-            (parent, child) = (tup[0], tup[1])
-            # get parent node
-            parentnode = nodes[parent]
-
-            # if parent is child, mark "circular" attribute on the node
-            if parent is child:
-                parentnode.circular = True
-                # and just continue
-                continue
-
-            # get child node
-            childnode = nodes[child]
-            
-            if parentnode.parent is childnode:
-                # check for "a switch"
-                t = parentnode.item
-                parentnode.item = childnode.item
-                childnode.item = t
-                nodes[parentnode.item] = parentnode
-                nodes[childnode.item] = childnode
-            elif parentnode.is_descendant_of(childnode):
-                # check for a line thats backwards with nodes in between, this is a 
-                # circular dependency (although confirmation on this would be helpful)
-                raise "Circular dependency detected"
-            elif not childnode.is_descendant_of(parentnode):
-                # if relationship doesnt exist, connect nodes together
-                root = childnode.get_sibling_ancestor(parentnode)
-                parentnode.append(root)
-
-        # now we have a collection of subtrees which represent dependencies.
-        # go through the collection root nodes wire them together into one tree        
-        head = None
-        for node in nodes.values():
-            if node.parent is None:
-                if head is not None:
-                    head.append(node)
-                else:
-                    head = node
-        #print str(head)
-        return head
-            
+class DependencySorter(topological.QueueDependencySorter):
+    pass
