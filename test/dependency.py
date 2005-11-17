@@ -86,5 +86,34 @@ class DependencySortTest(PersistTest):
         head = util.DependencySorter(tuples, []).sort()
         print "\n" + str(head)
 
+    def testsort5(self):
+        # this one, depenending on the weather, 
+#    thingy(5780972, node4)  (idself=5781292, idparent=None)
+#     thingy(5780876, node1)  (idself=5781068, idparent=5781292)
+#      thingy(5780908, node2)  (idself=5781164, idparent=5781068)
+#       thingy(5780940, node3)  (idself=5781228, idparent=5781164)
+   
+        node1 = thingy('node1') #thingy('00B94190')
+        node2 = thingy('node2') #thingy('00B94990')
+        node3 = thingy('node3') #thingy('00B9A9B0')
+        node4 = thingy('node4') #thingy('00B4F210')
+        tuples = [
+            (node4, node1),
+            (node1, node2),
+            (node4, node3),
+            (node2, node3),
+            (node4, node2),
+            (node3, node3)
+        ]
+        allitems = [
+            node1,
+            node2,
+            node3,
+            node4
+        ]
+        head = util.DependencySorter(tuples, allitems).sort()
+        print "\n" + str(head)
+        
+
 if __name__ == "__main__":
     unittest.main()
