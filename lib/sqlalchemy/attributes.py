@@ -147,8 +147,9 @@ class CallableProp(object):
         if not self.uselist:
             if self.obj.__dict__.get(self.key, None) is None:
                 if passive:
-                    return None
-                value = self.callable_()
+                    value = None
+                else:
+                    value = self.callable_()
                 self.obj.__dict__[self.key] = value
 
             p = PropHistory(self.obj, self.key, **self.kwargs)
