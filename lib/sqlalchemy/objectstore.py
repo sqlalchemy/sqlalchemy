@@ -306,6 +306,11 @@ class UOWTransaction(object):
         task = self.get_task_by_mapper(mapper)
         task.append(obj, listonly, isdelete=isdelete, **kwargs)
 
+    def unregister_object(self, obj):
+        mapper = object_mapper(obj)
+        task = self.get_task_by_mapper(mapper)
+        task.delete(obj)
+        
     def get_task_by_mapper(self, mapper):
         """every individual mapper involved in the transaction has a single
         corresponding UOWTask object, which stores all the operations involved
@@ -332,8 +337,7 @@ class UOWTransaction(object):
         # for dependency processing
         task = self.get_task_by_mapper(mapper)
         targettask = self.get_task_by_mapper(mapperfrom)
-        # this tuple will become a UOWDependencyProcessor in a later release
-        task.dependencies.append((processor, targettask, isdeletefrom))
+        task.dependencies.append(UOWDependencyProcessor(processor, targettask, isdeletefrom))
 
     def register_saved_object(self, obj):
         self.saved_objects.append(obj)
@@ -352,7 +356,7 @@ class UOWTransaction(object):
             task.mapper.register_dependencies(self)
 
         head = self._sort_dependencies()
-        #print "Task dump:\n" + head.dump()
+        print "Task dump:\n" + head.dump()
         if head is not None:
             head.execute(self)
             
@@ -427,11 +431,36 @@ class UOWTaskElement(object):
         return "UOWTaskElement/%d: %s/%d %s" % (id(self), self.obj.__class__.__name__, id(self.obj), (self.listonly and 'listonly' or (self.isdelete and 'delete' or 'save')) )
 
 class UOWDependencyProcessor(object):
-    """this class is going to replace the tuple that we put into task.dependencies,
-    strictly for clarity."""
+    """in between the saving and deleting of objects, process "dependent" data, such as filling in 
+    a foreign key on a child item from a new primary key, or deleting association rows before a 
+    delete."""
     def __init__(self, processor, targettask, isdeletefrom):
-        pass
-#    task.dependencies.append((processor, targettask, isdeletefrom))
+        self.processor = processor
+        self.targettask = targettask
+        self.isdeletefrom = isdeletefrom
+    
+    def execute(self, trans, delete):
+        if not delete:
+            self.processor.process_dependencies(self.targettask, [elem.obj for elem in self.targettask.tosave_elements()], trans, delete = delete)
+        else:            
+            self.processor.process_dependencies(self.targettask, [elem.obj for elem in self.targettask.todelete_elements()], trans, delete = delete)
+
+    def get_object_dependencies(self, obj, trans, passive):
+        return self.processor.get_object_dependencies(obj, trans, passive=passive)
+
+    def whose_dependent_on_who(self, obj, o):        
+        return self.processor.whose_dependent_on_who(obj, o)
+
+    def branch(self, task):
+        return UOWDependencyProcessor(self.processor, task, self.isdeletefrom)
+
+    def __str__(self):
+        if self.isdeletefrom:
+            val = [t for t in self.targettask.objects.values() if t.isdelete]
+        else:
+            val = [t for t in self.targettask.objects.values() if not t.isdelete]
+        return string.join([repr(self.processor.key) + " on " + repr(o) for o in val], "\n")
+        
     
 class UOWTask(object):
     def __init__(self, uowtransaction, mapper):
@@ -468,6 +497,9 @@ class UOWTask(object):
         if isdelete:
             rec.isdelete = True
 
+    def delete(self, obj):
+        del self.objects[obj]
+        
     def execute(self, trans):
         """executes this UOWTask.  saves objects to be saved, processes all dependencies
         that have been registered, and deletes objects to be deleted. """
@@ -477,14 +509,12 @@ class UOWTask(object):
 
         self.mapper.save_obj(self.tosave_objects(), trans)
         for dep in self.save_dependencies():
-            (processor, targettask, isdelete) = dep
-            processor.process_dependencies(targettask, [elem.obj for elem in targettask.tosave_elements()], trans, delete = False)
+            dep.execute(trans, delete=False)
         for element in self.tosave_elements():
             if element.childtask is not None:
                 element.childtask.execute(trans)
         for dep in self.delete_dependencies():
-            (processor, targettask, isdelete) = dep
-            processor.process_dependencies(targettask, [elem.obj for elem in targettask.todelete_elements()], trans, delete = True)
+            dep.execute(trans, delete=True)
         for child in self.childtasks:
             child.execute(trans)
         for element in self.todelete_elements():
@@ -501,9 +531,9 @@ class UOWTask(object):
     def todelete_objects(self):
         return [o for o, rec in self.objects.iteritems() if not rec.listonly and rec.isdelete]
     def save_dependencies(self):
-        return [dep for dep in self.dependencies if not dep[2]]
+        return [dep for dep in self.dependencies if not dep.isdeletefrom]
     def delete_dependencies(self):
-        return [dep for dep in self.dependencies if dep[2]]
+        return [dep for dep in self.dependencies if dep.isdeletefrom]
         
     def _sort_circular_dependencies(self, trans):
         """for a single task, creates a hierarchical tree of "subtasks" which associate
@@ -527,17 +557,17 @@ class UOWTask(object):
                 return t
 
         dependencies = {}
-        def get_dependency_task(obj, processor, isdelete):
+        def get_dependency_task(obj, depprocessor):
             try:
                 dp = dependencies[obj]
             except KeyError:
                 dp = {}
                 dependencies[obj] = dp
             try:
-                l = dp[(processor, isdelete)]
+                l = dp[depprocessor]
             except KeyError:
                 l = UOWTask(None, None)
-                dp[(processor, isdelete)] = l
+                dp[depprocessor] = l
             return l
 
         for taskelement in self.objects.values():
@@ -548,10 +578,10 @@ class UOWTask(object):
             obj = taskelement.obj
             parenttask = get_task(obj)
             for dep in self.dependencies:
-                (processor, targettask, isdelete) = dep
-                if taskelement.isdelete is not isdelete:
+                (processor, targettask, isdelete) = (dep.processor, dep.targettask, dep.isdeletefrom)
+                if taskelement.isdelete is not dep.isdeletefrom:
                     continue
-                childlist = processor.get_object_dependencies(obj, trans, passive = True)
+                childlist = dep.get_object_dependencies(obj, trans, passive = True)
                 #print "GETING LIST OFF PROC", processor.key, "OBJ", repr(obj)
                 if isdelete:
                     childlist = childlist.unchanged_items() + childlist.deleted_items()
@@ -560,14 +590,18 @@ class UOWTask(object):
                 for o in childlist:
                     if not self.objects.has_key(o):
                         continue
-                    whosdep = processor.whose_dependent_on_who(obj, o)
+                    whosdep = dep.whose_dependent_on_who(obj, o)
                     if whosdep is not None:
                         tuples.append(whosdep)
                         if whosdep[0] is obj:
-                            get_dependency_task(whosdep[0], processor, isdelete).append(whosdep[0], isdelete=isdelete)
+                            get_dependency_task(whosdep[0], dep).append(whosdep[0], isdelete=isdelete)
                         else:
-                            get_dependency_task(whosdep[0], processor, isdelete).append(whosdep[1], isdelete=isdelete)
-
+                            get_dependency_task(whosdep[0], dep).append(whosdep[1], isdelete=isdelete)
+                    else:
+                    #    pass
+                        #raise "hi " + repr(obj) + " " + repr(o)
+                        get_dependency_task(obj, dep).append(obj, isdelete=isdelete)
+                        
         head = util.DependencySorter(tuples, allobjects).sort()
         if head is None:
             return None
@@ -576,9 +610,8 @@ class UOWTask(object):
             t = objecttotask[node.item]
             parenttask.append(node.item, self.objects[node.item].listonly, t, isdelete=self.objects[node.item].isdelete)
             if dependencies.has_key(node.item):
-                for tup, deptask in dependencies[node.item].iteritems():
-                    (processor, isdelete) = tup
-                    parenttask.dependencies.append((processor, deptask, isdelete))
+                for depprocessor, deptask in dependencies[node.item].iteritems():
+                    parenttask.dependencies.append(depprocessor.branch(deptask))
             for n in node.children:
                 t2 = make_task_tree(n, t)
             return t
@@ -625,12 +658,7 @@ class UOWTask(object):
     def _dump_dependencies(self, dep, indent):
         s = ""
         for dt in dep:
-            if dt[2]:
-                val = [t for t in dt[1].objects.values() if t.isdelete]
-            else:
-                val = [t for t in dt[1].objects.values() if not t.isdelete]
-            for o in val:
-                s += "\n      " + indent + repr(dt[0].key) + " on " + repr(o)
+            s += string.join(["\n     " + indent + s2 for s2 in str(dt).split("\n")])
         return s
         
     def __repr__(self):
