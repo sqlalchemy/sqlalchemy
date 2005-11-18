@@ -139,6 +139,35 @@ class LazyTest(MapperSuperTest):
         self.echo(repr(l[0].user))
         self.assert_(l[0].user is not None)
 
+
+    def testdouble(self):
+        """tests lazy loading with two relations simulatneously, from the same table, using aliases.  """
+        openorders = alias(orders, 'openorders')
+        closedorders = alias(orders, 'closedorders')
+        m = mapper(User, users, properties = dict(
+            addresses = relation(Address, addresses, lazy = False),
+            open_orders = relation(Order, openorders, primaryjoin = and_(openorders.c.isopen == 1, users.c.user_id==openorders.c.user_id), lazy = True),
+            closed_orders = relation(Order, closedorders, primaryjoin = and_(closedorders.c.isopen == 0, users.c.user_id==closedorders.c.user_id), lazy = True)
+        ))
+        l = m.select()
+        self.assert_result(l, User,
+            {'user_id' : 7, 
+                'addresses' : (Address, [{'address_id' : 1}]),
+                'open_orders' : (Order, [{'order_id' : 3}]),
+                'closed_orders' : (Order, [{'order_id' : 1},{'order_id' : 5},])
+            },
+            {'user_id' : 8, 
+                'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}]),
+                'open_orders' : (Order, []),
+                'closed_orders' : (Order, [])
+            },
+            {'user_id' : 9, 
+                'addresses' : (Address, []),
+                'open_orders' : (Order, [{'order_id' : 4}]),
+                'closed_orders' : (Order, [{'order_id' : 2}])
+            }
+            )
+
     def testmanytomany(self):
         """tests a many-to-many lazy load"""
         items = orderitems

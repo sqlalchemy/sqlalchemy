@@ -1,3 +1,9 @@
+<%global>
+    import re
+    def format_paragraphs(text):
+        return re.sub(r'([\w ])\n([\w ])', r'\1 \2', text or '', re.S)
+</%global>
+
 <%method obj_doc>
     <%args>
         obj
@@ -12,7 +18,7 @@
         if not isclass:
             if hasattr(obj, '__ALL__'):
                 objects = obj.__ALL__
-                sort = False
+                sort = True
             else:
                 objects = obj.__dict__.keys()
                 sort = True
@@ -54,7 +60,7 @@
     </%init>
 
 <&|doclib.myt:item, name=obj.__name__, description=description &>
-<&|formatting.myt:formatplain&><% obj.__doc__ %></&><br/>
+<&|formatting.myt:formatplain&><% format_paragraphs(obj.__doc__) %></&><br/>
 
 % if not isclass and len(functions):
 <&|doclib.myt:item, name="modfunc", description="Module Functions" &>
@@ -106,6 +112,6 @@
     </%init>
     
     <&| formatting.myt:function_doc, name="def " + func.__name__, arglist=argstrings &>
-    <&|formatting.myt:formatplain&><% func.__doc__ %></&>
+    <&|formatting.myt:formatplain&><% format_paragraphs(func.__doc__) %></&>
     </&>
 </%method>

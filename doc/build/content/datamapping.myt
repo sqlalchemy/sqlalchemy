@@ -325,13 +325,13 @@ WHERE users.user_name = :users_user_name ORDER BY users.oid, addresses.oid
             def __init__(self, email_address = None):
                 self.email_address = email_address
 
-            mapper = assignmapper(addresses)
+        Address.mapper = mapper(Address, addresses)
         
     
         # give the User class a new Mapper referencing addresses.  
         # "private=True" means deletions of the user
         # will cascade down to the child Address objects
-        User.mapper = assignmapper(users, properties = dict(
+        User.mapper = mapper(Mapper, users, properties = dict(
             relation(Address.mapper, lazy=True, private=True)
         ))
         
@@ -404,11 +404,12 @@ VALUES (:address_id, :user_id, :email_address)
         
         # class definition for preferences
         class UserPrefs(object):
-            mapper = assignmapper(prefs)
+            pass
+        UserPrefs.mapper = mapper(UserPrefs, prefs)
     
         # make a new mapper referencing everything.
         m = mapper(User, users, properties = dict(
-            addresses = relation(Address.mapper, lazy=True, private=True),
+            addresses = relation(Address, addresses, lazy=True, private=True),
             preferences = relation(UserPrefs.mapper, lazy=False, private=True),
         ))
         
@@ -479,7 +480,7 @@ VALUES (:address_id, :user_id, :email_address)
     class Keyword(object):
         def __init__(self, name = None):
             self.name = name
-        mapper = assignmapper(keywords)
+    Keyword.mapper = mapper(Keyword, keywords)
 
     class Article(object):
         def __init__(self):
@@ -568,8 +569,10 @@ INSERT INTO article_keywords (article_id, keyword_id) VALUES (:article_id, :keyw
 
     
         </&>
-        
-        <p>Many to Many can also be done with an Association object, that adds additional information about how two items are related:</p>
+</&>
+<&|doclib.myt:item, name="association", description="Association Object" &>
+
+        <p>Many to Many can also be done with an association object, that adds additional information about how two items are related.  This association object is set up in basically the same way as any other mapped object.  However, since an association table typically has no primary keys, you have to tell the mapper what columns will act as its "primary keys", which are the two columns involved in the association.  Also, the relation function needs an additional hint as to the fact that this mapped object is an association object, via the "association" argument which points to the class or mapper representing the other side of the association.</p>
         <&|formatting.myt:code&>
             # add "attached_by" column which will reference the user who attached this keyword
             itemkeywords = Table('article_keywords', engine,
@@ -579,16 +582,23 @@ INSERT INTO article_keywords (article_id, keyword_id) VALUES (:article_id, :keyw
             )
 
             # define an association class
-            class KeywordAssociation(object):pass
+            class KeywordAssociation(object):
+                pass
+
+            # mappers for Users, Keywords
+            User.mapper = mapper(User, users)
+            Keyword.mapper = mapper(Keyword, keywords)
             
             # define the mapper. when we load an article, we always want to get the keywords via
             # eager loading.  but the user who added each keyword, we usually dont need so specify 
             # lazy loading for that.
             m = mapper(Article, articles, properties=dict(
-                keywords = relation(KeywordAssociation, itemkeywords, lazy = False, properties=dict(
-                    keyword = relation(Keyword, keywords, lazy = False),
-                    user = relation(User, users, lazy = True)
-                    )
+                keywords = relation(KeywordAssociation, itemkeywords, lazy=False, association=Keyword, 
+                    primary_keys = [itemkeywords.c.article_id, itemkeywords.c.keyword_id],
+                    properties={
+                        'keyword' : relation(Keyword, lazy = False),
+                        'user' : relation(User, lazy = True)
+                    }
                 )
                 )
             )
