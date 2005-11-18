@@ -581,6 +581,10 @@ class SaveTest(AssertMixin):
                 )
         ])
         
+        print "NEXT TEST"
+        objectstore.delete(objects[3])
+        objectstore.commit()
+        
     def testassociation(self):
         class IKAssociation(object):
             def __repr__(self):
