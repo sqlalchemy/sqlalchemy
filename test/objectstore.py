@@ -10,6 +10,15 @@ import tables
 
 
 class HistoryTest(AssertMixin):
+    def setUpAll(self):
+        db.echo = False
+        addresses.create()
+        db.echo = testbase.echo
+    def tearDownAll(self):
+        db.echo = False
+        addresses.drop()
+        db.echo = testbase.echo
+
     def testattr(self):
         m = mapper(User, users, properties = dict(addresses = relation(Address, addresses)))
         u = User()
