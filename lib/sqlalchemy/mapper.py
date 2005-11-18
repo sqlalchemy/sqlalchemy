@@ -27,7 +27,7 @@ import sqlalchemy.objectstore as objectstore
 import random, copy, types
 
 __ALL__ = ['eagermapper', 'eagerloader', 'lazymapper', 'lazyloader', 'eagerload', 'lazyload', 'assignmapper', 
-        'mapper', 'lazyloader', 'lazymapper', 'clear_mappers', 'objectstore', 'sql', 'MapperExtension']
+        'mapper', 'lazyloader', 'lazymapper', 'clear_mappers', 'objectstore', 'sql', 'extension', 'MapperExtension']
 
 def relation(*args, **params):
     """provides a relationship of a primary Mapper to a secondary Mapper, which corresponds
@@ -99,7 +99,11 @@ def clear_mapper(m):
     created for the previous mapper's class, it will be used as that classes' 
     new primary mapper."""
     del _mappers[m.hash_key]
-    
+
+def extension(ext):
+    """returns a MapperOption that will add the given MapperExtension to the 
+    mapper returned by mapper.options()."""
+    return ExtensionOption(ext)
 def eagerload(name):
     """returns a MapperOption that will convert the property of the given name
     into an eager load.  Used with mapper.options()"""
@@ -371,6 +375,15 @@ class Mapper(object):
     def instance_key(self, instance):
         return self.identity_key(*[self._getattrbycolumn(instance, column) for column in self.primary_keys[self.table]])
 
+#    def _primary_key_ident(self, obj):
+#        """returns an identity of an object based on its primary keys, across all tables 
+#        represented by this mapper."""
+#        res = []
+#        for table in self.tables:
+#            for k in self.primary_keys[table]:
+#                res.append(self._getattrbycolumn(obj, k))
+#        return tuple(res)
+
     def compile(self, whereclause = None, **options):
         """works like select, except returns the SQL statement object without 
         compiling or executing it"""
@@ -442,6 +455,7 @@ class Mapper(object):
     def _setattrbycolumn(self, obj, column, value):
         self.columntoproperty[column][0].setattr(obj, value)
 
+        
     def save_obj(self, objects, uow):
         """called by a UnitOfWork object to save objects, which involves either an INSERT or
         an UPDATE statement for each table used by this mapper, for each element of the
@@ -516,12 +530,11 @@ class Mapper(object):
                 for col in self.primary_keys[table]:
                     params[col.key] = self._getattrbycolumn(obj, col)
                 uow.register_deleted_object(obj)
+                self.extension.before_delete(self, obj)
             if len(delete):
                 clause = sql.and_()
                 for col in self.primary_keys[table]:
-                    print "adding clause for primary key", table.name, "col", col.key
                     clause.clauses.append(col == sql.bindparam(col.key))
-                print "so heres the clause", str(clause)
                 statement = table.delete(clause)
                 c = statement.execute(*delete)
                 if c.rowcount != len(delete):
@@ -677,7 +690,7 @@ class PropertyLoader(MapperProperty):
 
     """describes an object property that holds a single item or list of items that correspond
     to a related database table."""
-    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey = None, uselist = None, private = False, thiscol = None, live=False, isoption=False, **kwargs):
+    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, live=False, isoption=False, isassociation=False, **kwargs):
         self.uselist = uselist
         self.argument = argument
         self.secondary = secondary
@@ -685,9 +698,9 @@ class PropertyLoader(MapperProperty):
         self.secondaryjoin = secondaryjoin
         self.foreignkey = foreignkey
         self.private = private
-        self.thiscol = thiscol
         self.live = live
         self.isoption = isoption
+        self.isassociation = isassociation
         self._hash_key = "%s(%s, %s, %s, %s, %s, %s, %s)" % (self.__class__.__name__, hash_key(self.argument), hash_key(secondary), hash_key(primaryjoin), hash_key(secondaryjoin), hash_key(foreignkey), repr(uselist), repr(private))
 
     def _copy(self):
@@ -862,6 +875,7 @@ class PropertyLoader(MapperProperty):
             # gets added to the "todo" list
             uowcommit.register_dependency(self.mapper, self.parent)
             uowcommit.register_processor(self.parent, self, self.parent, False)
+            uowcommit.register_processor(self.parent, self, self.parent, True)
         elif self.direction == PropertyLoader.LEFT:
             uowcommit.register_dependency(self.parent, self.mapper)
             uowcommit.register_processor(self.parent, self, self.parent, False)
@@ -915,14 +929,14 @@ class PropertyLoader(MapperProperty):
                         self._synchronize(obj, child, associationrow, False)
                         secondary_delete.append(associationrow)
                     uowcommit.register_saved_list(childlist)
-                if len(secondary_delete):
-                    # TODO: precompile the delete/insert queries and store them as instance variables
-                    # on the PropertyLoader
-                    statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key) for c in self.secondary.c]))
-                    statement.execute(*secondary_delete)
-                if len(secondary_insert):
-                    statement = self.secondary.insert()
-                    statement.execute(*secondary_insert)
+            if len(secondary_delete):
+                # TODO: precompile the delete/insert queries and store them as instance variables
+                # on the PropertyLoader
+                statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key) for c in self.secondary.c]))
+                statement.execute(*secondary_delete)
+            if len(secondary_insert):
+                statement = self.secondary.insert()
+                statement.execute(*secondary_insert)
         elif self.direction == PropertyLoader.RIGHT and delete:
             # head object is being deleted, and we manage a foreign key object.
             # dont have to do anything to it.
@@ -940,6 +954,21 @@ class PropertyLoader(MapperProperty):
                     self._synchronize(obj, child, None, True)
                     uowcommit.register_object(child)
                 uowcommit.register_deleted_list(childlist)
+        elif self.isassociation:
+            for obj in deplist:
+                childlist = getlist(obj, passive=True)
+                if childlist is None: continue
+                uowcommit.register_saved_list(childlist)
+
+                # TODO: sort out the association objects so that we only insert/delete/update those
+                # that are actually correct.
+                for child in childlist:
+                    self._synchronize(obj, child, None, False)
+                    uowcommit.unregister_object(child)                    
+
+                for child in childlist.deleted_items():
+                    uowcommit.unregister_object(child)                    
+                    
         else:
             for obj in deplist:
                 #print "PROCESS:", repr(obj)
@@ -1142,7 +1171,7 @@ class EagerLoader(PropertyLoader):
             
         self.mapper._instance(row, imap, result_list)
 
-class MapperOption:
+class MapperOption(object):
     """describes a modification to a Mapper in the context of making a copy
     of it.  This is used to assist in the prototype pattern used by mapper.options()."""
     def process(self, mapper):
@@ -1150,6 +1179,14 @@ class MapperOption:
     def hash_key(self):
         return repr(self)
 
+class ExtensionOption(MapperOption):
+    """adds a new MapperExtension to a mapper's chain of extensions"""
+    def __init__(self, ext):
+        self.ext = ext
+    def process(self, mapper):
+        ext.next = mapper.extension
+        mapper.extension = ext
+        
 class EagerLazyOption(MapperOption):
     """an option that switches a PropertyLoader to be an EagerLoader or LazyLoader"""
     def __init__(self, key, toeager = True):
@@ -1219,12 +1256,24 @@ class BinaryVisitor(sql.ClauseVisitor):
         
 
 class MapperExtension(object):
+    def __init__(self):
+        self.next = None
     def create_instance(self, mapper, row, imap, class_):
-        return None
+        if self.next is None:
+            return None
+        else:
+            return self.next.create_instance(mapper, row, imap, class_)
     def append_result(self, mapper, row, imap, result, instance, isnew, populate_existing=False):
-        return True
+        if self.next is None:
+            return True
+        else:
+            return self.next.append_result(mapper, row, imap, result, instance, isnew, populate_existing)
     def after_insert(self, mapper, instance):
-        pass
+        if self.next is not None:
+            self.next.after_insert(mapper, instance)
+    def before_delete(self, mapper, instance):
+        if self.next is not None:
+            self.next.before_delete(mapper, instance)
         
 def hash_key(obj):
     if obj is None:
