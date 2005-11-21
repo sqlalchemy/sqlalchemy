@@ -44,7 +44,7 @@ class ANSISQLEngine(sqlalchemy.engine.SQLEngine):
         return ([],{})
 
     def dbapi(self):
-        return object()
+        return None
 
 class ANSICompiler(sql.Compiled):
     def __init__(self, engine, statement, bindparams, typemap=None, paramstyle=None,**kwargs):
@@ -57,7 +57,11 @@ class ANSICompiler(sql.Compiled):
         self.isinsert = False
         
         if paramstyle is None:
-            paramstyle = self.engine.dbapi().paramstyle
+            db = self.engine.dbapi()
+            if db is not None:
+                paramstyle = db.paramstyle
+            else:
+                paramstyle = 'named'
 
         if paramstyle == 'named':
             self.bindtemplate = ':%s'

@@ -109,7 +109,7 @@ myothertable.othername FROM mytable, myothertable")
         self.runtest(
             sq.select(sq.c.id == 7), 
             "SELECT sq.myid, sq.name, sq.description FROM \
-(SELECT mytable.myid, mytable.name, mytable.description FROM mytable) sq WHERE sq.myid = :sq_myid"
+(SELECT mytable.myid, mytable.name, mytable.description FROM mytable) AS sq WHERE sq.myid = :sq_myid"
         )
         
         sq = subquery(
@@ -125,7 +125,7 @@ myothertable.othername AS myothertable_othername FROM mytable, myothertable \
 WHERE mytable.myid = :mytable_myid AND myothertable.otherid = mytable.myid"
 
         self.runtest(sq.select(), "SELECT sq.mytable_myid, sq.mytable_name, sq.mytable_description, sq.myothertable_otherid, \
-sq.myothertable_othername FROM (" + sqstring + ") sq")
+sq.myothertable_othername FROM (" + sqstring + ") AS sq")
 
         sq2 = subquery(
             'sq2',
@@ -137,7 +137,7 @@ sq.myothertable_othername FROM (" + sqstring + ") sq")
 sq2.sq_myothertable_otherid, sq2.sq_myothertable_othername FROM \
 (SELECT sq.mytable_myid AS sq_mytable_myid, sq.mytable_name AS sq_mytable_name, \
 sq.mytable_description AS sq_mytable_description, sq.myothertable_otherid AS sq_myothertable_otherid, \
-sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") sq) sq2")
+sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") AS sq) AS sq2")
         
         
     def testand(self):
@@ -174,7 +174,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") s
         # test the alias for a table.  column names stay the same, table name "changes" to "foo".
         self.runtest(
         select([alias(table, 'foo')])
-        ,"SELECT foo.myid, foo.name, foo.description FROM mytable foo")
+        ,"SELECT foo.myid, foo.name, foo.description FROM mytable AS foo")
     
         # create a select for a join of two tables.  use_labels means the column names will have
         # labels tablename_columnname, which become the column keys accessible off the Selectable object.
@@ -192,7 +192,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") s
 t2view.mytable_description AS t2view_mytable_description, t2view.myothertable_otherid AS t2view_myothertable_otherid FROM \
 (SELECT mytable.myid AS mytable_myid, mytable.name AS mytable_name, mytable.description AS mytable_description, \
 myothertable.otherid AS myothertable_otherid FROM mytable, myothertable \
-WHERE mytable.myid = myothertable.otherid) t2view WHERE t2view.mytable_myid = :t2view_mytable_myid"
+WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid = :t2view_mytable_myid"
         )
         
     def testliteral(self):        
@@ -222,7 +222,7 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
             "foo.f = t.id",
             from_obj = ["(select f from bar where lala=heyhey) foo"]
         ), 
-        "SELECT t.myid, t.name, t.description, foo.f FROM mytable t, (select f from bar where lala=heyhey) foo WHERE foo.f = t.id")
+        "SELECT t.myid, t.name, t.description, foo.f FROM mytable AS t, (select f from bar where lala=heyhey) foo WHERE foo.f = t.id")
 
     def testjoin(self):
     #    self.runtest(
@@ -351,12 +351,12 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
         s = subquery('sq2', [talias], exists([1], table2.c.id == talias.c.id))
         self.runtest(
             select([s, table])
-            ,"SELECT sq2.myid, sq2.name, sq2.description, mytable.myid, mytable.name, mytable.description FROM (SELECT ta.myid, ta.name, ta.description FROM mytable ta WHERE EXISTS (SELECT 1 FROM myothertable WHERE myothertable.otherid = ta.myid)) sq2, mytable")
+            ,"SELECT sq2.myid, sq2.name, sq2.description, mytable.myid, mytable.name, mytable.description FROM (SELECT ta.myid, ta.name, ta.description FROM mytable AS ta WHERE EXISTS (SELECT 1 FROM myothertable WHERE myothertable.otherid = ta.myid)) AS sq2, mytable")
 
         s = select([addresses.c.street], addresses.c.user_id==users.c.user_id).alias('s')
         self.runtest(
             select([users, s.c.street], from_obj=[s]),
-            """SELECT users.user_id, users.user_name, users.password, s.street FROM users, (SELECT addresses.street FROM addresses WHERE addresses.user_id = users.user_id) s""")
+            """SELECT users.user_id, users.user_name, users.password, s.street FROM users, (SELECT addresses.street FROM addresses WHERE addresses.user_id = users.user_id) AS s""")
 
     def testin(self):
         self.runtest(select([table], table.c.id.in_(1, 2, 3)),
@@ -433,7 +433,7 @@ class SchemaTest(SQLTest):
 
     def testalias(self):
         a = alias(table4, 'remtable')
-        self.runtest(a.select(a.c.datatype_id==7), "SELECT remtable.rem_id, remtable.datatype_id, remtable.value FROM remote_owner.remotetable remtable WHERE remtable.datatype_id = :remtable_datatype_id")
+        self.runtest(a.select(a.c.datatype_id==7), "SELECT remtable.rem_id, remtable.datatype_id, remtable.value FROM remote_owner.remotetable AS remtable WHERE remtable.datatype_id = :remtable_datatype_id")
         
     def testupdate(self):
         self.runtest(table4.update(table4.c.value=='test', values={table4.c.datatype_id:12}), "UPDATE remote_owner.remotetable SET datatype_id=:datatype_id WHERE remotetable.value = :remotetable_value")
