@@ -132,8 +132,11 @@ class TTestSuite(unittest.TestSuite):
         return (exctype, excvalue, tb)
 
 unittest.TestLoader.suiteClass = TTestSuite
-       
-(param, DBTYPE) = (sys.argv.pop(1), sys.argv.pop(1))
+
+if len(sys.argv) == 3:
+    (param, DBTYPE) = (sys.argv.pop(1), sys.argv.pop(1))
+else:
+    (param, DBTYPE) = None, None
 if (param != '--db'):
     raise "--db <sqlite|postgres|oracle|sqlite_file> param required"
         
