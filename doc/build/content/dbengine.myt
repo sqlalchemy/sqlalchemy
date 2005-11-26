@@ -1,4 +1,6 @@
 <%flags>inherit='document_base.myt'</%flags>
+<%attr>title='Database Engines'</%attr>
+
 <&|doclib.myt:item, name="dbengine", description="Database Engines" &>
     <p>A database engine is a subclass of <span class="codeline">sqlalchemy.engine.SQLEngine</span>, and is the starting point for where SQLAlchemy provides a layer of abstraction on top of the various DBAPI2 database modules.  It serves as an abstract factory for database-specific implementation objects as well as a layer of abstraction over the most essential tasks of a database connection, including connecting, executing queries, returning result sets, and managing transactions.</p>
     

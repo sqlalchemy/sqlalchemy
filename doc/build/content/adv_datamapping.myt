@@ -1,4 +1,5 @@
 <%flags>inherit='document_base.myt'</%flags>
+<%attr>title='Advanced Data Mapping'</%attr>
 <&|doclib.myt:item, name="adv_datamapping", description="Advanced Data Mapping" &>
 <p>This section is under construction.  For now, it has just the basic recipe for each concept without much else.  </p>
 

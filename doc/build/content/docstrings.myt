@@ -1,4 +1,5 @@
 <%flags>inherit='document_base.myt'</%flags>
+<%attr>title='Modules and Classes'</%attr>
 <&|doclib.myt:item, name="docstrings", description="Modules and Classes" &>
 <%init>
     import sqlalchemy.schema as schema

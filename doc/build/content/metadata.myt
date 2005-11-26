@@ -1,4 +1,5 @@
 <%flags>inherit='document_base.myt'</%flags>
+<%attr>title='Database Meta Data'</%attr>
 <&|doclib.myt:item, name="metadata", description="Database Meta Data" &>
     <&|doclib.myt:item, name="tables", description="Describing Tables with MetaData" &>
     <p>The core of SQLAlchemy's query and object mapping operations is table metadata, which are Python objects that describe tables.  Metadata objects can be created by explicitly naming the table and all its properties, using the Table, Column, ForeignKey, and Sequence objects imported from <span class="codeline">sqlalchemy.schema</span>, and a database engine constructed as described in the previous section, or they can be automatically pulled from an existing database schema.  First, the explicit version: </p>

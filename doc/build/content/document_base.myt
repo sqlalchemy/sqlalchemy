@@ -26,6 +26,14 @@
     version = '0.91'
 </%attr>
 
+<%method title>
+% try:
+#  avoid inheritance via attr instead of attributes
+    <% m.base_component.attr['title'] %> - SQLAlchemy Documentation
+% except KeyError:
+    SQLAlchemy Documentation
+%
+</%method>
 
 
 

@@ -1,4 +1,6 @@
 <%flags>inherit='document_base.myt'</%flags>
+<%attr>title='The Types System'</%attr>
+
 <&|doclib.myt:item, name="types", description="The Types System" &>
 <p>The package <span class="codeline">sqlalchemy.types</span> defines the datatype identifiers which may be used when defining <&formatting.myt:link, path="metadata", text="table metadata"&>.  This package includes a set of generic types, a set of SQL-specific subclasses of those types, and a small extension system used by specific database connectors to adapt these generic types into database-specific type objects.
 </p>

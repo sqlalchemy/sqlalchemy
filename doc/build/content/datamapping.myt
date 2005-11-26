@@ -1,4 +1,6 @@
 <%flags>inherit='document_base.myt'</%flags>
+<%attr>title='Data Mapping'</%attr>
+
 <&|doclib.myt:item, name="datamapping", description="Basic Data Mapping" &>
 <p>Data mapping describes the process of defining <b>Mapper</b> objects, which associate table metadata with user-defined classes.  
 
