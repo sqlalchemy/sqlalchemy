@@ -60,23 +60,24 @@ class TableSingleton(type):
     def __call__(self, name, engine, *args, **kwargs):
         try:
             schema = kwargs.get('schema', None)
+            autoload = kwargs.pop('autoload', False)
             key = _get_table_key(engine, name, schema)
             table = engine.tables[key]
             if len(args):
-                if kwargs.get('redefine', False):
+                if kwargs.pop('redefine', False):
                     table.reload_values(*args)
                 else:
                     raise "Table '%s.%s' is already defined. specify 'redefine=True' to remap columns" % (schema, name)
             return table
         except KeyError:
-            if kwargs.get('mustexist', False):
+            if kwargs.pop('mustexist', False):
                 raise "Table '%s.%s' not defined" % (schema, name)
             table = type.__call__(self, name, engine, *args, **kwargs)
             engine.tables[key] = table
             # load column definitions from the database if 'autoload' is defined
             # we do it after the table is in the singleton dictionary to support
             # circular foreign keys
-            if kwargs.get('autoload', False):
+            if autoload:
                 engine.reflecttable(table)
 
             return table
@@ -95,11 +96,13 @@ class Table(SchemaItem):
         self.engine = engine
         self._impl = self.engine.tableimpl(self)
         self._init_items(*args)
-        self.schema = kwargs.get('schema', None)
+        self.schema = kwargs.pop('schema', None)
         if self.schema is not None:
             self.fullname = "%s.%s" % (self.schema, self.name)
         else:
             self.fullname = self.name
+        if len(kwargs):
+            raise "Unknown arguments passed to Table: " + repr(kwargs.keys())
     
     def reload_values(self, *args):
         self.columns = OrderedProperties()
@@ -140,13 +143,15 @@ class Column(SchemaItem):
         self.name = name
         self.type = type
         self.args = args
-        self.key = kwargs.get('key', name)
-        self.primary_key = kwargs.get('primary_key', False)
-        self.nullable = kwargs.get('nullable', not self.primary_key)
-        self.hidden = kwargs.get('hidden', False)
+        self.key = kwargs.pop('key', name)
+        self.primary_key = kwargs.pop('primary_key', False)
+        self.nullable = kwargs.pop('nullable', not self.primary_key)
+        self.hidden = kwargs.pop('hidden', False)
         self.foreign_key = None
         self.sequence = None
         self._orig = None
+        if len(kwargs):
+            raise "Unknown arguments passed to Column: " + repr(kwargs.keys())
         
     original = property(lambda s: s._orig or s)
     engine = property(lambda s: s.table.engine)
@@ -176,17 +181,11 @@ class Column(SchemaItem):
             fk = None
         else:
             fk = self.foreign_key.copy()
-        return Column(self.name, self.type, key = self.key, primary_key = self.primary_key, foreign_key = fk, sequence = self.sequence)
+        return Column(self.name, self.type, fk, self.sequence, key = self.key, primary_key = self.primary_key)
         
     def _make_proxy(self, selectable, name = None):
         """creates a copy of this Column, initialized the way this Column is"""
-        # using copy.copy(c) seems to add a full second to the select.py unittest package
-        #c = copy.copy(self)
-        #if name is not None:
-         #   c.name = name
-         #   c.key = name
-        # TODO: do we want the same foreign_key object here ?  
-        c = Column(name or self.name, self.type, key = name or self.key, primary_key = self.primary_key, foreign_key = self.foreign_key, sequence = self.sequence, hidden=self.hidden)
+        c = Column(name or self.name, self.type, self.foreign_key, self.sequence, key = name or self.key, primary_key = self.primary_key, hidden=self.hidden)
         c.table = selectable
         c._orig = self.original
         if not c.hidden:
