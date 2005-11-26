@@ -9,7 +9,7 @@ import testbase
 __ALL__ = ['db', 'users', 'addresses', 'orders', 'orderitems', 'keywords', 'itemkeywords']
 
 ECHO = testbase.echo
-db = testbase.get_db()
+db = testbase.db
 
 
 users = Table('users', db,

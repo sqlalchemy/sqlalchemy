@@ -66,6 +66,9 @@ class PKTest(AssertMixin):
         db.echo = False
         self.table.drop()
         db.echo = testbase.echo
+    def setUp(self):
+        objectstore.clear()
+        clear_mappers()
     def testprimarykey(self):
         class Entry(object):
             pass
@@ -73,7 +76,11 @@ class PKTest(AssertMixin):
         e = Entry()
         e.name = 'entry1'
         e.value = 'this is entry 1'
+        e.multi_rev = 2
         objectstore.commit()
+        objectstore.clear()
+        e2 = Entry.mapper.get(e.multi_id, 2)
+        self.assert_(e is not e2 and e._instance_key == e2._instance_key)
         
 class SaveTest(AssertMixin):
 
@@ -730,4 +737,4 @@ class SaveTest(AssertMixin):
         
 
 if __name__ == "__main__":
-    unittest.main()
+    testbase.main()        
