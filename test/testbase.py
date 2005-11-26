@@ -6,6 +6,21 @@ import sqlalchemy.databases.postgres as postgres
 
 echo = True
 
+def get_db():
+    DBTYPE = 'sqlite_memory'
+    #DBTYPE = 'postgres'
+    #DBTYPE = 'sqlite_file'
+
+    if DBTYPE == 'sqlite_memory':
+        db = engine.create_engine('sqlite', {'filename':':memory:'}, echo = echo)
+    elif DBTYPE == 'sqlite_file':
+        db = engine.create_engine('sqlite', {'filename':'querytest.db'}, echo = echo)
+    elif DBTYPE == 'postgres':
+        db = engine.create_engine('postgres', {'database':'test', 'host':'127.0.0.1', 'user':'scott', 'password':'tiger'}, echo=echo)
+
+    db = EngineAssert(db)
+    return db
+
 class PersistTest(unittest.TestCase):
     """persist base class, provides default setUpAll, tearDownAll and echo functionality"""
     def __init__(self, *args, **params):
@@ -17,6 +32,7 @@ class PersistTest(unittest.TestCase):
         pass
     def tearDownAll(self):
         pass
+
 
 class AssertMixin(PersistTest):
     """given a list-based structure of keys/properties which represent information within an object structure, and

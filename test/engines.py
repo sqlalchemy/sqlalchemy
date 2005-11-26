@@ -13,17 +13,10 @@ from testbase import PersistTest
 import testbase
 import unittest, re
 
+db = testbase.get_db()
 
 class EngineTest(PersistTest):
-    def testsqlite(self):
-        db = sqllite.engine({'filename':':memory'}, echo = testbase.echo)
-        self.do_tableops(db)
-
-    def testpostgres(self):
-        db = postgres.engine({'database':'test', 'host':'127.0.0.1', 'user':'scott', 'password':'tiger'}, echo = testbase.echo)
-        self.do_tableops(db)
-        
-    def do_tableops(self, db):
+    def testbasic(self):
         # really trip it up with a circular reference
         users = Table('users', db,
             Column('user_id', INT, primary_key = True),
@@ -66,6 +59,35 @@ class EngineTest(PersistTest):
 
         addresses.drop()
         users.drop()
+
+    def testmultipk(self):
+        table = Table(
+            'multi', db, 
+            Column('multi_id', Integer, primary_key=True),
+            Column('multi_rev', Integer, primary_key=True),
+            Column('name', String(50), nullable=False),
+            Column('value', String(100))
+        )
+        table.create()
+        # clear out table registry
+        db.tables.clear()
+
+        try:
+            table = Table('multi', db, autoload=True)
+        finally:
+            table.drop()
+        
+        print repr(
+            [table.c['multi_id'].primary_key,
+            table.c['multi_rev'].primary_key
+            ]
+        )
+        table.create()
+        table.insert().execute({'multi_rev':1,'name':'row1', 'value':'value1'})
+        table.insert().execute({'multi_rev':18,'name':'row2', 'value':'value2'})
+        table.insert().execute({'multi_rev':3,'name':'row3', 'value':'value3'})
+        table.select().execute().fetchall()
+        table.drop()
         
         
 if __name__ == "__main__":

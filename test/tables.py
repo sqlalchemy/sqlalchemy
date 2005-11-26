@@ -9,20 +9,8 @@ import testbase
 __ALL__ = ['db', 'users', 'addresses', 'orders', 'orderitems', 'keywords', 'itemkeywords']
 
 ECHO = testbase.echo
+db = testbase.get_db()
 
-DBTYPE = 'sqlite_memory'
-#DBTYPE = 'postgres'
-#DBTYPE = 'sqlite_file'
-
-if DBTYPE == 'sqlite_memory':
-    db = sqlalchemy.engine.create_engine('sqlite', {'filename':':memory:'}, echo = testbase.echo)
-elif DBTYPE == 'sqlite_file':
-    import sqlalchemy.databases.sqlite as sqllite
-    db = sqlalchemy.engine.create_engine('sqlite', {'filename':'querytest.db'}, echo = testbase.echo)
-elif DBTYPE == 'postgres':
-    db = sqlalchemy.engine.create_engine('postgres', {'database':'test', 'host':'127.0.0.1', 'user':'scott', 'password':'tiger'}, echo=testbase.echo)
-
-db = testbase.EngineAssert(db)
 
 users = Table('users', db,
     Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key = True),

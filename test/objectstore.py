@@ -12,14 +12,20 @@ import tables
 class HistoryTest(AssertMixin):
     def setUpAll(self):
         db.echo = False
+        users.create()
         addresses.create()
         db.echo = testbase.echo
     def tearDownAll(self):
         db.echo = False
         addresses.drop()
+        users.drop()
         db.echo = testbase.echo
 
     def testattr(self):
+        """tests the rolling back of scalar and list attributes.  this kind of thing
+        should be tested mostly in attributes.py which tests independently of the ORM 
+        objects, but I think here we are going for
+        the Mapper not interfering with it."""
         m = mapper(User, users, properties = dict(addresses = relation(Address, addresses)))
         u = User()
         u.user_id = 7
@@ -28,10 +34,46 @@ class HistoryTest(AssertMixin):
         u.addresses[0].email_address = 'hi'
         u.addresses.append(Address())
         u.addresses[1].email_address = 'there'
-        self.echo(repr(u.__dict__))
+        data = [User,
+            {'user_name' : 'afdas',
+             'addresses' : (Address, [{'email_address':'hi'}, {'email_address':'there'}])
+            },
+        ]
+        self.assert_result([u], data[0], *data[1:])
+
         self.echo(repr(u.addresses))
         objectstore.uow().rollback_object(u)
-        self.echo(repr(u.__dict__))
+        data = [User,
+            {'user_name' : None,
+             'addresses' : (Address, [])
+            },
+        ]
+        self.assert_result([u], data[0], *data[1:])
+
+class PKTest(AssertMixin):
+    def setUpAll(self):
+        db.echo = False
+        self.table = Table(
+            'multi', db, 
+            Column('multi_id', Integer, primary_key=True),
+            Column('multi_rev', Integer, primary_key=True),
+            Column('name', String(50), nullable=False),
+            Column('value', String(100))
+        )
+        self.table.create()
+        db.echo = testbase.echo
+    def tearDownAll(self):
+        db.echo = False
+        self.table.drop()
+        db.echo = testbase.echo
+    def testprimarykey(self):
+        class Entry(object):
+            pass
+        Entry.mapper = mapper(Entry, self.table)
+        e = Entry()
+        e.name = 'entry1'
+        e.value = 'this is entry 1'
+        objectstore.commit()
         
 class SaveTest(AssertMixin):
 

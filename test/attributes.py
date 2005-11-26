@@ -6,6 +6,7 @@ import unittest, sys, os
 
     
 class AttributesTest(PersistTest):
+    """tests for the attributes.py module, which deals with tracking attribute changes on an object."""
     def testbasic(self):
         class User(object):pass
         manager = attributes.AttributeManager()
