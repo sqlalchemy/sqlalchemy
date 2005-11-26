@@ -308,7 +308,7 @@ class ANSICompiler(sql.Compiled):
 
 class ANSISchemaGenerator(sqlalchemy.engine.SchemaIterator):
 
-    def get_column_specification(self, column):
+    def get_column_specification(self, column, override_pk=False):
         raise NotImplementedError()
         
     def visit_table(self, table):
@@ -316,11 +316,18 @@ class ANSISchemaGenerator(sqlalchemy.engine.SchemaIterator):
         
         separator = "\n"
         
+        # if only one primary key, specify it along with the column
+        pks = table.primary_keys
         for column in table.columns:
             self.append(separator)
             separator = ", \n"
-            self.append("\t" + self.get_column_specification(column))
-            
+            self.append("\t" + self.get_column_specification(column, override_pk=len(pks)>1))
+        
+        # if multiple primary keys, specify it at the bottom
+        if len(pks) > 1:
+            self.append(", \n")
+            self.append("\tPRIMARY KEY (%s)" % string.join([c.name for c in pks],', '))
+                    
         self.append("\n)\n\n")
         self.execute()
 

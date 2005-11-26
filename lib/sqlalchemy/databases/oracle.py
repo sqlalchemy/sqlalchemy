@@ -196,13 +196,13 @@ class OracleCompiler(ansisql.ANSICompiler):
         return ansisql.ANSICompiler.visit_insert(self, insert)
 
 class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):
-    def get_column_specification(self, column):
+    def get_column_specification(self, column, override_pk=False):
         colspec = column.name
         colspec += " " + column.type.get_col_spec()
 
         if not column.nullable:
             colspec += " NOT NULL"
-        if column.primary_key:
+        if column.primary_key and not override_pk:
             colspec += " PRIMARY KEY"
         if column.foreign_key:
             colspec += " REFERENCES %s(%s)" % (column.column.foreign_key.column.table.name, column.column.foreign_key.column.name) 

@@ -371,7 +371,7 @@ class Mapper(object):
                 # appending to the and_'s clause list directly to skip
                 # typechecks etc.
                 clause.clauses.append(primary_key == ident[i])
-                i += 2
+                i += 1
             try:
                 return self.select(clause)[0]
             except IndexError:
