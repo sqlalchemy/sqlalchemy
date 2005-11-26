@@ -61,16 +61,18 @@ class TableSingleton(type):
         try:
             schema = kwargs.get('schema', None)
             autoload = kwargs.pop('autoload', False)
+            redefine = kwargs.pop('redefine', False)
+            mustexist = kwargs.pop('mustexist', False)
             key = _get_table_key(engine, name, schema)
             table = engine.tables[key]
             if len(args):
-                if kwargs.pop('redefine', False):
+                if redefine:
                     table.reload_values(*args)
                 else:
                     raise "Table '%s.%s' is already defined. specify 'redefine=True' to remap columns" % (schema, name)
             return table
         except KeyError:
-            if kwargs.pop('mustexist', False):
+            if mustexist:
                 raise "Table '%s.%s' not defined" % (schema, name)
             table = type.__call__(self, name, engine, *args, **kwargs)
             engine.tables[key] = table
@@ -123,7 +125,13 @@ class Table(SchemaItem):
         for c in self.columns:
             c.accept_visitor(visitor)
         return visitor.visit_table(self)
-
+    
+    def deregister(self):
+        """removes this table from it's engines table registry.  this does not
+        issue a SQL DROP statement."""
+        key = _get_table_key(self.engine, self.name, self.schema)
+        del self.engine.tables[key]
+        
     def toengine(self, engine, schema=None):
         """returns a singleton instance of this Table with a different engine"""
         try:
@@ -157,6 +165,8 @@ class Column(SchemaItem):
     engine = property(lambda s: s.table.engine)
     
     def _set_primary_key(self):
+        if self.primary_key:
+            return
         self.primary_key = True
         self.nullable = False
         self.table.primary_keys.append(self)

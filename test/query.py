@@ -4,7 +4,7 @@ import unittest, sys
 
 import sqlalchemy.databases.sqlite as sqllite
 
-db = sqllite.engine(':memory:', {}, echo = testbase.echo)
+db = testbase.db
 
 from sqlalchemy.sql import *
 from sqlalchemy.schema import *

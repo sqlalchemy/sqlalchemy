@@ -14,7 +14,7 @@ import unittest, re
 class EngineTest(PersistTest):
     def testbasic(self):
         # really trip it up with a circular reference
-        users = Table('users', testbase.db,
+        users = Table('engine_users', testbase.db,
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20), nullable = False),
             Column('test1', CHAR(5), nullable = False),
@@ -22,14 +22,14 @@ class EngineTest(PersistTest):
             Column('test3', TEXT),
             Column('test4', DECIMAL, nullable = False),
             Column('test5', TIMESTAMP),
-            Column('parent_user_id', INT, ForeignKey('users.user_id')),
+            Column('parent_user_id', INT, ForeignKey('engine_users.user_id')),
             Column('test6', DATETIME, nullable = False),
             Column('test7', CLOB),
             Column('test8', BLOB),
             
         )
 
-        addresses = Table('email_addresses', testbase.db,
+        addresses = Table('engine_email_addresses', testbase.db,
             Column('address_id', Integer, primary_key = True),
             Column('remote_user_id', Integer, ForeignKey(users.c.user_id)),
             Column('email_address', String(20)),
@@ -41,11 +41,12 @@ class EngineTest(PersistTest):
         addresses.create()
 
         # clear out table registry
-        testbase.db.tables.clear()
-
+        users.deregister()
+        addresses.deregister()
+        
         try:
-            users = Table('users', testbase.db, autoload = True)
-            addresses = Table('email_addresses', testbase.db, autoload = True)
+            users = Table('engine_users', testbase.db, autoload = True)
+            addresses = Table('engine_email_addresses', testbase.db, autoload = True)
         finally:
             addresses.drop()
             users.drop()
@@ -58,7 +59,7 @@ class EngineTest(PersistTest):
 
     def testmultipk(self):
         table = Table(
-            'multi', testbase.db, 
+            'engine_multi', testbase.db, 
             Column('multi_id', Integer, primary_key=True),
             Column('multi_rev', Integer, primary_key=True),
             Column('name', String(50), nullable=False),
@@ -66,10 +67,10 @@ class EngineTest(PersistTest):
         )
         table.create()
         # clear out table registry
-        testbase.db.tables.clear()
+        table.deregister()
 
         try:
-            table = Table('multi', testbase.db, autoload=True)
+            table = Table('engine_multi', testbase.db, autoload=True)
         finally:
             table.drop()
         

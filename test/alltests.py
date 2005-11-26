@@ -5,6 +5,7 @@ testbase.echo = False
 
 def suite():
     modules_to_test = ('attributes', 'historyarray', 'pool', 'engines', 'query', 'types', 'mapper', 'objectstore', 'dependency', 'sequence', 'select')
+#    modules_to_test = ('engines', 'mapper')
     alltests = unittest.TestSuite()
     for module in map(__import__, modules_to_test):
         alltests.addTest(unittest.findTestCases(module, suiteClass=None))
