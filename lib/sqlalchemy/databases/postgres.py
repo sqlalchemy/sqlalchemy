@@ -37,7 +37,16 @@ class PGNumeric(sqltypes.Numeric):
 class PGInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
-class PGDateTime(sqltypes.DateTime):
+class PG2DateTime(sqltypes.DateTime):
+    def get_col_spec(self):
+        return "TIMESTAMP"
+class PG1DateTime(sqltypes.DateTime):
+    def convert_bind_param(self, value):
+        # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
+        return value
+    def convert_result_value(self, value):
+        # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
+        return value
     def get_col_spec(self):
         return "TIMESTAMP"
 class PGText(sqltypes.TEXT):
@@ -56,26 +65,30 @@ class PGBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "BOOLEAN"
         
-colspecs = {
+pg2_colspecs = {
     sqltypes.Integer : PGInteger,
     sqltypes.Numeric : PGNumeric,
-    sqltypes.DateTime : PGDateTime,
+    sqltypes.DateTime : PG2DateTime,
     sqltypes.String : PGString,
     sqltypes.Binary : PGBinary,
     sqltypes.Boolean : PGBoolean,
     sqltypes.TEXT : PGText,
     sqltypes.CHAR: PGChar,
 }
+pg1_colspecs = pg2_colspecs.copy()
+pg1_colspecs[sqltypes.DateTime] = PG1DateTime
 
-ischema_names = {
+pg2_ischema_names = {
     'integer' : PGInteger,
     'character varying' : PGString,
     'character' : PGChar,
     'text' : PGText,
     'numeric' : PGNumeric,
-    'timestamp without time zone' : PGDateTime,
+    'timestamp without time zone' : PG2DateTime,
     'bytea' : PGBinary,
 }
+pg1_ischema_names = pg2_ischema_names.copy()
+pg1_ischema_names['timestamp without time zone'] = PG1DateTime
 
 generic_engine = ansisql.engine()
 gen_columns = schema.Table("columns", generic_engine,
@@ -132,6 +145,11 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
             self.module = psycopg
         else:
             self.module = module
+        # figure psycopg version 1 or 2    
+        if self.module.__name__ == 'psycopg2':
+            self.version = 2
+        else:
+            self.version = 1
         self.opts = opts or {}
         ansisql.ANSISQLEngine.__init__(self, **params)
 
@@ -139,7 +157,10 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         return [[], self.opts]
 
     def type_descriptor(self, typeobj):
-        return sqltypes.adapt_type(typeobj, colspecs)
+        if self.version == 2:
+            return sqltypes.adapt_type(typeobj, pg2_colspecs)
+        else:
+            return sqltypes.adapt_type(typeobj, pg1_colspecs)
 
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
@@ -261,7 +282,10 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
             for a in (charlen, numericprec, numericscale):
                 if a is not None:
                     args.append(a)
-            coltype = ischema_names[type]
+            if self.version == 2:
+                coltype = pg2_ischema_names[type]
+            else:
+                coltype = pg1_ischema_names[type]
             #print "coltype " + repr(coltype) + " args " +  repr(args)
             coltype = coltype(*args)
             table.append_item(schema.Column(name, coltype, nullable = nullable))
