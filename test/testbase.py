@@ -3,6 +3,7 @@ import StringIO
 import sqlalchemy.engine as engine
 import re, sys
 import sqlalchemy.databases.postgres as postgres
+import sqlalchemy.databases.mysql as mysql
 
 echo = True
 db = None
@@ -74,10 +75,31 @@ class EngineAssert(object):
             (query, params) = item
             if callable(params):
                 params = params()
-                
+            
+            # TODO: standardize this to param styles instaed of checking dbengine types
             if isinstance(self.engine, postgres.PGSQLEngine):
                 query = re.sub(r':([\w_]+)', r"%(\1)s", query)
-
+            elif isinstance(self.engine, mysql.MySQLEngine):
+                names = []
+                def append_arg(match):
+                    names.append(match.group(1))
+                    return r"%s"
+                    
+                query = re.sub(r':([\w_]+)', append_arg, query)
+                
+                if isinstance(params, list):
+                    args = []
+                    for p in params:
+                        l = []
+                        args.append(l)
+                        for n in names:
+                            l.append(p[n])
+                else:
+                    args = []
+                    for n in names:
+                        args.append(params[n])
+                params = args
+                
             self.unittest.assert_(statement == query and params == parameters, "Testing for query '%s' params %s, received '%s' with params %s" % (query, repr(params), statement, repr(parameters)))
         return self.realexec(statement, parameters, **kwargs)
 
@@ -146,7 +168,8 @@ elif DBTYPE == 'sqlite_file':
     db = engine.create_engine('sqlite', {'filename':'querytest.db'}, echo = echo)
 elif DBTYPE == 'postgres':
     db = engine.create_engine('postgres', {'database':'test', 'host':'127.0.0.1', 'user':'scott', 'password':'tiger'}, echo=echo)
-
+elif DBTYPE == 'mysql':
+    db = engine.create_engine('mysql', {'db':'test', 'host':'127.0.0.1', 'user':'scott'}, echo=echo)
 db = EngineAssert(db)
 
                     
