@@ -109,6 +109,10 @@ class SQLEngine(schema.SchemaEngine):
         """returns the ROWID column name for this engine."""
         return "oid"
 
+    def supports_sane_rowcount(self):
+        """ill give everyone one guess which database warrants this method."""
+        return True
+        
     def create(self, table, **params):
         """creates a table given a schema.Table object."""
         table.accept_visitor(self.schemagenerator(self.proxy(), **params))

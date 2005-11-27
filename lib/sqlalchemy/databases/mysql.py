@@ -108,7 +108,14 @@ class MySQLEngine(ansisql.ANSISQLEngine):
 
     def rowid_column_name(self):
         """returns the ROWID column name for this engine."""
+        
+        # well, for MySQL cant really count on this being there, surprise (not).
+        # so we do some silly hack down below in MySQLTableImpl to provide
+        # something for an OID column
         return "_rowid"
+
+    def supports_sane_rowcount(self):
+        return False
 
     def tableimpl(self, table):
         """returns a new sql.TableImpl object to correspond to the given Table object."""
@@ -132,15 +139,16 @@ class MySQLEngine(ansisql.ANSISQLEngine):
         if compiled is None: return
         if getattr(compiled, "isinsert", False):
             self.context.last_inserted_ids = [cursor.lastrowid]
-
-    def _executemany(self, c, statement, parameters):
-        """we need accurate rowcounts for updates, inserts and deletes.  mysql is *also* is not nice enough
-        to produce this correctly for an executemany, so we do our own executemany here."""
-        rowcount = 0
-        for param in parameters:
-            c.execute(statement, param)
-            rowcount += c.rowcount
-        self.context.rowcount = rowcount
+    
+    # executemany just runs normally, since we arent using rowcount at all with mysql
+#    def _executemany(self, c, statement, parameters):
+ #       """we need accurate rowcounts for updates, inserts and deletes.  mysql is *also* is not nice enough
+ #       to produce this correctly for an executemany, so we do our own executemany here."""
+  #      rowcount = 0
+  #      for param in parameters:
+  #          c.execute(statement, param)
+  #          rowcount += c.rowcount
+  #      self.context.rowcount = rowcount
 
     def dbapi(self):
         return self.module
@@ -152,11 +160,6 @@ class MySQLTableImpl(sql.TableImpl):
     """attached to a schema.Table to provide it with a Selectable interface
     as well as other functions
     """
-
-#    def __init__(self, table):
- #       self.table = table
-  #      self.id = self.table.name
-
     def _rowid_col(self):
         if getattr(self, '_mysql_rowid_column', None) is None:
             if len(self.table.primary_keys) > 0:

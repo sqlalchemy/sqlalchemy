@@ -506,7 +506,7 @@ class Mapper(object):
                     clause.clauses.append(col == sql.bindparam(col.table.name + "_" + col.key))
                 statement = table.update(clause)
                 c = statement.execute(*update)
-                if c.rowcount != len(update):
+                if table.engine.supports_sane_rowcount() and c.rowcount != len(update):
                     raise "ConcurrencyError - updated rowcount %d does not match number of objects updated %d" % (c.cursor.rowcount, len(update))
             if len(insert):
                 import sys
@@ -545,7 +545,7 @@ class Mapper(object):
                     clause.clauses.append(col == sql.bindparam(col.key))
                 statement = table.delete(clause)
                 c = statement.execute(*delete)
-                if c.rowcount != len(delete):
+                if table.engine.supports_sane_rowcount() and c.rowcount != len(delete):
                     raise "ConcurrencyError - updated rowcount %d does not match number of objects updated %d" % (c.cursor.rowcount, len(delete))
 
     def register_dependencies(self, *args, **kwargs):
