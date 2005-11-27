@@ -151,10 +151,7 @@ class ANSICompiler(sql.Compiled):
         if compound.operator is None:
             sep = " "
         else:
-            if compound.spaces:
-                sep = compound.operator
-            else:
-                sep = " " + compound.operator + " "
+            sep = " " + compound.operator + " "
         
         if compound.parens:
             self.strings[compound] = "(" + string.join([self.get_str(c) for c in compound.clauses], sep) + ")"
@@ -162,7 +159,10 @@ class ANSICompiler(sql.Compiled):
             self.strings[compound] = string.join([self.get_str(c) for c in compound.clauses], sep)
         
     def visit_clauselist(self, list):
-        self.strings[list] = string.join([self.get_str(c) for c in list.clauses], ', ')
+        if list.parens:
+            self.strings[list] = "(" + string.join([self.get_str(c) for c in list.clauses], ', ') + ")"
+        else:
+            self.strings[list] = string.join([self.get_str(c) for c in list.clauses], ', ')
         
     def visit_binary(self, binary):
         result = self.get_str(binary.left)
