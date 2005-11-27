@@ -80,9 +80,9 @@ class EngineTest(PersistTest):
             ]
         )
         table.create()
-        table.insert().execute({'multi_rev':1,'name':'row1', 'value':'value1'})
-        table.insert().execute({'multi_rev':18,'name':'row2', 'value':'value2'})
-        table.insert().execute({'multi_rev':3,'name':'row3', 'value':'value3'})
+        table.insert().execute({'multi_id':1,'multi_rev':1,'name':'row1', 'value':'value1'})
+        table.insert().execute({'multi_id':2,'multi_rev':18,'name':'row2', 'value':'value2'})
+        table.insert().execute({'multi_id':3,'multi_rev':3,'name':'row3', 'value':'value3'})
         table.select().execute().fetchall()
         table.drop()
         

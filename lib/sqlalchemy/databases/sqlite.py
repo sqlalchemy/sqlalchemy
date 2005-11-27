@@ -162,20 +162,16 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
         for idx in unique_indexes:
             c = self.execute("PRAGMA index_info(" + idx + ")", {})
             cols = []
-            includes_primary=False
             while True:
                 row = c.fetchone()
                 if row is None:
                     break
                 cols.append(row[2])
                 col = table.columns[row[2]]
-                if col.primary_key:
-                    includes_primary= True
-            if includes_primary:
-                # unique index that includes the pk is considered a multiple primary key
-                for col in cols:
-                    column = table.columns[col]
-                    table.columns[col]._set_primary_key()
+            # unique index that includes the pk is considered a multiple primary key
+            for col in cols:
+                column = table.columns[col]
+                table.columns[col]._set_primary_key()
                     
 class SQLiteCompiler(ansisql.ANSICompiler):
     def __init__(self, *args, **params):
@@ -183,7 +179,7 @@ class SQLiteCompiler(ansisql.ANSICompiler):
         ansisql.ANSICompiler.__init__(self, *args, **params)
 
 class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
-    def get_column_specification(self, column, override_pk=False):
+    def get_column_specification(self, column, override_pk=False, **kwargs):
         colspec = column.name + " " + column.type.get_col_spec()
         if not column.nullable:
             colspec += " NOT NULL"
@@ -193,20 +189,17 @@ class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
             colspec += " REFERENCES %s(%s)" % (column.foreign_key.column.table.name, column.foreign_key.column.name) 
         return colspec
     def visit_table(self, table):
-        """sqlite is going to create multi-primary keys as a single PK plus a UNIQUE index.  otherwise
-        its autoincrement functionality seems to get lost"""
+        """sqlite is going to create multi-primary keys with just a UNIQUE index."""
         self.append("\nCREATE TABLE " + table.fullname + "(")
 
         separator = "\n"
 
         have_pk = False
+        use_pks = len(table.primary_keys) == 1
         for column in table.columns:
             self.append(separator)
             separator = ", \n"
-            # specify PRIMARY KEY for just the first primary key
-            self.append("\t" + self.get_column_specification(column, override_pk=have_pk))
-            if column.primary_key:
-                have_pk = True
+            self.append("\t" + self.get_column_specification(column, override_pk=not use_pks))
                 
         if len(table.primary_keys) > 1:
             self.append(", \n")

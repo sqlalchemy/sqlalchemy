@@ -63,13 +63,14 @@ class TableSingleton(type):
             autoload = kwargs.pop('autoload', False)
             redefine = kwargs.pop('redefine', False)
             mustexist = kwargs.pop('mustexist', False)
+            useexisting = kwargs.pop('useexisting', False)
             key = _get_table_key(engine, name, schema)
             table = engine.tables[key]
             if len(args):
                 if redefine:
                     table.reload_values(*args)
-                else:
-                    raise "Table '%s.%s' is already defined. specify 'redefine=True' to remap columns" % (schema, name)
+                elif not useexisting:
+                    raise "Table '%s.%s' is already defined. specify 'redefine=True' to remap columns, or 'useexisting=True' to use the existing table" % (schema, name)
             return table
         except KeyError:
             if mustexist:

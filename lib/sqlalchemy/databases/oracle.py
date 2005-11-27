@@ -196,7 +196,7 @@ class OracleCompiler(ansisql.ANSICompiler):
         return ansisql.ANSICompiler.visit_insert(self, insert)
 
 class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):
-    def get_column_specification(self, column, override_pk=False):
+    def get_column_specification(self, column, override_pk=False, **kwargs):
         colspec = column.name
         colspec += " " + column.type.get_col_spec()
 

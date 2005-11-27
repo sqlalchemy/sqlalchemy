@@ -151,7 +151,10 @@ class ANSICompiler(sql.Compiled):
         if compound.operator is None:
             sep = " "
         else:
-            sep = " " + compound.operator + " "
+            if compound.spaces:
+                sep = compound.operator
+            else:
+                sep = " " + compound.operator + " "
         
         if compound.parens:
             self.strings[compound] = "(" + string.join([self.get_str(c) for c in compound.clauses], sep) + ")"
@@ -308,7 +311,7 @@ class ANSICompiler(sql.Compiled):
 
 class ANSISchemaGenerator(sqlalchemy.engine.SchemaIterator):
 
-    def get_column_specification(self, column, override_pk=False):
+    def get_column_specification(self, column, override_pk=False, first_pk=False):
         raise NotImplementedError()
         
     def visit_table(self, table):
@@ -318,11 +321,13 @@ class ANSISchemaGenerator(sqlalchemy.engine.SchemaIterator):
         
         # if only one primary key, specify it along with the column
         pks = table.primary_keys
+        first_pk = False
         for column in table.columns:
             self.append(separator)
             separator = ", \n"
-            self.append("\t" + self.get_column_specification(column, override_pk=len(pks)>1))
-        
+            self.append("\t" + self.get_column_specification(column, override_pk=len(pks)>1, first_pk=column.primary_key and not first_pk))
+            if column.primary_key:
+                first_pk = True
         # if multiple primary keys, specify it at the bottom
         if len(pks) > 1:
             self.append(", \n")

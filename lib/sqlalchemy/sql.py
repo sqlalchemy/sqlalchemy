@@ -328,7 +328,7 @@ class CompareMixin(object):
         elif len(other) == 1 and not isinstance(other[0], Selectable):
             return self.__eq__(other[0])
         elif _is_literal(other[0]):
-            return self._compare('IN', CompoundClause(',', other))
+            return self._compare('IN', CompoundClause(',', spaces=False, parens=True, *other))
         else:
             return self._compare('IN', union(*other))
 
@@ -444,10 +444,11 @@ class Null(ClauseElement):
     
 class CompoundClause(ClauseElement):
     """represents a list of clauses joined by an operator"""
-    def __init__(self, operator, *clauses):
+    def __init__(self, operator, *clauses, **kwargs):
         self.operator = operator
         self.clauses = []
-        self.parens = False
+        self.parens = kwargs.pop('parens', False)
+        self.spaces = kwargs.pop('spaces', False)
         for c in clauses:
             if c is None: continue
             self.append(c)
@@ -458,7 +459,7 @@ class CompoundClause(ClauseElement):
         
     def append(self, clause):
         if _is_literal(clause):
-            clause = TextClause(str(clause))
+            clause = TextClause(repr(clause))
         elif isinstance(clause, CompoundClause):
             clause.parens = True
         self.clauses.append(clause)
@@ -682,9 +683,11 @@ class TableImpl(Selectable):
     def __init__(self, table):
         self.table = table
         self.id = self.table.name
-        self.rowid_column = schema.Column(self.table.engine.rowid_column_name(), types.Integer, hidden=True)
-        self.rowid_column._set_parent(table)
-        
+        self._rowid_column = schema.Column(self.table.engine.rowid_column_name(), types.Integer, hidden=True)
+        self._rowid_column._set_parent(table)
+    
+    rowid_column = property(lambda s: s._rowid_column)
+    
     def get_from_text(self):
         return self.table.name
     
