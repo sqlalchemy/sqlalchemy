@@ -62,8 +62,8 @@ SQLAlchemy includes:
 	it to be described.  Tables, foreign key constraints, and sequences can be created
 	or dropped.  
 
-	- support for Postgres (psycopg1/2), Oracle (cx_Oracle), SQLite (pysqlite) --
-	MySQL is up next.
+	- support for Postgres (psycopg1/2), Oracle (cx_Oracle), SQLite (pysqlite),
+	MySQL (MySQLdb)
 
 	- support for sequences to generate primary keys externally to the INSERT
 	statement they apply to.  Can be specified so that they 
@@ -145,3 +145,5 @@ SQLAlchemy has the advantages:
 To install:
 
 	python setup.py install
+	
+	
