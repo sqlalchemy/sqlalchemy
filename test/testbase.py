@@ -155,7 +155,7 @@ class TTestSuite(unittest.TestSuite):
 
 unittest.TestLoader.suiteClass = TTestSuite
 
-if len(sys.argv) == 3:
+if len(sys.argv) >= 3:
     (param, DBTYPE) = (sys.argv.pop(1), sys.argv.pop(1))
 else:
     (param, DBTYPE) = None, None

@@ -340,56 +340,6 @@ class SaveTest(AssertMixin):
         l = sql.select([users, addresses], sql.and_(users.c.user_id==addresses.c.address_id, addresses.c.address_id==a.address_id)).execute()
         self.echo( repr(l.fetchone().row))
 
-    def testbackwardsnonmatch(self):
-        u2 = Table('users_nm', db,
-            Column('user_id', Integer, primary_key = True),
-            Column('user_name', String(20)),
-        )
-
-        a2 = Table('email_addresses_nm', db,
-            Column('address_id', Integer, primary_key = True),
-            Column('rel_user_id', Integer, ForeignKey(u2.c.user_id)),
-            Column('email_address', String(20)),
-        )
-        u2.create()
-        a2.create()
-        m = mapper(Address, a2, properties = dict(
-            user = relation(User, u2, lazy = True, uselist = False)
-        ))
-        data = [
-            {'user_name' : 'thesub' , 'email_address' : 'bar@foo.com'},
-            {'user_name' : 'assdkfj' , 'email_address' : 'thesdf@asdf.com'},
-        ]
-        objects = []
-        for elem in data:
-            a = Address()
-            a.email_address = elem['email_address']
-            a.user = User()
-            a.user.user_name = elem['user_name']
-            objects.append(a)
-        self.assert_sql(db, lambda: objectstore.commit(), [
-                (
-                    "INSERT INTO users_nm (user_name) VALUES (:user_name)",
-                    {'user_name': 'thesub'}
-                ),
-                (
-                    "INSERT INTO users_nm (user_name) VALUES (:user_name)",
-                    {'user_name': 'assdkfj'}
-                ),
-                (
-                "INSERT INTO email_addresses_nm (rel_user_id, email_address) VALUES (:rel_user_id, :email_address)",
-                {'rel_user_id': 1, 'email_address': 'bar@foo.com'}
-                ),
-                (
-                "INSERT INTO email_addresses_nm (rel_user_id, email_address) VALUES (:rel_user_id, :email_address)",
-                {'rel_user_id': 2, 'email_address': 'thesdf@asdf.com'}
-                )
-                ]
-        )
-        a2.drop()
-        u2.drop()
-        db.commit()
-        
         
 
     def testonetomany(self):
@@ -734,7 +684,70 @@ class SaveTest(AssertMixin):
         
         objectstore.delete(u)
         objectstore.commit()
-        
+    
+class SaveTest2(AssertMixin):
+
+    def setUp(self):
+        db.echo = False
+        objectstore.clear()
+        clear_mappers()
+        self.users = Table('users', db,
+            Column('user_id', Integer, primary_key = True),
+            Column('user_name', String(20)),
+            redefine=True
+        )
+
+        self.addresses = Table('email_addresses', db,
+            Column('address_id', Integer, primary_key = True),
+            Column('rel_user_id', Integer, ForeignKey(self.users.c.user_id)),
+            Column('email_address', String(20)),
+            redefine=True
+        )
+        self.users.create()
+        self.addresses.create()
+        db.echo = testbase.echo
+
+    def tearDown(self):
+        db.echo = False
+        self.addresses.drop()
+        self.users.drop()
+        db.echo = testbase.echo
+    
+    def testbackwardsnonmatch(self):
+        m = mapper(Address, self.addresses, properties = dict(
+            user = relation(User, self.users, lazy = True, uselist = False)
+        ))
+        data = [
+            {'user_name' : 'thesub' , 'email_address' : 'bar@foo.com'},
+            {'user_name' : 'assdkfj' , 'email_address' : 'thesdf@asdf.com'},
+        ]
+        objects = []
+        for elem in data:
+            a = Address()
+            a.email_address = elem['email_address']
+            a.user = User()
+            a.user.user_name = elem['user_name']
+            objects.append(a)
+        self.assert_sql(db, lambda: objectstore.commit(), [
+                (
+                    "INSERT INTO users (user_name) VALUES (:user_name)",
+                    {'user_name': 'thesub'}
+                ),
+                (
+                    "INSERT INTO users (user_name) VALUES (:user_name)",
+                    {'user_name': 'assdkfj'}
+                ),
+                (
+                "INSERT INTO email_addresses (rel_user_id, email_address) VALUES (:rel_user_id, :email_address)",
+                {'rel_user_id': 1, 'email_address': 'bar@foo.com'}
+                ),
+                (
+                "INSERT INTO email_addresses (rel_user_id, email_address) VALUES (:rel_user_id, :email_address)",
+                {'rel_user_id': 2, 'email_address': 'thesdf@asdf.com'}
+                )
+                ]
+        )
+
 
 if __name__ == "__main__":
     testbase.main()        

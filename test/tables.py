@@ -110,16 +110,22 @@ def data():
         dict(keyword_id=6, name='round'),
         dict(keyword_id=7, name='square')
     )
+    
+    # this many-to-many table has the keywords inserted
+    # in primary key order, to appease the unit tests.
+    # this is because postgres, oracle, and sqlite all support 
+    # true insert-order row id, but of course our pal MySQL does not,
+    # so the best it can do is order by, well something, so there you go.
     itemkeywords.insert().execute(
         dict(keyword_id=2, item_id=1),
         dict(keyword_id=2, item_id=2),
         dict(keyword_id=4, item_id=1),
         dict(keyword_id=6, item_id=1),
-        dict(keyword_id=7, item_id=2),
-        dict(keyword_id=6, item_id=3),
-        dict(keyword_id=3, item_id=3),
         dict(keyword_id=5, item_id=2),
-        dict(keyword_id=4, item_id=3)
+        dict(keyword_id=3, item_id=3),
+        dict(keyword_id=4, item_id=3),
+        dict(keyword_id=7, item_id=2),
+        dict(keyword_id=6, item_id=3)
     )
 
     db.commit()
