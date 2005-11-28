@@ -333,12 +333,14 @@ class ResultProxy:
         i = 0
         if metadata is not None:
             for item in metadata:
+                # sqlite possibly prepending table name to colnames so strip
+                colname = item[0].split('.')[-1].lower()
                 if typemap is not None:
-                    rec = (typemap.get(item[0], types.NULLTYPE), i)
+                    rec = (typemap.get(colname, types.NULLTYPE), i)
                 else:
                     rec = (types.NULLTYPE, i)
-                if self.props.setdefault(item[0].lower(), rec) is not rec:
-                    self.props[item[0].lower()] = (ResultProxy.AmbiguousColumn(item[0].lower()), 0)
+                if self.props.setdefault(colname, rec) is not rec:
+                    self.props[colname] = (ResultProxy.AmbiguousColumn(colname), 0)
                 self.props[i] = rec
                 i+=1
 
