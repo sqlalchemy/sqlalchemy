@@ -169,7 +169,7 @@ elif DBTYPE == 'sqlite_file':
 elif DBTYPE == 'postgres':
     db = engine.create_engine('postgres', {'database':'test', 'host':'127.0.0.1', 'user':'scott', 'password':'tiger'}, echo=echo)
 elif DBTYPE == 'mysql':
-    db = engine.create_engine('mysql', {'db':'test', 'host':'127.0.0.1', 'user':'scott'}, echo=echo)
+    db = engine.create_engine('mysql', {'db':'test', 'host':'127.0.0.1', 'user':'scott', 'passwd':'tiger'}, echo=echo)
 db = EngineAssert(db)
 
                     
