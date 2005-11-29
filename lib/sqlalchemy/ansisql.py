@@ -133,7 +133,10 @@ class ANSICompiler(sql.Compiled):
             self.strings[column] = "%s.%s" % (column.table.name, column.name)
 
     def visit_columnclause(self, column):
-        self.strings[column] = "%s.%s" % (column.table.name, column.text)
+        if column.table is not None and column.table.name is not None:
+            self.strings[column] = "%s.%s" % (column.table.name, column.text)
+        else:
+            self.strings[column] = column.text
 
     def visit_fromclause(self, fromclause):
         self.froms[fromclause] = fromclause.from_name
@@ -143,7 +146,8 @@ class ANSICompiler(sql.Compiled):
             self.strings[textclause] = "(" + textclause.text + ")"
         else:
             self.strings[textclause] = textclause.text
-
+        self.froms[textclause] = textclause.text
+        
     def visit_null(self, null):
         self.strings[null] = 'NULL'
        
@@ -163,6 +167,9 @@ class ANSICompiler(sql.Compiled):
             self.strings[list] = "(" + string.join([self.get_str(c) for c in list.clauses], ', ') + ")"
         else:
             self.strings[list] = string.join([self.get_str(c) for c in list.clauses], ', ')
+
+    def visit_function(self, func):
+        self.strings[func] = func.name + "(" + string.join([self.get_str(c) for c in func.clauses], ', ') + ")"
         
     def visit_binary(self, binary):
         result = self.get_str(binary.left)
@@ -198,6 +205,7 @@ class ANSICompiler(sql.Compiled):
 
         for c in select._raw_columns:
             for co in c.columns:
+                co.accept_visitor(self)
                 inner_columns.append(co)
                 if select.use_labels:
                     self.typemap.setdefault(co.label, co.type)
@@ -205,9 +213,9 @@ class ANSICompiler(sql.Compiled):
                     self.typemap.setdefault(co.key, co.type)
                 
         if select.use_labels:
-            collist = string.join(["%s AS %s" % (c.fullname, c.label) for c in inner_columns], ', ')
+            collist = string.join(["%s AS %s" % (self.get_str(c), c.label) for c in inner_columns], ', ')
         else:
-            collist = string.join([c.fullname for c in inner_columns], ', ')
+            collist = string.join([self.get_str(c) for c in inner_columns], ', ')
 
         text = "SELECT "
         if select.distinct:
@@ -240,6 +248,11 @@ class ANSICompiler(sql.Compiled):
         for tup in select._clauses:
             text += " " + tup[0] + " " + self.get_str(tup[1])
 
+        if select.having is not None:
+            t = self.get_str(select.having)
+            if t:
+                text += " \nHAVING " + t
+                
         if getattr(select, 'issubquery', False):
             self.strings[select] = "(" + text + ")"
         else:
