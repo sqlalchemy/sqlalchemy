@@ -38,8 +38,14 @@ class SLDateTime(sqltypes.DateTime):
     def get_col_spec(self):
         return "TIMESTAMP"
     def convert_result_value(self, value):
-        (value, microsecond) = value.split('.')
-        microsecond = int(microsecond)
+        if value is None:
+            return None
+        parts = value.split('.')
+        try:
+            (value, microsecond) = value.split('.')
+            microsecond = int(microsecond)
+        except ValueError:
+            (value, microsecond) = (value, 0)
         tup = time.strptime(value, "%Y-%m-%d %H:%M:%S")
         return datetime.datetime(microsecond=microsecond, *tup[0:6])
 
