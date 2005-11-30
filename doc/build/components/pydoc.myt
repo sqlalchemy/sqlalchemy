@@ -16,8 +16,8 @@
         name= obj.__name__
         
         if not isclass:
-            if hasattr(obj, '__ALL__'):
-                objects = obj.__ALL__
+            if hasattr(obj, '__all__'):
+                objects = obj.__all__
                 sort = True
             else:
                 objects = obj.__dict__.keys()

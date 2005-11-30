@@ -4,8 +4,7 @@ import sqlalchemy.databases.postgres as postgres
 import sqlalchemy.databases.oracle as oracle
 import sqlalchemy.databases.sqlite as sqllite
 
-from sqlalchemy.sql import *
-from sqlalchemy.schema import *
+from sqlalchemy import *
 
 from testbase import PersistTest
 import testbase

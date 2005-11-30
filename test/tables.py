@@ -1,12 +1,11 @@
 
-from sqlalchemy.sql import *
-from sqlalchemy.schema import *
-from sqlalchemy.mapper import *
-import sqlalchemy
+from sqlalchemy import *
 import os
 import testbase
 
-__ALL__ = ['db', 'users', 'addresses', 'orders', 'orderitems', 'keywords', 'itemkeywords']
+__all__ = ['db', 'users', 'addresses', 'orders', 'orderitems', 'keywords', 'itemkeywords',
+            'User', 'Address', 'Order', 'Item', 'Keyword'
+        ]
 
 ECHO = testbase.echo
 db = testbase.db

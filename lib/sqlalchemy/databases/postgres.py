@@ -22,7 +22,7 @@ import sqlalchemy.engine as engine
 import sqlalchemy.schema as schema
 import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
-from sqlalchemy.ansisql import *
+from sqlalchemy import *
 import sqlalchemy.databases.information_schema as ischema
 
 try:

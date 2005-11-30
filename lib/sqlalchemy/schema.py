@@ -20,7 +20,7 @@ from sqlalchemy.types import *
 import copy, re
 
 
-__ALL__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'SchemaEngine', 'SchemaVisitor']
+__all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'SchemaEngine', 'SchemaVisitor']
 
 
 class SchemaItem(object):

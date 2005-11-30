@@ -6,8 +6,7 @@ import sqlalchemy.databases.sqlite as sqllite
 
 db = testbase.db
 
-from sqlalchemy.sql import *
-from sqlalchemy.schema import *
+from sqlalchemy import *
 
 class QueryTest(PersistTest):
     

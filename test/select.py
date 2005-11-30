@@ -1,12 +1,10 @@
 
+from sqlalchemy import *
 import sqlalchemy.ansisql as ansisql
 import sqlalchemy.databases.postgres as postgres
 import sqlalchemy.databases.oracle as oracle
 
 db = ansisql.engine()
-
-from sqlalchemy.sql import *
-from sqlalchemy.schema import *
 
 from testbase import PersistTest
 import unittest, re

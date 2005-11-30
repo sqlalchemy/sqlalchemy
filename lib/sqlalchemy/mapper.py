@@ -26,8 +26,10 @@ import sqlalchemy.util as util
 import sqlalchemy.objectstore as objectstore
 import random, copy, types
 
-__ALL__ = ['relation', 'eagerload', 'lazyload', 'noload', 'assignmapper', 
-        'mapper', 'clear_mappers', 'objectstore', 'sql', 'extension', 'class_mapper', 'object_mapper', 'MapperExtension']
+__all__ = ['relation', 'eagerload', 'lazyload', 'noload', 'assignmapper', 
+        'mapper', 'clear_mappers', 'objectstore', 'sql', 'extension', 'class_mapper', 'object_mapper', 'MapperExtension',
+        'ColumnProperty'
+        ]
 
 def relation(*args, **params):
     """provides a relationship of a primary Mapper to a secondary Mapper, which corresponds

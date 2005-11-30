@@ -23,7 +23,7 @@ import token, tokenize, keyword
 
 # Highlighter - highlights Myghty and Python source code
 
-__ALL__ = ['highlight', 'PythonHighlighter', 'MyghtyHighlighter']
+__all__ = ['highlight', 'PythonHighlighter', 'MyghtyHighlighter']
 
 pystyles = {
     token.ENDMARKER : 'python_operator' ,

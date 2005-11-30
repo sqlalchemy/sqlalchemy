@@ -3,7 +3,7 @@ import sqlalchemy.util as util
 import unittest, sys, os
 import sqlalchemy.schema as schema
 import testbase
-from sqlalchemy.schema import *
+from sqlalchemy import *
 import sqlalchemy
 
 

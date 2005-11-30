@@ -1,8 +1,7 @@
 from testbase import PersistTest, AssertMixin
 import testbase
 import unittest, sys, os
-from sqlalchemy.mapper import *
-import sqlalchemy.objectstore as objectstore
+from sqlalchemy import *
 
 
 from tables import *

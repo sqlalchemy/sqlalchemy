@@ -24,7 +24,7 @@ import sqlalchemy.sql as sql
 import sqlalchemy.engine
 from sqlalchemy.sql import *
 from sqlalchemy.util import *
-import string
+import string, re
 
 def engine(**params):
     return ANSISQLEngine(**params)
@@ -292,13 +292,13 @@ class ANSICompiler(sql.Compiled):
     def visit_update(self, update_stmt):
         colparams = update_stmt.get_colparams(self.bindparams)
         def create_param(p):
-            if isinstance(p, BindParamClause):
+            if isinstance(p, sql.BindParamClause):
                 self.binds[p.key] = p
                 self.binds[p.shortname] = p
                 return self.bindparam_string(p.key)
             else:
                 p.accept_visitor(self)
-                if isinstance(p, ClauseElement):
+                if isinstance(p, sql.ClauseElement):
                     return "(" + self.get_str(p) + ")"
                 else:
                     return self.get_str(p)

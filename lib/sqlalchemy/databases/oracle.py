@@ -21,7 +21,7 @@ import sys, StringIO, string
 import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
 import sqlalchemy.ansisql as ansisql
-from sqlalchemy.ansisql import *
+from sqlalchemy import *
 import sqlalchemy.types as sqltypes
 
 try:

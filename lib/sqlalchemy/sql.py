@@ -23,7 +23,7 @@ import sqlalchemy.util as util
 import sqlalchemy.types as types
 import string, re
 
-__ALL__ = ['text', 'column', 'func', 'select', 'join', 'and_', 'or_', 'not_', 'union', 'unionall', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'bindparam', 'sequence']
+__all__ = ['text', 'column', 'func', 'select', 'update', 'insert', 'delete', 'join', 'and_', 'or_', 'not_', 'union', 'union_all', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'bindparam', 'sequence', 'exists']
 
 def desc(column):
     """returns a descending ORDER BY clause element, e.g.:

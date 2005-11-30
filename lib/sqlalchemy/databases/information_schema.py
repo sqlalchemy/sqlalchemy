@@ -3,6 +3,7 @@ import sqlalchemy.engine as engine
 import sqlalchemy.schema as schema
 import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
+from sqlalchemy import *
 from sqlalchemy.ansisql import *
 
 generic_engine = ansisql.engine()

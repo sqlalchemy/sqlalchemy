@@ -27,6 +27,9 @@ import sqlalchemy.attributes as attributes
 import weakref
 import string
 
+__all__ = ['get_id_key', 'get_row_key', 'commit', 'update', 'clear', 'delete', 
+        'begin', 'has_key', 'has_instance', 'UnitOfWork']
+
 def get_id_key(ident, class_, table):
     """returns an identity-map key for use in storing/retrieving an item from the identity
     map, given a tuple of the object's primary key values.
@@ -665,10 +668,10 @@ class UOWTask(object):
         return ("UOWTask/%d Table: '%s'" % (id(self), self.mapper and self.mapper.primarytable.name or '(none)'))
         
 def mapper(*args, **params):
-    return sqlalchemy.mapper.mapper(*args, **params)
+    return sqlalchemy.mapperlib.mapper(*args, **params)
 
 def object_mapper(obj):
-    return sqlalchemy.mapper.object_mapper(obj)
+    return sqlalchemy.mapperlib.object_mapper(obj)
 
 
 global_attributes = UOWAttributeManager()
