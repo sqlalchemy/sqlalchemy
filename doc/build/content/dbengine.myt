@@ -16,23 +16,23 @@
     <p>An example of connecting to each engine is as follows:</p>
     
     <&|formatting.myt:code&>
-    import sqlalchemy.engine as engine
+    from sqlalchemy.engine import *
 
     # sqlite in memory    
-    sqlite_engine = engine.create_engine('sqlite', {'filename':':memory:'}, **opts)
+    sqlite_engine = create_engine('sqlite', {'filename':':memory:'}, **opts)
     
     # sqlite using a file
-    sqlite_engine = engine.create_engine('sqlite', {'filename':'querytest.db'}, **opts)
+    sqlite_engine = create_engine('sqlite', {'filename':'querytest.db'}, **opts)
 
     # postgres
-    postgres_engine = engine.create_engine('postgres', 
+    postgres_engine = create_engine('postgres', 
                             {'database':'test', 
                             'host':'127.0.0.1', 
                             'user':'scott', 
                             'password':'tiger'}, **opts)
 
     # oracle
-    oracle_engine = engine.create_engine('oracle', 
+    oracle_engine = create_engine('oracle', 
                             {'dsn':'mydsn', 
                             'user':'scott', 
                             'password':'tiger'}, **opts)
@@ -41,13 +41,15 @@
     </&>
     <p>Note that the general form of connecting to an engine is:</p>
     <&|formatting.myt:code&>
-           engine = sqlalchemy.engine.create_engine(
+           engine = create_engine(
                         <enginename>, 
                         {<named DBAPI arguments>}, 
                         <sqlalchemy options>
                     )
     </&>
     <p>The second argument is a dictionary whose key/value pairs will be passed to the underlying DBAPI connect() method as keyword arguments.  Any keyword argument supported by the DBAPI module can be in this dictionary.</p>
+    <p>An additional URL-string based calling style will also be added soon, as this is a highly requested feature.
+    </p>
     </&>
     <&|doclib.myt:item, name="options", description="Database Engine Options" &>
     <p>The remaining arguments to <span class="codeline">create_engine</span> are keyword arguments that are passed to the specific subclass of <span class="codeline">sqlalchemy.engine.SQLEngine</span> being used,  as well as the underlying <span class="codeline">sqlalchemy.pool.Pool</span> instance.  All of the options described in the previous section <&formatting.myt:link, path="pooling_configuration"&> can be specified, as well as engine-specific options:</p>

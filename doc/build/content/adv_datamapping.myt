@@ -5,9 +5,8 @@
 
 <p>To start, heres the tables we will work with again:</p>
        <&|formatting.myt:code&>
-        from sqlalchemy.schema import *
-        import sqlalchemy.engine as engine
-        db = engine.create_engine('sqlite', 'mydb', {}, echo=True)
+        from sqlalchemy import *
+        db = create_engine('sqlite', {'filename':'mydb'}, echo=True)
         
         # a table to store users
         users = Table('users', db,

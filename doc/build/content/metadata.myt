@@ -5,8 +5,7 @@
     <p>The core of SQLAlchemy's query and object mapping operations is table metadata, which are Python objects that describe tables.  Metadata objects can be created by explicitly naming the table and all its properties, using the Table, Column, ForeignKey, and Sequence objects imported from <span class="codeline">sqlalchemy.schema</span>, and a database engine constructed as described in the previous section, or they can be automatically pulled from an existing database schema.  First, the explicit version: </p>
         <&|formatting.myt:code&>
         from sqlalchemy.schema import *
-        import sqlalchemy.engine as engine
-        engine = engine.create_engine('sqlite', ':memory:', {}, **opts)
+        engine = create_engine('sqlite', {'filename':':memory:'}, **opts)
         
         users = Table('users', engine, 
             Column('user_id', Integer, primary_key = True),
@@ -139,8 +138,8 @@ DROP TABLE employees
     
         <&|formatting.myt:code&>
         # create two engines
-        sqlite_engine = engine.create_engine('sqlite', 'querytest.db', {})
-        postgres_engine = engine.create_engine('postgres', 
+        sqlite_engine = create_engine('sqlite', {'filename':'querytest.db'})
+        postgres_engine = create_engine('postgres', 
                             {'database':'test', 
                             'host':'127.0.0.1', 'user':'scott', 'password':'tiger'})
         
@@ -161,7 +160,7 @@ DROP TABLE employees
             Column('user_name', String(50))
         )
 
-        sqlite_engine = engine.create_engine('sqlite', 'querytest.db', {})
+        sqlite_engine = create_engine('sqlite', {'filename':'querytest.db'})
         sqlite_users = users.toengine(sqlite_engine)
         sqlite_users.create()
         </&>        

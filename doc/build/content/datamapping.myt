@@ -14,8 +14,7 @@ The Mapper's role is to perform SQL operations upon the database, associating in
 </p>
 <&|doclib.myt:item, name="example", description="Basic Example" &>
         <&|formatting.myt:code&>
-        from sqlalchemy.schema import *
-        from sqlalchemy.mapper import *
+        from sqlalchemy import *
         
         # table metadata
         users = Table('users', engine, 
@@ -138,10 +137,8 @@ INSERT INTO users (user_name, password) VALUES (:user_name, :password)
 <&|doclib.myt:item, name="relations", description="Defining and Using Relationships" &>
 <p>So that covers how to map the columns in a table to an object, how to load objects, create new ones, and save changes.  The next step is how to define an object's relationships to other database-persisted objects.  This is done via the <span class="codeline">relation</span> function provided by the mapper module.  So with our User class, lets also define the User has having one or more mailing addresses.  First, the table metadata:</p>
         <&|formatting.myt:code&>
-        from sqlalchemy.schema import *
-        from sqlalchemy.mapper import *
-        import sqlalchemy.databases.sqlite as sqlite
-        engine = sqlite.engine('mydb', {})
+        from sqlalchemy import *
+        engine = create_engine('sqlite', {'filename':'mydb'})
         
         # define user table
         users = Table('users', engine, 

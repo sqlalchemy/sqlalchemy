@@ -11,9 +11,8 @@
     
     <p>For this section, we will assume the following tables:
        <&|formatting.myt:code&>
-        from sqlalchemy.schema import *
-        import sqlalchemy.engine as engine
-        db = engine.create_engine('sqlite', 'mydb', {}, echo=True)
+        from sqlalchemy import *
+        db = create_engine('sqlite', {'filename':'mydb'}, echo=True)
         
         # a table to store users
         users = Table('users', db,
@@ -50,7 +49,7 @@
     <&|doclib.myt:item, name="select", description="Simple Select" &>
         <p>A select is done by constructing a <span class="codeline">Select</span> object with the proper arguments, adding any extra arguments if desired, then calling its <span class="codeline">execute()</span> method.
         <&|formatting.myt:code&>
-            from sqlalchemy.sql import *
+            from sqlalchemy import *
             
             # use the select() function defined in the sql package
             s = select([users])
