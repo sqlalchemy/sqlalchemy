@@ -20,3 +20,4 @@ from sqlalchemy.schema import *
 from sqlalchemy.sql import *
 from sqlalchemy.types import *
 from sqlalchemy.mapper import *
+from sqlalchemy.engine import *

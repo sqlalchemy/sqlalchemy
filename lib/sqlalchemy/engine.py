@@ -26,6 +26,8 @@ import StringIO, sys
 import sqlalchemy.types as types
 import sqlalchemy.databases
 
+__all__ = ['create_engine', 'engine_descriptors']
+
 def create_engine(name, *args ,**kwargs):
     """creates a new SQLEngine instance.
     
