@@ -68,6 +68,7 @@ class SLBoolean(sqltypes.Boolean):
 colspecs = {
     sqltypes.Integer : SLInteger,
     sqltypes.Numeric : SLNumeric,
+    sqltypes.Float : SLNumeric,
     sqltypes.DateTime : SLDateTime,
     sqltypes.String : SLString,
     sqltypes.Binary : SLBinary,
@@ -82,6 +83,7 @@ pragma_names = {
     'CHAR' : SLChar,
     'TEXT' : SLText,
     'NUMERIC' : SLNumeric,
+    'FLOAT' : SLNumeric,
     'TIMESTAMP' : SLDateTime,
     'BLOB' : SLBinary,
 }

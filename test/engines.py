@@ -17,7 +17,7 @@ class EngineTest(PersistTest):
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20), nullable = False),
             Column('test1', CHAR(5), nullable = False),
-            Column('test2', FLOAT(5,5), nullable = False),
+            Column('test2', FLOAT(5), nullable = False),
             Column('test3', TEXT),
             Column('test4', DECIMAL, nullable = False),
             Column('test5', TIMESTAMP),

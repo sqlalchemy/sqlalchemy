@@ -17,7 +17,7 @@
 
 __all__ = [ 'TypeEngine', 'TypeDecorator', 'NullTypeEngine',
             'INT', 'CHAR', 'VARCHAR', 'TEXT', 'FLOAT', 'DECIMAL', 
-            'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN', 'String', 'Integer', 'Numeric', 'DateTime', 'Binary', 'Boolean', 'NULLTYPE'
+            'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN', 'String', 'Integer', 'Numeric', 'Float', 'DateTime', 'Binary', 'Boolean', 'NULLTYPE'
             ]
 
 
@@ -89,6 +89,12 @@ class Numeric(NullTypeEngine):
     def adapt(self, typeobj):
         return typeobj(self.precision, self.length)
 
+class Float(NullTypeEngine):
+    def __init__(self, precision = 10):
+        self.precision = precision
+    def adapt(self, typeobj):
+        return typeobj(self.precision)
+
 class DateTime(NullTypeEngine):
     pass
 
@@ -98,7 +104,7 @@ class Binary(NullTypeEngine):
 class Boolean(NullTypeEngine):
     pass
 
-class FLOAT(Numeric):pass
+class FLOAT(Float):pass
 class TEXT(String):pass
 class DECIMAL(Numeric):pass
 class INT(Integer):pass

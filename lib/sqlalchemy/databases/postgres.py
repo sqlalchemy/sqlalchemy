@@ -36,6 +36,9 @@ except:
 class PGNumeric(sqltypes.Numeric):
     def get_col_spec(self):
         return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
+class PGFloat(sqltypes.Float):
+    def get_col_spec(self):
+        return "FLOAT(%(precision)s)" % {'precision': self.precision}
 class PGInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
@@ -70,6 +73,7 @@ class PGBoolean(sqltypes.Boolean):
 pg2_colspecs = {
     sqltypes.Integer : PGInteger,
     sqltypes.Numeric : PGNumeric,
+    sqltypes.Float : PGFloat,
     sqltypes.DateTime : PG2DateTime,
     sqltypes.String : PGString,
     sqltypes.Binary : PGBinary,
@@ -82,12 +86,17 @@ pg1_colspecs[sqltypes.DateTime] = PG1DateTime
 
 pg2_ischema_names = {
     'integer' : PGInteger,
+    'bigint' : PGInteger,
     'character varying' : PGString,
     'character' : PGChar,
     'text' : PGText,
     'numeric' : PGNumeric,
+    'float' : PGFloat,
+    'real' : PGFloat,
+    'double precision' : PGFloat,
     'timestamp without time zone' : PG2DateTime,
     'bytea' : PGBinary,
+    'boolean' : PGBoolean,
 }
 pg1_ischema_names = pg2_ischema_names.copy()
 pg1_ischema_names['timestamp without time zone'] = PG1DateTime

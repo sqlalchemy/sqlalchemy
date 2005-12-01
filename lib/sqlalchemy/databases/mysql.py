@@ -33,6 +33,9 @@ except:
 class MSNumeric(sqltypes.Numeric):
     def get_col_spec(self):
         return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
+class MSFloat(sqltypes.Float):
+    def get_col_spec(self):
+        return "FLOAT(%(precision)s)" % {'precision': self.precision}
 class MSInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
@@ -58,6 +61,7 @@ class MSBoolean(sqltypes.Boolean):
 colspecs = {
     sqltypes.Integer : MSInteger,
     sqltypes.Numeric : MSNumeric,
+    sqltypes.Float : MSFloat,
     sqltypes.DateTime : MSDateTime,
     sqltypes.String : MSString,
     sqltypes.Binary : MSBinary,
@@ -72,6 +76,7 @@ ischema_names = {
     'char' : MSChar,
     'text' : MSText,
     'decimal' : MSNumeric,
+    'float' : MSFloat,
     'timestamp' : MSDateTime,
     'binary' : MSBinary,
 }
