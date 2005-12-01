@@ -98,7 +98,7 @@ def descriptor():
     
 class SQLiteSQLEngine(ansisql.ANSISQLEngine):
     def __init__(self, opts, **params):
-        self.filename = opts.pop('filename')
+        self.filename = opts.pop('filename', ':memory:')
         self.opts = opts or {}
         params['poolclass'] = sqlalchemy.pool.SingletonThreadPool
         ansisql.ANSISQLEngine.__init__(self, **params)
@@ -140,7 +140,7 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
             args = match.group(2)
             
             #print "coltype: " + repr(coltype) + " args: " + repr(args)
-            coltype = pragma_names[coltype]
+            coltype = pragma_names.get(coltype, SLString)
             if args is not None:
                 args = re.findall(r'(\d+)', args)
                 #print "args! " +repr(args)
