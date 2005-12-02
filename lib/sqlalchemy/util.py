@@ -27,6 +27,10 @@ class OrderedProperties(object):
         self.__dict__['_list'] = []
     def keys(self):
         return self._list
+    def get(self, key, default):
+        return getattr(self, key, default)
+    def has_key(self, key):
+        return hasattr(self, key)
     def __iter__(self):
         return iter([self[x] for x in self._list])
     def __setitem__(self, key, object):

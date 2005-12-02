@@ -51,10 +51,10 @@ def _relation_loader(mapper, secondary=None, primaryjoin=None, secondaryjoin=Non
 
 def _relation_mapper(class_, table=None, secondary=None, 
                     primaryjoin=None, secondaryjoin=None, 
-                    foreignkey=None, uselist=None, private=False, live=False, association=None, lazy=True, **kwargs):
+                    foreignkey=None, uselist=None, private=False, live=False, association=None, lazy=True, selectalias=None, **kwargs):
 
     return _relation_loader(mapper(class_, table, **kwargs), secondary, primaryjoin, secondaryjoin, 
-                    foreignkey=foreignkey, uselist=uselist, private=private, live=live, association=association, lazy=lazy)
+                    foreignkey=foreignkey, uselist=uselist, private=private, live=live, association=association, lazy=lazy, selectalias=selectalias)
 
 #def _relation_mapper(class_, table=None, secondary=None, 
 #                    primaryjoin=None, secondaryjoin=None, foreignkey=None, 
@@ -444,7 +444,7 @@ class Mapper(object):
 
     def _getattrbycolumn(self, obj, column):
         try:
-            prop = self.columntoproperty[column]
+            prop = self.columntoproperty[column.original]
         except KeyError:
             try:
                 prop = self.props[column.key]
@@ -455,7 +455,7 @@ class Mapper(object):
         return prop[0].getattr(obj)
 
     def _setattrbycolumn(self, obj, column, value):
-        self.columntoproperty[column][0].setattr(obj, value)
+        self.columntoproperty[column.original][0].setattr(obj, value)
 
         
     def save_obj(self, objects, uow):
@@ -700,7 +700,7 @@ class PropertyLoader(MapperProperty):
 
     """describes an object property that holds a single item or list of items that correspond
     to a related database table."""
-    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, live=False, isoption=False, association=None, **kwargs):
+    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, live=False, isoption=False, association=None, selectalias=None, **kwargs):
         self.uselist = uselist
         self.argument = argument
         self.secondary = secondary
@@ -711,6 +711,7 @@ class PropertyLoader(MapperProperty):
         self.live = live
         self.isoption = isoption
         self.association = association
+        self.selectalias = selectalias
         self._hash_key = "%s(%s, %s, %s, %s, %s, %s, %s)" % (self.__class__.__name__, hash_key(self.argument), hash_key(secondary), hash_key(primaryjoin), hash_key(secondaryjoin), hash_key(foreignkey), repr(uselist), repr(private))
 
     def _copy(self):
@@ -728,7 +729,7 @@ class PropertyLoader(MapperProperty):
         if self.association is not None:
             if isinstance(self.association, type):
                 self.association = class_mapper(self.association)
-                
+        
         self.target = self.mapper.table
         self.key = key
         self.parent = parent
@@ -812,16 +813,15 @@ class PropertyLoader(MapperProperty):
     def _match_primaries(self, primary, secondary):
         crit = []
         for fk in secondary.foreign_keys:
-            if fk.column.table is primary:
-                crit.append(fk.column == fk.parent)
+            if fk.references(primary):
+                crit.append(primary.get_col_by_original(fk.column) == fk.parent)
                 self.foreignkey = fk.parent
         for fk in primary.foreign_keys:
-            if fk.column.table is secondary:
-                crit.append(fk.column == fk.parent)
+            if fk.references(secondary):
+                crit.append(secondary.get_col_by_original(fk.column) == fk.parent)
                 self.foreignkey = fk.parent
-
         if len(crit) == 0:
-            raise "Cant find any foreign key relationships between '%s' (%s) and '%s' (%s)" % (primary.table.name, repr(primary.table), secondary.table.name, repr(secondary.table))
+            raise "Cant find any foreign key relationships between '%s' (%s) and '%s' (%s)" % (primary.name, repr(primary), secondary.name, repr(secondary))
         elif len(crit) == 1:
             return (crit[0])
         else:
@@ -1154,6 +1154,26 @@ class EagerLoader(PropertyLoader):
         if self.secondaryjoin is not None:
             [self.to_alias.append(f) for f in self.secondaryjoin._get_from_objects()]
         del self.to_alias[parent.primarytable]
+    
+        # if this eagermapper is to select using an "alias" to isolate it from other
+        # eager mappers against the same table, we have to redefine our secondary
+        # or primary join condition to reference the aliased table.  else
+        # we set up the target clause objects as what they are defined in the 
+        # superclass.
+        if self.selectalias is not None:
+            self.eagertarget = self.target.alias(self.selectalias)
+            aliasizer = Aliasizer(self.target, aliases={self.target:self.eagertarget})
+            if self.secondaryjoin is not None:
+                self.eagersecondary = self.secondaryjoin.copy_container()
+                self.eagersecondary.accept_visitor(aliasizer)
+                self.eagerpriamry = self.primaryjoin
+            else:
+                self.eagerprimary = self.primaryjoin.copy_container()
+                self.eagerprimary.accept_visitor(aliasizer)
+        else:
+            self.eagertarget = self.target
+            self.eagerprimary = self.primaryjoin
+            self.eagersecondary = self.secondaryjoin
 
     def setup(self, key, statement, **options):
         """add a left outer join to the statement thats being constructed"""
@@ -1173,14 +1193,14 @@ class EagerLoader(PropertyLoader):
             towrap = self.parent.table
 
         if self.secondaryjoin is not None:
-            statement._outerjoin = sql.outerjoin(towrap, self.secondary, self.primaryjoin).outerjoin(self.target, self.secondaryjoin)
+            statement._outerjoin = sql.outerjoin(towrap, self.secondary, self.primaryjoin).outerjoin(self.eagertarget, self.eagersecondary)
             statement.order_by(self.secondary.rowid_column)
         else:
-            statement._outerjoin = towrap.outerjoin(self.target, self.primaryjoin)
+            statement._outerjoin = towrap.outerjoin(self.eagertarget, self.eagerprimary)
             statement.order_by(self.target.rowid_column)
 
         statement.append_from(statement._outerjoin)
-        statement.append_column(self.target)
+        statement.append_column(self.eagertarget)
         for key, value in self.mapper.props.iteritems():
             if value is self:
                 raise "Cant use eager loading on a self-referential mapper relationship " + str(self.mapper) + " " + key + repr(self.mapper.props)
@@ -1197,14 +1217,27 @@ class EagerLoader(PropertyLoader):
             
         if not self.uselist:
             if isnew:
-                h.setattr(self.mapper._instance(row, imap))
+                h.setattr(self._instance(row, imap))
             return
         elif isnew:
             result_list = h
         else:
             result_list = getattr(instance, self.key)
-            
-        self.mapper._instance(row, imap, result_list)
+    
+        self._instance(row, imap, result_list)
+
+    def _instance(self, row, imap, result_list=None):
+        """gets an instance from a row, via this EagerLoader's mapper."""
+        # if we have an alias for our mapper's table via the selectalias
+        # parameter, we need to translate the 
+        # aliased columns from the incoming row into a new row that maps
+        # the values against the columns of the mapper's original non-aliased table.
+        if self.selectalias is not None:
+            fakerow = {}
+            for c in self.eagertarget.c:
+                fakerow[c.original] = row[c]
+            row = fakerow
+        return self.mapper._instance(row, imap, result_list)
 
 class MapperOption(object):
     """describes a modification to a Mapper in the context of making a copy
@@ -1253,13 +1286,13 @@ class EagerLazyOption(MapperOption):
 
 class Aliasizer(sql.ClauseVisitor):
     """converts a table instance within an expression to be an alias of that table."""
-    def __init__(self, *tables):
+    def __init__(self, *tables, **kwargs):
         self.tables = {}
         for t in tables:
             self.tables[t] = t
         self.binary = None
         self.match = False
-        self.aliases = {}
+        self.aliases = kwargs.get('aliases', {})
         
     def get_alias(self, table):
         try:

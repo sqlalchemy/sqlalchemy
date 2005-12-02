@@ -585,6 +585,13 @@ class Selectable(FromClause):
     def select(self, whereclauses = None, **params):
         return select([self], whereclauses, **params)
 
+    def get_col_by_original(self, column):
+        """given a column which is a schema.Column object attached to a schema.Table object
+        (i.e. an "original" column), return the Column object from this 
+        Selectable which corresponds to that original Column, or None if this Selectable
+        does not contain the column."""
+        raise NotImplementedError()
+
     def join(self, right, *args, **kwargs):
         return Join(self, right, *args, **kwargs)
 
@@ -626,6 +633,13 @@ class Join(Selectable):
         statement"""
         return True
 
+    def get_col_by_original(self, column):
+        for c in self.columns:
+            if c.original is column:
+                return c
+        else:
+            return None
+
     def hash_key(self):
         return "Join(%s, %s, %s, %s)" % (repr(self.left.hash_key()), repr(self.right.hash_key()), repr(self.onclause.hash_key()), repr(self.isouter))
 
@@ -661,6 +675,7 @@ class Alias(Selectable):
     def __init__(self, selectable, alias = None):
         self.selectable = selectable
         self.columns = util.OrderedProperties()
+        self.foreign_keys = []
         if alias is None:
             alias = id(self)
         self.name = alias
@@ -671,9 +686,12 @@ class Alias(Selectable):
             co._make_proxy(self)
 
     primary_keys = property (lambda self: [c for c in self.columns if c.primary_key])
-
+    
     def hash_key(self):
         return "Alias(%s, %s)" % (repr(self.selectable.hash_key()), repr(self.name))
+
+    def get_col_by_original(self, column):
+        return self.columns.get(column.key, None)
 
     def accept_visitor(self, visitor):
         self.selectable.accept_visitor(visitor)
@@ -708,6 +726,12 @@ class ColumnImpl(Selectable, CompareMixin):
     def copy_container(self):
         return self.column
 
+    def get_col_by_original(self, column):
+        if self.column.original is column:
+            return self.column
+        else:
+            return None
+            
     def group_parenthesized(self):
         return False
         
@@ -746,7 +770,10 @@ class TableImpl(Selectable):
         return self.table.name
     
     engine = property(lambda s: s.table.engine)
-    
+
+    def get_col_by_original(self, column):
+        return self.columns.get(column.key, None)
+
     def group_parenthesized(self):
         return False
 
@@ -865,6 +892,13 @@ class Select(Selectable):
             else:
                 co._make_proxy(self)
 
+
+    def get_col_by_original(self, column):
+        if self.use_labels:
+            return self.columns.get(column.label,None)
+        else:
+            return self.columns.get(column.key,None)
+
     def append_whereclause(self, whereclause):
         self._append_condition('whereclause', whereclause)
     def append_having(self, having):
@@ -904,7 +938,7 @@ class Select(Selectable):
     def _get_froms(self):
         return [f for f in self._froms.values() if self._correlated is None or not self._correlated.has_key(f.id)]
     froms = property(lambda s: s._get_froms())
-    
+
     def accept_visitor(self, visitor):
         for f in self.froms:
             f.accept_visitor(visitor)

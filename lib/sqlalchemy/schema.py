@@ -196,7 +196,11 @@ class Column(SchemaItem):
         
     def _make_proxy(self, selectable, name = None):
         """creates a copy of this Column, initialized the way this Column is"""
-        c = Column(name or self.name, self.type, self.foreign_key, self.sequence, key = name or self.key, primary_key = self.primary_key, hidden=self.hidden)
+        if self.foreign_key is None:
+            fk = None
+        else:
+            fk = self.foreign_key.copy()
+        c = Column(name or self.name, self.type, fk, self.sequence, key = name or self.key, primary_key = self.primary_key, hidden=self.hidden)
         c.table = selectable
         c._orig = self.original
         if not c.hidden:
@@ -229,6 +233,16 @@ class ForeignKey(SchemaItem):
             return ForeignKey(self._colspec)
         else:
             return ForeignKey("%s.%s" % (self._colspec.table.name, self._colspec.column.key))
+    
+    def references(self, table):
+        """returns True if the given table is referenced by this ForeignKey."""
+        return (
+            # simple test
+            self.column.table is table      
+            or
+            # test for an indirect relation via a Selectable
+            table.get_col_by_original(self.column) is not None
+        )
         
     def _init_column(self):
         # ForeignKey inits its remote column as late as possible, so tables can
