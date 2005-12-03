@@ -270,6 +270,8 @@ class ForeignKey(SchemaItem):
         visitor.visit_foreign_key(self)
         
     def _set_parent(self, column):
+        if not isinstance(column, Column):
+          raise "hi" + repr(type(column))
         self.parent = column
         self.parent.foreign_key = self
         self.parent.table.foreign_keys.append(self)

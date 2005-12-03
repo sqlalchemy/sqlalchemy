@@ -56,11 +56,6 @@ def _relation_mapper(class_, table=None, secondary=None,
     return _relation_loader(mapper(class_, table, **kwargs), secondary, primaryjoin, secondaryjoin, 
                     foreignkey=foreignkey, uselist=uselist, private=private, live=live, association=association, lazy=lazy, selectalias=selectalias)
 
-#def _relation_mapper(class_, table=None, secondary=None, 
-#                    primaryjoin=None, secondaryjoin=None, foreignkey=None, 
-#                    uselist=None, private=False, live=False, association=None, **kwargs):
-#    return _relation_loader(mapper(class_, table, **kwargs), secondary, primaryjoin=primaryjoin, secondaryjoin=secondaryjoin, foreignkey=foreignkey, uselist=uselist, private=private, live=live, association=association)
-
 class assignmapper(object):
     """provides a property object that will instantiate a Mapper for a given class the first
     time it is called off of the object.  This is useful for attaching a Mapper to a class
@@ -115,20 +110,20 @@ def extension(ext):
     """returns a MapperOption that will add the given MapperExtension to the 
     mapper returned by mapper.options()."""
     return ExtensionOption(ext)
-def eagerload(name):
+def eagerload(name, **kwargs):
     """returns a MapperOption that will convert the property of the given name
     into an eager load.  Used with mapper.options()"""
-    return EagerLazyOption(name, toeager=True)
+    return EagerLazyOption(name, toeager=True, **kwargs)
 
-def lazyload(name):
+def lazyload(name, **kwargs):
     """returns a MapperOption that will convert the property of the given name
     into a lazy load.  Used with mapper.options()"""
-    return EagerLazyOption(name, toeager=False)
+    return EagerLazyOption(name, toeager=False, **kwargs)
 
-def noload(name):
+def noload(name, **kwargs):
     """returns a MapperOption that will convert the property of the given name
     into a non-load.  Used with mapper.options()"""
-    return EagerLazyOption(name, toeager=None)
+    return EagerLazyOption(name, toeager=None, **kwargs)
     
 def object_mapper(object):
     """given an object, returns the primary Mapper associated with the object
@@ -169,7 +164,7 @@ class Mapper(object):
             'table':table,
             'primarytable':primarytable,
             'scope':scope,
-            'properties':properties,
+            'properties':properties or {},
             'primary_keys':primary_keys,
             'is_primary':False,
             'inherits':inherits,
@@ -286,6 +281,7 @@ class Mapper(object):
     engines = property(lambda s: [t.engine for t in s.tables])
 
     def add_property(self, key, prop):
+        self.copyargs['properties'][key] = prop
         if isinstance(prop, schema.Column):
             self.columns[key] = prop
             prop = ColumnProperty(prop)
@@ -759,11 +755,9 @@ class PropertyLoader(MapperProperty):
 
         if self.uselist is None:
             self.uselist = True
-                    
+
         self._compile_synchronizers()
                 
-        #if not hasattr(parent.class_, key):
-            #print "regiser list col on class %s key %s" % (parent.class_.__name__, key)
         if self._is_primary():
             self._set_class_attribute(parent.class_, key)
     
@@ -880,21 +874,45 @@ class PropertyLoader(MapperProperty):
             if child is not None:
                 uow.register_deleted(child)
 
-            
+    class MapperStub(object):
+      """poses as a Mapper representing the association table in a many-to-many
+      join, when performing a commit().  
+      
+      The Task objects in the objectstore module treat it just like
+      any other Mapper, but in fact it only serves as a "dependency" placeholder
+      for the many-to-many update task."""
+      def save_obj(self, *args, **kwargs):
+        pass
+      def delete_obj(self, *args, **kwargs):
+        pass
+        
     def register_dependencies(self, uowcommit):
+        """tells a UOWTransaction what mappers are dependent on which, with regards
+        to the two or three mappers handled by this PropertyLoader.
+        
+        Also registers itself as a "processor" for one of its mappers, which
+        will be executed after that mapper's objects have been saved or before
+        they've been deleted.  The process operation manages attributes and dependent
+        operations upon the objects of one of the involved mappers."""
         if self.association is not None:
+            # association object.  our mapper is made to be dependent on our parent,
+            # as well as the object we associate to.  when theyre done saving (or before they
+            # are deleted), we will process child items off objects managed by our parent mapper.
             uowcommit.register_dependency(self.parent, self.mapper)
-            uowcommit.register_dependency(self.association, self.parent)
+            uowcommit.register_dependency(self.association, self.mapper)
             uowcommit.register_processor(self.parent, self, self.parent, False)
             uowcommit.register_processor(self.parent, self, self.parent, True)
         elif self.direction == PropertyLoader.CENTER:
-            # with many-to-many, set the parent as dependent on us, then the 
-            # list of associations as dependent on the parent
-            # if only a list changes, the parent mapper is the only mapper that
-            # gets added to the "todo" list
-            uowcommit.register_dependency(self.mapper, self.parent)
-            uowcommit.register_processor(self.parent, self, self.parent, False)
-            uowcommit.register_processor(self.parent, self, self.parent, True)
+            # many-to-many.  create a "Stub" mapper to represent the
+            # "middle table" in the relationship.  This stub mapper doesnt save
+            # or delete any objects, but just marks a dependency on the two
+            # related mappers.  its dependency processor then populates the
+            # association table.
+            stub = PropertyLoader.MapperStub()
+            uowcommit.register_dependency(self.parent, stub)
+            uowcommit.register_dependency(self.mapper, stub)
+            uowcommit.register_processor(stub, self, self.parent, False)
+            uowcommit.register_processor(stub, self, self.parent, True)
         elif self.direction == PropertyLoader.LEFT:
             uowcommit.register_dependency(self.parent, self.mapper)
             uowcommit.register_processor(self.parent, self, self.parent, False)
@@ -974,8 +992,7 @@ class PropertyLoader(MapperProperty):
                     uowcommit.register_object(child)
                 uowcommit.register_deleted_list(childlist)
         elif self.association is not None:
-            # TODO: this is new code, for managing "association objects".
-            # its probably glitchy.
+            # manage association objects.
             for obj in deplist:
                 childlist = getlist(obj, passive=True)
                 if childlist is None: continue
@@ -1020,10 +1037,6 @@ class PropertyLoader(MapperProperty):
                 if self.direction != PropertyLoader.RIGHT or len(childlist.added_items()) == 0:
                     for child in childlist.deleted_items():
                         if not self.private:
-                            # TODO: we arent sync'ing if this child object
-                            # is to be deleted.  this is because if its an "association"
-                            # object, it needs its data in order to be located.  
-                            # need more explicit support for "association" objects.
                             self._synchronize(obj, child, None, True)
                         if self.direction == PropertyLoader.LEFT:
                             uowcommit.register_object(child, isdelete=self.private)
@@ -1257,9 +1270,10 @@ class ExtensionOption(MapperOption):
         
 class EagerLazyOption(MapperOption):
     """an option that switches a PropertyLoader to be an EagerLoader or LazyLoader"""
-    def __init__(self, key, toeager = True):
+    def __init__(self, key, toeager = True, **kwargs):
         self.key = key
         self.toeager = toeager
+        self.kwargs = kwargs
 
     def hash_key(self):
         return "EagerLazyOption(%s, %s)" % (repr(self.key), repr(self.toeager))
@@ -1282,7 +1296,16 @@ class EagerLazyOption(MapperOption):
             class_ = PropertyLoader
         else:
             class_ = LazyLoader
-        mapper.set_property(key, class_(submapper, oldprop.secondary, primaryjoin = oldprop.primaryjoin, secondaryjoin = oldprop.secondaryjoin, foreignkey=oldprop.foreignkey, uselist=oldprop.uselist, private=oldprop.private, live=oldprop.live, isoption=True ))
+            
+        self.kwargs.setdefault('primaryjoin', oldprop.primaryjoin)
+        self.kwargs.setdefault('secondaryjoin', oldprop.secondaryjoin)
+        self.kwargs.setdefault('foreignkey', oldprop.foreignkey)
+        self.kwargs.setdefault('uselist', oldprop.uselist)
+        self.kwargs.setdefault('private', oldprop.private)
+        self.kwargs.setdefault('live', oldprop.live)
+        self.kwargs.setdefault('selectalias', oldprop.selectalias)
+        self.kwargs['isoption'] = True
+        mapper.set_property(key, class_(submapper, oldprop.secondary, **self.kwargs ))
 
 class Aliasizer(sql.ClauseVisitor):
     """converts a table instance within an expression to be an alias of that table."""

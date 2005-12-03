@@ -86,6 +86,44 @@ class DoubleTest(testbase.AssertMixin):
             }
             )    
 
+    def testcircular(self):
+        """tests a circular many-to-many relationship.  this requires that the mapper
+        "break off" a new "mapper stub" to indicate a third depedendent processor."""
+        Place.mapper = mapper(Place, place)
+        Transition.mapper = mapper(Transition, transition, properties = dict(
+            inputs = relation(Place.mapper, place_output, lazy=True),
+            outputs = relation(Place.mapper, place_input, lazy=True),
+            )
+        )
+        Place.mapper.add_property('inputs', relation(Transition.mapper, place_output, lazy=True))
+        Place.mapper.add_property('outputs', relation(Transition.mapper, place_input, lazy=True))
+        
+
+        t1 = Transition('transition1')
+        t2 = Transition('transition2')
+        t3 = Transition('transition3')
+        p1 = Place('place1')
+        p2 = Place('place2')
+        p3 = Place('place3')
+
+        t1.inputs.append(p1)
+        t1.inputs.append(p2)
+        t1.outputs.append(p3)
+        t2.inputs.append(p1)
+        p2.inputs.append(t2)
+        p3.inputs.append(t2)
+        p1.outputs.append(t1)
+        
+        objectstore.commit()
+
+        Place.eagermapper = Place.mapper.options(
+            eagerload('inputs', selectalias='ip_alias'), 
+            eagerload('outputs', selectalias='op_alias')
+        )
+        
+        l = Place.eagermapper.select()
+        print repr(l)
+
 if __name__ == "__main__":    
     testbase.main()
 

@@ -256,7 +256,7 @@ class ClauseElement(object):
 
         Note that since ClauseElements may be mutable, the hash_key() value is subject to
         change if the underlying structure of the ClauseElement changes.""" 
-	raise NotImplementedError(repr(self))
+        raise NotImplementedError(repr(self))
     def _get_from_objects(self):
         raise NotImplementedError(repr(self))
     def _process_from_dict(self, data, asfrom):
@@ -772,7 +772,14 @@ class TableImpl(Selectable):
     engine = property(lambda s: s.table.engine)
 
     def get_col_by_original(self, column):
-        return self.columns.get(column.key, None)
+        try:
+          col = self.columns[column.key]
+        except KeyError:
+          return None
+        if col.original is column:
+          return col
+        else:
+          return None
 
     def group_parenthesized(self):
         return False
@@ -1048,7 +1055,7 @@ class UpdateBase(ClauseElement):
             else:
                 try:
                     d[self.table.columns[str(key)]] = value
-                except AttributeError:
+                except KeyError:
                     pass
 
         # create a list of column assignment clauses as tuples
