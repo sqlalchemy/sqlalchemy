@@ -17,7 +17,6 @@
 
 __all__ = ['OrderedProperties', 'OrderedDict']
 import thread, weakref, UserList,string
-import sqlalchemy.topological as topological
 
 class OrderedProperties(object):
     """an object that maintains the order in which attributes are set upon it.
@@ -334,5 +333,3 @@ class ScopedRegistry(object):
     def _clear_application(self):
         self.application = createfunc()
                 
-class DependencySorter(topological.QueueDependencySorter):
-    pass

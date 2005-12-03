@@ -24,6 +24,7 @@ import thread
 import sqlalchemy
 import sqlalchemy.util as util
 import sqlalchemy.attributes as attributes
+import topological
 import weakref
 import string
 
@@ -414,7 +415,7 @@ class UOWTransaction(object):
             mappers.append(task.mapper)
             bymapper[task.mapper] = task
     
-        head = util.DependencySorter(self.dependencies, mappers).sort()
+        head = DependencySorter(self.dependencies, mappers).sort()
         task = sort_hier(head)
         return task
 
@@ -605,7 +606,7 @@ class UOWTask(object):
                         #raise "hi " + repr(obj) + " " + repr(o)
                         get_dependency_task(obj, dep).append(obj, isdelete=isdelete)
                         
-        head = util.DependencySorter(tuples, allobjects).sort()
+        head = DependencySorter(tuples, allobjects).sort()
         if head is None:
             return None
         
@@ -666,6 +667,9 @@ class UOWTask(object):
         
     def __repr__(self):
         return ("UOWTask/%d Table: '%s'" % (id(self), self.mapper and self.mapper.primarytable.name or '(none)'))
+
+class DependencySorter(topological.QueueDependencySorter):
+    pass
         
 def mapper(*args, **params):
     return sqlalchemy.mapperlib.mapper(*args, **params)
