@@ -1,6 +1,4 @@
-from sqlalchemy.mapper import *
-from sqlalchemy.schema import *
-from sqlalchemy.sql import *
+from sqlalchemy import *
 import sqlalchemy.util as util
 import tables
 import string, sys, time

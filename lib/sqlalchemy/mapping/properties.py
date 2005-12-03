@@ -84,7 +84,8 @@ class PropertyLoader(MapperProperty):
 
     def init(self, key, parent):
         if isinstance(self.argument, type):
-            self.mapper = class_mapper(self.argument)
+            import sqlalchemy.mapping
+            self.mapper = sqlalchemy.mapping.class_mapper(self.argument)
         else:
             self.mapper = self.argument
 
