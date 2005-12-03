@@ -16,7 +16,7 @@ class Transition(object):
     def __repr__(self):
         return object.__repr__(self)+ " " + repr(self.inputs) + " " + repr(self.outputs)
         
-class DoubleTest(testbase.AssertMixin):
+class ManyToManyTest(testbase.AssertMixin):
     def setUpAll(self):
         db = testbase.db
         global place
@@ -59,6 +59,12 @@ class DoubleTest(testbase.AssertMixin):
     def setUp(self):
         objectstore.clear()
         clear_mappers()
+
+    def tearDown(self):
+        place_input.delete().execute()
+        place_output.delete().execute()
+        transition.delete().execute()
+        place.delete().execute()
 
     def testdouble(self):
         """tests that a mapper can have two eager relations to the same table, via

@@ -19,10 +19,10 @@ class ColumnsTest(PersistTest):
 
     def _buildTestTable(self):
         testTable = Table('testColumns', self.db,
-            Column('int_column', INT),
-            Column('varchar_column', VARCHAR(20)),
+            Column('int_column', Integer),
+            Column('varchar_column', String(20)),
             Column('numeric_column', Numeric(12,3)),
-            Column('float_column', FLOAT(25)),
+            Column('float_column', Float(25)),
         )
         return testTable
 
