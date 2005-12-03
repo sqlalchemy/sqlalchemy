@@ -22,7 +22,7 @@ import sqlalchemy.schema as schema
 import sqlalchemy.pool
 import sqlalchemy.util as util
 import sqlalchemy.sql as sql
-import StringIO, sys
+import StringIO, sys, re
 import sqlalchemy.types as types
 import sqlalchemy.databases
 
@@ -36,6 +36,14 @@ def create_engine(name, *args ,**kwargs):
     *args, **kwargs - sent directly to the specific engine instance as connect arguments,
     options.
     """
+    m = re.match(r'(\w+)://(.*)', name)
+    if m is not None:
+        (name, args) = m.group(1, 2)
+        opts = {}
+        def assign(m):
+            opts[m.group(1)] = m.group(2)
+        re.sub(r'([^&]+)=([^&]*)', assign, args)
+        args = [opts]
     module = getattr(__import__('sqlalchemy.databases.%s' % name).databases, name)
     return module.engine(*args, **kwargs)
 

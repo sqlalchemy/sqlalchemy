@@ -163,13 +163,15 @@ if (param != '--db'):
     raise "--db <sqlite|postgres|oracle|sqlite_file> param required"
         
 if DBTYPE == 'sqlite':
-    db = engine.create_engine('sqlite', {'filename':':memory:'}, echo = echo)
+    db = engine.create_engine('sqlite://filename=:memory:', echo = echo)
 elif DBTYPE == 'sqlite_file':
-    db = engine.create_engine('sqlite', {'filename':'querytest.db'}, echo = echo)
+    db = engine.create_engine('sqlite://filename=querytest.db', echo = echo)
 elif DBTYPE == 'postgres':
-    db = engine.create_engine('postgres', {'database':'test', 'host':'127.0.0.1', 'user':'scott', 'password':'tiger'}, echo=echo)
+    db = engine.create_engine('postgres://database=test&host=127.0.0.1&user=scott&password=tiger', echo=echo)
 elif DBTYPE == 'mysql':
-    db = engine.create_engine('mysql', {'db':'test', 'host':'127.0.0.1', 'user':'scott', 'passwd':'tiger'}, echo=echo)
+    db = engine.create_engine('mysql://db=test&host=127.0.0.1&user=scott&passwd=tiger', echo=echo)
+elif DBTYPE == 'oracle':
+    db = engine.create_engine('oracle://db=test&host=127.0.0.1&user=scott&passwd=tiger', echo=echo)
 db = EngineAssert(db)
 
                     
