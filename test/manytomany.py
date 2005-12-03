@@ -103,8 +103,12 @@ class ManyToManyTest(testbase.AssertMixin):
         )
         Place.mapper.add_property('inputs', relation(Transition.mapper, place_output, lazy=True))
         Place.mapper.add_property('outputs', relation(Transition.mapper, place_input, lazy=True))
-        
 
+        Place.eagermapper = Place.mapper.options(
+            eagerload('inputs', selectalias='ip_alias'), 
+            eagerload('outputs', selectalias='op_alias')
+        )
+        
         t1 = Transition('transition1')
         t2 = Transition('transition2')
         t3 = Transition('transition3')
@@ -122,10 +126,6 @@ class ManyToManyTest(testbase.AssertMixin):
         
         objectstore.commit()
 
-        Place.eagermapper = Place.mapper.options(
-            eagerload('inputs', selectalias='ip_alias'), 
-            eagerload('outputs', selectalias='op_alias')
-        )
         
         l = Place.eagermapper.select()
         print repr(l)
