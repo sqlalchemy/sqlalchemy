@@ -562,12 +562,12 @@ class SaveTest(AssertMixin):
         objects[5].keywords.append(k)
         self.assert_sql(db, lambda:objectstore.commit(), [
             (
-                "INSERT INTO keywords (name) VALUES (:name)", 
-                {'name': 'yellow'}
-            ),
-            (
                 "UPDATE items SET order_id=:order_id, item_name=:item_name WHERE items.item_id = :items_item_id",
                 [{'item_name': 'item4updated', 'order_id': None, 'items_item_id': objects[4].item_id}]
+            ),
+            (
+                "INSERT INTO keywords (name) VALUES (:name)", 
+                {'name': 'yellow'}
             ),
             ("INSERT INTO itemkeywords (item_id, keyword_id) VALUES (:item_id, :keyword_id)",
             lambda: [{'item_id': objects[5].item_id, 'keyword_id': k.keyword_id}]
