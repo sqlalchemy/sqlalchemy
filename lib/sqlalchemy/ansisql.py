@@ -170,7 +170,13 @@ class ANSICompiler(sql.Compiled):
 
     def visit_function(self, func):
         self.strings[func] = func.name + "(" + string.join([self.get_str(c) for c in func.clauses], ', ') + ")"
-        
+    
+    def visit_compound_select(self, cs):
+        text = string.join([self.get_str(c) for c in cs.selects], " " + cs.keyword + " ")
+        for tup in cs.clauses:
+            text += " " + tup[0] + " " + self.get_str(tup[1])
+        self.strings[cs] = text
+            
     def visit_binary(self, binary):
         result = self.get_str(binary.left)
         if binary.operator is not None:
@@ -245,7 +251,7 @@ class ANSICompiler(sql.Compiled):
             if t:
                 text += " \nWHERE " + t
 
-        for tup in select._clauses:
+        for tup in select.clauses:
             text += " " + tup[0] + " " + self.get_str(tup[1])
 
         if select.having is not None:
@@ -275,6 +281,7 @@ class ANSICompiler(sql.Compiled):
         else:
             self.froms[join] = (self.get_from_text(join.left) + " JOIN " + righttext +
             " ON " + self.get_str(join.onclause))
+        self.strings[join] = self.froms[join]
         
     def visit_insert(self, insert_stmt):
         self.isinsert = True
