@@ -555,9 +555,12 @@ class EagerLoader(PropertyLoader):
             self.eagerprimary = self.primaryjoin
             self.eagersecondary = self.secondaryjoin
 
-    def setup(self, key, statement, **options):
+    def setup(self, key, statement, recursion_stack = None, **options):
         """add a left outer join to the statement thats being constructed"""
 
+        if recursion_stack is None:
+            recursion_stack = {}
+        
         if statement.whereclause is not None:
             # "aliasize" the tables referenced in the user-defined whereclause to not 
             # collide with the tables used by the eager load
@@ -581,11 +584,15 @@ class EagerLoader(PropertyLoader):
 
         statement.append_from(statement._outerjoin)
         statement.append_column(self.eagertarget)
-        for key, value in self.mapper.props.iteritems():
-            if value is self:
-                raise "Cant use eager loading on a self-referential mapper relationship " + str(self.mapper) + " " + key + repr(self.mapper.props)
-            value.setup(key, statement)
-
+        recursion_stack[self] = True
+        try:
+            for key, value in self.mapper.props.iteritems():
+                if recursion_stack.has_key(value):
+                    raise "Circular eager load relationship detected on " + str(self.mapper) + " " + key + repr(self.mapper.props)
+                value.setup(key, statement, recursion_stack=recursion_stack)
+        finally:
+            del recursion_stack[self]
+            
     def execute(self, instance, row, identitykey, imap, isnew):
         """receive a row.  tell our mapper to look for a new object instance in the row, and attach
         it to a list on the parent instance."""
