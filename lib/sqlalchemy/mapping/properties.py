@@ -83,15 +83,15 @@ class PropertyLoader(MapperProperty):
         return self._hash_key
 
     def init(self, key, parent):
+        import sqlalchemy.mapping
         if isinstance(self.argument, type):
-            import sqlalchemy.mapping
             self.mapper = sqlalchemy.mapping.class_mapper(self.argument)
         else:
             self.mapper = self.argument
 
         if self.association is not None:
             if isinstance(self.association, type):
-                self.association = class_mapper(self.association)
+                self.association = sqlalchemy.mapping.class_mapper(self.association)
         
         self.target = self.mapper.table
         self.key = key
