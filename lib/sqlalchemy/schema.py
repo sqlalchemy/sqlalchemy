@@ -221,6 +221,14 @@ class Column(SchemaItem):
     def __ne__(self, other): return self._impl.__ne__(other)
     def __gt__(self, other): return self._impl.__gt__(other)
     def __ge__(self, other): return self._impl.__ge__(other)
+    def __add__(self, other): return self._impl.__add__(other)
+    def __sub__(self, other): return self._impl.__sub__(other)
+    def __mul__(self, other): return self._impl.__mul__(other)
+    def __and__(self, other): return self._impl.__and__(other)
+    def __or__(self, other): return self._impl.__or__(other)
+    def __div__(self, other): return self._impl.__div__(other)
+    def __truediv__(self, other): return self._impl.__truediv__(other)
+    def __invert__(self, other): return self._impl.__invert__(other)
     def __str__(self): return self._impl.__str__()
 
 class ForeignKey(SchemaItem):

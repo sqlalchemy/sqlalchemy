@@ -23,7 +23,7 @@ import sqlalchemy.util as util
 import sqlalchemy.types as types
 import string, re
 
-__all__ = ['text', 'column', 'func', 'select', 'update', 'insert', 'delete', 'join', 'and_', 'or_', 'not_', 'union', 'union_all', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'bindparam', 'sequence', 'exists']
+__all__ = ['text', 'column', 'func', 'select', 'update', 'insert', 'delete', 'join', 'and_', 'or_', 'not_', 'union', 'union_all', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'literal', 'bindparam', 'sequence', 'exists']
 
 def desc(column):
     """returns a descending ORDER BY clause element, e.g.:
@@ -143,6 +143,9 @@ def alias(*args, **params):
 def subquery(alias, *args, **params):
     return Alias(Select(*args, **params), alias)
 
+def literal(value, type=None):
+    return BindParamClause('literal', value, type=type)
+    
 def bindparam(key, value = None, type=None):
     if isinstance(key, schema.Column):
         return BindParamClause(key.name, value, type=key.type)
@@ -323,6 +326,13 @@ class ClauseElement(object):
         sequences, rowcounts, etc."""
         return self.execute(*multiparams, **params).fetchone()[0]
 
+    def __and__(self, other):
+        return and_(self, other)
+    def __or__(self, other):
+        return or_(self, other)
+    def __invert__(self):
+        return not_(self)
+
 class CompareMixin(object):
     def __lt__(self, other):
         return self._compare('<', other)
@@ -363,6 +373,28 @@ class CompareMixin(object):
     
     def endswith(self, other):
         return self._compare('LIKE', "%" + str(other))
+
+    # and here come the math operators:
+    def __add__(self, other):
+        return self._compare('+', other)
+    def __sub__(self, other):
+        return self._compare('-', other)
+    def __mul__(self, other):
+        return self._compare('*', other)
+    def __div__(self, other):
+        return self._compare('/', other)
+    def __truediv__(self, other):
+        return self._compare('/', other)
+    def _compare(self, operator, obj):
+        if _is_literal(obj):
+            if obj is None:
+                if operator != '=':
+                    raise "Only '=' operator can be used with NULL"
+                return BinaryClause(self, null(), 'IS')
+            else:
+                obj = BindParamClause('literal', obj, shortname=None, type=self.type)
+
+        return BinaryClause(self, obj, operator)
 
         
 class ColumnClause(ClauseElement, CompareMixin):
@@ -427,7 +459,7 @@ class FromClause(ClauseElement):
     def accept_visitor(self, visitor): 
         visitor.visit_fromclause(self)
     
-class BindParamClause(ClauseElement):
+class BindParamClause(ClauseElement, CompareMixin):
     def __init__(self, key, value, shortname = None, type = None):
         self.key = key
         self.value = value
@@ -532,12 +564,19 @@ class CompoundClause(ClauseList):
 class Function(ClauseList, CompareMixin):
     """describes a SQL function. extends ClauseList to provide comparison operators."""
     def __init__(self, name, *clauses, **kwargs):
-        ClauseList.__init__(self, parens=True, *clauses)
         self.name = name
         self.type = kwargs.get('type', None)
         self.label = kwargs.get('label', None)
+        ClauseList.__init__(self, parens=True, *clauses)
     columns = property(lambda self: [self])
     key = property(lambda self:self.label or self.name)
+    def append(self, clause):
+        if _is_literal(clause):
+            if clause is None:
+                clause = null()
+            else:
+                clause = BindParamClause(self.name, clause, shortname=self.name, type=None)
+        self.clauses.append(clause)
     def copy_container(self):
         return self
     def accept_visitor(self, visitor):
@@ -941,13 +980,15 @@ class Select(Selectable, TailClauseMixin):
             if self.rowid_column is None and hasattr(f, 'rowid_column'):
                 self.rowid_column = f.rowid_column._make_proxy(self)
         column._process_from_dict(self._froms, False)
-        
-        for co in column.columns:
-            if self.use_labels:
-                co._make_proxy(self, name = co.label)
-            else:
-                co._make_proxy(self)
 
+        # TODO: dont use hasattr here, get a general way to locate
+        # selectable columns off stuff working completely (i.e. Selectable)
+        if hasattr(column, 'columns'):
+            for co in column.columns:
+                if self.use_labels:
+                    co._make_proxy(self, name = co.label)
+                else:
+                    co._make_proxy(self)
 
     def get_col_by_original(self, column):
         if self.use_labels:

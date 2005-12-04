@@ -604,7 +604,7 @@ class SaveTest(AssertMixin):
         m = mapper(Item, items, properties = dict(
                 keywords = relation(IKAssociation, itemkeywords, lazy = False, properties = dict(
                     keyword = relation(Keyword, keywords, lazy = False, uselist = False)
-                ), primary_keys = [itemkeywords.c.item_id, itemkeywords.c.keyword_id])
+                ), primary_key = [itemkeywords.c.item_id, itemkeywords.c.keyword_id])
             ))
 
         data = [Item,

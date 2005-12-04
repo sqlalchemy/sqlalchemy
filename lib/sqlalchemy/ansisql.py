@@ -187,7 +187,8 @@ class ANSICompiler(sql.Compiled):
         self.strings[binary] = result
 
     def visit_bindparam(self, bindparam):
-        self.binds[bindparam.shortname] = bindparam
+        if bindparam.shortname != bindparam.key:
+            self.binds[bindparam.shortname] = bindparam
         count = 1
         key = bindparam.key
 
@@ -210,13 +211,18 @@ class ANSICompiler(sql.Compiled):
         inner_columns = []
 
         for c in select._raw_columns:
-            for co in c.columns:
-                co.accept_visitor(self)
-                inner_columns.append(co)
-                if select.use_labels:
-                    self.typemap.setdefault(co.label, co.type)
-                else:
-                    self.typemap.setdefault(co.key, co.type)
+            # TODO:  hackish.  try to get a more polymorphic approach.
+            if hasattr(c, 'columns'):
+                for co in c.columns:
+                    co.accept_visitor(self)
+                    inner_columns.append(co)
+                    if select.use_labels:
+                        self.typemap.setdefault(co.label, co.type)
+                    else:
+                        self.typemap.setdefault(co.key, co.type)
+            else:
+                c.accept_visitor(self)
+                inner_columns.append(c)
                 
         if select.use_labels:
             collist = string.join(["%s AS %s" % (self.get_str(c), c.label) for c in inner_columns], ', ')

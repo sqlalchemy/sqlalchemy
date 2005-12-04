@@ -43,7 +43,7 @@ class MapperTest(MapperSuperTest):
 
     def testmultitable(self):
         usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
-        m = mapper(User, usersaddresses, primarytable = users, primary_keys=[users.c.user_id])
+        m = mapper(User, usersaddresses, primarytable = users, primary_key=[users.c.user_id])
         l = m.select()
         self.assert_result(l, User, {'user_id' : 7}, {'user_id' : 8})
 

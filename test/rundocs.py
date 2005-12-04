@@ -208,7 +208,7 @@ class KeywordAssociation(object):pass
 # lazy loading for that.
 m = mapper(Article, articles, properties=dict(
     keywords = relation(KeywordAssociation, itemkeywords, lazy = False, 
-        primary_keys=[itemkeywords.c.article_id, itemkeywords.c.keyword_id], 
+        primary_key=[itemkeywords.c.article_id, itemkeywords.c.keyword_id], 
         properties=dict(
             keyword = relation(Keyword, keywords, lazy = False),
             user = relation(User, users, lazy = True)
@@ -235,5 +235,4 @@ for a in alist:
     for k in a.keywords:
         if k.keyword.name == 'jacks_stories':
             print k.user.user_name
-
 
