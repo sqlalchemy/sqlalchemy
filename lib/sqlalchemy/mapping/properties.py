@@ -580,7 +580,7 @@ class EagerLoader(PropertyLoader):
             statement.order_by(self.secondary.rowid_column)
         else:
             statement._outerjoin = towrap.outerjoin(self.eagertarget, self.eagerprimary)
-            statement.order_by(self.target.rowid_column)
+            statement.order_by(self.eagertarget.rowid_column)
 
         statement.append_from(statement._outerjoin)
         statement.append_column(self.eagertarget)
