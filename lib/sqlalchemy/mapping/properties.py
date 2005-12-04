@@ -62,7 +62,7 @@ class PropertyLoader(MapperProperty):
 
     """describes an object property that holds a single item or list of items that correspond
     to a related database table."""
-    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, live=False, isoption=False, association=None, selectalias=None, **kwargs):
+    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, live=False, isoption=False, association=None, selectalias=None, order_by=None, **kwargs):
         self.uselist = uselist
         self.argument = argument
         self.secondary = secondary
@@ -74,7 +74,8 @@ class PropertyLoader(MapperProperty):
         self.isoption = isoption
         self.association = association
         self.selectalias = selectalias
-        self._hash_key = "%s(%s, %s, %s, %s, %s, %s, %s)" % (self.__class__.__name__, hash_key(self.argument), hash_key(secondary), hash_key(primaryjoin), hash_key(secondaryjoin), hash_key(foreignkey), repr(uselist), repr(private))
+        self.order_by=util.to_list(order_by)
+        self._hash_key = "%s(%s, %s, %s, %s, %s, %s, %s, %s)" % (self.__class__.__name__, hash_key(self.argument), hash_key(secondary), hash_key(primaryjoin), hash_key(secondaryjoin), hash_key(foreignkey), repr(uselist), repr(private), hash_key(self.order_by))
 
     def _copy(self):
         return self.__class__(self.mapper, self.secondary, self.primaryjoin, self.secondaryjoin, self.foreignkey, self.uselist, self.private)
@@ -466,7 +467,9 @@ class LazyLoader(PropertyLoader):
                     allparams = False
                     break
             if allparams:
-                if self.secondary is not None:
+                if self.order_by is not None:
+                    order_by = self.order_by
+                elif self.secondary is not None:
                     order_by = [self.secondary.rowid_column]
                 else:
                     order_by = []
@@ -577,11 +580,16 @@ class EagerLoader(PropertyLoader):
 
         if self.secondaryjoin is not None:
             statement._outerjoin = sql.outerjoin(towrap, self.secondary, self.primaryjoin).outerjoin(self.eagertarget, self.eagersecondary)
-            statement.order_by(self.secondary.rowid_column)
+            if self.order_by is None:
+                statement.order_by(self.secondary.rowid_column)
         else:
             statement._outerjoin = towrap.outerjoin(self.eagertarget, self.eagerprimary)
-            statement.order_by(self.eagertarget.rowid_column)
+            if self.order_by is None:
+                statement.order_by(self.eagertarget.rowid_column)
 
+        if self.order_by is not None:
+            statement.order_by(*[self.eagertarget.get_col_by_original(c) for c in self.order_by])
+            
         statement.append_from(statement._outerjoin)
         statement.append_column(self.eagertarget)
         recursion_stack[self] = True

@@ -18,6 +18,12 @@
 __all__ = ['OrderedProperties', 'OrderedDict']
 import thread, weakref, UserList,string
 
+def to_list(x):
+    if x is None:
+        return None
+    if not isinstance(x, list) and not isinstance(x, tuple):
+        return [x]
+        
 class OrderedProperties(object):
     """an object that maintains the order in which attributes are set upon it.
     also provides an iterator and a very basic dictionary interface to those attributes.

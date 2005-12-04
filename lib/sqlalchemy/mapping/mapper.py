@@ -34,7 +34,6 @@ class Mapper(object):
                 class_, 
                 table, 
                 primarytable = None, 
-                scope = "thread", 
                 properties = None, 
                 primary_key = None, 
                 is_primary = False, 
@@ -47,7 +46,6 @@ class Mapper(object):
             'class_':class_,
             'table':table,
             'primarytable':primarytable,
-            'scope':scope,
             'properties':properties or {},
             'primary_key':primary_key,
             'is_primary':False,
@@ -62,7 +60,6 @@ class Mapper(object):
             self.extension = extension                
         self.hashkey = hashkey
         self.class_ = class_
-        self.scope = scope
         self.is_primary = is_primary
         
         if not issubclass(class_, object):
@@ -450,7 +447,6 @@ class Mapper(object):
         statement.use_labels = True
         return statement
 
-
     def _identity_key(self, row):
         return objectstore.get_row_key(row, self.class_, self.primarytable, self.pks_by_table[self.table])
 
@@ -503,7 +499,6 @@ class Mapper(object):
             instance = imap[identitykey]
             isnew = False
 
-
         # plugin point
         
         # call further mapper properties on the row, to pull further 
@@ -517,7 +512,6 @@ class Mapper(object):
             
         return instance
 
-        
 class MapperProperty(object):
     """an element attached to a Mapper that describes and assists in the loading and saving 
     of an attribute on an object instance."""
@@ -590,21 +584,22 @@ class TableFinder(sql.ClauseVisitor):
 def hash_key(obj):
     if obj is None:
         return 'None'
+    elif isinstance(obj, list):
+        return repr([hash_key(o) for o in obj])
     elif hasattr(obj, 'hash_key'):
         return obj.hash_key()
     else:
         return repr(obj)
 
-def mapper_hash_key(class_, table, primarytable = None, properties = None, scope = "thread", **kwargs):
+def mapper_hash_key(class_, table, primarytable = None, properties = None, **kwargs):
     if properties is None:
         properties = {}
     return (
-        "Mapper(%s, %s, primarytable=%s, properties=%s, scope=%s)" % (
+        "Mapper(%s, %s, primarytable=%s, properties=%s)" % (
             repr(class_),
             hash_key(table),
             hash_key(primarytable),
-            repr(dict([(k, hash_key(p)) for k,p in properties.iteritems()])),
-            scope        
+            repr(dict([(k, hash_key(p)) for k,p in properties.iteritems()]))
         )
     )
 

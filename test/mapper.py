@@ -120,6 +120,23 @@ class LazyTest(MapperSuperTest):
             {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
             )
 
+    def testorderby(self):
+        m = mapper(Address, addresses)
+
+        m = mapper(User, users, properties = dict(
+            addresses = relation(m, lazy = True, order_by=addresses.c.email_address),
+        ))
+        l = m.select()
+        dict(address_id = 1, user_id = 7, email_address = "jack@bean.com"),
+        dict(address_id = 2, user_id = 8, email_address = "ed@wood.com"),
+        dict(address_id = 3, user_id = 8, email_address = "ed@lala.com")
+
+        self.assert_result(l, User,
+            {'user_id' : 7, 'addresses' : (Address, [{'email_address' : 'jack@bean.com'}])},
+            {'user_id' : 8, 'addresses' : (Address, [{'email_address':'ed@lala.com'}, {'email_address':'ed@wood.com'}])},
+            {'user_id' : 9, 'addresses' : (Address, [])}
+            )
+
     def testonetoone(self):
         m = mapper(User, users, properties = dict(
             address = relation(Address, addresses, lazy = True, uselist = False)
@@ -204,6 +221,23 @@ class EagerTest(MapperSuperTest):
             {'user_id' : 9, 'addresses' : (Address, [])}
             )
 
+    def testorderby(self):
+        m = mapper(Address, addresses)
+        
+        m = mapper(User, users, properties = dict(
+            addresses = relation(m, lazy = False, order_by=addresses.c.email_address),
+        ))
+        l = m.select()
+        dict(address_id = 1, user_id = 7, email_address = "jack@bean.com"),
+        dict(address_id = 2, user_id = 8, email_address = "ed@wood.com"),
+        dict(address_id = 3, user_id = 8, email_address = "ed@lala.com")
+        
+        self.assert_result(l, User,
+            {'user_id' : 7, 'addresses' : (Address, [{'email_address' : 'jack@bean.com'}])},
+            {'user_id' : 8, 'addresses' : (Address, [{'email_address':'ed@lala.com'}, {'email_address':'ed@wood.com'}])},
+            {'user_id' : 9, 'addresses' : (Address, [])}
+            )
+        
     def testonetoone(self):
         m = mapper(User, users, properties = dict(
             address = relation(Address, addresses, lazy = False, uselist = False)
