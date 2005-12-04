@@ -87,7 +87,9 @@ class TableSingleton(type):
 
         
 class Table(SchemaItem):
-    """represents a relational database table."""
+    """represents a relational database table.  
+    
+    Be sure to look at sqlalchemy.sql.TableImpl for additional methods defined on a Table."""
     __metaclass__ = TableSingleton
     
     def __init__(self, name, engine, *args, **kwargs):
@@ -249,7 +251,7 @@ class ForeignKey(SchemaItem):
             self.column.table is table      
             or
             # test for an indirect relation via a Selectable
-            table.get_col_by_original(self.column) is not None
+            table._get_col_by_original(self.column) is not None
         )
         
     def _init_column(self):

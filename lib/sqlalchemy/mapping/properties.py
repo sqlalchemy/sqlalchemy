@@ -176,11 +176,11 @@ class PropertyLoader(MapperProperty):
         crit = []
         for fk in secondary.foreign_keys:
             if fk.references(primary):
-                crit.append(primary.get_col_by_original(fk.column) == fk.parent)
+                crit.append(primary._get_col_by_original(fk.column) == fk.parent)
                 self.foreignkey = fk.parent
         for fk in primary.foreign_keys:
             if fk.references(secondary):
-                crit.append(secondary.get_col_by_original(fk.column) == fk.parent)
+                crit.append(secondary._get_col_by_original(fk.column) == fk.parent)
                 self.foreignkey = fk.parent
         if len(crit) == 0:
             raise "Cant find any foreign key relationships between '%s' (%s) and '%s' (%s)" % (primary.name, repr(primary), secondary.name, repr(secondary))
@@ -588,7 +588,7 @@ class EagerLoader(PropertyLoader):
                 statement.order_by(self.eagertarget.rowid_column)
 
         if self.order_by is not None:
-            statement.order_by(*[self.eagertarget.get_col_by_original(c) for c in self.order_by])
+            statement.order_by(*[self.eagertarget._get_col_by_original(c) for c in self.order_by])
             
         statement.append_from(statement._outerjoin)
         statement.append_column(self.eagertarget)

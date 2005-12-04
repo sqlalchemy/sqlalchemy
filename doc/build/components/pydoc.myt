@@ -1,6 +1,7 @@
 <%global>
     import re
     def format_paragraphs(text):
+        return text
         return re.sub(r'([\w ])\n([\w ])', r'\1 \2', text or '', re.S)
 </%global>
 

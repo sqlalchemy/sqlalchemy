@@ -284,7 +284,7 @@ class ANSICompiler(sql.Compiled):
     def visit_join(self, join):
         # TODO: ppl are going to want RIGHT, FULL OUTER and NATURAL joins.
         righttext = self.get_from_text(join.right)
-        if join.right.group_parenthesized():
+        if join.right._group_parenthesized():
             righttext = "(" + righttext + ")"
         if join.isouter:
             self.froms[join] = (self.get_from_text(join.left) + " LEFT OUTER JOIN " + righttext + 

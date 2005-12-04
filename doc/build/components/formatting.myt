@@ -190,8 +190,8 @@
 <%method formatplain>
     <%filter>
         import re
-        f = re.sub(r'(.+)\n\n',r"<p>\1</p>",f, re.S)
-        f = re.sub(r'\n', r'<br/>\n', f, re.S)
+        f = re.sub(r'\n[\s\t]*\n[\s\t]*', '</p>\n<p>', f, re.S)
+        f = "<p>" + f + "</p>"
         return f
     </%filter>
 <% m.content() %>

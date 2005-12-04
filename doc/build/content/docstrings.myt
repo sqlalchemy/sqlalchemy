@@ -12,7 +12,7 @@
 
 <& pydoc.myt:obj_doc, obj=schema &>
 <& pydoc.myt:obj_doc, obj=engine, classes=[engine.SQLEngine, engine.ResultProxy, engine.RowProxy] &>
-<& pydoc.myt:obj_doc, obj=sql &>
+<& pydoc.myt:obj_doc, obj=sql, classes=[sql.Compiled, sql.ClauseElement, sql.TableImpl, sql.ColumnImpl] &>
 <& pydoc.myt:obj_doc, obj=pool, classes=[pool.DBProxy, pool.Pool, pool.QueuePool, pool.SingletonThreadPool] &>
 <& pydoc.myt:obj_doc, obj=mapping &>
 <& pydoc.myt:obj_doc, obj=mapping.objectstore, classes=[mapping.objectstore.UnitOfWork] &>

@@ -54,6 +54,8 @@ def join(left, right, onclause, **kwargs):
 def select(columns=None, whereclause = None, from_obj = [], **kwargs):
     """returns a SELECT clause element.
     
+    this can also be called via the table's select() method.
+    
     'columns' is a list of columns and/or selectable items to select columns from
     'whereclause' is a text or ClauseElement expression which will form the WHERE clause
     'from_obj' is an list of additional "FROM" objects, such as Join objects, which will 
@@ -64,9 +66,12 @@ def select(columns=None, whereclause = None, from_obj = [], **kwargs):
     return Select(columns, whereclause = whereclause, from_obj = from_obj, **kwargs)
 
 def insert(table, values = None, **kwargs):
-    """returns an INSERT clause element.
+    """returns an INSERT clause element.  
+    
+    This can also be called from a table directly via the table's insert() method.
     
     'table' is the table to be inserted into.
+    
     'values' is a dictionary which specifies the column specifications of the INSERT, 
     and is optional.  If left as None, the column specifications are determined from the 
     bind parameters used during the compile phase of the INSERT statement.  If the 
@@ -84,7 +89,9 @@ def insert(table, values = None, **kwargs):
     return Insert(table, values, **kwargs)
 
 def update(table, whereclause = None, values = None, **kwargs):
-    """returns an UPDATE clause element.  
+    """returns an UPDATE clause element.   
+    
+    This can also be called from a table directly via the table's update() method.
     
     'table' is the table to be updated.
     'whereclause' is a ClauseElement describing the WHERE condition of the UPDATE statement.
@@ -106,6 +113,8 @@ def update(table, whereclause = None, values = None, **kwargs):
 
 def delete(table, whereclause = None, **kwargs):
     """returns a DELETE clause element.  
+    
+    This can also be called from a table directly via the table's delete() method.
     
     'table' is the table to be updated.
     'whereclause' is a ClauseElement describing the WHERE condition of the UPDATE statement.
@@ -253,15 +262,7 @@ class Compiled(ClauseVisitor):
         return self.execute(*multiparams, **params).fetchone()[0]
         
 class ClauseElement(object):
-    """base class for elements of a programmatically constructed SQL expression.
-    
-    includes a list of 'from objects' which collects items to be placed
-    in the FROM clause of a SQL statement.
-    
-    when many ClauseElements are attached together, the from objects and bind
-    parameters are scooped up into the enclosing-most ClauseElement.
-    """
-
+    """base class for elements of a programmatically constructed SQL expression."""
     def hash_key(self):
         """returns a string that uniquely identifies the concept this ClauseElement
         represents.
@@ -287,6 +288,7 @@ class ClauseElement(object):
         if asfrom:
             data[self.id] = self
     def accept_visitor(self, visitor):
+        """accepts a ClauseVisitor and calls the appropriate visit_xxx method."""
         raise NotImplementedError(repr(self))
 
     def copy_container(self):
@@ -629,7 +631,7 @@ class Selectable(FromClause):
     def select(self, whereclauses = None, **params):
         return select([self], whereclauses, **params)
 
-    def get_col_by_original(self, column):
+    def _get_col_by_original(self, column):
         """given a column which is a schema.Column object attached to a schema.Table object
         (i.e. an "original" column), return the Column object from this 
         Selectable which corresponds to that original Column, or None if this Selectable
@@ -644,7 +646,7 @@ class Selectable(FromClause):
 
     def alias(self, name):
         return Alias(self, name)
-    def group_parenthesized(self):
+    def _group_parenthesized(self):
         """indicates if this Selectable requires parenthesis when grouped into a compound
         statement"""
         return True
@@ -668,12 +670,12 @@ class Join(Selectable):
         
     primary_key = property (lambda self: [c for c in self.left.columns if c.primary_key] + [c for c in self.right.columns if c.primary_key])
 
-    def group_parenthesized(self):
+    def _group_parenthesized(self):
         """indicates if this Selectable requires parenthesis when grouped into a compound
         statement"""
         return True
 
-    def get_col_by_original(self, column):
+    def _get_col_by_original(self, column):
         for c in self.columns:
             if c.original is column:
                 return c
@@ -730,7 +732,7 @@ class Alias(Selectable):
     def hash_key(self):
         return "Alias(%s, %s)" % (repr(self.selectable.hash_key()), repr(self.name))
 
-    def get_col_by_original(self, column):
+    def _get_col_by_original(self, column):
         return self.columns.get(column.key, None)
 
     def accept_visitor(self, visitor):
@@ -740,7 +742,7 @@ class Alias(Selectable):
     def _get_from_objects(self):
         return [self]
 
-    def group_parenthesized(self):
+    def _group_parenthesized(self):
         return False
         
     engine = property(lambda s: s.selectable.engine)
@@ -808,13 +810,13 @@ class ColumnImpl(Selectable, CompareMixin):
     def copy_container(self):
         return self.column
 
-    def get_col_by_original(self, column):
+    def _get_col_by_original(self, column):
         if self.column.original is column:
             return self.column
         else:
             return None
             
-    def group_parenthesized(self):
+    def _group_parenthesized(self):
         return False
         
     def _get_from_objects(self):
@@ -846,12 +848,9 @@ class TableImpl(Selectable):
     
     rowid_column = property(lambda s: s._rowid_column)
     
-    def get_from_text(self):
-        return self.table.name
-    
     engine = property(lambda s: s.table.engine)
 
-    def get_col_by_original(self, column):
+    def _get_col_by_original(self, column):
         try:
           col = self.columns[column.key]
         except KeyError:
@@ -861,7 +860,7 @@ class TableImpl(Selectable):
         else:
           return None
 
-    def group_parenthesized(self):
+    def _group_parenthesized(self):
         return False
 
     def _process_from_dict(self, data, asfrom):
@@ -1024,7 +1023,7 @@ class Select(Selectable, TailClauseMixin):
                 else:
                     co._make_proxy(self)
 
-    def get_col_by_original(self, column):
+    def _get_col_by_original(self, column):
         if self.use_labels:
             return self.columns.get(column.label,None)
         else:
