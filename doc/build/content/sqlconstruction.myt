@@ -251,17 +251,47 @@ AND users.user_name = :users_user_name
 </&>
 </&>            
             <&|doclib.myt:item, name="operators", description="Operators" &>
-            <p>Supported column operators so far are all the numerical comparison operators, i.e. '==', '>', '>=', etc., as well as like(), startswith(), endswith(), and in().  Boolean operators include and_() and or_().</p>
+            <p>Supported column operators so far are all the numerical comparison operators, i.e. '==', '>', '>=', etc., as well as like(), startswith(), endswith(), and in().  Boolean operators include not_(), and_() and or_(), which also can be used inline via '~', '&', and '|'.  Math operators are '+', '-', '*', '/'.</p>
             <&|formatting.myt:code &>
                 users.select(users.c.user_name.like('%ter'))
                 users.select(users.c.user_name == 'jane')
                 users.select(users.c.user_id.in_(1,2,3))
                 users.select(and_(addresses.c.street.endswith('green street'), addresses.c.zip=='11234'))
+                users.select(addresses.c.street.endswith('green street') & (addresses.c.zip=='11234'))
+                select([users.c.user_name + '_name'])
+                users.select(~(addresses.c.street == 'Green Street'))
             </&>
             </&>
 
         </&>
+        <&|doclib.myt:item, name="functions", description="Functions" &>
+        <p>Functions can be specified using the <span class="codeline">func</span> keyword:</p>
+        <&|formatting.myt:code &>
+            <&formatting.myt:poplink&>select([func.count(users.c.user_id)]).execute()
+            <&|formatting.myt:codepopper, link="sql" &>
+SELECT count(users.user_id) FROM users
+            </&>
 
+            <&formatting.myt:poplink&>users.select(func.substr(users.c.user_name, 1) == 'J').execute()
+            <&|formatting.myt:codepopper, link="sql" &>
+SELECT users.user_id, users.user_name, users.password FROM users 
+WHERE substr(users.user_name, :substr) = :substr_1
+{'substr_1': 'J', 'substr': 1}
+            </&>
+
+        </&>
+        </&>
+        <&|doclib.myt:item, name="literals", description="Literals" &>
+        <p>You can drop in a literal value anywhere there isnt a column to attach to via the <span class="codeline">literal</span> keyword:</p>
+        <&|formatting.myt:code &>
+        <&formatting.myt:poplink&>select([literal('foo') + literal('bar'), users.c.user_name]).execute()
+        <&|formatting.myt:codepopper, link="sql" &>
+        SELECT :literal + :literal_1, users.user_name 
+        FROM users
+        {'literal_1': 'bar', 'literal': 'foo'}
+        </&>
+        </&>
+        </&>
         <&|doclib.myt:item, name="orderby", description="Order By" &>
         <P>The ORDER BY clause of a select statement can be specified as individual columns to order by within an array     specified via the <span class="codeline">order_by</span> parameter, and optional usage of the asc() and desc() functions:
             <&|formatting.myt:code &>

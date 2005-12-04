@@ -4,7 +4,7 @@
     <&|doclib.myt:item, name="tables", description="Describing Tables with MetaData" &>
     <p>The core of SQLAlchemy's query and object mapping operations is table metadata, which are Python objects that describe tables.  Metadata objects can be created by explicitly naming the table and all its properties, using the Table, Column, ForeignKey, and Sequence objects imported from <span class="codeline">sqlalchemy.schema</span>, and a database engine constructed as described in the previous section, or they can be automatically pulled from an existing database schema.  First, the explicit version: </p>
         <&|formatting.myt:code&>
-        from sqlalchemy.schema import *
+        from sqlalchemy import *
         engine = create_engine('sqlite', {'filename':':memory:'}, **opts)
         
         users = Table('users', engine, 
@@ -21,7 +21,7 @@
             Column('pref_value', String(100))
         )
         </&>
-        <p>The specific datatypes, such as Integer, String, etc. are defined in <&formatting.myt:link, path="types", text="sqlalchemy.types"&> and are automatically pulled in when you import * from <span class="codeline">sqlalchemy.schema</span>.  Note that for Column objects, an altername name can be specified via the "key" parameter; if this parameter is given, then all programmatic references to this Column object will be based on its key, instead of its actual column name.</p>
+        <p>The specific datatypes, such as Integer, String, etc. are defined in <&formatting.myt:link, path="types", text="sqlalchemy.types"&> and are automatically pulled in when you import * from <span class="codeline">sqlalchemy</span>.  Note that for Column objects, an altername name can be specified via the "key" parameter; if this parameter is given, then all programmatic references to this Column object will be based on its key, instead of its actual column name.</p>
         
         <p>Once constructed, the Table object provides a clean interface to the table's properties as well as that of its columns:
         
@@ -168,6 +168,15 @@ DROP TABLE employees
     </&>
 
     <&|doclib.myt:item, name="sequences", description="Defining Sequences" &>
+    <P>A table with a sequence looks like:</p>
+    <&|formatting.myt:code&>
+        table = Table("cartitems", db, 
+        Column("cart_id", Integer, Sequence('cart_id_seq'), primary_key=True),
+        Column("description", String(40)),
+        Column("createdate", DateTime())
+    )
+    </&>
+    <p>Defining a Sequence means that it will be created along with the table.create() call, and more importantly the sequence will be explicitly used when inserting new rows for this table.  For databases that dont support sequences, the Sequence object has no effect.  A sequence can also be specified with <span class="codeline">optional=True</span> which indicates the Sequence should only be used on a database that requires an explicit sequence (which currently is just Oracle).  A database like Postgres, while it uses sequences to create primary keys, is often used via the SERIAL column option which removes the need for explicit access to the sequence.</p>
     </&>
 
 </&>
