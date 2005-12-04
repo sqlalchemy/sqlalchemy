@@ -23,7 +23,7 @@ import sqlalchemy.util as util
 import sqlalchemy.types as types
 import string, re
 
-__all__ = ['text', 'column', 'func', 'select', 'update', 'insert', 'delete', 'join', 'and_', 'or_', 'not_', 'union', 'union_all', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'literal', 'bindparam', 'sequence', 'exists']
+__all__ = ['text', 'column', 'func', 'select', 'update', 'insert', 'delete', 'join', 'and_', 'or_', 'not_', 'union', 'union_all', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'literal', 'bindparam', 'exists']
 
 def desc(column):
     """returns a descending ORDER BY clause element, e.g.:
@@ -51,7 +51,7 @@ def join(left, right, onclause, **kwargs):
     together, use the resulting Join object's "join()" or "outerjoin()" methods."""
     return Join(left, right, onclause, **kwargs)
 
-def select(columns, whereclause = None, from_obj = [], **kwargs):
+def select(columns=None, whereclause = None, from_obj = [], **kwargs):
     """returns a SELECT clause element.
     
     'columns' is a list of columns and/or selectable items to select columns from
@@ -113,19 +113,18 @@ def delete(table, whereclause = None, **kwargs):
     return Delete(table, whereclause, **kwargs)
 
 def and_(*clauses):
+    """joins a list of clauses together by the AND operator.  the & operator can be used as well."""
     return _compound_clause('AND', *clauses)
 
 def or_(*clauses):
-    clause = _compound_clause('OR', *clauses)
-    return clause
+    """joins a list of clauses together by the OR operator.  the | operator can be used as well."""
+    return _compound_clause('OR', *clauses)
 
 def not_(clause):
+    """returns a negation of the given clause, i.e. NOT(clause).  the ~ operator can be used as well."""
     clause.parens=True
     return BinaryClause(TextClause("NOT"), clause, None)
-
             
-def column(table, text):
-    return ColumnClause(text, table)
         
 def exists(*args, **params):
     s = select(*args, **params)
@@ -144,23 +143,47 @@ def subquery(alias, *args, **params):
     return Alias(Select(*args, **params), alias)
 
 def literal(value, type=None):
+    """returns a literal clause, bound to a bind parameter.  
+    
+    literal clauses are created automatically when used as the right-hand 
+    side of a boolean or math operation against a column object.  use this 
+    function when a literal is needed on the left-hand side (and optionally on the right as well).
+    
+    the optional type parameter is a sqlalchemy.types.TypeEngine object which indicates bind-parameter
+    and result-set translation for this literal.
+    """
     return BindParamClause('literal', value, type=type)
+
+def column(table, text):
+    """returns a textual column clause, relative to a table.  this differs from using straight text
+    or text() in that the column is treated like a regular column, i.e. gets added to a Selectable's list
+    of columns."""
+    return ColumnClause(text, table)
     
 def bindparam(key, value = None, type=None):
+    """creates a bind parameter clause with the given key.  
+    
+    An optional default value can be specified by the value parameter, and the optional type parameter
+    is a sqlalchemy.types.TypeEngine object which indicates bind-parameter and result-set translation for
+    this bind parameter."""
     if isinstance(key, schema.Column):
         return BindParamClause(key.name, value, type=key.type)
     else:
         return BindParamClause(key, value, type=type)
 
 def text(text, engine=None):
+    """creates literal text to be inserted into a query.  
+    
+    When constructing a query from a select(), update(), insert() or delete(), using 
+    plain strings for argument values will usually result in text objects being created
+    automatically.  Use this function when creating textual clauses outside of other
+    ClauseElement objects, or optionally wherever plain text is to be used."""
     return TextClause(text, engine=engine)
 
 def null():
+    """returns a Null object, which compiles to NULL in a sql statement."""
     return Null()
     
-def sequence():
-    return Sequence()
-
 class FunctionGateway(object):
     """returns a callable based on an attribute name, which then returns a Function 
     object with that name."""
@@ -273,6 +296,11 @@ class ClauseElement(object):
         new structure can then be restructured without affecting the original."""
         return self
 
+    def is_selectable(self):
+        """returns True if this ClauseElement is Selectable, i.e. it contains a list of Column
+        objects and can be used as the target of a select statement."""
+        return False
+
     def _find_engine(self):
         try:
             if self._engine is not None:
@@ -288,6 +316,13 @@ class ClauseElement(object):
             
     engine = property(lambda s: s._find_engine())
 
+    def _get_columns(self):
+        try:
+            return self._columns
+        except AttributeError:
+            return [self]
+    columns = property(lambda s: s._get_columns())
+    
     def compile(self, engine = None, bindparams = None, typemap=None):
         """compiles this SQL expression using its underlying SQLEngine to produce
         a Compiled object.  If no engine can be found, an ansisql engine is used.
@@ -397,50 +432,6 @@ class CompareMixin(object):
         return BinaryClause(self, obj, operator)
 
         
-class ColumnClause(ClauseElement, CompareMixin):
-    """represents a textual column clause in a SQL statement."""
-
-    def __init__(self, text, selectable=None):
-        self.text = text
-        self.table = selectable
-        self._impl = ColumnImpl(self)
-        self.type = types.NullTypeEngine()
-        
-    columns = property(lambda self: [self])
-    name = property(lambda self:self.text)
-    key = property(lambda self:self.text)
-    label = property(lambda self:self.text)
-
-    def accept_visitor(self, visitor): 
-        visitor.visit_columnclause(self)
-
-    def hash_key(self):
-        if self.table is not None:
-            return "ColumnClause(%s, %s)" % (self.text, self.table.hash_key())
-        else:
-            return "ColumnClause(%s)" % self.text
-
-    def _get_from_objects(self):
-        return []
-
-    def _compare(self, operator, obj):
-        if _is_literal(obj):
-            if obj is None:
-                if operator != '=':
-                    raise "Only '=' operator can be used with NULL"
-                return BinaryClause(self, null(), 'IS')
-            elif self.table.name is None:
-                obj = BindParamClause(self.text, obj, shortname=self.text, type=self.type)
-            else:
-                obj = BindParamClause(self.table.name + "_" + self.text, obj, shortname = self.text, type=self.type)
-
-        return BinaryClause(self, obj, operator)
-
-    def _make_proxy(self, selectable, name = None):
-        c = ColumnClause(self.text or name, selectable)
-        selectable.columns[c.key] = c
-        c._impl = ColumnImpl(c)
-        return c
 
 class FromClause(ClauseElement):
     """represents a FROM clause element in a SQL statement."""
@@ -568,7 +559,6 @@ class Function(ClauseList, CompareMixin):
         self.type = kwargs.get('type', None)
         self.label = kwargs.get('label', None)
         ClauseList.__init__(self, parens=True, *clauses)
-    columns = property(lambda self: [self])
     key = property(lambda self:self.label or self.name)
     def append(self, clause):
         if _is_literal(clause):
@@ -597,7 +587,7 @@ class Function(ClauseList, CompareMixin):
         return self
 
         
-class BinaryClause(ClauseElement):
+class BinaryClause(ClauseElement, CompareMixin):
     """represents two clauses with an operator in between"""
     
     def __init__(self, left, right, operator):
@@ -633,6 +623,9 @@ class Selectable(FromClause):
     def accept_visitor(self, visitor):
         raise NotImplementedError()
     
+    def is_selectable(self):
+        return True
+        
     def select(self, whereclauses = None, **params):
         return select([self], whereclauses, **params)
 
@@ -664,9 +657,9 @@ class Join(Selectable):
         self.id = self.left.id + "_" + self.right.id
         self.allcols = allcols
         if allcols:
-            self.columns = [c for c in self.left.columns] + [c for c in self.right.columns]
+            self._columns = [c for c in self.left.columns] + [c for c in self.right.columns]
         else:
-            self.columns = self.right.columns
+            self._columns = self.right.columns
 
         # TODO: if no onclause, do NATURAL JOIN
         self.onclause = onclause
@@ -721,7 +714,7 @@ class Join(Selectable):
 class Alias(Selectable):
     def __init__(self, selectable, alias = None):
         self.selectable = selectable
-        self.columns = util.OrderedProperties()
+        self._columns = util.OrderedProperties()
         self.foreign_keys = []
         if alias is None:
             alias = id(self)
@@ -752,6 +745,50 @@ class Alias(Selectable):
         
     engine = property(lambda s: s.selectable.engine)
 
+class ColumnClause(Selectable, CompareMixin):
+    """represents a textual column clause in a SQL statement. allows the creation
+    of an additional ad-hoc column that is compiled against a particular table."""
+
+    def __init__(self, text, selectable=None):
+        self.text = text
+        self.table = selectable
+        self._impl = ColumnImpl(self)
+        self.type = types.NullTypeEngine()
+
+    name = property(lambda self:self.text)
+    key = property(lambda self:self.text)
+    label = property(lambda self:self.text)
+
+    def accept_visitor(self, visitor): 
+        visitor.visit_columnclause(self)
+
+    def hash_key(self):
+        if self.table is not None:
+            return "ColumnClause(%s, %s)" % (self.text, self.table.hash_key())
+        else:
+            return "ColumnClause(%s)" % self.text
+
+    def _get_from_objects(self):
+        return []
+
+    def _compare(self, operator, obj):
+        if _is_literal(obj):
+            if obj is None:
+                if operator != '=':
+                    raise "Only '=' operator can be used with NULL"
+                return BinaryClause(self, null(), 'IS')
+            elif self.table.name is None:
+                obj = BindParamClause(self.text, obj, shortname=self.text, type=self.type)
+            else:
+                obj = BindParamClause(self.table.name + "_" + self.text, obj, shortname = self.text, type=self.type)
+
+        return BinaryClause(self, obj, operator)
+
+    def _make_proxy(self, selectable, name = None):
+        c = ColumnClause(self.text or name, selectable)
+        selectable.columns[c.key] = c
+        c._impl = ColumnImpl(c)
+        return c
 
 class ColumnImpl(Selectable, CompareMixin):
     """Selectable implementation that gets attached to a schema.Column object."""
@@ -759,7 +796,7 @@ class ColumnImpl(Selectable, CompareMixin):
     def __init__(self, column):
         self.column = column
         self.name = column.name
-        self.columns = [self.column]
+        self._columns = [self.column]
         
         if column.table.name:
             self.label = column.table.name + "_" + self.column.name
@@ -795,8 +832,6 @@ class ColumnImpl(Selectable, CompareMixin):
                 obj = BindParamClause(self.column.table.name + "_" + self.name, obj, shortname = self.name, type = self.column.type)
 
         return BinaryClause(self.column, obj, operator)
-
-
 
 class TableImpl(Selectable):
     """attached to a schema.Table to provide it with a Selectable interface
@@ -914,8 +949,8 @@ class CompoundSelect(Selectable, TailClauseMixin):
 class Select(Selectable, TailClauseMixin):
     """finally, represents a SELECT statement, with appendable clauses, as well as 
     the ability to execute itself and return a result set."""
-    def __init__(self, columns, whereclause = None, from_obj = [], order_by = None, group_by=None, having=None, use_labels = False, distinct=False, engine = None):
-        self.columns = util.OrderedProperties()
+    def __init__(self, columns=None, whereclause = None, from_obj = [], order_by = None, group_by=None, having=None, use_labels = False, distinct=False, engine = None):
+        self._columns = util.OrderedProperties()
         self._froms = util.OrderedDict()
         self.use_labels = use_labels
         self.id = "Select(%d)" % id(self)
@@ -939,8 +974,9 @@ class Select(Selectable, TailClauseMixin):
         self._correlator = Select.CorrelatedVisitor(self, False)
         self._wherecorrelator = Select.CorrelatedVisitor(self, True)
         
-        for c in columns:
-            self.append_column(c)
+        if columns is not None:
+            for c in columns:
+                self.append_column(c)
             
         if whereclause is not None:
             self.append_whereclause(whereclause)
@@ -981,9 +1017,7 @@ class Select(Selectable, TailClauseMixin):
                 self.rowid_column = f.rowid_column._make_proxy(self)
         column._process_from_dict(self._froms, False)
 
-        # TODO: dont use hasattr here, get a general way to locate
-        # selectable columns off stuff working completely (i.e. Selectable)
-        if hasattr(column, 'columns'):
+        if column.is_selectable():
             for co in column.columns:
                 if self.use_labels:
                     co._make_proxy(self, name = co.label)
@@ -1174,12 +1208,5 @@ class Delete(UpdateBase):
         if self.whereclause is not None:
             self.whereclause.accept_visitor(visitor)
         visitor.visit_delete(self)
-
-class Sequence(BindParamClause):
-    def __init__(self):
-        BindParamClause.__init__(self, 'sequence')
-
-    def accept_visitor(self, visitor):
-        visitor.visit_sequence(self)
 
         

@@ -53,6 +53,7 @@ class ANSICompiler(sql.Compiled):
         self.froms = {}
         self.wheres = {}
         self.strings = {}
+        self.select_stack = []
         self.typemap = typemap or {}
         self.isinsert = False
         
@@ -127,6 +128,13 @@ class ANSICompiler(sql.Compiled):
             return d
 
     def visit_column(self, column):
+        if len(self.select_stack):
+            # if we are within a visit to a Select, set up the "typemap"
+            # for this column which is used to translate result set values
+            if self.select_stack[-1].use_labels:
+                self.typemap.setdefault(column.label, column.type)
+            else:
+                self.typemap.setdefault(column.key, column.type)
         if column.table.name is None:
             self.strings[column] = column.name
         else:
@@ -210,20 +218,17 @@ class ANSICompiler(sql.Compiled):
     def visit_select(self, select):
         inner_columns = []
 
+        self.select_stack.append(select)
         for c in select._raw_columns:
-            # TODO:  hackish.  try to get a more polymorphic approach.
-            if hasattr(c, 'columns'):
+            if c.is_selectable():
                 for co in c.columns:
                     co.accept_visitor(self)
                     inner_columns.append(co)
-                    if select.use_labels:
-                        self.typemap.setdefault(co.label, co.type)
-                    else:
-                        self.typemap.setdefault(co.key, co.type)
             else:
                 c.accept_visitor(self)
                 inner_columns.append(c)
-                
+        self.select_stack.pop(-1)
+        
         if select.use_labels:
             collist = string.join(["%s AS %s" % (self.get_str(c), c.label) for c in inner_columns], ', ')
         else:
