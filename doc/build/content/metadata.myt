@@ -43,7 +43,7 @@
             # ...
             
         # get the table's primary key columns
-        for primary_key in employees.primary_keys:
+        for primary_key in employees.primary_key:
             # ...
         
         # get the table's foreign key objects:

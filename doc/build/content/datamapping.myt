@@ -596,7 +596,7 @@ INSERT INTO article_keywords (article_id, keyword_id) VALUES (:article_id, :keyw
             # lazy loading for that.
             m = mapper(Article, articles, properties=dict(
                 keywords = relation(KeywordAssociation, itemkeywords, lazy=False, association=Keyword, 
-                    primary_keys = [itemkeywords.c.article_id, itemkeywords.c.keyword_id],
+                    primary_key = [itemkeywords.c.article_id, itemkeywords.c.keyword_id],
                     properties={
                         'keyword' : relation(Keyword, lazy = False),
                         'user' : relation(User, lazy = True)

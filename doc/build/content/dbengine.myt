@@ -31,6 +31,15 @@
                             'user':'scott', 
                             'password':'tiger'}, **opts)
 
+    # mysql
+    mysql_engine = create_engine('mysql',
+                            {
+                                'db':'mydb',
+                                'user':'scott',
+                                'passwd':'tiger',
+                                'host':'127.0.0.1'
+                            }
+                            **opts)
     # oracle
     oracle_engine = create_engine('oracle', 
                             {'dsn':'mydsn', 
@@ -48,7 +57,11 @@
                     )
     </&>
     <p>The second argument is a dictionary whose key/value pairs will be passed to the underlying DBAPI connect() method as keyword arguments.  Any keyword argument supported by the DBAPI module can be in this dictionary.</p>
-    <p>An additional URL-string based calling style will also be added soon, as this is a highly requested feature.
+    <p>Engines can also be loaded by URL.  The above format is converted into <span class="codeline"><% '<enginename>://key=val&key=val' |h %></span>:
+        <&|formatting.myt:code&>
+            sqlite_engine = create_engine('sqlite://filename=querytest.db')
+            postgres_engine = create_engine('postgres://database=test&user=scott&password=tiger')
+        </&>
     </p>
     </&>
     <&|doclib.myt:item, name="options", description="Database Engine Options" &>

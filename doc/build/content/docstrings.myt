@@ -6,8 +6,7 @@
     import sqlalchemy.engine as engine
     import sqlalchemy.sql as sql
     import sqlalchemy.pool as pool
-    import sqlalchemy.mapper as mapper
-    import sqlalchemy.objectstore as objectstore
+    import sqlalchemy.mapping as mapping
 </%init>
 
 
@@ -15,6 +14,6 @@
 <& pydoc.myt:obj_doc, obj=engine, classes=[engine.SQLEngine, engine.ResultProxy, engine.RowProxy] &>
 <& pydoc.myt:obj_doc, obj=sql &>
 <& pydoc.myt:obj_doc, obj=pool, classes=[pool.DBProxy, pool.Pool, pool.QueuePool, pool.SingletonThreadPool] &>
-<& pydoc.myt:obj_doc, obj=mapper &>
-<& pydoc.myt:obj_doc, obj=objectstore, classes=[objectstore.UnitOfWork] &>
+<& pydoc.myt:obj_doc, obj=mapping &>
+<& pydoc.myt:obj_doc, obj=mapping.objectstore, classes=[mapping.objectstore.UnitOfWork] &>
 </&>
