@@ -11,12 +11,12 @@
     </p>
     <&|doclib.myt:item, name="establishing", description="Establishing a Database Engine" &>
     <p>
-    Engines exist for SQLite, Postgres, and Oracle, using the Pysqlite, Psycopg (1 or 2), and cx_Oracle modules.  Each engine imports its corresponding module which is required to be installed.  For Postgres and Oracle, an alternate module may be specified at construction time as well.
+    Engines exist for SQLite, Postgres, MySQL, and Oracle, using the Pysqlite, Psycopg (1 or 2), MySQLDB, and cx_Oracle modules.  Each engine imports its corresponding module which is required to be installed.  For Postgres and Oracle, an alternate module may be specified at construction time as well.
     </p>
     <p>An example of connecting to each engine is as follows:</p>
     
     <&|formatting.myt:code&>
-    from sqlalchemy.engine import *
+    from sqlalchemy import *
 
     # sqlite in memory    
     sqlite_engine = create_engine('sqlite', {'filename':':memory:'}, **opts)
