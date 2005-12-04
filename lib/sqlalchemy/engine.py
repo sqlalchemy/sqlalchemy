@@ -157,7 +157,7 @@ class SQLEngine(schema.SchemaEngine):
         
     def last_inserted_ids(self):
         """returns a thread-local list of the primary keys for the last insert statement executed.
-        This does not apply to straight textual clauses; only to sql.Insert objects compiled against a schema.Table object, which are executed via statement.execute().  The order of items in the list is the same as that of the Table's 'primary_keys' attribute."""
+        This does not apply to straight textual clauses; only to sql.Insert objects compiled against a schema.Table object, which are executed via statement.execute().  The order of items in the list is the same as that of the Table's 'primary_key' attribute."""
         raise NotImplementedError()
 
     def connect_args(self):

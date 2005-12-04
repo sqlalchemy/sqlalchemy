@@ -165,8 +165,8 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         
         # else we have to use lastrowid and select the most recently inserted row    
         table = self.context.last_inserted_table
-        if self.context.lastrowid is not None and table is not None and len(table.primary_keys):
-            row = sql.select(table.primary_keys, table.rowid_column == self.context.lastrowid).execute().fetchone()
+        if self.context.lastrowid is not None and table is not None and len(table.primary_key):
+            row = sql.select(table.primary_key, table.rowid_column == self.context.lastrowid).execute().fetchone()
             return [v for v in row]
         else:
             return None
@@ -185,7 +185,7 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
             for param in plist:
                 last_inserted_ids = []
                 need_lastrowid=False
-                for primary_key in compiled.statement.table.primary_keys:
+                for primary_key in compiled.statement.table.primary_key:
                     if not param.has_key(primary_key.key) or param[primary_key.key] is None:
                         if primary_key.sequence is not None and not primary_key.sequence.optional:
                             if echo is True or self.echo:
@@ -236,7 +236,7 @@ class PGCompiler(ansisql.ANSICompiler):
          mapper will by default not put them in the insert statement to comply
          with autoincrement fields that require they not be present.  so, 
          put them all in for columns where sequence usage is defined."""
-        for c in insert.table.primary_keys:
+        for c in insert.table.primary_key:
             if c.sequence is not None and not c.sequence.optional:
                 self.bindparams[c.key] = None
         return ansisql.ANSICompiler.visit_insert(self, insert)

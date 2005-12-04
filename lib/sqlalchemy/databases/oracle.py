@@ -125,7 +125,7 @@ class OracleSQLEngine(ansisql.ANSISQLEngine):
                 plist = [parameters]
             for param in plist:
                 last_inserted_ids = []
-                for primary_key in compiled.statement.table.primary_keys:
+                for primary_key in compiled.statement.table.primary_key:
                     if not param.has_key(primary_key.key) or param[primary_key.key] is None:
                         if primary_key.sequence is None:
                             raise "Column '%s.%s': Oracle primary key columns require schema.Sequence to create ids" % (primary_key.table.name, primary_key.name)
@@ -190,7 +190,7 @@ class OracleCompiler(ansisql.ANSICompiler):
          mapper will by default not put them in the insert statement to comply
          with autoincrement fields that require they not be present.  so, 
          put them all in for all primary key columns."""
-        for c in insert.table.primary_keys:
+        for c in insert.table.primary_key:
             if not self.bindparams.has_key(c.key):
                 self.bindparams[c.key] = None
         return ansisql.ANSICompiler.visit_insert(self, insert)

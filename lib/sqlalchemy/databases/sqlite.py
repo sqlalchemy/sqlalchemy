@@ -203,16 +203,16 @@ class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
         separator = "\n"
 
         have_pk = False
-        use_pks = len(table.primary_keys) == 1
+        use_pks = len(table.primary_key) == 1
         for column in table.columns:
             self.append(separator)
             separator = ", \n"
             self.append("\t" + self.get_column_specification(column, override_pk=not use_pks))
                 
-        if len(table.primary_keys) > 1:
+        if len(table.primary_key) > 1:
             self.append(", \n")
             # put all PRIMARY KEYS in a UNIQUE index
-            self.append("\tUNIQUE (%s)" % string.join([c.name for c in table.primary_keys],', '))
+            self.append("\tUNIQUE (%s)" % string.join([c.name for c in table.primary_key],', '))
 
         self.append("\n)\n\n")
         self.execute()

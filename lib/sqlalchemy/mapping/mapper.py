@@ -36,7 +36,7 @@ class Mapper(object):
                 primarytable = None, 
                 scope = "thread", 
                 properties = None, 
-                primary_keys = None, 
+                primary_key = None, 
                 is_primary = False, 
                 inherits = None, 
                 inherit_condition = None, 
@@ -49,7 +49,7 @@ class Mapper(object):
             'primarytable':primarytable,
             'scope':scope,
             'properties':properties or {},
-            'primary_keys':primary_keys,
+            'primary_key':primary_key,
             'is_primary':False,
             'inherits':inherits,
             'inherit_condition':inherit_condition,
@@ -89,22 +89,22 @@ class Mapper(object):
         else:
             self.primarytable = primarytable
 
-        # determine primary keys, either passed in, or get them from our set of tables
-        self.primary_keys = {}
-        if primary_keys is not None:
-            for k in primary_keys:
-                self.primary_keys.setdefault(k.table, []).append(k)
+        # determine primary key columns, either passed in, or get them from our set of tables
+        self.pks_by_table = {}
+        if primary_key is not None:
+            for k in primary_key:
+                self.pks_by_table.setdefault(k.table, []).append(k)
                 if k.table != self.table:
-                    self.primary_keys.setdefault(self.table, []).append(k)
+                    self.pks_by_table.setdefault(self.table, []).append(k)
         else:
             for t in self.tables + [self.table]:
                 try:
-                    list = self.primary_keys[t]
+                    list = self.pks_by_table[t]
                 except KeyError:
-                    list = self.primary_keys.setdefault(t, util.HashSet())
-                if not len(t.primary_keys):
-                    raise "Table " + t.name + " has no primary keys. Specify primary_keys argument to mapper."
-                for k in t.primary_keys:
+                    list = self.pks_by_table.setdefault(t, util.HashSet())
+                if not len(t.primary_key):
+                    raise "Table " + t.name + " has no primary key columns. Specify primary_key argument to mapper."
+                for k in t.primary_key:
                     list.append(k)
 
         # make table columns addressable via the mapper
@@ -241,7 +241,7 @@ class Mapper(object):
     def get(self, *ident):
         """returns an instance of the object based on the given identifier, or None
         if not found.  The *ident argument is a 
-        list of primary keys in the order of the table def's primary keys."""
+        list of primary key columns in the order of the table def's primary key columns."""
         key = objectstore.get_id_key(ident, self.class_, self.primarytable)
         #print "key: " + repr(key) + " ident: " + repr(ident)
         try:
@@ -249,7 +249,7 @@ class Mapper(object):
         except KeyError:
             clause = sql.and_()
             i = 0
-            for primary_key in self.primary_keys[self.primarytable]:
+            for primary_key in self.pks_by_table[self.primarytable]:
                 # appending to the and_'s clause list directly to skip
                 # typechecks etc.
                 clause.clauses.append(primary_key == ident[i])
@@ -260,11 +260,11 @@ class Mapper(object):
                 return None
 
         
-    def identity_key(self, *primary_keys):
-        return objectstore.get_id_key(tuple(primary_keys), self.class_, self.primarytable)
+    def identity_key(self, *primary_key):
+        return objectstore.get_id_key(tuple(primary_key), self.class_, self.primarytable)
     
     def instance_key(self, instance):
-        return self.identity_key(*[self._getattrbycolumn(instance, column) for column in self.primary_keys[self.table]])
+        return self.identity_key(*[self._getattrbycolumn(instance, column) for column in self.pks_by_table[self.table]])
 
     def compile(self, whereclause = None, **options):
         """works like select, except returns the SQL statement object without 
@@ -346,16 +346,16 @@ class Mapper(object):
         for table in self.tables:
             # loop thru tables in the outer loop, objects on the inner loop.
             # this is important for an object represented across two tables
-            # so that it gets its primary keys populated for the benefit of the
+            # so that it gets its primary key columns populated for the benefit of the
             # second table.
             insert = []
             update = []
             
-            # we have our own idea of the primary keys 
+            # we have our own idea of the primary key columns 
             # for this table, in the case that the user
-            # specified custom primary keys.
+            # specified custom primary key cols.
             pk = {}
-            for k in self.primary_keys[table]:
+            for k in self.pks_by_table[table]:
                 pk[k] = k
             for obj in objects:
                 
@@ -384,7 +384,7 @@ class Mapper(object):
             if len(update):
                 #print "REGULAR UPDATES"
                 clause = sql.and_()
-                for col in self.primary_keys[table]:
+                for col in self.pks_by_table[table]:
                     clause.clauses.append(col == sql.bindparam(col.table.name + "_" + col.key))
                 statement = table.update(clause)
                 c = statement.execute(*update)
@@ -396,13 +396,13 @@ class Mapper(object):
                 for rec in insert:
                     (obj, params) = rec
                     statement.execute(**params)
-                    primary_keys = table.engine.last_inserted_ids()
-                    if primary_keys is not None:
+                    primary_key = table.engine.last_inserted_ids()
+                    if primary_key is not None:
                         i = 0
-                        for col in self.primary_keys[table]:
+                        for col in self.pks_by_table[table]:
                     #        print "col: " + table.name + "." + col.key + " val: " + repr(self._getattrbycolumn(obj, col))
                             if self._getattrbycolumn(obj, col) is None:
-                                self._setattrbycolumn(obj, col, primary_keys[i])
+                                self._setattrbycolumn(obj, col, primary_key[i])
                             i+=1
                     self.extension.after_insert(self, obj)
                     
@@ -417,13 +417,13 @@ class Mapper(object):
                     continue
                 else:
                     delete.append(params)
-                for col in self.primary_keys[table]:
+                for col in self.pks_by_table[table]:
                     params[col.key] = self._getattrbycolumn(obj, col)
                 uow.register_deleted_object(obj)
                 self.extension.before_delete(self, obj)
             if len(delete):
                 clause = sql.and_()
-                for col in self.primary_keys[table]:
+                for col in self.pks_by_table[table]:
                     clause.clauses.append(col == sql.bindparam(col.key))
                 statement = table.delete(clause)
                 c = statement.execute(*delete)
@@ -452,7 +452,7 @@ class Mapper(object):
 
 
     def _identity_key(self, row):
-        return objectstore.get_row_key(row, self.class_, self.primarytable, self.primary_keys[self.table])
+        return objectstore.get_row_key(row, self.class_, self.primarytable, self.pks_by_table[self.table])
 
     def _instance(self, row, imap, result = None, populate_existing = False):
         """pulls an object instance from the given row and appends it to the given result
@@ -484,9 +484,9 @@ class Mapper(object):
         # look in result-local identitymap for it.
         exists = imap.has_key(identitykey)      
         if not exists:
-            # check if primary keys in the result are None - this indicates 
+            # check if primary key cols in the result are None - this indicates 
             # an instance of the object is not present in the row
-            for col in self.primary_keys[self.table]:
+            for col in self.pks_by_table[self.table]:
                 if row[col] is None:
                     return None
             # plugin point

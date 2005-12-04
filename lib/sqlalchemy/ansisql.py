@@ -340,7 +340,7 @@ class ANSISchemaGenerator(sqlalchemy.engine.SchemaIterator):
         separator = "\n"
         
         # if only one primary key, specify it along with the column
-        pks = table.primary_keys
+        pks = table.primary_key
         first_pk = False
         for column in table.columns:
             self.append(separator)

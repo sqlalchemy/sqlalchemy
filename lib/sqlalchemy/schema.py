@@ -95,7 +95,7 @@ class Table(SchemaItem):
         self.columns = OrderedProperties()
         self.c = self.columns
         self.foreign_keys = []
-        self.primary_keys = []
+        self.primary_key = []
         self.engine = engine
         self._impl = self.engine.tableimpl(self)
         self._init_items(*args)
@@ -111,7 +111,7 @@ class Table(SchemaItem):
         self.columns = OrderedProperties()
         self.c = self.columns
         self.foreign_keys = []
-        self.primary_keys = []
+        self.primary_key = []
         self._impl = self.engine.tableimpl(self)
         self._init_items(*args)
 
@@ -170,13 +170,13 @@ class Column(SchemaItem):
             return
         self.primary_key = True
         self.nullable = False
-        self.table.primary_keys.append(self)
+        self.table.primary_key.append(self)
             
     def _set_parent(self, table):
         if not self.hidden:
             table.columns[self.key] = self
             if self.primary_key:
-                table.primary_keys.append(self)
+                table.primary_key.append(self)
         self.table = table
         if self.table.engine is not None:
             self.type = self.table.engine.type_descriptor(self.type)

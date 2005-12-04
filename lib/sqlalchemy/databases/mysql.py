@@ -167,8 +167,8 @@ class MySQLTableImpl(sql.TableImpl):
     """
     def _rowid_col(self):
         if getattr(self, '_mysql_rowid_column', None) is None:
-            if len(self.table.primary_keys) > 0:
-                self._mysql_rowid_column = self.table.primary_keys[0]
+            if len(self.table.primary_key) > 0:
+                self._mysql_rowid_column = self.table.primary_key[0]
             else:
                 self._mysql_rowid_column = self.table.columns[self.table.columns.keys()[0]]
         return self._mysql_rowid_column

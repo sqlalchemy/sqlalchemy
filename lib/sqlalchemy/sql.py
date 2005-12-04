@@ -634,7 +634,7 @@ class Join(Selectable):
         self.isouter = isouter
         self.rowid_column = self.left.rowid_column
         
-    primary_keys = property (lambda self: [c for c in self.left.columns if c.primary_key] + [c for c in self.right.columns if c.primary_key])
+    primary_key = property (lambda self: [c for c in self.left.columns if c.primary_key] + [c for c in self.right.columns if c.primary_key])
 
     def group_parenthesized(self):
         """indicates if this Selectable requires parenthesis when grouped into a compound
@@ -693,7 +693,7 @@ class Alias(Selectable):
         for co in selectable.columns:
             co._make_proxy(self)
 
-    primary_keys = property (lambda self: [c for c in self.columns if c.primary_key])
+    primary_key = property (lambda self: [c for c in self.columns if c.primary_key])
     
     def hash_key(self):
         return "Alias(%s, %s)" % (repr(self.selectable.hash_key()), repr(self.name))
