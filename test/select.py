@@ -63,12 +63,6 @@ class SQLTest(PersistTest):
             
 class SelectTest(SQLTest):
 
-    def testtext(self):
-        self.runtest(
-            text("select * from foo where lala = bar") ,
-            "select * from foo where lala = bar",
-            engine = db
-        )
 
     def testtableselect(self):
         self.runtest(table.select(), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable")
@@ -145,7 +139,6 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         )
 
     def testor(self):
-
         self.runtest(
             select([table], and_(
                 table.c.id == 12,
@@ -156,6 +149,15 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             checkparams = {'myothertable_othername': 'asdf', 'myothertable_othername_1':'foo', 'myothertable_otherid': 9, 'mytable_myid': 12}
         )
 
+    def testoperators(self):
+        self.runtest(
+            table.select((table.c.id != 12) & ~(table.c.name=='john')), 
+            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != :mytable_myid AND NOT (mytable.name = :mytable_name)"
+        )
+        
+        self.runtest(
+            literal("a") + literal("b") * literal("c"), ":literal + :literal_1 * :literal_2", db
+        )
 
     def testmultiparam(self):
         self.runtest(
@@ -193,7 +195,13 @@ myothertable.otherid AS myothertable_otherid FROM mytable, myothertable \
 WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid = :t2view_mytable_myid"
         )
         
-    def testliteral(self):        
+    def testtext(self):
+        self.runtest(
+            text("select * from foo where lala = bar") ,
+            "select * from foo where lala = bar",
+            engine = db
+        )
+
         self.runtest(select(
             ["foobar(a)", "pk_foo_bar(syslaal)"],
             "a = 12",
@@ -202,7 +210,17 @@ WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid =
         ), 
         "SELECT foobar(a), pk_foo_bar(syslaal) FROM foobar left outer join lala on foobar.foo = lala.foo WHERE a = 12")
 
-    def testliteralmix(self):
+        # test building a select query programmatically with text
+        s = select()
+        s.append_column("column1")
+        s.append_column("column2")
+        s.append_whereclause("column1=12")
+        s.append_whereclause("column2=19")
+        s.order_by("column1")
+        s.append_from("table1")
+        self.runtest(s, "SELECT column1, column2 FROM table1 WHERE column1=12 AND column2=19 ORDER BY column1", db)
+
+    def testtextmix(self):
         self.runtest(select(
             [table, table2.c.id, "sysdate()", "foo, bar, lala"],
             and_(
@@ -214,7 +232,7 @@ WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid =
         "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, sysdate(), foo, bar, lala \
 FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today AND mytable.myid = myothertable.otherid")
 
-    def testliteralsubquery(self):
+    def testtextualsubquery(self):
         self.runtest(select(
             [alias(table, 't'), "foo.f"],
             "foo.f = t.id",
@@ -222,19 +240,27 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
         ), 
         "SELECT t.myid, t.name, t.description, foo.f FROM mytable AS t, (select f from bar where lala=heyhey) foo WHERE foo.f = t.id")
 
-    def testjoin(self):
-    #    self.runtest(
-     #       join(table2, table, table.c.id == table2.c.id).select(),
-      #      "SELECT myothertable.otherid, myothertable.othername, mytable.myid, mytable.name, mytable.description \
-#FROM myothertable, mytable WHERE mytable.myid = myothertable.otherid"
- #       )
+    def testliteral(self):
+        self.runtest(select([literal("foo") + literal("bar")], from_obj=[table]), 
+            "SELECT :literal + :literal_1 FROM mytable", engine=db)
 
-  #      self.runtest(
-   #         select(
-    #            [table],
-     #           from_obj = [join(table, table2, table.c.id == table2.c.id)]
-      #      ),
-       # "SELECT mytable.myid, mytable.name, mytable.description FROM mytable JOIN myothertable ON mytable.myid = myothertable.otherid")
+    def testfunction(self):
+        self.runtest(func.lala(3, 4, literal("five"), table.c.id) * table2.c.id, 
+            "lala(:lala, :lala_1, :literal, mytable.myid) * myothertable.otherid", engine=db)
+
+    def testjoin(self):
+        self.runtest(
+            join(table2, table, table.c.id == table2.c.id).select(),
+            "SELECT myothertable.otherid, myothertable.othername, mytable.myid, mytable.name, \
+mytable.description FROM myothertable JOIN mytable ON mytable.myid = myothertable.otherid"
+        )
+
+        self.runtest(
+            select(
+             [table],
+                from_obj = [join(table, table2, table.c.id == table2.c.id)]
+            ),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable JOIN myothertable ON mytable.myid = myothertable.otherid")
 
         self.runtest(
             select(
@@ -363,6 +389,8 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
         self.runtest(select([table], table.c.id.in_(select([table2.c.id]))),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (SELECT myothertable.otherid FROM myothertable)")
     
+        
+        
 class CRUDTest(SQLTest):
     def testinsert(self):
         # generic insert, will create bind params for all columns
@@ -388,12 +416,6 @@ class CRUDTest(SQLTest):
             checkparams = {'myid':3, 'name':'jack', 'description':'mydescription'}
         )
         
-        # insert with a subselect provided 
-        #self.runtest(
-         #   insert(table, select([table2])),
-         #   ""
-        #)
-
     def testupdate(self):
         self.runtest(update(table, table.c.id == 7), "UPDATE mytable SET name=:name WHERE mytable.myid = :mytable_myid", params = {table.c.name:'fred'})
         self.runtest(update(table, table.c.id == 7), "UPDATE mytable SET name=:name WHERE mytable.myid = :mytable_myid", params = {'name':'fred'})
@@ -406,6 +428,15 @@ class CRUDTest(SQLTest):
         c = s.compile(bindparams = {'mytable_id':9,'name':'h0h0'})
         print str(c)
         self.assert_(str(s) == str(c))
+        
+    def testupdateexpression(self):
+        self.runtest(update(table, 
+            (table.c.id == func.hoho(4)) &
+            (table.c.name == literal('foo') + table.c.name + literal('lala')),
+            values = {
+            table.c.name : table.c.name + "lala",
+            table.c.id : func.do_stuff(table.c.id, literal('hoho'))
+            }), "UPDATE mytable SET myid=(do_stuff(mytable.myid, :literal_2)), name=(mytable.name + :mytable_name) WHERE mytable.myid = hoho(:hoho) AND mytable.name = :literal + mytable.name + :literal_1")
         
     def testcorrelatedupdate(self):
         # test against a straight text subquery
