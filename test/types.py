@@ -1,17 +1,15 @@
-from testbase import PersistTest
-import sqlalchemy.types as types
-from sqlalchemy.schema import *
-
-import unittest, sys, os
+from sqlalchemy import *
+import testbase
+import string
 
 
     
-class TypesTest(PersistTest):
+class TypesTest(testbase.PersistTest):
+    def setUpAll(self):
+        global db
+        db = testbase.db
 
     def testprocessing(self):
-        import sqlalchemy.databases.sqlite as sqllite
-        db = sqllite.engine(':memory:', {}, echo = True)
-    
         class MyType(types.TypeEngine):
             def get_col_spec(self):
                 return "VARCHAR(100)"
@@ -41,4 +39,4 @@ class TypesTest(PersistTest):
      
         
 if __name__ == "__main__":
-    unittest.main()
+    testbase.main()
