@@ -26,7 +26,10 @@ import sqlalchemy.types as sqltypes
 from sqlalchemy.ansisql import *
 import datetime,time
 
-from pysqlite2 import dbapi2 as sqlite
+try:
+    from pysqlite2 import dbapi2 as sqlite
+except:
+    sqlite = None
 
 class SLNumeric(sqltypes.Numeric):
     def get_col_spec(self):
