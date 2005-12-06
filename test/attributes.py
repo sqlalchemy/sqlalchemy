@@ -77,6 +77,49 @@ class AttributesTest(PersistTest):
         self.assert_(u.user_id == 7 and u.user_name == 'john' and u.addresses[0].email_address == 'lala@123.com')
         self.assert_(len(u.addresses.unchanged_items()) == 1)
 
+    def testbackref(self):
+        class Student(object):pass
+        class Course(object):pass
+        manager = attributes.AttributeManager()
+        manager.register_attribute(Student, 'courses', uselist=True, backrefmanager=attributes.ListBackrefManager('students'))
+        manager.register_attribute(Course, 'students', uselist=True, backrefmanager=attributes.ListBackrefManager('courses'))
+        
+        s = Student()
+        c = Course()
+        s.courses.append(c)
+        self.assert_(c.students == [s])
+        s.courses.remove(c)
+        self.assert_(c.students == [])
+        
+        (s1, s2, s3) = (Student(), Student(), Student())
+        c.students = [s1, s2, s3]
+        self.assert_(s2.courses == [c])
+        self.assert_(s1.courses == [c])
+        s1.courses.remove(c)
+        self.assert_(c.students == [s2,s3])
+        
+        
+        class Post(object):pass
+        class Blog(object):pass
+        
+        manager.register_attribute(Post, 'blog', uselist=False, backrefmanager=attributes.ManyToOneBackrefManager('posts'))
+        manager.register_attribute(Blog, 'posts', uselist=True, backrefmanager=attributes.OneToManyBackrefManager('blog'))
+        b = Blog()
+        (p1, p2, p3) = (Post(), Post(), Post())
+        b.posts.append(p1)
+        b.posts.append(p2)
+        b.posts.append(p3)
+        self.assert_(b.posts == [p1, p2, p3])
+        self.assert_(p2.blog is b)
+        
+        p3.blog = None
+        self.assert_(b.posts == [p1, p2])
+        p4 = Post()
+        p4.blog = b
+        self.assert_(b.posts == [p1, p2, p4])
+        
+        
+        
         
 if __name__ == "__main__":
     unittest.main()

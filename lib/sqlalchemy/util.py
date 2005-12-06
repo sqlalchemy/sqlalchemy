@@ -213,9 +213,9 @@ class HistoryArraySet(UserList.UserList):
                 self.records[item] = False
             elif val is True:
                 del self.records[item]
+            return True    
         except KeyError:
-            pass
-        return True
+            return False
     def commit(self):
         for key in self.records.keys():
             value = self.records[key]
@@ -274,11 +274,11 @@ class HistoryArraySet(UserList.UserList):
             self.data.insert(i, item)
     def pop(self, i=-1):
         item = self.data[i]
-        self._delrecord(item) 
-        return self.data.pop(i)
+        if self._delrecord(item):
+            return self.data.pop(i)
     def remove(self, item): 
-        self._delrecord(item)
-        self.data.remove(item)
+        if self._delrecord(item):
+            self.data.remove(item)
     def __add__(self, other):
         raise NotImplementedError()
     def __radd__(self, other):
