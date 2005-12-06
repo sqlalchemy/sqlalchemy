@@ -666,7 +666,14 @@ class UOWTask(object):
         return s
         
     def __repr__(self):
-        return ("UOWTask/%d Table: '%s'" % (id(self), self.mapper and self.mapper.primarytable.name or '(none)'))
+        if self.mapper is not None:
+            if self.mapper.__class__.__name__ == 'Mapper':
+                name = self.mapper.primarytable.name
+            else:
+                name = repr(self.mapper)
+        else:
+            name = '(none)'
+        return ("UOWTask/%d Table: '%s'" % (id(self), name))
 
 class DependencySorter(topological.QueueDependencySorter):
     pass

@@ -19,6 +19,9 @@ class HistoryTest(AssertMixin):
         addresses.drop()
         users.drop()
         db.echo = testbase.echo
+    def setUp(self):
+        objectstore.clear()
+        clear_mappers()
 
     def testattr(self):
         """tests the rolling back of scalar and list attributes.  this kind of thing
@@ -48,6 +51,24 @@ class HistoryTest(AssertMixin):
             },
         ]
         self.assert_result([u], data[0], *data[1:])
+
+    def testbackref(self):
+        class User(object):pass
+        class Address(object):pass
+        am = mapper(Address, addresses)
+        m = mapper(User, users, properties = dict(
+            addresses = relation(am, attributeext=attributes.OTMBackrefExtension('user')))
+        )
+        am.add_property('user', relation(m, attributeext=attributes.MTOBackrefExtension('addresses')))
+        
+        u = User()
+        a = Address()
+        a.user = u
+        #print repr(a.__class__._attribute_manager.get_history(a, 'user').added_items())
+        #print repr(u.addresses.added_items())
+        self.assert_(u.addresses == [a])
+        objectstore.commit()
+        
 
 class PKTest(AssertMixin):
     def setUpAll(self):

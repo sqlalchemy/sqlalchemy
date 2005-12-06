@@ -1,6 +1,7 @@
 from sqlalchemy import *
 import testbase
 import string
+import sqlalchemy.attributes as attr
 
 class Place(object):
     '''represents a place'''
@@ -97,12 +98,12 @@ class ManyToManyTest(testbase.AssertMixin):
         "break off" a new "mapper stub" to indicate a third depedendent processor."""
         Place.mapper = mapper(Place, place)
         Transition.mapper = mapper(Transition, transition, properties = dict(
-            inputs = relation(Place.mapper, place_output, lazy=True),
-            outputs = relation(Place.mapper, place_input, lazy=True),
+            inputs = relation(Place.mapper, place_output, lazy=True, attributeext=attr.ListBackrefExtension('inputs')),
+            outputs = relation(Place.mapper, place_input, lazy=True, attributeext=attr.ListBackrefExtension('outputs')),
             )
         )
-        Place.mapper.add_property('inputs', relation(Transition.mapper, place_output, lazy=True))
-        Place.mapper.add_property('outputs', relation(Transition.mapper, place_input, lazy=True))
+        Place.mapper.add_property('inputs', relation(Transition.mapper, place_output, lazy=True, attributeext=attr.ListBackrefExtension('inputs')))
+        Place.mapper.add_property('outputs', relation(Transition.mapper, place_input, lazy=True, attributeext=attr.ListBackrefExtension('outputs')))
 
         Place.eagermapper = Place.mapper.options(
             eagerload('inputs', selectalias='ip_alias'), 
@@ -125,10 +126,10 @@ class ManyToManyTest(testbase.AssertMixin):
         p1.outputs.append(t1)
         
         objectstore.commit()
-
         
-        l = Place.eagermapper.select()
-        print repr(l)
+        self.assert_result([t1], Transition, {'outputs': (Place, [{'name':'place3'}, {'name':'place1'}])})
+        self.assert_result([p2], Place, {'inputs': (Transition, [{'name':'transition1'},{'name':'transition2'}])})
+        
 
 if __name__ == "__main__":    
     testbase.main()

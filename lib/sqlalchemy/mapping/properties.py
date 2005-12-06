@@ -62,7 +62,7 @@ class PropertyLoader(MapperProperty):
 
     """describes an object property that holds a single item or list of items that correspond
     to a related database table."""
-    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, live=False, isoption=False, association=None, selectalias=None, order_by=None, **kwargs):
+    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, live=False, isoption=False, association=None, selectalias=None, order_by=None, attributeext=None):
         self.uselist = uselist
         self.argument = argument
         self.secondary = secondary
@@ -75,6 +75,7 @@ class PropertyLoader(MapperProperty):
         self.association = association
         self.selectalias = selectalias
         self.order_by=util.to_list(order_by)
+        self.attributeext=attributeext
         self._hash_key = "%s(%s, %s, %s, %s, %s, %s, %s, %s)" % (self.__class__.__name__, hash_key(self.argument), hash_key(secondary), hash_key(primaryjoin), hash_key(secondaryjoin), hash_key(foreignkey), repr(uselist), repr(private), hash_key(self.order_by))
 
     def _copy(self):
@@ -137,7 +138,7 @@ class PropertyLoader(MapperProperty):
         
     def _set_class_attribute(self, class_, key):
         """sets attribute behavior on our target class."""
-        objectstore.uow().register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private)
+        objectstore.uow().register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private, extension=self.attributeext)
         
     def _get_direction(self):
         if self.parent.primarytable is self.target:
@@ -454,7 +455,7 @@ class LazyLoader(PropertyLoader):
     def _set_class_attribute(self, class_, key):
         # establish a class-level lazy loader on our class
         #print "SETCLASSATTR LAZY", repr(class_), key
-        objectstore.global_attributes.register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private, live=self.live, callable_=lambda i: self.setup_loader(i))
+        objectstore.global_attributes.register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private, live=self.live, callable_=lambda i: self.setup_loader(i), extension=self.attributeext)
 
     def setup_loader(self, instance):
         def lazyload():
@@ -612,7 +613,7 @@ class EagerLoader(PropertyLoader):
             
         if not self.uselist:
             if isnew:
-                h.setattr(self._instance(row, imap))
+                h.setattr_clean(self._instance(row, imap))
             return
         elif isnew:
             result_list = h

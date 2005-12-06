@@ -53,10 +53,15 @@ def _relation_loader(mapper, secondary=None, primaryjoin=None, secondaryjoin=Non
 
 def _relation_mapper(class_, table=None, secondary=None, 
                     primaryjoin=None, secondaryjoin=None, 
-                    foreignkey=None, uselist=None, private=False, live=False, association=None, lazy=True, selectalias=None, order_by=None, **kwargs):
+                    foreignkey=None, uselist=None, private=False, 
+                    live=False, association=None, lazy=True, 
+                    selectalias=None, order_by=None, attributeext=None, **kwargs):
 
-    return _relation_loader(mapper(class_, table, **kwargs), secondary, primaryjoin, secondaryjoin, 
-                    foreignkey=foreignkey, uselist=uselist, private=private, live=live, association=association, lazy=lazy, selectalias=selectalias, order_by=order_by)
+    return _relation_loader(mapper(class_, table, **kwargs), 
+                    secondary, primaryjoin, secondaryjoin, 
+                    foreignkey=foreignkey, uselist=uselist, private=private, 
+                    live=live, association=association, lazy=lazy, 
+                    selectalias=selectalias, order_by=order_by, attributeext=attributeext)
 
 class assignmapper(object):
     """provides a property object that will instantiate a Mapper for a given class the first

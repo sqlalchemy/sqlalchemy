@@ -81,8 +81,8 @@ class AttributesTest(PersistTest):
         class Student(object):pass
         class Course(object):pass
         manager = attributes.AttributeManager()
-        manager.register_attribute(Student, 'courses', uselist=True, backrefmanager=attributes.ListBackrefManager('students'))
-        manager.register_attribute(Course, 'students', uselist=True, backrefmanager=attributes.ListBackrefManager('courses'))
+        manager.register_attribute(Student, 'courses', uselist=True, extension=attributes.ListBackrefExtension('students'))
+        manager.register_attribute(Course, 'students', uselist=True, extension=attributes.ListBackrefExtension('courses'))
         
         s = Student()
         c = Course()
@@ -102,8 +102,8 @@ class AttributesTest(PersistTest):
         class Post(object):pass
         class Blog(object):pass
         
-        manager.register_attribute(Post, 'blog', uselist=False, backrefmanager=attributes.ManyToOneBackrefManager('posts'))
-        manager.register_attribute(Blog, 'posts', uselist=True, backrefmanager=attributes.OneToManyBackrefManager('blog'))
+        manager.register_attribute(Post, 'blog', uselist=False, extension=attributes.MTOBackrefExtension('posts'))
+        manager.register_attribute(Blog, 'posts', uselist=True, extension=attributes.OTMBackrefExtension('blog'))
         b = Blog()
         (p1, p2, p3) = (Post(), Post(), Post())
         b.posts.append(p1)

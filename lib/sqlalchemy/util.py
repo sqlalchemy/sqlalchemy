@@ -243,6 +243,10 @@ class HistoryArraySet(UserList.UserList):
         if not self.records.has_key(item):
             self.records[item] = None
             self.data.append(item)
+    def remove_nohistory(self, item):
+        if self.records.has_key(item):
+            del self.records[item]
+            self.data.remove(item)
     def has_item(self, item):
         return self.records.has_key(item)
     def __setitem__(self, i, item): 

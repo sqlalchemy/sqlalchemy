@@ -44,17 +44,19 @@ class PropHistory(object):
     """manages the value of a particular scalar attribute on a particular object instance."""
     # make our own NONE to distinguish from "None"
     NONE = object()
-    def __init__(self, obj, key, backrefmanager=None, **kwargs):
+    def __init__(self, obj, key, extension=None, **kwargs):
         self.obj = obj
         self.key = key
         self.orig = PropHistory.NONE
-        self.backrefmanager = backrefmanager
+        self.extension = extension
     def gethistory(self, *args, **kwargs):
         return self
     def history_contains(self, obj):
         return self.orig is obj or self.obj.__dict__[self.key] is obj
     def setattr_clean(self, value):
         self.obj.__dict__[self.key] = value
+    def delattr_clean(self):
+        del self.obj.__dict__[self.key]
     def getattr(self):
         return self.obj.__dict__[self.key]
     def setattr(self, value):
@@ -62,13 +64,13 @@ class PropHistory(object):
             raise ("assigning a list to scalar property '%s' on '%s' instance %d" % (self.key, self.obj.__class__.__name__, id(self.obj)))
         self.orig = self.obj.__dict__.get(self.key, None)
         self.obj.__dict__[self.key] = value
-        if self.backrefmanager is not None and self.orig is not value:
-            self.backrefmanager.set(self.obj, value, self.orig)
+        if self.extension is not None and self.orig is not value:
+            self.extension.set(self.obj, value, self.orig)
     def delattr(self):
         self.orig = self.obj.__dict__.get(self.key, None)
         self.obj.__dict__[self.key] = None
-        if self.backrefmanager is not None:
-            self.backrefmanager.set(self.obj, None, self.orig)
+        if self.extension is not None:
+            self.extension.set(self.obj, None, self.orig)
     def rollback(self):
         if self.orig is not PropHistory.NONE:
             self.obj.__dict__[self.key] = self.orig
@@ -93,10 +95,10 @@ class PropHistory(object):
 
 class ListElement(util.HistoryArraySet):
     """manages the value of a particular list-based attribute on a particular object instance."""
-    def __init__(self, obj, key, data=None, backrefmanager=None, **kwargs):
+    def __init__(self, obj, key, data=None, extension=None, **kwargs):
         self.obj = obj
         self.key = key
-        self.backrefmanager = backrefmanager
+        self.extension = extension
         # if we are given a list, try to behave nicely with an existing
         # list that might be set on the object already
         try:
@@ -126,15 +128,15 @@ class ListElement(util.HistoryArraySet):
         res = util.HistoryArraySet._setrecord(self, item)
         if res:
             self.list_value_changed(self.obj, self.key, item, self, False)
-            if self.backrefmanager is not None:
-                self.backrefmanager.append(self.obj, item)
+            if self.extension is not None:
+                self.extension.append(self.obj, item)
         return res
     def _delrecord(self, item):
         res = util.HistoryArraySet._delrecord(self, item)
         if res:
             self.list_value_changed(self.obj, self.key, item, self, True)
-            if self.backrefmanager is not None:
-                self.backrefmanager.delete(self.obj, item)
+            if self.extension is not None:
+                self.extension.delete(self.obj, item)
         return res
 
 class CallableProp(object):
@@ -185,38 +187,42 @@ class CallableProp(object):
     def rollback(self):
         pass
 
-class BackrefManager(object):
+class AttributeExtension(object):
+    def append(self, obj, child):
+        pass
+    def delete(self, obj, child):
+        pass
+    def set(self, obj, child, oldchild):
+        pass
+
+class ListBackrefExtension(AttributeExtension):
     def __init__(self, key):
         self.key = key
-    def append(self, parent, child):
-        pass
-    def delete(self, parent, child):
-        pass
-    def set(self, parent, child, oldchild):
-        pass
+    def append(self, obj, child):
+        getattr(child, self.key).append_nohistory(obj)
+    def delete(self, obj, child):
+        getattr(child, self.key).remove_nohistory(obj)
 
+class OTMBackrefExtension(AttributeExtension):
+    def __init__(self, key):
+        self.key = key
+    def append(self, obj, child):
+        prop = child.__class__._attribute_manager.get_history(child, self.key)
+        prop.setattr_clean(obj)
+#        prop.setattr(obj)
+    def delete(self, obj, child):
+        prop = child.__class__._attribute_manager.get_history(child, self.key)
+        prop.delattr_clean()
 
-class ListBackrefManager(BackrefManager):
-    def append(self, parent, child):
-        getattr(child, self.key).append(parent)
-    def delete(self, parent, child):
-        getattr(child, self.key).remove(parent)
-
-class OneToManyBackrefManager(BackrefManager):
-    def append(self, parent, child):
-        setattr(child, self.key, parent)
-    def delete(self, parent, child):
-        setattr(child, self.key, None)
-
-class ManyToOneBackrefManager(BackrefManager):
-    def set(self, parent, child, oldchild):
+class MTOBackrefExtension(AttributeExtension):
+    def __init__(self, key):
+        self.key = key
+    def set(self, obj, child, oldchild):
         if oldchild is not None:
-            try:
-                getattr(oldchild, self.key).remove(parent)
-            except:
-                print "wha? oldchild is ", repr(oldchild)
+            getattr(oldchild, self.key).remove_nohistory(obj)
         if child is not None:
-            getattr(child, self.key).append(parent)
+            getattr(child, self.key).append_nohistory(obj)
+#            getattr(child, self.key).append(obj)
             
 class AttributeManager(object):
     """maintains a set of per-attribute callable/history manager objects for a set of objects."""
@@ -305,6 +311,7 @@ class AttributeManager(object):
         except AttributeError:
             attr = {}
             class_._class_managed_attributes = attr
+            class_._attribute_manager = self
         return attr
 
 
