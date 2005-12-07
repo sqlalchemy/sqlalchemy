@@ -155,7 +155,7 @@ However, things get very tricky when dealing with eager relationships, since a s
         m = mapper(User, users, properties={
             'addresses' : relation(Address, addresses, lazy=False)
         })
-    r = m.select(limit=20, offset=10)
+        r = m.select(limit=20, offset=10)
 <&|formatting.myt:poppedcode, link="sql" &>
 SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
 users.password AS users_password, addresses.address_id AS addresses_address_id, 
