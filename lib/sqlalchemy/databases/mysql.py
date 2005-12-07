@@ -175,7 +175,16 @@ class MySQLTableImpl(sql.TableImpl):
     rowid_column = property(lambda s: s._rowid_col())
 
 class MySQLCompiler(ansisql.ANSICompiler):
-    pass
+    def limit_clause(self, select):
+        text = ""
+        if select.limit is not None:
+            text +=  " \n LIMIT " + str(select.limit)
+        if select.offset is not None:
+            if select.limit is None:
+                # striaght from the MySQL docs, I kid you not
+                text += " \n LIMIT 18446744073709551615"
+            text += " OFFSET " + str(select.offset)
+        return text
         
 class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, override_pk=False, first_pk=False):

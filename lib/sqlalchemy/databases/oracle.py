@@ -195,6 +195,28 @@ class OracleCompiler(ansisql.ANSICompiler):
                 self.bindparams[c.key] = None
         return ansisql.ANSICompiler.visit_insert(self, insert)
 
+    def visit_select(self, select):
+        """looks for LIMIT and OFFSET in a select statement, and if so tries to wrap it in a 
+        subquery with rownum criterion."""
+        if getattr(select, '_oracle_visit', False):
+            ansisql.ANSICompiler.visit_select(self, select)
+            return
+        if select.limit is not None or select.offset is not None:
+            select._oracle_visit = True
+            limitselect = select.select()
+            if select.limit is not None:
+                limitselect.append_whereclause("rownum<%d" % select.limit)
+            if select.offset is not None:
+                limitselect.append_whereclause("rownum>%d" % select.offset)
+            limitselect.accept_visitor(self)
+            self.strings[select] = self.strings[limitselect]
+            self.froms[select] = self.froms[limitselect]
+        else:
+            ansisql.ANSICompiler.visit_select(self, select)
+            
+    def limit_clause(self, select):
+        return ""
+
 class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, override_pk=False, **kwargs):
         colspec = column.name

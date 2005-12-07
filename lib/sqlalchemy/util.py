@@ -23,6 +23,8 @@ def to_list(x):
         return None
     if not isinstance(x, list) and not isinstance(x, tuple):
         return [x]
+    else:
+        return x
         
 class OrderedProperties(object):
     """an object that maintains the order in which attributes are set upon it.

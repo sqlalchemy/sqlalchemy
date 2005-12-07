@@ -84,7 +84,8 @@ def data():
     addresses.insert().execute(
         dict(address_id = 1, user_id = 7, email_address = "jack@bean.com"),
         dict(address_id = 2, user_id = 8, email_address = "ed@wood.com"),
-        dict(address_id = 3, user_id = 8, email_address = "ed@lala.com")
+        dict(address_id = 3, user_id = 8, email_address = "ed@bettyboop.com"),
+        dict(address_id = 4, user_id = 8, email_address = "ed@lala.com")
     )
     orders.insert().execute(
         dict(order_id = 1, user_id = 7, description = 'order 1', isopen=0),

@@ -552,7 +552,7 @@ class CompoundClause(ClauseList):
             f += c._get_from_objects()
         return f
     def hash_key(self):
-        return string.join([c.hash_key() for c in self.clauses], self.operator)
+        return string.join([c.hash_key() for c in self.clauses], self.operator or " ")
 
 class Function(ClauseList, CompareMixin):
     """describes a SQL function. extends ClauseList to provide comparison operators."""
@@ -948,7 +948,7 @@ class CompoundSelect(Selectable, TailClauseMixin):
 class Select(Selectable, TailClauseMixin):
     """finally, represents a SELECT statement, with appendable clauses, as well as 
     the ability to execute itself and return a result set."""
-    def __init__(self, columns=None, whereclause = None, from_obj = [], order_by = None, group_by=None, having=None, use_labels = False, distinct=False, engine = None):
+    def __init__(self, columns=None, whereclause = None, from_obj = [], order_by = None, group_by=None, having=None, use_labels = False, distinct=False, engine = None, limit=None, offset=None):
         self._columns = util.OrderedProperties()
         self._froms = util.OrderedDict()
         self.use_labels = use_labels
@@ -958,6 +958,8 @@ class Select(Selectable, TailClauseMixin):
         self.having = None
         self._engine = engine
         self.rowid_column = None
+        self.limit = limit
+        self.offset = offset
         
         # indicates if this select statement is a subquery inside another query
         self.issubquery = False

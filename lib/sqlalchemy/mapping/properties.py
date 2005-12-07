@@ -541,8 +541,8 @@ class EagerLoader(PropertyLoader):
     
         # if this eagermapper is to select using an "alias" to isolate it from other
         # eager mappers against the same table, we have to redefine our secondary
-        # or primary join condition to reference the aliased table.  else
-        # we set up the target clause objects as what they are defined in the 
+        # or primary join condition to reference the aliased table (and the order_by).  
+        # else we set up the target clause objects as what they are defined in the 
         # superclass.
         if self.selectalias is not None:
             self.eagertarget = self.target.alias(self.selectalias)
@@ -554,11 +554,21 @@ class EagerLoader(PropertyLoader):
             else:
                 self.eagerprimary = self.primaryjoin.copy_container()
                 self.eagerprimary.accept_visitor(aliasizer)
+            if self.order_by is not None:
+                self.eager_order_by = [o.copy_container() for o in self.order_by]
+                for i in range(0, len(self.eager_order_by)):
+                    if isinstance(self.eager_order_by[i], schema.Column):
+                        self.eager_order_by[i] = self.eagertarget._get_col_by_original(self.eager_order_by[i])
+                    else:
+                        self.eager_order_by[i].accept_visitor(aliasizer)
+            else:
+                self.eager_order_by = None
         else:
             self.eagertarget = self.target
             self.eagerprimary = self.primaryjoin
             self.eagersecondary = self.secondaryjoin
-
+            self.eager_order_by = self.order_by
+            
     def setup(self, key, statement, recursion_stack = None, **options):
         """add a left outer join to the statement thats being constructed"""
 
@@ -588,8 +598,8 @@ class EagerLoader(PropertyLoader):
             if self.order_by is None:
                 statement.order_by(self.eagertarget.rowid_column)
 
-        if self.order_by is not None:
-            statement.order_by(*[self.eagertarget._get_col_by_original(c) for c in self.order_by])
+        if self.eager_order_by is not None:
+            statement.order_by(*self.eager_order_by)
             
         statement.append_from(statement._outerjoin)
         statement.append_column(self.eagertarget)
@@ -691,12 +701,18 @@ class Aliasizer(sql.ClauseVisitor):
             aliasname = table.name + "_" + hex(random.randint(0, 65535))[2:]
             return self.aliases.setdefault(table, sql.alias(table, aliasname))
 
+    def visit_compound(self, compound):
+        for i in range(0, len(compound.clauses)):
+            if isinstance(compound.clauses[i], schema.Column) and self.tables.has_key(compound.clauses[i].table):
+                compound.clauses[i] = self.get_alias(compound.clauses[i].table)._get_col_by_original(compound.clauses[i])
+                self.match = True
+
     def visit_binary(self, binary):
         if isinstance(binary.left, schema.Column) and self.tables.has_key(binary.left.table):
-            binary.left = self.get_alias(binary.left.table).c[binary.left.name]
+            binary.left = self.get_alias(binary.left.table)._get_col_by_original(binary.left)
             self.match = True
         if isinstance(binary.right, schema.Column) and self.tables.has_key(binary.right.table):
-            binary.right = self.get_alias(binary.right.table).c[binary.right.name]
+            binary.right = self.get_alias(binary.right.table)._get_col_by_original(binary.right)
             self.match = True
 
 class BinaryVisitor(sql.ClauseVisitor):

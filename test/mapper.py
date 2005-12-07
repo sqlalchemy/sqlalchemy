@@ -57,7 +57,7 @@ class MapperTest(MapperSuperTest):
 
         self.assert_result(l, User,
             {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
-            {'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}])},
+            {'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}, {'address_id' : 4}])},
             {'user_id' : 9, 'addresses' : (Address, [])}
             )
 
@@ -69,7 +69,7 @@ class MapperTest(MapperSuperTest):
         l = m.options(lazyload('addresses')).select()
         self.assert_result(l, User,
             {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
-            {'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}])},
+            {'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}, {'address_id' : 4}])},
             {'user_id' : 9, 'addresses' : (Address, [])}
             )
 
@@ -127,14 +127,25 @@ class LazyTest(MapperSuperTest):
             addresses = relation(m, lazy = True, order_by=addresses.c.email_address),
         ))
         l = m.select()
-        dict(address_id = 1, user_id = 7, email_address = "jack@bean.com"),
-        dict(address_id = 2, user_id = 8, email_address = "ed@wood.com"),
-        dict(address_id = 3, user_id = 8, email_address = "ed@lala.com")
 
         self.assert_result(l, User,
             {'user_id' : 7, 'addresses' : (Address, [{'email_address' : 'jack@bean.com'}])},
-            {'user_id' : 8, 'addresses' : (Address, [{'email_address':'ed@lala.com'}, {'email_address':'ed@wood.com'}])},
+            {'user_id' : 8, 'addresses' : (Address, [{'email_address':'ed@bettyboop.com'}, {'email_address':'ed@lala.com'}, {'email_address':'ed@wood.com'}])},
             {'user_id' : 9, 'addresses' : (Address, [])}
+            )
+
+    def testorderby_desc(self):
+        m = mapper(Address, addresses)
+
+        m = mapper(User, users, properties = dict(
+            addresses = relation(m, lazy = True, order_by=[desc(addresses.c.email_address)]),
+        ))
+        l = m.select()
+
+        self.assert_result(l, User,
+            {'user_id' : 7, 'addresses' : (Address, [{'email_address' : 'jack@bean.com'}])},
+            {'user_id' : 8, 'addresses' : (Address, [{'email_address':'ed@wood.com'}, {'email_address':'ed@lala.com'}, {'email_address':'ed@bettyboop.com'}])},
+            {'user_id' : 9, 'addresses' : (Address, [])},
             )
 
     def testonetoone(self):
@@ -173,7 +184,7 @@ class LazyTest(MapperSuperTest):
                 'closed_orders' : (Order, [{'order_id' : 1},{'order_id' : 5},])
             },
             {'user_id' : 8, 
-                'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}]),
+                'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}, {'address_id' : 4}]),
                 'open_orders' : (Order, []),
                 'closed_orders' : (Order, [])
             },
@@ -217,7 +228,7 @@ class EagerTest(MapperSuperTest):
         l = m.select()
         self.assert_result(l, User,
             {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
-            {'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}])},
+            {'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3},{'address_id' : 4}])},
             {'user_id' : 9, 'addresses' : (Address, [])}
             )
 
@@ -228,14 +239,24 @@ class EagerTest(MapperSuperTest):
             addresses = relation(m, lazy = False, order_by=addresses.c.email_address),
         ))
         l = m.select()
-        dict(address_id = 1, user_id = 7, email_address = "jack@bean.com"),
-        dict(address_id = 2, user_id = 8, email_address = "ed@wood.com"),
-        dict(address_id = 3, user_id = 8, email_address = "ed@lala.com")
-        
         self.assert_result(l, User,
             {'user_id' : 7, 'addresses' : (Address, [{'email_address' : 'jack@bean.com'}])},
-            {'user_id' : 8, 'addresses' : (Address, [{'email_address':'ed@lala.com'}, {'email_address':'ed@wood.com'}])},
+            {'user_id' : 8, 'addresses' : (Address, [{'email_address':'ed@bettyboop.com'}, {'email_address':'ed@lala.com'}, {'email_address':'ed@wood.com'}])},
             {'user_id' : 9, 'addresses' : (Address, [])}
+            )
+
+    def testorderby_desc(self):
+        m = mapper(Address, addresses)
+
+        m = mapper(User, users, properties = dict(
+            addresses = relation(m, lazy = False, selectalias='lala', order_by=[desc(addresses.c.email_address)]),
+        ))
+        l = m.select()
+
+        self.assert_result(l, User,
+            {'user_id' : 7, 'addresses' : (Address, [{'email_address' : 'jack@bean.com'}])},
+            {'user_id' : 8, 'addresses' : (Address, [{'email_address':'ed@wood.com'},{'email_address':'ed@lala.com'},  {'email_address':'ed@bettyboop.com'}, ])},
+            {'user_id' : 9, 'addresses' : (Address, [])},
             )
         
     def testonetoone(self):
@@ -268,7 +289,7 @@ class EagerTest(MapperSuperTest):
         ))
         l = m.select(and_(addresses.c.email_address == 'ed@lala.com', addresses.c.user_id==users.c.user_id))
         self.assert_result(l, User,
-            {'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2, 'email_address':'ed@wood.com'}, {'address_id':3, 'email_address':'ed@lala.com'}])},
+            {'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2, 'email_address':'ed@wood.com'}, {'address_id':3, 'email_address':'ed@bettyboop.com'}, {'address_id':4, 'email_address':'ed@lala.com'}])},
         )
         
 
@@ -297,7 +318,7 @@ class EagerTest(MapperSuperTest):
                 'orders' : (Order, [{'order_id' : 1}, {'order_id' : 3},{'order_id' : 5},])
             },
             {'user_id' : 8, 
-                'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}]),
+                'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}, {'address_id' : 4}]),
                 'orders' : (Order, [])
             },
             {'user_id' : 9, 
@@ -323,7 +344,7 @@ class EagerTest(MapperSuperTest):
                 'closed_orders' : (Order, [{'order_id' : 1},{'order_id' : 5},])
             },
             {'user_id' : 8, 
-                'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}]),
+                'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}, {'address_id' : 4}]),
                 'open_orders' : (Order, []),
                 'closed_orders' : (Order, [])
             },
@@ -356,7 +377,7 @@ class EagerTest(MapperSuperTest):
                     ])
             },
             {'user_id' : 8, 
-                'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}]),
+                'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}, {'address_id' : 4}]),
                 'orders' : (Order, [])
             },
             {'user_id' : 9, 

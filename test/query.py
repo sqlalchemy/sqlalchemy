@@ -10,22 +10,29 @@ from sqlalchemy import *
 
 class QueryTest(PersistTest):
     
-    def setUp(self):
-        self.users = Table('query_users', db,
+    def setUpAll(self):
+        global users
+        users = Table('query_users', db,
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20)),
             redefine = True
         )
-        self.users.create()
-        
+        users.create()
+    
+    def setUp(self):
+        self.users = users
+    def tearDown(self):
+        self.users.delete().execute()
+    
+    def tearDownAll(self):
+        global users
+        users.drop()
         
     def testinsert(self):
-        c = db.connection()
         self.users.insert().execute(user_id = 7, user_name = 'jack')
         print repr(self.users.select().execute().fetchall())
         
     def testupdate(self):
-        c = db.connection()
 
         self.users.insert().execute(user_id = 7, user_name = 'jack')
         print repr(self.users.select().execute().fetchall())
@@ -69,9 +76,20 @@ class QueryTest(PersistTest):
         db.transaction(dostuff)
         print repr(self.users.select().execute().fetchall())    
 
-
-    def tearDown(self):
-        self.users.drop()
+    def testselectlimit(self):
+        self.users.insert().execute(user_id=1, user_name='john')
+        self.users.insert().execute(user_id=2, user_name='jack')
+        self.users.insert().execute(user_id=3, user_name='ed')
+        self.users.insert().execute(user_id=4, user_name='wendy')
+        self.users.insert().execute(user_id=5, user_name='laura')
+        self.users.insert().execute(user_id=6, user_name='ralph')
+        self.users.insert().execute(user_id=7, user_name='fido')
+        r = self.users.select(limit=3).execute().fetchall()
+        self.assert_(r == [(1, 'john'), (2, 'jack'), (3, 'ed')])
+        r = self.users.select(limit=3, offset=2).execute().fetchall()
+        self.assert_(r==[(3, 'ed'), (4, 'wendy'), (5, 'laura')])
+        r = self.users.select(offset=5).execute().fetchall()
+        self.assert_(r==[(6, 'ralph'), (7, 'fido')])
         
 if __name__ == "__main__":
-    unittest.main()        
+    testbase.main()        

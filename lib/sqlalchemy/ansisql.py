@@ -269,13 +269,26 @@ class ANSICompiler(sql.Compiled):
             t = self.get_str(select.having)
             if t:
                 text += " \nHAVING " + t
-                
+
+        if select.limit is not None or select.offset is not None:
+            # TODO: ok, so this is a simple limit/offset thing.
+            # need to make this DB neutral for mysql, oracle
+            text += self.limit_clause(select)
+            
         if getattr(select, 'issubquery', False):
             self.strings[select] = "(" + text + ")"
         else:
             self.strings[select] = text
 
         self.froms[select] = "(" + text + ")"
+
+    def limit_clause(self, select):
+        if select.limit is not None:
+            return  " \n LIMIT " + str(select.limit)
+        if select.offset is not None:
+            if select.limit is None:
+                return " \n LIMIT -1"
+            return " OFFSET " + str(select.offset)
 
     def visit_table(self, table):
         self.froms[table] = table.fullname

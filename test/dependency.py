@@ -1,7 +1,9 @@
 from testbase import PersistTest
-import sqlalchemy.util as util
+import sqlalchemy.mapping.topological as topological
 import unittest, sys, os
 
+class DependencySorter(topological.QueueDependencySorter):pass
+    
 class thingy(object):
     def __init__(self, name):
         self.name = name
@@ -31,7 +33,7 @@ class DependencySortTest(PersistTest):
             (node4, subnode3),
             (node4, subnode4)
         ]
-        head = util.DependencySorter(tuples, []).sort()
+        head = DependencySorter(tuples, []).sort()
         print "\n" + str(head)
 
     def testsort2(self):
@@ -49,7 +51,7 @@ class DependencySortTest(PersistTest):
             (node5, node6),
             (node6, node2)
         ]
-        head = util.DependencySorter(tuples, [node7]).sort()
+        head = DependencySorter(tuples, [node7]).sort()
         print "\n" + str(head)
 
     def testsort3(self):
@@ -62,9 +64,9 @@ class DependencySortTest(PersistTest):
             (node3, node2),
             (node1,node3)
         ]
-        head1 = util.DependencySorter(tuples, [node1, node2, node3]).sort()
-        head2 = util.DependencySorter(tuples, [node3, node1, node2]).sort()
-        head3 = util.DependencySorter(tuples, [node3, node2, node1]).sort()
+        head1 = DependencySorter(tuples, [node1, node2, node3]).sort()
+        head2 = DependencySorter(tuples, [node3, node1, node2]).sort()
+        head3 = DependencySorter(tuples, [node3, node2, node1]).sort()
         
         # TODO: figure out a "node == node2" function
         #self.assert_(str(head1) == str(head2) == str(head3))
@@ -83,7 +85,7 @@ class DependencySortTest(PersistTest):
             (node1, node3),
             (node3, node2)
         ]
-        head = util.DependencySorter(tuples, []).sort()
+        head = DependencySorter(tuples, []).sort()
         print "\n" + str(head)
 
     def testsort5(self):
@@ -111,7 +113,7 @@ class DependencySortTest(PersistTest):
             node3,
             node4
         ]
-        head = util.DependencySorter(tuples, allitems).sort()
+        head = DependencySorter(tuples, allitems).sort()
         print "\n" + str(head)
         
 

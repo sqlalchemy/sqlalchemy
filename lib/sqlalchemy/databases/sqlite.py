@@ -188,7 +188,17 @@ class SQLiteCompiler(ansisql.ANSICompiler):
     def __init__(self, *args, **params):
         params.setdefault('paramstyle', 'named')
         ansisql.ANSICompiler.__init__(self, *args, **params)
+    def limit_clause(self, select):
+        text = ""
+        if select.limit is not None:
+            text +=  " \n LIMIT " + str(select.limit)
+        if select.offset is not None:
+            if select.limit is None:
+                text += " \n LIMIT -1"
+            text += " OFFSET " + str(select.offset)
+        return text
 
+        
 class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, override_pk=False, **kwargs):
         colspec = column.name + " " + column.type.get_col_spec()

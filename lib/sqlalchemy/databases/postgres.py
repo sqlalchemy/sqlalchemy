@@ -240,6 +240,16 @@ class PGCompiler(ansisql.ANSICompiler):
             if c.sequence is not None and not c.sequence.optional:
                 self.bindparams[c.key] = None
         return ansisql.ANSICompiler.visit_insert(self, insert)
+
+    def limit_clause(self, select):
+        text = ""
+        if select.limit is not None:
+            text +=  " \n LIMIT " + str(select.limit)
+        if select.offset is not None:
+            if select.limit is None:
+                text += " \n LIMIT ALL"
+            text += " OFFSET " + str(select.offset)
+        return text
         
 class PGSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, override_pk=False, **kwargs):
