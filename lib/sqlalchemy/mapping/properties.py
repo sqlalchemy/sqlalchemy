@@ -474,7 +474,7 @@ class LazyLoader(PropertyLoader):
                     order_by = [self.secondary.rowid_column]
                 else:
                     order_by = []
-                result = self.mapper.select(self.lazywhere, order_by=order_by,**params)
+                result = self.mapper.select(self.lazywhere, order_by=order_by, params=params)
             else:
                 result = []
             if self.uselist:
@@ -530,6 +530,7 @@ class EagerLoader(PropertyLoader):
     def init(self, key, parent):
         PropertyLoader.init(self, key, parent)
         
+        parent._has_eager = True
         # figure out tables in the various join clauses we have, because user-defined
         # whereclauses that reference the same tables will be converted to use
         # aliases of those tables
@@ -656,7 +657,6 @@ class EagerLazyOption(MapperOption):
         return "EagerLazyOption(%s, %s)" % (repr(self.key), repr(self.toeager))
 
     def process(self, mapper):
-
         tup = self.key.split('.', 1)
         key = tup[0]
         oldprop = mapper.props[key]
@@ -674,13 +674,8 @@ class EagerLazyOption(MapperOption):
         else:
             class_ = LazyLoader
 
-        self.kwargs.setdefault('primaryjoin', oldprop.primaryjoin)
-        self.kwargs.setdefault('secondaryjoin', oldprop.secondaryjoin)
-        self.kwargs.setdefault('foreignkey', oldprop.foreignkey)
-        self.kwargs.setdefault('uselist', oldprop.uselist)
-        self.kwargs.setdefault('private', oldprop.private)
-        self.kwargs.setdefault('live', oldprop.live)
-        self.kwargs.setdefault('selectalias', oldprop.selectalias)
+        for arg in ('primaryjoin', 'secondaryjoin', 'foreignkey', 'uselist', 'private', 'live', 'isoption', 'association', 'selectalias', 'order_by', 'attributeext'):
+            self.kwargs.setdefault(arg, getattr(oldprop, arg))
         self.kwargs['isoption'] = True
         mapper.set_property(key, class_(submapper, oldprop.secondary, **self.kwargs ))
 

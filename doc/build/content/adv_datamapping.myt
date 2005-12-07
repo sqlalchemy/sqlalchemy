@@ -3,7 +3,7 @@
 <&|doclib.myt:item, name="adv_datamapping", description="Advanced Data Mapping" &>
 <p>This section is under construction.  For now, it has just the basic recipe for each concept without much else.  </p>
 
-<p>To start, heres the tables we will work with again:</p>
+<p>To start, heres the tables w e will work with again:</p>
        <&|formatting.myt:code&>
         from sqlalchemy import *
         db = create_engine('sqlite://filename=mydb', echo=True)
@@ -131,7 +131,47 @@
     </&>
 
 </&>
-
+<&|doclib.myt:item, name="limits", description="Limiting Rows" &>
+<p>You can limit rows in a regular SQL query by specifying <span class="codeline">limit</span> and <span class="codeline">offset</span>.  A Mapper can handle the same concepts:</p>
+<&|formatting.myt:code&>
+    class User(object):
+        pass
+    
+    m = mapper(User, users)
+<&formatting.myt:poplink&>r = m.select(limit=20, offset=10)
+<&|formatting.myt:codepopper, link="sql" &>SELECT users.user_id AS users_user_id, 
+users.user_name AS users_user_name, users.password AS users_password 
+FROM users ORDER BY users.oid 
+ LIMIT 20 OFFSET 10
+{}
+</&>
+</&>
+However, things get very tricky when dealing with eager relationships, since a straight LIMIT is not accurate with regards to child items.  So here is what SQLAlchemy will do when you use limit or offset with an eager relationship:
+    <&|formatting.myt:code&>
+        class User(object):
+            pass
+        class Address(object):
+            pass
+        m = mapper(User, users, properties={
+            'addresses' : relation(Address, addresses, lazy=False)
+        })
+    r = m.select(limit=20, offset=10)
+<&|formatting.myt:poppedcode, link="sql" &>
+SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
+users.password AS users_password, addresses.address_id AS addresses_address_id, 
+addresses.user_id AS addresses_user_id, addresses.street AS addresses_street, 
+addresses.city AS addresses_city, addresses.state AS addresses_state, 
+addresses.zip AS addresses_zip 
+FROM 
+(SELECT users.user_id FROM users ORDER BY users.oid LIMIT 20 OFFSET 10) AS rowcount, 
+ users LEFT OUTER JOIN addresses ON users.user_id = addresses.user_id 
+WHERE rowcount.user_id = users.user_id ORDER BY addresses.oid
+{}
+    
+    </&>
+    </&>
+    <p>A subquery is used to create the limited set of rows, which is then joined to the larger eager query.</p>
+</&>
 <&|doclib.myt:item, name="options", description="Mapper Options" &>
     <P>The <span class="codeline">options</span> method of mapper produces a copy of the mapper, with modified properties and/or options.  This makes it easy to take a mapper and just change a few things on it.  The method takes a variable number of <span class="codeline">MapperOption</span> objects which know how to change specific things about the mapper.  The four available options are <span class="codeline">eagerload</span>, <span class="codeline">lazyload</span>, <span class="codeline">noload</span> and <span class="codeline">extension</span>.</p>
     <P>An example of a mapper with a lazy load relationship, upgraded to an eager load relationship:

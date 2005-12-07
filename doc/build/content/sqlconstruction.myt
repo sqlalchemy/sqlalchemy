@@ -313,6 +313,20 @@ ORDER BY users.user_id DESC, users.user_name ASC
 </&>        
             </&>        
         </&>
+        <&|doclib.myt:item, name="options", description="DISTINCT, LIMIT and OFFSET" &>
+        These are specified as keyword arguments:
+        <&|formatting.myt:code &>
+            <&formatting.myt:poplink&>c = select([users.c.user_name], distinct=True).execute()
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT DISTINCT users.user_name FROM users
+</&>
+            <&formatting.myt:poplink&>c = users.select(limit=10, offset=20).execute()
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT users.user_id, users.user_name, users.password FROM users LIMIT 10 OFFSET 20
+</&>
+        </&>
+        </&>
+        The Oracle driver does not support LIMIT and OFFSET directly, but instead wraps the generated query into a subquery and uses the "rownum" variable to control the rows selected (this is somewhat experimental).
     </&>
 
     <&|doclib.myt:item, name="join", description="Inner and Outer Joins" &>

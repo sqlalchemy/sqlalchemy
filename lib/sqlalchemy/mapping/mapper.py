@@ -71,7 +71,7 @@ class Mapper(object):
             table = sql.join(table, inherits.table, inherit_condition)
             
         self.table = table
-            
+        
         # locate all tables contained within the "table" passed in, which
         # may be a join or other construct
         tf = TableFinder()
@@ -158,6 +158,7 @@ class Mapper(object):
                 
         if not hasattr(self.class_, '_mapper') or self.is_primary or not mapper_registry.has_key(self.class_._mapper) or (inherits is not None and inherits._is_primary_mapper()):
             self._init_class()
+       
         
     engines = property(lambda s: [t.engine for t in s.tables])
 
@@ -208,7 +209,10 @@ class Mapper(object):
         prop.init(key, self)
 
     
-    def instances(self, cursor, *mappers):
+    def instances(self, cursor, *mappers, **kwargs):
+        limit = kwargs.get('limit', None)
+        offset = kwargs.get('offset', None)
+        
         result = util.HistoryArraySet()
         if len(mappers):
             otherresults = []
@@ -292,7 +296,7 @@ class Mapper(object):
         else:
             return None
             
-    def select(self, arg = None, **params):
+    def select(self, arg = None, **kwargs):
         """selects instances of the object from the database.  
         
         arg can be any ClauseElement, which will form the criterion with which to
@@ -303,13 +307,16 @@ class Mapper(object):
         in this case, the developer must insure that an adequate set of columns exists in the 
         rowset with which to build new object instances."""
         if arg is not None and isinstance(arg, sql.Select):
-            return self.select_statement(arg, **params)
+            return self.select_statement(arg, **kwargs)
         else:
-            return self.select_whereclause(arg, **params)
+            return self.select_whereclause(arg, **kwargs)
 
-    def select_whereclause(self, whereclause = None, order_by = None, **params):
-        statement = self._compile(whereclause, order_by = order_by)
-        return self.select_statement(statement, **params)
+    def select_whereclause(self, whereclause = None, params=None, **kwargs):
+        statement = self._compile(whereclause, **kwargs)
+        if params is not None:
+            return self.select_statement(statement, **params)
+        else:
+            return self.select_statement(statement)
 
     def select_statement(self, statement, **params):
         statement.use_labels = True
@@ -438,12 +445,23 @@ class Mapper(object):
         for prop in self.props.values():
             prop.register_deleted(obj, uow)
             
-    def _compile(self, whereclause = None, order_by = None, **options):
-        statement = sql.select([self.table], whereclause, order_by = order_by)
-        statement.order_by(self.table.rowid_column)
+    def _compile(self, whereclause = None, **kwargs):
+        if getattr(self, '_has_eager', False) and (kwargs.has_key('limit') or kwargs.has_key('offset')):
+            s2 = sql.select(self.table.primary_key, whereclause, **kwargs)
+            s2.order_by(self.table.rowid_column)
+            s3 = s2.alias('rowcount')
+            crit = []
+            for i in range(0, len(self.table.primary_key)):
+                crit.append(s3.primary_key[i] == self.table.primary_key[i])
+            statement = sql.select([self.table], sql.and_(*crit))
+            if kwargs.has_key('order_by'):
+                statement.order_by(kwargs['order_by'])
+        else:
+            statement = sql.select([self.table], whereclause, **kwargs)
+            statement.order_by(self.table.rowid_column)
         # plugin point
         for key, value in self.props.iteritems():
-            value.setup(key, statement, **options) 
+            value.setup(key, statement, **kwargs) 
         statement.use_labels = True
         return statement
 

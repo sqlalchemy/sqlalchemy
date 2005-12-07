@@ -249,7 +249,7 @@ class EagerTest(MapperSuperTest):
         m = mapper(Address, addresses)
 
         m = mapper(User, users, properties = dict(
-            addresses = relation(m, lazy = False, selectalias='lala', order_by=[desc(addresses.c.email_address)]),
+            addresses = relation(m, lazy = False, order_by=[desc(addresses.c.email_address)]),
         ))
         l = m.select()
 
