@@ -456,6 +456,7 @@ class Mapper(object):
             statement = sql.select([self.table], sql.and_(*crit))
             if kwargs.has_key('order_by'):
                 statement.order_by(kwargs['order_by'])
+            statement.order_by(self.table.rowid_column)
         else:
             statement = sql.select([self.table], whereclause, **kwargs)
             statement.order_by(self.table.rowid_column)
