@@ -146,7 +146,7 @@ FROM users ORDER BY users.oid
 {}
 </&>
 </&>
-However, things get very tricky when dealing with eager relationships, since a straight LIMIT is not accurate with regards to child items.  So here is what SQLAlchemy will do when you use limit or offset with an eager relationship:
+However, things get tricky when dealing with eager relationships, since a straight LIMIT of rows does not represent the count of items when joining against other tables to load related items as well.  So here is what SQLAlchemy will do when you use limit or offset with an eager relationship:
     <&|formatting.myt:code&>
         class User(object):
             pass
@@ -155,7 +155,7 @@ However, things get very tricky when dealing with eager relationships, since a s
         m = mapper(User, users, properties={
             'addresses' : relation(Address, addresses, lazy=False)
         })
-        r = m.select(limit=20, offset=10)
+        r = m.select(User.c.user_name.like('F%'), limit=20, offset=10)
 <&|formatting.myt:poppedcode, link="sql" &>
 SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
 users.password AS users_password, addresses.address_id AS addresses_address_id, 
@@ -163,14 +163,15 @@ addresses.user_id AS addresses_user_id, addresses.street AS addresses_street,
 addresses.city AS addresses_city, addresses.state AS addresses_state, 
 addresses.zip AS addresses_zip 
 FROM 
-(SELECT users.user_id FROM users ORDER BY users.oid LIMIT 20 OFFSET 10) AS rowcount, 
+(SELECT users.user_id FROM users WHERE users.user_name LIKE %(users_user_name)s
+ORDER BY users.oid LIMIT 20 OFFSET 10) AS rowcount, 
  users LEFT OUTER JOIN addresses ON users.user_id = addresses.user_id 
-WHERE rowcount.user_id = users.user_id ORDER BY addresses.oid
-{}
+WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
+{'users_user_name': 'F%'}
     
     </&>
     </&>
-    <p>A subquery is used to create the limited set of rows, which is then joined to the larger eager query.</p>
+    <p>The main WHERE clause as well as the limiting clauses are coerced into a subquery; this subquery represents the desired result of objects.  A containing query, which handles the eager relationships, is joined against the subquery to produce the result.</p>
 </&>
 <&|doclib.myt:item, name="options", description="Mapper Options" &>
     <P>The <span class="codeline">options</span> method of mapper produces a copy of the mapper, with modified properties and/or options.  This makes it easy to take a mapper and just change a few things on it.  The method takes a variable number of <span class="codeline">MapperOption</span> objects which know how to change specific things about the mapper.  The four available options are <span class="codeline">eagerload</span>, <span class="codeline">lazyload</span>, <span class="codeline">noload</span> and <span class="codeline">extension</span>.</p>
