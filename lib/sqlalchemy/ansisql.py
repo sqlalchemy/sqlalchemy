@@ -186,8 +186,7 @@ class ANSICompiler(sql.Compiled):
             text += " " + tup[0] + " " + self.get_str(tup[1])
         self.strings[cs] = text
         self.froms[cs] = "(" + text + ")"
-        print "cs from text:" + self.froms[cs]
-            
+
     def visit_binary(self, binary):
         result = self.get_str(binary.left)
         if binary.operator is not None:
@@ -279,12 +278,9 @@ class ANSICompiler(sql.Compiled):
             text += self.limit_clause(select)
             
         if getattr(select, 'issubquery', False):
-            print "subquery"
             self.strings[select] = "(" + text + ")"
         else:
-            print "not a subquery"
             self.strings[select] = text
-
         self.froms[select] = "(" + text + ")"
 
     def limit_clause(self, select):

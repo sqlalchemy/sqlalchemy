@@ -451,13 +451,13 @@ class Mapper(object):
         with keywords like distinct, limit and offset and the mapper defines eager loads."""
         return (
             getattr(self, '_has_eager', False)
-            and (kwargs.has_key('limit') or kwargs.has_key('offset') or kwargs.get('distinct', True))
+            and (kwargs.has_key('limit') or kwargs.has_key('offset') or kwargs.get('distinct', False))
         )
         
     def _compile(self, whereclause = None, **kwargs):
         if self._should_nest(**kwargs):
             s2 = sql.select(self.table.primary_key, whereclause, use_labels=True, **kwargs)
-            if not kwargs.get('distinct', True):
+            if not kwargs.get('distinct', False):
                 s2.order_by(self.table.rowid_column)
             s3 = s2.alias('rowcount')
             crit = []
@@ -469,7 +469,7 @@ class Mapper(object):
             statement.order_by(self.table.rowid_column)
         else:
             statement = sql.select([self.table], whereclause, use_labels=True, **kwargs)
-            if not kwargs.get('distinct', True):
+            if not kwargs.get('distinct', False):
                 statement.order_by(self.table.rowid_column)
         # plugin point
         

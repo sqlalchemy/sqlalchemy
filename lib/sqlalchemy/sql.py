@@ -373,25 +373,18 @@ class ClauseElement(object):
 class CompareMixin(object):
     def __lt__(self, other):
         return self._compare('<', other)
-        
     def __le__(self, other):
         return self._compare('<=', other)
-
     def __eq__(self, other):
         return self._compare('=', other)
-
     def __ne__(self, other):
         return self._compare('!=', other)
-
     def __gt__(self, other):
         return self._compare('>', other)
-
     def __ge__(self, other):
         return self._compare('>=', other)
-
     def like(self, other):
         return self._compare('LIKE', other)
-
     def in_(self, *other):
         if len(other) == 0:
             return self.__eq__(None)
@@ -404,13 +397,10 @@ class CompareMixin(object):
             # so put them in a UNION.  if theres only one, you just get one SELECT 
             # statement out of it.
             return self._compare('IN', union(*other))
-
     def startswith(self, other):
         return self._compare('LIKE', str(other) + "%")
-    
     def endswith(self, other):
         return self._compare('LIKE', "%" + str(other))
-
     # and here come the math operators:
     def __add__(self, other):
         return self._compare('+', other)
@@ -432,8 +422,6 @@ class CompareMixin(object):
                 obj = BindParamClause('literal', obj, shortname=None, type=self.type)
 
         return BinaryClause(self, obj, operator)
-
-        
 
 class FromClause(ClauseElement):
     """represents a FROM clause element in a SQL statement."""
@@ -500,8 +488,7 @@ class Null(ClauseElement):
         return []
     def hash_key(self):
         return "Null"
-    
-        
+
 class ClauseList(ClauseElement):
     """describes a list of clauses.  by default, is comma-separated, 
     such as a column listing."""
@@ -570,7 +557,8 @@ class Function(ClauseList, CompareMixin):
                 clause = BindParamClause(self.name, clause, shortname=self.name, type=None)
         self.clauses.append(clause)
     def copy_container(self):
-        return self
+        clauses = [clause.copy_container() for clause in self.clauses]
+        return Function(self.name, label=self.label, type=self.type, *clauses)
     def accept_visitor(self, visitor):
         for c in self.clauses:
             c.accept_visitor(visitor)
@@ -591,27 +579,21 @@ class Function(ClauseList, CompareMixin):
         
 class BinaryClause(ClauseElement, CompareMixin):
     """represents two clauses with an operator in between"""
-    
     def __init__(self, left, right, operator):
         self.left = left
         self.right = right
         self.operator = operator
         self.parens = False
-
     def copy_container(self):
         return BinaryClause(self.left.copy_container(), self.right.copy_container(), self.operator)
-        
     def _get_from_objects(self):
         return self.left._get_from_objects() + self.right._get_from_objects()
-
     def hash_key(self):
         return self.left.hash_key() + self.operator + self.right.hash_key()
-        
     def accept_visitor(self, visitor):
         self.left.accept_visitor(visitor)
         self.right.accept_visitor(visitor)
         visitor.visit_binary(self)
-
     def swap(self):
         c = self.left
         self.left = self.right
@@ -901,7 +883,8 @@ class TableImpl(Selectable):
     def drop(self, **params):
         self.table.engine.drop(self.table)
 
-class TailClauseMixin(object):
+class SelectBaseMixin(object):
+    """base class for Select and CompoundSelects"""
     def order_by(self, *clauses):
         self._append_clause('order_by_clause', "ORDER BY", *clauses)
     def group_by(self, *clauses):
@@ -923,8 +906,15 @@ class TailClauseMixin(object):
         if type(clause) == str:
             clause = TextClause(clause)
         self.clauses.append((keyword, clause))
+    def select(self, whereclauses = None, **params):
+        return select([self], whereclauses, **params)
+    def _get_from_objects(self):
+        if self.is_where:
+            return []
+        else:
+            return [self]
             
-class CompoundSelect(Selectable, TailClauseMixin):
+class CompoundSelect(SelectBaseMixin, Selectable):
     def __init__(self, keyword, *selects, **kwargs):
         self.id = "Compound(%d)" % id(self)
         self.keyword = keyword
@@ -956,11 +946,9 @@ class CompoundSelect(Selectable, TailClauseMixin):
                 return e
         else:
             return None
-    def _get_from_objects(self):
-        return [self]
        
-class Select(Selectable, TailClauseMixin):
-    """finally, represents a SELECT statement, with appendable clauses, as well as 
+class Select(SelectBaseMixin, Selectable):
+    """represents a SELECT statement, with appendable clauses, as well as 
     the ability to execute itself and return a result set."""
     def __init__(self, columns=None, whereclause = None, from_obj = [], order_by = None, group_by=None, having=None, use_labels = False, distinct=False, engine = None, limit=None, offset=None):
         self._columns = util.OrderedProperties()
@@ -1012,12 +1000,14 @@ class Select(Selectable, TailClauseMixin):
         def __init__(self, select, is_where):
             self.select = select
             self.is_where = is_where
+        def visit_compound_select(self, cs):
+            self.visit_select(cs)
         def visit_select(self, select):
             if select is self.select:
                 return
             select.is_where = self.is_where
             select.issubquery = True
-            if select._correlated is None:
+            if getattr(select, '_correlated', None) is None:
                 select._correlated = self.select._froms
 
     def append_column(self, column):
@@ -1074,7 +1064,7 @@ class Select(Selectable, TailClauseMixin):
     froms = property(lambda s: s._get_froms())
 
     def accept_visitor(self, visitor):
-        for f in self.froms:
+        for f in self._get_froms():
             f.accept_visitor(visitor)
         if self.whereclause is not None:
             self.whereclause.accept_visitor(visitor)
@@ -1082,11 +1072,8 @@ class Select(Selectable, TailClauseMixin):
             self.having.accept_visitor(visitor)
         for tup in self.clauses:
             tup[1].accept_visitor(visitor)
-            
         visitor.visit_select(self)
     
-    def select(self, whereclauses = None, **params):
-        return select([self], whereclauses, **params)
     def union(self, other, **kwargs):
         return union(self, other, **kwargs)
     def union_all(self, other, **kwargs):
@@ -1098,22 +1085,13 @@ class Select(Selectable, TailClauseMixin):
         
         if self._engine is not None:
             return self._engine
-        
         for f in self._froms.values():
             e = f.engine
             if e is not None: 
                 self._engine = e
                 return e
-            
         return None
-
-#    engine = property(lambda s: s._find_engine())
     
-    def _get_from_objects(self):
-        if self.is_where:
-            return []
-        else:
-            return [self]
 
 
 class UpdateBase(ClauseElement):
