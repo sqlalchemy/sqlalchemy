@@ -160,7 +160,8 @@ class Order(object):
 
 class Item(object):
     def __repr__(self):
-        return "Item: " + repr(self.item_name) + " " +repr(getattr(self, 'keywords', None))
+#        return repr(self.__dict__)
+        return "Item: " + repr(self.item_name) + " " + repr(getattr(self, 'keywords', None))
     
 class Keyword(object):
     def __repr__(self):
