@@ -907,6 +907,12 @@ class TailClauseMixin(object):
     def group_by(self, *clauses):
         self._append_clause('group_by_clause', "GROUP BY", *clauses)
     def _append_clause(self, attribute, prefix, *clauses):
+        if len(clauses) == 1 and clauses[0] is None:
+            try:
+                delattr(self, attribute)
+            except AttributeError:
+                pass
+            return
         if not hasattr(self, attribute):
             l = ClauseList(*clauses)
             setattr(self, attribute, l)
@@ -920,8 +926,14 @@ class TailClauseMixin(object):
             
 class CompoundSelect(Selectable, TailClauseMixin):
     def __init__(self, keyword, *selects, **kwargs):
+        self.id = "Compound(%d)" % id(self)
         self.keyword = keyword
         self.selects = selects
+        self.use_labels = kwargs.pop('use_labels', False)
+        self.rowid_column = selects[0].rowid_column
+        for s in self.selects:
+            s.order_by(None)
+            s.group_by(None)
         self.clauses = []
         order_by = kwargs.get('order_by', None)
         if order_by:
@@ -944,7 +956,9 @@ class CompoundSelect(Selectable, TailClauseMixin):
                 return e
         else:
             return None
-        
+    def _get_from_objects(self):
+        return [self]
+       
 class Select(Selectable, TailClauseMixin):
     """finally, represents a SELECT statement, with appendable clauses, as well as 
     the ability to execute itself and return a result set."""

@@ -165,10 +165,11 @@ class ANSICompiler(sql.Compiled):
         else:
             sep = " " + compound.operator + " "
         
+        s = string.join([self.get_str(c) for c in compound.clauses], sep)
         if compound.parens:
-            self.strings[compound] = "(" + string.join([self.get_str(c) for c in compound.clauses], sep) + ")"
+            self.strings[compound] = "(" + s + ")"
         else:
-            self.strings[compound] = string.join([self.get_str(c) for c in compound.clauses], sep)
+            self.strings[compound] = s
         
     def visit_clauselist(self, list):
         if list.parens:
@@ -184,6 +185,8 @@ class ANSICompiler(sql.Compiled):
         for tup in cs.clauses:
             text += " " + tup[0] + " " + self.get_str(tup[1])
         self.strings[cs] = text
+        self.froms[cs] = "(" + text + ")"
+        print "cs from text:" + self.froms[cs]
             
     def visit_binary(self, binary):
         result = self.get_str(binary.left)
@@ -276,8 +279,10 @@ class ANSICompiler(sql.Compiled):
             text += self.limit_clause(select)
             
         if getattr(select, 'issubquery', False):
+            print "subquery"
             self.strings[select] = "(" + text + ")"
         else:
+            print "not a subquery"
             self.strings[select] = text
 
         self.froms[select] = "(" + text + ")"

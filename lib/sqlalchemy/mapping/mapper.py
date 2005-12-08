@@ -306,7 +306,7 @@ class Mapper(object):
         will be executed and its resulting rowset used to build new object instances.  
         in this case, the developer must insure that an adequate set of columns exists in the 
         rowset with which to build new object instances."""
-        if arg is not None and isinstance(arg, sql.Select):
+        if arg is not None and isinstance(arg, sql.Selectable):
             return self.select_statement(arg, **kwargs)
         else:
             return self.select_whereclause(arg, **kwargs)
@@ -444,26 +444,38 @@ class Mapper(object):
     def register_deleted(self, obj, uow):
         for prop in self.props.values():
             prop.register_deleted(obj, uow)
-            
+    
+    def _should_nest(self, **kwargs):
+        """returns True if the given statement options indicate that we should "nest" the
+        generated query as a subquery inside of a larger eager-loading query.  this is used
+        with keywords like distinct, limit and offset and the mapper defines eager loads."""
+        return (
+            getattr(self, '_has_eager', False)
+            and (kwargs.has_key('limit') or kwargs.has_key('offset') or kwargs.get('distinct', True))
+        )
+        
     def _compile(self, whereclause = None, **kwargs):
-        if getattr(self, '_has_eager', False) and (kwargs.has_key('limit') or kwargs.has_key('offset')):
-            s2 = sql.select(self.table.primary_key, whereclause, **kwargs)
-            s2.order_by(self.table.rowid_column)
+        if self._should_nest(**kwargs):
+            s2 = sql.select(self.table.primary_key, whereclause, use_labels=True, **kwargs)
+            if not kwargs.get('distinct', True):
+                s2.order_by(self.table.rowid_column)
             s3 = s2.alias('rowcount')
             crit = []
             for i in range(0, len(self.table.primary_key)):
                 crit.append(s3.primary_key[i] == self.table.primary_key[i])
-            statement = sql.select([self.table], sql.and_(*crit))
+            statement = sql.select([self.table], sql.and_(*crit), use_labels=True)
             if kwargs.has_key('order_by'):
-                statement.order_by(kwargs['order_by'])
+                statement.order_by(*kwargs['order_by'])
             statement.order_by(self.table.rowid_column)
         else:
-            statement = sql.select([self.table], whereclause, **kwargs)
-            statement.order_by(self.table.rowid_column)
+            statement = sql.select([self.table], whereclause, use_labels=True, **kwargs)
+            if not kwargs.get('distinct', True):
+                statement.order_by(self.table.rowid_column)
         # plugin point
+        
+        # give all the attached properties a chance to modify the query
         for key, value in self.props.iteritems():
             value.setup(key, statement, **kwargs) 
-        statement.use_labels = True
         return statement
 
     def _identity_key(self, row):
