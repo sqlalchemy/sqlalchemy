@@ -123,7 +123,7 @@ class ListElement(util.HistoryArraySet):
         self.obj.__dict__[self.key] = value
         self.set_data(value)
     def delattr(self, value):
-        pass    
+        pass
     def _setrecord(self, item):
         res = util.HistoryArraySet._setrecord(self, item)
         if res:
@@ -194,34 +194,33 @@ class AttributeExtension(object):
         pass
     def set(self, obj, child, oldchild):
         pass
-
+        
 class ListBackrefExtension(AttributeExtension):
     def __init__(self, key):
         self.key = key
     def append(self, obj, child):
-        getattr(child, self.key).append_nohistory(obj)
+        getattr(child, self.key).append(obj)
     def delete(self, obj, child):
-        getattr(child, self.key).remove_nohistory(obj)
-
+        getattr(child, self.key).remove(obj)
 class OTMBackrefExtension(AttributeExtension):
     def __init__(self, key):
         self.key = key
     def append(self, obj, child):
         prop = child.__class__._attribute_manager.get_history(child, self.key)
-        prop.setattr_clean(obj)
+        prop.setattr(obj)
 #        prop.setattr(obj)
     def delete(self, obj, child):
         prop = child.__class__._attribute_manager.get_history(child, self.key)
-        prop.delattr_clean()
+        prop.delattr()
 
 class MTOBackrefExtension(AttributeExtension):
     def __init__(self, key):
         self.key = key
     def set(self, obj, child, oldchild):
         if oldchild is not None:
-            getattr(oldchild, self.key).remove_nohistory(obj)
+            getattr(oldchild, self.key).remove(obj)
         if child is not None:
-            getattr(child, self.key).append_nohistory(obj)
+            getattr(child, self.key).append(obj)
 #            getattr(child, self.key).append(obj)
             
 class AttributeManager(object):

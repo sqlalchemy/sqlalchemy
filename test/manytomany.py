@@ -98,12 +98,12 @@ class ManyToManyTest(testbase.AssertMixin):
         "break off" a new "mapper stub" to indicate a third depedendent processor."""
         Place.mapper = mapper(Place, place)
         Transition.mapper = mapper(Transition, transition, properties = dict(
-            inputs = relation(Place.mapper, place_output, lazy=True, attributeext=attr.ListBackrefExtension('inputs')),
-            outputs = relation(Place.mapper, place_input, lazy=True, attributeext=attr.ListBackrefExtension('outputs')),
+            inputs = relation(Place.mapper, place_output, lazy=True, backref='inputs'),
+            outputs = relation(Place.mapper, place_input, lazy=True, backref='outputs'),
             )
         )
-        Place.mapper.add_property('inputs', relation(Transition.mapper, place_output, lazy=True, attributeext=attr.ListBackrefExtension('inputs')))
-        Place.mapper.add_property('outputs', relation(Transition.mapper, place_input, lazy=True, attributeext=attr.ListBackrefExtension('outputs')))
+        #Place.mapper.add_property('inputs', relation(Transition.mapper, place_output, lazy=True, attributeext=attr.ListBackrefExtension('inputs')))
+        #Place.mapper.add_property('outputs', relation(Transition.mapper, place_input, lazy=True, attributeext=attr.ListBackrefExtension('outputs')))
 
         Place.eagermapper = Place.mapper.options(
             eagerload('inputs', selectalias='ip_alias'), 

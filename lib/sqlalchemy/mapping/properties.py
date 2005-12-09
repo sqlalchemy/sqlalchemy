@@ -21,6 +21,7 @@ import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
 import sqlalchemy.engine as engine
 import sqlalchemy.util as util
+import sqlalchemy.attributes as attributes
 import mapper
 import objectstore
 import random
@@ -56,13 +57,13 @@ class ColumnProperty(MapperProperty):
 mapper.ColumnProperty = ColumnProperty
 
 class PropertyLoader(MapperProperty):
-    LEFT = 0
-    RIGHT = 1
-    CENTER = 2
+    LEFT = 0  # one-to-many
+    RIGHT = 1  # many-to-one
+    CENTER = 2  # many-to-many
 
     """describes an object property that holds a single item or list of items that correspond
     to a related database table."""
-    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, live=False, isoption=False, association=None, selectalias=None, order_by=None, attributeext=None):
+    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, live=False, isoption=False, association=None, selectalias=None, order_by=None, attributeext=None, backref=None, is_backref=False):
         self.uselist = uselist
         self.argument = argument
         self.secondary = secondary
@@ -76,6 +77,8 @@ class PropertyLoader(MapperProperty):
         self.selectalias = selectalias
         self.order_by=util.to_list(order_by)
         self.attributeext=attributeext
+        self.backref = backref
+        self.is_backref = is_backref
         self._hash_key = "%s(%s, %s, %s, %s, %s, %s, %s, %s)" % (self.__class__.__name__, hash_key(self.argument), hash_key(secondary), hash_key(primaryjoin), hash_key(secondaryjoin), hash_key(foreignkey), repr(uselist), repr(private), hash_key(self.order_by))
 
     def _copy(self):
@@ -126,10 +129,31 @@ class PropertyLoader(MapperProperty):
             self.uselist = True
 
         self._compile_synchronizers()
-                
+
+        # primary property handler, set up class attributes
         if self._is_primary():
+            # if a backref name is defined, set up an extension to populate 
+            # attributes in the other direction
+            if self.backref is not None:
+                if self.direction == PropertyLoader.LEFT:
+                    self.attributeext = attributes.OTMBackrefExtension(self.backref)
+                elif self.direction == PropertyLoader.RIGHT:
+                    self.attributeext = attributes.MTOBackrefExtension(self.backref)
+                else:
+                    self.attributeext = attributes.ListBackrefExtension(self.backref)
+        
+            # set our class attribute
             self._set_class_attribute(parent.class_, key)
-    
+
+            if self.backref is not None:
+                # try to set a LazyLoader on our mapper referencing the parent mapper
+                if not self.mapper.props.has_key(self.backref):
+                    self.mapper.add_property(self.backref, LazyLoader(self.parent, self.secondary, self.primaryjoin, self.secondaryjoin, backref=self.key, is_backref=True));
+                else:
+                    # else set one of us as the "backreference"
+                    if not self.mapper.props[self.backref].is_backref:
+                        self.is_backref=True
+                    
     def _is_primary(self):
         """a return value of True indicates we are the primary PropertyLoader for this loader's
         attribute on our mapper's class.  It means we can set the object's attribute behavior
@@ -277,6 +301,11 @@ class PropertyLoader(MapperProperty):
             # or delete any objects, but just marks a dependency on the two
             # related mappers.  its dependency processor then populates the
             # association table.
+            
+            if self.is_backref:
+                # if we are the "backref" half of a two-way backref 
+                # relationship, let the other mapper handle inserting the rows
+                return
             stub = PropertyLoader.MapperStub()
             uowcommit.register_dependency(self.parent, stub)
             uowcommit.register_dependency(self.mapper, stub)
@@ -674,10 +703,11 @@ class EagerLazyOption(MapperOption):
         else:
             class_ = LazyLoader
 
-        for arg in ('primaryjoin', 'secondaryjoin', 'foreignkey', 'uselist', 'private', 'live', 'isoption', 'association', 'selectalias', 'order_by', 'attributeext'):
-            self.kwargs.setdefault(arg, getattr(oldprop, arg))
+        # create a clone of the class using mostly the arguments from the original
         self.kwargs['isoption'] = True
-        mapper.set_property(key, class_(submapper, oldprop.secondary, **self.kwargs ))
+        self.kwargs['argument'] = submapper
+        kwargs = util.constructor_args(oldprop, **self.kwargs)
+        mapper.set_property(key, class_(**kwargs ))
 
 class Aliasizer(sql.ClauseVisitor):
     """converts a table instance within an expression to be an alias of that table."""

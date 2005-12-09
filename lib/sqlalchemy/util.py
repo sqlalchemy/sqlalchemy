@@ -16,7 +16,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 __all__ = ['OrderedProperties', 'OrderedDict']
-import thread, weakref, UserList,string
+import thread, weakref, UserList,string, inspect
 
 def to_list(x):
     if x is None:
@@ -345,3 +345,39 @@ class ScopedRegistry(object):
     def _clear_application(self):
         self.application = createfunc()
                 
+
+
+def constructor_args(instance, **kwargs):
+    classobj = instance.__class__
+        
+    argspec = inspect.getargspec(classobj.__init__.im_func)
+
+    argnames = argspec[0] or []
+    defaultvalues = argspec[3] or []
+
+    (requiredargs, namedargs) = (
+            argnames[0:len(argnames) - len(defaultvalues)], 
+            argnames[len(argnames) - len(defaultvalues):]
+            )
+
+    newparams = {}
+
+    for arg in requiredargs:
+        if arg == 'self': 
+            continue
+        elif kwargs.has_key(arg):
+            newparams[arg] = kwargs[arg]
+        else:
+            newparams[arg] = getattr(instance, arg)
+
+    for arg in namedargs:
+        if kwargs.has_key(arg):
+            newparams[arg] = kwargs[arg]
+        else:
+            if hasattr(instance, arg):
+                newparams[arg] = getattr(instance, arg)
+            else:
+                raise "instance has no attribute '%s'" % arg
+
+    return newparams
+    

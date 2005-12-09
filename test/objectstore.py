@@ -57,9 +57,8 @@ class HistoryTest(AssertMixin):
         class Address(object):pass
         am = mapper(Address, addresses)
         m = mapper(User, users, properties = dict(
-            addresses = relation(am, attributeext=attributes.OTMBackrefExtension('user')))
+            addresses = relation(am, backref='user'))
         )
-        am.add_property('user', relation(m, attributeext=attributes.MTOBackrefExtension('addresses')))
         
         u = User()
         a = Address()
@@ -68,6 +67,7 @@ class HistoryTest(AssertMixin):
         #print repr(u.addresses.added_items())
         self.assert_(u.addresses == [a])
         objectstore.commit()
+
         
 
 class PKTest(AssertMixin):
