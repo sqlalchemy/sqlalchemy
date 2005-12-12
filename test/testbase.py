@@ -7,6 +7,7 @@ import sqlalchemy.databases.postgres as postgres
 #import sqlalchemy.databases.mysql as mysql
 
 echo = True
+#echo = 'debug'
 db = None
 
 

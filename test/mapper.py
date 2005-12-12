@@ -94,8 +94,8 @@ class MapperTest(MapperSuperTest):
     def testorderby(self):
         # TODO: make a unit test out of these various combinations
 #        m = mapper(User, users, order_by=desc(users.c.user_name))
-#        m = mapper(User, users, order_by=None)
-        m = mapper(User, users)
+        m = mapper(User, users, order_by=None)
+#        m = mapper(User, users)
         
 #        l = m.select(order_by=[desc(users.c.user_name), asc(users.c.user_id)])
         l = m.select()

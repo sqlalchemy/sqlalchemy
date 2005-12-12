@@ -288,7 +288,7 @@ class SQLEngine(schema.SchemaEngine):
         try:
             self.pre_exec(connection, c, statement, parameters, echo = echo, **kwargs)
 
-            if echo is True or self.echo:
+            if echo is True or self.echo is not False:
                 self.log(statement)
                 self.log(repr(parameters))
             if isinstance(parameters, list) and len(parameters) > 0 and (isinstance(parameters[0], list) or isinstance(parameters[0], dict)):
@@ -336,7 +336,7 @@ class ResultProxy:
     
     def __init__(self, cursor, engine, typemap = None):
         self.cursor = cursor
-        self.echo = engine.echo
+        self.echo = engine.echo=="debug"
         self.rowcount = engine.context.rowcount
         metadata = cursor.description
         self.props = {}
