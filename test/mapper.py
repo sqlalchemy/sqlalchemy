@@ -91,6 +91,15 @@ class MapperTest(MapperSuperTest):
         l = m.select(users.c.user_name.endswith('ed'))
         self.assert_result(l, User, *user_result[1:3])
 
+    def testorderby(self):
+        # TODO: make a unit test out of these various combinations
+#        m = mapper(User, users, order_by=desc(users.c.user_name))
+#        m = mapper(User, users, order_by=None)
+        m = mapper(User, users)
+        
+#        l = m.select(order_by=[desc(users.c.user_name), asc(users.c.user_id)])
+        l = m.select()
+        
     def testmultitable(self):
         usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
         m = mapper(User, usersaddresses, primarytable = users, primary_key=[users.c.user_id])

@@ -502,7 +502,7 @@ class LazyLoader(PropertyLoader):
                 elif self.secondary is not None:
                     order_by = [self.secondary.rowid_column]
                 else:
-                    order_by = []
+                    order_by = None
                 result = self.mapper.select(self.lazywhere, order_by=order_by, params=params)
             else:
                 result = []

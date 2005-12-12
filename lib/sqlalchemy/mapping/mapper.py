@@ -40,6 +40,7 @@ class Mapper(object):
                 inherits = None, 
                 inherit_condition = None, 
                 extension = None,
+                order_by = False,
                 **kwargs):
 
         self.copyargs = {
@@ -51,7 +52,8 @@ class Mapper(object):
             'is_primary':False,
             'inherits':inherits,
             'inherit_condition':inherit_condition,
-            'extension':extension
+            'extension':extension,
+            'order_by':order_by
         }
         
         if extension is None:
@@ -61,6 +63,7 @@ class Mapper(object):
         self.hashkey = hashkey
         self.class_ = class_
         self.is_primary = is_primary
+        self.order_by = order_by
         
         if not issubclass(class_, object):
             raise "Class '%s' is not a new-style class" % class_.__name__
@@ -455,6 +458,15 @@ class Mapper(object):
         )
         
     def _compile(self, whereclause = None, **kwargs):
+        no_sort = kwargs.pop('no_sort', False) or (self.order_by is None)
+        if not no_sort:
+            if self.order_by:
+                order_by = self.order_by
+            else:
+                order_by = self.table.rowid_column
+        else:
+            order_by = None
+            
         if self._should_nest(**kwargs):
             s2 = sql.select(self.table.primary_key, whereclause, use_labels=True, **kwargs)
             if not kwargs.get('distinct', False):
@@ -466,11 +478,12 @@ class Mapper(object):
             statement = sql.select([self.table], sql.and_(*crit), use_labels=True)
             if kwargs.has_key('order_by'):
                 statement.order_by(*kwargs['order_by'])
-            statement.order_by(self.table.rowid_column)
+            else:
+                statement.order_by(order_by)
         else:
             statement = sql.select([self.table], whereclause, use_labels=True, **kwargs)
-            if not kwargs.get('distinct', False):
-                statement.order_by(self.table.rowid_column)
+            if not kwargs.get('distinct', False) and order_by is not None and kwargs.get('order_by', None) is None:
+                statement.order_by(order_by)
         # plugin point
         
         # give all the attached properties a chance to modify the query
