@@ -99,6 +99,8 @@ class MapperTest(MapperSuperTest):
         
 #        l = m.select(order_by=[desc(users.c.user_name), asc(users.c.user_id)])
         l = m.select()
+#        l = m.select(order_by=[])
+#        l = m.select(order_by=None)
         
     def testmultitable(self):
         usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
