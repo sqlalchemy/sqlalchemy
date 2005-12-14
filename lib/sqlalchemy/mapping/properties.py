@@ -254,6 +254,34 @@ class PropertyLoader(MapperProperty):
         if self.secondaryjoin is not None:
             self.secondaryjoin.accept_visitor(processor)
 
+    def get_criterion(self, key, value):
+        """given a key/value pair, determines if this PropertyLoader's mapper contains a key of the
+        given name in its property list, or if this PropertyLoader's association mapper, if any, 
+        contains a key of the given name in its property list, and returns a WHERE clause against
+        the given value if found.
+        
+        this is called by a mappers select_by method to formulate a set of key/value pairs into 
+        a WHERE criterion that spans multiple tables if needed."""
+        # TODO: optimization: change mapper to accept a WHERE clause with separate bind parameters
+        # then cache the generated WHERE clauses here, since the creation + the copy_container 
+        # is an extra expense
+        if self.mapper.props.has_key(key):
+            if self.secondaryjoin is not None:
+                c = (self.mapper.props[key].columns[0]==value) & self.primaryjoin & self.secondaryjoin
+            else:
+                c = (self.mapper.props[key].columns[0]==value) & self.primaryjoin
+            return c.copy_container()
+        elif self.mapper.table.c.has_key(key):
+            if self.secondaryjoin is not None:
+                c = (self.mapper.table.c[key].columns[0]==value) & self.primaryjoin & self.secondaryjoin
+            else:
+                c = (self.mapper.table.c[key].columns[0]==value) & self.primaryjoin
+            return c.copy_container()
+        elif self.association is not None:
+            c = self.mapper._get_criterion(key, value) & self.primaryjoin
+            return c.copy_container()
+
+        return None
 
     def register_deleted(self, obj, uow):
         if not self.private:

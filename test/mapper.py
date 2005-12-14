@@ -83,6 +83,20 @@ class MapperTest(MapperSuperTest):
         u2 = m.get(7)
         self.assert_(u is not u2)
 
+    def testmagic(self):
+        m = mapper(User, users, properties = {
+            'addresses' : relation(Address, addresses)
+        })
+        l = m.select_by(user_name='fred')
+        self.assert_result(l, User, *[{'user_id':9}])
+        u = l[0]
+        
+        u2 = m.get_by_user_name('fred')
+        self.assert_(u is u2)
+        
+        l = m.select_by(email_address='ed@bettyboop.com')
+        self.assert_result(l, User, *[{'user_id':8}])
+
     def testload(self):
         """tests loading rows with a mapper and producing object instances"""
         m = mapper(User, users)

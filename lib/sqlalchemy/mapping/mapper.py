@@ -290,6 +290,79 @@ class Mapper(object):
                 option.process(mapper)
             return mapper_registry.setdefault(hashkey, mapper)
 
+    def get_by(self, **params):
+        """returns a single object instance based on the given key/value criterion. 
+        this is either the first value in the result list, or None if the list is 
+        empty.
+        
+        the keys are mapped to property or column names mapped by this mapper's Table, and the values
+        are coerced into a WHERE clause separated by AND operators.  If the local property/column
+        names dont contain the key, a search will be performed against this mapper's immediate
+        list of relations as well, forming the appropriate join conditions if a matching property
+        is located.
+        
+        e.g.   u = usermapper.get_by(user_name = 'fred')
+        """
+        x = self.select_by(**params)
+        if len(x):
+            return x[0]
+        else:
+            return None
+            
+    def select_by(self, **params):
+        """returns an array of object instances based on the given key/value criterion. 
+        
+        the keys are mapped to property or column names mapped by this mapper's Table, and the values
+        are coerced into a WHERE clause separated by AND operators.  If the local property/column
+        names dont contain the key, a search will be performed against this mapper's immediate
+        list of relations as well, forming the appropriate join conditions if a matching property
+        is located.
+        
+        e.g.   result = usermapper.select_by(user_name = 'fred')
+        """
+        clause = None
+        for key, value in params.iteritems():
+            if value is False:
+                continue
+            c = self._get_criterion(key, value)
+            if c is None:
+                raise "Cant find criterion for property '"+ key + "'"
+            if clause is None:
+                clause = c
+            else:                
+                clause &= c
+        return self.select_whereclause(clause)
+
+    def _get_criterion(self, key, value):
+        """used by select_by to match a key/value pair against
+        local properties, column names, or a matching property in this mapper's
+        list of relations."""
+        if self.props.has_key(key):
+            return self.props[key].columns[0] == value
+        elif self.table.c.has_key(key):
+            return self.table.c[key] == value
+        else:
+            for prop in self.props.values():
+                c = prop.get_criterion(key, value)
+                if c is not None:
+                    return c
+            else:
+                return None
+
+    def __getattr__(self, key):
+        if (key.startswith('select_by_')):
+            key = key[10:]
+            def foo(arg):
+                return self.select_by(**{key:arg})
+            return foo
+        elif (key.startswith('get_by_')):
+            key = key[7:]
+            def foo(arg):
+                return self.get_by(**{key:arg})
+            return foo
+        else:
+            raise AttributeError(key)
+        
     def selectone(self, *args, **params):
         """works like select(), but only returns the first result by itself, or None if no 
         objects returned."""
@@ -565,6 +638,14 @@ class MapperProperty(object):
         raise NotImplementedError()
     def _copy(self):
         raise NotImplementedError()
+    def get_criterion(self, key, value):
+        """Returns a WHERE clause suitable for this MapperProperty corresponding to the 
+        given key/value pair, where the key is a column or object property name, and value
+        is a value to be matched.  This is only picked up by PropertyLoaders.
+            
+        this is called by a mappers select_by method to formulate a set of key/value pairs into 
+        a WHERE criterion that spans multiple tables if needed."""
+        return None
     def hash_key(self):
         """describes this property and its instantiated arguments in such a way
         as to uniquely identify the concept this MapperProperty represents,within 
