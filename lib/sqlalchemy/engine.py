@@ -241,6 +241,41 @@ class SQLEngine(schema.SchemaEngine):
                 self.do_commit(self.context.transaction)
                 self.context.transaction = None
                 self.context.tcount = None
+
+
+    def _process_sequences(self, connection, cursor, statement, parameters, many = False, echo = None, **kwargs):
+        if compiled is None: return
+        if getattr(compiled, "isinsert", False):
+            if isinstance(parameters, list):
+                plist = parameters
+            else:
+                plist = [parameters]
+            # inserts are usually one at a time.  but if we got a list of parameters,
+            # it will calculate last_inserted_ids for just the last row in the list. 
+            # TODO: why not make last_inserted_ids a 2D array since we have to explicitly sequence
+            # it or post-select anyway   
+            for param in plist:
+                last_inserted_ids = []
+                need_lastrowid=False
+                for c in compiled.statement.table.c:
+                    if not param.has_key(c.key) or param[c.key] is None:
+                        if c.sequence is not None:
+                            newid = self.exec_sequence(c.sequence)
+                        else:
+                            newid = None
+                            
+                        if newid is not None:
+                            param[c.key] = newid
+                            if c.primary_key:
+                                last_inserted_ids.append(param[c.key])
+                        elif c.primary_key:
+                            need_lastrowid = True
+                    elif c.primary_key:
+                        last_inserted_ids.append(param[c.key])
+                if need_lastrowid:
+                    self.context.last_inserted_ids = None
+                else:
+                    self.context.last_inserted_ids = last_inserted_ids
             
     def pre_exec(self, connection, cursor, statement, parameters, many = False, echo = None, **kwargs):
         pass
@@ -287,7 +322,8 @@ class SQLEngine(schema.SchemaEngine):
 
         try:
             self.pre_exec(connection, c, statement, parameters, echo = echo, **kwargs)
-
+            #self._process_sequences(connection, c, statement, parameters, echo = echo, **kwargs)
+            
             if echo is True or self.echo is not False:
                 self.log(statement)
                 self.log(repr(parameters))

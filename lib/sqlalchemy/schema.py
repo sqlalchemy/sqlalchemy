@@ -288,8 +288,9 @@ class ForeignKey(SchemaItem):
         
 class Sequence(SchemaItem):
     """represents a sequence, which applies to Oracle and Postgres databases."""
-    def __init__(self, name, start = None, increment = None, optional=False):
+    def __init__(self, name, func = None, start = None, increment = None, optional=False):
         self.name = name
+        self.func = func
         self.start = start
         self.increment = increment
         self.optional=optional
