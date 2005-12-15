@@ -213,9 +213,11 @@ class HistoryArraySet(UserList.UserList):
             val = self.records[item]
             if val is None:
                 self.records[item] = False
+                return True
             elif val is True:
                 del self.records[item]
-            return True    
+                return True
+            return False
         except KeyError:
             return False
     def commit(self):

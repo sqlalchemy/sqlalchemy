@@ -17,7 +17,7 @@ class Transition(object):
     def __repr__(self):
         return object.__repr__(self)+ " " + repr(self.inputs) + " " + repr(self.outputs)
         
-class ManyToManyTest(testbase.AssertMixin):
+class M2MTest(testbase.AssertMixin):
     def setUpAll(self):
         db = testbase.db
         global place
@@ -129,7 +129,67 @@ class ManyToManyTest(testbase.AssertMixin):
         
         self.assert_result([t1], Transition, {'outputs': (Place, [{'name':'place3'}, {'name':'place1'}])})
         self.assert_result([p2], Place, {'inputs': (Transition, [{'name':'transition1'},{'name':'transition2'}])})
+
+class M2MTest2(testbase.AssertMixin):        
+    def setUpAll(self):
+        db = testbase.db
+        global studentTbl
+        studentTbl = Table('student', db, Column('name', String, primary_key=True))
+        global courseTbl
+        courseTbl = Table('course', db, Column('name', String, primary_key=True))
+        global enrolTbl
+        enrolTbl = Table('enrol', db,
+            Column('student_id', String, ForeignKey('student.name'),primary_key=True),
+            Column('course_id', String, ForeignKey('course.name'), primary_key=True))
+
+        studentTbl.create()
+        courseTbl.create()
+        enrolTbl.create()
+
+    def tearDownAll(self):
+        enrolTbl.drop()
+        studentTbl.drop()
+        courseTbl.drop()
+
+    def setUp(self):
+        objectstore.clear()
+        clear_mappers()
+
+    def tearDown(self):
+        courseTbl.delete().execute()
+        studentTbl.delete().execute()
+        enrolTbl.delete().execute()
+
+    def testcircular(self): 
+        class Student(object):
+            def __init__(self, name=''):
+                self.name = name
+        class Course(object):
+            def __init__(self, name=''):
+                self.name = name
+        Student.mapper = mapper(Student, studentTbl)
+        Course.mapper = mapper(Course, courseTbl, properties = {
+            'students': relation(Student.mapper, enrolTbl, lazy=True, backref='courses')
+        })
+        s1 = Student('Student1')
+        c1 = Course('Course1')
+        c2 = Course('Course2')
+        c3 = Course('Course3')
+        s1.courses.append(c1)
+        s1.courses.append(c2)
+        c1.students.append(s1)
+        c3.students.append(s1)
+        self.assert_(len(s1.courses) == 3)
+        self.assert_(len(c1.students) == 1)
+        objectstore.commit()
+        objectstore.clear()
+        s = Student.mapper.get_by(name='Student1')
+        c = Course.mapper.get_by(name='Course3')
+        self.assert_(len(s.courses) == 3)
+        del s.courses[1]
+        self.assert_(len(s.courses) == 2)
         
+    
 
 if __name__ == "__main__":    
     testbase.main()
