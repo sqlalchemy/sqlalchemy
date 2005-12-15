@@ -38,6 +38,9 @@
         # or just
         employees.c.employee_id
         
+        # via string
+        employees.c['employee_id']
+        
         # iterate through all columns
         for c in employees.c:
             # ...

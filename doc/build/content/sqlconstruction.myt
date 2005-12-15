@@ -12,7 +12,7 @@
     <p>For this section, we will assume the following tables:
        <&|formatting.myt:code&>
         from sqlalchemy import *
-        db = create_engine('sqlite', {'filename':'mydb'}, echo=True)
+        db = create_engine('sqlite://filename=mydb', echo=True)
         
         # a table to store users
         users = Table('users', db,
@@ -325,8 +325,8 @@ SELECT DISTINCT users.user_name FROM users
 SELECT users.user_id, users.user_name, users.password FROM users LIMIT 10 OFFSET 20
 </&>
         </&>
-        </&>
         The Oracle driver does not support LIMIT and OFFSET directly, but instead wraps the generated query into a subquery and uses the "rownum" variable to control the rows selected (this is somewhat experimental).
+        </&>
     </&>
 
     <&|doclib.myt:item, name="join", description="Inner and Outer Joins" &>
@@ -353,6 +353,7 @@ FROM addresses JOIN users ON addresses.user_id = users.user_id
 {}                
 </&>                
             </&>
+        <p>The join criterion in a join() call is currently required, but in a future release will be derived automatically from the two table's primary keys if not specified.</p>
         <p>Notice that this is the first example where the FROM criterion of the select statement is explicitly specified.  In most cases, the FROM criterion is automatically determined from the columns requested as well as the WHERE clause.  The <span class="codeline">from_obj</span> keyword argument indicates a list of explicit FROM clauses to be used in the statement.</p>
         
         <p>A join can be created on its own using the <span class="codeline">join</span> or <span class="codeline">outerjoin</span> functions, or can be created off of an existing Table or other selectable unit via the <span class="codeline">join</span> or <span class="codeline">outerjoin</span> methods:</p>

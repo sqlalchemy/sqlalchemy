@@ -3,7 +3,7 @@
 <&|doclib.myt:item, name="adv_datamapping", description="Advanced Data Mapping" &>
 <p>This section is under construction.  For now, it has just the basic recipe for each concept without much else.  </p>
 
-<p>To start, heres the tables w e will work with again:</p>
+<p>To start, heres the tables we will work with again:</p>
        <&|formatting.myt:code&>
         from sqlalchemy import *
         db = create_engine('sqlite://filename=mydb', echo=True)
@@ -39,7 +39,7 @@
        
        </&>
 
-<&|doclib.myt:item, name="creatingrelations", description="Creating Mapper Relations" &>
+<&|doclib.myt:item, name="relations", description="More On Relations" &>
     <&|doclib.myt:item, name="customjoin", description="Custom Join Conditions" &>
         <p>When creating relations on a mapper, most examples so far have illustrated the mapper and relationship joining up based on the foreign keys of the tables they represent.  in fact, this "automatic" inspection can be completely circumvented using the <span class="codeline">primaryjoin</span> and <span class="codeline">secondaryjoin</span> arguments to <span class="codeline">relation</span>, as in this example which creates a User object which has a relationship to all of its Addresses which are in Boston:
         <&|formatting.myt:code&>
@@ -123,10 +123,11 @@
         <li>secondaryjoin - a ClauseElement that will be used as the join of an association table to the child object.  By default, this value is computed based on the foreign key relationships of the association and child tables.</li>
         <li>foreignkey - specifies which column in this relationship is "foreign", i.e. which column refers to the parent object.  This value is automatically determined in all cases, based on the primary and secondary join conditions, except in the case of a self-referential mapper, where it is needed to indicate the child object's reference back to it's parent.</li>
         <li>uselist - a boolean that indicates if this property should be loaded as a list or a scalar.  In most cases, this value is determined based on the type and direction of the relationship - one to many forms a list, one to one forms a scalar, many to many is a list.  If a scalar is desired where normally a list would be present, set uselist to False.</li>
-        <li>private - indicates if these child objects are "private" to the parent; removed items will also be deleted, and if the parent item is deleted, all child objects are deleted as well.</li>
-        <li>live - a special type of "lazy load" where the list values will be loaded on every access.  A "live" property should be treated as read-only.  This type of property is useful in combination with "private" when used with a parent object which wants to force a delete of all its child items, attached or not, when it is deleted; since it always loads everything when accessed, you can be guaranteed that all child objects will be properly removed as well.</li>
+        <li>private - indicates if these child objects are "private" to the parent; removed items will also be deleted, and if the parent item is deleted, all child objects are deleted as well.  See the example in <&formatting.myt:link, path="datamapping_relations_private"&>.</li>
+        <li>backreference - indicates the name of a property to be placed on the related mapper's class that will handle this relationship in the other direction, including synchronizing the object attributes on both sides of the relation.  See the example in <&formatting.myt:link, path="datamapping_relations_backreferences"&>.</li>
         <li>association - When specifying a many to many relationship with an association object, this keyword should reference the mapper of the target object of the association.  See the example in <&formatting.myt:link, path="datamapping_association"&>.</li>
         <li>selectalias - Useful with eager loads, this specifies a table alias name that will be used when creating joins against the parent table.  The property is still created against the original table, and the aliased table is used only for the actual query.  Aliased columns in the result set are translated back to that of the original table when creating object instances.</li>
+        <li>live - a special type of "lazy load" where the list values will be loaded on every access.  A "live" property should be treated as read-only.  This type of property is useful in combination with "private" when used with a parent object which wants to force a delete of all its child items, attached or not, when it is deleted; since it always loads everything when accessed, you can be guaranteed that all child objects will be properly removed as well.</li>
     </ul>
     </&>
 
@@ -173,8 +174,8 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
     </&>
     <p>The main WHERE clause as well as the limiting clauses are coerced into a subquery; this subquery represents the desired result of objects.  A containing query, which handles the eager relationships, is joined against the subquery to produce the result.</p>
 </&>
-<&|doclib.myt:item, name="options", description="Mapper Options" &>
-    <P>The <span class="codeline">options</span> method of mapper produces a copy of the mapper, with modified properties and/or options.  This makes it easy to take a mapper and just change a few things on it.  The method takes a variable number of <span class="codeline">MapperOption</span> objects which know how to change specific things about the mapper.  The four available options are <span class="codeline">eagerload</span>, <span class="codeline">lazyload</span>, <span class="codeline">noload</span> and <span class="codeline">extension</span>.</p>
+<&|doclib.myt:item, name="options", description="More on Mapper Options" &>
+    <p>The <span class="codeline">options</span> method of mapper, first introduced in <&formatting.myt:link, path="datamapping_relations_options" &>, supports the copying of a mapper into a new one, with any number of its relations replaced by new ones.  The method takes a variable number of <span class="codeline">MapperOption</span> objects which know how to change specific things about the mapper.  The four available options are <span class="codeline">eagerload</span>, <span class="codeline">lazyload</span>, <span class="codeline">noload</span> and <span class="codeline">extension</span>.</p>
     <P>An example of a mapper with a lazy load relationship, upgraded to an eager load relationship:
         <&|formatting.myt:code&>
         class User(object):
@@ -200,31 +201,9 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
     </&>
 </&>
 
-<&|doclib.myt:item, name="custom", description="Custom Queries" &>
-    <&|formatting.myt:code&>
-        # a class
-        class User(object):
-            pass
-            
-        # basic mapper
-        User.mapper = mapper(User, users)
-        
-        # basic select with criterion
-        User.mapper.select(and_(users.c.user_name=='jane', users.c.user_id>12))
-        
-        # select with text criterion
-        User.mapper.select("user_name='jane' and user_id>12")
-
-        # select with totally textual query
-        User.mapper.select_text("select user_id, user_name, password from users")
-        
-        # select with a Select object
-        s = users.select(users, users.c.user_id==addresses.c.user_id)
-        User.mapper.select(s)
-    </&>    
-</&>
 
 <&|doclib.myt:item, name="inheritance", description="Mapping a Class with Table Inheritance" &>
+    <p>Table Inheritance indicates the pattern where two tables, in a parent-child relationship, are mapped to an inheritance chain of classes.  If a table "news_articles" contains additional information about sports articles in the table "sports_news_articles", a corresponding object inheritance pattern would have a NewsArticle class and a SportsNewsArticle class.  Loading a SportsNewsArticle object means you are joining sports_news_articles to news_articles.  For SQLAlchemy, this pattern is just a special case of a mapper that maps against a joined relationship, and is provided via the <span class="codeline">inherits</span> keyword.
     <&|formatting.myt:code&>
         class User(object):
             """a user object."""
@@ -235,7 +214,8 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
             """a user object that also has the users mailing address."""
             pass
 
-        # define a mapper for AddressUser that inherits the User.mapper, and joins on the user_id column            
+        # define a mapper for AddressUser that inherits the User.mapper, and joins on the user_id column
+        # inherit_condition is required right now, but will be optional in a future release
         AddressUser.mapper = mapper(
                 addresses, inherits = User.mapper, 
                 inherit_condition=User.c.user_id==addresses.c.user_id
@@ -246,19 +226,24 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
 </&>
 
 <&|doclib.myt:item, name="joins", description="Mapping a Class against Multiple Tables" &>
+    <P>The more general case of the pattern described in "table inheritance" is a mapper that maps against more than one table.  The <span class="codeline">join</span> keyword from the SQL package creates a neat selectable unit comprised of multiple tables, complete with its own composite primary key, which can be passed in to a mapper as the table.</p>
     <&|formatting.myt:code&>
         # a class
         class AddressUser(object):
             pass
 
-        # define a Join            
+        # define a Join
+        # the join condition will be optional in a future release if foreign keys are defined
         j = join(users, addresses, users.c.address_id==addresses.c.address_id)
         
         # map to it - the identity of an AddressUser object will be 
         # based on (user_id, address_id) since those are the primary keys involved
         m = mapper(AddressUser, j)
-        
-        # more complex join
+    </&>    
+
+    A second example:        
+    <&|formatting.myt:code&>
+        # many-to-many join on an association table
         j = join(users, userkeywords, 
                 users.c.user_id==userkeywords.c.user_id).join(keywords, 
                    userkeywords.c.keyword_id==keywords.c.keyword_id)
@@ -273,6 +258,12 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
     </&>    
 </&>
 <&|doclib.myt:item, name="multiple", description="Multiple Mappers for One Class" &>
+    <p>By now it should be apparent that the mapper defined for a class is in no way the only mapper that exists for that class.  Other mappers can be created at any time; either explicitly or via the <span class="codeline">options</span> method, to provide different loading behavior.</p>
+    
+    <p>However, its not as simple as that.  The mapper serves a dual purpose; one is to generate select statements and load objects from executing those statements; the other is to keep track of the defined dependencies of that object when save and delete operations occur, and to extend the attributes of the object so that they store information about their history and communicate with the unit of work system.  For this reason, it is a good idea to be aware of the behavior of multiple mappers.  When creating dependency relationships between objects, one should insure that only the primary mappers are used in those relationships, else deep object traversal operations will fail to load in the expected properties, and update operations will not take all the dependencies into account.  </p>
+    
+    <p>Generally its as simple as, the <i>first</i> mapper that is defined for a particular class is the one that gets to define that classes' relationships to other mapped classes, and also decorates its attributes and constructors with special behavior.  Any subsequent mappers created for that class will be able to load new instances, but object manipulation operations will still function via the original mapper.  The special keyword <span class="codeline">is_primary</span> will override this behavior, and make any mapper the new "primary" mapper.
+    </p>
     <&|formatting.myt:code&>
         class User(object):
             pass
