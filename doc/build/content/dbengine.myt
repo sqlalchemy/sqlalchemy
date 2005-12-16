@@ -64,6 +64,34 @@
         </&>
     </p>
     </&>
+    <&|doclib.myt:item, name="methods", description="Database Engine Methods" &>
+    <p>A few useful methods off the SQLEngine are described here:</p>
+        <&|formatting.myt:code&>
+            engine = create_engine('postgres://hostname=localhost&user=scott&password=tiger&database=test')
+            
+            # get a pooled DBAPI connection
+            conn = engine.connection()
+            
+            # create/drop tables based on table metadata objects
+            # (see the next section, Table Metadata, for info on table metadata)
+            engine.create(mytable)
+            engine.drop(mytable)
+            
+            # get the DBAPI module being used
+            dbapi = engine.dbapi()
+            
+            # get the default schema name
+            name = engine.get_default_schema_name()
+            
+            # execute some SQL directly, returns a ResultProxy (see the SQL Construction section for details)
+            result = engine.execute("select * from table where col1=:col1", {'col1':'foo'})
+            
+            # log a message to the engine's log stream
+            engine.log('this is a message')
+               
+        </&>    
+    </&>
+    
     <&|doclib.myt:item, name="options", description="Database Engine Options" &>
     <p>The remaining arguments to <span class="codeline">create_engine</span> are keyword arguments that are passed to the specific subclass of <span class="codeline">sqlalchemy.engine.SQLEngine</span> being used,  as well as the underlying <span class="codeline">sqlalchemy.pool.Pool</span> instance.  All of the options described in the previous section <&formatting.myt:link, path="pooling_configuration"&> can be specified, as well as engine-specific options:</p>
     <ul>
@@ -73,5 +101,87 @@
         <li>module=None : used by Oracle and Postgres, this is a reference to a DBAPI2 module to be used instead of the engine's default module.  For Postgres, the default is psycopg2, or psycopg1 if 2 cannot be found.  For Oracle, its cx_Oracle.</li>
         <li>use_ansi=True : used only by Oracle;  when False, the Oracle driver attempts to support a particular "quirk" of some Oracle databases, that the LEFT OUTER JOIN SQL syntax is not supported, and the "Oracle join" syntax of using <% "<column1>(+)=<column2>" |h%> must be used in order to achieve a LEFT OUTER JOIN.  Its advised that the Oracle database be configured to have full ANSI support instead of using this feature.</li>
     </ul>
+    </&>
+
+    <&|doclib.myt:item, name="transactions", description="Transactions" &>
+    <p>A SQLEngine also provides an interface to the transactional capabilities of the underlying DBAPI connection object, as well as the connection object itself.  Note that when using the object-relational-mapping package, described in a later section, basic transactional operation is handled for you automatically by its "Unit of Work" system;  the methods described here will usually apply just to literal SQL update/delete/insert operations or those performed via the SQL construction library.</p>
+    
+    <p>Typically, a connection is opened with "autocommit=False".  So to perform SQL operations and just commit as you go, you can simply pull out a connection from the connection pool, keep it in the local scope, and call commit() on it as needed.  As long as the connection remains referenced, all other SQL operations within the same thread will use this same connection, including those used by the SQL construction system as well as the object-relational mapper, both described in later sections:</p>
+        <&|formatting.myt:code&>
+            conn = engine.connection()
+
+            # execute SQL via the engine
+            engine.execute("insert into mytable values ('foo', 'bar')")
+            conn.commit()
+
+            # execute SQL via the SQL construction library            
+            mytable.insert().execute(col1='bat', col2='lala')
+            conn.commit()
+            
+        </&>
+        
+    <p>There is a more automated way to do transactions, and that is to use the engine's begin()/commit() functionality.  When the begin() method is called off the engine, a connection is checked out from the pool and stored in a thread-local context.  That way, all subsequent SQL operations within the same thread will use that same connection.  Subsequent commit() or rollback() operations are performed against that same connection.  In effect, its a more automated way to perform the "commit as you go" example above.  </p>
+    
+        <&|formatting.myt:code&>
+            engine.begin()
+            engine.execute("insert into mytable values ('foo', 'bar')")
+            mytable.insert().execute(col1='foo', col2='bar')
+            engine.commit()
+        </&>
+
+    <P>A traditional "rollback on exception" pattern looks like this:</p>    
+
+        <&|formatting.myt:code&>
+            engine.begin()
+            try:
+                engine.execute("insert into mytable values ('foo', 'bar')")
+                mytable.insert().execute(col1='foo', col2='bar')
+            except:
+                engine.rollback()
+                raise
+            engine.commit()
+        </&>
+    
+    <p>An shortcut which is equivalent to the above is provided by the <span class="codeline">transaction</span> method:</p>
+    
+        <&|formatting.myt:code&>
+            def do_stuff():
+                engine.execute("insert into mytable values ('foo', 'bar')")
+                mytable.insert().execute(col1='foo', col2='bar')
+
+            engine.transaction(do_stuff)
+        </&>
+    <p>An added bonus to the engine's transaction methods is "reentrant" functionality; once you call begin(), subsequent calls to begin() will increment a counter that must be decremented corresponding to each commit() statement before an actual commit can happen.  This way, any number of methods that want to insure a transaction can call begin/commit, and be nested arbitrarily:</p>
+        <&|formatting.myt:code&>
+            
+            # method_a starts a transaction and calls method_b
+            def method_a():
+                engine.begin()
+                try:
+                    method_b()
+                except:
+                    engine.rollback()
+                    raise
+                engine.commit()
+
+            # method_b starts a transaction, or joins the one already in progress,
+            # and does some SQL
+            def method_b():
+                engine.begin()
+                try:
+                    engine.execute("insert into mytable values ('bat', 'lala')")
+                    mytable.insert().execute(col1='bat', col2='lala')
+                except:
+                    engine.rollback()
+                    raise
+                engine.commit()
+                
+            # call method_a                
+            method_a()                
+            
+        </&>
+       <p>Above, method_a is called first, which calls engine.begin().  Then it calls method_b. When method_b calls engine.begin(), it just increments a counter that is decremented when it calls commit().  If either method_a or method_b calls rollback(), the whole transaction is rolled back.  The transaction is not committed until method_a calls the commit() method.</p>
+       
+       <p>The object-relational-mapper capability of SQLAlchemy includes its own <span class="codeline">commit()</span> method that gathers SQL statements into a batch and runs them within one transaction.  That transaction is also invokved within the scope of the "reentrant" methodology above; so multiple objectstore.commit() operations can also be bundled into a larger database transaction via the above methodology.</p>
     </&>
 </&>
