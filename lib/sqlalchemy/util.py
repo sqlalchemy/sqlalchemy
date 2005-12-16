@@ -157,8 +157,11 @@ class HashSet(object):
         
 class HistoryArraySet(UserList.UserList):
     """extends a UserList to provide unique-set functionality as well as history-aware 
-    functionality, including information about what list elements were modified, 
-    as well as rollback capability."""
+    functionality, including information about what list elements were modified 
+    and commit/rollback capability.  When a HistoryArraySet is created with or
+    without initial data, it is in a "committed" state.  as soon as changes are made
+    to the list via the normal list-based access, it tracks "added" and "deleted" items,
+    which remain until the history is committed or rolled back."""
     def __init__(self, data = None, readonly=False):
         # stores the array's items as keys, and a value of True, False or None indicating
         # added, deleted, or unchanged for that item
@@ -177,6 +180,8 @@ class HistoryArraySet(UserList.UserList):
         data array.  this allows custom list classes to be used."""
         return getattr(self.data, attr)
     def set_data(self, data):
+        """sets the data for this HistoryArraySet to be that of the given data.
+        duplicates in the incoming list will be removed."""
         # first mark everything current as "deleted"
         for i in self.data:
             self.records[i] = False
@@ -190,6 +195,8 @@ class HistoryArraySet(UserList.UserList):
                del self.data[i]
                i -= 1
     def history_contains(self, obj):
+        """returns true if the given object exists within the history
+        for this HistoryArrayList."""
         return self.records.has_key(obj)
     def __hash__(self):
         return id(self)
@@ -221,6 +228,8 @@ class HistoryArraySet(UserList.UserList):
         except KeyError:
             return False
     def commit(self):
+        """commits the added values in this list to be the new "unchanged" values.
+        values that have been marked as deleted are removed from the history."""
         for key in self.records.keys():
             value = self.records[key]
             if value is False:
@@ -228,6 +237,7 @@ class HistoryArraySet(UserList.UserList):
             else:
                 self.records[key] = None
     def rollback(self):
+        """rolls back changes to this list to the last "committed" state."""
         # TODO: speed this up
         list = []
         for key, status in self.records.iteritems():
@@ -238,16 +248,21 @@ class HistoryArraySet(UserList.UserList):
         for l in list:
             self.append_nohistory(l)
     def added_items(self):
+        """returns a list of items that have been added since the last "committed" state."""
         return [key for key in self.data if self.records[key] is True]
     def deleted_items(self):
+        """returns a list of items that have been deleted since the last "committed" state."""
         return [key for key, value in self.records.iteritems() if value is False]
     def unchanged_items(self):
+        """returns a list of items that have not been changed since the last "committed" state."""
         return [key for key in self.data if self.records[key] is None]
     def append_nohistory(self, item):
+        """appends an item to the list without affecting the "history"."""
         if not self.records.has_key(item):
             self.records[item] = None
             self.data.append(item)
     def remove_nohistory(self, item):
+        """removes an item from the list without affecting the "history"."""
         if self.records.has_key(item):
             del self.records[item]
             self.data.remove(item)

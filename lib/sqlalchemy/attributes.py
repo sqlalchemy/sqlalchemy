@@ -15,14 +15,37 @@
 # along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
+"""provides a class called AttributeManager that can attach history-aware attributes to object
+instances.  AttributeManager-enabled object attributes can be scalar or lists.  In both cases, the "change
+history" of each attribute is available via the AttributeManager in a unit called a "history
+container".  Via the history container, which can be a scalar or list based container, 
+the attribute can be "committed", meaning whatever changes it has are registered as the current value, 
+or "rolled back", which means the original "committed" value is restored; in both cases
+the accumulated history is removed.
+
+The change history is represented as three lists, the "added items", the "deleted items", 
+and the "unchanged items".  In the case of a scalar attribute, these lists would be zero or 
+one element in length.  for a list based attribute, these lists are of arbitrary length.  
+"unchanged items" represents the assigned value or appended values on the attribute either 
+with "history tracking" disabled, or have been "committed".  "added items" represent new
+values that have been assigned or appended to the attribute.  "deleted items" represents the 
+the value that was previously "unchanged", but has been de-assigned or removed from the attribute.
+
+AttributeManager can also assign a "callable" history container to an object's attribute, 
+which is invoked when first accessed, to provide the object's "committed" value.  
+
+The package includes functions for managing "bi-directional" object relationships as well
+via the ListBackrefExtension, OTMBackrefExtension, and MTOBackrefExtension objects.
+"""
 
 import sqlalchemy.util as util
-import weakref
 
 class SmartProperty(object):
-    """attaches AttributeManager functionality to the property accessors of a class.  all
-    instances of the class will retrieve and modify their properties via an
-    AttributeManager."""
+    """Provides a property object that will communicate set/get/delete operations
+    to an AttributeManager.  SmartProperty objects are constructed by the 
+    create_prop method on AttributeManger, which can be overridden to provide
+    subclasses of SmartProperty.
+    """
     def __init__(self, manager):
         self.manager = manager
     def attribute_registry(self):
@@ -41,7 +64,10 @@ class SmartProperty(object):
         return property(get_prop, set_prop, del_prop)
 
 class PropHistory(object):
-    """manages the value of a particular scalar attribute on a particular object instance."""
+    """Used by AttributeManager to track the history of a scalar attribute
+    on an object instance.  This is the "scalar history container" object.
+    Has an interface similar to util.HistoryList
+    so that the two objects can be called upon largely interchangeably."""
     # make our own NONE to distinguish from "None"
     NONE = object()
     def __init__(self, obj, key, extension=None, **kwargs):
@@ -94,7 +120,10 @@ class PropHistory(object):
             return []
 
 class ListElement(util.HistoryArraySet):
-    """manages the value of a particular list-based attribute on a particular object instance."""
+    """Used by AttributeManager to track the history of a list-based object attribute.
+    This is the "list history container" object.
+    Subclasses util.HistoryArraySet to provide "onchange" event handling as well
+    as a plugin point for BackrefExtension objects."""
     def __init__(self, obj, key, data=None, extension=None, **kwargs):
         self.obj = obj
         self.key = key
@@ -140,12 +169,13 @@ class ListElement(util.HistoryArraySet):
         return res
 
 class CallableProp(object):
-    """allows the attaching of a callable item, representing the future value
-    of a particular attribute on a particular object instance, to 
-    the AttributeManager.  When the attributemanager
-    accesses the object attribute, either to get its history or its real value, the __call__ method
-    is invoked which runs the underlying callable_ and sets the new value to the object attribute
-    via the manager, at which point the CallableProp itself is dereferenced."""
+    """Used by AttributeManager to allow the attaching of a callable item, representing the future value
+    of a particular attribute on a particular object instance, to an attribute on an object. 
+    This is the "callable history container" object.
+    When the attributemanager first accesses the object attribute, either to get its history or 
+    its real value, the __call__ method
+    is invoked which runs the underlying callable_ and sets the new value to the object attribute, 
+    at which point the CallableProp itself is dereferenced."""
     def __init__(self, manager, callable_, obj, key, uselist = False, live = False, **kwargs):
         self.manager = manager
         self.callable_ = callable_
@@ -188,6 +218,8 @@ class CallableProp(object):
         pass
 
 class AttributeExtension(object):
+    """an abstract class which specifies an "onadd" or "ondelete" operation
+    to be attached to an object property."""
     def append(self, obj, child):
         pass
     def delete(self, obj, child):
@@ -224,41 +256,53 @@ class MTOBackrefExtension(AttributeExtension):
 #            getattr(child, self.key).append(obj)
             
 class AttributeManager(object):
-    """maintains a set of per-attribute callable/history manager objects for a set of objects."""
+    """maintains a set of per-attribute history container objects for a set of objects."""
     def __init__(self):
         pass
 
     def value_changed(self, obj, key, value):
-        """subclasses override this method to provide functionality upon an attribute change of value."""
+        """subclasses override this method to provide functionality that is triggered 
+        upon an attribute change of value."""
         pass
         
     def create_prop(self, key, uselist, **kwargs):
+        """creates a scalar property object, defaulting to SmartProperty, which 
+        will communicate change events back to this AttributeManager."""
         return SmartProperty(self).property(key, uselist)
     def create_list(self, obj, key, list_, **kwargs):
+        """creates a history-aware list property, defaulting to a ListElement which
+        is a subclass of HistoryArrayList."""
         return ListElement(obj, key, list_, **kwargs)
     def create_callable(self, obj, key, func, uselist, **kwargs):
+        """creates a callable container that will invoke a function the first
+        time an object property is accessed.  The return value of the function
+        will become the object property's new value."""
         return CallableProp(self, func, obj, key, uselist, **kwargs)
         
     def get_attribute(self, obj, key, **kwargs):
+        """returns the value of an object's scalar attribiute."""
         try:
             return self.get_history(obj, key, **kwargs).getattr()
         except KeyError:
             raise AttributeError(key)
 
     def get_list_attribute(self, obj, key, **kwargs):
+        """returns the value of an object's list-based attribute."""
         return self.get_history(obj, key, **kwargs)
         
     def set_attribute(self, obj, key, value, **kwargs):
-        if key == 'parent' and value is not None and value.__class__.__name__ != 'Comment':
-            raise "wha?"
+        """sets the value of an object's attribute."""
         self.get_history(obj, key, **kwargs).setattr(value)
         self.value_changed(obj, key, value)
     
     def delete_attribute(self, obj, key, **kwargs):
+        """deletes the value from an object's attribute."""
         self.get_history(obj, key, **kwargs).delattr()
         self.value_changed(obj, key, None)
         
     def rollback(self, *obj):
+        """rolls back all attribute changes on the given list of objects, 
+        and removes all history."""
         for o in obj:
             try:
                 attributes = self.attribute_history(o)
@@ -268,6 +312,8 @@ class AttributeManager(object):
                 pass
 
     def commit(self, *obj):
+        """commits all attribute changes on the given list of objects, 
+        and removes all history."""
         for o in obj:
             try:
                 attributes = self.attribute_history(o)
@@ -276,21 +322,31 @@ class AttributeManager(object):
             except KeyError:
                 pass
                 
-    def remove(self, obj):
+   def remove(self, obj):
+        """not sure what this is."""
         pass
 
     def create_history(self, obj, key, uselist, callable_=None, **kwargs):
+        """creates a new "history" container for a specific attribute on the given object.  
+        this can be used to override a class-level attribute with something different,
+        such as a callable. """
         p = self.create_history_container(obj, key, uselist, callable_=callable_, **kwargs)
         self.attribute_history(obj)[key] = p
         return p
 
     def get_history(self, obj, key, passive=False, **kwargs):
+        """returns the "history" container for the given attribute on the given object.
+        If the container does not exist, it will be created based on the class-level
+        history container definition."""
         try:
             return self.attribute_history(obj)[key].gethistory(passive=passive, **kwargs)
         except KeyError, e:
             return self.class_managed(obj.__class__)[key](obj, **kwargs).gethistory(passive=passive, **kwargs)
 
     def attribute_history(self, obj):
+        """returns a dictionary of "history" containers corresponding to the given object.
+        this dictionary is attached to the object via the attribute '_managed_attributes'.
+        If the dictionary does not exist, it will be created."""
         try:
             attr = obj.__dict__['_managed_attributes']
         except KeyError:
@@ -299,12 +355,17 @@ class AttributeManager(object):
         return attr
 
     def reset_history(self, obj, key):
+        """removes the history object for the given attribute on the given object.
+        When the attribute is next accessed, a new container will be created via the
+        class-level history container definition."""
         try:
             del self.attribute_history(obj)[key]
         except KeyError:
             pass
         
     def class_managed(self, class_):
+        """returns a dictionary of "history container definitions", which is attached to a 
+        class.  creates the dictionary if it doesnt exist."""
         try:
             attr = getattr(class_, '_class_managed_attributes')
         except AttributeError:
@@ -315,6 +376,7 @@ class AttributeManager(object):
 
 
     def create_history_container(self, obj, key, uselist, callable_ = None, **kwargs):
+        """creates a new history container for the given attribute on the given object."""
         if callable_ is not None:
             return self.create_callable(obj, key, callable_, uselist=uselist, **kwargs)
         elif not uselist:
@@ -324,7 +386,14 @@ class AttributeManager(object):
             return self.create_list(obj, key, list_, **kwargs)
         
     def register_attribute(self, class_, key, uselist, callable_=None, **kwargs):
-        # create a function, that will create this object attribute when its first called
+        """registers an attribute's behavior at the class level.  This attribute
+        can be scalar or list based, and also may have a callable unit that will be
+        used to create the initial value.  The definition for this attribute is 
+        wrapped up into a callable which is then stored in the classes' 
+        dictionary of "class managed" attributes.  When instances of the class 
+        are created and the attribute first referenced, the callable is invoked to
+        create the new history container.  Extra keyword arguments can be sent which
+        will be passed along to newly created history containers."""
         def createprop(obj):
             if callable_ is not None: 
                 func = callable_(obj)
