@@ -322,7 +322,7 @@ class AttributeManager(object):
             except KeyError:
                 pass
                 
-   def remove(self, obj):
+    def remove(self, obj):
         """not sure what this is."""
         pass
 
