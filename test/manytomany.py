@@ -134,13 +134,13 @@ class M2MTest2(testbase.AssertMixin):
     def setUpAll(self):
         db = testbase.db
         global studentTbl
-        studentTbl = Table('student', db, Column('name', String, primary_key=True))
+        studentTbl = Table('student', db, Column('name', String(20), primary_key=True))
         global courseTbl
-        courseTbl = Table('course', db, Column('name', String, primary_key=True))
+        courseTbl = Table('course', db, Column('name', String(20), primary_key=True))
         global enrolTbl
         enrolTbl = Table('enrol', db,
-            Column('student_id', String, ForeignKey('student.name'),primary_key=True),
-            Column('course_id', String, ForeignKey('course.name'), primary_key=True))
+            Column('student_id', String(20), ForeignKey('student.name'),primary_key=True),
+            Column('course_id', String(20), ForeignKey('course.name'), primary_key=True))
 
         studentTbl.create()
         courseTbl.create()
@@ -156,9 +156,9 @@ class M2MTest2(testbase.AssertMixin):
         clear_mappers()
 
     def tearDown(self):
+        enrolTbl.delete().execute()
         courseTbl.delete().execute()
         studentTbl.delete().execute()
-        enrolTbl.delete().execute()
 
     def testcircular(self): 
         class Student(object):

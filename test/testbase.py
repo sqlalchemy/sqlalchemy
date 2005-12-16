@@ -97,7 +97,7 @@ class EngineAssert(object):
         self.engine.echo = self.echo
         self.engine.logger = self.logger
         
-        if self.assert_list is not None and not (isinstance(self.engine, postgres.PGSQLEngine) and re.search(r'%\(.*oid\)s', statement, re.S)):
+        if self.assert_list is not None:
             item = self.assert_list.pop()
             (query, params) = item
             if callable(params):
@@ -164,8 +164,8 @@ class TTestSuite(unittest.TestSuite):
         unittest.TestSuite.__init__(self, tests)
 
     def do_run(self, result):
-	"""nice job unittest !  you switched __call__ and run() between py2.3 and 2.4 thereby
-	making straight subclassing impossible !"""
+        """nice job unittest !  you switched __call__ and run() between py2.3 and 2.4 thereby
+        making straight subclassing impossible !"""
         for test in self._tests:
             if result.shouldStop:
                 break
