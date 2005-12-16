@@ -34,6 +34,9 @@ class TypeEngine(object):
         return self
         
 def adapt_type(typeobj, colspecs):
+    """given a generic type from this package, and a dictionary of 
+    "conversion" specs from a DB-specific package, adapts the type
+    to a correctly-configured type instance from the DB-specific package."""
     if type(typeobj) is type:
         typeobj = typeobj()
     typeobj = typeobj.adapt_args()
@@ -66,15 +69,22 @@ class TypeDecorator(object):
         return c
     
 class String(NullTypeEngine):
-    def __init__(self, length = None):
+    def __init__(self, length = None, is_unicode=False):
         self.length = length
+        self.is_unicode = is_unicode
     def adapt(self, typeobj):
         return typeobj(self.length)
     def adapt_args(self):
         if self.length is None:
-            return TEXT()
+            return TEXT(is_unicode=self.is_unicode)
         else:
             return self
+
+class Unicode(String):
+    def __init__(self, length=None):
+        String.__init__(self, length, is_unicode=True)
+    def adapt(self, typeobj):
+        return typeobj(self.length, is_unicode=True)
         
 class Integer(NullTypeEngine):
     """integer datatype"""

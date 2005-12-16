@@ -253,7 +253,8 @@ class Compiled(ClauseVisitor):
             params = [self.get_params(**m) for m in multiparams]
         else:
             params = self.get_params(**params)
-        return self.engine.execute(str(self), params, compiled = self, typemap = self.typemap)
+
+        return self.engine.execute(str(self), params, compiled=self, typemap=self.typemap)
 
     def scalar(self, *multiparams, **params):
         """executes this compiled object via the execute() method, then 

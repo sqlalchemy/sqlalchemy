@@ -109,36 +109,29 @@ class OracleSQLEngine(ansisql.ANSISQLEngine):
         return OracleSchemaGenerator(proxy, **params)
     def schemadropper(self, proxy, **params):
         return OracleSchemaDropper(proxy, **params)
-
+    def defaultrunner(self, proxy):
+        return OracleDefaultRunner(proxy)
+        
     def reflecttable(self, table):
         raise "not implemented"
 
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
 
-    def pre_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
+    def pre_exec(self, proxy, statement, parameters, compiled=None, **kwargs):
         if compiled is None: return
+        # this is just an assertion that all the primary key columns in an insert statement
+        # have a value set up, or have a default generator ready to go
         if getattr(compiled, "isinsert", False):
             if isinstance(parameters, list):
                 plist = parameters
             else:
                 plist = [parameters]
             for param in plist:
-                last_inserted_ids = []
                 for primary_key in compiled.statement.table.primary_key:
                     if not param.has_key(primary_key.key) or param[primary_key.key] is None:
-                        if primary_key.sequence is None:
-                            raise "Column '%s.%s': Oracle primary key columns require schema.Sequence to create ids" % (primary_key.table.name, primary_key.name)
-                        if echo is True or self.echo:
-                            self.log("select %s.nextval from dual" % primary_key.sequence.name)
-                        cursor.execute("select %s.nextval from dual" % primary_key.sequence.name)
-                        newid = cursor.fetchone()[0]
-                        param[primary_key.key] = newid
-                    last_inserted_ids.append(param[primary_key.key])
-                self.context.last_inserted_ids = last_inserted_ids
-
-    def post_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
-        pass
+                        if primary_key.default is None:
+                            raise "Column '%s.%s': Oracle primary key columns require a default value or a schema.Sequence to create ids" % (primary_key.table.name, primary_key.name)
 
     def _executemany(self, c, statement, parameters):
         rowcount = 0
@@ -163,9 +156,7 @@ class OracleCompiler(ansisql.ANSICompiler):
         self.froms[join] = self.get_from_text(join.left) + ", " + self.get_from_text(join.right)
         self.wheres[join] = join.onclause
 
-        print "check1"
         if join.isouter:
-            print "check2"
             # if outer join, push on the right side table as the current "outertable"
             outertable = self._outertable
             self._outertable = join.right
@@ -239,3 +230,7 @@ class OracleSchemaDropper(ansisql.ANSISchemaDropper):
         self.append("DROP SEQUENCE %s" % sequence.name)
         self.execute()
 
+class OracleDefaultRunner(ansisql.ANSIDefaultRunner):
+    def visit_sequence(self, seq):
+        c = self.proxy("select %s.nextval from dual" % seq.name)
+        return c.fetchone()[0]

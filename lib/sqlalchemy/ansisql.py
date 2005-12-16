@@ -104,14 +104,26 @@ class ANSICompiler(sql.Compiled):
         return self.wheres.get(obj, None)
 
     def get_params(self, **params):
-        """returns the bind params for this compiled object, with values overridden by 
-        those given in the **params dictionary"""
+        """returns a structure of bind parameters for this compiled object.
+        This includes bind parameters that might be compiled in via the "values"
+        argument of an Insert or Update statement object, and also the given **params.
+        The keys inside of **params can be any key that matches the BindParameterClause
+        objects compiled within this object.  The output is dependent on the paramstyle
+        of the DBAPI being used; if a named style, the return result will be a dictionary
+        with keynames matching the compiled statement.  If a positional style, the output
+        will be a list corresponding to the bind positions in the compiled statement.
+        
+        for an executemany style of call, this method should be called for each element
+        in the list of parameter groups that will ultimately be executed.
+        """
         d = {}
         if self.bindparams is not None:
             bindparams = self.bindparams.copy()
         else:
             bindparams = {}
         bindparams.update(params)
+        # TODO: cant we make "d" an ordereddict and add params in 
+        # positional order
         for key, value in bindparams.iteritems():
             try:
                 b = self.binds[key]
@@ -127,6 +139,20 @@ class ANSICompiler(sql.Compiled):
         else:
             return d
 
+    def get_named_params(self, parameters):
+        """given the results of the get_params method, returns the parameters
+        in dictionary format.  For a named paramstyle, this just returns the
+        same dictionary.  For a positional paramstyle, the given parameters are
+        assumed to be in list format and are converted back to a dictionary.
+        """
+        if self.positional:
+            p = {}
+            for i in range(0, len(self.positiontup)):
+                p[self.positiontup[i]] = parameters[i]
+            return p
+        else:
+            return parameters
+            
     def visit_column(self, column):
         if len(self.select_stack):
             # if we are within a visit to a Select, set up the "typemap"
@@ -390,3 +416,5 @@ class ANSISchemaDropper(sqlalchemy.engine.SchemaIterator):
         self.execute()
 
 
+class ANSIDefaultRunner(sqlalchemy.engine.DefaultRunner):
+    pass

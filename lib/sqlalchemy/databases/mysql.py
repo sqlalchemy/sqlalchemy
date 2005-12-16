@@ -140,10 +140,10 @@ class MySQLEngine(ansisql.ANSISQLEngine):
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
             
-    def post_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
+    def post_exec(self, proxy, statement, parameters, compiled = None, **kwargs):
         if compiled is None: return
         if getattr(compiled, "isinsert", False):
-            self.context.last_inserted_ids = [cursor.lastrowid]
+            self.context.last_inserted_ids = [proxy().lastrowid]
     
     # executemany just runs normally, since we arent using rowcount at all with mysql
 #    def _executemany(self, c, statement, parameters):
@@ -168,9 +168,12 @@ class MySQLTableImpl(sql.TableImpl):
     def _rowid_col(self):
         if getattr(self, '_mysql_rowid_column', None) is None:
             if len(self.table.primary_key) > 0:
-                self._mysql_rowid_column = self.table.primary_key[0]
+                c = self.table.primary_key[0]
             else:
-                self._mysql_rowid_column = self.table.columns[self.table.columns.keys()[0]]
+                c = self.table.columns[self.table.columns.keys()[0]]
+            self._mysql_rowid_column = schema.Column(c.name, c.type, hidden=True)
+            self._mysql_rowid_column._set_parent(self.table)
+
         return self._mysql_rowid_column
     rowid_column = property(lambda s: s._rowid_col())
 
@@ -195,7 +198,7 @@ class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
         if column.primary_key:
             if not override_pk:
                 colspec += " PRIMARY KEY"
-            if first_pk:
+            if first_pk and isinstance(column.type, types.Integer):
                 colspec += " AUTO_INCREMENT"
         if column.foreign_key:
             colspec += " REFERENCES %s(%s)" % (column.column.foreign_key.column.table.name, column.column.foreign_key.column.name) 

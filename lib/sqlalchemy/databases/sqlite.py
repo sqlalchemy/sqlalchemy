@@ -108,10 +108,10 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
         params['poolclass'] = sqlalchemy.pool.SingletonThreadPool
         ansisql.ANSISQLEngine.__init__(self, **params)
 
-    def post_exec(self, connection, cursor, statement, parameters, echo = None, compiled = None, **kwargs):
+    def post_exec(self, proxy, statement, parameters, compiled = None, **kwargs):
         if compiled is None: return
         if getattr(compiled, "isinsert", False):
-            self.context.last_inserted_ids = [cursor.lastrowid]
+            self.context.last_inserted_ids = [proxy().lastrowid]
 
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
@@ -230,3 +230,4 @@ class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
         self.append("\n)\n\n")
         self.execute()
 
+        
