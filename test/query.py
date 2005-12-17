@@ -63,16 +63,25 @@ class QueryTest(PersistTest):
             x['x'] += 1
             return x['x']
             
+        # select "count(1)" from the DB which returns different results
+        # on different DBs
+        f = select([func.count(1)], engine=db).execute().fetchone()[0]
+        
         t = Table('default_test1', db, 
             Column('col1', Integer, primary_key=True, default=mydefault),
             Column('col2', String(20), default="imthedefault"),
-            Column('col3', String(20), default=func.count(1)),
+            Column('col3', Integer, default=func.count(1)),
         )
         t.create()
-        t.insert().execute()
-        t.insert().execute()
-        t.insert().execute()
-        t.drop()
+        try:
+            t.insert().execute()
+            t.insert().execute()
+            t.insert().execute()
+        
+            l = t.select().execute()
+            self.assert_(l.fetchall() == [(1, 'imthedefault', f), (2, 'imthedefault', f), (3, 'imthedefault', f)])
+        finally:
+            t.drop()
         
     def testdelete(self):
         c = db.connection()
