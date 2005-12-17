@@ -230,6 +230,9 @@ class OracleSchemaDropper(ansisql.ANSISchemaDropper):
         self.execute()
 
 class OracleDefaultRunner(ansisql.ANSIDefaultRunner):
+    def exec_default_sql(self, default):
+        c = sql.select([default.arg], from_obj=["DUAL"], engine=self.engine).compile()
+        return self.proxy(str(c), c.get_params()).fetchone()[0]
+    
     def visit_sequence(self, seq):
-        c = self.proxy("select %s.nextval from dual" % seq.name)
-        return c.fetchone()[0]
+        return self.exec_default_sql(seq.name + ".nextval")
