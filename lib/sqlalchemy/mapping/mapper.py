@@ -442,6 +442,9 @@ class Mapper(object):
 #                print "SAVE_OBJ we are " + hash_key(self) + " obj: " +  obj.__class__.__name__ + repr(id(obj))
                 params = {}
 
+                if not hasattr(obj, "_instance_key"):
+                    self.extension.before_insert(self, obj)
+
                 for col in table.columns:
                     #if col.primary_key:
                     if pk.has_key(col):
@@ -459,7 +462,6 @@ class Mapper(object):
                 if hasattr(obj, "_instance_key"):
                     update.append(params)
                 else:
-                    self.extension.before_insert(self, obj)
                     insert.append((obj, params))
                 uow.register_saved_object(obj)
             if len(update):
