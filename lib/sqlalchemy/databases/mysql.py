@@ -140,8 +140,7 @@ class MySQLEngine(ansisql.ANSISQLEngine):
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
             
-    def post_exec(self, proxy, statement, parameters, compiled = None, **kwargs):
-        if compiled is None: return
+    def post_exec(self, proxy, compiled, parameters, **kwargs):
         if getattr(compiled, "isinsert", False):
             self.context.last_inserted_ids = [proxy().lastrowid]
     

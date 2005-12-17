@@ -153,7 +153,7 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         return PGSchemaDropper(proxy, **params)
 
     def defaultrunner(self, proxy):
-        return PGDefaultRunner(proxy)
+        return PGDefaultRunner(self, proxy)
         
     def get_default_schema_name(self):
         if not hasattr(self, '_default_schema_name'):
@@ -166,8 +166,7 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
     def pre_exec(self, proxy, statement, parameters, **kwargs):
         return
 
-    def post_exec(self, proxy, statement, parameters, compiled = None, **kwargs):
-        if compiled is None: return
+    def post_exec(self, proxy, compiled, parameters, **kwargs):
         if getattr(compiled, "isinsert", False) and self.context.last_inserted_ids is None:
             table = compiled.statement.table
             cursor = proxy()
@@ -200,15 +199,10 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         ischema.reflecttable(self, table, ischema_names)
 
 class PGCompiler(ansisql.ANSICompiler):
-    def visit_insert(self, insert):
-        """inserts are required to have the primary keys be explicitly present.
-         mapper will by default not put them in the insert statement to comply
-         with autoincrement fields that require they not be present.  so, 
-         put them all in for columns where sequence usage is defined."""
-        for c in insert.table.primary_key:
-            if self.bindparams.get(c.key, None) is None and c.default is not None and not c.default.optional:
-                self.bindparams[c.key] = None
-        return ansisql.ANSICompiler.visit_insert(self, insert)
+
+    def visit_insert_sequence(self, column, sequence):
+        if self.parameters.get(column.key, None) is None and not sequence.optional:
+            self.parameters[column.key] = None
 
     def limit_clause(self, select):
         text = ""
@@ -223,7 +217,7 @@ class PGCompiler(ansisql.ANSICompiler):
 class PGSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, override_pk=False, **kwargs):
         colspec = column.name
-        if column.primary_key and isinstance(column.type, types.Integer) and (column.default is None or column.default.optional):
+        if column.primary_key and isinstance(column.type, types.Integer) and (column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional)):
             colspec += " SERIAL"
         else:
             colspec += " " + column.type.get_col_spec()

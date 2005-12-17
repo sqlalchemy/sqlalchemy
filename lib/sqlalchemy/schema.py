@@ -187,6 +187,7 @@ class Column(SchemaItem):
         self._impl = self.table.engine.columnimpl(self)
 
         if self.default is not None:
+            self.default = ColumnDefault(self.default)
             self._init_items(self.default)
         self._init_items(*self.args)
         self.args = None

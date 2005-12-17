@@ -118,8 +118,7 @@ class OracleSQLEngine(ansisql.ANSISQLEngine):
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
 
-    def pre_exec(self, proxy, statement, parameters, compiled=None, **kwargs):
-        if compiled is None: return
+    def pre_exec(self, proxy, compiled, parameters, **kwargs):
         # this is just an assertion that all the primary key columns in an insert statement
         # have a value set up, or have a default generator ready to go
         if getattr(compiled, "isinsert", False):

@@ -81,8 +81,8 @@ class EngineAssert(object):
     """decorates a SQLEngine object to match the incoming queries against a set of assertions."""
     def __init__(self, engine):
         self.engine = engine
-        self.realexec = engine.execute
-        engine.execute = self.execute
+        self.realexec = engine.execute_compiled
+        engine.execute_compiled = self.execute_compiled
         self.echo = engine.echo
         self.logger = engine.logger
         self.set_assert_list(None, None)
@@ -93,9 +93,10 @@ class EngineAssert(object):
         self.assert_list = list
         if list is not None:
             self.assert_list.reverse()
-    def execute(self, statement, parameters, **kwargs):
+    def execute_compiled(self, compiled, parameters, **kwargs):
         self.engine.echo = self.echo
         self.engine.logger = self.logger
+        statement = str(compiled)
         
         if self.assert_list is not None:
             item = self.assert_list.pop()
@@ -104,14 +105,7 @@ class EngineAssert(object):
                 params = params()
 
             # deal with paramstyles of different engines
-            if isinstance(self.engine, sqlite.SQLiteSQLEngine):
-                paramstyle = 'named'
-            else:
-                db = self.engine.dbapi()
-                if db is not None:
-                    paramstyle = db.paramstyle
-                else:
-                    paramstyle = 'named'
+            paramstyle = self.engine.paramstyle
             if paramstyle == 'named':
                 pass
             elif paramstyle =='pyformat':
@@ -127,31 +121,10 @@ class EngineAssert(object):
                 elif paramstyle=='numeric':
                     repl = None
                 counter = 0
-                def append_arg(match):
-                    names.append(match.group(1))
-                    if repl is None:
-                        counter += 1
-                        return counter
-                    else:
-                        return repl
-                # substitute bind string in query, translate bind param
-                # dict to a list (or a list of dicts to a list of lists)
-                query = re.sub(r':([\w_]+)', append_arg, query)
-                if isinstance(params, list):
-                    args = []
-                    for p in params:
-                        l = []
-                        args.append(l)
-                        for n in names:
-                            l.append(p[n])
-                else:
-                    args = []
-                    for n in names:
-                        args.append(params[n])
-                params = args
+                query = re.sub(r':([\w_]+)', repl, query)
             
             self.unittest.assert_(statement == query and params == parameters, "Testing for query '%s' params %s, received '%s' with params %s" % (query, repr(params), statement, repr(parameters)))
-        return self.realexec(statement, parameters, **kwargs)
+        return self.realexec(compiled, parameters, **kwargs)
 
 
 class TTestSuite(unittest.TestSuite):

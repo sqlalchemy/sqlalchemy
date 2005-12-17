@@ -234,17 +234,37 @@ class Compiled(ClauseVisitor):
     object be dependent on the actual values of those bind parameters, even though it may
     reference those values as defaults."""
 
-    def __init__(self, engine, statement, bindparams):
+    def __init__(self, engine, statement, parameters):
+        """constructs a new Compiled object.
+        
+        engine - SQLEngine to compile against
+        
+        statement - ClauseElement to be compiled
+        
+        parameters - optional dictionary indicating a set of bind parameters
+        specified with this Compiled object.  These parameters are the "default"
+        values corresponding to the ClauseElement's BindParamClauses when the Compiled 
+        is executed.   In the case of an INSERT or UPDATE statement, these parameters 
+        will also result in the creation of new BindParamClause objects for each key
+        and will also affect the generated column list in an INSERT statement and the SET 
+        clauses of an UPDATE statement.  The keys of the parameter dictionary can
+        either be the string names of columns or actual sqlalchemy.schema.Column objects."""
         self.engine = engine
-        self.bindparams = bindparams
+        self.parameters = parameters
         self.statement = statement
 
     def __str__(self):
         """returns the string text of the generated SQL statement."""
         raise NotImplementedError()
     def get_params(self, **params):
-        """returns the bind params for this compiled object, with values overridden by 
-        those given in the **params dictionary"""
+        """returns the bind params for this compiled object.
+        
+        Will start with the default parameters specified when this Compiled object
+        was first constructed, and will override those values with those sent via
+        **params, which are key/value pairs.  Each key should match one of the 
+        BindParamClause objects compiled into this object; either the "key" or 
+        "shortname" property of the BindParamClause.
+        """
         raise NotImplementedError()
 
     def execute(self, *multiparams, **params):
@@ -254,7 +274,7 @@ class Compiled(ClauseVisitor):
         else:
             params = self.get_params(**params)
 
-        return self.engine.execute(str(self), params, compiled=self, typemap=self.typemap)
+        return self.engine.execute_compiled(self, params)
 
     def scalar(self, *multiparams, **params):
         """executes this compiled object via the execute() method, then 
@@ -326,7 +346,7 @@ class ClauseElement(object):
             return [self]
     columns = property(lambda s: s._get_columns())
     
-    def compile(self, engine = None, bindparams = None, typemap=None):
+    def compile(self, engine = None, parameters = None, typemap=None):
         """compiles this SQL expression using its underlying SQLEngine to produce
         a Compiled object.  If no engine can be found, an ansisql engine is used.
         bindparams is a dictionary representing the default bind parameters to be used with 
@@ -337,7 +357,7 @@ class ClauseElement(object):
         if engine is None:
             raise "no SQLEngine could be located within this ClauseElement."
 
-        return engine.compile(self, bindparams = bindparams, typemap=typemap)
+        return engine.compile(self, parameters=parameters, typemap=typemap)
 
     def __str__(self):
         e = self.engine
@@ -355,7 +375,7 @@ class ClauseElement(object):
             bindparams = multiparams[0]
         else:
             bindparams = params
-        c = self.compile(e, bindparams = bindparams)
+        c = self.compile(e, parameters=bindparams)
         return c.execute(*multiparams, **params)
 
     def scalar(self, *multiparams, **params):

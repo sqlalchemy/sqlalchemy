@@ -57,6 +57,23 @@ class QueryTest(PersistTest):
            print repr(users_with_date.select().execute().fetchall())
            users_with_date.drop()
 
+    def testdefaults(self):
+        x = {'x':0}
+        def mydefault():
+            x['x'] += 1
+            return x['x']
+            
+        t = Table('default_test1', db, 
+            Column('col1', Integer, primary_key=True, default=mydefault),
+            Column('col2', String(20), default="imthedefault"),
+            Column('col3', String(20), default=func.count(1)),
+        )
+        t.create()
+        t.insert().execute()
+        t.insert().execute()
+        t.insert().execute()
+        t.drop()
+        
     def testdelete(self):
         c = db.connection()
 
