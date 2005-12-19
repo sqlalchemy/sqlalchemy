@@ -158,9 +158,9 @@ class ANSICompiler(sql.Compiled):
             # if we are within a visit to a Select, set up the "typemap"
             # for this column which is used to translate result set values
             if self.select_stack[-1].use_labels:
-                self.typemap.setdefault(column.label, column.type)
+                self.typemap.setdefault(column.label.lower(), column.type)
             else:
-                self.typemap.setdefault(column.key, column.type)
+                self.typemap.setdefault(column.key.lower(), column.type)
         if column.table.name is None:
             self.strings[column] = column.name
         else:
@@ -268,6 +268,11 @@ class ANSICompiler(sql.Compiled):
         text += collist
         
         whereclause = select.whereclause
+        
+        # TODO: look at our own parameters, see if they
+        # are all present in the form of BindParamClauses.  if
+        # not, then append to the above whereclause column conditions
+        # matching those keys
         
         froms = []
         for f in select.froms:
