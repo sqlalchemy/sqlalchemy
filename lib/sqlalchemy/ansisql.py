@@ -360,7 +360,7 @@ class ANSICompiler(sql.Compiled):
                 self.visit_insert_sequence(c, seq)
         vis = DefaultVisitor()
         for c in insert_stmt.table.c:
-            if self.parameters.get(c.key, None) is None and c.default is not None:
+            if (self.parameters is None or self.parameters.get(c.key, None) is None) and c.default is not None:
                 c.default.accept_visitor(vis)
         
         self.isinsert = True
