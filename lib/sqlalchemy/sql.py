@@ -412,7 +412,7 @@ class CompareMixin(object):
         elif len(other) == 1 and not isinstance(other[0], Selectable):
             return self.__eq__(other[0])
         elif _is_literal(other[0]):
-            return self._compare('IN', ClauseList(parens=True, *[TextClause(o, isliteral=True) for o in other]))
+            return self._compare('IN', ClauseList(parens=True, *[self._bind_param(o) for o in other]))
         else:
             # assume *other is a list of selects.
             # so put them in a UNION.  if theres only one, you just get one SELECT 
@@ -433,6 +433,8 @@ class CompareMixin(object):
         return self._compare('/', other)
     def __truediv__(self, other):
         return self._compare('/', other)
+    def _bind_param(self, obj):
+        return BindParamClause('literal', obj, shortname=None, type=self.type)
     def _compare(self, operator, obj):
         if _is_literal(obj):
             if obj is None:
@@ -440,7 +442,7 @@ class CompareMixin(object):
                     raise "Only '=' operator can be used with NULL"
                 return BinaryClause(self, null(), 'IS')
             else:
-                obj = BindParamClause('literal', obj, shortname=None, type=self.type)
+                obj = self._bind_param(obj)
 
         return BinaryClause(self, obj, operator)
 
@@ -825,16 +827,20 @@ class ColumnImpl(Selectable, CompareMixin):
     def _get_from_objects(self):
         return [self.column.table]
     
+    def _bind_param(self, obj):
+        if self.column.table.name is None:
+            return BindParamClause(self.name, obj, shortname = self.name, type = self.column.type)
+        else:
+            return BindParamClause(self.column.table.name + "_" + self.name, obj, shortname = self.name, type = self.column.type)
+            
     def _compare(self, operator, obj):
         if _is_literal(obj):
             if obj is None:
                 if operator != '=':
                     raise "Only '=' operator can be used with NULL"
                 return BinaryClause(self.column, null(), 'IS')
-            elif self.column.table.name is None:
-                obj = BindParamClause(self.name, obj, shortname = self.name, type = self.column.type)
             else:
-                obj = BindParamClause(self.column.table.name + "_" + self.name, obj, shortname = self.name, type = self.column.type)
+                obj = self._bind_param(obj)
 
         return BinaryClause(self.column, obj, operator)
 

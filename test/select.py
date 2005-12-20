@@ -384,7 +384,7 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
 
     def testin(self):
         self.runtest(select([table], table.c.id.in_(1, 2, 3)),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (1, 2, 3)")
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid, :mytable_myid_1, :mytable_myid_2)")
 
         self.runtest(select([table], table.c.id.in_(select([table2.c.id]))),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (SELECT myothertable.otherid FROM myothertable)")
