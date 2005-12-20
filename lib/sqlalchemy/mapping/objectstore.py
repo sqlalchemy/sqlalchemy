@@ -223,27 +223,31 @@ class UnitOfWork(object):
         commit_context = UOWTransaction(self)
 
         if len(objects):
-            for obj in objects:
-                if self.deleted.contains(obj):
-                    commit_context.register_object(obj, isdelete=True)
-                elif self.new.contains(obj) or self.dirty.contains(obj):
-                    commit_context.register_object(obj)
+            objset = util.HashSet(iter=objects)
         else:
-            for obj in [n for n in self.new] + [d for d in self.dirty]:
-                if self.deleted.contains(obj):
+            objset = None
+
+        for obj in [n for n in self.new] + [d for d in self.dirty]:
+            if objset is not None and not objset.contains(obj):
+                continue
+            if self.deleted.contains(obj):
+                continue
+            commit_context.register_object(obj)
+        for item in self.modified_lists:
+            obj = item.obj
+            if objset is not None and not objset.contains(obj):
+                continue
+            if self.deleted.contains(obj):
+                continue
+            commit_context.register_object(obj, listonly = True)
+            for o in item.added_items() + item.deleted_items():
+                if self.deleted.contains(o):
                     continue
-                commit_context.register_object(obj)
-            for item in self.modified_lists:
-                obj = item.obj
-                if self.deleted.contains(obj):
-                    continue
-                commit_context.register_object(obj, listonly = True)
-                for o in item.added_items() + item.deleted_items():
-                    if self.deleted.contains(o):
-                        continue
-                    commit_context.register_object(o, listonly=True)
-            for obj in self.deleted:
-                commit_context.register_object(obj, isdelete=True)
+                commit_context.register_object(o, listonly=True)
+        for obj in self.deleted:
+            if objset is not None and not objset.contains(obj):
+                continue
+            commit_context.register_object(obj, isdelete=True)
                 
         engines = util.HashSet()
         for mapper in commit_context.mappers:
