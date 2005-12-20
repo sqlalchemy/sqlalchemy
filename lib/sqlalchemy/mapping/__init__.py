@@ -30,7 +30,7 @@ import mapper as mapperlib
 
 __all__ = ['relation', 'eagerload', 'lazyload', 'noload', 'assignmapper', 
         'mapper', 'clear_mappers', 'objectstore', 'sql', 'extension', 'class_mapper', 'object_mapper', 'MapperExtension',
-        'ColumnProperty'
+        'ColumnProperty', 'assign_mapper'
         ]
 
 def relation(*args, **params):
@@ -145,3 +145,19 @@ def class_mapper(class_):
     except AttributeError:
         pass
         raise "Class '%s' has no mapper associated with it" % class_.__name__
+
+def assign_mapper(class_, *args, **params):
+    params.setdefault("is_primary", True)
+    m = mapper(class_, *args, **params)
+    class_.mapper = m
+    class_.get = m.get
+    class_.select = m.select
+    class_.select_by = m.select_by
+    class_.selectone = m.selectone
+    class_.get_by = m.get_by
+    def commit(self):
+        objectstore.commit(self)
+    def delete(self):
+        objectstore.delete(self)
+    class_.commit = commit
+    class_.delete = delete
