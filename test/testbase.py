@@ -83,7 +83,6 @@ class EngineAssert(object):
         self.engine = engine
         self.realexec = engine.execute_compiled
         engine.execute_compiled = self.execute_compiled
-        self.echo = engine.echo
         self.logger = engine.logger
         self.set_assert_list(None, None)
     def __getattr__(self, key):
@@ -93,8 +92,11 @@ class EngineAssert(object):
         self.assert_list = list
         if list is not None:
             self.assert_list.reverse()
+
+    def _set_echo(self, echo):
+        self.engine.echo = echo
+    echo = property(lambda s: s.engine.echo, _set_echo)
     def execute_compiled(self, compiled, parameters, **kwargs):
-        self.engine.echo = self.echo
         self.engine.logger = self.logger
         statement = str(compiled)
         

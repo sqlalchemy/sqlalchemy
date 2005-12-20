@@ -1,7 +1,7 @@
-from sqlalchemy.schema import *
-from sqlalchemy.mapper import *
-import sqlalchemy.databases.sqlite as sqlite
-engine = sqlite.engine(':memory:', {})
+from sqlalchemy import *
+import sys
+
+engine = create_engine('sqlite://')
 
 engine.echo = True
 
@@ -19,10 +19,11 @@ users.insert().execute(
 
 # class definition
 class User(object):
-    mapper = assignmapper(users)
+    pass
+assign_mapper(User, users)
   
 # select
-user = User.mapper.select(User.c.user_name == 'fred')[0]      
+user = User.get_by(user_name = 'fred')
 
 # modify
 user.user_name = 'fred jones'
@@ -31,6 +32,8 @@ user.user_name = 'fred jones'
 objectstore.commit()
 
 objectstore.clear()
+
+
 
 addresses = Table('email_addresses', engine,
     Column('address_id', Integer, primary_key = True),
