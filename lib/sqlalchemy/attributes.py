@@ -391,8 +391,9 @@ class AttributeManager(object):
         used to create the initial value.  The definition for this attribute is 
         wrapped up into a callable which is then stored in the classes' 
         dictionary of "class managed" attributes.  When instances of the class 
-        are created and the attribute first referenced, the callable is invoked to
-        create the new history container.  Extra keyword arguments can be sent which
+        are created and the attribute first referenced, the callable is invoked with
+        the new object instance as an argument to create the new history container.  
+        Extra keyword arguments can be sent which
         will be passed along to newly created history containers."""
         def createprop(obj):
             if callable_ is not None: 

@@ -174,6 +174,26 @@ class PropertyTest(MapperSuperTest):
         objectstore.commit()
         
         self.echo(repr(AddressUser.mapper.select(AddressUser.c.user_name == 'jack')))
+
+class DeferredTest(MapperSuperTest):
+
+    def testbasic(self):
+        """tests a basic "deferred" load"""
+        
+        m = mapper(Order, orders, properties={
+            'description':deferred(orders.c.description)
+        })
+        
+        def go():
+            l = m.select()
+            o2 = l[2]
+            print o2.description
+
+        self.assert_sql(db, go, [
+            ("SELECT orders.order_id AS orders_order_id, orders.user_id AS orders_user_id, orders.isopen AS orders_isopen FROM orders ORDER BY orders.oid", {}),
+            ("SELECT orders.description FROM orders WHERE orders.order_id = :orders_order_id", {'orders_order_id':3})
+        ])
+
             
 class LazyTest(MapperSuperTest):
 

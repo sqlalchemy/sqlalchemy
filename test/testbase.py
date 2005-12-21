@@ -99,6 +99,7 @@ class EngineAssert(object):
     def execute_compiled(self, compiled, parameters, **kwargs):
         self.engine.logger = self.logger
         statement = str(compiled)
+        statement = re.sub(r'\n', '', statement)
         
         if self.assert_list is not None:
             item = self.assert_list.pop()
@@ -124,7 +125,7 @@ class EngineAssert(object):
                     repl = None
                 counter = 0
                 query = re.sub(r':([\w_]+)', repl, query)
-            
+
             self.unittest.assert_(statement == query and params == parameters, "Testing for query '%s' params %s, received '%s' with params %s" % (query, repr(params), statement, repr(parameters)))
         return self.realexec(compiled, parameters, **kwargs)
 

@@ -29,8 +29,9 @@ import random
 class ColumnProperty(MapperProperty):
     """describes an object attribute that corresponds to a table column."""
     def __init__(self, *columns):
-        """the list of columns describes a single object property populating 
-        multiple columns, typcially across multiple tables"""
+        """the list of columns describes a single object property. if there
+        are multiple tables joined together for the mapper, this list represents
+        the equivalent column as it appears across each table."""
         self.columns = list(columns)
 
     def getattr(self, object):
@@ -43,6 +44,13 @@ class ColumnProperty(MapperProperty):
     def _copy(self):
         return ColumnProperty(*self.columns)
 
+    def setup(self, key, statement, eagertable=None, **options):
+        for c in self.columns:
+            if eagertable is not None:
+                statement.append_column(eagertable._get_col_by_original(c))
+            else:
+                statement.append_column(c)
+
     def init(self, key, parent):
         self.key = key
         # establish a SmartProperty property manager on the object for this key
@@ -53,6 +61,52 @@ class ColumnProperty(MapperProperty):
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
             instance.__dict__[self.key] = row[self.columns[0]]
+
+class DeferredColumnProperty(ColumnProperty):
+    """describes an object attribute that corresponds to a table column, which also
+    will "lazy load" its value from the table.  this is per-column lazy loading."""
+
+    def __init__(self, *columns, **kwargs):
+        self.isoption = kwargs.get('isoption', False)
+        ColumnProperty.__init__(self, *columns)
+    
+    def hash_key(self):
+        return "DeferredColumnProperty(%s)" % repr([hash_key(c) for c in self.columns])
+
+    def _copy(self):
+        return DeferredColumnProperty(*self.columns)
+
+    def setup_loader(self, instance):
+        def lazyload():
+            clause = sql.and_()
+            for primary_key in self.parent.pks_by_table[self.parent.primarytable]:
+                clause.clauses.append(primary_key == self.parent._getattrbycolumn(instance, primary_key))
+            return sql.select([self.parent.table.c[self.key]], clause).scalar()
+        return lazyload
+
+    def _is_primary(self):
+        """a return value of True indicates we are the primary MapperProperty for this loader's
+        attribute on our mapper's class.  It means we can set the object's attribute behavior
+        at the class level.  otherwise we have to set attribute behavior on a per-instance level."""
+        return self.parent._is_primary_mapper and not self.isoption
+
+    def setup(self, key, statement, **options):
+        pass
+        
+    def init(self, key, parent):
+        self.key = key
+        self.parent = parent
+        # establish a SmartProperty property manager on the object for this key, 
+        # containing a callable to load in the attribute
+        if parent._is_primary_mapper():
+            objectstore.uow().register_attribute(parent.class_, key, uselist=False, callable_=lambda i:self.setup_loader(i))
+
+    def execute(self, instance, row, identitykey, imap, isnew):
+        if isnew:
+            if not self._is_primary():
+                objectstore.global_attributes.create_history(instance, self.key, False, callable_=self.setup_loader(instance))
+            else:
+                objectstore.global_attributes.reset_history(instance, self.key)
 
 mapper.ColumnProperty = ColumnProperty
 
@@ -660,13 +714,13 @@ class EagerLoader(PropertyLoader):
             statement.order_by(*self.eager_order_by)
             
         statement.append_from(statement._outerjoin)
-        statement.append_column(self.eagertarget)
+        #statement.append_column(self.eagertarget)
         recursion_stack[self] = True
         try:
             for key, value in self.mapper.props.iteritems():
                 if recursion_stack.has_key(value):
                     raise "Circular eager load relationship detected on " + str(self.mapper) + " " + key + repr(self.mapper.props)
-                value.setup(key, statement, recursion_stack=recursion_stack)
+                value.setup(key, statement, recursion_stack=recursion_stack, eagertable=self.eagertarget)
         finally:
             del recursion_stack[self]
             

@@ -556,13 +556,13 @@ class Mapper(object):
             crit = []
             for i in range(0, len(self.table.primary_key)):
                 crit.append(s3.primary_key[i] == self.table.primary_key[i])
-            statement = sql.select([self.table], sql.and_(*crit), use_labels=True)
+            statement = sql.select([], sql.and_(*crit), from_obj=[self.table], use_labels=True)
             if kwargs.has_key('order_by'):
                 statement.order_by(*kwargs['order_by'])
             else:
                 statement.order_by(order_by)
         else:
-            statement = sql.select([self.table], whereclause, use_labels=True, **kwargs)
+            statement = sql.select([], whereclause, from_obj=[self.table], use_labels=True, **kwargs)
             if not kwargs.get('distinct', False) and order_by is not None and kwargs.get('order_by', None) is None:
                 statement.order_by(order_by)
         # plugin point
@@ -572,6 +572,7 @@ class Mapper(object):
             value.setup(key, statement, **kwargs) 
         return statement
 
+        
     def _identity_key(self, row):
         return objectstore.get_row_key(row, self.class_, self.primarytable, self.pks_by_table[self.table])
 
@@ -662,6 +663,7 @@ class MapperProperty(object):
     def setup(self, key, statement, **options):
         """called when a statement is being constructed.  """
         return self
+    
     def init(self, key, parent):
         """called when the MapperProperty is first attached to a new parent Mapper."""
         pass
