@@ -222,7 +222,10 @@ WHERE NOT (users.user_name = :users_user_name
 <&formatting.myt:poplink&>c = users.select(users.c.user_name.in_('jack', 'ed', 'fred')).execute()  
 <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.password
-FROM users WHERE users.user_name IN ('jack', 'ed', 'fred')
+FROM users WHERE users.user_name 
+IN (:users_user_name, :users_user_name_1, :users_user_name_2)
+{'users_user_name': 'jack', 'users_user_name_1': 'ed', 
+    'users_user_name_2': 'fred'}
 </&>
                 
                 # join users and addresses together
@@ -250,15 +253,47 @@ AND users.user_name = :users_user_name
 {'users_user_name': 'fred'}                
 </&>
 </&>            
+
+        <P>Select statements can also generate a WHERE clause based on the parameters you give it.  If a given parameter, which matches the name of a column or its "label" (the combined tablename + "_" + column name), and does not already correspond to a bind parameter in the select object, it will be added as a comparison against that column.  This is a shortcut to creating a full WHERE clause:</p>
+        <&|formatting.myt:code&>
+            # specify a match for the "user_name" column
+            <&formatting.myt:poplink&>c = users.select().execute(user_name='ed')
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT users.user_id, users.user_name, users.password
+FROM users WHERE users.user_name = :users_user_name
+{'users_user_name': 'ed'}
+</&>
+            # specify a full where clause for the "user_name" column, as well as a
+            # comparison for the "user_id" column
+            <&formatting.myt:poplink&>c = users.select(users.c.user_name=='ed').execute(user_id=10)
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT users.user_id, users.user_name, users.password
+FROM users WHERE users.user_name = :users_user_name AND users.user_id = :users_user_id
+{'users_user_name': 'ed', 'users_user_id': 10}
+</&>
+        </&>
             <&|doclib.myt:item, name="operators", description="Operators" &>
             <p>Supported column operators so far are all the numerical comparison operators, i.e. '==', '>', '>=', etc., as well as like(), startswith(), endswith(), and in().  Boolean operators include not_(), and_() and or_(), which also can be used inline via '~', '&', and '|'.  Math operators are '+', '-', '*', '/'.</p>
             <&|formatting.myt:code &>
+                # "like" operator
                 users.select(users.c.user_name.like('%ter'))
+                
+                # equality operator
                 users.select(users.c.user_name == 'jane')
+                
+                # in opertator
                 users.select(users.c.user_id.in_(1,2,3))
+                
+                # and_, endswith, equality operators
                 users.select(and_(addresses.c.street.endswith('green street'), addresses.c.zip=='11234'))
+                
+                # & operator subsituting for 'and_'
                 users.select(addresses.c.street.endswith('green street') & (addresses.c.zip=='11234'))
+                
+                # + concatenation operator
                 select([users.c.user_name + '_name'])
+                
+                # NOT operator
                 users.select(~(addresses.c.street == 'Green Street'))
             </&>
             </&>

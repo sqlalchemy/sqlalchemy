@@ -269,11 +269,24 @@ class ANSICompiler(sql.Compiled):
         
         whereclause = select.whereclause
         
-        # TODO: look at our own parameters, see if they
+        # look at our own parameters, see if they
         # are all present in the form of BindParamClauses.  if
         # not, then append to the above whereclause column conditions
         # matching those keys
-        
+        if self.parameters is not None:
+            revisit = False
+            for c in inner_columns:
+                if self.parameters.has_key(c.key) and not self.binds.has_key(c.key):
+                    value = self.parameters[c.key]
+                elif self.parameters.has_key(c.label) and not self.binds.has_key(c.label):
+                    value = self.parameters[c.label]
+                else:
+                    continue
+                clause = c==value
+                clause.accept_visitor(self)
+                whereclause = sql.and_(clause, whereclause)
+                self.visit_compound(whereclause)
+                
         froms = []
         for f in select.froms:
 

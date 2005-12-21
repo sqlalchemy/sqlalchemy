@@ -389,7 +389,15 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
         self.runtest(select([table], table.c.id.in_(select([table2.c.id]))),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (SELECT myothertable.otherid FROM myothertable)")
     
+    def testlateargs(self):
+        """tests that a SELECT clause will have extra "WHERE" clauses added to it at compile time if extra arguments
+        are sent"""
         
+        self.runtest(table.select(), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.name = :mytable_name AND mytable.myid = :mytable_myid", params={'id':'3', 'name':'jack'})
+
+        self.runtest(table.select(table.c.name=='jack'), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = :mytable_myid AND mytable.name = :mytable_name", params={'id':'3'})
+
+        self.runtest(table.select(table.c.name=='jack'), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = :mytable_myid AND mytable.name = :mytable_name", params={'id':'3', 'name':'fred'})
         
 class CRUDTest(SQLTest):
     def testinsert(self):

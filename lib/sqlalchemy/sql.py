@@ -1155,6 +1155,19 @@ class UpdateBase(ClauseElement):
         return parameters
         
     def get_colparams(self, parameters):
+        """this is used by the ANSICompiler to determine the VALUES or SET clause based on the arguments 
+        specified to the execute() or compile() method of the INSERT or UPDATE clause:
+        
+        insert(mytable).execute(col1='foo', col2='bar')
+        mytable.update().execute(col2='foo', col3='bar')
+        
+        in the above examples, the insert() and update() methods have no "values" sent to them
+        at all, so compiling them with no arguments would yield an insert for all table columns,
+        or an update with no SET clauses.  but the parameters sent indicate a set of per-compilation
+        arguments that result in a differently compiled INSERT or UPDATE object compared to the
+        original.  The "values" parameter to the insert/update is figured as well if present,
+        but the incoming "parameters" sent here take precedence.
+        """
         # case one: no parameters in the statement, no parameters in the 
         # compiled params - just return binds for all the table columns
         if parameters is None and self.parameters is None:
