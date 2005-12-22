@@ -184,6 +184,9 @@ class DeferredTest(MapperSuperTest):
             'description':deferred(orders.c.description)
         })
         
+        o = Order()
+        self.assert_(o.description is None)
+        
         def go():
             l = m.select()
             o2 = l[2]

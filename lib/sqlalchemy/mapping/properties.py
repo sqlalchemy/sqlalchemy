@@ -80,7 +80,10 @@ class DeferredColumnProperty(ColumnProperty):
         def lazyload():
             clause = sql.and_()
             for primary_key in self.parent.pks_by_table[self.parent.primarytable]:
-                clause.clauses.append(primary_key == self.parent._getattrbycolumn(instance, primary_key))
+                attr = self.parent._getattrbycolumn(instance, primary_key)
+                if not attr:
+                    return None
+                clause.clauses.append(primary_key == attr)
             return sql.select([self.parent.table.c[self.key]], clause).scalar()
         return lazyload
 
