@@ -154,15 +154,16 @@ class Mapper(object):
             proplist = self.columntoproperty.setdefault(column.original, [])
             proplist.append(prop)
 
+        if not hasattr(self.class_, '_mapper') or self.is_primary or not mapper_registry.has_key(self.class_._mapper) or (inherits is not None and inherits._is_primary_mapper()):
+            objectstore.global_attributes.reset_class_managed(self.class_)
+            self._init_class()
+            
         if inherits is not None:
             for key, prop in inherits.props.iteritems():
                 if not self.props.has_key(key):
                     self.props[key] = prop._copy()
                 
-        if not hasattr(self.class_, '_mapper') or self.is_primary or not mapper_registry.has_key(self.class_._mapper) or (inherits is not None and inherits._is_primary_mapper()):
-            self._init_class()
-       
-        
+
     engines = property(lambda s: [t.engine for t in s.tables])
 
     def add_property(self, key, prop):
@@ -275,6 +276,17 @@ class Mapper(object):
         compiling or executing it"""
         return self._compile(whereclause, **options)
 
+    def copy(self, hashkey=None):
+        # TODO: at the moment, we are re-using the properties from the original mapper
+        # which stay connected to that first mapper.  if we start making copies of 
+        # mappers where the primary attributes of the mapper change, we might want 
+        # to look into copying all the property objects too.
+        if hashkey is None:
+            hashkey = hash_key(self) + "->copy" 
+        mapper = Mapper(hashkey, **self.copyargs)
+        mapper._init_properties()
+        return mapper
+        
     def options(self, *options):
         """uses this mapper as a prototype for a new mapper with different behavior.
         *options is a list of options directives, which include eagerload(), lazyload(), and noload()"""
@@ -283,8 +295,7 @@ class Mapper(object):
         try:
             return mapper_registry[hashkey]
         except KeyError:
-            mapper = Mapper(hashkey, **self.copyargs)
-            mapper._init_properties()
+            mapper = self.copy(hashkey)
 
             for option in options:
                 option.process(mapper)
@@ -563,10 +574,18 @@ class Mapper(object):
                 statement.order_by(order_by)
         else:
             statement = sql.select([], whereclause, from_obj=[self.table], use_labels=True, **kwargs)
-            if not kwargs.get('distinct', False) and order_by is not None and kwargs.get('order_by', None) is None:
+            if order_by is not None and kwargs.get('order_by', None) is None:
                 statement.order_by(order_by)
+            # for a DISTINCT query, you need the columns explicitly specified in order
+            # to use it in "order_by" - in the case we added the rowid column in,
+            # add that to the column list
+            # TODO: this idea should be handled by the SELECT statement itself, insuring
+            # that order_by cols are in the select list if DISTINCT is selected
+            if kwargs.get('distinct', False) and order_by is self.table.rowid_column:
+                statement.append_column(self.table.rowid_column)
         # plugin point
         
+            
         # give all the attached properties a chance to modify the query
         for key, value in self.props.iteritems():
             value.setup(key, statement, **kwargs) 

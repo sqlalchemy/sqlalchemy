@@ -67,7 +67,7 @@ class DeferredColumnProperty(ColumnProperty):
     will "lazy load" its value from the table.  this is per-column lazy loading."""
 
     def __init__(self, *columns, **kwargs):
-        self.isoption = kwargs.get('isoption', False)
+        self.group = kwargs.get('group', None)
         ColumnProperty.__init__(self, *columns)
     
     def hash_key(self):
@@ -84,14 +84,25 @@ class DeferredColumnProperty(ColumnProperty):
                 if not attr:
                     return None
                 clause.clauses.append(primary_key == attr)
-            return sql.select([self.parent.table.c[self.key]], clause).scalar()
+            
+            if self.group is not None:
+                groupcols = [p for p in self.parent.props.values() if isinstance(p, DeferredColumnProperty) and p.group==self.group]
+                row = sql.select([g.columns[0] for g in groupcols], clause).execute().fetchone()
+                for prop in groupcols:
+                    if prop is self:
+                        continue
+                    instance.__dict__[prop.key] = row[prop.columns[0]]
+                    objectstore.global_attributes.create_history(instance, prop.key, uselist=False)
+                return row[self.columns[0]]    
+            else:
+                return sql.select([self.columns[0]], clause).scalar()
         return lazyload
 
     def _is_primary(self):
         """a return value of True indicates we are the primary MapperProperty for this loader's
         attribute on our mapper's class.  It means we can set the object's attribute behavior
         at the class level.  otherwise we have to set attribute behavior on a per-instance level."""
-        return self.parent._is_primary_mapper and not self.isoption
+        return self.parent._is_primary_mapper()
 
     def setup(self, key, statement, **options):
         pass
@@ -120,7 +131,7 @@ class PropertyLoader(MapperProperty):
 
     """describes an object property that holds a single item or list of items that correspond
     to a related database table."""
-    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, live=False, isoption=False, association=None, selectalias=None, order_by=None, attributeext=None, backref=None, is_backref=False):
+    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, live=False, association=None, selectalias=None, order_by=None, attributeext=None, backref=None, is_backref=False):
         self.uselist = uselist
         self.argument = argument
         self.secondary = secondary
@@ -129,7 +140,6 @@ class PropertyLoader(MapperProperty):
         self.foreignkey = foreignkey
         self.private = private
         self.live = live
-        self.isoption = isoption
         self.association = association
         self.selectalias = selectalias
         self.order_by=util.to_list(order_by)
@@ -210,12 +220,14 @@ class PropertyLoader(MapperProperty):
                     # else set one of us as the "backreference"
                     if not self.mapper.props[self.backref].is_backref:
                         self.is_backref=True
-                    
+        elif not objectstore.global_attributes.is_class_managed(parent.class_, key):
+            raise "Non-primary property created for attribute '%s' on class '%s', but that attribute is not managed! Insure that the primary mapper for this class defines this property" % (key, parent.class_.__name__)
+
     def _is_primary(self):
         """a return value of True indicates we are the primary PropertyLoader for this loader's
         attribute on our mapper's class.  It means we can set the object's attribute behavior
         at the class level.  otherwise we have to set attribute behavior on a per-instance level."""
-        return self.parent._is_primary_mapper and not self.isoption
+        return self.parent._is_primary_mapper()
         
     def _set_class_attribute(self, class_, key):
         """sets attribute behavior on our target class."""
@@ -744,6 +756,8 @@ class EagerLoader(PropertyLoader):
             result_list = h
         else:
             result_list = getattr(instance, self.key)
+            if not hasattr(result_list, 'append_nohistory'):
+                raise "hi2"
     
         self._instance(row, imap, result_list)
 
@@ -760,7 +774,31 @@ class EagerLoader(PropertyLoader):
             row = fakerow
         return self.mapper._instance(row, imap, result_list)
 
-class EagerLazyOption(MapperOption):
+class GenericOption(MapperOption):
+    """a mapper option that can handle dotted property names,
+    descending down through the relations of a mapper until it
+    reaches the target."""
+    def __init__(self, key):
+        self.key = key
+    def process(self, mapper):
+        self.process_by_key(mapper, self.key)
+    def process_by_key(self, mapper, key):
+        tokens = key.split('.', 1)
+        if len(tokens) > 1:
+            oldprop = mapper.props[tokens[0]]
+            kwargs = util.constructor_args(oldprop)
+            kwargs['argument'] = self.process_by_key(oldprop.mapper.copy(), tokens[1])
+            newprop = oldprop.__class__(**kwargs)
+            mapper.set_property(tokens[0], newprop)
+        else:
+            self.create_prop(mapper, tokens[0])
+        return mapper
+        
+    def create_prop(self, mapper, key):
+        kwargs = util.constructor_args(oldprop)
+        mapper.set_property(key, class_(**kwargs ))
+            
+class EagerLazyOption(GenericOption):
     """an option that switches a PropertyLoader to be an EagerLoader or LazyLoader"""
     def __init__(self, key, toeager = True, **kwargs):
         self.key = key
@@ -770,17 +808,7 @@ class EagerLazyOption(MapperOption):
     def hash_key(self):
         return "EagerLazyOption(%s, %s)" % (repr(self.key), repr(self.toeager))
 
-    def process(self, mapper):
-        tup = self.key.split('.', 1)
-        key = tup[0]
-        oldprop = mapper.props[key]
-
-        if len(tup) > 1:
-            submapper = mapper.props[key].mapper
-            submapper = submapper.options(EagerLazyOption(tup[1], self.toeager))
-        else:
-            submapper = oldprop.mapper
-
+    def create_prop(self, mapper, key):
         if self.toeager:
             class_ = EagerLoader
         elif self.toeager is None:
@@ -789,9 +817,9 @@ class EagerLazyOption(MapperOption):
             class_ = LazyLoader
 
         # create a clone of the class using mostly the arguments from the original
-        self.kwargs['isoption'] = True
-        self.kwargs['argument'] = submapper
-        kwargs = util.constructor_args(oldprop, **self.kwargs)
+        submapper = mapper.props[key].mapper
+        #self.kwargs['argument'] = submapper
+        kwargs = util.constructor_args(mapper.props[key], **self.kwargs)
         mapper.set_property(key, class_(**kwargs ))
 
 class Aliasizer(sql.ClauseVisitor):

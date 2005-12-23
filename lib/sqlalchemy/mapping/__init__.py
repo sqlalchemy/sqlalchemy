@@ -63,11 +63,11 @@ def _relation_mapper(class_, table=None, secondary=None,
                     live=live, association=association, lazy=lazy, 
                     selectalias=selectalias, order_by=order_by, attributeext=attributeext)
 
-def column(*columns):
-    return ColumnProperty(*columns)
+def column(*columns, **kwargs):
+    return ColumnProperty(*columns, **kwargs)
     
-def deferred(*columns):
-    return DeferredColumnProperty(*columns)
+def deferred(*columns, **kwargs):
+    return DeferredColumnProperty(*columns, **kwargs)
     
     
 class assignmapper(object):

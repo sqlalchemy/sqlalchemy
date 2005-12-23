@@ -130,7 +130,9 @@ class MapperTest(MapperSuperTest):
 #        l = m.select()
         l = m.options(eagerload('addresses')).select()
 
-        self.assert_result(l, User, *user_address_result)
+        def go():
+            self.assert_result(l, User, *user_address_result)
+        self.assert_sql_count(db, go, 0)
 
     def testlazyoptions(self):
         """tests that an eager relation can be upgraded to a lazy relation via the options method"""
@@ -138,8 +140,29 @@ class MapperTest(MapperSuperTest):
             addresses = relation(Address, addresses, lazy = False)
         ))
         l = m.options(lazyload('addresses')).select()
-        self.assert_result(l, User, *user_address_result)
+        def go():
+            self.assert_result(l, User, *user_address_result)
+        self.assert_sql_count(db, go, 3)
 
+    def testdeepoptions(self):
+        m = mapper(User, users,
+            properties = {
+                'orders': relation(Order, orders, properties = {
+                    'items' : relation(Item, orderitems, properties = {
+                        'keywords' : relation(Keyword, keywords, itemkeywords)
+                    })
+                })
+            })
+            
+        m2 = m.options(eagerload('orders.items.keywords'))
+        u = m.select()
+        def go():
+            print u[0].orders[1].items[0].keywords[1]
+        self.assert_sql_count(db, go, 3)
+        objectstore.clear()
+        u = m2.select()
+        self.assert_sql_count(db, go, 2)
+        
 class PropertyTest(MapperSuperTest):
     def testbasic(self):
         """tests that you can create mappers inline with class definitions"""
@@ -196,8 +219,25 @@ class DeferredTest(MapperSuperTest):
             ("SELECT orders.order_id AS orders_order_id, orders.user_id AS orders_user_id, orders.isopen AS orders_isopen FROM orders ORDER BY orders.oid", {}),
             ("SELECT orders.description FROM orders WHERE orders.order_id = :orders_order_id", {'orders_order_id':3})
         ])
+        
+    def testgroup(self):
+        """tests deferred load with a group"""
+        
+        m = mapper(Order, orders, properties = {
+            'userident':deferred(orders.c.user_id, group='primary'),
+            'description':deferred(orders.c.description, group='primary'),
+            'opened':deferred(orders.c.isopen, group='primary')
+        })
 
-            
+        def go():
+            l = m.select()
+            o2 = l[2]
+            print o2.opened, o2.description, o2.userident
+        self.assert_sql(db, go, [
+            ("SELECT orders.order_id AS orders_order_id FROM orders ORDER BY orders.oid", {}),
+            ("SELECT orders.user_id, orders.description, orders.isopen FROM orders WHERE orders.order_id = :orders_order_id", {'orders_order_id':3})
+        ])
+        
 class LazyTest(MapperSuperTest):
 
     def testbasic(self):
@@ -249,7 +289,6 @@ class LazyTest(MapperSuperTest):
         ))
         l = m.select(limit=2, offset=1)
         self.assert_result(l, User, *user_all_result[1:3])
-
         # use a union all to get a lot of rows to join against
         u2 = users.alias('u2')
         s = union_all(u2.select(use_labels=True), u2.select(use_labels=True), u2.select(use_labels=True)).alias('u')
@@ -257,7 +296,7 @@ class LazyTest(MapperSuperTest):
         self.assert_result(l, User, *user_all_result)
         
         objectstore.clear()
-        m = mapper(Item, orderitems, properties = dict(
+        m = mapper(Item, orderitems, is_primary=True, properties = dict(
                 keywords = relation(Keyword, keywords, itemkeywords, lazy = True),
             ))
         l = m.select((Item.c.item_name=='item 2') | (Item.c.item_name=='item 5') | (Item.c.item_name=='item 3'), order_by=[Item.c.item_id], limit=2)        
@@ -381,7 +420,6 @@ class EagerTest(MapperSuperTest):
         ))
         l = m.select(limit=2, offset=1)
         self.assert_result(l, User, *user_all_result[1:3])
-
         # this is an involved 3x union of the users table to get a lot of rows.
         # then see if the "distinct" works its way out.  you actually get the same
         # result with or without the distinct, just via less or more rows.
@@ -389,9 +427,8 @@ class EagerTest(MapperSuperTest):
         s = union_all(u2.select(use_labels=True), u2.select(use_labels=True), u2.select(use_labels=True)).alias('u')
         l = m.select(s.c.u2_user_id==User.c.user_id, distinct=True)
         self.assert_result(l, User, *user_all_result)
-        
         objectstore.clear()
-        m = mapper(Item, orderitems, properties = dict(
+        m = mapper(Item, orderitems, is_primary=True, properties = dict(
                 keywords = relation(Keyword, keywords, itemkeywords, lazy = False),
             ))
         l = m.select((Item.c.item_name=='item 2') | (Item.c.item_name=='item 5') | (Item.c.item_name=='item 3'), order_by=[Item.c.item_id], limit=2)        

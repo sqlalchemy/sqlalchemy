@@ -374,7 +374,21 @@ class AttributeManager(object):
             class_._attribute_manager = self
         return attr
 
+    def reset_class_managed(self, class_):
+        try:
+            attr = getattr(class_, '_class_managed_attributes')
+            for key in attr.keys():
+                delattr(class_, key)
+            delattr(class_, '_class_managed_attributes')
+        except AttributeError:
+            pass
 
+    def is_class_managed(self, class_, key):
+        try:
+            return class_._class_managed_attributes.has_key(key)
+        except AttributeError:
+            return False
+            
     def create_history_container(self, obj, key, uselist, callable_ = None, **kwargs):
         """creates a new history container for the given attribute on the given object."""
         if callable_ is not None:

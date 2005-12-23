@@ -399,8 +399,7 @@ class SaveTest(AssertMixin):
         self.assert_(u.user_id == userid and a2.address_id == addressid)
 
     def testmapperswitch(self):
-        """test that, if we change mappers, the new one gets used fully.  not sure if 
-        i want it to work that way, but probably."""
+        """test that, if we change mappers, the new one gets used fully. """
         users.insert().execute(
             dict(user_id = 7, user_name = 'jack'),
             dict(user_id = 8, user_name = 'ed'),
@@ -409,11 +408,11 @@ class SaveTest(AssertMixin):
         db.commit()
 
         # mapper with just users table
-        User.mapper = assignmapper(users)
+        assign_mapper(User, users)
         User.mapper.select()
         oldmapper = User.mapper
         # now a mapper with the users table plus a relation to the addresses
-        User.mapper = assignmapper(users, properties = dict(
+        assign_mapper(User, users, is_primary=True, properties = dict(
             addresses = relation(Address, addresses, lazy = False)
         ))
         self.assert_(oldmapper is not User.mapper)
