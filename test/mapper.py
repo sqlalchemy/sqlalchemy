@@ -127,7 +127,6 @@ class MapperTest(MapperSuperTest):
         m = mapper(User, users, properties = dict(
             addresses = relation(Address, addresses, lazy = True)
         ))
-#        l = m.select()
         l = m.options(eagerload('addresses')).select()
 
         def go():
@@ -217,7 +216,7 @@ class DeferredTest(MapperSuperTest):
 
         self.assert_sql(db, go, [
             ("SELECT orders.order_id AS orders_order_id, orders.user_id AS orders_user_id, orders.isopen AS orders_isopen FROM orders ORDER BY orders.oid", {}),
-            ("SELECT orders.description FROM orders WHERE orders.order_id = :orders_order_id", {'orders_order_id':3})
+            ("SELECT orders.description AS orders_description FROM orders WHERE orders.order_id = :orders_order_id", {'orders_order_id':3})
         ])
         
     def testgroup(self):
@@ -235,9 +234,54 @@ class DeferredTest(MapperSuperTest):
             print o2.opened, o2.description, o2.userident
         self.assert_sql(db, go, [
             ("SELECT orders.order_id AS orders_order_id FROM orders ORDER BY orders.oid", {}),
-            ("SELECT orders.user_id, orders.description, orders.isopen FROM orders WHERE orders.order_id = :orders_order_id", {'orders_order_id':3})
+            ("SELECT orders.user_id AS orders_user_id, orders.description AS orders_description, orders.isopen AS orders_isopen FROM orders WHERE orders.order_id = :orders_order_id", {'orders_order_id':3})
         ])
         
+    def testoptions(self):
+        """tests using options on a mapper to create deferred and undeferred columns"""
+        m = mapper(Order, orders)
+        m2 = m.options(defer('user_id'))
+        def go():
+            l = m2.select()
+            print l[2].user_id
+        self.assert_sql(db, go, [
+            ("SELECT orders.order_id AS orders_order_id, orders.description AS orders_description, orders.isopen AS orders_isopen FROM orders ORDER BY orders.oid", {}),
+            ("SELECT orders.user_id AS orders_user_id FROM orders WHERE orders.order_id = :orders_order_id", {'orders_order_id':3})
+        ])
+        objectstore.clear()
+        m3 = m2.options(undefer('user_id'))
+        print m3.hashkey
+        def go():
+            l = m3.select()
+            print l[3].user_id
+        self.assert_sql(db, go, [
+            ("SELECT orders.order_id AS orders_order_id, orders.user_id AS orders_user_id, orders.description AS orders_description, orders.isopen AS orders_isopen FROM orders ORDER BY orders.oid", {}),
+        ])
+
+    def testdeepoptions(self):
+        m = mapper(User, users, properties={
+            'orders':relation(Order, orders, properties={
+                'items':relation(Item, orderitems, properties={
+                    'item_name':deferred(orderitems.c.item_name)
+                })
+            })
+        })
+        l = m.select()
+        item = l[0].orders[1].items[1]
+        def go():
+            print item.item_name
+        self.assert_sql_count(db, go, 1)
+        self.assert_(item.item_name == 'item 4')
+        objectstore.clear()
+        m2 = m.options(undefer('orders.items.item_name'))
+        l = m2.select()
+        item = l[0].orders[1].items[1]
+        def go():
+            print item.item_name
+        self.assert_sql_count(db, go, 0)
+        self.assert_(item.item_name == 'item 4')
+    
+    
 class LazyTest(MapperSuperTest):
 
     def testbasic(self):

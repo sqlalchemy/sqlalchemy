@@ -87,7 +87,7 @@ class DeferredColumnProperty(ColumnProperty):
             
             if self.group is not None:
                 groupcols = [p for p in self.parent.props.values() if isinstance(p, DeferredColumnProperty) and p.group==self.group]
-                row = sql.select([g.columns[0] for g in groupcols], clause).execute().fetchone()
+                row = sql.select([g.columns[0] for g in groupcols], clause, use_labels=True).execute().fetchone()
                 for prop in groupcols:
                     if prop is self:
                         continue
@@ -95,7 +95,7 @@ class DeferredColumnProperty(ColumnProperty):
                     objectstore.global_attributes.create_history(instance, prop.key, uselist=False)
                 return row[self.columns[0]]    
             else:
-                return sql.select([self.columns[0]], clause).scalar()
+                return sql.select([self.columns[0]], clause, use_labels=True).scalar()
         return lazyload
 
     def _is_primary(self):
@@ -819,6 +819,21 @@ class EagerLazyOption(GenericOption):
         kwargs = util.constructor_args(mapper.props[key], **self.kwargs)
         mapper.set_property(key, class_(**kwargs ))
 
+class DeferredOption(GenericOption):
+    def __init__(self, key, defer=False, **kwargs):
+        self.key = key
+        self.defer = defer
+        self.kwargs = kwargs
+    def hash_key(self):
+        return "DeferredOption(%s,%s)" % (self.key, self.defer)
+    def create_prop(self, mapper, key):
+        oldprop = mapper.props[key]
+        if self.defer:
+            prop = DeferredColumnProperty(*oldprop.columns, **self.kwargs)
+        else:
+            prop = ColumnProperty(*oldprop.columns, **self.kwargs)
+        mapper.set_property(key, prop)
+        
 class Aliasizer(sql.ClauseVisitor):
     """converts a table instance within an expression to be an alias of that table."""
     def __init__(self, *tables, **kwargs):

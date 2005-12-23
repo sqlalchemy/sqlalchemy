@@ -29,6 +29,7 @@ from properties import *
 import mapper as mapperlib
 
 __all__ = ['relation', 'eagerload', 'lazyload', 'noload', 'deferred', 'assignmapper', 'column', 'deferred',
+        'defer', 'undefer',
         'mapper', 'clear_mappers', 'objectstore', 'sql', 'extension', 'class_mapper', 'object_mapper', 'MapperExtension',
         'ColumnProperty', 'assign_mapper'
         ]
@@ -137,6 +138,15 @@ def noload(name, **kwargs):
     """returns a MapperOption that will convert the property of the given name
     into a non-load.  Used with mapper.options()"""
     return EagerLazyOption(name, toeager=None, **kwargs)
+
+def defer(name, **kwargs):
+    """returns a MapperOption that will convert the column property of the given 
+    name into a deferred load.  Used with mapper.options()"""
+    return DeferredOption(name, defer=True)
+def undefer(name, **kwargs):
+    """returns a MapperOption that will convert the column property of the given
+    name into a non-deferred (regular column) load.  Used with mapper.options."""
+    return DeferredOption(name, defer=False)
     
 def object_mapper(object):
     """given an object, returns the primary Mapper associated with the object
