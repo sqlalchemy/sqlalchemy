@@ -350,12 +350,14 @@ class SaveTest(AssertMixin):
                     {'user_name': 'imnewlyadded'}
                 ),
                 (
-                    "UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE email_addresses.address_id = :email_addresses_address_id",
-                    lambda: [
-                        {'email_address': 'imnew@foo.bar', 'user_id': objects[2].user.user_id, 'email_addresses_address_id': objects[2].address_id}, 
-                        {'email_address': 'adsd5@llala.net', 'user_id': objects[3].user.user_id, 'email_addresses_address_id': objects[3].address_id}
-                    ]
-                )
+                    "UPDATE email_addresses SET email_address=:email_address WHERE email_addresses.address_id = :email_addresses_address_id",
+                    lambda: [{'email_address': 'imnew@foo.bar', 'email_addresses_address_id': objects[2].address_id}]
+                ),
+                (
+                    "UPDATE email_addresses SET user_id=:user_id WHERE email_addresses.address_id = :email_addresses_address_id",
+                    lambda: [{'user_id': objects[3].user.user_id, 'email_addresses_address_id': objects[3].address_id}]
+                ),
+                
         ])
         l = sql.select([users, addresses], sql.and_(users.c.user_id==addresses.c.address_id, addresses.c.address_id==a.address_id)).execute()
         self.echo( repr(l.fetchone().row))
@@ -469,11 +471,11 @@ class SaveTest(AssertMixin):
                         [{'users_user_id': u2.user_id, 'user_name': 'user2modified'}]
                     ),
                     (
-                        "UPDATE email_addresses SET user_id=:user_id, email_address=:email_address WHERE email_addresses.address_id = :email_addresses_address_id",
-                        [
-                            {'email_address': 'emailaddress3', 'user_id': u1.user_id, 'email_addresses_address_id': a3.address_id}, 
-                            {'email_address': 'emailaddress1', 'user_id': None, 'email_addresses_address_id': a1.address_id}
-                        ]
+                        "UPDATE email_addresses SET user_id=:user_id WHERE email_addresses.address_id = :email_addresses_address_id",
+                        [{'user_id': u1.user_id, 'email_addresses_address_id': a3.address_id}]
+                    ),
+                    ("UPDATE email_addresses SET user_id=:user_id WHERE email_addresses.address_id = :email_addresses_address_id",
+                        [{'user_id': None, 'email_addresses_address_id': a1.address_id}]
                     )
                 ])
 
@@ -582,8 +584,8 @@ class SaveTest(AssertMixin):
         objects[5].keywords.append(k)
         self.assert_sql(db, lambda:objectstore.commit(), [
             (
-                "UPDATE items SET order_id=:order_id, item_name=:item_name WHERE items.item_id = :items_item_id",
-                [{'item_name': 'item4updated', 'order_id': None, 'items_item_id': objects[4].item_id}]
+                "UPDATE items SET item_name=:item_name WHERE items.item_id = :items_item_id",
+                [{'item_name': 'item4updated', 'items_item_id': objects[4].item_id}]
             ),
             (
                 "INSERT INTO keywords (name) VALUES (:name)", 

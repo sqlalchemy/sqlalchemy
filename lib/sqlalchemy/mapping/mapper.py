@@ -413,7 +413,7 @@ class Mapper(object):
         t = sql.text(text, engine=self.primarytable.engine)
         return self.instances(t.execute(**params))
 
-    def _getattrbycolumn(self, obj, column):
+    def _getpropbycolumn(self, column):
         try:
             prop = self.columntoproperty[column.original]
         except KeyError:
@@ -422,8 +422,11 @@ class Mapper(object):
                 raise "Column '%s.%s' is not available, due to conflicting property '%s':%s" % (column.table.name, column.name, column.key, repr(prop))
             except KeyError:
                 raise "No column %s.%s is configured on mapper %s..." % (column.table.name, column.name, str(self))
-                
-        return prop[0].getattr(obj)
+        return prop[0]
+        
+    def _getattrbycolumn(self, obj, column):
+        prop = self._getpropbycolumn(column)
+        return prop.getattr(obj)
 
     def _setattrbycolumn(self, obj, column, value):
         self.columntoproperty[column.original][0].setattr(obj, value)
@@ -453,9 +456,11 @@ class Mapper(object):
 #                print "SAVE_OBJ we are " + hash_key(self) + " obj: " +  obj.__class__.__name__ + repr(id(obj))
                 params = {}
 
-                if not hasattr(obj, "_instance_key"):
+                isinsert = not hasattr(obj, "_instance_key")
+                if isinsert:
                     self.extension.before_insert(self, obj)
 
+                hasdata = False
                 for col in table.columns:
                     #if col.primary_key:
                     if pk.has_key(col):
@@ -468,10 +473,20 @@ class Mapper(object):
                             if value is not None:
                                 params[col.key] = value
                     else:
-                        params[col.key] = self._getattrbycolumn(obj, col)
+                        if not isinsert:
+                            prop = self._getpropbycolumn(col)
+                            history = prop.get_history(obj, passive=True)
+                            if history:
+                                a = history.added_items()
+                                if len(a):
+                                    params[col.key] = a[0]
+                                    hasdata = True
+                        else:
+                            params[col.key] = self._getattrbycolumn(obj, col)
 
-                if hasattr(obj, "_instance_key"):
-                    update.append(params)
+                if not isinsert:
+                    if hasdata:
+                        update.append(params)
                 else:
                     insert.append((obj, params))
                 uow.register_saved_object(obj)
@@ -481,9 +496,12 @@ class Mapper(object):
                 for col in self.pks_by_table[table]:
                     clause.clauses.append(col == sql.bindparam(col.table.name + "_" + col.key))
                 statement = table.update(clause)
-                c = statement.execute(*update)
-                if table.engine.supports_sane_rowcount() and c.rowcount != len(update):
-                    raise "ConcurrencyError - updated rowcount %d does not match number of objects updated %d" % (c.cursor.rowcount, len(update))
+                rows = 0
+                for rec in update:
+                    c = statement.execute(rec)
+                    rows += c.cursor.rowcount
+                if table.engine.supports_sane_rowcount() and rows != len(update):
+                    raise "ConcurrencyError - updated rowcount %d does not match number of objects updated %d" % (rows, len(update))
             if len(insert):
                 import sys
                 statement = table.insert()

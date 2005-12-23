@@ -38,6 +38,8 @@ class ColumnProperty(MapperProperty):
         return getattr(object, self.key, None)
     def setattr(self, object, value):
         setattr(object, self.key, value)
+    def get_history(self, obj, passive=False):
+        return objectstore.global_attributes.get_history(obj, self.key, passive=passive)
     def hash_key(self):
         return "ColumnProperty(%s)" % repr([hash_key(c) for c in self.columns])
 
