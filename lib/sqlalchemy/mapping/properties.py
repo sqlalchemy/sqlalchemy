@@ -756,8 +756,6 @@ class EagerLoader(PropertyLoader):
             result_list = h
         else:
             result_list = getattr(instance, self.key)
-            if not hasattr(result_list, 'append_nohistory'):
-                raise "hi2"
     
         self._instance(row, imap, result_list)
 
@@ -818,7 +816,6 @@ class EagerLazyOption(GenericOption):
 
         # create a clone of the class using mostly the arguments from the original
         submapper = mapper.props[key].mapper
-        #self.kwargs['argument'] = submapper
         kwargs = util.constructor_args(mapper.props[key], **self.kwargs)
         mapper.set_property(key, class_(**kwargs ))
 
