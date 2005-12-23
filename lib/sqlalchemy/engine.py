@@ -324,10 +324,11 @@ class SQLEngine(schema.SchemaEngine):
         pass
 
     def execute_compiled(self, compiled, parameters, connection=None, cursor=None, echo=None, **kwargs):
-        """executes the given string-based SQL statement with the given parameters.  
+        """executes the given compiled statement object with the given parameters.  
 
-        The parameters can be a dictionary or a list, or a list of dictionaries or lists, depending
-        on the paramstyle of the DBAPI.
+        The parameters can be a dictionary of key/value pairs, or a list of dictionaries for an
+        executemany() style of execution.  Engines that use positional parameters will convert
+        the parameters to a list before execution.
 
         If the current thread has specified a transaction begin() for this engine, the
         statement will be executed in the context of the current transactional connection.
@@ -360,6 +361,12 @@ class SQLEngine(schema.SchemaEngine):
         if cursor is None:
             cursor = connection.cursor()
 
+        executemany = parameters is not None and (isinstance(parameters, list) or isinstance(parameters, tuple))
+        if executemany:
+            parameters = [compiled.get_params(**m) for m in parameters]
+        else:
+            parameters = compiled.get_params(**parameters)
+        
         def proxy(statement=None, parameters=None):
             if statement is None:
                 return cursor
@@ -371,7 +378,7 @@ class SQLEngine(schema.SchemaEngine):
                     parameters = [p.values() for p in parameters]
                 else:
                     parameters = parameters.values()
-            
+
             self.execute(statement, parameters, connection=connection, cursor=cursor)        
             return cursor
 

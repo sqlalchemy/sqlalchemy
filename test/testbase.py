@@ -76,15 +76,22 @@ class AssertMixin(PersistTest):
             callable_()
         finally:
             db.set_assert_list(None, None)
+    def assert_sql_count(self, db, callable_, count):
+        db.sql_count = 0
+        try:
+            callable_()
+        finally:
+            self.assert_(db.sql_count == count, "desired statement count %d does not match %d" % (count, db.sql_count))
         
 class EngineAssert(object):
     """decorates a SQLEngine object to match the incoming queries against a set of assertions."""
     def __init__(self, engine):
         self.engine = engine
-        self.realexec = engine.execute_compiled
-        engine.execute_compiled = self.execute_compiled
+        self.realexec = engine.pre_exec
+        engine.pre_exec = self.pre_exec
         self.logger = engine.logger
         self.set_assert_list(None, None)
+        self.sql_count = 0
     def __getattr__(self, key):
         return getattr(self.engine, key)
     def set_assert_list(self, unittest, list):
@@ -92,15 +99,14 @@ class EngineAssert(object):
         self.assert_list = list
         if list is not None:
             self.assert_list.reverse()
-
     def _set_echo(self, echo):
         self.engine.echo = echo
     echo = property(lambda s: s.engine.echo, _set_echo)
-    def execute_compiled(self, compiled, parameters, **kwargs):
+    def pre_exec(self, proxy, compiled, parameters, **kwargs):
         self.engine.logger = self.logger
         statement = str(compiled)
         statement = re.sub(r'\n', '', statement)
-        
+
         if self.assert_list is not None:
             item = self.assert_list.pop()
             (query, params) = item
@@ -127,7 +133,8 @@ class EngineAssert(object):
                 query = re.sub(r':([\w_]+)', repl, query)
 
             self.unittest.assert_(statement == query and params == parameters, "Testing for query '%s' params %s, received '%s' with params %s" % (query, repr(params), statement, repr(parameters)))
-        return self.realexec(compiled, parameters, **kwargs)
+        self.sql_count += 1
+        return self.realexec(proxy, compiled, parameters, **kwargs)
 
 
 class TTestSuite(unittest.TestSuite):

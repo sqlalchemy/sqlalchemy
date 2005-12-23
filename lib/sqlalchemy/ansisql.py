@@ -244,23 +244,32 @@ class ANSICompiler(sql.Compiled):
         self.strings[alias] = self.get_str(alias.selectable)
 
     def visit_select(self, select):
-        inner_columns = []
-
+        
+        # the actual list of columns to print in the SELECT column list.
+        # its an ordered dictionary to insure that the actual labeled column name
+        # is unique.
+        inner_columns = OrderedDict()
+        def col_key(c):
+            if select.use_labels:
+                return c.label
+            else:
+                return self.get_str(c)
+                
         self.select_stack.append(select)
         for c in select._raw_columns:
             if c.is_selectable():
                 for co in c.columns:
                     co.accept_visitor(self)
-                    inner_columns.append(co)
+                    inner_columns[col_key(co)] = co
             else:
                 c.accept_visitor(self)
-                inner_columns.append(c)
+                inner_columns[col_key(c)] = c
         self.select_stack.pop(-1)
         
         if select.use_labels:
-            collist = string.join(["%s AS %s" % (self.get_str(c), c.label) for c in inner_columns], ', ')
+            collist = string.join(["%s AS %s" % (self.get_str(v), k) for k, v in inner_columns.iteritems()], ', ')
         else:
-            collist = string.join([self.get_str(c) for c in inner_columns], ', ')
+            collist = string.join([k for k in inner_columns.keys()], ', ')
 
         text = "SELECT "
         if select.distinct:
@@ -275,7 +284,7 @@ class ANSICompiler(sql.Compiled):
         # matching those keys
         if self.parameters is not None:
             revisit = False
-            for c in inner_columns:
+            for c in inner_columns.values():
                 if self.parameters.has_key(c.key) and not self.binds.has_key(c.key):
                     value = self.parameters[c.key]
                 elif self.parameters.has_key(c.label) and not self.binds.has_key(c.label):
@@ -377,7 +386,7 @@ class ANSICompiler(sql.Compiled):
                 c.default.accept_visitor(vis)
         
         self.isinsert = True
-        colparams = insert_stmt.get_colparams(self.parameters)
+        colparams = self._get_colparams(insert_stmt)
         for c in colparams:
             b = c[1]
             self.binds[b.key] = b
@@ -389,7 +398,7 @@ class ANSICompiler(sql.Compiled):
         self.strings[insert_stmt] = text
 
     def visit_update(self, update_stmt):
-        colparams = update_stmt.get_colparams(self.parameters)
+        colparams = self._get_colparams(update_stmt)
         def create_param(p):
             if isinstance(p, sql.BindParamClause):
                 self.binds[p.key] = p
@@ -408,6 +417,59 @@ class ANSICompiler(sql.Compiled):
             text += " WHERE " + self.get_str(update_stmt.whereclause)
          
         self.strings[update_stmt] = text
+
+
+    def _get_colparams(self, stmt):
+        """determines the VALUES or SET clause for an INSERT or UPDATE
+        clause based on the arguments specified to this ANSICompiler object
+        (i.e., the execute() or compile() method clause object):
+
+        insert(mytable).execute(col1='foo', col2='bar')
+        mytable.update().execute(col2='foo', col3='bar')
+
+        in the above examples, the insert() and update() methods have no "values" sent to them
+        at all, so compiling them with no arguments would yield an insert for all table columns,
+        or an update with no SET clauses.  but the parameters sent indicate a set of per-compilation
+        arguments that result in a differently compiled INSERT or UPDATE object compared to the
+        original.  The "values" parameter to the insert/update is figured as well if present,
+        but the incoming "parameters" sent here take precedence.
+        """
+        # case one: no parameters in the statement, no parameters in the 
+        # compiled params - just return binds for all the table columns
+        if self.parameters is None and stmt.parameters is None:
+            return [(c, bindparam(c.name, type=c.type)) for c in stmt.table.columns]
+
+        # if we have statement parameters - set defaults in the 
+        # compiled params
+        if self.parameters is None:
+            parameters = {}
+        else:
+            parameters = self.parameters.copy()
+
+        if stmt.parameters is not None:
+            for k, v in stmt.parameters.iteritems():
+                parameters.setdefault(k, v)
+
+        # now go thru compiled params, get the Column object for each key
+        d = {}
+        for key, value in parameters.iteritems():
+            if isinstance(key, schema.Column):
+                d[key] = value
+            else:
+                try:
+                    d[stmt.table.columns[str(key)]] = value
+                except KeyError:
+                    pass
+
+        # create a list of column assignment clauses as tuples
+        values = []
+        for c in stmt.table.columns:
+            if d.has_key(c):
+                value = d[c]
+                if sql._is_literal(value):
+                    value = bindparam(c.name, value, type=c.type)
+                values.append((c, value))
+        return values
 
     def visit_delete(self, delete_stmt):
         text = "DELETE FROM " + delete_stmt.table.fullname
