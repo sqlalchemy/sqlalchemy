@@ -390,10 +390,24 @@ class PropertyLoader(MapperProperty):
             # association object.  our mapper is made to be dependent on our parent,
             # as well as the object we associate to.  when theyre done saving (or before they
             # are deleted), we will process child items off objects managed by our parent mapper.
-            uowcommit.register_dependency(self.parent, self.mapper)
-            uowcommit.register_dependency(self.association, self.mapper)
-            uowcommit.register_processor(self.parent, self, self.parent, False)
-            uowcommit.register_processor(self.parent, self, self.parent, True)
+            
+            # still working out how the dependencies should work here.
+            
+            # this seems to work:
+    #        uowcommit.register_dependency(self.association, self.parent)
+    #        uowcommit.register_dependency(self.parent, self.mapper)
+    #       #uowcommit.register_dependency(self.association, self.mapper)
+    #        uowcommit.register_processor(self.parent, self, self.parent, False)
+    #        uowcommit.register_processor(self.parent, self, self.parent, True)
+
+            # this seems to work too, using the "stub" as a marker
+            stub = PropertyLoader.MapperStub()
+            uowcommit.register_dependency(self.parent, stub)
+            uowcommit.register_dependency(self.association, stub)
+            uowcommit.register_dependency(stub, self.mapper)
+            uowcommit.register_processor(stub, self, self.parent, False)
+            uowcommit.register_processor(stub, self, self.parent, True)
+
         elif self.direction == PropertyLoader.CENTER:
             # many-to-many.  create a "Stub" mapper to represent the
             # "middle table" in the relationship.  This stub mapper doesnt save
@@ -495,16 +509,19 @@ class PropertyLoader(MapperProperty):
                 if childlist is None: continue
                 uowcommit.register_saved_list(childlist)
                 
+                #print "DIRECTION", self.direction
                 d = {}
                 for child in childlist:
                     self._synchronize(obj, child, None, False)
                     key = self.mapper.instance_key(child)
+                    #print "SYNCHRONIZED", child, "INSTANCE KEY", key
                     d[key] = child
                     uowcommit.unregister_object(child)
 
                 for child in childlist.added_items():
                     uowcommit.register_object(child)
                     key = self.mapper.instance_key(child)
+                    #print "ADDED, INSTANCE KEY", key
                     d[key] = child
                     
                 for child in childlist.unchanged_items():
@@ -514,11 +531,13 @@ class PropertyLoader(MapperProperty):
                     
                 for child in childlist.deleted_items():
                     key = self.mapper.instance_key(child)
+                    #print "DELETED, INSTANCE KEY", key
                     if d.has_key(key):
                         o = d[key]
                         o._instance_key = key
                         uowcommit.unregister_object(child)
                     else:
+                        #print "DELETE ASSOC OBJ", repr(child)
                         uowcommit.register_object(child, isdelete=True)
         else:
             for obj in deplist:
@@ -567,6 +586,7 @@ class PropertyLoader(MapperProperty):
             if dest is associationrow:
                 associationrow[dcol.key] = value
             else:
+                #print "SYNC VALUE", value, "TO", dest
                 dmapper._setattrbycolumn(dest, dcol, value)
 
     def execute(self, instance, row, identitykey, imap, isnew):
