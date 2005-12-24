@@ -387,20 +387,23 @@ class PropertyLoader(MapperProperty):
         they've been deleted.  The process operation manages attributes and dependent
         operations upon the objects of one of the involved mappers."""
         if self.association is not None:
-            # association object.  our mapper is made to be dependent on our parent,
-            # as well as the object we associate to.  when theyre done saving (or before they
-            # are deleted), we will process child items off objects managed by our parent mapper.
-            
-            # still working out how the dependencies should work here.
-            
-            # this seems to work:
+            # association object.  our mapper should be dependent on both
+            # the parent mapper and the association object mapper.
+
+            # this seems to work, association->parent->self, then 
+            # we process the child elements after the 'parent' save.  but
+            # then the parent is dependent on the association which is 
+            # somewhat arbitrary, might compete with some other dependency:
     #        uowcommit.register_dependency(self.association, self.parent)
     #        uowcommit.register_dependency(self.parent, self.mapper)
     #       #uowcommit.register_dependency(self.association, self.mapper)
     #        uowcommit.register_processor(self.parent, self, self.parent, False)
     #        uowcommit.register_processor(self.parent, self, self.parent, True)
 
-            # this seems to work too, using the "stub" as a marker
+            # this is where we put the "stub" as a marker, so we get
+            # association/parent->stub->self, then we process the child
+            # elments after the 'stub' save, which is before our own
+            # mapper's save.
             stub = PropertyLoader.MapperStub()
             uowcommit.register_dependency(self.parent, stub)
             uowcommit.register_dependency(self.association, stub)

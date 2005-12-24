@@ -1,3 +1,46 @@
+# topological.py
+# Copyright (C) 2005 Michael Bayer mike_mp@zzzcomputing.com
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
+"""topological sorting algorithms.  the key to the unit of work is to assemble a list
+of dependencies amongst all the different mappers that have been defined for classes.
+Related tables with foreign key constraints have a definite insert order, deletion order, 
+objects need dependent properties from parent objects set up before saved, etc.  
+These are all encoded as dependencies, in the form "mapper X is dependent on mapper Y", 
+meaning mapper Y's objects must be saved before those of mapper X, and mapper X's objects 
+must be deleted before those of mapper Y.
+
+The topological sort is an algorithm that receives this list of dependencies as a "partial
+ordering", that is a list of pairs which might say, "X is dependent on Y", "Q is dependent
+on Z", but does not necessarily tell you anything about Q being dependent on X. Therefore,
+its not a straight sort where every element can be compared to another...only some of the
+elements have any sorting preference, and then only towards just some of the other elements.
+For a particular partial ordering, there can be many possible sorts that satisfy the
+conditions.
+
+An intrinsic "gotcha" to this algorithm is that since there are many possible outcomes
+to sorting a partial ordering, the algorithm can return any number of different results for the
+same input; just running it on a different machine architecture, or just random differences
+in the ordering of dictionaries, can change the result that is returned.  While this result
+is guaranteed to be true to the incoming partial ordering, if the partial ordering itself
+does not properly represent the dependencies, code that works fine will suddenly break, then
+work again, then break, etc.   Most of the bugs I've chased down while developing the "unit of work"
+have been of this nature - very tricky to reproduce and track down, particularly before I 
+realized this characteristic of the algorithm.
+"""
 import string
 
 class QueueDependencySorter(object):
