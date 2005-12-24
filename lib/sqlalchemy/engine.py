@@ -88,9 +88,8 @@ def create_engine(name, opts=None,**kwargs):
         def assign(m):
             opts[m.group(1)] = m.group(2)
         re.sub(r'([^&]+)=([^&]*)', assign, args)
-        args = [opts]
     module = getattr(__import__('sqlalchemy.databases.%s' % name).databases, name)
-    return module.engine(*args, **kwargs)
+    return module.engine(opts, **kwargs)
 
 def engine_descriptors():
     """provides a listing of all the database implementations supported.  this data
