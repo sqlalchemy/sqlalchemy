@@ -181,8 +181,8 @@ class SaveTest(AssertMixin):
         usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
         m = mapper(User, usersaddresses, primarytable = users,  
             properties = dict(
-                email = column(addresses.c.email_address), 
-                foo_id = column(users.c.user_id, addresses.c.user_id)
+                email = addresses.c.email_address, 
+                foo_id = [users.c.user_id, addresses.c.user_id],
                 )
             )
             

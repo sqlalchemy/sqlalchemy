@@ -99,13 +99,13 @@ class Mapper(object):
         else:
             for t in self.tables + [self.table]:
                 try:
-                    list = self.pks_by_table[t]
+                    l = self.pks_by_table[t]
                 except KeyError:
-                    list = self.pks_by_table.setdefault(t, util.HashSet())
+                    l = self.pks_by_table.setdefault(t, util.HashSet())
                 if not len(t.primary_key):
                     raise "Table " + t.name + " has no primary key columns. Specify primary_key argument to mapper."
                 for k in t.primary_key:
-                    list.append(k)
+                    l.append(k)
 
         # make table columns addressable via the mapper
         self.columns = util.OrderedProperties()
@@ -123,8 +123,9 @@ class Mapper(object):
         if properties is not None:
             for key, prop in properties.iteritems():
                 if isinstance(prop, schema.Column):
-                    self.columns[key] = prop
                     prop = ColumnProperty(prop)
+                elif isinstance(prop, list) and isinstance(prop[0], schema.Column):
+                    prop = ColumnProperty(*prop)
                 self.props[key] = prop
                 if isinstance(prop, ColumnProperty):
                     for col in prop.columns:
