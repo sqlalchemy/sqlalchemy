@@ -15,10 +15,20 @@
 # along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
+"""the schema module provides the building blocks for database metadata.  This means
+all the entities within a SQL database that we might want to look at, modify, or create
+and delete are described by these objects, in a database-agnostic way.   
+
+A structure of SchemaItems also provides a "visitor" interface which is the primary 
+method by which other methods operate upon the schema.  The SQL package extends this
+structure with its own clause-specific objects as well as the visitor interface, so that
+the schema package "plugs in" to the SQL package.
+
+"""
+
 from sqlalchemy.util import *
 from sqlalchemy.types import *
 import copy, re
-
 
 __all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'SchemaEngine', 'SchemaVisitor']
 
@@ -31,6 +41,8 @@ class SchemaItem(object):
                 item._set_parent(self)
 
     def accept_visitor(self, visitor):
+        """all schema items implement an accept_visitor method that should call the appropriate
+        visit_XXXX method upon the given visitor object."""
         raise NotImplementedError()
 
     def _set_parent(self, parent):
@@ -57,6 +69,7 @@ def _get_table_key(engine, name, schema):
         return schema + "." + name
         
 class TableSingleton(type):
+    """a metaclass used by the Table object to provide singleton behavior."""
     def __call__(self, name, engine, *args, **kwargs):
         try:
             name = str(name)    # in case of incoming unicode
@@ -94,6 +107,38 @@ class Table(SchemaItem):
     __metaclass__ = TableSingleton
     
     def __init__(self, name, engine, *args, **kwargs):
+        """Table objects can be constructed directly.  The init method is actually called via 
+        the TableSingleton metaclass.  Arguments are:
+        
+        name : the name of this table, exactly as it appears, or will appear, in the database.
+        This property, along with the "schema", indicates the "singleton identity" of this table.
+        Further tables constructed with the same name/schema combination will return the same 
+        Table instance.
+        
+        engine : a SchemaEngine instance to provide services to this table.  Usually a subclass of
+        sql.SQLEngine.
+        
+        *args : should contain a listing of the Column objects for this table.
+        
+        **kwargs : options include:
+        
+        schema=None : the "schema name" for this table, which is required if the table resides in a 
+        schema other than the default selected schema for the engine's database connection.
+        
+        autoload=False : the Columns for this table should be reflected from the database.  Usually
+        there will be no Column objects in the constructor if this property is set.
+        
+        redefine=False : if this Table has already been defined in the application, clear out its columns
+        and redefine with new arguments.
+        
+        mustexist=False : indicates that this Table must already have been defined elsewhere in the application,
+        else an exception is raised.
+        
+        useexisting=False : indicates that if this Table was already defined elsewhere in the application, disregard
+        the rest of the constructor arguments.  If this flag and the "redefine" flag are not set, constructing 
+        the same table twice will result in an exception.
+        
+        """
         self.name = name
         self.columns = OrderedProperties()
         self.c = self.columns
@@ -111,6 +156,9 @@ class Table(SchemaItem):
             raise "Unknown arguments passed to Table: " + repr(kwargs.keys())
     
     def reload_values(self, *args):
+        """clears out the columns and other properties of this Table, and reloads them from the 
+        given argument list.  This is used with the "redefine" keyword argument sent to the
+        metaclass constructor."""
         self.columns = OrderedProperties()
         self.c = self.columns
         self.foreign_keys = []
@@ -119,6 +167,7 @@ class Table(SchemaItem):
         self._init_items(*args)
 
     def append_item(self, item):
+        """appends a Column item or other schema item to this Table."""
         self._init_items(item)
         
     def _set_parent(self, schema):
@@ -126,6 +175,8 @@ class Table(SchemaItem):
         self.schema = schema
 
     def accept_visitor(self, visitor): 
+        """traverses the given visitor across the Column objects inside this Table,
+        then calls the visit_table method on the visitor."""
         for c in self.columns:
             c.accept_visitor(visitor)
         return visitor.visit_table(self)
@@ -152,6 +203,36 @@ class Table(SchemaItem):
 class Column(SchemaItem):
     """represents a column in a database table."""
     def __init__(self, name, type, *args, **kwargs):
+        """constructs a new Column object.  Arguments are:
+        
+        name : the name of this column.  this should be the identical name as it appears,
+        or will appear, in the database.
+        
+        type : this is the type of column. This can be any subclass of types.TypeEngine,
+        including the database-agnostic types defined in the types module, database-specific types
+        defined within specific database modules, or user-defined types.
+        
+        *args : ForeignKey and Sequence objects should be added as list values.
+        
+        **kwargs : keyword arguments include:
+        
+        key=None : an optional "alias name" for this column.  The column will then be identified everywhere
+        in an application, including the column list on its Table, by this key, and not the given name.  
+        Generated SQL, however, will still reference the column by its actual name.
+        
+        primary_key=False : True if this column is a primary key column.  Multiple columns can have this flag
+        set to specify composite primary keys.
+        
+        nullable=True : True if this column should allow nulls. Defaults to True unless this column is a primary
+        key column.
+        
+        default=None : a scalar, python callable, or ClauseElement representing the "default value" for this column,
+        which will be invoked upon insert if this column is not present in the insert list or is given a value
+        of None.
+        
+        hidden=False : indicates this column should not be listed in the table's list of columns.  Used for the "oid" 
+        column, which generally isnt in column lists.
+        """
         self.name = str(name) # in case of incoming unicode
         self.type = type
         self.args = args
@@ -215,6 +296,8 @@ class Column(SchemaItem):
         return c
 
     def accept_visitor(self, visitor):
+        """traverses the given visitor to this Column's default and foreign key object,
+        then calls visit_column on the visitor."""
         if self.default is not None:
             self.default.accept_visitor(visitor)
         if self.foreign_key is not None:
@@ -238,11 +321,17 @@ class Column(SchemaItem):
     def __str__(self): return self._impl.__str__()
 
 class ForeignKey(SchemaItem):
+    """defines a ForeignKey constraint between two columns.  ForeignKey is 
+    specified as an argument to a Column object."""
     def __init__(self, column):
+        """Constructs a new ForeignKey object.  "column" can be a schema.Column
+        object representing the relationship, or just its string name given as 
+        "tablename.columnname"."""
         self._colspec = column
         self._column = None
 
     def copy(self):
+        """produces a copy of this ForeignKey object."""
         if isinstance(self._colspec, str):
             return ForeignKey(self._colspec)
         else:
@@ -281,6 +370,7 @@ class ForeignKey(SchemaItem):
     column = property(lambda s: s._init_column())
 
     def accept_visitor(self, visitor):
+        """calls the visit_foreign_key method on the given visitor."""
         visitor.visit_foreign_key(self)
         
     def _set_parent(self, column):
@@ -289,18 +379,19 @@ class ForeignKey(SchemaItem):
         self.parent.table.foreign_keys.append(self)
 
 class DefaultGenerator(SchemaItem):
-    """represents a "default value generator" for a particular column in a particular
-    table.  This could correspond to a constant, a callable function, or a SQL clause."""
+    """Base class for column "default" values, which can be a plain default
+    or a Sequence."""
     def _set_parent(self, column):
         self.column = column
         self.column.default = self
-    def accept_visitor(self, visitor):
-        pass
 
 class ColumnDefault(DefaultGenerator):
+    """A plain default value on a column.  this could correspond to a constant, 
+    a callable function, or a SQL clause."""
     def __init__(self, arg):
         self.arg = arg
     def accept_visitor(self, visitor):
+        """calls the visit_column_default method on the given visitor."""
         return visitor.visit_column_default(self)
         
 class Sequence(DefaultGenerator):
@@ -311,27 +402,46 @@ class Sequence(DefaultGenerator):
         self.increment = increment
         self.optional=optional
     def accept_visitor(self, visitor):
+        """calls the visit_seauence method on the given visitor."""
         return visitor.visit_sequence(self)
 
 class SchemaEngine(object):
-    """a factory object used to create implementations for schema objects"""
+    """a factory object used to create implementations for schema objects.  This object
+    is the ultimate base class for the engine.SQLEngine class."""
     def tableimpl(self, table):
+        """returns a new implementation object for a Table (usually sql.TableImpl)"""
         raise NotImplementedError()
     def columnimpl(self, column):
+        """returns a new implementation object for a Column (usually sql.ColumnImpl)"""
         raise NotImplementedError()
     def reflecttable(self, table):
+        """given a table, will query the database and populate its Column and ForeignKey 
+        objects."""
         raise NotImplementedError()
         
 class SchemaVisitor(object):
-    """base class for an object that traverses across Schema objects"""
-
-    def visit_schema(self, schema):pass
-    def visit_table(self, table):pass
-    def visit_column(self, column):pass
-    def visit_foreign_key(self, join):pass
-    def visit_index(self, index):pass
-    def visit_column_default(self, default):pass
-    def visit_sequence(self, sequence):pass
+    """base class for an object that traverses across Schema structures."""
+    def visit_schema(self, schema):
+        """visit a generic SchemaItem"""
+        pass
+    def visit_table(self, table):
+        """visit a Table."""
+        pass
+    def visit_column(self, column):
+        """visit a Column."""
+        pass
+    def visit_foreign_key(self, join):
+        """visit a ForeignKey."""
+        pass
+    def visit_index(self, index):
+        """visit an Index (not implemented yet)."""
+        pass
+    def visit_column_default(self, default):
+        """visit a ColumnDefault."""
+        pass
+    def visit_sequence(self, sequence):
+        """visit a Sequence."""
+        pass
 
             
             

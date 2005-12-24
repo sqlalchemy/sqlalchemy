@@ -28,10 +28,10 @@ from mapper import *
 from properties import *
 import mapper as mapperlib
 
-__all__ = ['relation', 'eagerload', 'lazyload', 'noload', 'deferred', 'assignmapper', 'column', 'deferred',
+__all__ = ['relation', 'eagerload', 'lazyload', 'noload', 'deferred', 'assignmapper', 'column', 
         'defer', 'undefer',
         'mapper', 'clear_mappers', 'objectstore', 'sql', 'extension', 'class_mapper', 'object_mapper', 'MapperExtension',
-        'ColumnProperty', 'assign_mapper'
+        'assign_mapper'
         ]
 
 def relation(*args, **params):
@@ -72,7 +72,10 @@ def deferred(*columns, **kwargs):
     
     
 class assignmapper(object):
-    """provides a property object that will instantiate a Mapper for a given class the first
+    """
+    **this class is deprecated**
+    
+    provides a property object that will instantiate a Mapper for a given class the first
     time it is called off of the object.  This is useful for attaching a Mapper to a class
     that has dependencies on other classes and tables which may not have been defined yet."""
     def __init__(self, table, class_ = None, **kwargs):

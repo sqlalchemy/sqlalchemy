@@ -15,8 +15,24 @@
 # along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-"""builds upon the schema and sql packages to provide a central object for tying schema
-objects and sql constructs to database-specific query compilation and execution"""
+"""Defines the SQLEngine class, which serves as the primary "database" object
+used throughout the sql construction and object-relational mapper packages.
+A SQLEngine is a facade around a single connection pool corresponding to a 
+particular set of connection parameters, and provides thread-local transactional 
+methods and statement execution methods for Connection objects.  It also provides 
+a facade around a Cursor object to allow richer column selection for result rows 
+as well as type conversion operations, known as a ResultProxy.
+
+A SQLEngine is provided to an application as a subclass that is specific to a particular type 
+of DBAPI, and is the central switching point for abstracting different kinds of database
+behavior into a consistent set of behaviors.  It provides a variety of factory methods 
+to produce everything specific to a certain kind of database, including a Compiler, 
+schema creation/dropping objects, and TableImpl and ColumnImpl objects to augment the
+behavior of table metadata objects.
+
+The term "database-specific" will be used to describe any object or function that has behavior
+corresponding to a particular vendor, such as mysql-specific, sqlite-specific, etc.
+"""
 
 import sqlalchemy.schema as schema
 import sqlalchemy.pool
@@ -28,13 +44,42 @@ import sqlalchemy.databases
 
 __all__ = ['create_engine', 'engine_descriptors']
 
-def create_engine(name, *args ,**kwargs):
-    """creates a new SQLEngine instance.
+def create_engine(name, opts=None,**kwargs):
+    """creates a new SQLEngine instance.  There are two forms of calling this method.
     
-    name - the type of engine to load, i.e. 'sqlite', 'postgres', 'oracle'
+    In the first, the "name" argument is the type of engine to load, i.e. 'sqlite', 'postgres', 
+    'oracle', 'mysql'.  "opts" is a dictionary of options to be sent to the underlying DBAPI module 
+    to create a connection, usually including a hostname, username, password, etc.
     
-    *args, **kwargs - sent directly to the specific engine instance as connect arguments,
-    options.
+    In the second, the "name" argument is a URL in the form <enginename>://opt1=val1&opt2=val2.  
+    Where <enginename> is the name as above, and the contents of the option dictionary are 
+    spelled out as a URL encoded string.  The "opts" argument is not used.
+    
+    In both cases, **kwargs represents options to be sent to the SQLEngine itself.  A possibly
+    partial listing of those options is as follows:
+    
+    pool=None : an instance of sqlalchemy.pool.DBProxy to be used as the underlying source 
+    for connections (DBProxy is described in the previous section).  If None, a default DBProxy 
+    will be created using the engine's own database module with the given arguments.
+    
+    echo=False : if True, the SQLEngine will log all statements as well as a repr() of their 
+    parameter lists to the engines logger, which defaults to sys.stdout.  A SQLEngine instances' 
+    "echo" data member can be modified at any time to turn logging on and off.  If set to the string 
+    'debug', result rows will be printed to the standard output as well.
+    
+    logger=None : a file-like object where logging output can be sent, if echo is set to True.  
+    This defaults to sys.stdout.
+    
+    module=None : used by Oracle and Postgres, this is a reference to a DBAPI2 module to be used 
+    instead of the engine's default module.  For Postgres, the default is psycopg2, or psycopg1 if 
+    2 cannot be found.  For Oracle, its cx_Oracle.  For mysql, MySQLdb.
+    
+    use_ansi=True : used only by Oracle;  when False, the Oracle driver attempts to support a 
+    particular "quirk" of some Oracle databases, that the LEFT OUTER JOIN SQL syntax is not 
+    supported, and the "Oracle join" syntax of using <column1>(+)=<column2> must be used 
+    in order to achieve a LEFT OUTER JOIN.  Its advised that the Oracle database be configured to 
+    have full ANSI support instead of using this feature.
+
     """
     m = re.match(r'(\w+)://(.*)', name)
     if m is not None:
@@ -48,6 +93,20 @@ def create_engine(name, *args ,**kwargs):
     return module.engine(*args, **kwargs)
 
 def engine_descriptors():
+    """provides a listing of all the database implementations supported.  this data
+    is provided as a list of dictionaries, where each dictionary contains the following
+    key/value pairs:
+    
+    name :       the name of the engine, suitable for use in the create_engine function
+
+    description: a plain description of the engine.
+
+    arguments :  a dictionary describing the name and description of each parameter
+                 used to connect to this engine's underlying DBAPI.
+    
+    This function is meant for usage in automated configuration tools that wish to 
+    query the user for database and connection information.
+    """
     result = []
     for module in sqlalchemy.databases.__all__:
         module = getattr(__import__('sqlalchemy.databases.%s' % module).databases, module)
@@ -100,11 +159,17 @@ class DefaultRunner(schema.SchemaVisitor):
             
 
 class SQLEngine(schema.SchemaEngine):
-    """base class for a series of database-specific engines.  serves as an abstract factory
-    for implementation objects as well as database connections, transactions, SQL generators,
-    etc."""
+    """
+    The central "database" object used by an application.  Subclasses of this object is used
+    by the schema and SQL construction packages to provide database-specific behaviors,
+    as well as an execution and thread-local transaction context.
+    
+    SQLEngines are constructed via the create_engine() function inside this package.
+    """
     
     def __init__(self, pool = None, echo = False, logger = None, **params):
+        """constructs a new SQLEngine.   SQLEngines should be constructed via the create_engine()
+        function which will construct the appropriate subclass of SQLEngine."""
         # get a handle on the connection pool via the connect arguments
         # this insures the SQLEngine instance integrates with the pool referenced
         # by direct usage of pool.manager(<module>).connect(*args, **params)
@@ -142,20 +207,50 @@ class SQLEngine(schema.SchemaEngine):
             self.positional=True
         
     def type_descriptor(self, typeobj):
+        """provides a database-specific TypeEngine object, given the generic object
+        which comes from the types module.  Subclasses will usually use the adapt_type()
+        method in the types module to make this job easy."""
         if type(typeobj) is type:
             typeobj = typeobj()
         return typeobj
         
     def schemagenerator(self, proxy, **params):
+        """returns a schema.SchemaVisitor instance that can generate schemas, when it is
+        invoked to traverse a set of schema objects.  The 
+        "proxy" argument is a callable will execute a given string SQL statement
+        and a dictionary or list of parameters.  
+        
+        schemagenerator is called via the create() method.
+        """
         raise NotImplementedError()
 
     def schemadropper(self, proxy, **params):
+        """returns a schema.SchemaVisitor instance that can drop schemas, when it is
+        invoked to traverse a set of schema objects.  The 
+        "proxy" argument is a callable will execute a given string SQL statement
+        and a dictionary or list of parameters.  
+        
+        schemagenerator is called via the drop() method.
+        """
         raise NotImplementedError()
 
     def defaultrunner(self, proxy):
+        """Returns a schema.SchemaVisitor instance that can execute the default values on a column.
+        The base class for this visitor is the DefaultRunner class inside this module.
+        This visitor will typically only receive schema.DefaultGenerator schema objects.  The given 
+        proxy is a callable that takes a string statement and a dictionary of bind parameters
+        to be executed.  For engines that require positional arguments, the dictionary should 
+        be an instance of OrderedDict which returns its bind parameters in the proper order.
+        
+        defaultrunner is called within the context of the execute_compiled() method."""
         return DefaultRunner(self, proxy)
         
     def compiler(self, statement, parameters):
+        """returns a sql.ClauseVisitor which will produce a string representation of the given
+        ClauseElement and parameter dictionary.  This object is usually a subclass of 
+        ansisql.ANSICompiler.  
+        
+        compiler is called within the context of the compile() method."""
         raise NotImplementedError()
 
     def rowid_column_name(self):
@@ -163,15 +258,16 @@ class SQLEngine(schema.SchemaEngine):
         return "oid"
 
     def supports_sane_rowcount(self):
-        """ill give everyone one guess which database warrants this method."""
+        """Provided to indicate when MySQL is being used, which does not have standard behavior
+        for the "rowcount" function on a statement handle.  """
         return True
         
     def create(self, table, **params):
-        """creates a table given a schema.Table object."""
+        """creates a table within this engine's database connection given a schema.Table object."""
         table.accept_visitor(self.schemagenerator(self.proxy(), **params))
 
     def drop(self, table, **params):
-        """drops a table given a schema.Table object."""
+        """drops a table within this engine's database connection given a schema.Table object."""
         table.accept_visitor(self.schemadropper(self.proxy(), **params))
 
     def compile(self, statement, parameters, **kwargs):
@@ -188,19 +284,31 @@ class SQLEngine(schema.SchemaEngine):
         raise NotImplementedError()
 
     def tableimpl(self, table):
-        """returns a new sql.TableImpl object to correspond to the given Table object."""
+        """returns a new sql.TableImpl object to correspond to the given Table object.
+        A TableImpl provides SQL statement builder operations on a Table metadata object, 
+        and a subclass of this object may be provided by a SQLEngine subclass to provide
+        database-specific behavior."""
         return sql.TableImpl(table)
 
     def columnimpl(self, column):
-        """returns a new sql.ColumnImpl object to correspond to the given Column object."""
+        """returns a new sql.ColumnImpl object to correspond to the given Column object.
+        A ColumnImpl provides SQL statement builder operations on a Column metadata object, 
+        and a subclass of this object may be provided by a SQLEngine subclass to provide
+        database-specific behavior."""
         return sql.ColumnImpl(column)
 
     def get_default_schema_name(self):
+        """returns the currently selected schema in the current connection."""
         return None
         
     def last_inserted_ids(self):
-        """returns a thread-local list of the primary keys for the last insert statement executed.
-        This does not apply to straight textual clauses; only to sql.Insert objects compiled against a schema.Table object, which are executed via statement.execute().  The order of items in the list is the same as that of the Table's 'primary_key' attribute."""
+        """returns a thread-local list of the primary key values for the last insert statement executed.
+        This does not apply to straight textual clauses; only to sql.Insert objects compiled against 
+        a schema.Table object, which are executed via statement.execute().  The order of items in the 
+        list is the same as that of the Table's 'primary_key' attribute.
+        
+        In some cases, this method may invoke a query back to the database to retrieve the data, based on
+        the "lastrowid" value in the cursor."""
         raise NotImplementedError()
 
     def connect_args(self):
@@ -226,6 +334,9 @@ class SQLEngine(schema.SchemaEngine):
         connection.commit()
 
     def proxy(self, **kwargs):
+        """provides a callable that will execute the given string statement and parameters.
+        The statement and parameters should be in the format specific to the particular database;
+        i.e. named or positional."""
         return lambda s, p = None: self.execute(s, p, **kwargs)
 
     def connection(self):
@@ -234,6 +345,10 @@ class SQLEngine(schema.SchemaEngine):
 
     def multi_transaction(self, tables, func):
         """provides a transaction boundary across tables which may be in multiple databases.
+        If you have three tables, and a function that operates upon them, providing the tables as a 
+        list and the function will result in a begin()/commit() pair invoked for each distinct engine
+        represented within those tables, and the function executed within the context of that transaction.
+        any exceptions will result in a rollback().
         
         clearly, this approach only goes so far, such as if database A commits, then database B commits
         and fails, A is already committed.  Any failure conditions have to be raised before anyone
@@ -253,6 +368,8 @@ class SQLEngine(schema.SchemaEngine):
             engine.commit()
             
     def transaction(self, func):
+        """executes the given function within a transaction boundary.  this is a shortcut for
+        explicitly calling begin() and commit() and optionally rollback() when execptions are raised."""
         self.begin()
         try:
             func()
@@ -262,6 +379,11 @@ class SQLEngine(schema.SchemaEngine):
         self.commit()
         
     def begin(self):
+        """"begins" a transaction on a pooled connection, and stores the connection in a thread-local
+        context.  repeated calls to begin() within the same thread will increment a counter that must be
+        decreased by corresponding commit() statements before an actual commit occurs.  this is to provide
+        "nested" behavior of transactions so that different functions can all call begin()/commit() and still
+        call each other."""
         if getattr(self.context, 'transaction', None) is None:
             conn = self.connection()
             self.do_begin(conn)
@@ -271,12 +393,19 @@ class SQLEngine(schema.SchemaEngine):
             self.context.tcount += 1
             
     def rollback(self):
+        """rolls back the current thread-local transaction started by begin().  the "begin" counter 
+        is cleared and the transaction ended."""
         if self.context.transaction is not None:
             self.do_rollback(self.context.transaction)
             self.context.transaction = None
             self.context.tcount = None
             
     def commit(self):
+        """commits the current thread-local transaction started by begin().  If begin() was called multiple
+        times, a counter will be decreased for each call to commit(), with the actual commit operation occuring
+        when the counter reaches zero.  this is to provide
+        "nested" behavior of transactions so that different functions can all call begin()/commit() and still
+        call each other."""
         if self.context.transaction is not None:
             count = self.context.tcount - 1
             self.context.tcount = count
@@ -318,9 +447,11 @@ class SQLEngine(schema.SchemaEngine):
 
 
     def pre_exec(self, proxy, compiled, parameters, **kwargs):
+        """called by execute_compiled before the compiled statement is executed."""
         pass
 
     def post_exec(self, proxy, compiled, parameters, **kwargs):
+        """called by execute_compiled after the compiled statement is executed."""
         pass
 
     def execute_compiled(self, compiled, parameters, connection=None, cursor=None, echo=None, **kwargs):
@@ -438,7 +569,7 @@ class SQLEngine(schema.SchemaEngine):
         except:
             self.do_rollback(connection)
             raise
-        return ResultProxy(cursor, self, typemap = typemap)
+        return ResultProxy(cursor, self, typemap=typemap)
 
     def _execute(self, c, statement, parameters):
         c.execute(statement, parameters)
@@ -457,12 +588,15 @@ class ResultProxy:
     position, case-insensitive column name, or by schema.Column object. e.g.:
     
     row = fetchone()
+
     col1 = row[0]    # access via integer position
+
     col2 = row['col2']   # access via name
-    col3 = row[mytable.c.mycol]   # access via Column object.  
-                                  #the Column's 'label', 'key', and 'name' properties are
-                                  # searched in that order.
+
+    col3 = row[mytable.c.mycol] # access via Column object.  
     
+    ResultProxy also contains a map of TypeEngine objects and will invoke the appropriate
+    convert_result_value() method before returning columns.
     """
     class AmbiguousColumn(object):
         def __init__(self, key):
@@ -471,6 +605,7 @@ class ResultProxy:
             raise "Ambiguous column name '%s' in result set! try 'use_labels' option on select statement." % (self.key)
     
     def __init__(self, cursor, engine, typemap = None):
+        """ResultProxy objects are constructed via the execute() method on SQLEngine."""
         self.cursor = cursor
         self.echo = engine.echo=="debug"
         self.rowcount = engine.context.rowcount
@@ -526,6 +661,7 @@ class ResultProxy:
 class RowProxy:
     """proxies a single cursor row for a parent ResultProxy."""
     def __init__(self, parent, row):
+        """RowProxy objects are constructed by ResultProxy objects."""
         self.parent = parent
         self.row = row
     def __iter__(self):

@@ -194,7 +194,7 @@
         f = "<p>" + f + "</p>"
         return f
     </%filter>
-<% m.content() %>
+<% m.content() | h%>
 </%method>
 
 <%method itemlink trim="both">
