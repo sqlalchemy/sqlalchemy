@@ -69,8 +69,8 @@ class Mapper(object):
             raise "Class '%s' is not a new-style class" % class_.__name__
 
         if inherits is not None:
-            # TODO: determine inherit_condition (make JOIN do natural joins)
             primarytable = inherits.primarytable
+            # inherit_condition is optional since the join can figure it out
             table = sql.join(table, inherits.table, inherit_condition)
             
         self.table = table
@@ -123,8 +123,10 @@ class Mapper(object):
         if properties is not None:
             for key, prop in properties.iteritems():
                 if isinstance(prop, schema.Column):
+                    self.columns[key] = prop
                     prop = ColumnProperty(prop)
                 elif isinstance(prop, list) and isinstance(prop[0], schema.Column):
+                    self.columns[key] = prop[0]
                     prop = ColumnProperty(*prop)
                 self.props[key] = prop
                 if isinstance(prop, ColumnProperty):
@@ -135,7 +137,8 @@ class Mapper(object):
         # load properties from the main table object,
         # not overriding those set up in the 'properties' argument
         for column in self.table.columns:
-            self.columns[column.key] = column
+            if not self.columns.has_key(column.key):
+                self.columns[column.key] = column
 
             if self.columntoproperty.has_key(column.original):
                 continue
@@ -302,7 +305,7 @@ class Mapper(object):
                 option.process(mapper)
             return mapper_registry.setdefault(hashkey, mapper)
 
-    def get_by(self, **params):
+    def get_by(self, *args, **params):
         """returns a single object instance based on the given key/value criterion. 
         this is either the first value in the result list, or None if the list is 
         empty.
@@ -315,13 +318,13 @@ class Mapper(object):
         
         e.g.   u = usermapper.get_by(user_name = 'fred')
         """
-        x = self.select_by(**params)
+        x = self.select_by(*args, **params)
         if len(x):
             return x[0]
         else:
             return None
             
-    def select_by(self, **params):
+    def select_by(self, *args, **params):
         """returns an array of object instances based on the given key/value criterion. 
         
         the keys are mapped to property or column names mapped by this mapper's Table, and the values
@@ -333,6 +336,11 @@ class Mapper(object):
         e.g.   result = usermapper.select_by(user_name = 'fred')
         """
         clause = None
+        for arg in args:
+            if clause is None:
+                clause = arg
+            else:
+                clause &= arg
         for key, value in params.iteritems():
             if value is False:
                 continue
