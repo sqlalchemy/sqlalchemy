@@ -28,7 +28,7 @@ from mapper import *
 from properties import *
 import mapper as mapperlib
 
-__all__ = ['relation', 'eagerload', 'lazyload', 'noload', 'deferred', 'assignmapper', 'column', 
+__all__ = ['relation', 'eagerload', 'lazyload', 'noload', 'deferred',  'column', 
         'defer', 'undefer',
         'mapper', 'clear_mappers', 'objectstore', 'sql', 'extension', 'class_mapper', 'object_mapper', 'MapperExtension',
         'assign_mapper'
@@ -69,30 +69,6 @@ def column(*columns, **kwargs):
     
 def deferred(*columns, **kwargs):
     return DeferredColumnProperty(*columns, **kwargs)
-    
-    
-class assignmapper(object):
-    """
-    **this class is deprecated**
-    
-    provides a property object that will instantiate a Mapper for a given class the first
-    time it is called off of the object.  This is useful for attaching a Mapper to a class
-    that has dependencies on other classes and tables which may not have been defined yet."""
-    def __init__(self, table, class_ = None, **kwargs):
-        self.table = table
-        self.kwargs = kwargs
-        if class_:
-            self.__get__(None, class_)
-            
-    def __get__(self, instance, owner):
-        if not hasattr(self, 'mapper'):
-            self.mapper = mapper(owner, self.table, **self.kwargs)
-            self.mapper._init_class()
-            if self.mapper.class_ is not owner:
-                raise "no match " + repr(self.mapper.class_) + " " + repr(owner)
-            if not hasattr(owner, 'c'):
-                raise "no c"
-        return self.mapper
     
 def mapper(class_, table = None, engine = None, autoload = False, *args, **params):
     """returns a new or already cached Mapper object."""
