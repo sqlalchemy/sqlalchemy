@@ -217,12 +217,18 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
         # define a mapper for AddressUser that inherits the User.mapper, and joins on the user_id column
         # inherit_condition is required right now, but will be optional in a future release
         AddressUser.mapper = mapper(
-                addresses, inherits = User.mapper, 
-                inherit_condition=User.c.user_id==addresses.c.user_id
+                addresses, inherits=User.mapper
                 )
         
         items = AddressUser.mapper.select()
-    </&>    
+    </&>
+<P>Above, the join condition is determined via the foreign keys between the users and the addresses table.  To specify the join condition explicitly, use <span class="codeline">inherit_condition</span>:
+<&|formatting.myt:code&>
+    AddressUser.mapper = mapper(
+            addresses, inherits=User.mapper, 
+            inherit_condition=users.c.user_id==addresses.c.user_id
+        )
+</&>    
 </&>
 
 <&|doclib.myt:item, name="joins", description="Mapping a Class against Multiple Tables" &>

@@ -375,28 +375,51 @@ WHERE addresses.user_id = users.user_id
 {}                   
 </&>                   
             </&>
-        <p>There is also an explicit join constructor, which is used like this:</p>
+            <p>There is also an explicit join constructor, which can be embedded into a select query via the <span class="codeline">from_obj</span> parameter of the select statement:</p>
+
             <&|formatting.myt:code &>
-<&formatting.myt:poplink&>\
-addresses.select(from_obj=[
-            addresses.join(users, addresses.c.user_id==users.c.user_id)
-        ]).execute() 
-<&|formatting.myt:codepopper, link="sql" &>
-SELECT addresses.address_id, addresses.user_id, addresses.street, addresses.city, 
-addresses.state, addresses.zip 
-FROM addresses JOIN users ON addresses.user_id = users.user_id
-{}                
-</&>                
+            <&formatting.myt:poplink&>addresses.select(from_obj=[
+                        addresses.join(users, addresses.c.user_id==users.c.user_id)
+                    ]).execute() 
+            <&|formatting.myt:codepopper, link="sql" &>
+            SELECT addresses.address_id, addresses.user_id, addresses.street, addresses.city, 
+            addresses.state, addresses.zip 
+            FROM addresses JOIN users ON addresses.user_id = users.user_id
+            {}                
+            </&>                
+
             </&>
-        <p>The join criterion in a join() call is currently required, but in a future release will be derived automatically from the two table's primary keys if not specified.</p>
+
+        <p>The join constructor can also be used by itself:</p>
+                    <&|formatting.myt:code &>
+        <&formatting.myt:poplink&>join(users, addresses, users.c.user_id==addresses.c.user_id).select().execute()
+        <&|formatting.myt:codepopper, link="sql" &>
+        SELECT users.user_id, users.user_name, users.password, 
+        addresses.address_id, addresses.user_id, addresses.street, addresses.city, 
+        addresses.state, addresses.zip 
+        FROM addresses JOIN users ON addresses.user_id = users.user_id
+        {}                
+        </&>                
+            </&>
+        <p>The join criterion in a join() call is optional.  If not specified, the condition will be derived from the foreign key relationships of the two tables.  If no criterion can be constructed, an exception will be raised.</p>
+        
+                    <&|formatting.myt:code &>
+        <&formatting.myt:poplink&>join(users, addresses).select().execute()
+        <&|formatting.myt:codepopper, link="sql" &>
+        SELECT users.user_id, users.user_name, users.password, 
+        addresses.address_id, addresses.user_id, addresses.street, addresses.city, 
+        addresses.state, addresses.zip 
+        FROM addresses JOIN users ON addresses.user_id = users.user_id
+        {}                
+        </&>                
+                    </&>
+        
         <p>Notice that this is the first example where the FROM criterion of the select statement is explicitly specified.  In most cases, the FROM criterion is automatically determined from the columns requested as well as the WHERE clause.  The <span class="codeline">from_obj</span> keyword argument indicates a list of explicit FROM clauses to be used in the statement.</p>
         
         <p>A join can be created on its own using the <span class="codeline">join</span> or <span class="codeline">outerjoin</span> functions, or can be created off of an existing Table or other selectable unit via the <span class="codeline">join</span> or <span class="codeline">outerjoin</span> methods:</p>
         
             <&|formatting.myt:code &>
-            <&formatting.myt:poplink&>select([users, addresses], from_obj=[
-                outerjoin(users, addresses, users.c.user_id==addresses.c.address_id)
-            ]).execute() 
+            <&formatting.myt:poplink&>outerjoin(users, addresses, users.c.user_id==addresses.c.address_id).select().execute()
 <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.password, addresses.address_id, 
 addresses.user_id, addresses.street, addresses.city, addresses.state, addresses.zip
@@ -861,16 +884,17 @@ WHERE users.user_name = :users_user_name AND keywords.name IN ('jack', 'foo')
         <&|formatting.myt:code &>
             s = select([addresses.c.city], addresses.c.user_id==users.c.user_id)
             <&formatting.myt:poplink&>users.update(
-                    and_(users.c.user_id>10, users.c.user_id<20), 
+                    and_(users.c.user_id&gt;10, users.c.user_id&lt;20), 
                     values={users.c.user_name:s}
-                    ).execute()
+                    ).execute() 
 
             <&|formatting.myt:codepopper, link="sql" &>
             UPDATE users SET user_name=(SELECT addresses.city 
             FROM addresses 
             WHERE addresses.user_id = users.user_id) 
-            WHERE users.user_id > :users_user_id AND users.user_id < :users_user_id_1
+            WHERE users.user_id &gt; :users_user_id AND users.user_id &lt; :users_user_id_1
             {'users_user_id_1': 20, 'users_user_id': 10}
+
             </&>
 
         </&>

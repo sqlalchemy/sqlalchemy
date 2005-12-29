@@ -64,6 +64,12 @@ password=:password WHERE users.user_id = :user_id
             
             userlist = User.mapper.select_by(user_id=12)
         </&>
+    <p>There is also a full-blown "monkeypatch" function that creates a primary mapper, attaches the above mapper class property, and also the  methods <span class="codeline">get, get_by, select, select_by, selectone, commit</span> and <span class="codeline">delete</span>:</p>
+    <&|formatting.myt:code&>
+        assign_mapper(User, users)
+        userlist = User.select_by(user_id=12)
+    </&>
+    <p>Other methods of associating mappers and finder methods with their corresponding classes, such as via common base classes or mixins, can be devised as well.  SQLAlchemy does not aim to dictate application architecture and will always allow the broadest variety of architectural patterns, but may include more helper objects and suggested architectures in the future.</p>
 </&>
 <&|doclib.myt:item, name="selecting", description="Selecting from a Mapper" &>
     <p>There are a variety of ways to select from a mapper.  These range from minimalist to explicit.  Below is a synopsis of the these methods:</p>
@@ -71,8 +77,13 @@ password=:password WHERE users.user_id = :user_id
         # select_by, using property names or column names as keys
         # the keys are grouped together by an AND operator
         result = mapper.select_by(name='john', street='123 green street')
+
+        # select_by can also combine SQL criterion with key/value properties
+        result = mapper.select_by(users.c.user_name=='john', 
+                addresses.c.zip_code=='12345, street='123 green street')
         
-        # get_by, which returns a single scalar result or None if no results
+        # get_by, which takes the same arguments as select_by
+        # returns a single scalar result or None if no results
         user = mapper.get_by(id=12)
         
         # "dynamic" versions of select_by and get_by - everything past the 
@@ -101,7 +112,7 @@ password=:password WHERE users.user_id = :user_id
         # using straight text  
         result = mapper.select_text("select * from users where user_name='fred'")
 
-        # or using a "text" object (the 'engine' parameter will not be needed soon)
+        # or using a "text" object
         result = mapper.select(text("select * from users where user_name='fred'", engine=engine))
         </&>    
     <p>The last few examples above show the usage of the mapper's table object to provide the columns for a WHERE Clause.  These columns are also accessible off of the mapped class directly.  When a mapper is assigned to a class, it also attaches a special property accessor <span class="codeline">c</span> to the class itself, which can be used just like the table metadata to access the columns of the table:</p>
@@ -177,7 +188,7 @@ INSERT INTO users (user_name, password) VALUES (:user_name, :password)
                 
         </&>
 
-
+<p>Recent versions of SQLAlchemy will only put modified object attributes columns into the UPDATE statements generated upon commit, even though some of the examples here dont illustrate that.  This is to conserve database traffic and also to successfully interact with a "deferred" attribute, which is a mapped object attribute against the mapper's primary table that isnt loaded until referenced by the application.</p>
 </&>
 
 <&|doclib.myt:item, name="relations", description="Defining and Using Relationships" &>
