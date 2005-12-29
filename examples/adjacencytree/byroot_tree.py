@@ -98,7 +98,7 @@ class TreeData(object):
     def __repr__(self):
         return "TreeData(%s, %s)" % (repr(self.id), repr(self.value))
 
-TreeNode.mapper=assignmapper(tables.trees, properties=dict(
+assign_mapper(TreeNode, tables.trees, properties=dict(
     id=tables.trees.c.node_id,
     name=tables.trees.c.node_name,
     parent_id=tables.trees.c.parent_node_id,

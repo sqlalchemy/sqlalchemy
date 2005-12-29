@@ -97,6 +97,8 @@ class MapperTest(MapperSuperTest):
         l = m.select_by(email_address='ed@bettyboop.com')
         self.assert_result(l, User, *[{'user_id':8}])
 
+        l = m.select_by(User.c.user_name=='fred', addresses.c.email_address!='ed@bettyboop.com', user_id=9)
+        
     def testload(self):
         """tests loading rows with a mapper and producing object instances"""
         m = mapper(User, users)
@@ -166,10 +168,12 @@ class PropertyTest(MapperSuperTest):
     def testbasic(self):
         """tests that you can create mappers inline with class definitions"""
         class _Address(object):
-            mapper = assignmapper(addresses)
+            pass
+        assign_mapper(_Address, addresses)
             
         class _User(object):
-            mapper = assignmapper(users, properties = dict(
+            pass
+        assign_mapper(_User, users, properties = dict(
                 addresses = relation(_Address.mapper, lazy = False)
             ), is_primary = True)
         
@@ -179,23 +183,28 @@ class PropertyTest(MapperSuperTest):
 
     def testinherits(self):
         class _Order(object):
-            mapper = assignmapper(orders)
+            pass
+        assign_mapper(_Order, orders)
             
         class _User(object):
-            mapper = assignmapper(users, properties = dict(
+            pass
+        assign_mapper(_User, users, properties = dict(
                 orders = relation(_Order.mapper, lazy = False)
             ))
 
         class AddressUser(_User):
-            mapper = assignmapper(addresses, inherits = _User.mapper, inherit_condition=_User.c.user_id==addresses.c.user_id)
+            pass
+        assign_mapper(AddressUser, addresses, inherits = _User.mapper)
             
         l = AddressUser.mapper.select()
         
         jack = l[0]
+        self.assert_(jack.user_name=='jack')
         jack.email_address = 'jack@gmail.com'
         objectstore.commit()
-        
-        self.echo(repr(AddressUser.mapper.select(AddressUser.c.user_name == 'jack')))
+        objectstore.clear()
+        au = AddressUser.mapper.get_by(user_name='jack')
+        self.assert_(au.email_address == 'jack@gmail.com')
 
 class DeferredTest(MapperSuperTest):
 
@@ -405,9 +414,7 @@ class LazyTest(MapperSuperTest):
 
     def testmanytomany(self):
         """tests a many-to-many lazy load"""
-        items = orderitems
-
-        Item.mapper = assignmapper('items', engine = items.engine, properties = dict(
+        assign_mapper(Item, orderitems, properties = dict(
                 keywords = relation(Keyword, keywords, itemkeywords, lazy = True),
             ))
         l = Item.mapper.select()

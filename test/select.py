@@ -269,6 +269,11 @@ mytable.description FROM myothertable JOIN mytable ON mytable.myid = myothertabl
             "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable JOIN myothertable ON mytable.myid = myothertable.otherid JOIN thirdtable ON mytable.myid = thirdtable.userid"
         )
         
+        self.runtest(
+            join(users, addresses).select(),
+            "SELECT users.user_id, users.user_name, users.password, addresses.address_id, addresses.user_id, addresses.street, addresses.city, addresses.state, addresses.zip FROM users JOIN addresses ON users.user_id = addresses.user_id"
+        )
+        
     def testmultijoin(self):
         self.runtest(
                 select([table, table2, table3],
