@@ -174,12 +174,12 @@ class PropertyLoader(MapperProperty):
         # if join conditions were not specified, figure them out based on foreign keys
         if self.secondary is not None:
             if self.secondaryjoin is None:
-                self.secondaryjoin = self._match_primaries(self.target, self.secondary)
+                self.secondaryjoin = sql.join(self.target, self.secondary).onclause
             if self.primaryjoin is None:
-                self.primaryjoin = self._match_primaries(parent.table, self.secondary)
+                self.primaryjoin = sql.join(parent.table, self.secondary).onclause
         else:
             if self.primaryjoin is None:
-                self.primaryjoin = self._match_primaries(parent.table, self.target)
+                self.primaryjoin = sql.join(parent.table, self.target).onclause
         
         # if the foreign key wasnt specified and theres no assocaition table, try to figure
         # out who is dependent on who. we dont need all the foreign keys represented in the join,
@@ -267,23 +267,6 @@ class PropertyLoader(MapperProperty):
             raise "cant determine primary foreign key in the join relationship....specify foreignkey=<column>"
         else:
             return dependent[0]
-
-    def _match_primaries(self, primary, secondary):
-        crit = []
-        for fk in secondary.foreign_keys:
-            if fk.references(primary):
-                crit.append(primary._get_col_by_original(fk.column) == fk.parent)
-                self.foreignkey = fk.parent
-        for fk in primary.foreign_keys:
-            if fk.references(secondary):
-                crit.append(secondary._get_col_by_original(fk.column) == fk.parent)
-                self.foreignkey = fk.parent
-        if len(crit) == 0:
-            raise "Cant find any foreign key relationships between '%s' (%s) and '%s' (%s)" % (primary.name, repr(primary), secondary.name, repr(secondary))
-        elif len(crit) == 1:
-            return (crit[0])
-        else:
-            return sql.and_(*crit)
 
     def _compile_synchronizers(self):
         def compile(binary):

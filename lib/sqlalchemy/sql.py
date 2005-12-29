@@ -44,7 +44,7 @@ def outerjoin(left, right, onclause, **kwargs):
     Join object's "join()" or "outerjoin()" methods."""
     return Join(left, right, onclause, isouter = True, **kwargs)
 
-def join(left, right, onclause, **kwargs):
+def join(left, right, onclause=None, **kwargs):
     """returns a JOIN clause element (regular inner join), given the left and right 
     hand expressions, as well as the ON condition's expression.  To chain joins 
     together, use the resulting Join object's "join()" or "outerjoin()" methods."""
@@ -651,7 +651,7 @@ class Selectable(FromClause):
         
 class Join(Selectable):
     # TODO: put "using" + "natural" concepts in here and make "onclause" optional
-    def __init__(self, left, right, onclause, isouter = False, allcols = True):
+    def __init__(self, left, right, onclause=None, isouter = False, allcols = True):
         self.left = left
         self.right = right
         self.id = self.left.id + "_" + self.right.id
@@ -662,12 +662,32 @@ class Join(Selectable):
             self._columns = self.right.columns
 
         # TODO: if no onclause, do NATURAL JOIN
-        self.onclause = onclause
+        if onclause is None:
+            self.onclause = self._match_primaries(left, right)
+        else:
+            self.onclause = onclause
         self.isouter = isouter
         self.rowid_column = self.left.rowid_column
         
     primary_key = property (lambda self: [c for c in self.left.columns if c.primary_key] + [c for c in self.right.columns if c.primary_key])
 
+    def _match_primaries(self, primary, secondary):
+        crit = []
+        for fk in secondary.foreign_keys:
+            if fk.references(primary):
+                crit.append(primary._get_col_by_original(fk.column) == fk.parent)
+                self.foreignkey = fk.parent
+        for fk in primary.foreign_keys:
+            if fk.references(secondary):
+                crit.append(secondary._get_col_by_original(fk.column) == fk.parent)
+                self.foreignkey = fk.parent
+        if len(crit) == 0:
+            raise "Cant find any foreign key relationships between '%s' (%s) and '%s' (%s)" % (primary.name, repr(primary), secondary.name, repr(secondary))
+        elif len(crit) == 1:
+            return (crit[0])
+        else:
+            return sql.and_(*crit)
+            
     def _group_parenthesized(self):
         """indicates if this Selectable requires parenthesis when grouped into a compound
         statement"""
