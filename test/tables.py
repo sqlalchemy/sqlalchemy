@@ -23,20 +23,20 @@ addresses = Table('email_addresses', db,
 )
 
 orders = Table('orders', db,
-    Column('order_id', Integer, primary_key = True),
+    Column('order_id', Integer, Sequence('order_id_seq', optional=True), primary_key = True),
     Column('user_id', Integer, ForeignKey(users.c.user_id)),
     Column('description', String(50)),
     Column('isopen', Integer)
 )
 
 orderitems = Table('items', db,
-    Column('item_id', INT, primary_key = True),
+    Column('item_id', INT, Sequence('items_id_seq', optional=True), primary_key = True),
     Column('order_id', INT, ForeignKey("orders")),
     Column('item_name', VARCHAR(50))
 )
 
 keywords = Table('keywords', db,
-    Column('keyword_id', Integer, primary_key = True),
+    Column('keyword_id', Integer, Sequence('keyword_id_seq', optional=True), primary_key = True),
     Column('name', VARCHAR(50))
 )
 

@@ -22,13 +22,13 @@ class M2MTest(testbase.AssertMixin):
         db = testbase.db
         global place
         place = Table('place', db,
-            Column('place_id', Integer, primary_key=True),
+            Column('place_id', Integer, Sequence('pid_seq', optional=True), primary_key=True),
             Column('name', String(30), nullable=False),
             )
 
         global transition
         transition = Table('transition', db,
-            Column('transition_id', Integer, primary_key=True),
+            Column('transition_id', Integer, Sequence('tid_seq', optional=True), primary_key=True),
             Column('name', String(30), nullable=False),
             )
 
