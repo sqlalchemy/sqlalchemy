@@ -29,6 +29,10 @@ a:hover {color:#700000;}
 	margin: 5px;
 }
 
+.trailbold {
+	font-weight:bold;
+}
+
 .light {
 	background-color: #EFEFEF;
 }

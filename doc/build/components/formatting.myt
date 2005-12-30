@@ -114,6 +114,8 @@
         
         if class_ is not None:
             class_ = 'class="%s"' % class_
+        else:
+            class_ = ''	
             
         if href:
             return '<a href="%s" %s>%s</a>' % (href, class_, text or href)
