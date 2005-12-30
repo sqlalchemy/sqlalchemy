@@ -1,7 +1,7 @@
 <%flags>inherit='document_base.myt'</%flags>
 <%attr>title='Roadmap'</%attr>
-<&|doclib.myt:item, name="roadmap", description="Roadmap" &>
-<p>SQLAlchemy includes several components, each of which are useful by themselves to give varying levels of assistance to a database-enabled application.  Below is a roadmap of the "knowledge dependencies" between these components indicating the order in which concepts may be learned.  
+<&|doclib.myt:item, name="trailmap", description="Trail Map" &>
+<p>SQLAlchemy includes several components, each of which are useful by themselves to give varying levels of assistance to a database-enabled application.  Below is a Trail Map of the "knowledge dependencies" between these components indicating the order in which concepts may be learned.  
 </p>
 
 <pre>
