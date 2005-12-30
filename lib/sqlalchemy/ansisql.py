@@ -152,15 +152,19 @@ class ANSICompiler(sql.Compiled):
             return p
         else:
             return parameters
-            
+    
+    def visit_label(self, label):
+        if len(self.select_stack):
+            self.typemap.setdefault(label.name.lower(), label.obj.type)
+            if label.obj.type is None:
+                raise "nonetype" + repr(label.obj)
+        self.strings[label] = self.strings[label.obj] + " AS "  + label.name
+        
     def visit_column(self, column):
         if len(self.select_stack):
             # if we are within a visit to a Select, set up the "typemap"
             # for this column which is used to translate result set values
-            if self.select_stack[-1].use_labels:
-                self.typemap.setdefault(column.label.lower(), column.type)
-            else:
-                self.typemap.setdefault(column.key.lower(), column.type)
+            self.typemap.setdefault(column.key.lower(), column.type)
         if column.table.name is None:
             self.strings[column] = column.name
         else:
@@ -249,27 +253,24 @@ class ANSICompiler(sql.Compiled):
         # its an ordered dictionary to insure that the actual labeled column name
         # is unique.
         inner_columns = OrderedDict()
-        def col_key(c):
-            if select.use_labels:
-                return c.label
-            else:
-                return self.get_str(c)
-                
+
         self.select_stack.append(select)
         for c in select._raw_columns:
             if c.is_selectable():
                 for co in c.columns:
-                    co.accept_visitor(self)
-                    inner_columns[col_key(co)] = co
+                    if select.use_labels:
+                        l = co.label(co._label)
+                        l.accept_visitor(self)
+                        inner_columns[co._label] = l
+                    else:
+                        co.accept_visitor(self)
+                        inner_columns[self.get_str(co)] = co
             else:
                 c.accept_visitor(self)
-                inner_columns[col_key(c)] = c
+                inner_columns[self.get_str(c)] = c
         self.select_stack.pop(-1)
         
-        if select.use_labels:
-            collist = string.join(["%s AS %s" % (self.get_str(v), k) for k, v in inner_columns.iteritems()], ', ')
-        else:
-            collist = string.join([k for k in inner_columns.keys()], ', ')
+        collist = string.join([self.get_str(v) for v in inner_columns.values()], ', ')
 
         text = "SELECT "
         if select.distinct:
@@ -287,8 +288,6 @@ class ANSICompiler(sql.Compiled):
             for c in inner_columns.values():
                 if self.parameters.has_key(c.key) and not self.binds.has_key(c.key):
                     value = self.parameters[c.key]
-                elif self.parameters.has_key(c.label) and not self.binds.has_key(c.label):
-                    value = self.parameters[c.label]
                 else:
                     continue
                 clause = c==value

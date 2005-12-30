@@ -118,6 +118,14 @@ class MapperTest(MapperSuperTest):
 #        l = m.select(order_by=[])
 #        l = m.select(order_by=None)
         
+        
+    def testfunction(self):
+        s = select([users, (users.c.user_id * 2).label('concat'), func.count(users.c.user_id).label('count')], group_by=[c for c in users.c], use_labels=True)
+        m = mapper(User, s.alias('test'))
+        l = m.select()
+        print [repr(x.__dict__) for x in l]
+        
+        
     def testmultitable(self):
         usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
         m = mapper(User, usersaddresses, primarytable = users, primary_key=[users.c.user_id])

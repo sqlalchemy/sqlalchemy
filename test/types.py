@@ -36,6 +36,10 @@ class TypesTest(testbase.PersistTest):
         l = users.select().execute().fetchall()
         print repr(l)
         self.assert_(l == [(2, u'BIND_INjackBIND_OUT'), (3, u'BIND_INlalaBIND_OUT'), (4, u'BIND_INfredBIND_OUT')])
+
+        l = users.select(use_labels=True).execute().fetchall()
+        print repr(l)
+        self.assert_(l == [(2, u'BIND_INjackBIND_OUT'), (3, u'BIND_INlalaBIND_OUT'), (4, u'BIND_INfredBIND_OUT')])
      
         
 if __name__ == "__main__":

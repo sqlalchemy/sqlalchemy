@@ -619,15 +619,17 @@ class ResultProxy:
                     rec = (typemap.get(colname, types.NULLTYPE), i)
                 else:
                     rec = (types.NULLTYPE, i)
+                if rec[0] is None:
+                    raise "None for metadata " + colname
                 if self.props.setdefault(colname, rec) is not rec:
                     self.props[colname] = (ResultProxy.AmbiguousColumn(colname), 0)
                 self.props[i] = rec
                 i+=1
 
     def _get_col(self, row, key):
-        if isinstance(key, schema.Column):
+        if isinstance(key, schema.Column) or isinstance(key, sql.ColumnElement):
             try:
-                rec = self.props[key.label.lower()]
+                rec = self.props[key._label.lower()]
             except KeyError:
                 try:
                     rec = self.props[key.key.lower()]

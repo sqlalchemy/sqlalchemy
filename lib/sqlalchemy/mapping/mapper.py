@@ -122,10 +122,10 @@ class Mapper(object):
         # load custom properties 
         if properties is not None:
             for key, prop in properties.iteritems():
-                if isinstance(prop, schema.Column):
+                if isinstance(prop, schema.Column) or isinstance(prop, sql.ColumnElement):
                     self.columns[key] = prop
                     prop = ColumnProperty(prop)
-                elif isinstance(prop, list) and isinstance(prop[0], schema.Column):
+                elif isinstance(prop, list) and (isinstance(prop[0], schema.Column) or isinstance(prop[0], sql.ColumnElement)) :
                     self.columns[key] = prop[0]
                     prop = ColumnProperty(*prop)
                 self.props[key] = prop
@@ -172,7 +172,7 @@ class Mapper(object):
 
     def add_property(self, key, prop):
         self.copyargs['properties'][key] = prop
-        if isinstance(prop, schema.Column):
+        if (isinstance(prop, schema.Column) or isinstance(prop, sql.ColumnElement)):
             self.columns[key] = prop
             prop = ColumnProperty(prop)
         self.props[key] = prop
@@ -581,6 +581,10 @@ class Mapper(object):
         if not no_sort:
             if self.order_by:
                 order_by = self.order_by
+#            elif self.table.rowid_column is not None:
+ #               order_by = self.table.rowid_column
+  #          else:
+  #              order_by = None
             else:
                 order_by = self.table.rowid_column
         else:
