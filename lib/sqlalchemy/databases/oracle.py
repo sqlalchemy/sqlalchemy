@@ -110,7 +110,7 @@ class OracleSQLEngine(ansisql.ANSISQLEngine):
     def schemadropper(self, proxy, **params):
         return OracleSchemaDropper(proxy, **params)
     def defaultrunner(self, proxy):
-        return OracleDefaultRunner(proxy)
+        return OracleDefaultRunner(self, proxy)
         
     def reflecttable(self, table):
         raise "not implemented"
@@ -143,10 +143,10 @@ class OracleCompiler(ansisql.ANSICompiler):
     """oracle compiler modifies the lexical structure of Select statements to work under 
     non-ANSI configured Oracle databases, if the use_ansi flag is False."""
     
-    def __init__(self, engine, statement, bindparams, use_ansi = True, **kwargs):
+    def __init__(self, engine, statement, parameters, use_ansi = True, **kwargs):
         self._outertable = None
         self._use_ansi = use_ansi
-        ansisql.ANSICompiler.__init__(self, engine, statement, bindparams, **kwargs)
+        ansisql.ANSICompiler.__init__(self, engine, statement, parameters, **kwargs)
         
     def visit_join(self, join):
         if self._use_ansi:
@@ -165,7 +165,12 @@ class OracleCompiler(ansisql.ANSICompiler):
             join.onclause.accept_visitor(self)
 
             self._outertable = outertable
-        
+       
+    def visit_alias(self, alias):
+	"""oracle doesnt like 'FROM table AS alias'.  is the AS standard SQL??"""
+        self.froms[alias] = self.get_from_text(alias.selectable) + " " + alias.name
+        self.strings[alias] = self.get_str(alias.selectable)
+ 
     def visit_column(self, column):
         if self._use_ansi:
             return ansisql.ANSICompiler.visit_column(self, column)
@@ -181,8 +186,8 @@ class OracleCompiler(ansisql.ANSICompiler):
          with autoincrement fields that require they not be present.  so, 
          put them all in for all primary key columns."""
         for c in insert.table.primary_key:
-            if not self.bindparams.has_key(c.key):
-                self.bindparams[c.key] = None
+            if not self.parameters.has_key(c.key):
+                self.parameters[c.key] = None
         return ansisql.ANSICompiler.visit_insert(self, insert)
 
     def visit_select(self, select):
@@ -235,4 +240,4 @@ class OracleDefaultRunner(ansisql.ANSIDefaultRunner):
         return self.proxy(str(c), c.get_params()).fetchone()[0]
     
     def visit_sequence(self, seq):
-        return self.exec_default_sql(seq.name + ".nextval")
+        return self.proxy("SELECT " + seq.name + ".nextval FROM DUAL").fetchone()[0]

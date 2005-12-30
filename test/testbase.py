@@ -33,7 +33,7 @@ def parse_argv():
     elif DBTYPE == 'mysql':
         db = engine.create_engine('mysql://db=test&host=127.0.0.1&user=scott&passwd=tiger', echo=echo)
     elif DBTYPE == 'oracle':
-        db = engine.create_engine('oracle://db=test&host=127.0.0.1&user=scott&passwd=tiger', echo=echo)
+        db = engine.create_engine('oracle://user=scott&password=tiger', echo=echo)
     db = EngineAssert(db)
 
 class PersistTest(unittest.TestCase):
@@ -108,35 +108,57 @@ class EngineAssert(object):
         statement = re.sub(r'\n', '', statement)
 
         if self.assert_list is not None:
-            item = self.assert_list.pop()
+            item = self.assert_list[-1]
+            if not isinstance(item, dict):
+                item = self.assert_list.pop()
+            else:
+                # asserting a dictionary of statements->parameters
+                # this is to specify query assertions where the queries can be in 
+                # multiple orderings
+                if not item.has_key('_converted'):
+                    for key in item.keys():
+                        ckey = self.convert_statement(key)
+                        item[ckey] = item[key]
+			if ckey != key:
+                            del item[key]
+                    item['_converted'] = True
+                try:
+                    entry = item.pop(statement)
+                    if len(item) == 1:
+                        self.assert_list.pop()
+                    item = (statement, entry)
+                    print "OK ON", statement
+                except KeyError:
+                    self.unittest.assert_(False, "Testing for one of the following queries: %s, received '%s'" % (repr([k for k in item.keys()]), statement))
+
             (query, params) = item
             if callable(params):
                 params = params()
 
-            # deal with paramstyles of different engines
-            paramstyle = self.engine.paramstyle
-            if paramstyle == 'named':
-                pass
-            elif paramstyle =='pyformat':
-                query = re.sub(r':([\w_]+)', r"%(\1)s", query)
-            else:
-                # positional params
-                names = []
-                repl = None
-                if paramstyle=='qmark':
-                    repl = "?"
-                elif paramstyle=='format':
-                    repl = r"%s"
-                elif paramstyle=='numeric':
-                    repl = None
-                counter = 0
-                query = re.sub(r':([\w_]+)', repl, query)
+            query = self.convert_statement(query)
 
             self.unittest.assert_(statement == query and params == parameters, "Testing for query '%s' params %s, received '%s' with params %s" % (query, repr(params), statement, repr(parameters)))
         self.sql_count += 1
         return self.realexec(proxy, compiled, parameters, **kwargs)
 
-
+    def convert_statement(self, query):
+        paramstyle = self.engine.paramstyle
+        if paramstyle == 'named':
+            pass
+        elif paramstyle =='pyformat':
+            query = re.sub(r':([\w_]+)', r"%(\1)s", query)
+        else:
+            # positional params
+            repl = None
+            if paramstyle=='qmark':
+                repl = "?"
+            elif paramstyle=='format':
+                repl = r"%s"
+            elif paramstyle=='numeric':
+                repl = None
+            query = re.sub(r':([\w_]+)', repl, query)
+        return query
+        
 class TTestSuite(unittest.TestSuite):
     """override unittest.TestSuite to provide per-TestCase class setUpAll() and tearDownAll() functionality"""
     def __init__(self, tests=()):

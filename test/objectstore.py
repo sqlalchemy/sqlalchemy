@@ -577,20 +577,19 @@ class SaveTest(AssertMixin):
         l = m.select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name, keywords.c.name])
         self.assert_result(l, *data)
 
-        print "\n\n\n"
+        print "\n\n\nTESTTESTTEST"
         objects[4].item_name = 'item4updated'
         k = Keyword()
         k.name = 'yellow'
         objects[5].keywords.append(k)
         self.assert_sql(db, lambda:objectstore.commit(), [
-            (
-                "UPDATE items SET item_name=:item_name WHERE items.item_id = :items_item_id",
+            {
+                "UPDATE items SET item_name=:item_name WHERE items.item_id = :items_item_id":
                 [{'item_name': 'item4updated', 'items_item_id': objects[4].item_id}]
-            ),
-            (
-                "INSERT INTO keywords (name) VALUES (:name)", 
+            ,
+                "INSERT INTO keywords (name) VALUES (:name)":
                 {'name': 'yellow'}
-            ),
+            },
             ("INSERT INTO itemkeywords (item_id, keyword_id) VALUES (:item_id, :keyword_id)",
             lambda: [{'item_id': objects[5].item_id, 'keyword_id': k.keyword_id}]
             )
