@@ -20,7 +20,7 @@
 import sqlalchemy.schema as schema
 import sqlalchemy.util as util
 import sqlalchemy.types as types
-import string, re
+import string, re, random
 
 __all__ = ['text', 'column', 'func', 'select', 'update', 'insert', 'delete', 'join', 'and_', 'or_', 'not_', 'union', 'union_all', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'literal', 'bindparam', 'exists']
 
@@ -497,7 +497,7 @@ class FromClause(Selectable):
         return Join(self, right, *args, **kwargs)
     def outerjoin(self, right, *args, **kwargs):
         return Join(self, right, isouter = True, *args, **kwargs)
-    def alias(self, name):
+    def alias(self, name=None):
         return Alias(self, name)
 
     
@@ -751,11 +751,17 @@ class Alias(FromClause):
         self._columns = util.OrderedProperties()
         self.foreign_keys = []
         if alias is None:
-            alias = id(self)
+            n = getattr(selectable, 'name')
+            if n is None:
+                n = 'anon'
+            alias = n + "_" + hex(random.randint(0, 65535))[2:]
         self.name = alias
         self.id = self.name
         self.count = 0
-        self.rowid_column = self.selectable.rowid_column._make_proxy(self)
+        if self.selectable.rowid_column is not None:
+            self.rowid_column = self.selectable.rowid_column._make_proxy(self)
+        else:
+            self.rowid_column = None
         for co in selectable.columns:
             co._make_proxy(self)
 
@@ -930,7 +936,7 @@ class TableImpl(FromClause):
         return Join(self.table, right, *args, **kwargs)
     def outerjoin(self, right, *args, **kwargs):
         return Join(self.table, right, isouter = True, *args, **kwargs)
-    def alias(self, name):
+    def alias(self, name=None):
         return Alias(self.table, name)
     def select(self, whereclause = None, **params):
         return select([self.table], whereclause, **params)
@@ -1082,16 +1088,20 @@ class Select(SelectBaseMixin, FromClause):
 
         for f in column._get_from_objects():
             f.accept_visitor(self._correlator)
-            if self.rowid_column is None and hasattr(f, 'rowid_column') and f.rowid_column is not None:
-                self.rowid_column = f.rowid_column._make_proxy(self)
         column._process_from_dict(self._froms, False)
 
         if column.is_selectable():
+            # if its a column unit, add it to our exported 
+            # list of columns.  this is where "columns" 
+            # attribute of the select object gets populated.
+            # notice we are overriding the names of the column
+            # with either its label or its key, since one or the other
+            # is used when selecting from a select statement (i.e. a subquery)
             for co in column.columns:
                 if self.use_labels:
-                    co._make_proxy(self, name = co._label)
+                    co._make_proxy(self, name=co._label)
                 else:
-                    co._make_proxy(self)
+                    co._make_proxy(self, name=co.key)
             
     def _get_col_by_original(self, column):
         if self.use_labels:

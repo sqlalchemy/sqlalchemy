@@ -49,7 +49,7 @@ class Mapper(object):
             'primarytable':primarytable,
             'properties':properties or {},
             'primary_key':primary_key,
-            'is_primary':False,
+            'is_primary':None,
             'inherits':inherits,
             'inherit_condition':inherit_condition,
             'extension':extension,
@@ -72,8 +72,13 @@ class Mapper(object):
             primarytable = inherits.primarytable
             # inherit_condition is optional since the join can figure it out
             table = sql.join(table, inherits.table, inherit_condition)
-            
-        self.table = table
+        
+        if isinstance(table, sql.Select):
+            # some db's, noteably postgres, dont want to select from a select
+            # without an alias
+            self.table = table.alias(None)
+        else:
+            self.table = table
         
         # locate all tables contained within the "table" passed in, which
         # may be a join or other construct
@@ -93,9 +98,10 @@ class Mapper(object):
         self.pks_by_table = {}
         if primary_key is not None:
             for k in primary_key:
-                self.pks_by_table.setdefault(k.table, []).append(k)
+                self.pks_by_table.setdefault(k.table, util.HashSet()).append(k)
                 if k.table != self.table:
-                    self.pks_by_table.setdefault(self.table, []).append(k)
+                    # associate pk cols from subtables to the "main" table
+                    self.pks_by_table.setdefault(self.table, util.HashSet()).append(k)
         else:
             for t in self.tables + [self.table]:
                 try:
@@ -122,10 +128,10 @@ class Mapper(object):
         # load custom properties 
         if properties is not None:
             for key, prop in properties.iteritems():
-                if isinstance(prop, schema.Column) or isinstance(prop, sql.ColumnElement):
+                if is_column(prop):
                     self.columns[key] = prop
                     prop = ColumnProperty(prop)
-                elif isinstance(prop, list) and (isinstance(prop[0], schema.Column) or isinstance(prop[0], sql.ColumnElement)) :
+                elif isinstance(prop, list) and is_column(prop[0]):
                     self.columns[key] = prop[0]
                     prop = ColumnProperty(*prop)
                 self.props[key] = prop
@@ -158,7 +164,11 @@ class Mapper(object):
             proplist = self.columntoproperty.setdefault(column.original, [])
             proplist.append(prop)
 
-        if not hasattr(self.class_, '_mapper') or self.is_primary or not mapper_registry.has_key(self.class_._mapper) or (inherits is not None and inherits._is_primary_mapper()):
+        if (
+                (not hasattr(self.class_, '_mapper') or not mapper_registry.has_key(self.class_._mapper))
+                or self.is_primary 
+                or (inherits is not None and inherits._is_primary_mapper())
+            ):
             objectstore.global_attributes.reset_class_managed(self.class_)
             self._init_class()
             
@@ -166,13 +176,12 @@ class Mapper(object):
             for key, prop in inherits.props.iteritems():
                 if not self.props.has_key(key):
                     self.props[key] = prop._copy()
-                
 
     engines = property(lambda s: [t.engine for t in s.tables])
 
     def add_property(self, key, prop):
         self.copyargs['properties'][key] = prop
-        if (isinstance(prop, schema.Column) or isinstance(prop, sql.ColumnElement)):
+        if is_column(prop):
             self.columns[key] = prop
             prop = ColumnProperty(prop)
         self.props[key] = prop
@@ -194,7 +203,7 @@ class Mapper(object):
         return self.hashkey
 
     def _is_primary_mapper(self):
-        return getattr(self.class_, '_mapper') == self.hashkey
+        return getattr(self.class_, '_mapper', None) == self.hashkey
         
     def _init_class(self):
         """sets up our classes' overridden __init__ method, this mappers hash key as its
@@ -447,6 +456,9 @@ class Mapper(object):
         list."""
           
         for table in self.tables:
+            if not self._has_pks(table):
+                continue
+
             # loop thru tables in the outer loop, objects on the inner loop.
             # this is important for an object represented across two tables
             # so that it gets its primary key columns populated for the benefit of the
@@ -457,9 +469,8 @@ class Mapper(object):
             # we have our own idea of the primary key columns 
             # for this table, in the case that the user
             # specified custom primary key cols.
-            pk = {}
-            for k in self.pks_by_table[table]:
-                pk[k] = k
+            # also, if we are missing a primary key for this table, then
+            # just skip inserting/updating the table
             for obj in objects:
                 
 #                print "SAVE_OBJ we are " + hash_key(self) + " obj: " +  obj.__class__.__name__ + repr(id(obj))
@@ -471,8 +482,7 @@ class Mapper(object):
 
                 hasdata = False
                 for col in table.columns:
-                    #if col.primary_key:
-                    if pk.has_key(col):
+                    if self.pks_by_table[table].contains(col):
                         if hasattr(obj, "_instance_key"):
                             params[col.table.name + "_" + col.key] = self._getattrbycolumn(obj, col)
                         else:
@@ -536,6 +546,8 @@ class Mapper(object):
         """called by a UnitOfWork object to delete objects, which involves a
         DELETE statement for each table used by this mapper, for each object in the list."""
         for table in self.tables:
+            if not self._has_pks(table):
+                continue
             delete = []
             for obj in objects:
                 params = {}
@@ -556,6 +568,16 @@ class Mapper(object):
                 if table.engine.supports_sane_rowcount() and c.rowcount != len(delete):
                     raise "ConcurrencyError - updated rowcount %d does not match number of objects updated %d" % (c.cursor.rowcount, len(delete))
 
+    def _has_pks(self, table):
+        try:
+            for k in self.pks_by_table[table]:
+                if not self.columntoproperty.has_key(k.original):
+                    return False
+            else:
+                return True
+        except KeyError:
+            return False
+            
     def register_dependencies(self, *args, **kwargs):
         """called by an instance of objectstore.UOWTransaction to register 
         which mappers are dependent on which, as well as DependencyProcessor 
@@ -581,12 +603,10 @@ class Mapper(object):
         if not no_sort:
             if self.order_by:
                 order_by = self.order_by
-#            elif self.table.rowid_column is not None:
- #               order_by = self.table.rowid_column
-  #          else:
-  #              order_by = None
-            else:
+            elif self.table.rowid_column is not None:
                 order_by = self.table.rowid_column
+            else:
+                order_by = None
         else:
             order_by = None
             
@@ -779,6 +799,9 @@ def hash_key(obj):
     else:
         return repr(obj)
 
+def is_column(col):
+    return isinstance(col, schema.Column) or isinstance(col, sql.ColumnElement)
+    
 def mapper_hash_key(class_, table, primarytable = None, properties = None, **kwargs):
     if properties is None:
         properties = {}

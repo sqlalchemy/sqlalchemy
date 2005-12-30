@@ -79,18 +79,19 @@ myothertable.othername FROM mytable, myothertable")
         #)
 
         s = select([table], table.c.name == 'jack')
+        print [key for key in s.c.keys()]
         self.runtest(
             select(
                 [s],
                 s.c.id == 7
             )
             ,
-        "SELECT myid, name, description FROM (SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.name = :mytable_name) WHERE myid = :myid")
+        "SELECT id, name, description FROM (SELECT mytable.myid AS id, mytable.name AS name, mytable.description AS description FROM mytable WHERE mytable.name = :mytable_name) WHERE id = :id")
         
         sq = select([table])
         self.runtest(
             sq.select(),
-            "SELECT myid, name, description FROM (SELECT mytable.myid, mytable.name, mytable.description FROM mytable)"
+            "SELECT id, name, description FROM (SELECT mytable.myid AS id, mytable.name AS name, mytable.description AS description FROM mytable)"
         )
         
         sq = subquery(
@@ -100,8 +101,8 @@ myothertable.othername FROM mytable, myothertable")
 
         self.runtest(
             sq.select(sq.c.id == 7), 
-            "SELECT sq.myid, sq.name, sq.description FROM \
-(SELECT mytable.myid, mytable.name, mytable.description FROM mytable) AS sq WHERE sq.myid = :sq_myid"
+            "SELECT sq.id, sq.name, sq.description FROM \
+(SELECT mytable.myid AS id, mytable.name AS name, mytable.description AS description FROM mytable) AS sq WHERE sq.id = :sq_id"
         )
         
         sq = subquery(
@@ -368,7 +369,7 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
     def testcorrelatedsubquery(self):
         self.runtest(
             table.select(table.c.id == select([table2.c.id], table.c.name == table2.c.name)),
-            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = (SELECT myothertable.otherid FROM myothertable WHERE mytable.name = myothertable.othername)"
+            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = (SELECT myothertable.otherid AS id FROM myothertable WHERE mytable.name = myothertable.othername)"
         )
 
         self.runtest(
@@ -380,19 +381,19 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
         s = subquery('sq2', [talias], exists([1], table2.c.id == talias.c.id))
         self.runtest(
             select([s, table])
-            ,"SELECT sq2.myid, sq2.name, sq2.description, mytable.myid, mytable.name, mytable.description FROM (SELECT ta.myid, ta.name, ta.description FROM mytable AS ta WHERE EXISTS (SELECT 1 FROM myothertable WHERE myothertable.otherid = ta.myid)) AS sq2, mytable")
+            ,"SELECT sq2.id, sq2.name, sq2.description, mytable.myid, mytable.name, mytable.description FROM (SELECT ta.myid AS id, ta.name AS name, ta.description AS description FROM mytable AS ta WHERE EXISTS (SELECT 1 FROM myothertable WHERE myothertable.otherid = ta.myid)) AS sq2, mytable")
 
         s = select([addresses.c.street], addresses.c.user_id==users.c.user_id).alias('s')
         self.runtest(
             select([users, s.c.street], from_obj=[s]),
-            """SELECT users.user_id, users.user_name, users.password, s.street FROM users, (SELECT addresses.street FROM addresses WHERE addresses.user_id = users.user_id) AS s""")
+            """SELECT users.user_id, users.user_name, users.password, s.street FROM users, (SELECT addresses.street AS street FROM addresses WHERE addresses.user_id = users.user_id) AS s""")
 
     def testin(self):
         self.runtest(select([table], table.c.id.in_(1, 2, 3)),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid, :mytable_myid_1, :mytable_myid_2)")
 
         self.runtest(select([table], table.c.id.in_(select([table2.c.id]))),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (SELECT myothertable.otherid FROM myothertable)")
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (SELECT myothertable.otherid AS id FROM myothertable)")
     
     def testlateargs(self):
         """tests that a SELECT clause will have extra "WHERE" clauses added to it at compile time if extra arguments

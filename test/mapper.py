@@ -120,11 +120,13 @@ class MapperTest(MapperSuperTest):
         
         
     def testfunction(self):
-        s = select([users, (users.c.user_id * 2).label('concat'), func.count(users.c.user_id).label('count')], group_by=[c for c in users.c], use_labels=True)
-        m = mapper(User, s.alias('test'))
+        s = select([users, (users.c.user_id * 2).label('concat'), func.count(addresses.c.address_id).label('count')],
+        users.c.user_id==addresses.c.user_id, group_by=[c for c in users.c])
+        m = mapper(User, s, primarytable=users)
+        print [c.key for c in m.c]
         l = m.select()
-        print [repr(x.__dict__) for x in l]
-        
+        for u in l:
+            print "User", u.user_id, u.user_name, u.concat, u.count
         
     def testmultitable(self):
         usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
@@ -363,6 +365,7 @@ class LazyTest(MapperSuperTest):
         # use a union all to get a lot of rows to join against
         u2 = users.alias('u2')
         s = union_all(u2.select(use_labels=True), u2.select(use_labels=True), u2.select(use_labels=True)).alias('u')
+        print [key for key in s.c.keys()]
         l = m.select(s.c.u2_user_id==User.c.user_id, distinct=True)
         self.assert_result(l, User, *user_all_result)
         

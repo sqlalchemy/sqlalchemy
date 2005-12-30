@@ -24,7 +24,6 @@ import sqlalchemy.util as util
 import sqlalchemy.attributes as attributes
 import mapper
 import objectstore
-import random
 
 class ColumnProperty(MapperProperty):
     """describes an object attribute that corresponds to a table column."""
@@ -856,8 +855,7 @@ class Aliasizer(sql.ClauseVisitor):
         try:
             return self.aliases[table]
         except:
-            aliasname = table.name + "_" + hex(random.randint(0, 65535))[2:]
-            return self.aliases.setdefault(table, sql.alias(table, aliasname))
+            return self.aliases.setdefault(table, sql.alias(table))
 
     def visit_compound(self, compound):
         for i in range(0, len(compound.clauses)):

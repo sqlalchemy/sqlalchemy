@@ -262,6 +262,13 @@ class ANSICompiler(sql.Compiled):
                         l = co.label(co._label)
                         l.accept_visitor(self)
                         inner_columns[co._label] = l
+                    elif select.issubquery and isinstance(co, Column):
+                        # SQLite doesnt like selecting from a subquery where the column
+                        # names look like table.colname, so add a label synonomous with
+                        # the column name
+                        l = co.label(co.key)
+                        l.accept_visitor(self)
+                        inner_columns[self.get_str(l.obj)] = l
                     else:
                         co.accept_visitor(self)
                         inner_columns[self.get_str(co)] = co
