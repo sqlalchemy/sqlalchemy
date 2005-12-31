@@ -209,11 +209,14 @@ class ANSICompiler(sql.Compiled):
     def visit_binary(self, binary):
         result = self.get_str(binary.left)
         if binary.operator is not None:
-            result += " " + binary.operator
+            result += " " + self.binary_operator_string(binary)
         result += " " + self.get_str(binary.right)
         if binary.parens:
             result = "(" + result + ")"
         self.strings[binary] = result
+
+    def binary_operator_string(self, binary):
+        return binary.operator
 
     def visit_bindparam(self, bindparam):
         if bindparam.shortname != bindparam.key:

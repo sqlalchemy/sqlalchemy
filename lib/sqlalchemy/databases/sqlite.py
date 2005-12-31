@@ -185,7 +185,11 @@ class SQLiteCompiler(ansisql.ANSICompiler):
                 text += " \n LIMIT -1"
             text += " OFFSET " + str(select.offset)
         return text
-
+    def binary_operator_string(self, binary):
+        if isinstance(binary.type, sqltypes.String) and binary.operator == '+':
+            return '||'
+        else:
+            return ansisql.ANSICompiler.binary_operator_string(self, binary)
         
 class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, override_pk=False, **kwargs):
