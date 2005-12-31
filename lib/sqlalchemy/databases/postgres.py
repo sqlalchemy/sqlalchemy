@@ -1,19 +1,8 @@
 # postgres.py
 # Copyright (C) 2005 Michael Bayer mike_mp@zzzcomputing.com
 #
-# This library is free software; you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either
-# version 2.1 of the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Lesser General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this library; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+# This module is part of SQLAlchemy and is released under
+# the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import sys, StringIO, string, types, re
 
@@ -94,13 +83,14 @@ pg2_ischema_names = {
     'float' : PGFloat,
     'real' : PGFloat,
     'double precision' : PGFloat,
+    'timestamp with time zone' : PG2DateTime,
     'timestamp without time zone' : PG2DateTime,
     'bytea' : PGBinary,
     'boolean' : PGBoolean,
 }
 pg1_ischema_names = pg2_ischema_names.copy()
-pg1_ischema_names['timestamp without time zone'] = PG1DateTime
-
+pg1_ischema_names['timestamp with time zone'] = \
+    pg1_ischema_names['timestamp without time zone'] = PG1DateTime
 
 def engine(opts, **params):
     return PGSQLEngine(opts, **params)
