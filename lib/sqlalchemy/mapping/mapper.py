@@ -1,19 +1,8 @@
 # mapper/mapper.py
 # Copyright (C) 2005 Michael Bayer mike_mp@zzzcomputing.com
 #
-# This library is free software; you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either
-# version 2.1 of the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Lesser General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this library; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+# This module is part of SQLAlchemy and is released under
+# the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
 import sqlalchemy.sql as sql
@@ -456,23 +445,27 @@ class Mapper(object):
         list."""
           
         for table in self.tables:
+            # looping through our set of tables, which are all "real" tables, as opposed
+            # to our main table which might be a select statement or something non-writeable
+            
+            # the loop structure is tables on the outer loop, objects on the inner loop.
+            # this allows us to bundle inserts/updates on the same table together...although currently
+            # they are separate execs via execute(), not executemany()
+            
             if not self._has_pks(table):
+                # if we dont have a full set of primary keys for this table, we cant really
+                # do any CRUD with it, so skip.  this occurs if we are mapping against a query
+                # that joins on other tables so its not really an error condition.
                 continue
 
-            # loop thru tables in the outer loop, objects on the inner loop.
-            # this is important for an object represented across two tables
-            # so that it gets its primary key columns populated for the benefit of the
-            # second table.
+            # two lists to store parameters for each table/object pair located
             insert = []
             update = []
             
             # we have our own idea of the primary key columns 
             # for this table, in the case that the user
             # specified custom primary key cols.
-            # also, if we are missing a primary key for this table, then
-            # just skip inserting/updating the table
             for obj in objects:
-                
 #                print "SAVE_OBJ we are " + hash_key(self) + " obj: " +  obj.__class__.__name__ + repr(id(obj))
                 params = {}
 
@@ -483,16 +476,25 @@ class Mapper(object):
                 hasdata = False
                 for col in table.columns:
                     if self.pks_by_table[table].contains(col):
-                        if hasattr(obj, "_instance_key"):
+                        # column is a primary key ?
+                        if not isinsert:
+                            # doing an UPDATE?  put primary key values as "WHERE" parameters
+                            # matching the bindparam we are creating below, i.e. "<tablename>_<colname>"
                             params[col.table.name + "_" + col.key] = self._getattrbycolumn(obj, col)
                         else:
-                            # its an INSERT - if its NULL, leave it out as pgsql doesnt 
-                            # like it for an autoincrement
+                            # doing an INSERT? if the primary key values are not populated,
+                            # leave them out of the INSERT altogether, since PostGres doesn't want
+                            # them to be present for SERIAL to take effect.  A SQLEngine that uses
+                            # explicit sequences will put them back in if they are needed
                             value = self._getattrbycolumn(obj, col)
                             if value is not None:
                                 params[col.key] = value
                     else:
+                        # column is not a primary key ?
                         if not isinsert:
+                            # doing an UPDATE ? get the history for the attribute, with "passive"
+                            # so as not to trigger any deferred loads.  if there is a new
+                            # value, add it to the bind parameters
                             prop = self._getpropbycolumn(col)
                             history = prop.get_history(obj, passive=True)
                             if history:
@@ -501,16 +503,19 @@ class Mapper(object):
                                     params[col.key] = a[0]
                                     hasdata = True
                         else:
+                            # doing an INSERT ? add the attribute's value to the 
+                            # bind parameters
                             params[col.key] = self._getattrbycolumn(obj, col)
 
                 if not isinsert:
                     if hasdata:
+                        # if none of the attributes changed, dont even
+                        # add the row to be updated.
                         update.append(params)
                 else:
                     insert.append((obj, params))
                 uow.register_saved_object(obj)
             if len(update):
-                #print "REGULAR UPDATES"
                 clause = sql.and_()
                 for col in self.pks_by_table[table]:
                     clause.clauses.append(col == sql.bindparam(col.table.name + "_" + col.key))
@@ -522,16 +527,10 @@ class Mapper(object):
                 if table.engine.supports_sane_rowcount() and rows != len(update):
                     raise "ConcurrencyError - updated rowcount %d does not match number of objects updated %d" % (rows, len(update))
             if len(insert):
-                import sys
                 statement = table.insert()
                 for rec in insert:
                     (obj, params) = rec
                     statement.execute(**params)
-                    # TODO: the engine is going to now do defaults for non-primarykey columns as well.
-                    # have the engine store a dictionary of all column/generated values and set them
-                    # all up.  also might want to have the last_inserted_ids that does a select actually
-                    # go and get everything that was generated by DB-level defaults, not just primary key 
-                    # columns.
                     primary_key = table.engine.last_inserted_ids()
                     if primary_key is not None:
                         i = 0
