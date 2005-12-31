@@ -176,23 +176,33 @@ class SQLEngine(schema.SchemaEngine):
         else:
             self.logger = logger
     
-    def _figure_paramstyle(self):
+    def _set_paramstyle(self, style):
+        self._paramstyle = style
+        self._figure_paramstyle(style)
+    paramstyle = property(lambda s:s._paramstyle, _set_paramstyle)
+    
+    def _figure_paramstyle(self, paramstyle=None):
         db = self.dbapi()
-        if db is not None:
-            self.paramstyle = db.paramstyle
+        if paramstyle is not None:
+            self._paramstyle = paramstyle
+        elif db is not None:
+            self._paramstyle = db.paramstyle
         else:
-            self.paramstyle = 'named'
+            self._paramstyle = 'named'
 
-        if self.paramstyle == 'named':
+        if self._paramstyle == 'named':
             self.bindtemplate = ':%s'
             self.positional=False
-        elif self.paramstyle =='pyformat':
+        elif self._paramstyle == 'pyformat':
             self.bindtemplate = "%%(%s)s"
             self.positional=False
-        else:
-            # for positional, use pyformat until the end
+        elif self._paramstyle == 'qmark' or self._paramstyle == 'format' or self._paramstyle == 'numeric':
+            # for positional, use pyformat internally, ANSICompiler will convert
+            # to appropriate character upon compilation
             self.bindtemplate = "%%(%s)s"
-            self.positional=True
+            self.positional = True
+        else:
+            raise "Unsupported paramstyle '%s'" % self._paramstyle
         
     def type_descriptor(self, typeobj):
         """provides a database-specific TypeEngine object, given the generic object

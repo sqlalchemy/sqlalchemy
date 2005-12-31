@@ -117,10 +117,10 @@ class Mapper(object):
         # load custom properties 
         if properties is not None:
             for key, prop in properties.iteritems():
-                if is_column(prop):
+                if sql.is_column(prop):
                     self.columns[key] = prop
                     prop = ColumnProperty(prop)
-                elif isinstance(prop, list) and is_column(prop[0]):
+                elif isinstance(prop, list) and sql.is_column(prop[0]):
                     self.columns[key] = prop[0]
                     prop = ColumnProperty(*prop)
                 self.props[key] = prop
@@ -170,7 +170,7 @@ class Mapper(object):
 
     def add_property(self, key, prop):
         self.copyargs['properties'][key] = prop
-        if is_column(prop):
+        if sql.is_column(prop):
             self.columns[key] = prop
             prop = ColumnProperty(prop)
         self.props[key] = prop
@@ -797,9 +797,6 @@ def hash_key(obj):
         return obj.hash_key()
     else:
         return repr(obj)
-
-def is_column(col):
-    return isinstance(col, schema.Column) or isinstance(col, sql.ColumnElement)
     
 def mapper_hash_key(class_, table, primarytable = None, properties = None, **kwargs):
     if properties is None:

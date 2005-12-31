@@ -201,6 +201,9 @@ def _compound_select(keyword, *selects, **kwargs):
 def _is_literal(element):
     return not isinstance(element, ClauseElement) and not isinstance(element, schema.SchemaItem)
 
+def is_column(col):
+    return isinstance(col, schema.Column) or isinstance(col, ColumnElement)
+
 class ClauseVisitor(schema.SchemaVisitor):
     """builds upon SchemaVisitor to define the visiting of SQL statement elements in 
     addition to Schema elements."""

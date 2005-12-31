@@ -70,11 +70,11 @@ class ANSICompiler(sql.Compiled):
             elif self.engine.paramstyle=='format':
                 self.strings[self.statement] = re.sub(match, '%s', self.strings[self.statement])
             elif self.engine.paramstyle=='numeric':
-                i = 0
+                i = [0]
                 def getnum(x):
-                    i += 1
-                    return i
-                self.strings[self.statement] = re.sub(match, getnum(s), self.strings[self.statement])
+                    i[0] += 1
+                    return str(i[0])
+                self.strings[self.statement] = re.sub(match, getnum, self.strings[self.statement])
 
     def get_from_text(self, obj):
         return self.froms[obj]
@@ -282,7 +282,7 @@ class ANSICompiler(sql.Compiled):
         if self.parameters is not None:
             revisit = False
             for c in inner_columns.values():
-                if self.parameters.has_key(c.key) and not self.binds.has_key(c.key):
+                if sql.is_column(c) and self.parameters.has_key(c.key) and not self.binds.has_key(c.key):
                     value = self.parameters[c.key]
                 else:
                     continue
