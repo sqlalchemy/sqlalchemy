@@ -141,6 +141,9 @@ SQLAlchemy has the advantages:
 	mixed with built-in types.  Generic types as well as SQL-specific types
 	are available.
 
+SQLAlchemy is licensed under an MIT-style license (see LICENSE).
+Other incorporated projects may be licensed under different licenses.
+All licenses allow for non-commercial and commercial use.
 
 To install:
 

@@ -10,7 +10,7 @@ setup(name = "SQLAlchemy",
     url = "http://www.sqlalchemy.org",
     packages = find_packages('lib'),
     package_dir = {'':'lib'},
-    license = "GNU Lesser General Public License",
+    license = "MIT License",
     long_description = """A Python SQL toolkit and object relational mapper for application developers.""",
     classifiers = [
         "Development Status :: 3 - Alpha",

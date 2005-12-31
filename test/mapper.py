@@ -120,6 +120,7 @@ class MapperTest(MapperSuperTest):
         
         
     def testfunction(self):
+        """tests mapping to a SELECT statement that has functions in it."""
         s = select([users, (users.c.user_id * 2).label('concat'), func.count(addresses.c.address_id).label('count')],
         users.c.user_id==addresses.c.user_id, group_by=[c for c in users.c])
         m = mapper(User, s, primarytable=users)
@@ -127,6 +128,8 @@ class MapperTest(MapperSuperTest):
         l = m.select()
         for u in l:
             print "User", u.user_id, u.user_name, u.concat, u.count
+        #l[1].user_name='asdf'
+        #objectstore.commit()
         
     def testmultitable(self):
         usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
