@@ -273,7 +273,7 @@ FROM users WHERE users.user_name = :users_user_name AND users.user_id = :users_u
 </&>
         </&>
             <&|doclib.myt:item, name="operators", description="Operators" &>
-            <p>Supported column operators so far are all the numerical comparison operators, i.e. '==', '>', '>=', etc., as well as like(), startswith(), endswith(), and in().  Boolean operators include not_(), and_() and or_(), which also can be used inline via '~', '&', and '|'.  Math operators are '+', '-', '*', '/'.</p>
+            <p>Supported column operators so far are all the numerical comparison operators, i.e. '==', '>', '>=', etc., as well as like(), startswith(), endswith(), and in().  Boolean operators include not_(), and_() and or_(), which also can be used inline via '~', '&', and '|'.  Math operators are '+', '-', '*', '/'.  Any custom operator can be specified via the op() function shown below.</p>
             <&|formatting.myt:code &>
                 # "like" operator
                 users.select(users.c.user_name.like('%ter'))
@@ -295,9 +295,22 @@ FROM users WHERE users.user_name = :users_user_name AND users.user_id = :users_u
                 
                 # NOT operator
                 users.select(~(addresses.c.street == 'Green Street'))
+                
+                # any custom operator
+                select([users.c.user_name.op('||')('_category')])
             </&>
             </&>
 
+        </&>
+        <&|doclib.myt:item, name="engine", description="Specifying the Engine" &>
+        <p>For queries that don't contain any tables, the SQLEngine can be specified to any constructed statement via the <span class="codeline">engine</span> keyword parameter:</p>
+        <&|formatting.myt:code &>
+            # select a literal
+            select(["hi"], engine=myengine)
+            
+            # select a function
+            select([func.now()], engine=db)
+        </&>
         </&>
         <&|doclib.myt:item, name="functions", description="Functions" &>
         <p>Functions can be specified using the <span class="codeline">func</span> keyword:</p>
@@ -325,7 +338,22 @@ WHERE substr(users.user_name, :substr) = :substr_1
         FROM users
         {'literal_1': 'bar', 'literal': 'foo'}
         </&>
+        # literals have all the same comparison functions as columns
+        <&formatting.myt:poplink&>select([literal('foo') == literal('bar')], engine=myengine).scalar()
+        <&|formatting.myt:codepopper, link="sql" &>
+        SELECT :literal = :literal_1
+        {'literal_1': 'bar', 'literal': 'foo'}
         </&>
+        </&>
+        <p>Literals also take an optional <span class="codeline">type</span> parameter to give literals a type.  This can sometimes be significant, for example when using the "+" operator with SQLite, the String type is detected and the operator is converted to "||":</p>
+        <&|formatting.myt:code &>
+        <&formatting.myt:poplink&>select([literal('foo', type=String) + 'bar'], engine=e).execute()
+        <&|formatting.myt:codepopper, link="sql" &>
+        SELECT ? || ?
+        ['foo', 'bar']
+        </&>
+        </&>
+        
         </&>
         <&|doclib.myt:item, name="orderby", description="Order By" &>
         <P>The ORDER BY clause of a select statement can be specified as individual columns to order by within an array     specified via the <span class="codeline">order_by</span> parameter, and optional usage of the asc() and desc() functions:
