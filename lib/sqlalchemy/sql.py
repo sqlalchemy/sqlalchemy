@@ -8,8 +8,9 @@
 
 import sqlalchemy.schema as schema
 import sqlalchemy.util as util
-import sqlalchemy.types as types
+import sqlalchemy.types as sqltypes
 import string, re, random
+types = __import__('types')
 
 __all__ = ['text', 'column', 'func', 'select', 'update', 'insert', 'delete', 'join', 'and_', 'or_', 'not_', 'union', 'union_all', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'literal', 'bindparam', 'exists']
 
@@ -184,7 +185,7 @@ def text(text, engine=None):
 def null():
     """returns a Null object, which compiles to NULL in a sql statement."""
     return Null()
-    
+
 class FunctionGateway(object):
     """returns a callable based on an attribute name, which then returns a Function 
     object with that name."""
@@ -412,6 +413,8 @@ class CompareMixin(object):
         return self._compare('LIKE', "%" + str(other))
     def label(self, name):
         return Label(name, self)
+    def op(self, operator):
+        return lambda other: self._compare(operator, other)
     # and here come the math operators:
     def __add__(self, other):
         return self._compare('+', other)
@@ -499,7 +502,10 @@ class BindParamClause(ClauseElement, CompareMixin):
         self.key = key
         self.value = value
         self.shortname = shortname
-        self.type = type or types.NULLTYPE
+        self.type = type or sqltypes.NULLTYPE
+        # if passed a class as a type, convert to an instance
+        if isinstance(self.type, types.TypeType):
+            self.type = self.type()
     def accept_visitor(self, visitor):
         visitor.visit_bindparam(self)
     def _get_from_objects(self):
@@ -599,7 +605,7 @@ class Function(ClauseList, CompareMixin):
     """describes a SQL function. extends ClauseList to provide comparison operators."""
     def __init__(self, name, *clauses, **kwargs):
         self.name = name
-        self.type = kwargs.get('type', types.NULLTYPE)
+        self.type = kwargs.get('type', sqltypes.NULLTYPE)
         ClauseList.__init__(self, parens=True, *clauses)
     key = property(lambda self:self.label or self.name)
     def append(self, clause):
@@ -804,7 +810,7 @@ class ColumnClause(ColumnElement):
     def __init__(self, text, selectable=None):
         self.text = text
         self.table = selectable
-        self.type = types.NullTypeEngine()
+        self.type = sqltypes.NullTypeEngine()
 
     name = property(lambda self:self.text)
     key = property(lambda self:self.text)
@@ -898,7 +904,7 @@ class TableImpl(FromClause):
     def __init__(self, table):
         self.table = table
         self.id = self.table.name
-        self._rowid_column = schema.Column(self.table.engine.rowid_column_name(), types.Integer, hidden=True)
+        self._rowid_column = schema.Column(self.table.engine.rowid_column_name(), sqltypes.Integer, hidden=True)
         self._rowid_column._set_parent(table)
     
     rowid_column = property(lambda s: s._rowid_column)
