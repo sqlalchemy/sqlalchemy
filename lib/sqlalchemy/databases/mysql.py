@@ -100,14 +100,6 @@ class MySQLEngine(ansisql.ANSISQLEngine):
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
 
-    def rowid_column_name(self):
-        """returns the ROWID column name for this engine."""
-        
-        # well, for MySQL cant really count on this being there, surprise (not).
-        # so we do some silly hack down below in MySQLTableImpl to provide
-        # something for an OID column
-        return "_rowid"
-
     def supports_sane_rowcount(self):
         return False
 
@@ -153,17 +145,7 @@ class MySQLTableImpl(sql.TableImpl):
     """attached to a schema.Table to provide it with a Selectable interface
     as well as other functions
     """
-    def _rowid_col(self):
-        if getattr(self, '_mysql_rowid_column', None) is None:
-            if len(self.table.primary_key) > 0:
-                c = self.table.primary_key[0]
-            else:
-                c = self.table.columns[self.table.columns.keys()[0]]
-            self._mysql_rowid_column = schema.Column(c.name, c.type, hidden=True)
-            self._mysql_rowid_column._set_parent(self.table)
-
-        return self._mysql_rowid_column
-    rowid_column = property(lambda s: s._rowid_col())
+    pass
 
 class MySQLCompiler(ansisql.ANSICompiler):
     def limit_clause(self, select):

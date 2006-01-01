@@ -260,7 +260,7 @@ class SQLEngine(schema.SchemaEngine):
 
     def rowid_column_name(self):
         """returns the ROWID column name for this engine, or None if the engine cant/wont support OID/ROWID."""
-        return "oid"
+        return None
 
     def supports_sane_rowcount(self):
         """Provided to indicate when MySQL is being used, which does not have standard behavior
