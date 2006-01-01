@@ -158,6 +158,7 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
 
     def post_exec(self, proxy, compiled, parameters, **kwargs):
         if getattr(compiled, "isinsert", False) and self.context.last_inserted_ids is None:
+            raise "cant use cursor.lastrowid without OIDs enabled"
             table = compiled.statement.table
             cursor = proxy()
             if cursor.lastrowid is not None and table is not None and len(table.primary_key):
@@ -190,8 +191,12 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
 
 class PGCompiler(ansisql.ANSICompiler):
 
-    def visit_insert_sequence(self, column, sequence):
-        if self.parameters.get(column.key, None) is None and not sequence.optional:
+    def visit_insert_column(self, column):
+        # Postgres advises against OID usage and turns it off in 8.1,
+        # effectively making cursor.lastrowid
+        # useless, effectively making reliance upon SERIAL useless.  
+        # so all column primary key inserts must be explicitly present
+        if column.primary_key:
             self.parameters[column.key] = None
 
     def limit_clause(self, select):
@@ -232,6 +237,13 @@ class PGSchemaDropper(ansisql.ANSISchemaDropper):
             self.execute()
 
 class PGDefaultRunner(ansisql.ANSIDefaultRunner):
+    def get_column_default(self, column):
+        if column.primary_key and isinstance(column.type, types.Integer) and (column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional)):
+            c = self.proxy("select nextval('%s_%s_seq')" % (column.table.name, column.name))
+            return c.fetchone()[0]
+        else:
+            return ansisql.ANSIDefaultRunner.get_column_default(self, column)
+    
     def visit_sequence(self, seq):
         if not seq.optional:
             c = self.proxy("select nextval('%s')" % seq.name)

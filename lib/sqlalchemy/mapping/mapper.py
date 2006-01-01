@@ -466,7 +466,7 @@ class Mapper(object):
             # for this table, in the case that the user
             # specified custom primary key cols.
             for obj in objects:
-#                print "SAVE_OBJ we are " + hash_key(self) + " obj: " +  obj.__class__.__name__ + repr(id(obj))
+                #print "SAVE_OBJ we are " + hash_key(self) + " obj: " +  obj.__class__.__name__ + repr(id(obj))
                 params = {}
 
                 isinsert = not hasattr(obj, "_instance_key")

@@ -129,6 +129,12 @@ class DefaultRunner(schema.SchemaVisitor):
         self.proxy = proxy
         self.engine = engine
 
+    def get_column_default(self, column):
+        if column.default is not None:
+            return column.default.accept_visitor(self)
+        else:
+            return None
+
     def visit_sequence(self, seq):
         """sequences are not supported by default"""
         return None
@@ -425,11 +431,7 @@ class SQLEngine(schema.SchemaEngine):
                 need_lastrowid=False
                 for c in compiled.statement.table.c:
                     if not param.has_key(c.key) or param[c.key] is None:
-                        if c.default is not None:
-                            newid = c.default.accept_visitor(drunner)
-                        else:
-                            newid = None
-                            
+                        newid = drunner.get_column_default(c)
                         if newid is not None:
                             param[c.key] = newid
                             if c.primary_key:
@@ -481,6 +483,7 @@ class SQLEngine(schema.SchemaEngine):
                        post-processing on result-set values.
 
         commit      -  if True, will automatically commit the statement after completion. """
+        
         if parameters is None:
             parameters = {}
 
@@ -545,6 +548,7 @@ class SQLEngine(schema.SchemaEngine):
                        post-processing on result-set values.
 
         commit      -  if True, will automatically commit the statement after completion. """
+        
         if parameters is None:
             parameters = {}
 

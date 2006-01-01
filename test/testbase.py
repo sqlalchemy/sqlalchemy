@@ -70,8 +70,11 @@ class AssertMixin(PersistTest):
                     self.assert_row(value[0], getattr(rowobj, key), value[1])
             else:
                 self.assert_(getattr(rowobj, key) == value, "attribute %s value %s does not match %s" % (key, getattr(rowobj, key), value))
-    def assert_sql(self, db, callable_, list):
-        db.set_assert_list(self, list)
+    def assert_sql(self, db, callable_, list, with_sequences=None):
+        if with_sequences is not None and (db.engine.__module__.endswith('postgres') or db.engine.__module__.endswith('oracle')):
+            db.set_assert_list(self, with_sequences)
+        else:
+            db.set_assert_list(self, list)
         try:
             callable_()
         finally:
@@ -87,8 +90,8 @@ class EngineAssert(object):
     """decorates a SQLEngine object to match the incoming queries against a set of assertions."""
     def __init__(self, engine):
         self.engine = engine
-        self.realexec = engine.pre_exec
-        engine.pre_exec = self.pre_exec
+        self.realexec = engine.post_exec
+        engine.post_exec = self.post_exec
         self.logger = engine.logger
         self.set_assert_list(None, None)
         self.sql_count = 0
@@ -102,7 +105,7 @@ class EngineAssert(object):
     def _set_echo(self, echo):
         self.engine.echo = echo
     echo = property(lambda s: s.engine.echo, _set_echo)
-    def pre_exec(self, proxy, compiled, parameters, **kwargs):
+    def post_exec(self, proxy, compiled, parameters, **kwargs):
         self.engine.logger = self.logger
         statement = str(compiled)
         statement = re.sub(r'\n', '', statement)
@@ -127,7 +130,6 @@ class EngineAssert(object):
                     if len(item) == 1:
                         self.assert_list.pop()
                     item = (statement, entry)
-                    print "OK ON", statement
                 except KeyError:
                     self.unittest.assert_(False, "Testing for one of the following queries: %s, received '%s'" % (repr([k for k in item.keys()]), statement))
 

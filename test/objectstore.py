@@ -358,6 +358,21 @@ class SaveTest(AssertMixin):
                     lambda: [{'user_id': objects[3].user.user_id, 'email_addresses_address_id': objects[3].address_id}]
                 ),
                 
+        ],
+        with_sequences=[
+                (
+                    "INSERT INTO users (user_id, user_name) VALUES (:user_id, :user_name)",
+                    lambda:{'user_name': 'imnewlyadded', 'user_id':db.last_inserted_ids()[0]}
+                ),
+                (
+                    "UPDATE email_addresses SET email_address=:email_address WHERE email_addresses.address_id = :email_addresses_address_id",
+                    lambda: [{'email_address': 'imnew@foo.bar', 'email_addresses_address_id': objects[2].address_id}]
+                ),
+                (
+                    "UPDATE email_addresses SET user_id=:user_id WHERE email_addresses.address_id = :email_addresses_address_id",
+                    lambda: [{'user_id': objects[3].user.user_id, 'email_addresses_address_id': objects[3].address_id}]
+                ),
+                
         ])
         l = sql.select([users, addresses], sql.and_(users.c.user_id==addresses.c.address_id, addresses.c.address_id==a.address_id)).execute()
         self.echo( repr(l.fetchone().row))
@@ -428,6 +443,12 @@ class SaveTest(AssertMixin):
                     (
                     "INSERT INTO email_addresses (user_id, email_address) VALUES (:user_id, :email_address)",
                     {'email_address': 'hi', 'user_id': 7}
+                    ),
+                ],
+                with_sequences=[
+                    (
+                    "INSERT INTO email_addresses (address_id, user_id, email_address) VALUES (:address_id, :user_id, :email_address)",
+                    lambda:{'email_address': 'hi', 'user_id': 7, 'address_id':db.last_inserted_ids()[0]}
                     ),
                 ]
         )
@@ -577,7 +598,6 @@ class SaveTest(AssertMixin):
         l = m.select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name, keywords.c.name])
         self.assert_result(l, *data)
 
-        print "\n\n\nTESTTESTTEST"
         objects[4].item_name = 'item4updated'
         k = Keyword()
         k.name = 'yellow'
@@ -593,7 +613,21 @@ class SaveTest(AssertMixin):
             ("INSERT INTO itemkeywords (item_id, keyword_id) VALUES (:item_id, :keyword_id)",
             lambda: [{'item_id': objects[5].item_id, 'keyword_id': k.keyword_id}]
             )
-        ])
+        ],
+        
+        with_sequences = [
+            {
+                "UPDATE items SET item_name=:item_name WHERE items.item_id = :items_item_id":
+                [{'item_name': 'item4updated', 'items_item_id': objects[4].item_id}]
+            ,
+                "INSERT INTO keywords (keyword_id, name) VALUES (:keyword_id, :name)":
+                lambda: {'name': 'yellow', 'keyword_id':db.last_inserted_ids()[0]}
+            },
+            ("INSERT INTO itemkeywords (item_id, keyword_id) VALUES (:item_id, :keyword_id)",
+            lambda: [{'item_id': objects[5].item_id, 'keyword_id': k.keyword_id}]
+            )
+        ]
+        )
 
         objects[2].keywords.append(k)
         dkid = objects[5].keywords[1].keyword_id
@@ -609,7 +643,6 @@ class SaveTest(AssertMixin):
                 )
         ])
         
-        print "NEXT TEST"
         objectstore.delete(objects[3])
         objectstore.commit()
         
@@ -765,7 +798,26 @@ class SaveTest2(AssertMixin):
                 "INSERT INTO email_addresses (rel_user_id, email_address) VALUES (:rel_user_id, :email_address)",
                 {'rel_user_id': 2, 'email_address': 'thesdf@asdf.com'}
                 )
-                ]
+                ],
+                
+                with_sequences = [
+                        (
+                            "INSERT INTO users (user_id, user_name) VALUES (:user_id, :user_name)",
+                            lambda: {'user_name': 'thesub', 'user_id':db.last_inserted_ids()[0]}
+                        ),
+                        (
+                        "INSERT INTO users (user_id, user_name) VALUES (:user_id, :user_name)",
+                            lambda: {'user_name': 'assdkfj', 'user_id':db.last_inserted_ids()[0]}
+                        ),
+                        (
+                        "INSERT INTO email_addresses (address_id, rel_user_id, email_address) VALUES (:address_id, :rel_user_id, :email_address)",
+                        lambda:{'rel_user_id': 1, 'email_address': 'bar@foo.com', 'address_id':db.last_inserted_ids()[0]}
+                        ),
+                        (
+                        "INSERT INTO email_addresses (address_id, rel_user_id, email_address) VALUES (:address_id, :rel_user_id, :email_address)",
+                        lambda:{'rel_user_id': 2, 'email_address': 'thesdf@asdf.com', 'address_id':db.last_inserted_ids()[0]}
+                        )
+                        ]
         )
 
 

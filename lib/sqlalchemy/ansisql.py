@@ -370,18 +370,25 @@ class ANSICompiler(sql.Compiled):
         """called when visiting an Insert statement, for each column in the table that
         contains a Sequence object."""
         pass
+    
+    def visit_insert_column(selef, column):
+        """called when visiting an Insert statement, for each column in the table
+        that is a NULL insert into the table"""
+        pass
         
     def visit_insert(self, insert_stmt):
         # set up a call for the defaults and sequences inside the table
         class DefaultVisitor(schema.SchemaVisitor):
+            def visit_column(s, c):
+                self.visit_insert_column(c)
             def visit_column_default(s, cd):
                 self.visit_insert_column_default(c, cd)
             def visit_sequence(s, seq):
                 self.visit_insert_sequence(c, seq)
         vis = DefaultVisitor()
         for c in insert_stmt.table.c:
-            if (self.parameters is None or self.parameters.get(c.key, None) is None) and c.default is not None:
-                c.default.accept_visitor(vis)
+            if (self.parameters is None or self.parameters.get(c.key, None) is None):
+                c.accept_visitor(vis)
         
         self.isinsert = True
         colparams = self._get_colparams(insert_stmt)
