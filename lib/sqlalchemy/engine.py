@@ -161,7 +161,7 @@ class SQLEngine(schema.SchemaEngine):
     SQLEngines are constructed via the create_engine() function inside this package.
     """
     
-    def __init__(self, pool = None, echo = False, logger = None, **params):
+    def __init__(self, pool=None, echo=False, logger=None, default_ordering=False, **params):
         """constructs a new SQLEngine.   SQLEngines should be constructed via the create_engine()
         function which will construct the appropriate subclass of SQLEngine."""
         # get a handle on the connection pool via the connect arguments
@@ -172,6 +172,7 @@ class SQLEngine(schema.SchemaEngine):
             self._pool = sqlalchemy.pool.manage(self.dbapi(), **params).get_pool(*cargs, **cparams)
         else:
             self._pool = pool
+        self.default_ordering=default_ordering
         self.echo = echo
         self.context = util.ThreadLocal(raiseerror=False)
         self.tables = {}
@@ -258,7 +259,7 @@ class SQLEngine(schema.SchemaEngine):
         raise NotImplementedError()
 
     def rowid_column_name(self):
-        """returns the ROWID column name for this engine."""
+        """returns the ROWID column name for this engine, or None if the engine cant/wont support OID/ROWID."""
         return "oid"
 
     def supports_sane_rowcount(self):

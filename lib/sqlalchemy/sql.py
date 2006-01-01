@@ -904,10 +904,25 @@ class TableImpl(FromClause):
     def __init__(self, table):
         self.table = table
         self.id = self.table.name
-        self._rowid_column = schema.Column(self.table.engine.rowid_column_name(), sqltypes.Integer, hidden=True)
-        self._rowid_column._set_parent(table)
-    
-    rowid_column = property(lambda s: s._rowid_column)
+
+    def _rowid_col(self):
+        if not self.table.engine.default_ordering:
+            return None
+            
+        if not hasattr(self, '_rowid_column'):
+            if self.table.engine.rowid_column_name() is not None:
+                self._rowid_column = schema.Column(self.table.engine.rowid_column_name(), sqltypes.Integer, hidden=True)
+                self._rowid_column._set_parent(self.table)
+            else:
+                if len(self.table.primary_key) > 0:
+                    c = self.table.primary_key[0]
+                else:
+                    c = self.table.columns[self.table.columns.keys()[0]]
+                self._rowid_column = schema.Column(c.name, c.type, hidden=True)
+                self._rowid_column._set_parent(self.table)
+        return self._rowid_column
+
+    rowid_column = property(_rowid_col)
     engine = property(lambda s: s.table.engine)
     columns = property(lambda self: self.table.columns)
 

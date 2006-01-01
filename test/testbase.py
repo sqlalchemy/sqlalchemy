@@ -23,17 +23,17 @@ def parse_argv():
     global db
     if DBTYPE == 'sqlite':
         try:
-            db = engine.create_engine('sqlite://filename=:memory:', echo = echo)
+            db = engine.create_engine('sqlite://filename=:memory:', echo=echo, default_ordering=True)
         except:
             raise "Could not create sqlite engine.  specify --db <sqlite|sqlite_file|postgres|mysql|oracle> to test runner."
     elif DBTYPE == 'sqlite_file':
-        db = engine.create_engine('sqlite://filename=querytest.db', echo = echo)
+        db = engine.create_engine('sqlite://filename=querytest.db', echo=echo, default_ordering=True)
     elif DBTYPE == 'postgres':
-        db = engine.create_engine('postgres://database=test&host=127.0.0.1&user=scott&password=tiger', echo=echo)
+        db = engine.create_engine('postgres://database=test&host=127.0.0.1&user=scott&password=tiger', echo=echo, default_ordering=True)
     elif DBTYPE == 'mysql':
-        db = engine.create_engine('mysql://db=test&host=127.0.0.1&user=scott&passwd=tiger', echo=echo)
+        db = engine.create_engine('mysql://db=test&host=127.0.0.1&user=scott&passwd=tiger', echo=echo, default_ordering=True)
     elif DBTYPE == 'oracle':
-        db = engine.create_engine('oracle://user=scott&password=tiger', echo=echo)
+        db = engine.create_engine('oracle://user=scott&password=tiger', echo=echo, default_ordering=True)
     db = EngineAssert(db)
 
 class PersistTest(unittest.TestCase):

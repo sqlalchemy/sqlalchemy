@@ -106,7 +106,8 @@ def descriptor():
     ]}
 
 class PGSQLEngine(ansisql.ANSISQLEngine):
-    def __init__(self, opts, module = None, **params):
+    def __init__(self, opts, module=None, use_oids=False, **params):
+        self.use_oids = use_oids
         if module is None:
             if psycopg is None:
                 raise "Couldnt locate psycopg1 or psycopg2: specify postgres module argument"
@@ -153,20 +154,28 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
 
+    def rowid_column_name(self):
+        if self.use_oids:
+            return "oid"
+        else:
+            return None
+
     def pre_exec(self, proxy, statement, parameters, **kwargs):
         return
 
     def post_exec(self, proxy, compiled, parameters, **kwargs):
         if getattr(compiled, "isinsert", False) and self.context.last_inserted_ids is None:
-            raise "cant use cursor.lastrowid without OIDs enabled"
-            table = compiled.statement.table
-            cursor = proxy()
-            if cursor.lastrowid is not None and table is not None and len(table.primary_key):
-                s = sql.select(table.primary_key, table.rowid_column == cursor.lastrowid)
-                c = s.compile()
-                cursor = proxy(str(c), c.get_params())
-                row = cursor.fetchone()
-            self.context.last_inserted_ids = [v for v in row]
+            if not self.use_oids:
+                raise "cant use cursor.lastrowid without OIDs enabled"
+            else:
+                table = compiled.statement.table
+                cursor = proxy()
+                if cursor.lastrowid is not None and table is not None and len(table.primary_key):
+                    s = sql.select(table.primary_key, table.rowid_column == cursor.lastrowid)
+                    c = s.compile()
+                    cursor = proxy(str(c), c.get_params())
+                    row = cursor.fetchone()
+                self.context.last_inserted_ids = [v for v in row]
 
     def _executemany(self, c, statement, parameters):
         """we need accurate rowcounts for updates, inserts and deletes.  psycopg2 is not nice enough
@@ -177,7 +186,6 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
             rowcount += c.rowcount
         self.context.rowcount = rowcount
 
-            
     def dbapi(self):
         return self.module
 

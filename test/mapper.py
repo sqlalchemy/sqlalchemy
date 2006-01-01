@@ -625,7 +625,7 @@ class EagerTest(MapperSuperTest):
         items = orderitems
         
         m = mapper(Item, items, properties = dict(
-                keywords = relation(Keyword, keywords, itemkeywords, lazy = False),
+                keywords = relation(Keyword, keywords, itemkeywords, lazy=False),
             ))
         l = m.select()
         self.assert_result(l, Item, *item_keyword_result)

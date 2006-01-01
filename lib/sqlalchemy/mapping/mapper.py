@@ -603,7 +603,7 @@ class Mapper(object):
             if self.order_by:
                 order_by = self.order_by
             elif self.table.rowid_column is not None:
-                order_by = self.table.rowid_column
+                order_by = [self.table.rowid_column]
             else:
                 order_by = None
         else:
@@ -611,7 +611,7 @@ class Mapper(object):
             
         if self._should_nest(**kwargs):
             s2 = sql.select(self.table.primary_key, whereclause, use_labels=True, **kwargs)
-            if not kwargs.get('distinct', False):
+            if not kwargs.get('distinct', False) and self.table.rowid_column is not None:
                 s2.order_by(self.table.rowid_column)
             s3 = s2.alias('rowcount')
             crit = []
@@ -621,17 +621,17 @@ class Mapper(object):
             if kwargs.has_key('order_by'):
                 statement.order_by(*kwargs['order_by'])
             else:
-                statement.order_by(order_by)
+                statement.order_by(*order_by)
         else:
             statement = sql.select([], whereclause, from_obj=[self.table], use_labels=True, **kwargs)
             if order_by is not None and kwargs.get('order_by', None) is None:
-                statement.order_by(order_by)
+                statement.order_by(*order_by)
             # for a DISTINCT query, you need the columns explicitly specified in order
             # to use it in "order_by" - in the case we added the rowid column in,
             # add that to the column list
             # TODO: this idea should be handled by the SELECT statement itself, insuring
             # that order_by cols are in the select list if DISTINCT is selected
-            if kwargs.get('distinct', False) and order_by is self.table.rowid_column:
+            if kwargs.get('distinct', False) and self.table.rowid_column is not None and order_by == [self.table.rowid_column]:
                 statement.append_column(self.table.rowid_column)
         # plugin point
         
