@@ -68,7 +68,7 @@ class TreeLoader(MapperExtension):
     def create_instance(self, mapper, row, imap, class_):
         """creates an instance of a TreeNode.  since the TreeNode constructor requires
         the 'name' argument, this method pulls the data from the database row directly."""
-        return TreeNode(row[mapper.c.name.label], _mapper_nohistory=True)
+        return TreeNode(row[mapper.c.name], _mapper_nohistory=True)
     def after_insert(self, mapper, instance):
         """runs after the insert of a new TreeNode row.  The primary key of the row is not determined
         until the insert is complete, since most DB's use autoincrementing columns.  If this node is

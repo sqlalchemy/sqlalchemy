@@ -865,6 +865,7 @@ class ColumnImpl(ColumnElement):
             self._label = self.column.name
 
     engine = property(lambda s: s.column.engine)
+    default_label = property(lambda s:s._label)
     
     def label(self, name):
         return Label(name, self.column)
