@@ -487,8 +487,10 @@ class FromClause(Selectable):
     def default_order_by(self):
         if not self.engine.default_ordering:
             return None
-        else:
+        elif self.oid_column is not None:
             return [self.oid_column]    
+        else:
+            return self.primary_key
     def hash_key(self):
         return "FromClause(%s, %s)" % (repr(self.id), repr(self.from_name))
     def accept_visitor(self, visitor): 
@@ -664,8 +666,6 @@ class BinaryClause(ClauseElement, CompareMixin):
         self.left = self.right
         self.right = c
 
-
-        
 class Join(FromClause):
     # TODO: put "using" + "natural" concepts in here and make "onclause" optional
     def __init__(self, left, right, onclause=None, isouter = False, allcols = True):
@@ -911,23 +911,20 @@ class TableImpl(FromClause):
         self.id = self.table.name
 
     def _oid_col(self):
+        # OID remains a little hackish so far
         if not hasattr(self, '_oid_column'):
             if self.table.engine.oid_column_name() is not None:
                 self._oid_column = schema.Column(self.table.engine.oid_column_name(), sqltypes.Integer, hidden=True)
                 self._oid_column._set_parent(self.table)
             else:
-                if len(self.table.primary_key) > 0:
-                    c = self.table.primary_key[0]
-                else:
-                    c = self.table.columns[self.table.columns.keys()[0]]
-                self._oid_column = schema.Column(c.name, c.type, hidden=True)
-                self._oid_column._set_parent(self.table)
+                self._oid_column = None
         return self._oid_column
 
     oid_column = property(_oid_col)
     engine = property(lambda s: s.table.engine)
     columns = property(lambda self: self.table.columns)
-
+    primary_key = property(lambda self:self.table.primary_key)
+    
     def _get_col_by_original(self, column):
         try:
           col = self.columns[column.key]
