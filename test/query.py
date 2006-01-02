@@ -54,8 +54,18 @@ class QueryTest(PersistTest):
            users_with_date.insert().execute(user_id = 8, user_name = 'roy', user_date=datetime.datetime(2005,11,10, 11,52,35))
            users_with_date.insert().execute(user_id = 9, user_name = 'foo', user_date=datetime.datetime(2005,11,10, 11,52,35, 54839))
            users_with_date.insert().execute(user_id = 10, user_name = 'colber', user_date=None)
-           print repr(users_with_date.select().execute().fetchall())
-           users_with_date.drop()
+           l = users_with_date.select().execute().fetchall()
+           l = [[c for c in r] for r in l]
+           if db.engine.__module__.endswith('mysql'):
+               x = [[7, 'jack', datetime.datetime(2005, 11, 10, 0, 0)], [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35)], [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35)], [10, 'colber', None]]
+           else:
+               x = [[7, 'jack', datetime.datetime(2005, 11, 10, 0, 0)], [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35)], [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35, 54839)], [10, 'colber', None]]
+           print repr(l)
+           print repr(x)
+           try:
+               self.assert_(l == x)
+           finally:
+               users_with_date.drop()
 
     def testdefaults(self):
         x = {'x':0}

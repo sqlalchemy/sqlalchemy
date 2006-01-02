@@ -30,7 +30,7 @@ class MSInteger(sqltypes.Integer):
         return "INTEGER"
 class MSDateTime(sqltypes.DateTime):
     def get_col_spec(self):
-        return "TIMESTAMP"
+        return "DATETIME"
 class MSText(sqltypes.TEXT):
     def get_col_spec(self):
         return "TEXT"
