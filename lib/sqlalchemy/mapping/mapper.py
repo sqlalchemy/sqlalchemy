@@ -602,8 +602,8 @@ class Mapper(object):
         if not no_sort:
             if self.order_by:
                 order_by = self.order_by
-            elif self.table.oid_column is not None:
-                order_by = [self.table.oid_column]
+            elif self.table.default_order_by() is not None:
+                order_by = self.table.default_order_by()
             else:
                 order_by = None
         else:
@@ -611,8 +611,8 @@ class Mapper(object):
             
         if self._should_nest(**kwargs):
             s2 = sql.select(self.table.primary_key, whereclause, use_labels=True, **kwargs)
-            if not kwargs.get('distinct', False) and self.table.oid_column is not None:
-                s2.order_by(self.table.oid_column)
+            if not kwargs.get('distinct', False) and self.table.default_order_by() is not None:
+                s2.order_by(*self.table.default_order_by())
             s3 = s2.alias('rowcount')
             crit = []
             for i in range(0, len(self.table.primary_key)):
@@ -631,8 +631,8 @@ class Mapper(object):
             # add that to the column list
             # TODO: this idea should be handled by the SELECT statement itself, insuring
             # that order_by cols are in the select list if DISTINCT is selected
-            if kwargs.get('distinct', False) and self.table.oid_column is not None and order_by == [self.table.oid_column]:
-                statement.append_column(self.table.oid_column)
+            if kwargs.get('distinct', False) and self.table.default_order_by() is not None and order_by == [self.table.default_order_by()]:
+                statement.append_column(*self.table.default_order_by())
         # plugin point
         
             

@@ -484,6 +484,11 @@ class FromClause(Selectable):
     def _get_from_objects(self):
         # this could also be [self], at the moment it doesnt matter to the Select object
         return []
+    def default_order_by(self):
+        if not self.engine.default_ordering:
+            return None
+        else:
+            return [self.oid_column]    
     def hash_key(self):
         return "FromClause(%s, %s)" % (repr(self.id), repr(self.from_name))
     def accept_visitor(self, visitor): 
@@ -906,9 +911,6 @@ class TableImpl(FromClause):
         self.id = self.table.name
 
     def _oid_col(self):
-        if not self.table.engine.default_ordering:
-            return None
-            
         if not hasattr(self, '_oid_column'):
             if self.table.engine.oid_column_name() is not None:
                 self._oid_column = schema.Column(self.table.engine.oid_column_name(), sqltypes.Integer, hidden=True)
