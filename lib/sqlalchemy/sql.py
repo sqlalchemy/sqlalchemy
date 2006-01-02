@@ -679,7 +679,7 @@ class Join(FromClause):
         else:
             self.onclause = onclause
         self.isouter = isouter
-        self.rowid_column = self.left.rowid_column
+        self.oid_column = self.left.oid_column
         
     primary_key = property (lambda self: [c for c in self.left.columns if c.primary_key] + [c for c in self.right.columns if c.primary_key])
 
@@ -756,10 +756,10 @@ class Alias(FromClause):
         self.name = alias
         self.id = self.name
         self.count = 0
-        if self.selectable.rowid_column is not None:
-            self.rowid_column = self.selectable.rowid_column._make_proxy(self)
+        if self.selectable.oid_column is not None:
+            self.oid_column = self.selectable.oid_column._make_proxy(self)
         else:
-            self.rowid_column = None
+            self.oid_column = None
         for co in selectable.columns:
             co._make_proxy(self)
 
@@ -905,24 +905,24 @@ class TableImpl(FromClause):
         self.table = table
         self.id = self.table.name
 
-    def _rowid_col(self):
+    def _oid_col(self):
         if not self.table.engine.default_ordering:
             return None
             
-        if not hasattr(self, '_rowid_column'):
-            if self.table.engine.rowid_column_name() is not None:
-                self._rowid_column = schema.Column(self.table.engine.rowid_column_name(), sqltypes.Integer, hidden=True)
-                self._rowid_column._set_parent(self.table)
+        if not hasattr(self, '_oid_column'):
+            if self.table.engine.oid_column_name() is not None:
+                self._oid_column = schema.Column(self.table.engine.oid_column_name(), sqltypes.Integer, hidden=True)
+                self._oid_column._set_parent(self.table)
             else:
                 if len(self.table.primary_key) > 0:
                     c = self.table.primary_key[0]
                 else:
                     c = self.table.columns[self.table.columns.keys()[0]]
-                self._rowid_column = schema.Column(c.name, c.type, hidden=True)
-                self._rowid_column._set_parent(self.table)
-        return self._rowid_column
+                self._oid_column = schema.Column(c.name, c.type, hidden=True)
+                self._oid_column._set_parent(self.table)
+        return self._oid_column
 
-    rowid_column = property(_rowid_col)
+    oid_column = property(_oid_col)
     engine = property(lambda s: s.table.engine)
     columns = property(lambda self: self.table.columns)
 
@@ -1003,7 +1003,7 @@ class CompoundSelect(SelectBaseMixin, FromClause):
         self.keyword = keyword
         self.selects = selects
         self.use_labels = kwargs.pop('use_labels', False)
-        self.rowid_column = selects[0].rowid_column
+        self.oid_column = selects[0].oid_column
         for s in self.selects:
             s.order_by(None)
             s.group_by(None)
@@ -1042,7 +1042,7 @@ class Select(SelectBaseMixin, FromClause):
         self.whereclause = None
         self.having = None
         self._engine = engine
-        self.rowid_column = None
+        self.oid_column = None
         self.limit = limit
         self.offset = offset
         

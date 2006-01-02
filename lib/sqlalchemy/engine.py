@@ -258,8 +258,8 @@ class SQLEngine(schema.SchemaEngine):
         compiler is called within the context of the compile() method."""
         raise NotImplementedError()
 
-    def rowid_column_name(self):
-        """returns the ROWID column name for this engine, or None if the engine cant/wont support OID/ROWID."""
+    def oid_column_name(self):
+        """returns the oid column name for this engine, or None if the engine cant/wont support OID/ROWID."""
         return None
 
     def supports_sane_rowcount(self):

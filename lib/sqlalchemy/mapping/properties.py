@@ -592,8 +592,8 @@ class LazyLoader(PropertyLoader):
             if allparams:
                 if self.order_by is not None:
                     order_by = self.order_by
-                elif self.secondary is not None and self.secondary.rowid_column is not None:
-                    order_by = [self.secondary.rowid_column]
+                elif self.secondary is not None and self.secondary.oid_column is not None:
+                    order_by = [self.secondary.oid_column]
                 else:
                     order_by = None
                 result = self.mapper.select(self.lazywhere, order_by=order_by, params=params)
@@ -714,12 +714,12 @@ class EagerLoader(PropertyLoader):
 
         if self.secondaryjoin is not None:
             statement._outerjoin = sql.outerjoin(towrap, self.secondary, self.primaryjoin).outerjoin(self.eagertarget, self.eagersecondary)
-            if self.order_by is None and self.secondary.rowid_column is not None:
-                statement.order_by(self.secondary.rowid_column)
+            if self.order_by is None and self.secondary.oid_column is not None:
+                statement.order_by(self.secondary.oid_column)
         else:
             statement._outerjoin = towrap.outerjoin(self.eagertarget, self.eagerprimary)
-            if self.order_by is None and self.eagertarget.rowid_column is not None:
-                statement.order_by(self.eagertarget.rowid_column)
+            if self.order_by is None and self.eagertarget.oid_column is not None:
+                statement.order_by(self.eagertarget.oid_column)
 
         if self.eager_order_by is not None:
             statement.order_by(*self.eager_order_by)

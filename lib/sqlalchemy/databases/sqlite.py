@@ -110,7 +110,7 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
 
-    def rowid_column_name(self):
+    def oid_column_name(self):
         return "oid"
 
     def connect_args(self):

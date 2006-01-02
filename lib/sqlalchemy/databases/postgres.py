@@ -154,7 +154,7 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
 
-    def rowid_column_name(self):
+    def oid_column_name(self):
         if self.use_oids:
             return "oid"
         else:
@@ -171,7 +171,7 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
                 table = compiled.statement.table
                 cursor = proxy()
                 if cursor.lastrowid is not None and table is not None and len(table.primary_key):
-                    s = sql.select(table.primary_key, table.rowid_column == cursor.lastrowid)
+                    s = sql.select(table.primary_key, table.oid_column == cursor.lastrowid)
                     c = s.compile()
                     cursor = proxy(str(c), c.get_params())
                     row = cursor.fetchone()
