@@ -21,10 +21,11 @@ class EngineTest(PersistTest):
             Column('test3', TEXT),
             Column('test4', DECIMAL, nullable = False),
             Column('test5', TIMESTAMP),
-            Column('parent_user_id', INT, ForeignKey('engine_users.user_id')),
-            Column('test6', DATETIME, nullable = False),
-            Column('test7', CLOB),
-            Column('test8', BLOB),
+            Column('parent_user_id', Integer, ForeignKey('engine_users.user_id')),
+            Column('test6', DateTime, nullable = False),
+            Column('test7', String),
+            Column('test8', Binary),
+            Column('test9', Binary(100)),
             
         )
 

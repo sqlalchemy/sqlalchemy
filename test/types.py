@@ -1,13 +1,11 @@
 from sqlalchemy import *
+import string,datetime, re
+from testbase import PersistTest, AssertMixin
 import testbase
-import string
-
-
     
-class TypesTest(testbase.PersistTest):
-    def setUpAll(self):
-        global db
-        db = testbase.db
+db = testbase.db
+
+class TypesTest(PersistTest):
 
     def testprocessing(self):
         class MyType(types.TypeEngine):
@@ -40,6 +38,63 @@ class TypesTest(testbase.PersistTest):
         l = users.select(use_labels=True).execute().fetchall()
         print repr(l)
         self.assert_(l == [(2, u'BIND_INjackBIND_OUT'), (3, u'BIND_INlalaBIND_OUT'), (4, u'BIND_INfredBIND_OUT')])
+
+class BinaryTest(AssertMixin):
+    def setUpAll(self):
+        global binary_table
+        binary_table = Table('binary_table', db, 
+        Column('primary_id', Integer, primary_key=True),
+        Column('data', Binary),
+        Column('data_slice', Binary(100)),
+        Column('misc', String(30)))
+        binary_table.create()
+    def tearDownAll(self):
+        binary_table.drop()
+    def testbinary(self):
+        stream1 =self.get_module_stream('sqlalchemy.sql')
+        stream2 =self.get_module_stream('sqlalchemy.engine')
+        binary_table.insert().execute(misc='sql.pyc', data=stream1, data_slice=stream1[0:100])
+        binary_table.insert().execute(misc='engine.pyc', data=stream2, data_slice=stream2[0:99])
+        l = binary_table.select().execute().fetchall()
+        print len(stream1), len(l[0]['data']), len(l[0]['data_slice'])
+        self.assert_(list(stream1) == list(l[0]['data']))
+        self.assert_(list(stream1[0:100]) == list(l[0]['data_slice']))
+        self.assert_(list(stream2) == list(l[1]['data']))
+    def get_module_stream(self, name):
+        mod = __import__(name)
+        for token in name.split('.')[1:]:
+            mod = getattr(mod, token)
+        f = mod.__file__
+        f = re.sub('\.py$', '\.pyc', f)
+        return file(f).read()
+        
+class DateTest(AssertMixin):
+    def setUpAll(self):
+        global users_with_date
+        users_with_date = Table('query_users_with_date', db,
+        Column('user_id', INT, primary_key = True),
+        Column('user_name', VARCHAR(20)),
+        Column('user_date', DateTime),
+        redefine = True
+        )
+        users_with_date.create()
+    def tearDownAll(self):
+        users_with_date.drop()
+
+    def testdate(self):
+        users_with_date.insert().execute(user_id = 7, user_name = 'jack', user_date=datetime.datetime(2005,11,10))
+        users_with_date.insert().execute(user_id = 8, user_name = 'roy', user_date=datetime.datetime(2005,11,10, 11,52,35))
+        users_with_date.insert().execute(user_id = 9, user_name = 'foo', user_date=datetime.datetime(2005,11,10, 11,52,35, 54839))
+        users_with_date.insert().execute(user_id = 10, user_name = 'colber', user_date=None)
+        l = users_with_date.select().execute().fetchall()
+        l = [[c for c in r] for r in l]
+        if db.engine.__module__.endswith('mysql'):
+            x = [[7, 'jack', datetime.datetime(2005, 11, 10, 0, 0)], [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35)], [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35)], [10, 'colber', None]]
+        else:
+            x = [[7, 'jack', datetime.datetime(2005, 11, 10, 0, 0)], [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35)], [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35, 54839)], [10, 'colber', None]]
+        print repr(l)
+        print repr(x)
+        self.assert_(l == x)
      
         
 if __name__ == "__main__":
