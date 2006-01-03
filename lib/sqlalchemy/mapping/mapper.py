@@ -598,41 +598,33 @@ class Mapper(object):
         )
         
     def _compile(self, whereclause = None, **kwargs):
-        no_sort = kwargs.pop('no_sort', False) or (self.order_by is None)
-        if not no_sort:
-            if self.order_by:
-                order_by = self.order_by
-            elif self.table.default_order_by() is not None:
+        order_by = kwargs.pop('order_by', False)
+        if order_by is False:
+            order_by = self.order_by
+        if order_by is False:
+            if self.table.default_order_by() is not None:
                 order_by = self.table.default_order_by()
-            else:
-                order_by = None
-        else:
-            order_by = None
-            
+
         if self._should_nest(**kwargs):
             s2 = sql.select(self.table.primary_key, whereclause, use_labels=True, **kwargs)
-            if not kwargs.get('distinct', False) and self.table.default_order_by() is not None:
-                s2.order_by(*self.table.default_order_by())
+            if not kwargs.get('distinct', False) and order_by:
+                s2.order_by(*util.to_list(order_by))
             s3 = s2.alias('rowcount')
             crit = []
             for i in range(0, len(self.table.primary_key)):
                 crit.append(s3.primary_key[i] == self.table.primary_key[i])
             statement = sql.select([], sql.and_(*crit), from_obj=[self.table], use_labels=True)
-            if kwargs.has_key('order_by'):
-                statement.order_by(*kwargs['order_by'])
-            else:
-                statement.order_by(*order_by)
+            if order_by:
+                statement.order_by(*util.to_list(order_by))
         else:
             statement = sql.select([], whereclause, from_obj=[self.table], use_labels=True, **kwargs)
-            if order_by is not None and kwargs.get('order_by', None) is None:
-                statement.order_by(*order_by)
+            if order_by:
+                statement.order_by(*util.to_list(order_by))
             # for a DISTINCT query, you need the columns explicitly specified in order
-            # to use it in "order_by" - in the case we added the oid column in,
-            # add that to the column list
-            # TODO: this idea should be handled by the SELECT statement itself, insuring
-            # that order_by cols are in the select list if DISTINCT is selected
-            if kwargs.get('distinct', False) and self.table.default_order_by() is not None and order_by == [self.table.default_order_by()]:
-                statement.append_column(*self.table.default_order_by())
+            # to use it in "order_by".  insure they are in the column criterion (particularly oid).
+            # TODO: this should be done at the SQL level not the mapper level
+            if kwargs.get('distinct', False) and order_by:
+                statement.append_column(*util.to_list(order_by))
         # plugin point
         
             
@@ -762,22 +754,64 @@ class MapperExtension(object):
     def __init__(self):
         self.next = None
     def create_instance(self, mapper, row, imap, class_):
+        """called when a new object instance is about to be created from a row.  
+        the method can choose to create the instance itself, or it can return 
+        None to indicate normal object creation should take place.
+        
+        mapper - the mapper doing the operation
+        
+        row - the result row from the database
+        
+        imap - a dictionary that is storing the running set of objects collected from the
+        current result set
+        
+        class_ - the class we are mapping.
+        """
         if self.next is None:
             return None
         else:
             return self.next.create_instance(mapper, row, imap, class_)
     def append_result(self, mapper, row, imap, result, instance, isnew, populate_existing=False):
+        """called when an object instance is being appended to a result list.
+        
+        If it returns True, it is assumed that this method handled the appending itself.
+
+        mapper - the mapper doing the operation
+        
+        row - the result row from the database
+        
+        imap - a dictionary that is storing the running set of objects collected from the
+        current result set
+        
+        result - an instance of util.HistoryArraySet(), which may be an attribute on an
+        object if this is a related object load (lazy or eager).  use result.append_nohistory(value)
+        to append objects to this list.
+        
+        instance - the object instance to be appended to the result
+        
+        isnew - indicates if this is the first time we have seen this object instance in the current result
+        set.  if you are selecting from a join, such as an eager load, you might see the same object instance
+        many times in the same result set.
+        
+        populate_existing - usually False, indicates if object instances that were already in the main 
+        identity map, i.e. were loaded by a previous select(), get their attributes overwritten
+        """
         if self.next is None:
             return True
         else:
             return self.next.append_result(mapper, row, imap, result, instance, isnew, populate_existing)
     def before_insert(self, mapper, instance):
+        """called before an object instance is INSERTed into its table.
+        
+        this is a good place to set up primary key values and such that arent handled otherwise."""
         if self.next is not None:
             self.next.before_insert(mapper, instance)
     def after_insert(self, mapper, instance):
+        """called after an object instance has been INSERTed"""
         if self.next is not None:
             self.next.after_insert(mapper, instance)
     def before_delete(self, mapper, instance):
+        """called before an object instance is DELETEed"""
         if self.next is not None:
             self.next.before_delete(mapper, instance)
 

@@ -121,7 +121,7 @@ class PropertyLoader(MapperProperty):
 
     """describes an object property that holds a single item or list of items that correspond
     to a related database table."""
-    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, live=False, association=None, selectalias=None, order_by=None, attributeext=None, backref=None, is_backref=False):
+    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, live=False, association=None, selectalias=None, order_by=False, attributeext=None, backref=None, is_backref=False):
         self.uselist = uselist
         self.argument = argument
         self.secondary = secondary
@@ -132,7 +132,7 @@ class PropertyLoader(MapperProperty):
         self.live = live
         self.association = association
         self.selectalias = selectalias
-        self.order_by=util.to_list(order_by)
+        self.order_by = order_by
         self.attributeext=attributeext
         self.backref = backref
         self.is_backref = is_backref
@@ -590,12 +590,12 @@ class LazyLoader(PropertyLoader):
                     allparams = False
                     break
             if allparams:
-                if self.order_by is not None:
+                if self.order_by is not False:
                     order_by = self.order_by
                 elif self.secondary is not None and self.secondary.default_order_by() is not None:
                     order_by = self.secondary.default_order_by()
                 else:
-                    order_by = None
+                    order_by = False
                 result = self.mapper.select(self.lazywhere, order_by=order_by, params=params)
             else:
                 result = []
@@ -677,15 +677,15 @@ class EagerLoader(PropertyLoader):
             else:
                 self.eagerprimary = self.primaryjoin.copy_container()
                 self.eagerprimary.accept_visitor(aliasizer)
-            if self.order_by is not None:
-                self.eager_order_by = [o.copy_container() for o in self.order_by]
+            if self.order_by:
+                self.eager_order_by = [o.copy_container() for o in util.to_list(self.order_by)]
                 for i in range(0, len(self.eager_order_by)):
                     if isinstance(self.eager_order_by[i], schema.Column):
                         self.eager_order_by[i] = self.eagertarget._get_col_by_original(self.eager_order_by[i])
                     else:
                         self.eager_order_by[i].accept_visitor(aliasizer)
             else:
-                self.eager_order_by = None
+                self.eager_order_by = self.order_by
         else:
             self.eagertarget = self.target
             self.eagerprimary = self.primaryjoin
@@ -714,15 +714,15 @@ class EagerLoader(PropertyLoader):
 
         if self.secondaryjoin is not None:
             statement._outerjoin = sql.outerjoin(towrap, self.secondary, self.primaryjoin).outerjoin(self.eagertarget, self.eagersecondary)
-            if self.order_by is None and self.secondary.default_order_by() is not None:
+            if self.order_by is False and self.secondary.default_order_by() is not None:
                 statement.order_by(*self.secondary.default_order_by())
         else:
             statement._outerjoin = towrap.outerjoin(self.eagertarget, self.eagerprimary)
-            if self.order_by is None and self.eagertarget.default_order_by() is not None:
+            if self.order_by is False and self.eagertarget.default_order_by() is not None:
                 statement.order_by(*self.eagertarget.default_order_by())
 
-        if self.eager_order_by is not None:
-            statement.order_by(*self.eager_order_by)
+        if self.eager_order_by:
+            statement.order_by(*util.to_list(self.eager_order_by))
             
         statement.append_from(statement._outerjoin)
         #statement.append_column(self.eagertarget)
