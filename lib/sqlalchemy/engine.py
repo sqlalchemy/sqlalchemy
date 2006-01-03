@@ -604,12 +604,13 @@ class ResultProxy:
     class AmbiguousColumn(object):
         def __init__(self, key):
             self.key = key
-        def convert_result_value(self, arg):
+        def convert_result_value(self, arg, engine):
             raise "Ambiguous column name '%s' in result set! try 'use_labels' option on select statement." % (self.key)
     
     def __init__(self, cursor, engine, typemap = None):
         """ResultProxy objects are constructed via the execute() method on SQLEngine."""
         self.cursor = cursor
+        self.engine = engine
         self.echo = engine.echo=="debug"
         self.rowcount = engine.context.rowcount
         metadata = cursor.description
@@ -643,7 +644,7 @@ class ResultProxy:
             rec = self.props[key.lower()]
         else:
             rec = self.props[key]
-        return rec[0].convert_result_value(row[rec[1]])
+        return rec[0].convert_result_value(row[rec[1]], self.engine)
         
     def fetchall(self):
         """fetches all rows, just like DBAPI cursor.fetchall()."""

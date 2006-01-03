@@ -42,7 +42,12 @@ class MSChar(sqltypes.CHAR):
         return "CHAR(%(length)s)" % {'length' : self.length}
 class MSBinary(sqltypes.Binary):
     def get_col_spec(self):
-        return "BINARY"
+        if self.length is not None and self.length <=255:
+            # the binary type seems to return a value that is null-padded
+            return "BINARY(%d)" % self.length
+        else:
+            return "BLOB"
+
 class MSBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "BOOLEAN"
@@ -67,7 +72,9 @@ ischema_names = {
     'decimal' : MSNumeric,
     'float' : MSFloat,
     'timestamp' : MSDateTime,
+    'datetime' : MSDateTime,
     'binary' : MSBinary,
+    'blob' : MSBinary,
 }
 
 

@@ -519,8 +519,8 @@ class BindParamClause(ClauseElement, CompareMixin):
         return []
     def hash_key(self):
         return "BindParam(%s, %s, %s)" % (repr(self.key), repr(self.value), repr(self.shortname))
-    def typeprocess(self, value):
-        return self.type.convert_bind_param(value)
+    def typeprocess(self, value, engine):
+        return self.type.convert_bind_param(value, engine)
             
 class TextClause(ClauseElement):
     """represents literal a SQL text fragment.  public constructor is the 
@@ -694,16 +694,17 @@ class Join(FromClause):
             if fk.references(primary):
                 crit.append(primary._get_col_by_original(fk.column) == fk.parent)
                 self.foreignkey = fk.parent
-        for fk in primary.foreign_keys:
-            if fk.references(secondary):
-                crit.append(secondary._get_col_by_original(fk.column) == fk.parent)
-                self.foreignkey = fk.parent
+        if primary is not secondary:
+            for fk in primary.foreign_keys:
+                if fk.references(secondary):
+                    crit.append(secondary._get_col_by_original(fk.column) == fk.parent)
+                    self.foreignkey = fk.parent
         if len(crit) == 0:
             raise "Cant find any foreign key relationships between '%s' (%s) and '%s' (%s)" % (primary.name, repr(primary), secondary.name, repr(secondary))
         elif len(crit) == 1:
             return (crit[0])
         else:
-            return sql.and_(*crit)
+            return and_(*crit)
             
     def _group_parenthesized(self):
         """indicates if this Selectable requires parenthesis when grouped into a compound

@@ -13,9 +13,9 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'NullTypeEngine',
 class TypeEngine(object):
     def get_col_spec(self):
         raise NotImplementedError()
-    def convert_bind_param(self, value):
+    def convert_bind_param(self, value, engine):
         raise NotImplementedError()
-    def convert_result_value(self, value):
+    def convert_result_value(self, value, engine):
         raise NotImplementedError()
     def adapt(self, typeobj):
         return typeobj()
@@ -42,9 +42,9 @@ class NullTypeEngine(TypeEngine):
         pass
     def get_col_spec(self):
         raise NotImplementedError()
-    def convert_bind_param(self, value):
+    def convert_bind_param(self, value, engine):
         return value
-    def convert_result_value(self, value):
+    def convert_result_value(self, value, engine):
         return value
 
 class TypeDecorator(object):
@@ -98,7 +98,14 @@ class DateTime(NullTypeEngine):
     pass
 
 class Binary(NullTypeEngine):
-    pass
+    def __init__(self, length=None):
+        self.length = length
+    def convert_bind_param(self, value, engine):
+        return engine.dbapi().Binary(value)
+    def convert_result_value(self, value, engine):
+        return value
+    def adapt(self, typeobj):
+        return typeobj(self.length)
 
 class Boolean(NullTypeEngine):
     pass

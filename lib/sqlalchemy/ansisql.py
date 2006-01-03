@@ -108,18 +108,18 @@ class ANSICompiler(sql.Compiled):
             d = OrderedDict()
             for k in self.positiontup:
                 b = self.binds[k]
-                d[k] = b.typeprocess(b.value)
+                d[k] = b.typeprocess(b.value, self.engine)
         else:
             d = {}
             for b in self.binds.values():
-                d[b.key] = b.typeprocess(b.value)
+                d[b.key] = b.typeprocess(b.value, self.engine)
             
         for key, value in bindparams.iteritems():
             try:
                 b = self.binds[key]
             except KeyError:
                 continue
-            d[b.key] = b.typeprocess(value)
+            d[b.key] = b.typeprocess(value, self.engine)
 
         return d
         if self.engine.positional:
