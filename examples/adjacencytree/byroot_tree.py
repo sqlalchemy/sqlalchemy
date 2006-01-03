@@ -1,10 +1,34 @@
 from sqlalchemy import *
 import sqlalchemy.util as util
-import tables
 import string, sys, time
 
 """a more advanced example of basic_tree.py.  illustrates MapperExtension objects which
 add application-specific functionality to a Mapper object."""
+
+engine = create_engine('sqlite://', echo = True)
+#engine = sqlalchemy.engine.create_engine('mysql', {'db':'test', 'host':'127.0.0.1', 'user':'scott'}, echo=True)
+#engine = sqlalchemy.engine.create_engine('postgres', {'database':'test', 'host':'127.0.0.1', 'user':'scott', 'password':'tiger'}, echo=True)
+#engine = sqlalchemy.engine.create_engine('oracle', {'dsn':os.environ['DSN'], 'user':os.environ['USER'], 'password':os.environ['PASSWORD']}, echo=True)
+
+"""create the treenodes table.  This is ia basic adjacency list model table.
+One additional column, "root_node_id", references a "root node" row and is used
+in the 'byroot_tree' example."""
+
+trees = Table('treenodes', engine,
+    Column('node_id', Integer, Sequence('treenode_id_seq',optional=False), primary_key=True),
+    Column('parent_node_id', Integer, ForeignKey('treenodes.node_id'), nullable=True),
+    Column('root_node_id', Integer, ForeignKey('treenodes.node_id'), nullable=True),
+    Column('node_name', String(50), nullable=False),
+    Column('data_ident', Integer, ForeignKey('treedata.data_id'))
+    )
+
+treedata = Table(
+    "treedata", engine, 
+    Column('data_id', Integer, primary_key=True),
+    Column('value', String(100), nullable=False)
+)
+    
+
 
 class NodeList(util.OrderedDict):
     """extends an Ordered Dictionary, which is just a dictionary that iterates its keys and values
@@ -98,14 +122,23 @@ class TreeData(object):
     def __repr__(self):
         return "TreeData(%s, %s)" % (repr(self.id), repr(self.value))
 
-assign_mapper(TreeNode, tables.trees, properties=dict(
-    id=tables.trees.c.node_id,
-    name=tables.trees.c.node_name,
-    parent_id=tables.trees.c.parent_node_id,
-    root_id=tables.trees.c.root_node_id,
-    root=relation(TreeNode, primaryjoin=tables.trees.c.root_node_id==tables.trees.c.node_id, foreignkey=tables.trees.c.node_id, lazy=None, uselist=False),
-    children=relation(TreeNode, primaryjoin=tables.trees.c.parent_node_id==tables.trees.c.node_id, lazy=None, uselist=True, private=True),
-    data=relation(TreeData, tables.treedata, properties=dict(id=tables.treedata.c.data_id), private=True, lazy=False)
+
+print "\n\n\n----------------------------"
+print "Creating Tree Table:"
+print "----------------------------"
+
+treedata.create()    
+trees.create()
+
+
+assign_mapper(TreeNode, trees, properties=dict(
+    id=trees.c.node_id,
+    name=trees.c.node_name,
+    parent_id=trees.c.parent_node_id,
+    root_id=trees.c.root_node_id,
+    root=relation(TreeNode, primaryjoin=trees.c.root_node_id==trees.c.node_id, foreignkey=trees.c.node_id, lazy=None, uselist=False),
+    children=relation(TreeNode, primaryjoin=trees.c.parent_node_id==trees.c.node_id, lazy=None, uselist=True, private=True),
+    data=relation(TreeData, treedata, properties=dict(id=treedata.c.data_id), private=True, lazy=False)
     
 ), extension = TreeLoader())
 TreeNode.mapper

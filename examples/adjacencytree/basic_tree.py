@@ -1,9 +1,23 @@
 from sqlalchemy import *
 import sqlalchemy.util as util
-import tables
 import string, sys
 
 """a basic Adjacency List model tree."""
+
+engine = create_engine('sqlite://', echo = True)
+#engine = sqlalchemy.engine.create_engine('mysql', {'db':'test', 'host':'127.0.0.1', 'user':'scott'}, echo=True)
+#engine = sqlalchemy.engine.create_engine('postgres', {'database':'test', 'host':'127.0.0.1', 'user':'scott', 'password':'tiger'}, echo=True)
+#engine = sqlalchemy.engine.create_engine('oracle', {'dsn':os.environ['DSN'], 'user':os.environ['USER'], 'password':os.environ['PASSWORD']}, echo=True)
+
+
+"""create the treenodes table.  This is ia basic adjacency list model table."""
+
+trees = Table('treenodes', engine,
+    Column('node_id', Integer, Sequence('treenode_id_seq',optional=False), primary_key=True),
+    Column('parent_node_id', Integer, ForeignKey('treenodes.node_id'), nullable=True),
+    Column('node_name', String(50), nullable=False),
+    )
+
 
 class NodeList(util.OrderedDict):
     """extends an Ordered Dictionary, which is just a dictionary that returns its keys and values
@@ -46,13 +60,18 @@ class TreeNode(object):
 # define the mapper.  we will make "convenient" property
 # names vs. the more verbose names in the table definition
 
-assign_mapper(TreeNode, tables.trees, properties=dict(
-    id=tables.trees.c.node_id,
-    name=tables.trees.c.node_name,
-    parent_id=tables.trees.c.parent_node_id,
-    root_id=tables.trees.c.root_node_id,
-    children=relation(TreeNode, primaryjoin=tables.trees.c.parent_node_id==tables.trees.c.node_id, lazy=True, uselist=True, private=True),
+assign_mapper(TreeNode, trees, properties=dict(
+    id=trees.c.node_id,
+    name=trees.c.node_name,
+    parent_id=trees.c.parent_node_id,
+    children=relation(TreeNode, private=True),
 ))
+
+print "\n\n\n----------------------------"
+print "Creating Tree Table:"
+print "----------------------------"
+
+trees.create()
 
 node2 = TreeNode('node2')
 node2.append('subnode1')
