@@ -16,12 +16,14 @@ import sqlalchemy.databases.information_schema as ischema
 
 try:
     import psycopg2 as psycopg
+    #import psycopg2.psycopg1 as psycopg
 except:
     try:
         import psycopg
     except:
         psycopg = None
-        
+
+
 class PGNumeric(sqltypes.Numeric):
     def get_col_spec(self):
         return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
@@ -35,10 +37,11 @@ class PG2DateTime(sqltypes.DateTime):
     def get_col_spec(self):
         return "TIMESTAMP"
 class PG1DateTime(sqltypes.DateTime):
-    def convert_bind_param(self, value):
+    def convert_bind_param(self, value, engine):
         # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
-        return value
-    def convert_result_value(self, value):
+        # this one doesnt seem to work with the "emulation" mode
+        return psycopg.TimestampFromMx(value)
+    def convert_result_value(self, value, engine):
         # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
         return value
     def get_col_spec(self):
@@ -115,7 +118,7 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         else:
             self.module = module
         # figure psycopg version 1 or 2    
-        if self.module.__name__ == 'psycopg2':
+        if self.module.__name__.endswith('psycopg2'):
             self.version = 2
         else:
             self.version = 1
