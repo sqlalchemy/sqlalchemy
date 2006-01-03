@@ -29,12 +29,9 @@ class SLInteger(sqltypes.Integer):
 class SLDateTime(sqltypes.DateTime):
     def get_col_spec(self):
         return "TIMESTAMP"
-    def convert_result_value(self, value):
-        print "RESULT", value
+    def convert_result_value(self, value, engine):
         if value is None:
-            print "RETNONE"
             return None
-        print "HI"
         parts = value.split('.')
         try:
             (value, microsecond) = value.split('.')
