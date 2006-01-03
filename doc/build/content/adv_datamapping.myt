@@ -1,7 +1,7 @@
 <%flags>inherit='document_base.myt'</%flags>
 <%attr>title='Advanced Data Mapping'</%attr>
 <&|doclib.myt:item, name="adv_datamapping", description="Advanced Data Mapping" &>
-<p>This section is under construction.  For now, it has just the basic recipe for each concept without much else.  </p>
+<p>This section details all the options available to Mappers, as well as advanced patterns.</p>
 
 <p>To start, heres the tables we will work with again:</p>
        <&|formatting.myt:code&>
@@ -125,12 +125,53 @@
         <li>uselist - a boolean that indicates if this property should be loaded as a list or a scalar.  In most cases, this value is determined based on the type and direction of the relationship - one to many forms a list, one to one forms a scalar, many to many is a list.  If a scalar is desired where normally a list would be present, set uselist to False.</li>
         <li>private - indicates if these child objects are "private" to the parent; removed items will also be deleted, and if the parent item is deleted, all child objects are deleted as well.  See the example in <&formatting.myt:link, path="datamapping_relations_private"&>.</li>
         <li>backreference - indicates the name of a property to be placed on the related mapper's class that will handle this relationship in the other direction, including synchronizing the object attributes on both sides of the relation.  See the example in <&formatting.myt:link, path="datamapping_relations_backreferences"&>.</li>
+        <li>order_by - indicates the ordering that should be applied when loading these items.  See the section <&formatting.myt:link, path="adv_datamapping_orderby" &> for details.</li>
         <li>association - When specifying a many to many relationship with an association object, this keyword should reference the mapper of the target object of the association.  See the example in <&formatting.myt:link, path="datamapping_association"&>.</li>
         <li>selectalias - Useful with eager loads, this specifies a table alias name that will be used when creating joins against the parent table.  The property is still created against the original table, and the aliased table is used only for the actual query.  Aliased columns in the result set are translated back to that of the original table when creating object instances.</li>
-        <li>live - a special type of "lazy load" where the list values will be loaded on every access.  A "live" property should be treated as read-only.  This type of property is useful in combination with "private" when used with a parent object which wants to force a delete of all its child items, attached or not, when it is deleted; since it always loads everything when accessed, you can be guaranteed that all child objects will be properly removed as well.</li>
+        <li>live=False - (deprecated) a special type of "lazy load" where the list values will be loaded on every access.  A "live" property should be treated as read-only.  This type of property is useful in combination with "private" when used with a parent object which wants to force a delete of all its child items, attached or not, when it is deleted; since it always loads everything when accessed, you can be guaranteed that all child objects will be properly removed as well.</li>
     </ul>
     </&>
 
+</&>
+<&|doclib.myt:item, name="orderby", description="Controlling Ordering" &>
+<p>By default, mappers will not supply any ORDER BY clause when selecting rows.  This can be modified in several ways.</p>
+
+<p>A "default ordering" can be supplied by all mappers, by enabling the "default_ordering" flag to the engine, which indicates that table primary keys or object IDs should be used as the default ordering:</p>
+<&|formatting.myt:code&>
+    db = create_engine('postgres://username=scott&password=tiger', default_ordering=True)
+</&>
+<p>The "order_by" parameter can be sent to a mapper, overriding the per-engine ordering if any.  A value of None means that the mapper should not use any ordering, even if the engine's default_ordering property is True.  A non-None value, which can be a column, an <span class="codeline">asc</span> or <span class="codeline">desc</span> clause, or an array of either one, indicates the ORDER BY clause that should be added to all select queries:</p>
+<&|formatting.myt:code&>
+    # disable all ordering
+    mapper = mapper(User, users, order_by=None)
+
+    # order by a column
+    mapper = mapper(User, users, order_by=users.c.user_id)
+    
+    # order by multiple items
+    mapper = mapper(User, users, order_by=[users.c.user_id, desc(users.c.user_name)])
+</&>
+<p>"order_by" can also be specified to an individual <span class="codeline">select</span> method, overriding all other per-engine/per-mapper orderings:
+<&|formatting.myt:code&>
+    # order by a column
+    l = mapper.select(users.c.user_name=='fred', order_by=users.c.user_id)
+    
+    # order by multiple criterion
+    l = mapper.select(users.c.user_name=='fred', order_by=[users.c.user_id, desc(users.c.user_name)])
+</&>
+<p>For relations, the "order_by" property can also be specified to all forms of relation:</p>
+<&|formatting.myt:code&>
+    # order address objects by address id
+    mapper = mapper(User, users, properties = {
+        'addresses' : relation(Address, addresses, order_by=addresses.c.address_id)
+    })
+    
+    # eager load with ordering - the ORDER BY clauses of parent/child will be organized properly
+    mapper = mapper(User, users, properties = {
+        'addresses' : relation(Address, addresses, order_by=desc(addresses.c.email_address), eager=True)
+    }, order_by=users.c.user_id)
+    
+</&>
 </&>
 <&|doclib.myt:item, name="limits", description="Limiting Rows" &>
 <p>You can limit rows in a regular SQL query by specifying <span class="codeline">limit</span> and <span class="codeline">offset</span>.  A Mapper can handle the same concepts:</p>
@@ -174,8 +215,75 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
     </&>
     <p>The main WHERE clause as well as the limiting clauses are coerced into a subquery; this subquery represents the desired result of objects.  A containing query, which handles the eager relationships, is joined against the subquery to produce the result.</p>
 </&>
+<&|doclib.myt:item, name="colname", description="Overriding Column Names" &>
+<p>When mappers are constructed, by default the column names in the Table metadata are used as the names of attributes on the mapped class.  This can be customzed within the properties by stating the key/column combinations explicitly:</p>
+<&|formatting.myt:code&>
+    user_mapper = mapper(User, users, properties={
+        'id' : users.c.user_id,
+        'name' : users.c.user_name,
+    })
+</&>
+<p>In the situation when column names overlap in a mapper against multiple tables, columns may be referenced together with a list:
+<&|formatting.myt:code&>
+    # join users and addresses
+    usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
+    m = mapper(User, usersaddresses, primarytable = users,  
+        properties = {
+            'id' : [users.c.user_id, addresses.c.user_id],
+        }
+        )
+</&>
+</&>
+<&|doclib.myt:item, name="deferred", description="Deferred Column Loading" &>
+<p>This feature allows particular columns of a table to not be loaded by default, instead being loaded later on when first referenced.  It is essentailly "column-level lazy loading".   This feature is useful when one wants to avoid loading a large text or binary field into memory when its not needed.  Individual columns can be lazy loaded by themselves or placed into groups that lazy-load together.</p>
+<&|formatting.myt:code&>
+    book_excerpts = Table('books', db, 
+        Column('book_id', Integer, primary_key=True),
+        Column('title', String(200), nullable=False),
+        Column('summary', String(2000)),
+        Column('excerpt', String),
+        Column('photo', Binary)
+    )
+
+    class Book(object):
+        pass
+    
+    # define a mapper that will load each of 'excerpt' and 'photo' in 
+    # separate, individual-row SELECT statements when each attribute
+    # is first referenced on the individual object instance
+    book_mapper = mapper(Book, book_excerpts, properties = {
+        'excerpt' : deferred(book_excerpts.c.excerpt),
+        'photo' : deferred(book_excerpts.c.photo)
+    })
+</&>
+<p>Deferred columns can be placed into groups so that they load together:</p>
+<&|formatting.myt:code&>
+    book_excerpts = Table('books', db, 
+        Column('book_id', Integer, primary_key=True),
+        Column('title', String(200), nullable=False),
+        Column('summary', String(2000)),
+        Column('excerpt', String),
+        Column('photo1', Binary),
+        Column('photo2', Binary),
+        Column('photo3', Binary)
+    )
+
+    class Book(object):
+        pass
+
+    # define a mapper with a 'photos' deferred group.  when one photo is referenced,
+    # all three photos will be loaded in one SELECT statement.  The 'excerpt' will 
+    # be loaded separately when it is first referenced.
+    book_mapper = mapper(Book, book_excerpts, properties = {
+        'excerpt' : deferred(book_excerpts.c.excerpt),
+        'photo1' : deferred(book_excerpts.c.photo1, group='photos'),
+        'photo2' : deferred(book_excerpts.c.photo2, group='photos'),
+        'photo3' : deferred(book_excerpts.c.photo3, group='photos')
+    })
+</&>
+</&>
 <&|doclib.myt:item, name="options", description="More on Mapper Options" &>
-    <p>The <span class="codeline">options</span> method of mapper, first introduced in <&formatting.myt:link, path="datamapping_relations_options" &>, supports the copying of a mapper into a new one, with any number of its relations replaced by new ones.  The method takes a variable number of <span class="codeline">MapperOption</span> objects which know how to change specific things about the mapper.  The four available options are <span class="codeline">eagerload</span>, <span class="codeline">lazyload</span>, <span class="codeline">noload</span> and <span class="codeline">extension</span>.</p>
+    <p>The <span class="codeline">options</span> method of mapper, first introduced in <&formatting.myt:link, path="datamapping_relations_options" &>, supports the copying of a mapper into a new one, with any number of its relations replaced by new ones.  The method takes a variable number of <span class="codeline">MapperOption</span> objects which know how to change specific things about the mapper.  The five available options are <span class="codeline">eagerload</span>, <span class="codeline">lazyload</span>, <span class="codeline">noload</span>, <span class="codeline">deferred</span> and <span class="codeline">extension</span>.</p>
     <P>An example of a mapper with a lazy load relationship, upgraded to an eager load relationship:
         <&|formatting.myt:code&>
         class User(object):
@@ -199,6 +307,16 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
                 eagerload('newyork_addresses', selectalias='newyork_ad')
             )
     </&>
+    <p>The <span class="codeline">defer</span> and <span class="codeline">undefer</span> options can control the deferred loading of attributes:</p>
+    <&|formatting.myt:code&>
+        # set the 'excerpt' deferred attribute to load normally
+        m = book_mapper.options(undefer('excerpt'))
+
+        # set the referenced mapper 'photos' to defer its loading of the column 'imagedata'
+        m = book_mapper.options(defer('photos.imagedata'))
+    </&>
+    
+     
 </&>
 
 
@@ -263,6 +381,22 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
         m = mapper(KeywordUser, j)
     </&>    
 </&>
+<&|doclib.myt:item, name="selects", description="Mapping a Class against Arbitary Selects" &>
+<p>Similar to mapping against a join, a plain select() object can be used with a mapper as well.  Below, an example select which contains two aggregate functions and a group_by is mapped to a class:</p>
+    <&|formatting.myt:code&>
+        s = select([customers, 
+                    func.count(orders).label('order_count'), 
+                    func.max(orders.price).label('highest_order')],
+                    customers.c.customer_id==orders.c.customer_id,
+                    group_by=[c for c in customers.c]
+                    )
+        class Customer(object):
+            pass
+        
+        mapper = mapper(Customer, s, primarytable=customers)
+    </&>
+<p>Above, the "customers" table is joined against the "orders" table to produce a full row for each customer row, the total count of related rows in the "orders" table, and the highest price in the "orders" table, grouped against the full set of columns in the "customers" table.  That query is then mapped against the Customer class.  New instances of Customer will contain attributes for each column in the "customers" table as well as an "order_count" and "highest_order" attribute.  Updates to the Customer object will only be reflected in the "customers" table and not the "orders" table.  This is because the primary keys of the "orders" table are not represented in this mapper and therefore the table is not affected by save or delete operations.</p>
+</&>
 <&|doclib.myt:item, name="multiple", description="Multiple Mappers for One Class" &>
     <p>By now it should be apparent that the mapper defined for a class is in no way the only mapper that exists for that class.  Other mappers can be created at any time; either explicitly or via the <span class="codeline">options</span> method, to provide different loading behavior.</p>
     
@@ -300,7 +434,28 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
         objectstore.commit()
     </&>    
 </&>
+<&|doclib.myt:item, name="circular", description="Circular Mapping" &>
+<p>Oftentimes it is necessary for two mappers to be related to each other.  With a datamodel that consists of Users that store Addresses, you might have an Address object and want to access the "user" attribute on it, or have a User object and want to get the list of Address objects.  The easiest way to do this is via the <span class="codeline">backreference</span> keyword described in <&formatting.myt:link, path="datamapping_relations_backreferences"&>.  Although even when backreferences are used, it is sometimes necessary to explicitly specify the relations on both mappers pointing to each other.</p>
+<p>To achieve this involves creating the first mapper by itself, then creating the second mapper referencing the first, then adding references to the first mapper to reference the second:</p>
+<&|formatting.myt:code&>
+    class User(object):
+        pass
+    class Address(object):
+        pass
+    User.mapper = mapper(User, users)
+    Address.mapper = mapper(Address, addresses, properties={
+        'user':relation(User.mapper)
+    })
+    User.mapper.add_property('addresses', relation(Address.mapper))
+</&>
+<p>Note that with a circular relationship as above, you cannot declare both relationships as "eager" relationships, since that produces a circular query situation which will generate a recursion exception.  So what if you want to load an Address and its User eagerly?  Just make a second mapper using options:
+<&|formatting.myt:code&>
+    eagermapper = Address.mapper.options(eagerload('user'))
+    s = eagermapper.select(Address.c.address_id==12)
+</&>
+</&>
 <&|doclib.myt:item, name="recursive", description="Self Referential Mappers" &>
+<p>A self-referential mapper is a mapper that is designed to operate with an <b>adjacency list</b> table.  This is a table that contains one or more foreign keys back to itself, and is usually used to create hierarchical tree structures.  SQLAlchemy's default model of saving items based on table dependencies is not sufficient in this case, as an adjacency list table introduces dependencies between individual rows.  Fortunately, SQLAlchemy will automatically detect a self-referential mapper and do the extra lifting to make it work. </p> 
     <&|formatting.myt:code&>
         # define a self-referential table
         trees = Table('treenodes', engine,
@@ -319,10 +474,9 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
         TreeNode.mapper = mapper(TreeNode, trees, properties={
                 'children' : relation(
                                 TreeNode, 
-                                primaryjoin=tables.trees.c.parent_node_id==tables.trees.c.node_id, 
-                                lazy=True, uselist=True, private=True
+                                private=True
                              ),
-                )
+                }
             )
             
         # or, specify the circular relationship after establishing the original mapper:
@@ -330,53 +484,74 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
         
         mymapper.add_property('children', relation(
                                 mymapper, 
-                                primaryjoin=tables.trees.c.parent_node_id==tables.trees.c.node_id, 
-                                lazy=True, uselist=True, private=True
+                                private=True
                              ))
         
     </&>    
     <p>This kind of mapper goes through a lot of extra effort when saving and deleting items, to determine the correct dependency graph of nodes within the tree.</p>
-</&>
-<&|doclib.myt:item, name="circular", description="Circular Mapping" &>
-<p>Oftentimes it is necessary for two mappers to be related to each other.  With a datamodel that consists of Users that store Addresses, you might have an Address object and want to access the "user" attribute on it, or have a User object and want to get the list of Address objects.  To achieve this involves creating the first mapper not referencing the second, then creating the second mapper referencing the first, then adding references to the first mapper to reference the second:</p>
-<&|formatting.myt:code&>
-    class User(object):
+    
+    <p>A self-referential mapper where there is more than one relationship on the table requires that all join conditions be explicitly spelled out.  Below is a self-referring table that contains a "parent_node_id" column to reference parent/child relationships, and a "root_node_id" column which points child nodes back to the ultimate root node:</p>
+    <&|formatting.myt:code&>
+    # define a self-referential table with several relations
+    trees = Table('treenodes', engine,
+        Column('node_id', Integer, primary_key=True),
+        Column('parent_node_id', Integer, ForeignKey('treenodes.node_id'), nullable=True),
+        Column('root_node_id', Integer, ForeignKey('treenodes.node_id'), nullable=True),
+        Column('node_name', String(50), nullable=False),
+        )
+
+    # treenode class
+    class TreeNode(object):
         pass
-    class Address(object):
-        pass
-    User.mapper = mapper(User, users)
-    Address.mapper = mapper(Address, addresses, properties={
-        'user':relation(User.mapper)
-    })
-    User.mapper.add_property('addresses', relation(Address.mapper))
-</&>
-<p>Note that with a circular relationship as above, you cannot declare both relationships as "eager" relationships, since that produces a circular query situation which will generate a recursion exception.  So what if you want to then load an Address and its User eagerly?  Just make a second mapper using options:
-<&|formatting.myt:code&>
-    eagermapper = Address.mapper.options(eagerload('user'))
-    s = eagermapper.select(Address.c.address_id==12)
-</&>
+
+    # define the "children" property as well as the "root" property
+    TreeNode.mapper = mapper(TreeNode, trees, properties={
+            'children' : relation(
+                            TreeNode, 
+                            primaryjoin=trees.c.parent_node_id==trees.c.node_id
+                            private=True
+                         ),
+            'root' : relation(
+                    TreeNode,
+                    primaryjoin=trees.c.root_node_id=trees.c.node_id, 
+                    foreignkey=trees.c.node_id,
+                    uselist=False
+                )
+            }
+        )
+    </&>    
+<p>The "root" property on a TreeNode is a many-to-one relationship.  By default, a self-referential mapper declares relationships as one-to-many, so the extra parameter <span class="codeline">foreignkey</span>, pointing to the "many" side of a relationship, is needed to indicate a "many-to-one" self-referring relationship.</p>
+<p>Both TreeNode examples above are available in functional form in the <span class="codeline">examples/adjacencytree</span> directory of the distribution.</p>    
 </&>
 <&|doclib.myt:item, name="resultset", description="Result-Set Mapping" &>
-    <p>Take any result set and feed it into a mapper to produce objects.  Multiple mappers can be combined to retrieve unrelated objects from the same row in one step.</p>
-    <&|formatting.myt:code&>
+    <p>Take any result set and feed it into a mapper to produce objects.  Multiple mappers can be combined to retrieve unrelated objects from the same row in one step.  The <span class="codeline">instances</span> method on mapper takes a ResultProxy object, which is the result type generated from SQLEngine, and delivers object instances.</p>
+    <&|formatting.myt:code, title="single object"&>
         class User(object):
             pass
-        class Address(object):
-            pass
+
         User.mapper = mapper(User, users)
-        Address.mapper = mapper(Address, addresses)
         
         # select users
         c = users.select().execute()
+
         # get objects
         userlist = User.mapper.instances(c)
-        
+    </&>
+    
+    <&|formatting.myt:code, title="multiple objects"&>
+        # define a second class/mapper
+        class Address(object):
+            pass
+            
+        Address.mapper = mapper(Address, addresses)
+
         # select users and addresses in one query
         s = select([users, addresses], users.c.user_id==addresses.c.user_id)
 
         # execute it, and process the results with the User mapper, chained to the Address mapper
         r = User.mapper.instances(s.execute(), Address.mapper)
-        # results rows are an array of objects, one for each mapper used
+        
+        # result rows are an array of objects, one for each mapper used
         for entry in r:
             user = r[0]
             address = r[1]
@@ -384,14 +559,160 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
 </&>
 
 <&|doclib.myt:item, name="extending", description="Extending Mapper" &>
-    <&|doclib.myt:item, name="class", description="How Mapper Modifies Mapped Classes" &>
+<p>Mappers can have functionality augmented or replaced at many points in its execution via the usage of the MapperExtension class.  This class is just a series of "hooks" where various functionality takes place.  An application can make its own MapperExtension objects, overriding only the methods it needs.
         <&|formatting.myt:code&>
-        </&>    
-    </&>
-    <&|doclib.myt:item, name="mapperextension", description="Adding/Replacing Functionality with Mapper Extension" &>
-        <&|formatting.myt:code&>
-        </&>    
-    </&>
-</&>
+        class MapperExtension(object):
+            def create_instance(self, mapper, row, imap, class_):
+                """called when a new object instance is about to be created from a row.  
+                the method can choose to create the instance itself, or it can return 
+                None to indicate normal object creation should take place.
+                
+                mapper - the mapper doing the operation
+                row - the result row from the database
+                imap - a dictionary that is storing the running set of objects collected from the
+                current result set
+                class_ - the class we are mapping.
+                """
+            def append_result(self, mapper, row, imap, result, instance, isnew, populate_existing=False):
+                """called when an object instance is being appended to a result list.
+                
+                If it returns True, it is assumed that this method handled the appending itself.
 
+                mapper - the mapper doing the operation
+                row - the result row from the database
+                imap - a dictionary that is storing the running set of objects collected from the
+                current result set
+                result - an instance of util.HistoryArraySet(), which may be an attribute on an
+                object if this is a related object load (lazy or eager).  use result.append_nohistory(value)
+                to append objects to this list.
+                instance - the object instance to be appended to the result
+                isnew - indicates if this is the first time we have seen this object instance in the current result
+                set.  if you are selecting from a join, such as an eager load, you might see the same object instance
+                many times in the same result set.
+                populate_existing - usually False, indicates if object instances that were already in the main 
+                identity map, i.e. were loaded by a previous select(), get their attributes overwritten
+                """
+            def before_insert(self, mapper, instance):
+                """called before an object instance is INSERTed into its table.
+                
+                this is a good place to set up primary key values and such that arent handled otherwise."""
+            def after_insert(self, mapper, instance):
+                """called after an object instance has been INSERTed"""
+            def before_delete(self, mapper, instance):
+                """called before an object instance is DELETEed"""
+        
+        </&>
+        <p>To use MapperExtension, make your own subclass of it and just send it off to a mapper:</p>
+        <&|formatting.myt:code&>
+            mapper = mapper(User, users, extension=MyExtension())
+        </&>
+        <p>An existing mapper can create a copy of itself using an extension via the <span class="codeline">extension</span> option:
+        <&|formatting.myt:code&>
+            extended_mapper = mapper.options(extension(MyExtension()))
+        </&>
+        
+</&>
+<&|doclib.myt:item, name="class", description="How Mapper Modifies Mapped Classes" &>
+<p>This section is a quick summary of what's going on when you send a class to the <span class="codeline">mapper()</span> function.  This material, not required to be able to use SQLAlchemy, is a little more dense and should be approached patiently!</p>
+
+<p>The primary changes to a class that is mapped involve attaching property objects to it which represent table columns.  These property objects essentially track changes.  In addition, the __init__ method of the object is decorated to track object creates.</p>
+<p>Here is a quick rundown of all the changes in code form:
+    <&|formatting.myt:code&>
+        # step 1 - override __init__ to 'register_new' with the Unit of Work
+        oldinit = myclass.__init__
+        def init(self, *args, **kwargs):
+            nohist = kwargs.pop('_mapper_nohistory', False)
+            oldinit(self, *args, **kwargs)
+            if not nohist:
+                # register_new with Unit Of Work
+                objectstore.uow().register_new(self)
+        myclass.__init__ = init
+        
+        # step 2 - set a string identifier that will 
+        # locate the classes' primary mapper
+        myclass._mapper = mapper.hashkey
+        
+        # step 3 - add column accessor
+        myclass.c = mapper.columns
+
+        # step 4 - attribute decorating.  
+        # this happens mostly within the package sqlalchemy.attributes
+        
+        # this dictionary will store a series of callables 
+        # that generate "history" containers for
+        # individual object attributes
+        myclass._class_managed_attributes = {}
+
+        # create individual properties for each column - 
+        # these objects know how to talk 
+        # to the attribute package to create appropriate behavior.
+        # the next example examines the attributes package more closely.
+        myclass.column1 = SmartProperty().property('column1', uselist=False)
+        myclass.column2 = SmartProperty().property('column2', uselist=True)
+    </&>
+<p>The attribute package is used when save operations occur to get a handle on modified values.  In the example below,
+a full round-trip attribute tracking operation is illustrated:</p>
+<&|formatting.myt:code&>
+    import sqlalchemy.attributes as attributes
+    
+    # create an attribute manager.  
+    # the sqlalchemy.mapping package keeps one of these around as 
+    # 'objectstore.global_attributes'
+    manager = attributes.AttributeManager()
+
+    # regular old new-style class
+    class MyClass(object):
+        pass
+    
+    # register a scalar and a list attribute
+    manager.register_attribute(MyClass, 'column1', uselist=False)
+    manager.register_attribute(MyClass, 'column2', uselist=True)
+        
+    # create/modify an object
+    obj = MyClass()
+    obj.column1 = 'this is a new value'
+    obj.column2.append('value 1')
+    obj.column2.append('value 2')
+
+    # get history objects
+    col1_history = manager.get_history(obj, 'column1')
+    col2_history = manager.get_history(obj, 'column2')
+
+    # whats new ?
+    >>> col1_history.added_items()
+    ['this is a new value']
+    
+    >>> col2_history.added_items()
+    ['value1', 'value2']
+    
+    # commit changes
+    manager.commit(obj)
+
+    # the new values become the "unchanged" values
+    >>> col1_history.added_items()
+    []
+
+    >>> col1_history.unchanged_items()
+    ['this is a new value']
+    
+    >>> col2_history.added_items()
+    []
+
+    >>> col2_history.unchanged_items()
+    ['value1', 'value2']
+</&>
+<p>The above AttributeManager also includes a method <span class="codeline">value_changed</span> which is triggered whenever change events occur on the managed object attributes.  The Unit of Work (objectstore) package overrides this method in order to receive change events; its essentially this:</p>
+<&|formatting.myt:code&>
+    import sqlalchemy.attributes as attributes
+    class UOWAttributeManager(attributes.AttributeManager):
+        def value_changed(self, obj, key, value):
+            if hasattr(obj, '_instance_key'):
+                uow().register_dirty(obj)
+            else:
+                uow().register_new(obj)
+                
+    global_attributes = UOWAttributeManager()
+</&>
+<p>Objects that contain the attribute "_instance_key" are already registered with the Identity Map, and are assumed to have come from the database.  They therefore get marked as "dirty" when changes happen.  Objects without an "_instance_key" are not from the database, and get marked as "new" when changes happen, although usually this will already have occured via the object's __init__ method.</p>
+</&>
 </&>

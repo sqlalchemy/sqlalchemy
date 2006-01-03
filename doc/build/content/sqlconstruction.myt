@@ -912,7 +912,7 @@ WHERE users.user_name = :users_user_name AND keywords.name IN ('jack', 'foo')
         <&|formatting.myt:code &>
             s = select([addresses.c.city], addresses.c.user_id==users.c.user_id)
             <&formatting.myt:poplink&>users.update(
-                    and_(users.c.user_id&gt;10, users.c.user_id&lt;20), 
+                    and_(users.c.user_id>10, users.c.user_id<20), 
                     values={users.c.user_name:s}
                     ).execute() 
 
@@ -920,7 +920,7 @@ WHERE users.user_name = :users_user_name AND keywords.name IN ('jack', 'foo')
             UPDATE users SET user_name=(SELECT addresses.city 
             FROM addresses 
             WHERE addresses.user_id = users.user_id) 
-            WHERE users.user_id &gt; :users_user_id AND users.user_id &lt; :users_user_id_1
+            WHERE users.user_id > :users_user_id AND users.user_id < :users_user_id_1
             {'users_user_id_1': 20, 'users_user_id': 10}
 
             </&>

@@ -50,10 +50,10 @@ WHERE users.user_name = :users_user_name ORDER BY users.oid
         # commit - saves everything that changed
 <&formatting.myt:poplink&>objectstore.commit() 
 <&|formatting.myt:codepopper, link="sql" &>
-UPDATE users SET user_id=:user_id, user_name=:user_name, 
-password=:password WHERE users.user_id = :user_id
+UPDATE users SET user_name=:user_name 
+ WHERE users.user_id = :user_id
 
-[{'user_name': 'fred jones', 'password': u'45nfss', 'user_id': 1}]        
+[{'user_name': 'fred jones', 'user_id': 1}]        
         </&>
         
         
@@ -152,9 +152,9 @@ FROM users WHERE users.user_name = :users_user_name
             # save all changes            
 <&formatting.myt:poplink&>objectstore.commit()   
 <&|formatting.myt:codepopper, link="sql" &>
-UPDATE users SET user_name=:user_name, password=:password 
+UPDATE users SET user_name=:user_name
 WHERE users.user_id =:users_user_id
-[{'password': u'hoho', 'users_user_id': 1, 'user_name': 'fredjones'}]
+[{'users_user_id': 1, 'user_name': 'fredjones'}]
 
 INSERT INTO users (user_name, password) VALUES (:user_name, :password)
 {'password': 'hello123', 'user_name': 'jane'}
@@ -188,7 +188,7 @@ INSERT INTO users (user_name, password) VALUES (:user_name, :password)
                 
         </&>
 
-<p>Recent versions of SQLAlchemy will only put modified object attributes columns into the UPDATE statements generated upon commit, even though some of the examples here dont illustrate that.  This is to conserve database traffic and also to successfully interact with a "deferred" attribute, which is a mapped object attribute against the mapper's primary table that isnt loaded until referenced by the application.</p>
+<p>Recent versions of SQLAlchemy will only put modified object attributes columns into the UPDATE statements generated upon commit.  This is to conserve database traffic and also to successfully interact with a "deferred" attribute, which is a mapped object attribute against the mapper's primary table that isnt loaded until referenced by the application.</p>
 </&>
 
 <&|doclib.myt:item, name="relations", description="Defining and Using Relationships" &>
@@ -274,10 +274,9 @@ INSERT INTO addresses (user_id, street, city, state, zip) VALUES (:user_id, :str
 
             objectstore.commit()    
 
-<&|formatting.myt:poppedcode, link="sql" &>UPDATE addresses SET user_id=:user_id, street=:street, 
-city=:city, state=:state, zip=:zip WHERE addresses.address_id = :addresses_address_id
-[{'city': 'some other city', 'user_id': None, 'zip': '83923', 
-'state': 'OK', 'street': '1 Park Place', 'addresses_address_id': 2}]
+<&|formatting.myt:poppedcode, link="sql" &>UPDATE addresses SET user_id=:user_id
+ WHERE addresses.address_id = :addresses_address_id
+[{'user_id': None, 'addresses_address_id': 2}]
 
 INSERT INTO addresses (user_id, street, city, state, zip) 
 VALUES (:user_id, :street, :city, :state, :zip)
@@ -557,11 +556,10 @@ ORDER BY email_addresses.oid, email_addresses.oid
         # commit
         <&formatting.myt:poplink&>objectstore.commit() 
 <&|formatting.myt:codepopper, link="sql" &>
-UPDATE user_prefs SET pref_id=:pref_id, stylename=:stylename, 
-save_password=:save_password, timezone=:timezone 
+UPDATE user_prefs SET stylename=:stylename
 WHERE user_prefs.pref_id = :pref_id
 
-[{'timezone': u'EST', 'stylename': 'bluesteel', 'save_password': 1, 'pref_id': 1}]
+[{'stylename': 'bluesteel', 'pref_id': 1}]
 
 INSERT INTO email_addresses (address_id, user_id, email_address) 
 VALUES (:address_id, :user_id, :email_address)
