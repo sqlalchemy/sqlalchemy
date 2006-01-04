@@ -321,7 +321,7 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
 
 
 <&|doclib.myt:item, name="inheritance", description="Mapping a Class with Table Inheritance" &>
-    <p>Table Inheritance indicates the pattern where two tables, in a parent-child relationship, are mapped to an inheritance chain of classes.  If a table "news_articles" contains additional information about sports articles in the table "sports_news_articles", a corresponding object inheritance pattern would have a NewsArticle class and a SportsNewsArticle class.  Loading a SportsNewsArticle object means you are joining sports_news_articles to news_articles.  For SQLAlchemy, this pattern is just a special case of a mapper that maps against a joined relationship, and is provided via the <span class="codeline">inherits</span> keyword.
+    <p>Table Inheritance indicates the pattern where two tables, in a parent-child relationship, are mapped to an inheritance chain of classes.  If a table "employees" contains additional information about managers in the table "mangaers", a corresponding object inheritance pattern would have an Employee class and a Manager class.  Loading a Mangaer object means you are joining managers to employees.  For SQLAlchemy, this pattern is just a special case of a mapper that maps against a joined relationship, and is provided via the <span class="codeline">inherits</span> keyword.
     <&|formatting.myt:code&>
         class User(object):
             """a user object."""
@@ -333,7 +333,6 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
             pass
 
         # define a mapper for AddressUser that inherits the User.mapper, and joins on the user_id column
-        # inherit_condition is required right now, but will be optional in a future release
         AddressUser.mapper = mapper(
                 addresses, inherits=User.mapper
                 )
@@ -357,8 +356,7 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
             pass
 
         # define a Join
-        # the join condition will be optional in a future release if foreign keys are defined
-        j = join(users, addresses, users.c.address_id==addresses.c.address_id)
+        j = join(users, addresses)
         
         # map to it - the identity of an AddressUser object will be 
         # based on (user_id, address_id) since those are the primary keys involved

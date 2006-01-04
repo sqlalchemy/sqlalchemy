@@ -11,27 +11,38 @@
 <p>The standard set of generic types are:</p>
 <&|formatting.myt:code&>
 # sqlalchemy.types package:
-class String: pass
-class Integer: pass
-class Numeric: pass
-class DateTime: pass
-class Binary: pass
-class Boolean: pass
+class String(TypeEngine):
+    def __init__(self, length=None)
+    
+class Integer(TypeEngine)
+    
+class Numeric(TypeEngine): 
+    def __init__(self, precision=10, length=2)
+    
+class Float(TypeEngine):
+    def __init__(self, precision=10)
+    
+class DateTime(TypeEngine)
+    
+class Binary(TypeEngine): 
+    def __init__(self, length=None)
+    
+class Boolean(TypeEngine)
 </&>
 <p>More specific subclasses of these types are available, to allow finer grained control over types:</p>
 <&|formatting.myt:code&>
-class FLOAT(Numeric):pass
-class TEXT(String):pass
-class DECIMAL(Numeric):pass
-class INT(Integer):pass
+class FLOAT(Numeric)
+class TEXT(String)
+class DECIMAL(Numeric)
+class INT(Integer)
 INTEGER = INT
-class TIMESTAMP(DateTime): pass
-class DATETIME(DateTime): pass
-class CLOB(String): pass
-class VARCHAR(String): pass
-class CHAR(String):pass
-class BLOB(Binary): pass
-class BOOLEAN(Boolean): pass
+class TIMESTAMP(DateTime)
+class DATETIME(DateTime)
+class CLOB(String)
+class VARCHAR(String)
+class CHAR(String)
+class BLOB(Binary)
+class BOOLEAN(Boolean)
 </&>
 <p>When using a specific database engine, these types are adapted even further via a set of database-specific subclasses defined by the database engine.</p>
 </&>

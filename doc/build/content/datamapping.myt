@@ -308,10 +308,10 @@ DELETE FROM addresses WHERE addresses.address_id = :address_id
 <p>In this case, with the private flag set, the element that was removed from the addresses list was also removed from the database.  By specifying the <span class="codeline">private</span> flag on a relation, it is indicated to the Mapper that these related objects exist only as children of the parent object, otherwise should be deleted.</p>
 </&>
 <&|doclib.myt:item, name="backreferences", description="Useful Feature: Backreferences" &>
-<p>By creating relations with the <span class="codeline">backreference</span> keyword, a bi-directional relationship can be created which will keep both ends of the relationship updated automatically, even without any database queries being executed.  Below, the User mapper is created with an "addresses" property, and the corresponding Address mapper receives a "backreference" to the User object via the property name "user":
+<p>By creating relations with the <span class="codeline">backref</span> keyword, a bi-directional relationship can be created which will keep both ends of the relationship updated automatically, even without any database queries being executed.  Below, the User mapper is created with an "addresses" property, and the corresponding Address mapper receives a "backreference" to the User object via the property name "user":
         <&|formatting.myt:code&>
             User.mapper = mapper(User, users, properties = {
-                                'addresses' : relation(Address, addresses, backreference='user')
+                                'addresses' : relation(Address, addresses, backref='user')
                             }
                           )
 
@@ -336,12 +336,12 @@ DELETE FROM addresses WHERE addresses.address_id = :address_id
             Address.mapper = mapper(Address, addresses)
             
             User.mapper = mapper(User, users, properties = {
-                                'addresses' : relation(Address.mapper, backreference='user')
+                                'addresses' : relation(Address.mapper, backref='user')
                             }
                           )
                           
             Address.mapper.add_property('user', relation(
-                                User.mapper, lazy=False, private=True, backreference='addresses'
+                                User.mapper, lazy=False, private=True, backref='addresses'
                                 ))
                           
                 </&>
