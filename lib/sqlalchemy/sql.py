@@ -28,7 +28,7 @@ def asc(column):
     """
     return CompoundClause(None, column, "ASC")
 
-def outerjoin(left, right, onclause, **kwargs):
+def outerjoin(left, right, onclause=None, **kwargs):
     """returns an OUTER JOIN clause element, given the left and right hand expressions,
     as well as the ON condition's expression.  To chain joins together, use the resulting
     Join object's "join()" or "outerjoin()" methods."""
