@@ -57,7 +57,7 @@ class HistoryTest(AssertMixin):
         class Address(object):pass
         am = mapper(Address, addresses)
         m = mapper(User, users, properties = dict(
-            addresses = relation(am, backref='user'))
+            addresses = relation(am, backref='user', lazy=False))
         )
         
         u = User()
@@ -68,7 +68,9 @@ class HistoryTest(AssertMixin):
         self.assert_(u.addresses == [a])
         objectstore.commit()
 
-        
+        objectstore.clear()
+        u = m.select()[0]
+        print u.addresses[0].user
 
 class PKTest(AssertMixin):
     def setUpAll(self):
