@@ -235,7 +235,9 @@ class PropertyLoader(MapperProperty):
             return PropertyLoader.LEFT
         elif self.foreignkey.table == self.parent.primarytable:
             return PropertyLoader.RIGHT
-
+        else:
+            raise "Cant determine relation direction"
+            
     def _find_dependent(self):
         dependent = [None]
         def foo(binary):
@@ -573,7 +575,10 @@ class LazyLoader(PropertyLoader):
     def init(self, key, parent):
         PropertyLoader.init(self, key, parent)
         (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.table, self.primaryjoin, self.secondaryjoin, self.foreignkey)
-
+        # determine if our "lazywhere" clause is the same as the mapper's
+        # get() clause.  then we can just use mapper.get()
+        self.use_get = not self.uselist and self.mapper._get_clause.compare(self.lazywhere)
+        
     def _set_class_attribute(self, class_, key):
         # establish a class-level lazy loader on our class
         #print "SETCLASSATTR LAZY", repr(class_), key
@@ -590,7 +595,14 @@ class LazyLoader(PropertyLoader):
                     allparams = False
                     break
             if allparams:
-                if self.order_by is not False:
+                # if we have a simple straight-primary key load, use mapper.get()
+                # to possibly save a DB round trip
+                if self.use_get:
+                    ident = []
+                    for primary_key in self.mapper.pks_by_table[self.mapper.primarytable]:
+                        ident.append(params[self.mapper.primarytable.name + "_" + primary_key.key])
+                    return self.mapper.get(*ident)
+                elif self.order_by is not False:
                     order_by = self.order_by
                 elif self.secondary is not None and self.secondary.default_order_by() is not None:
                     order_by = self.secondary.default_order_by()
@@ -630,12 +642,12 @@ def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
         circular = isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column) and binary.left.table is binary.right.table
         if isinstance(binary.left, schema.Column) and ((not circular and binary.left.table is table) or (circular and foreignkey is binary.right)):
             binary.left = binds.setdefault(binary.left,
-                    sql.BindParamClause(table.name + "_" + binary.left.name, None, shortname = binary.left.name))
+                    sql.BindParamClause(binary.right.table.name + "_" + binary.right.name, None, shortname = binary.left.name))
             binary.swap()
 
         if isinstance(binary.right, schema.Column) and ((not circular and binary.right.table is table) or (circular and foreignkey is binary.left)):
             binary.right = binds.setdefault(binary.right,
-                    sql.BindParamClause(table.name + "_" + binary.right.name, None, shortname = binary.right.name))
+                    sql.BindParamClause(binary.left.table.name + "_" + binary.left.name, None, shortname = binary.right.name))
                     
     if secondaryjoin is not None:
         lazywhere = sql.and_(primaryjoin, secondaryjoin)
@@ -660,7 +672,10 @@ class EagerLoader(PropertyLoader):
         [self.to_alias.append(f) for f in self.primaryjoin._get_from_objects()]
         if self.secondaryjoin is not None:
             [self.to_alias.append(f) for f in self.secondaryjoin._get_from_objects()]
-        del self.to_alias[parent.primarytable]
+        try:
+            del self.to_alias[parent.primarytable]
+        except KeyError:
+            pass
     
         # if this eagermapper is to select using an "alias" to isolate it from other
         # eager mappers against the same table, we have to redefine our secondary

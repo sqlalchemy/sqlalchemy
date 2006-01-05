@@ -87,16 +87,16 @@ class Mapper(object):
         self.pks_by_table = {}
         if primary_key is not None:
             for k in primary_key:
-                self.pks_by_table.setdefault(k.table, util.HashSet()).append(k)
+                self.pks_by_table.setdefault(k.table, util.HashSet(ordered=True)).append(k)
                 if k.table != self.table:
                     # associate pk cols from subtables to the "main" table
-                    self.pks_by_table.setdefault(self.table, util.HashSet()).append(k)
+                    self.pks_by_table.setdefault(self.table, util.HashSet(ordered=True)).append(k)
         else:
             for t in self.tables + [self.table]:
                 try:
                     l = self.pks_by_table[t]
                 except KeyError:
-                    l = self.pks_by_table.setdefault(t, util.HashSet())
+                    l = self.pks_by_table.setdefault(t, util.HashSet(ordered=True))
                 if not len(t.primary_key):
                     raise "Table " + t.name + " has no primary key columns. Specify primary_key argument to mapper."
                 for k in t.primary_key:
@@ -152,6 +152,10 @@ class Mapper(object):
             # back to the property
             proplist = self.columntoproperty.setdefault(column.original, [])
             proplist.append(prop)
+
+        self._get_clause = sql.and_()
+        for primary_key in self.pks_by_table[self.primarytable]:
+            self._get_clause.clauses.append(primary_key == sql.bindparam("pk_"+primary_key.key))
 
         if (
                 (not hasattr(self.class_, '_mapper') or not mapper_registry.has_key(self.class_._mapper))
@@ -254,15 +258,14 @@ class Mapper(object):
         try:
             return objectstore.uow()._get(key)
         except KeyError:
-            clause = sql.and_()
             i = 0
+            params = {}
             for primary_key in self.pks_by_table[self.primarytable]:
-                # appending to the and_'s clause list directly to skip
-                # typechecks etc.
-                clause.clauses.append(primary_key == ident[i])
+                params["pk_"+primary_key.key] = ident[i]
                 i += 1
+            print str(self._get_clause)
             try:
-                return self.select(clause)[0]
+                return self.select(self._get_clause, params=params)[0]
             except IndexError:
                 return None
 
