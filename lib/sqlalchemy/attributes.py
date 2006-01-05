@@ -270,8 +270,9 @@ class AttributeManager(object):
         
     def get_attribute(self, obj, key, **kwargs):
         """returns the value of an object's scalar attribiute."""
+        h = self.get_history(obj, key, **kwargs)
         try:
-            return self.get_history(obj, key, **kwargs).getattr()
+            return h.getattr()
         except KeyError:
             raise AttributeError(key)
 
