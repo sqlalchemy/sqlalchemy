@@ -315,7 +315,8 @@ class ForeignKey(SchemaItem):
     def __init__(self, column):
         """Constructs a new ForeignKey object.  "column" can be a schema.Column
         object representing the relationship, or just its string name given as 
-        "tablename.columnname"."""
+        "tablename.columnname".  schema can be specified as 
+        "schemaname.tablename.columnname" """
         self._colspec = column
         self._column = None
 
@@ -341,11 +342,16 @@ class ForeignKey(SchemaItem):
         # be defined without dependencies
         if self._column is None:
             if isinstance(self._colspec, str):
-                m = re.match(r"([\w_-]+)(?:\.([\w_-]+))?", self._colspec)
+                m = re.match(r"^([\w_-]+)(?:\.([\w_-]+))?(?:\.([\w_-]+))?$", self._colspec)
                 if m is None:
-                    raise "Invalid foreign key column specification: " + self._colspec
-                (tname, colname) = m.group(1, 2)
-                table = Table(tname, self.parent.engine, mustexist = True)
+                    raise ValueError("Invalid foreign key column specification: " + self._colspec)
+                if m.group(3) is None:
+                    (tname, colname) = m.group(1, 2)
+                    # default to containing table's schema
+                    schema = self.parent.table.schema
+                else:
+                    (schema,tname,colname) = m.group(1,2,3)
+                table = Table(tname, self.parent.engine, mustexist=True, schema=schema)
                 if colname is None:
                     key = self.parent
                     self._column = table.c[self.parent.key]
