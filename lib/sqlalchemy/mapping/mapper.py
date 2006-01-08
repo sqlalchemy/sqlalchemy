@@ -10,7 +10,7 @@ import sqlalchemy.schema as schema
 import sqlalchemy.engine as engine
 import sqlalchemy.util as util
 import objectstore
-
+import sys
 
 mapper_registry = {}
 
@@ -35,7 +35,6 @@ class Mapper(object):
         self.copyargs = {
             'class_':class_,
             'table':table,
-            'primarytable':primarytable,
             'properties':properties or {},
             'primary_key':primary_key,
             'is_primary':None,
@@ -44,7 +43,10 @@ class Mapper(object):
             'extension':extension,
             'order_by':order_by
         }
-        
+
+        if primarytable is not None:
+            sys.stderr.write("'primarytable' argument to mapper is deprecated\n")
+            
         if extension is None:
             self.extension = MapperExtension()
         else:
@@ -55,19 +57,24 @@ class Mapper(object):
         self.order_by = order_by
         
         if not issubclass(class_, object):
-            raise "Class '%s' is not a new-style class" % class_.__name__
-
-        if inherits is not None:
-            primarytable = inherits.primarytable
-            # inherit_condition is optional since the join can figure it out
-            table = sql.join(table, inherits.table, inherit_condition)
-        
+            raise TypeError("Class '%s' is not a new-style class" % class_.__name__)
+            
         if isinstance(table, sql.Select):
             # some db's, noteably postgres, dont want to select from a select
-            # without an alias
-            self.table = table.alias(None)
+            # without an alias.  also if we make our own alias internally, then
+            # the configured properties on the mapper are not matched against the alias 
+            # we make, theres workarounds but it starts to get really crazy (its crazy enough
+            # the SQL that gets generated) so just require an alias
+            raise TypeError("Mapping against a Select object requires that it has a name.  Use an alias to give it a name, i.e. s = select(...).alias('myselect')")
         else:
             self.table = table
+
+        if inherits is not None:
+            self.primarytable = inherits.primarytable
+            # inherit_condition is optional since the join can figure it out
+            self.table = sql.join(table, inherits.table, inherit_condition)
+        else:
+            self.primarytable = self.table
         
         # locate all tables contained within the "table" passed in, which
         # may be a join or other construct
@@ -75,13 +82,6 @@ class Mapper(object):
         self.table.accept_visitor(tf)
         self.tables = tf.tables
 
-        # determine "primary" table        
-        if primarytable is None:
-            if len(self.tables) > 1:
-                raise "table contains multiple tables - specify primary table argument to Mapper"
-            self.primarytable = self.tables[0]
-        else:
-            self.primarytable = primarytable
 
         # determine primary key columns, either passed in, or get them from our set of tables
         self.pks_by_table = {}
@@ -98,7 +98,7 @@ class Mapper(object):
                 except KeyError:
                     l = self.pks_by_table.setdefault(t, util.HashSet(ordered=True))
                 if not len(t.primary_key):
-                    raise "Table " + t.name + " has no primary key columns. Specify primary_key argument to mapper."
+                    raise ValueError("Table " + t.name + " has no primary key columns. Specify primary_key argument to mapper.")
                 for k in t.primary_key:
                     l.append(k)
 
@@ -118,9 +118,17 @@ class Mapper(object):
         if properties is not None:
             for key, prop in properties.iteritems():
                 if sql.is_column(prop):
+                    try:
+                        prop = self.table._get_col_by_original(prop)
+                    except KeyError:
+                        raise ValueError("Column '%s' is not represented in mapper's table" % prop._label)
                     self.columns[key] = prop
                     prop = ColumnProperty(prop)
                 elif isinstance(prop, list) and sql.is_column(prop[0]):
+                    try:
+                        prop = [self.table._get_col_by_original(p) for p in prop]
+                    except KeyError, e:
+                        raise ValueError("Column '%s' is not represented in mapper's table" % e.args[0])
                     self.columns[key] = prop[0]
                     prop = ColumnProperty(*prop)
                 self.props[key] = prop
@@ -154,7 +162,7 @@ class Mapper(object):
             proplist.append(prop)
 
         self._get_clause = sql.and_()
-        for primary_key in self.pks_by_table[self.primarytable]:
+        for primary_key in self.pks_by_table[self.table]:
             self._get_clause.clauses.append(primary_key == sql.bindparam("pk_"+primary_key.key))
 
         if (
@@ -248,22 +256,26 @@ class Mapper(object):
             return [result] + otherresults
         else:
             return result
-
+            
     def get(self, *ident):
         """returns an instance of the object based on the given identifier, or None
         if not found.  The *ident argument is a 
         list of primary key columns in the order of the table def's primary key columns."""
         key = objectstore.get_id_key(ident, self.class_, self.primarytable)
         #print "key: " + repr(key) + " ident: " + repr(ident)
+        return self._get(key, ident)
+        
+    def _get(self, key, ident=None):
         try:
             return objectstore.uow()._get(key)
         except KeyError:
+            if ident is None:
+                ident = key[2]
             i = 0
             params = {}
             for primary_key in self.pks_by_table[self.primarytable]:
                 params["pk_"+primary_key.key] = ident[i]
                 i += 1
-            print str(self._get_clause)
             try:
                 return self.select(self._get_clause, params=params)[0]
             except IndexError:

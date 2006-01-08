@@ -66,10 +66,22 @@ class DeferredColumnProperty(ColumnProperty):
     def _copy(self):
         return DeferredColumnProperty(*self.columns)
 
+    def init(self, key, parent):
+        self.key = key
+        self.parent = parent
+        # establish a SmartProperty property manager on the object for this key, 
+        # containing a callable to load in the attribute
+        if parent._is_primary_mapper():
+            objectstore.uow().register_attribute(parent.class_, key, uselist=False, callable_=lambda i:self.setup_loader(i))
+
     def setup_loader(self, instance):
         def lazyload():
             clause = sql.and_()
-            for primary_key in self.parent.pks_by_table[self.parent.primarytable]:
+            try:
+                pk = self.parent.pks_by_table[self.columns[0].table]
+            except KeyError:
+                pk = self.columns[0].table.primary_key
+            for primary_key in pk:
                 attr = self.parent._getattrbycolumn(instance, primary_key)
                 if not attr:
                     return None
@@ -96,14 +108,6 @@ class DeferredColumnProperty(ColumnProperty):
 
     def setup(self, key, statement, **options):
         pass
-        
-    def init(self, key, parent):
-        self.key = key
-        self.parent = parent
-        # establish a SmartProperty property manager on the object for this key, 
-        # containing a callable to load in the attribute
-        if parent._is_primary_mapper():
-            objectstore.uow().register_attribute(parent.class_, key, uselist=False, callable_=lambda i:self.setup_loader(i))
 
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
@@ -224,7 +228,8 @@ class PropertyLoader(MapperProperty):
         objectstore.uow().register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private, extension=self.attributeext)
         
     def _get_direction(self):
-        if self.parent.primarytable is self.target:
+#        print self.key, repr(self.parent.table.name), repr(self.parent.primarytable.name), repr(self.foreignkey.table.name)
+        if self.parent.table is self.target:
             if self.foreignkey.primary_key:
                 return PropertyLoader.RIGHT
             else:
@@ -233,7 +238,7 @@ class PropertyLoader(MapperProperty):
             return PropertyLoader.CENTER
         elif self.foreignkey.table == self.target:
             return PropertyLoader.LEFT
-        elif self.foreignkey.table == self.parent.primarytable:
+        elif self.foreignkey.table == self.parent.table:
             return PropertyLoader.RIGHT
         else:
             raise "Cant determine relation direction"
@@ -297,7 +302,9 @@ class PropertyLoader(MapperProperty):
         self.primaryjoin.accept_visitor(processor)
         if self.secondaryjoin is not None:
             self.secondaryjoin.accept_visitor(processor)
-
+        if len(self.syncrules) == 0:
+            raise "No syncrules generated for join criterion " + str(self.primaryjoin)
+            
     def get_criterion(self, key, value):
         """given a key/value pair, determines if this PropertyLoader's mapper contains a key of the
         given name in its property list, or if this PropertyLoader's association mapper, if any, 
@@ -362,17 +369,6 @@ class PropertyLoader(MapperProperty):
         if self.association is not None:
             # association object.  our mapper should be dependent on both
             # the parent mapper and the association object mapper.
-
-            # this seems to work, association->parent->self, then 
-            # we process the child elements after the 'parent' save.  but
-            # then the parent is dependent on the association which is 
-            # somewhat arbitrary, might compete with some other dependency:
-    #        uowcommit.register_dependency(self.association, self.parent)
-    #        uowcommit.register_dependency(self.parent, self.mapper)
-    #       #uowcommit.register_dependency(self.association, self.mapper)
-    #        uowcommit.register_processor(self.parent, self, self.parent, False)
-    #        uowcommit.register_processor(self.parent, self, self.parent, True)
-
             # this is where we put the "stub" as a marker, so we get
             # association/parent->stub->self, then we process the child
             # elments after the 'stub' save, which is before our own
@@ -599,8 +595,8 @@ class LazyLoader(PropertyLoader):
                 # to possibly save a DB round trip
                 if self.use_get:
                     ident = []
-                    for primary_key in self.mapper.pks_by_table[self.mapper.primarytable]:
-                        ident.append(params[self.mapper.primarytable.name + "_" + primary_key.key])
+                    for primary_key in self.mapper.pks_by_table[self.mapper.table]:
+                        ident.append(params[self.mapper.table.name + "_" + primary_key.key])
                     return self.mapper.get(*ident)
                 elif self.order_by is not False:
                     order_by = self.order_by
@@ -673,7 +669,8 @@ class EagerLoader(PropertyLoader):
         if self.secondaryjoin is not None:
             [self.to_alias.append(f) for f in self.secondaryjoin._get_from_objects()]
         try:
-            del self.to_alias[parent.primarytable]
+#            del self.to_alias[parent.primarytable]
+            del self.to_alias[parent.table]
         except KeyError:
             pass
     
