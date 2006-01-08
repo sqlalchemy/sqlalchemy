@@ -278,24 +278,23 @@ class ANSICompiler(sql.Compiled):
         
         whereclause = select.whereclause
         
-        # look at our own parameters, see if they
-        # are all present in the form of BindParamClauses.  if
-        # not, then append to the above whereclause column conditions
-        # matching those keys
-        if self.parameters is not None:
-            revisit = False
-            for c in inner_columns.values():
-                if sql.is_column(c) and self.parameters.has_key(c.key) and not self.binds.has_key(c.key):
-                    value = self.parameters[c.key]
-                else:
-                    continue
-                clause = c==value
-                clause.accept_visitor(self)
-                whereclause = sql.and_(clause, whereclause)
-                self.visit_compound(whereclause)
-                
         froms = []
         for f in select.froms:
+
+            if self.parameters is not None:
+                # look at our own parameters, see if they
+                # are all present in the form of BindParamClauses.  if
+                # not, then append to the above whereclause column conditions
+                # matching those keys
+                for c in f.columns:
+                    if sql.is_column(c) and self.parameters.has_key(c.key) and not self.binds.has_key(c.key):
+                        value = self.parameters[c.key]
+                    else:
+                        continue
+                    clause = c==value
+                    clause.accept_visitor(self)
+                    whereclause = sql.and_(clause, whereclause)
+                    self.visit_compound(whereclause)
 
             # special thingy used by oracle to redefine a join
             w = self.get_whereclause(f)
