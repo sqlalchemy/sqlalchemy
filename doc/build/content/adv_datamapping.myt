@@ -227,7 +227,7 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
 <&|formatting.myt:code&>
     # join users and addresses
     usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
-    m = mapper(User, usersaddresses, primarytable = users,  
+    m = mapper(User, usersaddresses,   
         properties = {
             'id' : [users.c.user_id, addresses.c.user_id],
         }
@@ -391,7 +391,7 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
         class Customer(object):
             pass
         
-        mapper = mapper(Customer, s, primarytable=customers)
+        mapper = mapper(Customer, s)
     </&>
 <p>Above, the "customers" table is joined against the "orders" table to produce a full row for each customer row, the total count of related rows in the "orders" table, and the highest price in the "orders" table, grouped against the full set of columns in the "customers" table.  That query is then mapped against the Customer class.  New instances of Customer will contain attributes for each column in the "customers" table as well as an "order_count" and "highest_order" attribute.  Updates to the Customer object will only be reflected in the "customers" table and not the "orders" table.  This is because the primary keys of the "orders" table are not represented in this mapper and therefore the table is not affected by save or delete operations.</p>
 </&>
