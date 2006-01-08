@@ -321,7 +321,8 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
 
 
 <&|doclib.myt:item, name="inheritance", description="Mapping a Class with Table Inheritance" &>
-    <p>Table Inheritance indicates the pattern where two tables, in a parent-child relationship, are mapped to an inheritance chain of classes.  If a table "employees" contains additional information about managers in the table "mangaers", a corresponding object inheritance pattern would have an Employee class and a Manager class.  Loading a Mangaer object means you are joining managers to employees.  For SQLAlchemy, this pattern is just a special case of a mapper that maps against a joined relationship, and is provided via the <span class="codeline">inherits</span> keyword.
+
+    <p>Table Inheritance indicates the pattern where two tables, in a parent-child relationship, are mapped to an inheritance chain of classes.  If a table "employees" contains additional information about managers in the table "managers", a corresponding object inheritance pattern would have an Employee class and a Manager class.  Loading a Manager object means you are joining managers to employees.  For SQLAlchemy, this pattern is just a special case of a mapper that maps against a joined relationship, and is provided via the <span class="codeline">inherits</span> keyword.
     <&|formatting.myt:code&>
         class User(object):
             """a user object."""

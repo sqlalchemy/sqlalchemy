@@ -331,7 +331,8 @@ DELETE FROM addresses WHERE addresses.address_id = :address_id
             >>> a1.user is user and a2.user is user
             True
         </&>
-<p>The backreference feature also works with many-to-many relationships, which are described later.  When creating a backreference, a corresponding property is placed on the child mapper.  This proeprty can be overridden with a custom property using the <span class="codeline">add_property</span> function:
+
++<p>The backreference feature also works with many-to-many relationships, which are described later.  When creating a backreference, a corresponding property is placed on the child mapper.  This property can be overridden with a custom property using the <span class="codeline">add_property</span> function:
         <&|formatting.myt:code&>
             Address.mapper = mapper(Address, addresses)
             
