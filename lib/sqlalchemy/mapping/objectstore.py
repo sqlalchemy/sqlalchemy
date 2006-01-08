@@ -87,6 +87,31 @@ def has_instance(instance):
 def instance_key(instance):
     """returns the IdentityMap key for the given instance"""
     return object_mapper(instance).instance_key(instance)
+
+def import_instance(instance):
+    """places the given instance in the current thread's unit of work context,
+    either in the current IdentityMap or marked as "new".  Returns either the object
+    or the current corresponding version in the Identity Map.
+    
+    this method should be used for any object instance that is coming from a serialized
+    storage, from another thread (assuming the regular threaded unit of work model), or any
+    case where the instance was loaded/created corresponding to a different base unitofwork
+    than the current one."""
+    if instance is None:
+        return None
+    key = getattr(instance, '_instance_key', None)
+    mapper = object_mapper(instance)
+    key = (key[0], repr(mapper.table), key[2])
+    u = uow()
+    if key is not None:
+        if u.identity_map.has_key(key):
+            return u.identity_map[key]
+        else:
+            instance._instance_key = key
+            u.identity_map[key] = instance
+    else:
+        u.register_new(instance)
+    return instance
     
 class UOWListElement(attributes.ListElement):
     def __init__(self, obj, key, data=None, deleteremoved=False, **kwargs):
@@ -94,7 +119,7 @@ class UOWListElement(attributes.ListElement):
         self.deleteremoved = deleteremoved
     def list_value_changed(self, obj, key, item, listval, isdelete):
         uow().modified_lists.append(self)
-        if isdelete and self.deleteremoved:
+        if self.deleteremoved and isdelete:
             uow().register_deleted(item)
     def append(self, item, _mapper_nohistory = False):
         if _mapper_nohistory:
@@ -203,6 +228,12 @@ class UnitOfWork(object):
         # happen wtihin PropertyLoader.process_dependencies ?
         mapper.register_deleted(obj, self)
 
+    def unregister_deleted(self, obj):
+        try:
+            self.deleted.remove(obj)
+        except KeyError:
+            pass
+            
     # TODO: tie in register_new/register_dirty with table transaction begins ?
     def begin(self):
         u = UnitOfWork(self, True)
@@ -297,7 +328,13 @@ class UOWTransaction(object):
         refreshed/updated to reflect a recent save/upcoming delete operation, but not a full
         save/delete operation on the object itself, unless an additional save/delete
         registration is entered for the object."""
-        #print "RO", str(obj), str(isdelete), str(listonly)
+        #print "REGISTER", repr(obj), repr(getattr(obj, '_instance_key', None)), str(isdelete), str(listonly)
+        
+        # things can get really confusing if theres duplicate instances floating around,
+        # so make sure everything is OK
+        if hasattr(obj, '_instance_key') and not self.uow.identity_map.has_key(obj._instance_key):
+            raise "Detected a mapped object not present in the current thread's Identity Map: '%s'.  Use objectstore.import_instance() to place deserialized instances or instances from other threads" % repr(obj._instance_key)
+            
         mapper = object_mapper(obj)
         self.mappers.append(mapper)
         task = self.get_task_by_mapper(mapper)
