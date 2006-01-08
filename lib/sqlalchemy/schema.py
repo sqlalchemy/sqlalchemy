@@ -17,7 +17,7 @@ the schema package "plugs in" to the SQL package.
 
 from sqlalchemy.util import *
 from sqlalchemy.types import *
-import copy, re
+import copy, re, string
 
 __all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'SchemaEngine', 'SchemaVisitor']
 
@@ -41,6 +41,9 @@ class SchemaItem(object):
     def hash_key(self):
         """returns a string that identifies this SchemaItem uniquely"""
         return repr(self)
+
+    def __repr__(self):
+        return "%s()" % self.__class__.__name__
 
     def __getattr__(self, key):
         """proxies method calls to an underlying implementation object for methods not found
@@ -143,6 +146,13 @@ class Table(SchemaItem):
             self.fullname = self.name
         if len(kwargs):
             raise "Unknown arguments passed to Table: " + repr(kwargs.keys())
+
+    def __repr__(self):
+       return "Table(%s)" % string.join(
+        [repr(self.name)] + [repr(self.engine)] +
+        [repr(x) for x in self.columns] +
+        ["%s=%s" % (k, repr(getattr(self, k))) for k in ['schema']]
+       , ',\n')
     
     def reload_values(self, *args):
         """clears out the columns and other properties of this Table, and reloads them from the 
@@ -237,7 +247,14 @@ class Column(SchemaItem):
         
     original = property(lambda s: s._orig or s)
     engine = property(lambda s: s.table.engine)
-    
+     
+    def __repr__(self):
+       return "Column(%s)" % string.join(
+        [repr(self.name)] + [repr(self.type)] +
+        [repr(x) for x in [self.foreign_key] if x is not None] +
+        ["%s=%s" % (k, repr(getattr(self, k))) for k in ['key', 'primary_key', 'nullable', 'hidden', 'default']]
+       , ',')
+        
     def append_item(self, item):
         self._init_items(item)
         
@@ -327,16 +344,21 @@ class ForeignKey(SchemaItem):
         self._colspec = column
         self._column = None
 
+    def __repr__(self):
+        return "ForeignKey(%s)" % repr(self._get_colspec())
+        
     def copy(self):
         """produces a copy of this ForeignKey object."""
-        if isinstance(self._colspec, str):
-            return ForeignKey(self._colspec)
-        else:
-            if self._colspec.table.schema is not None:
-                return ForeignKey("%s.%s.%s" % (self._colspec.table.schema, self._colspec.table.name, self._colspec.column.key))
-            else:
-                return ForeignKey("%s.%s" % (self._colspec.table.name, self._colspec.column.key))
+        return ForeignKey(self._get_colspec())
     
+    def _get_colspec(self):
+        if isinstance(self._colspec, str):
+            return self._colspec
+        elif self._colspec.table.schema is not None:
+            return "%s.%s.%s" % (self._colspec.table.schema, self._colspec.table.name, self._colspec.column.key)
+        else:
+            return "%s.%s" % (self._colspec.table.name, self._colspec.column.key)
+        
     def references(self, table):
         """returns True if the given table is referenced by this ForeignKey."""
         try:
@@ -390,7 +412,9 @@ class DefaultGenerator(SchemaItem):
     def _set_parent(self, column):
         self.column = column
         self.column.default = self
-
+    def __repr__(self):
+        return "DefaultGenerator()"
+        
 class ColumnDefault(DefaultGenerator):
     """A plain default value on a column.  this could correspond to a constant, 
     a callable function, or a SQL clause."""
@@ -399,6 +423,8 @@ class ColumnDefault(DefaultGenerator):
     def accept_visitor(self, visitor):
         """calls the visit_column_default method on the given visitor."""
         return visitor.visit_column_default(self)
+    def __repr__(self):
+        return "ColumnDefault(%s)" % repr(self.arg)
         
 class Sequence(DefaultGenerator):
     """represents a sequence, which applies to Oracle and Postgres databases."""
@@ -407,6 +433,12 @@ class Sequence(DefaultGenerator):
         self.start = start
         self.increment = increment
         self.optional=optional
+    def __repr__(self):
+        return "Sequence(%s)" % string.join(
+             [repr(self.name)] +
+             ["%s=%s" % (k, repr(getattr(self, k))) for k in ['start', 'increment', 'optional']]
+            , ',')
+    
     def accept_visitor(self, visitor):
         """calls the visit_seauence method on the given visitor."""
         return visitor.visit_sequence(self)

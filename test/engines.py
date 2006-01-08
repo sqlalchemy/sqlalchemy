@@ -35,6 +35,9 @@ class EngineTest(PersistTest):
             Column('email_address', String(20)),
         )
 
+        print repr(users)
+        print repr(addresses)
+        
 #        users.c.parent_user_id.set_foreign_key(ForeignKey(users.c.user_id))
 
         users.create()

@@ -9,6 +9,7 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'NullTypeEngine',
             'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN', 'String', 'Integer', 'Numeric', 'Float', 'DateTime', 'Binary', 'Boolean', 'Unicode', 'NULLTYPE'
             ]
 
+import sqlalchemy.util as util
 
 class TypeEngine(object):
     def get_col_spec(self):
@@ -21,6 +22,8 @@ class TypeEngine(object):
         return typeobj()
     def adapt_args(self):
         return self
+    def __repr__(self):
+        return util.generic_repr(self)
         
 def adapt_type(typeobj, colspecs):
     """given a generic type from this package, and a dictionary of 

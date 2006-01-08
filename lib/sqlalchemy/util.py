@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-__all__ = ['OrderedProperties', 'OrderedDict']
+__all__ = ['OrderedProperties', 'OrderedDict', 'generic_repr', 'HashSet']
 import thread, weakref, UserList,string, inspect
 
 def to_list(x):
@@ -14,6 +14,10 @@ def to_list(x):
         return [x]
     else:
         return x
+
+def generic_repr(obj, exclude=None):
+    L = ['%s=%s' % (a, repr(getattr(obj, a))) for a in dir(obj) if not callable(getattr(obj, a)) and not a.startswith('_') and (exclude is None or not exclude.has_key(a))]
+    return '%s(%s)' % (obj.__class__.__name__, ','.join(L))
         
 class OrderedProperties(object):
     """an object that maintains the order in which attributes are set upon it.
