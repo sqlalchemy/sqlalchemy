@@ -130,7 +130,13 @@ class MapperTest(MapperSuperTest):
             print "User", u.user_id, u.user_name, u.concat, u.count
         #l[1].user_name='asdf'
         #objectstore.commit()
-        
+    
+    def testcount(self):
+        m = mapper(User, users)
+        self.assert_(m.count()==3)
+        self.assert_(m.count(users.c.user_id.in_(8,9))==2)
+        self.assert_(m.count_by(user_name='fred')==1)
+            
     def testmultitable(self):
         usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
         m = mapper(User, usersaddresses, primarytable = users, primary_key=[users.c.user_id])

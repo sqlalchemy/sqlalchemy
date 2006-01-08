@@ -338,8 +338,10 @@ class Mapper(object):
             return None
             
     def select_by(self, *args, **params):
-        """returns an array of object instances based on the given key/value criterion. 
+        """returns an array of object instances based on the given clauses and key/value criterion. 
         
+        *args is a list of zero or more ClauseElements which will be connected by AND operators.
+        **params is a set of zero or more key/value parameters which are converted into ClauseElements.
         the keys are mapped to property or column names mapped by this mapper's Table, and the values
         are coerced into a WHERE clause separated by AND operators.  If the local property/column
         names dont contain the key, a search will be performed against this mapper's immediate
@@ -348,6 +350,14 @@ class Mapper(object):
         
         e.g.   result = usermapper.select_by(user_name = 'fred')
         """
+        return self.select_whereclause(self._by_clause(*args, **params))
+
+    def count_by(self, *args, **params):
+        """returns the count of instances based on the given clauses and key/value criterion.
+        The criterion is constructed in the same way as the select_by() method."""
+        return self.count(self._by_clause(*args, **params))
+        
+    def _by_clause(self, *args, **params):
         clause = None
         for arg in args:
             if clause is None:
@@ -364,7 +374,7 @@ class Mapper(object):
                 clause = c
             else:                
                 clause &= c
-        return self.select_whereclause(clause)
+        return clause
 
     def _get_criterion(self, key, value):
         """used by select_by to match a key/value pair against
@@ -426,6 +436,13 @@ class Mapper(object):
             return self.select_statement(statement, **params)
         else:
             return self.select_statement(statement)
+
+    def count(self, whereclause = None, params=None, **kwargs):
+        s = self.table.count(whereclause)
+        if params is not None:
+            return s.scalar(**params)
+        else:
+            return s.scalar()
 
     def select_statement(self, statement, **params):
         statement.use_labels = True
