@@ -15,7 +15,7 @@ setup(name = "SQLAlchemy",
     classifiers = [
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
-        "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
+        "License :: OSI Approved :: MIT/X Consortium License",
         "Programming Language :: Python",
         "Topic :: Database :: Front-Ends",
     ]
