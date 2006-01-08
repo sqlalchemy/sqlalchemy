@@ -488,6 +488,8 @@ class FromClause(Selectable):
         return "FromClause(%s, %s)" % (repr(self.id), repr(self.from_name))
     def accept_visitor(self, visitor): 
         visitor.visit_fromclause(self)
+    def count(self, whereclause=None, **params):
+        return select([func.count(1).label('count')], whereclause, from_obj=[self], **params)
     def join(self, right, *args, **kwargs):
         return Join(self, right, *args, **kwargs)
     def outerjoin(self, right, *args, **kwargs):
@@ -698,7 +700,9 @@ class Function(ClauseList, CompareMixin):
         return BinaryClause(self, obj, operator)
     def _make_proxy(self, selectable, name = None):
         return self
-        
+    def select(self):
+        return select([self])
+            
 class BinaryClause(ClauseElement, CompareMixin):
     """represents two clauses with an operator in between"""
     def __init__(self, left, right, operator, type=None):
@@ -791,7 +795,9 @@ class Join(FromClause):
         def __init__(self, id, join):
             FromClause.__init__(self, from_key=id)
             self.join = join
-            
+        def _exportable_columns(self):
+            return []
+                
     def _process_from_dict(self, data, asfrom):
         for f in self.onclause._get_from_objects():
             data[f.id] = f
@@ -1008,7 +1014,8 @@ class TableImpl(FromClause):
             data.setdefault(f.id, f)
         if asfrom:
             data[self.id] = self.table
-    
+    def count(self, whereclause=None, **params):
+        return select([func.count(1).label('count')], whereclause, from_obj=[self.table], **params)
     def join(self, right, *args, **kwargs):
         return Join(self.table, right, *args, **kwargs)
     def outerjoin(self, right, *args, **kwargs):
