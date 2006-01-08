@@ -238,6 +238,9 @@ class Column(SchemaItem):
     original = property(lambda s: s._orig or s)
     engine = property(lambda s: s.table.engine)
     
+    def append_item(self, item):
+        self._init_items(item)
+        
     def _set_primary_key(self):
         if self.primary_key:
             return
@@ -374,6 +377,10 @@ class ForeignKey(SchemaItem):
         
     def _set_parent(self, column):
         self.parent = column
+        # if a foreign key was already set up for this, replace it with 
+        # this one, including removing from the parent
+        if self.parent.foreign_key is not None:
+            self.parent.table.foreign_keys.remove(self.parent.foreign_key)
         self.parent.foreign_key = self
         self.parent.table.foreign_keys.append(self)
 

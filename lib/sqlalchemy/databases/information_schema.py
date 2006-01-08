@@ -130,4 +130,5 @@ def reflecttable(engine, table, ischema_names, use_mysql=False):
             table.c[constrained_column]._set_primary_key()
         elif type=='FOREIGN KEY':
             remotetable = Table(referred_table, engine, autoload = True, schema=referred_schema)
-            table.c[constrained_column].foreign_key = schema.ForeignKey(remotetable.c[referred_column])
+            table.c[constrained_column].append_item(schema.ForeignKey(remotetable.c[referred_column]))
+            

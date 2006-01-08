@@ -150,7 +150,7 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
             (tablename, localcol, remotecol) = (row[2], row[3], row[4])
             #print "row! " + repr(row)
             remotetable = Table(tablename, self, autoload = True)
-            table.c[localcol].foreign_key = schema.ForeignKey(remotetable.c[remotecol])
+            table.c[localcol].append_item(schema.ForeignKey(remotetable.c[remotecol]))
         # check for UNIQUE indexes
         c = self.execute("PRAGMA index_list(" + table.name + ")", {})
         unique_indexes = []
