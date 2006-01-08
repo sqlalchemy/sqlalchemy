@@ -5,7 +5,9 @@ import testbase
     
 db = testbase.db
 
-class TypesTest(PersistTest):
+
+
+class OverrideTest(PersistTest):
 
     def testprocessing(self):
         class MyType(types.TypeEngine):
@@ -38,6 +40,30 @@ class TypesTest(PersistTest):
         l = users.select(use_labels=True).execute().fetchall()
         print repr(l)
         self.assert_(l == [(2, u'BIND_INjackBIND_OUT'), (3, u'BIND_INlalaBIND_OUT'), (4, u'BIND_INfredBIND_OUT')])
+
+
+class ColumnsTest(AssertMixin):
+
+    def testcolumns(self):
+        defaultExpectedResults = { 'int_column': 'int_column INTEGER',
+                                   'varchar_column': 'varchar_column VARCHAR(20)',
+                                   'numeric_column': 'numeric_column NUMERIC(12, 3)',
+                                   'float_column': 'float_column NUMERIC(25, 2)'
+                                 }
+
+        if db.engine.__module__ != 'sqlite':
+            expectedResults['float_column'] = 'float_column FLOAT(25)'
+    
+        testTable = Table('testColumns', db,
+            Column('int_column', Integer),
+            Column('varchar_column', String(20)),
+            Column('numeric_column', Numeric(12,3)),
+            Column('float_column', Float(25)),
+        )
+
+        for aCol in testTable.c:
+            self.assertEquals(expectedResults[aCol.name], self.db.schemagenerator(None).get_column_specification(aCol))
+        
 
 class BinaryTest(AssertMixin):
     def setUpAll(self):
