@@ -135,6 +135,8 @@ class HashSet(object):
         self.map.clear()
     def append(self, item):
         self.map[item] = item
+    def remove(self, item):
+        del self.map[item]
     def __add__(self, other):
         return HashSet(self.map.values() + [i for i in other])
     def __len__(self):
