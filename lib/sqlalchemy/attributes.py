@@ -242,8 +242,6 @@ class MTOBackrefExtension(AttributeExtension):
             getattr(oldchild, self.key).remove(obj)
         if child is not None:
             getattr(child, self.key).append(obj)
-#            getattr(child, self.key).append(obj)
-            
 class AttributeManager(object):
     """maintains a set of per-attribute history container objects for a set of objects."""
     def __init__(self):

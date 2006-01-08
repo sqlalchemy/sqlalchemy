@@ -575,7 +575,10 @@ class SQLEngine(schema.SchemaEngine):
         return ResultProxy(cursor, self, typemap=typemap)
 
     def _execute(self, c, statement, parameters):
+        #try:
         c.execute(statement, parameters)
+        #except:
+        #    raise "OK ERROR " + statement + " " + repr(parameters)
         self.context.rowcount = c.rowcount
     def _executemany(self, c, statement, parameters):
         c.executemany(statement, parameters)
