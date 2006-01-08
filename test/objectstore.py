@@ -181,6 +181,8 @@ class SaveTest(AssertMixin):
         """tests a save of an object where each instance spans two tables. also tests
         redefinition of the keynames for the column properties."""
         usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
+        print usersaddresses._get_col_by_original(users.c.user_id)
+        print repr(usersaddresses._orig_cols)
         m = mapper(User, usersaddresses, primarytable = users,  
             properties = dict(
                 email = addresses.c.email_address, 

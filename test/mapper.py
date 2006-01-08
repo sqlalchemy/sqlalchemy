@@ -122,7 +122,7 @@ class MapperTest(MapperSuperTest):
     def testfunction(self):
         """tests mapping to a SELECT statement that has functions in it."""
         s = select([users, (users.c.user_id * 2).label('concat'), func.count(addresses.c.address_id).label('count')],
-        users.c.user_id==addresses.c.user_id, group_by=[c for c in users.c])
+        users.c.user_id==addresses.c.user_id, group_by=[c for c in users.c]).alias('myselect')
         m = mapper(User, s, primarytable=users)
         print [c.key for c in m.c]
         l = m.select()
