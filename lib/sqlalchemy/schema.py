@@ -281,7 +281,11 @@ class Column(SchemaItem):
         c._orig = self.original
         if not c.hidden:
             selectable.columns[c.key] = c
+            if self.primary_key:
+                selectable.primary_key.append(c)
         c._impl = self.engine.columnimpl(c)
+        if fk is not None:
+            c._init_items(fk)
         return c
 
     def accept_visitor(self, visitor):
@@ -325,17 +329,17 @@ class ForeignKey(SchemaItem):
         if isinstance(self._colspec, str):
             return ForeignKey(self._colspec)
         else:
-            return ForeignKey("%s.%s" % (self._colspec.table.name, self._colspec.column.key))
+            if self._colspec.table.schema is not None:
+                return ForeignKey("%s.%s.%s" % (self._colspec.table.schema, self._colspec.table.name, self._colspec.column.key))
+            else:
+                return ForeignKey("%s.%s" % (self._colspec.table.name, self._colspec.column.key))
     
     def references(self, table):
         """returns True if the given table is referenced by this ForeignKey."""
-        return (
-            # simple test
-            self.column.table is table      
-            or
-            # test for an indirect relation via a Selectable
-            table._get_col_by_original(self.column) is not None
-        )
+        try:
+            return table._get_col_by_original(self.column) is not None
+        except:
+            x = self._init_column()
         
     def _init_column(self):
         # ForeignKey inits its remote column as late as possible, so tables can
@@ -347,8 +351,8 @@ class ForeignKey(SchemaItem):
                     raise ValueError("Invalid foreign key column specification: " + self._colspec)
                 if m.group(3) is None:
                     (tname, colname) = m.group(1, 2)
-                    # default to containing table's schema
-                    schema = self.parent.table.schema
+                    # use default schema
+                    schema = None
                 else:
                     (schema,tname,colname) = m.group(1,2,3)
                 table = Table(tname, self.parent.engine, mustexist=True, schema=schema)
