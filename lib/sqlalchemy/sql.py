@@ -465,7 +465,8 @@ class Selectable(ClauseElement):
 
 class ColumnElement(Selectable, CompareMixin):
     """represents a column element within the list of a Selectable's columns."""
-    primary_key = property(lambda s:getattr(self, '_primary_key', False))
+    primary_key = property(lambda self:getattr(self, '_primary_key', False))
+    foreign_key = property(lambda self:getattr(self, '_foreign_key', False))
     original = property(lambda self:getattr(self, '_original', self))
     columns = property(lambda self:[self])
 
