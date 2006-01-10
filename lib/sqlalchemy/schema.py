@@ -40,7 +40,7 @@ class SchemaItem(object):
 
     def hash_key(self):
         """returns a string that identifies this SchemaItem uniquely"""
-        return repr(self)
+        return "%s(%d)" % (self.__class__.__name__, id(self))
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
