@@ -118,10 +118,16 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         else:
             self.module = module
         # figure psycopg version 1 or 2    
-        if self.module.__name__.endswith('psycopg2'):
-            self.version = 2
-        else:
-            self.version = 1
+	try:
+	    if self.module.__version__.startswith('2'):
+		self.version = 2
+	    else:
+		self.version = 1
+	except:
+	    if self.module.__name__.endswith('psycopg2'):
+		self.version = 2
+	    else:
+		self.version = 1
         self.opts = opts or {}
         ansisql.ANSISQLEngine.__init__(self, **params)
 
