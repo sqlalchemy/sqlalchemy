@@ -146,7 +146,7 @@ class UnitOfWork(object):
         if parent is not None:
             self.identity_map = parent.identity_map
         else:
-            self.identity_map = {}
+            self.identity_map = weakref.WeakValueDictionary()
             
         self.attributes = global_attributes
         self.new = util.HashSet(ordered = True)
