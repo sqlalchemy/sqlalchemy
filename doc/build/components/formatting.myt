@@ -215,6 +215,22 @@
     </table>
 </%method>
 
+<%method member_doc>
+       <%args>
+               name = ""
+               type = None
+       </%args>
+       <tr>
+       <td>
+           <div class="darkcell">
+           <A name="<% m.comp('doclib.myt:current').path %>_<% name %>"></a>
+           <b><% name %></b></td>
+           <div class="docstring"><% m.content() %></div>
+           </div>
+       </td>
+       </tr>
+</%method>
+
 
 <%method function_doc>
     <%args>
