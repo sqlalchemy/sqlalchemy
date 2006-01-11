@@ -34,8 +34,7 @@ def get_id_key(ident, class_, table):
     selectable - a Selectable object which represents all the object's column-based fields.
     this Selectable may be synonymous with the table argument or can be a larger construct
     containing that table. return value: a tuple object which is used as an identity key. """
-    return (class_, "Table(%d)" % id(table), tuple(ident))
-    
+    return (class_, table.hash_key(), tuple(ident))
 def get_row_key(row, class_, table, primary_key):
     """returns an identity-map key for use in storing/retrieving an item from the identity
     map, given a result set row.
@@ -51,7 +50,7 @@ def get_row_key(row, class_, table, primary_key):
     this Selectable may be synonymous with the table argument or can be a larger construct
     containing that table. return value: a tuple object which is used as an identity key.
     """
-    return (class_, "Table(%d)" % id(table), tuple([row[column] for column in primary_key]))
+    return (class_, table.hash_key(), tuple([row[column] for column in primary_key]))
 
 def begin():
     """begins a new UnitOfWork transaction.  the next commit will affect only
