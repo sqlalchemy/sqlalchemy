@@ -148,7 +148,7 @@ class Table(SchemaItem):
             raise "Unknown arguments passed to Table: " + repr(kwargs.keys())
 
     def __repr__(self):
-       return "Table(%s)" % string.join(
+        return "Table(%s)" % string.join(
         [repr(self.name)] + [repr(self.engine)] +
         [repr(x) for x in self.columns] +
         ["%s=%s" % (k, repr(getattr(self, k))) for k in ['schema']]
