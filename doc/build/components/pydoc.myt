@@ -1,7 +1,6 @@
 <%global>
-    import re
+    import re, types
     def format_paragraphs(text):
-        return text
         return re.sub(r'([\w ])\n([\w ])', r'\1 \2', text or '', re.S)
 </%global>
 
@@ -44,11 +43,17 @@
                     classes.sort(lambda a, b: cmp(a.__name__, b.__name__))
         else:
             if functions is None:
-                functions = [getattr(obj, x).im_func for x in obj.__dict__.keys() if isinstance(getattr(obj,x), types.MethodType) 
+                functions = (
+                    [getattr(obj, x).im_func for x in obj.__dict__.keys() if isinstance(getattr(obj,x), types.MethodType) 
                     and 
                     (getattr(obj, x).__name__ == '__init__' or not getattr(obj,x).__name__[0] == '_')
-                ]
-                functions.sort(lambda a, b: cmp(a.__name__, b.__name__))
+                    ] + 
+                    [(x, getattr(obj, x)) for x in obj.__dict__.keys() if isinstance(getattr(obj,x), property) 
+                    and 
+                    not x[0] == '_'
+                    ]
+                 )
+                functions.sort(lambda a, b: cmp(getattr(a, '__name__', None) or a[0], getattr(b, '__name__', None) or b[0] ))
             if classes is None:
                 classes = []
             
@@ -61,7 +66,7 @@
     </%init>
 
 <&|doclib.myt:item, name=obj.__name__, description=description &>
-<&|formatting.myt:formatplain&><% format_paragraphs(obj.__doc__) %></&><br/>
+<&|formatting.myt:formatplain&><% format_paragraphs(obj.__doc__) %></&>
 
 % if not isclass and len(functions):
 <&|doclib.myt:item, name="modfunc", description="Module Functions" &>
@@ -71,12 +76,18 @@
 %
 </&>
 </&>
-% elif len(functions):
+% else:
+% if len(functions):
 <&|formatting.myt:paramtable&>
 %   for func in functions:
+%   if isinstance(func, types.FunctionType):
     <& SELF:function_doc, func=func &>
+%   elif isinstance(func, tuple):
+    <& SELF:property_doc, name = func[0], prop=func[1] &>
+%
 %
 </&>
+%
 %
 
 % if len(classes):
@@ -115,4 +126,15 @@
     <&| formatting.myt:function_doc, name="def " + func.__name__, arglist=argstrings &>
     <&|formatting.myt:formatplain&><% format_paragraphs(func.__doc__) %></&>
     </&>
+</%method>
+
+
+<%method property_doc>
+    <%args>
+        name
+        prop
+    </%args>
+    <&| formatting.myt:member_doc, name=name + " = property()" &>
+    <&|formatting.myt:formatplain&><% format_paragraphs(prop.__doc__) %></&>
+    </&>    
 </%method>

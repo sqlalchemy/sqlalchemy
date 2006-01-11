@@ -79,7 +79,7 @@ html_escapes = {
     '"' : '&quot;'
 }
 
-def html_escape(string):
+def do_html_escape(string):
     #return "@" + re.sub(r"([&<>])", lambda m: html_escapes[m.group()], string) + "+"
     return re.sub(r"([&<>])", lambda m: html_escapes[m.group()], string) 
 
@@ -97,7 +97,7 @@ def highlight(source, filename = None, syntaxtype = None, html_escape = True):
         
     if highlighter is None:
         if html_escape:
-            return html_escape(source)
+            return do_html_escape(source)
         else:
             return source
     else:
@@ -123,12 +123,12 @@ class Highlighter:
         for pair in tokens:
             if pair[1] is None:
                 if self.html_escape:
-                    self.output.write(html_escape(pair[0]))
+                    self.output.write(do_html_escape(pair[0]))
                 else:
                     self.output.write(pair[0])
             else:
                 if self.html_escape:
-                    self.output.write('<span class="%s">%s</span>' % (pair[1], html_escape(pair[0])))
+                    self.output.write('<span class="%s">%s</span>' % (pair[1], do_html_escape(pair[0])))
                 else:
                     self.output.write('<span class="%s">%s</span>' % (pair[1], pair[0]))
 
