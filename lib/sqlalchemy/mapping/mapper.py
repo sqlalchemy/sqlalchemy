@@ -215,7 +215,11 @@ class Mapper(object):
             def init(self, *args, **kwargs):
                 nohist = kwargs.pop('_mapper_nohistory', False)
                 if oldinit is not None:
-                    oldinit(self, *args, **kwargs)
+                    try:
+                        oldinit(self, *args, **kwargs)
+                    except TypeError, msg:
+                        # re-raise with the offending class name added to help in debugging
+                        raise TypeError, '%s.%s' %(self.__class__.__name__, msg)
                 if not nohist:
                     objectstore.uow().register_new(self)
             self.class_.__init__ = init
