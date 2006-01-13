@@ -140,7 +140,7 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
             if args is not None:
                 args = re.findall(r'(\d+)', args)
                 #print "args! " +repr(args)
-                coltype = coltype(*args)
+                coltype = coltype(*[int(a) for a in args])
             table.append_item(schema.Column(name, coltype, primary_key = primary_key, nullable = nullable))
         c = self.execute("PRAGMA foreign_key_list(" + table.name + ")", {})
         while True:
