@@ -143,6 +143,27 @@ class MapperTest(MapperSuperTest):
         l = m.select()
         self.assert_result(l, User, *user_result[0:2])
 
+    def testoverride(self):
+        # assert that overriding a column raises an error
+        try:
+            m = mapper(User, users, properties = {
+                    'user_name' : relation(Address, addresses),
+                })
+            self.assert_(False, "should have raised ValueError")
+        except ValueError, e:
+            self.assert_(True)
+            
+        # assert that allow_column_override cancels the error
+        m = mapper(User, users, properties = {
+                'user_name' : relation(Address, addresses)
+            }, allow_column_override=True)
+            
+        # assert that the column being named else where also cancels the error
+        m = mapper(User, users, properties = {
+                'user_name' : relation(Address, addresses),
+                'foo' : users.c.user_name,
+            })
+
     def testeageroptions(self):
         """tests that a lazy relation can be upgraded to an eager relation via the options method"""
         m = mapper(User, users, properties = dict(
