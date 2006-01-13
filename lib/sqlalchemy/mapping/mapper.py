@@ -30,6 +30,7 @@ class Mapper(object):
                 inherit_condition = None, 
                 extension = None,
                 order_by = False,
+                allow_column_override = False,
                 **kwargs):
 
         self.copyargs = {
@@ -153,8 +154,10 @@ class Mapper(object):
             elif isinstance(prop, ColumnProperty):
                 prop.columns.append(column)
             else:
-                #print "WARNING: column %s not being added due to property %s" % (column.key, repr(prop))
-                continue
+                if not allow_column_override:
+                    raise ValueError("WARNING: column '%s' not being added due to property '%s'.  Specify 'allow_column_override=True' to mapper() to ignore this condition." % (column.key, repr(prop)))
+                else:
+                    continue
         
             # its a ColumnProperty - match the ultimate table columns
             # back to the property
