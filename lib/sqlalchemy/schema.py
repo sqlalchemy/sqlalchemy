@@ -376,8 +376,7 @@ class ForeignKey(SchemaItem):
                     raise ValueError("Invalid foreign key column specification: " + self._colspec)
                 if m.group(3) is None:
                     (tname, colname) = m.group(1, 2)
-                    # use default schema
-                    schema = None
+                    schema = self.parent.original.table.schema
                 else:
                     (schema,tname,colname) = m.group(1,2,3)
                 table = Table(tname, self.parent.engine, mustexist=True, schema=schema)
