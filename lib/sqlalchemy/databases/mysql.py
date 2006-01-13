@@ -146,7 +146,29 @@ class MySQLEngine(ansisql.ANSISQLEngine):
         return self.module
 
     def reflecttable(self, table):
-        ischema.reflecttable(self, table, ischema_names, use_mysql=True)
+        # to use information_schema:
+        #ischema.reflecttable(self, table, ischema_names, use_mysql=True)
+        
+        c = self.execute("describe " + table.name, {})
+        while True:
+            row = c.fetchone()
+            if row is None:
+                break
+            #print "row! " + repr(row)
+            (name, type, nullable, primary_key, default) = (row[0], row[1], row[2] == 'YES', row[3] == 'PRI', row[4])
+            
+            match = re.match(r'(\w+)(\(.*?\))?', type)
+            coltype = match.group(1)
+            args = match.group(2)
+            
+            #print "coltype: " + repr(coltype) + " args: " + repr(args)
+            coltype = ischema_names.get(coltype, MSString)
+            if args is not None:
+                args = re.findall(r'(\d+)', args)
+                #print "args! " +repr(args)
+                coltype = coltype(*[int(a) for a in args])
+            table.append_item(schema.Column(name, coltype, primary_key=primary_key, nullable=nullable, default=default))
+        
 
 class MySQLTableImpl(sql.TableImpl):
     """attached to a schema.Table to provide it with a Selectable interface

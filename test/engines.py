@@ -59,7 +59,8 @@ class EngineTest(PersistTest):
         try:
             # create a join from the two tables, this insures that
             # theres a foreign key set up
-#            addresses.c.remote_user_id.append_item(ForeignKey('engine_users.user_id'))
+            if testbase.db.engine.__module__.endswith('mysql'):
+                addresses.c.remote_user_id.append_item(ForeignKey('engine_users.user_id'))
             j = join(users, addresses)
             print str(j.onclause)
             self.assert_((users.c.user_id==addresses.c.remote_user_id).compare(j.onclause))
