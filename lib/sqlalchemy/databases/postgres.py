@@ -236,7 +236,7 @@ class PGSchemaGenerator(ansisql.ANSISchemaGenerator):
         if column.primary_key and not override_pk:
             colspec += " PRIMARY KEY"
         if column.foreign_key:
-            colspec += " REFERENCES %s(%s)" % (column.column.foreign_key.column.table.name, column.column.foreign_key.column.name) 
+            colspec += " REFERENCES %s(%s)" % (column.column.foreign_key.column.table.fullname, column.column.foreign_key.column.name) 
         return colspec
 
     def visit_sequence(self, sequence):
