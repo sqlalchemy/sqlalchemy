@@ -97,6 +97,27 @@ class EngineTest(PersistTest):
         table.select().execute().fetchall()
         table.drop()
         
+    def testtoengine(self):
+        db = ansisql.engine()
+        
+        table = Table('mytable', db,
+            Column('myid', Integer, key = 'id'),
+            Column('name', String, key = 'name', nullable=False),
+            Column('description', String, key = 'description'),
+        )
+        
+        print repr(table)
+        
+        pgdb = postgres.engine({})
+        
+        pgtable = table.toengine(pgdb)
+        
+        print repr(pgtable)
+        assert pgtable.c.id.nullable 
+        assert not pgtable.c.name.nullable 
+        assert pgtable.c.description.nullable 
+        
+        
         
 if __name__ == "__main__":
     testbase.main()        

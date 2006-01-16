@@ -288,7 +288,7 @@ class Column(SchemaItem):
             fk = None
         else:
             fk = self.foreign_key.copy()
-        return Column(self.name, self.type, fk, self.default, key = self.key, primary_key = self.primary_key)
+        return Column(self.name, self.type, fk, self.default, key = self.key, primary_key = self.primary_key, nullable=self.nullable, hidden=self.hidden)
         
     def _make_proxy(self, selectable, name = None):
         """creates a copy of this Column, initialized the way this Column is"""
@@ -296,7 +296,7 @@ class Column(SchemaItem):
             fk = None
         else:
             fk = self.foreign_key.copy()
-        c = Column(name or self.name, self.type, fk, self.default, key = name or self.key, primary_key = self.primary_key, hidden=self.hidden)
+        c = Column(name or self.name, self.type, fk, self.default, key = name or self.key, primary_key = self.primary_key, nullable=self.nullable, hidden=self.hidden)
         c.table = selectable
         c._orig = self.original
         if not c.hidden:
