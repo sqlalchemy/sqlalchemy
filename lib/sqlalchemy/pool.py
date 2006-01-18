@@ -229,6 +229,14 @@ class DBProxy(object):
         be created, a new database connection will be made."""
         return self.get_pool(*args, **params).connect()
     
+    def dispose(self, *args, **params):
+        """disposes the connection pool referenced by the given connect arguments."""
+        key = self._serialize(*args, **params)
+        try:
+            del self.pools[key]
+        except KeyError:
+            pass
+        
     def _serialize(self, *args, **params):
         return cPickle.dumps([args, params])
 

@@ -183,6 +183,11 @@ class SQLEngine(schema.SchemaEngine):
         else:
             self.logger = logger
     
+    def dispose(self):
+        """disposes of the underlying pool manager for this SQLEngine."""
+        (cargs, cparams) = self.connect_args()
+        sqlalchemy.pool.manage(self.dbapi()).dispose(*cargs, **cparams)
+        
     def _set_paramstyle(self, style):
         self._paramstyle = style
         self._figure_paramstyle(style)
