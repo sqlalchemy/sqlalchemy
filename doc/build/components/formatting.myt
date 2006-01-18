@@ -361,5 +361,9 @@ javascript:togglePopbox('<% name %>', '<% show %>', '<% hide %>')
 </%method>
 
 <%method poppedcode trim="both">
-    '''PYESC<div class="codepop" &><% m.content() %></div>PYESC'''
+	<%init>
+		c = m.content()
+		c = re.sub(r'\n', '<br/>\n', c.strip())
+	</%init>
+    </pre><div class="codepop"><% c %></div><pre>
 </%method>
