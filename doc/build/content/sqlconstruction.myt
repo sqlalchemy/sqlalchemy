@@ -618,8 +618,7 @@ AND addresses.street LIKE :addresses_street)
                     addresses.select(addresses.c.street=='44 Park Ave.'),
                     addresses.select(addresses.c.street=='3 Mill Road'),
                     order_by=[addresses.c.street]
-                ).execute()
-
+                ).execute()\
 <&|formatting.myt:codepopper, link="sql" &>
 SELECT addresses.address_id, addresses.user_id, addresses.street, 
 addresses.city, addresses.state, addresses.zip 
@@ -637,7 +636,6 @@ ORDER BY addresses.street
 'addresses_street': '123 Green Street', 
 'addresses_street_2': '3 Mill Road'}
 </&>
-
             <&formatting.myt:poplink&>users.select(
                     users.c.user_id==7
                   ).union_all(
@@ -645,7 +643,7 @@ ORDER BY addresses.street
                           users.c.user_id==9
                       ), 
                       order_by=[users.c.user_id]   # order_by is an argument to union_all()
-                  ).execute()        
+                  ).execute() 
 <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.password 
 FROM users WHERE users.user_id = :users_user_id 
@@ -661,19 +659,19 @@ ORDER BY users.user_id
     <p>Throughout all these examples, SQLAlchemy is busy creating bind parameters wherever literal expressions occur.  You can also specify your own bind parameters with your own names, and use the same statement repeatedly.  As mentioned at the top of this section, named bind parameters are always used regardless of the type of DBAPI being used; for DBAPI's that expect positional arguments, bind parameters are converted to lists right before execution, and Pyformat strings in statements, i.e. '%(name)s', are converted to the appropriate positional style.</p>
     <&|formatting.myt:code &>
         s = users.select(users.c.user_name==bindparam('username'))
-        <&formatting.myt:poplink&>s.execute(username='fred')
+        <&formatting.myt:poplink&>s.execute(username='fred')\
 <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.password 
 FROM users WHERE users.user_name = :username
 {'username': 'fred'}
 </&>
-        <&formatting.myt:poplink&>s.execute(username='jane')
+        <&formatting.myt:poplink&>s.execute(username='jane')\
 <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.password 
 FROM users WHERE users.user_name = :username
 {'username': 'jane'}
 </&>
-        <&formatting.myt:poplink&>s.execute(username='mary')
+        <&formatting.myt:poplink&>s.execute(username='mary')\
 <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.password 
 FROM users WHERE users.user_name = :username
@@ -700,7 +698,7 @@ FROM users WHERE users.user_name = :username
 <&|formatting.myt:codepopper, link="sql" &>
 SELECT user_id, user_name FROM users
 {}
-</&>            
+</&>
             # strings for full column lists
             <&formatting.myt:poplink&>select(
                     ["user_id, user_name, password, addresses.*"], 
@@ -709,20 +707,20 @@ SELECT user_id, user_name FROM users
 SELECT u.user_id, u.user_name, u.password, addresses.* 
 FROM users AS u, addresses
 {}
-</&>            
+</&>
             # functions, etc.
             <&formatting.myt:poplink&>select([users.c.user_id, "process_string(user_name)"]).execute()
 <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, process_string(user_name) FROM users
 {}
-</&>            
+</&>
             # where clauses
             <&formatting.myt:poplink&>users.select(and_(users.c.user_id==7, "process_string(user_name)=27")).execute()
 <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.password FROM users 
 WHERE users.user_id = :users_user_id AND process_string(user_name)=27
 {'users_user_id': 7}
-</&>            
+</&>
             # subqueries
             <&formatting.myt:poplink&>users.select(
                 "exists (select 1 from addresses where addresses.user_id=users.user_id)").execute()
@@ -730,7 +728,7 @@ WHERE users.user_id = :users_user_id AND process_string(user_name)=27
 SELECT users.user_id, users.user_name, users.password FROM users 
 WHERE exists (select 1 from addresses where addresses.user_id=users.user_id)
 {}
-</&>            
+</&>
             # custom FROM objects
             <&formatting.myt:poplink&>select(
                     ["*"], 
@@ -739,15 +737,13 @@ WHERE exists (select 1 from addresses where addresses.user_id=users.user_id)
 <&|formatting.myt:codepopper, link="sql" &>
 SELECT * FROM (select user_id, user_name from users)
 {}
-</&>            
-            
+</&>
             # a full query
             <&formatting.myt:poplink&>text("select user_name from users", engine=db).execute()
 <&|formatting.myt:codepopper, link="sql" &>
 select user_name from users
 {}
-</&>            
-            
+</&>
             # a straight text query like the one above is also available directly off the engine
             # (though youre going to have to drop down to the DBAPI's style of bind params)
             <&formatting.myt:poplink&>db.execute(
@@ -756,7 +752,7 @@ select user_name from users
 <&|formatting.myt:codepopper, link="sql" &>
 select user_name from users where user_id=:user_id
 {'user_id':7}
-</&>            
+</&>
 
             
         </&>
@@ -789,14 +785,14 @@ SELECT users.user_id, users.user_name, users.password
 FROM users 
 WHERE users.user_id = :users_user_id
 {'users_user_id': 7}
-</&>            
+</&>
             <&formatting.myt:poplink&>find_users(street='123 Green Street')
 <&|formatting.myt:codepopper, link="sql" &>
 SELECT users.user_id, users.user_name, users.password 
 FROM users, addresses 
 WHERE users.user_id = addresses.user_id AND addresses.street = :addresses_street
 {'addresses_street': '123 Green Street'}
-</&>            
+</&>
             <&formatting.myt:poplink&>find_users(name='Jack', keywords=['jack','foo'])
 <&|formatting.myt:codepopper, link="sql" &>
 SELECT DISTINCT users.user_id, users.user_name, users.password 
@@ -804,48 +800,45 @@ FROM users JOIN userkeywords ON users.user_id = userkeywords.user_id
 JOIN keywords ON userkeywords.keyword_id = keywords.keyword_id 
 WHERE users.user_name = :users_user_name AND keywords.name IN ('jack', 'foo')
 {'users_user_name': 'Jack'}
-</&>            
+</&>
 
         </&>
     </&>
     <&|doclib.myt:item, name="insert", description="Inserts" &>
     <p>An INSERT involves just one table.  The Insert object is used via the insert() function, and the specified columns determine what columns show up in the generated SQL.  If primary key columns are left out of the criterion, the SQL generator will try to populate them as specified by the particular database engine and sequences, i.e. relying upon an auto-incremented column or explicitly calling a sequence beforehand.  Insert statements, as well as updates and deletes, can also execute multiple parameters in one pass via specifying an array of dictionaries as parameters.</p>
         <p>The values to be populated for an INSERT or an UPDATE can be specified to the insert()/update() functions as the <span class="codeline">values</span> named argument, or the query will be compiled based on the values of the parameters sent to the execute() method.</p>
-        <&|formatting.myt:code &>
+<&|formatting.myt:code &>
             # basic insert
             <&formatting.myt:poplink&>users.insert().execute(user_id=1, user_name='jack', password='asdfdaf')
-            <&|formatting.myt:codepopper, link="sql" &>
-            INSERT INTO users (user_id, user_name, password) 
-            VALUES (:user_id, :user_name, :password)
-            {'user_name': 'jack', 'password': 'asdfdaf', 'user_id': 1}
-            </&>            
+<&|formatting.myt:codepopper, link="sql" &>
+INSERT INTO users (user_id, user_name, password) 
+VALUES (:user_id, :user_name, :password)
+{'user_name': 'jack', 'password': 'asdfdaf', 'user_id': 1}
+</&>
             # insert just user_name, NULL for others
             # will auto-populate primary key columns if they are configured
             # to do so
             <&formatting.myt:poplink&>users.insert().execute(user_name='ed')
-            <&|formatting.myt:codepopper, link="sql" &>
-            INSERT INTO users (user_name) VALUES (:user_name)
-            {'user_name': 'ed'}
-            </&>            
-            
+<&|formatting.myt:codepopper, link="sql" &>
+INSERT INTO users (user_name) VALUES (:user_name)
+{'user_name': 'ed'}
+</&>
             # INSERT with a list:
             <&formatting.myt:poplink&>users.insert(values=(3, 'jane', 'sdfadfas')).execute()
-            <&|formatting.myt:codepopper, link="sql" &>
-            INSERT INTO users (user_id, user_name, password) 
-            VALUES (:user_id, :user_name, :password)
-            {'user_id': 3, 'password': 'sdfadfas', 'user_name': 'jane'}
-            </&>            
-            
+<&|formatting.myt:codepopper, link="sql" &>
+INSERT INTO users (user_id, user_name, password) 
+VALUES (:user_id, :user_name, :password)
+{'user_id': 3, 'password': 'sdfadfas', 'user_name': 'jane'}
+</&>
             # INSERT with user-defined bind parameters
             i = users.insert(
                 values={'user_name':bindparam('name'), 'password':bindparam('pw')}
                 )
             <&formatting.myt:poplink&>i.execute(name='mary', pw='adas5fs')
-            <&|formatting.myt:codepopper, link="sql" &>
-            INSERT INTO users (user_name, password) VALUES (:name, :pw)
-            {'name': 'mary', 'pw': 'adas5fs'}
-            </&>            
-
+<&|formatting.myt:codepopper, link="sql" &>
+INSERT INTO users (user_name, password) VALUES (:name, :pw)
+{'name': 'mary', 'pw': 'adas5fs'}
+</&>
             # INSERT many - if no explicit 'values' parameter is sent,
             # the first parameter list in the list determines
             # the generated SQL of the insert (i.e. what columns are present)
@@ -855,16 +848,13 @@ WHERE users.user_name = :users_user_name AND keywords.name IN ('jack', 'foo')
                 {'user_id':8, 'user_name':'ed', 'password':'asdffcadf'}
                 {'user_id':9, 'user_name':'fred', 'password':'asttf'}
             )
-            <&|formatting.myt:codepopper, link="sql" &>
-            INSERT INTO users (user_id, user_name, password) 
-            VALUES (:user_id, :user_name, :password)
-            [{'user_name': 'jack', 'password': 'asdfasdf', 'user_id': 7}, 
-            {'user_name': 'ed', 'password': 'asdffcadf', 'user_id': 8}, 
-            {'user_name': 'fred', 'password': 'asttf', 'user_id': 9}]
-            </&>            
-
-
-
+<&|formatting.myt:codepopper, link="sql" &>
+INSERT INTO users (user_id, user_name, password) 
+VALUES (:user_id, :user_name, :password)
+[{'user_name': 'jack', 'password': 'asdfasdf', 'user_id': 7}, 
+{'user_name': 'ed', 'password': 'asdffcadf', 'user_id': 8}, 
+{'user_name': 'fred', 'password': 'asttf', 'user_id': 9}]
+</&>            
         </&>
     </&>
     <&|doclib.myt:item, name="update", description="Updates" &>

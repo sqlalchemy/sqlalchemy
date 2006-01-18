@@ -282,14 +282,17 @@
 
         return g.rstrip()
 
-    content = highlight.highlight(fix_indent(m.content()), html_escape = html_escape, syntaxtype = syntaxtype)
+    p = re.compile(r'<pre>(.*?)</pre>', re.S)
+    def hlight(match):
+        return "<pre>" + highlight.highlight(fix_indent(match.group(1)), html_escape = html_escape, syntaxtype = syntaxtype) + "</pre>"
+    content = p.sub(hlight, "<pre>" + m.content() + "</pre>")
 
 </%init>
 <div class="code">
 % if title is not None:
     <div class="codetitle"><% title %></div>
 %
-<pre><% content %></pre></div>
+<% content %></div>
 </%method>
 
 <%method link trim="both">
@@ -336,7 +339,7 @@ javascript:togglePopbox('<% name %>', '<% show %>', '<% hide %>')
     if name is None:
         name = 'popbox_' + repr(m.attributes['popbox_name'])
 </%init>
-</pre><div id="<% name %>_div" class="<% class_ %>" style="display:none;"><% m.content().strip() %></div><pre>
+<div id="<% name %>_div" class="<% class_ %>" style="display:none;"><% m.content().strip() %></div>
 </%method>
 
 <%method poplink trim="both">
@@ -354,7 +357,7 @@ javascript:togglePopbox('<% name %>', '<% show %>', '<% hide %>')
 		c = m.content()
 		c = re.sub(r'\n', '<br/>\n', c.strip())
 	</%init>
-    '''PYESC<&|SELF:popbox, class_="codepop" &><% c %></&>PYESC'''
+    </pre><&|SELF:popbox, class_="codepop" &><% c %></&><pre>
 </%method>
 
 <%method poppedcode trim="both">

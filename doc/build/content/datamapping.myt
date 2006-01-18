@@ -553,7 +553,6 @@ ORDER BY email_addresses.oid, email_addresses.oid
 
 {'users_user_id': 1}
         </&>
-        
         # commit
         <&formatting.myt:poplink&>objectstore.commit() 
 <&|formatting.myt:codepopper, link="sql" &>
@@ -627,7 +626,6 @@ INSERT INTO article_keywords (article_id, keyword_id) VALUES (:article_id, :keyw
 
 [{'keyword_id': 1, 'article_id': 1}, {'keyword_id': 2, 'article_id': 1}]
 </&>
-
     # select articles based on a keyword.  select_by will handle the extra joins.
     <&formatting.myt:poplink&>articles = Article.mapper.select_by(keyword='politics')
 <&|formatting.myt:codepopper, link="sql" &>
