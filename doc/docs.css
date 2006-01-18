@@ -181,6 +181,12 @@
 }
 
 .code {
+	font-family:courier, serif;
+	font-size:12px;
+	background-color: #E2E2EB;
+	padding:2px 2px 2px 10px;
+	margin: 5px 5px 5px 5px;
+	line-height:1.2em;
 }
 
 .codepop {
@@ -190,7 +196,9 @@
 	color:#000000;
 	border:1px solid;
 	padding:10px;
-	margin:5px 10px 5px 0px;
+	width:95%;
+	/*margin:5px 10px 5px 0px;*/
+	/*clear:right;*/
 }
 
 .codepoplink {

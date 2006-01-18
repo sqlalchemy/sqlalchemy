@@ -336,7 +336,7 @@ javascript:togglePopbox('<% name %>', '<% show %>', '<% hide %>')
     if name is None:
         name = 'popbox_' + repr(m.attributes['popbox_name'])
 </%init>
-<div id="<% name %>_div" class="<% class_ %>" style="display:none;"><% m.content().strip() %></div>
+</pre><div id="<% name %>_div" class="<% class_ %>" style="display:none;"><% m.content().strip() %></div><pre>
 </%method>
 
 <%method poplink trim="both">
