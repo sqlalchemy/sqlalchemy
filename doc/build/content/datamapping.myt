@@ -739,14 +739,14 @@ AND keywords_11b7.name = :keywords_name
 ORDER BY articles.oid, article_keywords.oid, users.oid, keywords.oid
 
 {'keywords_name': 'jacks_stories'}
-</&>                        
+</&>
             # user is available
             for a in alist:
                 for k in a.keywords:
                     if k.keyword.name == 'jacks_stories':
                         print k.user.user_name
             
-        </&>
+</&>
         
 </&>
 
