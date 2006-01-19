@@ -601,6 +601,8 @@ class ClauseList(ClauseElement):
             if c is None: continue
             self.append(c)
         self.parens = kwargs.get('parens', False)
+    def hash_key(self):
+        return string.join([c.hash_key() for c in self.clauses], ",")
     def copy_container(self):
         clauses = [clause.copy_container() for clause in self.clauses]
         return ClauseList(parens=self.parens, *clauses)
@@ -674,7 +676,7 @@ class Function(ClauseList, CompareMixin):
         self.name = name
         self.type = kwargs.get('type', sqltypes.NULLTYPE)
         ClauseList.__init__(self, parens=True, *clauses)
-    key = property(lambda self:self.label or self.name)
+    key = property(lambda self:self.name)
     def append(self, clause):
         if _is_literal(clause):
             if clause is None:
@@ -703,6 +705,8 @@ class Function(ClauseList, CompareMixin):
         return self
     def select(self):
         return select([self])
+    def hash_key(self):
+        return self.name + "(" + string.join([c.hash_key() for c in self.clauses], ", ") + ")"
             
 class BinaryClause(ClauseElement, CompareMixin):
     """represents two clauses with an operator in between"""
@@ -717,7 +721,7 @@ class BinaryClause(ClauseElement, CompareMixin):
     def _get_from_objects(self):
         return self.left._get_from_objects() + self.right._get_from_objects()
     def hash_key(self):
-        return self.left.hash_key() + self.operator + self.right.hash_key()
+        return self.left.hash_key() + (self.operator or " ") + self.right.hash_key()
     def accept_visitor(self, visitor):
         self.left.accept_visitor(visitor)
         self.right.accept_visitor(visitor)
@@ -868,6 +872,8 @@ class Label(ColumnElement):
         cc = ColumnClause(self.name, selectable)
         selectable.c[self.name] = cc
         return cc
+    def hash_key(self):
+        return "Label(%s, %s)" % (self.name, self.obj.hash_key())
      
 class ColumnClause(ColumnElement):
     """represents a textual column clause in a SQL statement. allows the creation
@@ -887,7 +893,7 @@ class ColumnClause(ColumnElement):
 
     def hash_key(self):
         if self.table is not None:
-            return "ColumnClause(%s, %s)" % (self.text, self.table.hash_key())
+            return "ColumnClause(%s, %s)" % (self.text, util.hash_key(self.table))
         else:
             return "ColumnClause(%s)" % self.text
 
@@ -1086,7 +1092,11 @@ class CompoundSelect(SelectBaseMixin, FromClause):
         group_by = kwargs.get('group_by', None)
         if group_by:
             self.group_by(*group_by)
-
+    def hash_key(self):
+        return "CompoundSelect(%s)" % string.join(
+            [util.hash_key(s) for s in self.selects] + 
+            ["%s=%s" % (k, repr(getattr(self, k))) for k in ['use_labels', 'keyword']],
+            ",")
     def _exportable_columns(self):
         return self.selects[0].columns
     def _proxy_column(self, column):
@@ -1203,9 +1213,26 @@ class Select(SelectBaseMixin, FromClause):
         else:
             setattr(self, attribute, condition)
 
-    def hash_key(self):
-        return "Select(%d)" % (id(self))
+    _hash_recursion = util.RecursionStack()
     
+    def hash_key(self):
+        # selects call alot of stuff so we do some "recursion checking"
+        # to eliminate loops
+        if Select._hash_recursion.push(self):
+            return "recursive_select()"
+        try:
+            return "Select(%s)" % string.join(
+                [
+                    "columns=" + repr([util.hash_key(c) for c in self._raw_columns]),
+                    "where=" + util.hash_key(self.whereclause),
+                    "from=" + repr([util.hash_key(f) for f in self.froms]),
+                    "having=" + util.hash_key(self.having),
+                    "clauses=" + repr([util.hash_key(c) for c in self.clauses])
+                ] + ["%s=%s" % (k, repr(getattr(self, k))) for k in ['use_labels', 'distinct', 'limit', 'offset']], ","
+            ) 
+        finally:
+            Select._hash_recursion.pop(self)
+        
     def clear_from(self, id):
         self.append_from(FromClause(from_name = None, from_key = id))
         
@@ -1256,6 +1283,9 @@ class Select(SelectBaseMixin, FromClause):
 class UpdateBase(ClauseElement):
     """forms the base for INSERT, UPDATE, and DELETE statements."""
     
+    def hash_key(self):
+        return str(id(self))
+        
     def _process_colparams(self, parameters):
         """receives the "values" of an INSERT or UPDATE statement and constructs
         appropriate ind parameters."""

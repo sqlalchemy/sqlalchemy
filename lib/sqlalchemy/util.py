@@ -18,6 +18,16 @@ def to_list(x):
 def generic_repr(obj, exclude=None):
     L = ['%s=%s' % (a, repr(getattr(obj, a))) for a in dir(obj) if not callable(getattr(obj, a)) and not a.startswith('_') and (exclude is None or not exclude.has_key(a))]
     return '%s(%s)' % (obj.__class__.__name__, ','.join(L))
+
+def hash_key(obj):
+    if obj is None:
+        return 'None'
+    elif isinstance(obj, list):
+        return repr([hash_key(o) for o in obj])
+    elif hasattr(obj, 'hash_key'):
+        return obj.hash_key()
+    else:
+        return repr(obj)
         
 class OrderedProperties(object):
     """an object that maintains the order in which attributes are set upon it.
@@ -49,7 +59,30 @@ class OrderedProperties(object):
     
         self.__dict__[key] = object
     
-
+class RecursionStack(object):
+    """a thread-local stack used to detect recursive object traversals."""
+    def __init__(self):
+        self.stacks = {}
+    def _get_stack(self):
+        try:
+            stack = self.stacks[thread.get_ident()]
+        except KeyError:
+            stack = {}
+            self.stacks[thread.get_ident()] = stack
+        return stack
+    def push(self, obj):
+        s = self._get_stack()
+        if s.has_key(obj):
+            return True
+        else:
+            s[obj] = True
+            return False
+    def pop(self, obj):
+        stack = self._get_stack()
+        del stack[obj]
+        if len(stack) == 0:
+            del self.stacks[thread.get_ident()]
+        
 class OrderedDict(dict):
     """A Dictionary that keeps its own internal ordering"""
     def __init__(self, values = None):
@@ -110,6 +143,13 @@ class ThreadLocal(object):
     def __init__(self, raiseerror = True):
         self.__dict__['_tdict'] = {}
         self.__dict__['_raiseerror'] = raiseerror
+    def __hasattr__(self, key):
+        return self._tdict.has_key("%d_%s" % (thread.get_ident(), key))
+    def __delattr__(self, key):
+        try:
+            del self._tdict["%d_%s" % (thread.get_ident(), key)]
+        except KeyError:
+            raise AttributeError(key)
     def __getattr__(self, key):
         try:
             return self._tdict["%d_%s" % (thread.get_ident(), key)]
@@ -120,6 +160,7 @@ class ThreadLocal(object):
                 return None
     def __setattr__(self, key, value):
         self._tdict["%d_%s" % (thread.get_ident(), key)] = value
+
 
 class HashSet(object):
     """implements a Set."""
