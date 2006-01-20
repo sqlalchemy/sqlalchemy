@@ -390,7 +390,7 @@ class UOWTransaction(object):
             task.mapper.register_dependencies(self)
 
         head = self._sort_dependencies()
-        #print "Task dump:\n" + head.dump()
+        print "Task dump:\n" + head.dump()
         if head is not None:
             head.execute(self)
             
@@ -493,7 +493,10 @@ class UOWDependencyProcessor(object):
             val = [t for t in self.targettask.objects.values() if t.isdelete]
         else:
             val = [t for t in self.targettask.objects.values() if not t.isdelete]
-        return string.join([repr(self.processor.key) + " on " + repr(o) for o in val], "\n")
+        if len(val) == 0:
+            return str(self.targettask.mapper) + "->" + repr(self.processor.key) + " on empty"
+        else:
+            return string.join([str(self.targettask.mapper) + "->" + repr(self.processor.key) + " on " + repr(o) for o in val], "\n")
         
     
 class UOWTask(object):
@@ -582,6 +585,11 @@ class UOWTask(object):
         tuples = []
         
         objecttotask = {}
+
+        # dependency processors that arent part of the "circular" thing
+        # get put here
+        extradep = util.HashSet()
+
         def get_task(obj):
             try:
                 return objecttotask[obj]
@@ -605,7 +613,8 @@ class UOWTask(object):
             return l
 
         for taskelement in self.objects.values():
-            # go through all of the dependencies on this task, and organize them
+            # go through all of the dependencies on this task, which are
+            # self-referring, and organize them
             # into a hash where we isolate individual objects that depend on each
             # other.  then those individual object relationships will be grabbed
             # back into a hierarchical tree thing down below via make_task_tree.
@@ -615,8 +624,11 @@ class UOWTask(object):
                 (processor, targettask, isdelete) = (dep.processor, dep.targettask, dep.isdeletefrom)
                 if taskelement.isdelete is not dep.isdeletefrom:
                     continue
-                childlist = dep.get_object_dependencies(obj, trans, passive = True)
+                elif dep.targettask is not self:
+                    extradep.append(dep)
+                    continue
                 #print "GETING LIST OFF PROC", processor.key, "OBJ", repr(obj)
+                childlist = dep.get_object_dependencies(obj, trans, passive = True)
                 if isdelete:
                     childlist = childlist.unchanged_items() + childlist.deleted_items()
                 else:
@@ -632,14 +644,12 @@ class UOWTask(object):
                         else:
                             get_dependency_task(whosdep[0], dep).append(whosdep[1], isdelete=isdelete)
                     else:
-                    #    pass
-                        #raise "hi " + repr(obj) + " " + repr(o)
                         get_dependency_task(obj, dep).append(obj, isdelete=isdelete)
                         
         head = DependencySorter(tuples, allobjects).sort()
         if head is None:
             return None
-        
+
         def make_task_tree(node, parenttask):
             t = objecttotask[node.item]
             parenttask.append(node.item, self.objects[node.item].listonly, t, isdelete=self.objects[node.item].isdelete)
@@ -648,6 +658,10 @@ class UOWTask(object):
                     parenttask.dependencies.append(depprocessor.branch(deptask))
             for n in node.children:
                 t2 = make_task_tree(n, t)
+            # propigate the non-circular dependencies and child tasks
+            # from the original node to this new "circular" task node
+            t.dependencies += [d for d in extradep]
+            t.childtasks = self.childtasks
             return t
             
         t = UOWTask(None, self.mapper)
