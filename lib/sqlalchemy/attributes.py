@@ -267,12 +267,14 @@ class AttributeManager(object):
         return CallableProp(self, func, obj, key, uselist, **kwargs)
         
     def get_attribute(self, obj, key, **kwargs):
-        """returns the value of an object's scalar attribiute."""
+        """returns the value of an object's scalar attribute, or None if
+        its not defined on the object (since we are a property accessor, this
+        is considered more appropriate than raising AttributeError)."""
         h = self.get_history(obj, key, **kwargs)
         try:
             return h.getattr()
         except KeyError:
-            raise AttributeError(key)
+            return None
 
     def get_list_attribute(self, obj, key, **kwargs):
         """returns the value of an object's list-based attribute."""
