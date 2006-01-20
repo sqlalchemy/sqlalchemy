@@ -223,6 +223,10 @@ class SQLEngine(schema.SchemaEngine):
         if type(typeobj) is type:
             typeobj = typeobj()
         return typeobj
+
+    def text(self, text, *args, **kwargs):
+        """returns a sql.text() object for performing literal queries."""
+        return sql.text(text, engine=self, *args, **kwargs)
         
     def schemagenerator(self, proxy, **params):
         """returns a schema.SchemaVisitor instance that can generate schemas, when it is

@@ -173,14 +173,14 @@ def bindparam(key, value = None, type=None):
     else:
         return BindParamClause(key, value, type=type)
 
-def text(text, engine=None):
+def text(text, engine=None, *args, **kwargs):
     """creates literal text to be inserted into a query.  
     
     When constructing a query from a select(), update(), insert() or delete(), using 
     plain strings for argument values will usually result in text objects being created
     automatically.  Use this function when creating textual clauses outside of other
     ClauseElement objects, or optionally wherever plain text is to be used."""
-    return TextClause(text, engine=engine)
+    return TextClause(text, engine=engine, *args, **kwargs)
 
 def null():
     """returns a Null object, which compiles to NULL in a sql statement."""
@@ -536,14 +536,17 @@ class FromClause(Selectable):
     
 class BindParamClause(ClauseElement, CompareMixin):
     """represents a bind parameter.  public constructor is the bindparam() function."""
-    def __init__(self, key, value, shortname = None, type = None):
+    def __init__(self, key, value, shortname=None, type=None):
         self.key = key
         self.value = value
         self.shortname = shortname
         self.type = type or sqltypes.NULLTYPE
-        # if passed a class as a type, convert to an instance
-        if isinstance(self.type, types.TypeType):
-            self.type = self.type()
+    def _get_convert_type(self, engine):
+        try:
+            return self._converted_type
+        except AttributeError:
+            self._converted_type = engine.type_descriptor(self.type)
+            return self._converted_type
     def accept_visitor(self, visitor):
         visitor.visit_bindparam(self)
     def _get_from_objects(self):
@@ -551,7 +554,7 @@ class BindParamClause(ClauseElement, CompareMixin):
     def hash_key(self):
         return "BindParam(%s, %s, %s)" % (repr(self.key), repr(self.value), repr(self.shortname))
     def typeprocess(self, value, engine):
-        return self.type.convert_bind_param(value, engine)
+        return self._get_convert_type(engine).convert_bind_param(value, engine)
     def compare(self, other):
         """compares this BindParamClause to the given clause.
         
@@ -570,12 +573,27 @@ class TextClause(ClauseElement):
     being specified as a bind parameter via the bindparam() method,
     since it provides more information about what it is, including an optional
     type, as well as providing comparison operations."""
-    def __init__(self, text = "", engine=None):
-        self.text = text
+    def __init__(self, text = "", engine=None, bindparams=None, typemap=None):
         self.parens = False
         self._engine = engine
         self.id = id(self)
+        self.bindparams = {}
+        self.typemap = typemap
+        if typemap is not None:
+            for key in typemap.keys():
+                typemap[key] = engine.type_descriptor(typemap[key])
+        def repl(m):
+            self.bindparams[m.group(1)] = bindparam(m.group(1))
+            return self.engine.bindtemplate % m.group(1)
+           
+        self.text = re.compile(r':([\w_]+)', re.S).sub(repl, text)
+        if bindparams is not None:
+            for b in bindparams:
+                self.bindparams[b.key] = b
+            
     def accept_visitor(self, visitor): 
+        for item in self.bindparams.values():
+            item.accept_visitor(visitor)
         visitor.visit_textclause(self)
     def hash_key(self):
         return "TextClause(%s)" % repr(self.text)

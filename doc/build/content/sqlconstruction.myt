@@ -744,8 +744,11 @@ SELECT * FROM (select user_id, user_name from users)
 select user_name from users
 {}
 </&>
-            # a straight text query like the one above is also available directly off the engine
-            # (though youre going to have to drop down to the DBAPI's style of bind params)
+            # or call text() off of the engine
+            engine.text("select user_name from users").execute()
+            
+            # execute off the engine directly - you must use the engine's native bind parameter
+            # style (i.e. named, pyformat, positional, etc.)
             <&formatting.myt:poplink&>db.execute(
                     "select user_name from users where user_id=:user_id", 
                     {'user_id':7}).execute()
@@ -755,6 +758,36 @@ select user_name from users where user_id=:user_id
 </&>
 
             
+        </&>
+
+        <&|doclib.myt:item, name="textual_binds", description="Using Bind Parameters in Text Blocks" &>
+        <p>Use the format <span class="codeline"><% ':<paramname>' |h %></span> to define bind parameters inside of a text block.  They will be converted to the appropriate format upon compilation:</p>
+        <&|formatting.myt:code &>
+            t = engine.text("select foo from mytable where lala=:hoho")
+            r = t.execute(hoho=7)
+        </&>        
+        <p>Bind parameters can also be explicit, which allows typing information to be added.  Just specify them as a list with
+        keys that match those inside the textual statement:</p>
+        <&|formatting.myt:code &>
+            t = engine.text("select foo from mytable where lala=:hoho", 
+                        bindparams=[bindparam('hoho', type=types.String)])
+            r = t.execute(hoho="im hoho")
+        </&>        
+        <p>Result-row type processing can be added via the <span class="codeline">typemap</span> argument, which 
+        is a dictionary of return columns mapped to types:</p>
+        <&|formatting.myt:code &>
+            # specify DateTime type for the 'foo' column in the result set
+            # sqlite, for example, uses result-row post-processing to construct dates
+            t = engine.text("select foo from mytable where lala=:hoho", 
+                    bindparams=[bindparam('hoho', type=types.String)],
+                    typemap={'foo':types.DateTime}
+                    )
+            r = t.execute(hoho="im hoho")
+            
+            # 'foo' is a datetime
+            year = r.fetchone()['foo'].year
+        </&>        
+        
         </&>
     </&>
     <&|doclib.myt:item, name="building", description="Building Select Objects" &>

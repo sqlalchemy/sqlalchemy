@@ -13,9 +13,9 @@ class OverrideTest(PersistTest):
         class MyType(types.TypeEngine):
             def get_col_spec(self):
                 return "VARCHAR(100)"
-            def convert_bind_param(self, value):
+            def convert_bind_param(self, value, engine):
                 return "BIND_IN"+ value
-            def convert_result_value(self, value):
+            def convert_result_value(self, value, engine):
                 return value + "BIND_OUT"
             def adapt(self, typeobj):
                 return typeobj()
@@ -45,15 +45,16 @@ class OverrideTest(PersistTest):
 class ColumnsTest(AssertMixin):
 
     def testcolumns(self):
-        defaultExpectedResults = { 'int_column': 'int_column INTEGER',
+        expectedResults = { 'int_column': 'int_column INTEGER',
                                    'varchar_column': 'varchar_column VARCHAR(20)',
                                    'numeric_column': 'numeric_column NUMERIC(12, 3)',
                                    'float_column': 'float_column NUMERIC(25, 2)'
                                  }
 
-        if db.engine.__module__ != 'sqlite':
+        if not db.engine.__module__.endswith('sqlite'):
             expectedResults['float_column'] = 'float_column FLOAT(25)'
     
+        print db.engine.__module__
         testTable = Table('testColumns', db,
             Column('int_column', Integer),
             Column('varchar_column', String(20)),
@@ -62,7 +63,7 @@ class ColumnsTest(AssertMixin):
         )
 
         for aCol in testTable.c:
-            self.assertEquals(expectedResults[aCol.name], self.db.schemagenerator(None).get_column_specification(aCol))
+            self.assertEquals(expectedResults[aCol.name], db.schemagenerator(None).get_column_specification(aCol))
         
 
 class BinaryTest(AssertMixin):
@@ -104,14 +105,14 @@ class DateTest(AssertMixin):
         redefine = True
         )
         users_with_date.create()
-    def tearDownAll(self):
-        users_with_date.drop()
-
-    def testdate(self):
         users_with_date.insert().execute(user_id = 7, user_name = 'jack', user_date=datetime.datetime(2005,11,10))
         users_with_date.insert().execute(user_id = 8, user_name = 'roy', user_date=datetime.datetime(2005,11,10, 11,52,35))
         users_with_date.insert().execute(user_id = 9, user_name = 'foo', user_date=datetime.datetime(2005,11,10, 11,52,35, 54839))
         users_with_date.insert().execute(user_id = 10, user_name = 'colber', user_date=None)
+    def tearDownAll(self):
+        users_with_date.drop()
+
+    def testdate(self):
         l = users_with_date.select().execute().fetchall()
         l = [[c for c in r] for r in l]
         if db.engine.__module__.endswith('mysql'):
@@ -121,7 +122,15 @@ class DateTest(AssertMixin):
         print repr(l)
         print repr(x)
         self.assert_(l == x)
-     
+
+    def testtextdate(self):     
+        x = db.text("select user_date from query_users_with_date", typemap={'user_date':DateTime}).execute().fetchall()
+        
+        print repr(x)
+        self.assert_(isinstance(x[0][0], datetime.datetime))
+        
+        #x = db.text("select * from query_users_with_date where user_date=:date", bindparams=[bindparam('date', )]).execute(date=datetime.datetime(2005, 11, 10, 11, 52, 35)).fetchall()
+        #print repr(x)
         
 if __name__ == "__main__":
     testbase.main()

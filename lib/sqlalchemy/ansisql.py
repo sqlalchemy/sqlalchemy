@@ -174,6 +174,8 @@ class ANSICompiler(sql.Compiled):
         else:
             self.strings[textclause] = textclause.text
         self.froms[textclause] = textclause.text
+        if textclause.typemap is not None:
+            self.typemap.update(textclause.typemap)
         
     def visit_null(self, null):
         self.strings[null] = 'NULL'

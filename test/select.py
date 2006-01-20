@@ -3,6 +3,7 @@ from sqlalchemy import *
 import sqlalchemy.ansisql as ansisql
 import sqlalchemy.databases.postgres as postgres
 import sqlalchemy.databases.oracle as oracle
+import sqlalchemy.databases.sqlite as sqlite
 
 db = ansisql.engine()
 
@@ -60,7 +61,10 @@ class SQLTest(PersistTest):
         cc = re.sub(r'\n', '', str(c))
         self.assert_(cc == result, str(c) + "\n does not match \n" + result)
         if checkparams is not None:
-            self.assert_(c.get_params() == checkparams, "params dont match")
+            if isinstance(checkparams, list):
+                self.assert_(c.get_params().values() == checkparams, "params dont match")
+            else:
+                self.assert_(c.get_params() == checkparams, "params dont match")
             
 class SelectTest(SQLTest):
 
@@ -222,6 +226,33 @@ WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid =
         s.append_from("table1")
         self.runtest(s, "SELECT column1, column2 FROM table1 WHERE column1=12 AND column2=19 ORDER BY column1", db)
 
+    def testtextbinds(self):
+        self.runtest(
+            db.text("select * from foo where lala=:bar and hoho=:whee"), 
+                "select * from foo where lala=:bar and hoho=:whee", 
+                checkparams={'bar':4, 'whee': 7},
+                params={'bar':4, 'whee': 7, 'hoho':10},
+                engine=db
+        )
+        
+        engine = postgres.engine({})
+        self.runtest(
+            engine.text("select * from foo where lala=:bar and hoho=:whee"), 
+                "select * from foo where lala=%(bar)s and hoho=%(whee)s", 
+                checkparams={'bar':4, 'whee': 7},
+                params={'bar':4, 'whee': 7, 'hoho':10},
+                engine=engine
+        )
+
+        engine = sqlite.engine({})
+        self.runtest(
+            engine.text("select * from foo where lala=:bar and hoho=:whee"), 
+                "select * from foo where lala=? and hoho=?", 
+                checkparams=[4, 7],
+                params={'bar':4, 'whee': 7, 'hoho':10},
+                engine=engine
+        )
+        
     def testtextmix(self):
         self.runtest(select(
             [table, table2.c.id, "sysdate()", "foo, bar, lala"],

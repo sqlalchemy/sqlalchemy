@@ -31,6 +31,10 @@ def adapt_type(typeobj, colspecs):
     to a correctly-configured type instance from the DB-specific package."""
     if type(typeobj) is type:
         typeobj = typeobj()
+    # if the type is not a base type, i.e. not from our module, or its Null, 
+    # we return the type as is
+    if typeobj.__module__ != 'sqlalchemy.types' or typeobj.__class__==NullTypeEngine:
+        return typeobj
     typeobj = typeobj.adapt_args()
     t = typeobj.__class__
     for t in t.__mro__[0:-1]:
