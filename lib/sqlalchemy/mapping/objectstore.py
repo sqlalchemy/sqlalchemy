@@ -390,7 +390,7 @@ class UOWTransaction(object):
             task.mapper.register_dependencies(self)
 
         head = self._sort_dependencies()
-        print "Task dump:\n" + head.dump()
+        #print "Task dump:\n" + head.dump()
         if head is not None:
             head.execute(self)
             
@@ -622,10 +622,10 @@ class UOWTask(object):
             parenttask = get_task(obj)
             for dep in self.dependencies:
                 (processor, targettask, isdelete) = (dep.processor, dep.targettask, dep.isdeletefrom)
-                if taskelement.isdelete is not dep.isdeletefrom:
-                    continue
-                elif dep.targettask is not self:
+                if dep.targettask is not self:
                     extradep.append(dep)
+                    continue
+                elif taskelement.isdelete is not dep.isdeletefrom:
                     continue
                 #print "GETING LIST OFF PROC", processor.key, "OBJ", repr(obj)
                 childlist = dep.get_object_dependencies(obj, trans, passive = True)
