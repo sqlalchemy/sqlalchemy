@@ -182,18 +182,18 @@ def text(text, engine=None, *args, **kwargs):
     ClauseElement objects, or optionally wherever plain text is to be used.
     
     Arguments include:
-    
+
     text - the text of the SQL statement to be created.  use :<param> to specify
     bind parameters; they will be compiled to their engine-specific format.
-    
+
     engine - the engine to be used for this text query.  Alternatively, call the
     text() method off the engine directly.
-    
+
     bindparams - a list of bindparam() instances which can be used to define the
     types and/or initial values for the bind parameters within the textual statement;
     the keynames of the bindparams must match those within the text of the statement.
     The types will be used for pre-processing on bind values.
-    
+
     typemap - a dictionary mapping the names of columns represented in the SELECT
     clause of the textual statement to type objects, which will be used to perform
     post-processing on columns within the result set (for textual statements that 
