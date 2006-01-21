@@ -84,11 +84,25 @@ class Pool(object):
             agent = ConnectionFairy(self)
             self._threadconns[thread.get_ident()] = agent
             return agent
-            
+
+    def return_conn(self, conn):
+        if self._echo:
+            self.log("return connection to pool")
+        self.do_return_conn(conn)
+        
     def get(self):
+        if self._echo:
+            self.log("get connection from pool")
+            self.log(self.status())
+        return self.do_get()
+        
+    def do_get(self):
         raise NotImplementedError()
         
-    def return_conn(self, conn):
+    def do_return_conn(self, conn):
+        raise NotImplementedError()
+    
+    def status(self):
         raise NotImplementedError()
 
     def log(self, msg):
@@ -127,11 +141,14 @@ class SingletonThreadPool(Pool):
         Pool.__init__(self, **params)
         self._conns = {}
         self._creator = creator
-        
-    def return_conn(self, conn):
+
+    def status(self):
+        return "SingletonThreadPool size: %d" % len(self._conns)
+
+    def do_return_conn(self, conn):
         pass
         
-    def get(self):
+    def do_get(self):
         try:
             return self._conns[thread.get_ident()]
         except KeyError:
@@ -146,7 +163,7 @@ class QueuePool(Pool):
         self._overflow = 0 - pool_size
         self._max_overflow = max_overflow
     
-    def return_conn(self, conn):
+    def do_return_conn(self, conn):
         if self._echo:
             self.log("return connection to pool")
         try:
@@ -154,7 +171,7 @@ class QueuePool(Pool):
         except Queue.Full:
             self._overflow -= 1
 
-    def get(self):
+    def do_get(self):
         if self._echo:
             self.log("get connection from pool")
             self.log(self.status())

@@ -161,7 +161,7 @@ class SQLEngine(schema.SchemaEngine):
     SQLEngines are constructed via the create_engine() function inside this package.
     """
     
-    def __init__(self, pool=None, echo=False, logger=None, default_ordering=False, **params):
+    def __init__(self, pool=None, echo=False, logger=None, default_ordering=False, echo_pool=False, echo_uow=False, **params):
         """constructs a new SQLEngine.   SQLEngines should be constructed via the create_engine()
         function which will construct the appropriate subclass of SQLEngine."""
         # get a handle on the connection pool via the connect arguments
@@ -169,20 +169,21 @@ class SQLEngine(schema.SchemaEngine):
         # by direct usage of pool.manager(<module>).connect(*args, **params)
         (cargs, cparams) = self.connect_args()
         if pool is None:
+            params['echo'] = echo_pool
             self._pool = sqlalchemy.pool.manage(self.dbapi(), **params).get_pool(*cargs, **cparams)
         else:
             self._pool = pool
         self.default_ordering=default_ordering
         self.echo = echo
+        self.echo_uow = echo_uow
         self.context = util.ThreadLocal(raiseerror=False)
         self.tables = {}
-        self.notes = {}
         self._figure_paramstyle()
         if logger is None:
             self.logger = sys.stdout
         else:
             self.logger = logger
-    
+
     def dispose(self):
         """disposes of the underlying pool manager for this SQLEngine."""
         (cargs, cparams) = self.connect_args()

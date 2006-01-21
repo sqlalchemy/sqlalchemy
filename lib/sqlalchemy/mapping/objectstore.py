@@ -21,7 +21,7 @@ import StringIO
 __all__ = ['get_id_key', 'get_row_key', 'commit', 'update', 'clear', 'delete', 
         'begin', 'has_key', 'has_instance', 'UnitOfWork']
 
-LOG = 1
+LOG = False
 
 def get_id_key(ident, class_, table):
     """returns an identity-map key for use in storing/retrieving an item from the identity
@@ -276,11 +276,13 @@ class UnitOfWork(object):
         for mapper in commit_context.mappers:
             for e in mapper.engines:
                 engines.append(e)
-                
+        
+        echo_commit = False        
         for e in engines:
+            echo_commit = echo_commit or e.echo_uow
             e.begin()
         try:
-            commit_context.execute()
+            commit_context.execute(echo=echo_commit)
         except:
             for e in engines:
                 e.rollback()
@@ -388,12 +390,12 @@ class UOWTransaction(object):
     def register_deleted_object(self, obj):
         self.deleted_objects.append(obj)
         
-    def execute(self):
+    def execute(self, echo=False):
         for task in self.tasks.values():
             task.mapper.register_dependencies(self)
 
         head = self._sort_dependencies()
-        if LOG:
+        if LOG or echo:
             print "Task dump:\n" + head.dump()
         if head is not None:
             head.execute(self)
@@ -693,7 +695,7 @@ class UOWTask(object):
         def _repr_task(task):
             if task.mapper is not None:
                 if task.mapper.__class__.__name__ == 'Mapper':
-                    name = task.mapper.class_.__name__ + "/" + task.mapper.primarytable.name
+                    name = task.mapper.class_.__name__ + "/" + task.mapper.primarytable.id
                 else:
                     name = repr(task.mapper)
             else:
