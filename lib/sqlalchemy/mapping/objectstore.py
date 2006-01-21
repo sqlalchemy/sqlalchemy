@@ -21,7 +21,7 @@ import StringIO
 __all__ = ['get_id_key', 'get_row_key', 'commit', 'update', 'clear', 'delete', 
         'begin', 'has_key', 'has_instance', 'UnitOfWork']
 
-LOG = 0
+LOG = 1
 
 def get_id_key(ident, class_, table):
     """returns an identity-map key for use in storing/retrieving an item from the identity
@@ -491,17 +491,6 @@ class UOWDependencyProcessor(object):
 
     def branch(self, task):
         return UOWDependencyProcessor(self.processor, task, self.isdeletefrom)
-
-    def __str__(self):
-        if self.isdeletefrom:
-            val = [t for t in self.targettask.objects.values() if t.isdelete]
-        else:
-            val = [t for t in self.targettask.objects.values() if not t.isdelete]
-        if len(val) == 0:
-            return str(self.targettask.mapper) + "->" + repr(self.processor.key) + " on empty"
-        else:
-            return string.join([str(self.targettask.mapper) + "->" + repr(self.processor.key) + " on " + repr(o) for o in val], "\n")
-        
     
 class UOWTask(object):
     def __init__(self, uowtransaction, mapper):
@@ -662,13 +651,15 @@ class UOWTask(object):
                     parenttask.dependencies.append(depprocessor.branch(deptask))
             for n in node.children:
                 t2 = make_task_tree(n, t)
-            # propigate the non-circular dependencies and child tasks
-            # from the original node to this new "circular" task node
-            t.dependencies += [d for d in extradep]
-            t.childtasks = self.childtasks
             return t
-            
+        
+        # this is the new "circular" UOWTask which will execute in place of "self"    
         t = UOWTask(None, self.mapper)
+
+        # stick the non-circular dependencies and child tasks onto the new
+        # circular UOWTask
+        t.dependencies += [d for d in extradep]
+        t.childtasks = self.childtasks
         make_task_tree(head, t)
         return t
 
@@ -689,13 +680,16 @@ class UOWTask(object):
                 val = [t for t in proc.targettask.objects.values() if not t.isdelete]
 
             buf.write(_indent() + "  |\n")
-            buf.write(_indent() + "  |- UOWDependencyProcessor(%d) %s on %s\n" % (id(proc), repr(proc.processor.key), _repr_task(proc.targettask)))
+            buf.write(_indent() + "  |- UOWDependencyProcessor(%d) %s on %s %s\n" % (id(proc), repr(proc.processor.key), (proc.isdeletefrom and "to delete" or "saved"), _repr_task(proc.targettask)))
             if len(val) == 0:
                 buf.write(_indent() + "  |       |-" + "(no objects)\n")
             for v in val:
-                buf.write(_indent() + "  |       |-" + _repr(v.obj) + "." + str(proc.processor.key) + "\n")
+                buf.write(_indent() + "  |       |-" + _repr_task_element(v) + "\n")
             buf.write(_indent() + "  |\n")
-            
+        
+        def _repr_task_element(te):
+            return "UOWTaskElement(%d): %s(%d) %s" % (id(te), te.obj.__class__.__name__, id(te.obj), (te.listonly and '(listonly)' or (te.isdelete and '(delete)' or '(save)')) )
+                
         def _repr_task(task):
             if task.mapper is not None:
                 if task.mapper.__class__.__name__ == 'Mapper':
@@ -724,8 +718,10 @@ class UOWTask(object):
             buf.write(i + " " + _repr_task(self))
             
         buf.write("\n")
-        for obj in self.tosave_objects():
-           buf.write(_indent() + "  |- Save: " + _repr(obj) + "\n")
+        for rec in self.tosave_elements():
+            if rec.listonly:
+                continue
+            buf.write(_indent() + "  |- Save: " + _repr_task_element(rec) + "\n")
        
         for dep in self.save_dependencies():
             _dump_processor(dep)
@@ -739,8 +735,12 @@ class UOWTask(object):
         for element in self.todelete_elements():
             if element.childtask is not None:
                 element.childtask._dump(buf, indent + 1)
-        for obj in self.todelete_objects():                
-           buf.write(_indent() + "  |- Delete: " + _repr(obj) + "\n")
+
+        for rec in self.todelete_elements():
+            if rec.listonly:
+                continue
+            buf.write(_indent() + "  |- Delete: " + _repr_task_element(rec) + "\n")
+
         buf.write(_indent() + "  |----\n")
         buf.write(_indent() + "\n")           
         
