@@ -16,9 +16,12 @@ import sqlalchemy.attributes as attributes
 import topological
 import weakref
 import string
+import StringIO
 
 __all__ = ['get_id_key', 'get_row_key', 'commit', 'update', 'clear', 'delete', 
         'begin', 'has_key', 'has_instance', 'UnitOfWork']
+
+LOG = 0
 
 def get_id_key(ident, class_, table):
     """returns an identity-map key for use in storing/retrieving an item from the identity
@@ -390,7 +393,8 @@ class UOWTransaction(object):
             task.mapper.register_dependencies(self)
 
         head = self._sort_dependencies()
-        #print "Task dump:\n" + head.dump()
+        if LOG:
+            print "Task dump:\n" + head.dump()
         if head is not None:
             head.execute(self)
             
@@ -668,46 +672,77 @@ class UOWTask(object):
         make_task_tree(head, t)
         return t
 
-    def dump(self, indent=""):
-        s = "\n" + indent + repr(self)
-        if self.circular is not None:
-            s += " Circular Representation:"
-            s += self.circular.dump(indent + "  ")
-            s += "\n----------------------"
-            return s
-        saveobj = self.tosave_elements()
-        if len(saveobj) > 0:
-            s += "\n" + indent + "  Save Elements:(%d)" % len(saveobj)
-            for o in saveobj:
-                s += "\n     " + indent + repr(o)
-                if o.childtask is not None and not o.childtask.is_empty():
-                    s += o.childtask.dump("         " + indent)
-        save_dep = self.save_dependencies()
-        if len(save_dep) > 0:
-            s += "\n" + indent + "  Process after Save:"
-            s += self._dump_dependencies(save_dep, indent)
-        if len(self.childtasks) > 0:
-            s += "\n" + indent + "  Child Tasks:(%d)" % len(self.childtasks)
-            for t in self.childtasks:
-                s += t.dump(indent + "    ")
-        delete_dep = self.delete_dependencies()
-        if len(delete_dep) > 0:
-            s += "\n" + indent + "  Process before Delete:"
-            s += self._dump_dependencies(delete_dep, indent)
-        deleteobj = self.todelete_elements()
-        if len(deleteobj) > 0:
-            s += "\n" + indent + "  Delete Elements:(%d)" % len(deleteobj)
-            for o in deleteobj:
-                s += "\n     " + indent + repr(o)
-                if o.childtask is not None and not o.childtask.is_empty():
-                    s += o.childtask.dump("         " + indent)
-        return s
+    def dump(self):
+        buf = StringIO.StringIO()
+        self._dump(buf)
+        return buf.getvalue()
+        
+    def _dump(self, buf, indent=0, circularparent=None):
 
-    def _dump_dependencies(self, dep, indent):
-        s = ""
-        for dt in dep:
-            s += string.join(["\n     " + indent + s2 for s2 in str(dt).split("\n")])
-        return s
+        def _indent():
+            return "  | " * indent
+            
+        def _dump_processor(proc):
+            if proc.isdeletefrom:
+                val = [t for t in proc.targettask.objects.values() if t.isdelete]
+            else:
+                val = [t for t in proc.targettask.objects.values() if not t.isdelete]
+
+            buf.write(_indent() + "  |\n")
+            buf.write(_indent() + "  |- UOWDependencyProcessor(%d) %s on %s\n" % (id(proc), repr(proc.processor.key), _repr_task(proc.targettask)))
+            if len(val) == 0:
+                buf.write(_indent() + "  |       |-" + "(no objects)\n")
+            for v in val:
+                buf.write(_indent() + "  |       |-" + _repr(v.obj) + "." + str(proc.processor.key) + "\n")
+            buf.write(_indent() + "  |\n")
+            
+        def _repr_task(task):
+            if task.mapper is not None:
+                if task.mapper.__class__.__name__ == 'Mapper':
+                    name = task.mapper.class_.__name__ + "/" + task.mapper.primarytable.name
+                else:
+                    name = repr(task.mapper)
+            else:
+                name = '(none)'
+            return ("UOWTask(%d) '%s'" % (id(task), name))
+
+
+        def _repr(obj):
+            return "%s(%d)" % (obj.__class__.__name__, id(obj))
+
+        if self.circular is not None:
+            self.circular._dump(buf, indent, self)
+            return
+
+        i = _indent()
+        if len(i):
+            i = i[0:-1] + "-"
+        if circularparent is not None:
+            buf.write(i + " " + _repr_task(circularparent))
+            buf.write("->circular->" + _repr_task(self))
+        else:
+            buf.write(i + " " + _repr_task(self))
+            
+        buf.write("\n")
+        for obj in self.tosave_objects():
+           buf.write(_indent() + "  |- Save: " + _repr(obj) + "\n")
+       
+        for dep in self.save_dependencies():
+            _dump_processor(dep)
+        for element in self.tosave_elements():
+            if element.childtask is not None:
+                element.childtask._dump(buf, indent + 1)
+        for dep in self.delete_dependencies():
+            _dump_processor(dep)
+        for child in self.childtasks:
+            child._dump(buf, indent + 1)
+        for element in self.todelete_elements():
+            if element.childtask is not None:
+                element.childtask._dump(buf, indent + 1)
+        for obj in self.todelete_objects():                
+           buf.write(_indent() + "  |- Delete: " + _repr(obj) + "\n")
+        buf.write(_indent() + "  |----\n")
+        buf.write(_indent() + "\n")           
         
     def __repr__(self):
         if self.mapper is not None:
@@ -717,7 +752,7 @@ class UOWTask(object):
                 name = repr(self.mapper)
         else:
             name = '(none)'
-        return ("UOWTask/%d Mapper: '%s'" % (id(self), name))
+        return ("UOWTask(%d) Mapper: '%s'" % (id(self), name))
 
 class DependencySorter(topological.QueueDependencySorter):
     pass
