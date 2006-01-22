@@ -126,6 +126,12 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         except:
             self.version = 1
         self.opts = opts or {}
+        if self.opts.has_key('port'):
+            if self.version == 2:
+                self.opts['port'] = int(self.opts['port'])
+            else:
+                self.opts['port'] = str(self.opts['port'])
+                
         ansisql.ANSISQLEngine.__init__(self, **params)
 
     def connect_args(self):
