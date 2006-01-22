@@ -176,6 +176,16 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             table2.select(order_by = [table2.c.id, asc(table2.c.name)]),
             "SELECT myothertable.otherid, myothertable.othername FROM myothertable ORDER BY myothertable.otherid, myothertable.othername ASC"
         )
+    def testgroupby(self):
+        self.runtest(
+            select([table2.c.name, func.count(table2.c.id)], group_by = [table2.c.name]),
+            "SELECT myothertable.othername, count(myothertable.otherid) FROM myothertable GROUP BY myothertable.othername"
+        )
+    def testgroupby_and_orderby(self):
+        self.runtest(
+            select([table2.c.name, func.count(table2.c.id)], group_by = [table2.c.name], order_by = [table2.c.name]),
+            "SELECT myothertable.othername, count(myothertable.otherid) FROM myothertable GROUP BY myothertable.othername ORDER BY myothertable.othername"
+        )
     def testalias(self):
         # test the alias for a table.  column names stay the same, table name "changes" to "foo".
         self.runtest(

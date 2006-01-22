@@ -1119,15 +1119,15 @@ class CompoundSelect(SelectBaseMixin, FromClause):
         self.use_labels = kwargs.pop('use_labels', False)
         self.oid_column = selects[0].oid_column
         for s in self.selects:
-            s.order_by(None)
             s.group_by(None)
+            s.order_by(None)
         self.clauses = []
-        order_by = kwargs.get('order_by', None)
-        if order_by:
-            self.order_by(*order_by)
         group_by = kwargs.get('group_by', None)
         if group_by:
             self.group_by(*group_by)
+        order_by = kwargs.get('order_by', None)
+        if order_by:
+            self.order_by(*order_by)
     def hash_key(self):
         return "CompoundSelect(%s)" % string.join(
             [util.hash_key(s) for s in self.selects] + 
@@ -1196,10 +1196,10 @@ class Select(SelectBaseMixin, FromClause):
         for f in from_obj:
             self.append_from(f)
 
-        if order_by:
-            self.order_by(*order_by)
         if group_by:
             self.group_by(*group_by)
+        if order_by:
+            self.order_by(*order_by)
             
     class CorrelatedVisitor(ClauseVisitor):
         """visits a clause, locates any Select clauses, and tells them that they should
