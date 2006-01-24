@@ -263,6 +263,7 @@ class UnitOfWork(object):
             if self.deleted.contains(obj):
                 continue
             commit_context.register_object(obj, listonly = True)
+            commit_context.register_saved_list(item)
             for o in item.added_items() + item.deleted_items():
                 if self.deleted.contains(o):
                     continue
@@ -334,7 +335,6 @@ class UOWTransaction(object):
         save/delete operation on the object itself, unless an additional save/delete
         registration is entered for the object."""
         #print "REGISTER", repr(obj), repr(getattr(obj, '_instance_key', None)), str(isdelete), str(listonly)
-        
         # things can get really confusing if theres duplicate instances floating around,
         # so make sure everything is OK
         if hasattr(obj, '_instance_key') and not self.uow.identity_map.has_key(obj._instance_key):
