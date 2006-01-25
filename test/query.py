@@ -7,6 +7,7 @@ import sqlalchemy.databases.sqlite as sqllite
 db = testbase.db
 
 from sqlalchemy import *
+from sqlalchemy.engine import ResultProxy, RowProxy
 
 class QueryTest(PersistTest):
     
@@ -99,6 +100,34 @@ class QueryTest(PersistTest):
         self.assert_(r==[(3, 'ed'), (4, 'wendy'), (5, 'laura')])
         r = self.users.select(offset=5).execute().fetchall()
         self.assert_(r==[(6, 'ralph'), (7, 'fido')])
+        
+    def test_column_accessor(self):
+        self.users.insert().execute(user_id=1, user_name='john')
+        self.users.insert().execute(user_id=2, user_name='jack')
+        r = self.users.select(self.users.c.user_id==2).execute().fetchone()
+        self.assert_(r.user_id == r['user_id'] == r[self.users.c.user_id] == 2)
+        self.assert_(r.user_name == r['user_name'] == r[self.users.c.user_name] == 'jack')
+
+    def test_column_accessor_shadow(self):
+        shadowed = Table('test_shadowed', db,
+                         Column('shadow_id', INT, primary_key = True),
+                         Column('shadow_name', VARCHAR(20)),
+                         Column('parent', VARCHAR(20)),
+                         Column('row', VARCHAR(20)),
+            redefine = True
+        )
+        shadowed.create()
+        shadowed.insert().execute(shadow_id=1, shadow_name='The Shadow', parent='The Light',  row='Without light there is no shadow')
+        r = shadowed.select(shadowed.c.shadow_id==1).execute().fetchone()
+        self.assert_(r.shadow_id == r['shadow_id'] == r[shadowed.c.shadow_id] == 1)
+        self.assert_(r.shadow_name == r['shadow_name'] == r[shadowed.c.shadow_name] == 'The Shadow')
+        self.failIf(r.parent == 'The Light')
+        self.failIf(r.row == 'Without light there is no shadow')
+        self.assert_(isinstance(r.parent, ResultProxy))
+        self.assert_(isinstance(r.row, tuple))
+        self.assert_(r['parent'] == r[shadowed.c.parent] == 'The Light')
+        self.assert_(r['row'] == r[shadowed.c.row] == 'Without light there is no shadow')
+        
         
 if __name__ == "__main__":
     testbase.main()        

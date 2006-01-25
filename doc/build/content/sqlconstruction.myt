@@ -89,7 +89,10 @@ SELECT users.user_id, users.user_name, users.password FROM users
             # or column object
             password = row[users.c.password]
             
-            # rowproxy object also supports fetchall()
+            # or column accessor
+            password = row.password
+            
+            # ResultProxy object also supports fetchall()
             rows = c.fetchall()
             
             # or get the underlying DBAPI cursor object

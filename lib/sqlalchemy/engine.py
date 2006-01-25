@@ -692,5 +692,9 @@ class RowProxy:
         return repr(tuple([self.parent._get_col(self.row, key) for key in range(0, len(self.row))]))
     def __getitem__(self, key):
         return self.parent._get_col(self.row, key)
-
+    def __getattr__(self, name):
+        try:
+            return self.parent._get_col(self.row, name)
+        except:
+            raise AttributeError
 
