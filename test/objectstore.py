@@ -22,7 +22,7 @@ class HistoryTest(AssertMixin):
     def setUp(self):
         objectstore.clear()
         clear_mappers()
-
+        
     def testattr(self):
         """tests the rolling back of scalar and list attributes.  this kind of thing
         should be tested mostly in attributes.py which tests independently of the ORM 
@@ -139,6 +139,10 @@ class SaveTest(AssertMixin):
         db.commit()
         tables.delete()
         db.echo = testbase.echo
+
+        self.assert_(len(objectstore.uow().new) == 0)
+        self.assert_(len(objectstore.uow().dirty) == 0)
+        self.assert_(len(objectstore.uow().modified_lists) == 0)
         
     def testbasic(self):
         # save two users
@@ -177,6 +181,25 @@ class SaveTest(AssertMixin):
         self.assert_(u.user_id == userlist[0].user_id and userlist[0].user_name == 'modifiedname')
         self.assert_(u2.user_id == userlist[1].user_id and userlist[1].user_name == 'savetester2')
 
+    def testinherits(self):
+        m1 = mapper(User, users)
+        
+        class AddressUser(User):
+            """a user object that also has the users mailing address."""
+            pass
+
+        # define a mapper for AddressUser that inherits the User.mapper, and joins on the user_id column
+        AddressUser.mapper = mapper(
+                AddressUser,
+                addresses, inherits=m1
+                )
+        
+        au = AddressUser()
+        objectstore.commit()
+        objectstore.clear()
+        l = AddressUser.mapper.selectone()
+        self.assert_(l.user_id == au.user_id and l.address_id == au.address_id)
+    
     def testmultitable(self):
         """tests a save of an object where each instance spans two tables. also tests
         redefinition of the keynames for the column properties."""
@@ -488,7 +511,6 @@ class SaveTest(AssertMixin):
         u2.user_name = 'user2modified'
         u1.addresses.append(a3)
         del u1.addresses[0]
-        u1.addresses.foo = True
         self.assert_sql(db, lambda: objectstore.commit(), 
                 [
                     (
