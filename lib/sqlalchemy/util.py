@@ -190,6 +190,8 @@ class HashSet(object):
         del self.map[key]
     def __getitem__(self, key):
         return self.map[key]
+    def __repr__(self):
+        return repr(self.map.values())
         
 class HistoryArraySet(UserList.UserList):
     """extends a UserList to provide unique-set functionality as well as history-aware 
