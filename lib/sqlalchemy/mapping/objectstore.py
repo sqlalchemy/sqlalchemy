@@ -104,7 +104,7 @@ def import_instance(instance):
         return None
     key = getattr(instance, '_instance_key', None)
     mapper = object_mapper(instance)
-    key = (key[0], repr(mapper.table), key[2])
+    key = (key[0], mapper.table.hash_key(), key[2])
     u = uow()
     if key is not None:
         if u.identity_map.has_key(key):
@@ -121,6 +121,8 @@ class UOWListElement(attributes.ListElement):
         attributes.ListElement.__init__(self, obj, key, data=data, **kwargs)
         self.deleteremoved = deleteremoved
     def list_value_changed(self, obj, key, item, listval, isdelete):
+        if not isdelete and uow().deleted.contains(item):
+            raise "re-inserting a deleted value into a list"
         uow().modified_lists.append(self)
         if self.deleteremoved and isdelete:
             uow().register_deleted(item)
@@ -159,7 +161,7 @@ class UnitOfWork(object):
         self.parent = parent
 
     def get(self, class_, *id):
-        return sqlalchemy.mapper.object_mapper(class_).get(*id)
+        return object_mapper(class_).get(*id)
 
     def _get(self, key):
         return self.identity_map[key]
@@ -209,6 +211,9 @@ class UnitOfWork(object):
             del self.new[obj]
         except KeyError:
             pass
+        if not hasattr(obj, '_instance_key'):
+            mapper = object_mapper(obj)
+            obj._instance_key = mapper.instance_key(obj)
         self._put(obj._instance_key, obj)
         self.attributes.commit(obj)
         
@@ -263,11 +268,13 @@ class UnitOfWork(object):
             if self.deleted.contains(obj):
                 continue
             commit_context.register_object(obj, listonly = True)
-            commit_context.register_saved_list(item)
-            for o in item.added_items() + item.deleted_items():
-                if self.deleted.contains(o):
-                    continue
-                commit_context.register_object(o, listonly=True)
+            commit_context.register_saved_history(item)
+
+#            for o in item.added_items() + item.deleted_items():
+#                if self.deleted.contains(o):
+#                    continue
+#                commit_context.register_object(o, listonly=True)
+                     
         for obj in self.deleted:
             if objset is not None and not objset.contains(obj):
                 continue
@@ -320,10 +327,7 @@ class UOWTransaction(object):
         self.mappers = util.HashSet()
         self.dependencies = {}
         self.tasks = {}
-        self.saved_objects = util.HashSet()
-        self.saved_lists = util.HashSet()
-        self.deleted_objects = util.HashSet()
-        self.deleted_lists = util.HashSet()
+        self.saved_histories = util.HashSet()
 
     def register_object(self, obj, isdelete = False, listonly = False, **kwargs):
         """adds an object to this UOWTransaction to be updated in the database.
@@ -378,18 +382,9 @@ class UOWTransaction(object):
         targettask = self.get_task_by_mapper(mapperfrom)
         task.dependencies.append(UOWDependencyProcessor(processor, targettask, isdeletefrom))
 
-    def register_saved_object(self, obj):
-        self.saved_objects.append(obj)
+    def register_saved_history(self, listobj):
+        self.saved_histories.append(listobj)
 
-    def register_saved_list(self, listobj):
-        self.saved_lists.append(listobj)
-
-    def register_deleted_list(self, listobj):
-        self.deleted_lists.append(listobj)
-        
-    def register_deleted_object(self, obj):
-        self.deleted_objects.append(obj)
-        
     def execute(self, echo=False):
         for task in self.tasks.values():
             task.mapper.register_dependencies(self)
@@ -399,31 +394,31 @@ class UOWTransaction(object):
             print "Task dump:\n" + head.dump()
         if head is not None:
             head.execute(self)
+        if LOG or echo:
+            print "\nAfter Execute:\n" + head.dump()
             
     def post_exec(self):
         """after an execute/commit is completed, all of the objects and lists that have
         been committed are updated in the parent UnitOfWork object to mark them as clean."""
-        for obj in self.saved_objects:
-            mapper = object_mapper(obj)
-            obj._instance_key = mapper.instance_key(obj)
-            self.uow.register_clean(obj)
-
-        for obj in self.saved_lists:
-            try:
-                obj.commit()
-                del self.uow.modified_lists[obj]
-            except KeyError:
-                pass
-
-        for obj in self.deleted_objects:
-            self.uow._remove_deleted(obj)
         
-        for obj in self.deleted_lists:
+        for task in self.tasks.values():
+            for elem in task.objects.values():
+                if elem.isdelete:
+                    self.uow._remove_deleted(elem.obj)
+                else:
+                    self.uow.register_clean(elem.obj)
+                
+        for obj in self.saved_histories:
             try:
                 obj.commit()
                 del self.uow.modified_lists[obj]
             except KeyError:
                 pass
+
+	# this assertion only applies to a full commit(), not a
+	# partial one
+        #if len(self.uow.new) > 0 or len(self.uow.dirty) >0 or len(self.uow.modified_lists) > 0:
+        #    raise "assertion failed"
 
     def _sort_dependencies(self):
         """creates a hierarchical tree of dependent tasks.  the root node is returned.
@@ -530,7 +525,10 @@ class UOWTask(object):
             rec.isdelete = True
 
     def delete(self, obj):
-        del self.objects[obj]
+        try:
+            del self.objects[obj]
+        except KeyError:
+            pass
         
     def execute(self, trans):
         """executes this UOWTask.  saves objects to be saved, processes all dependencies

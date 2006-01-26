@@ -421,7 +421,9 @@ class PropertyLoader(MapperProperty):
         #print self.mapper.table.name + " " + self.key + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
 
         def getlist(obj, passive=True):
-            return self.get_object_dependencies(obj, uowcommit, passive)
+            l = self.get_object_dependencies(obj, uowcommit, passive)
+            uowcommit.register_saved_history(l)
+            return l
 
         # plugin point
         
@@ -435,7 +437,6 @@ class PropertyLoader(MapperProperty):
                         associationrow = {}
                         self._synchronize(obj, child, associationrow, False)
                         secondary_delete.append(associationrow)
-                    uowcommit.register_deleted_list(childlist)
             else:
                 for obj in deplist:
                     childlist = getlist(obj)
@@ -448,7 +449,6 @@ class PropertyLoader(MapperProperty):
                         associationrow = {}
                         self._synchronize(obj, child, associationrow, False)
                         secondary_delete.append(associationrow)
-                    uowcommit.register_saved_list(childlist)
             if len(secondary_delete):
                 # TODO: precompile the delete/insert queries and store them as instance variables
                 # on the PropertyLoader
@@ -473,13 +473,11 @@ class PropertyLoader(MapperProperty):
                 for child in childlist.deleted_items() + childlist.unchanged_items():
                     self._synchronize(obj, child, None, True)
                     uowcommit.register_object(child)
-                uowcommit.register_deleted_list(childlist)
         elif self.association is not None:
             # manage association objects.
             for obj in deplist:
                 childlist = getlist(obj, passive=True)
                 if childlist is None: continue
-                uowcommit.register_saved_list(childlist)
                 
                 #print "DIRECTION", self.direction
                 d = {}
@@ -517,7 +515,6 @@ class PropertyLoader(MapperProperty):
                     uowcommit.register_object(obj)
                 childlist = getlist(obj, passive=True)
                 if childlist is None: continue
-                uowcommit.register_saved_list(childlist)
                 for child in childlist.added_items():
                     self._synchronize(obj, child, None, False)
                     if self.direction == PropertyLoader.LEFT:

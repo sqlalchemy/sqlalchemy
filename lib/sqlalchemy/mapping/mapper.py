@@ -73,7 +73,7 @@ class Mapper(object):
         if inherits is not None:
             self.primarytable = inherits.primarytable
             # inherit_condition is optional since the join can figure it out
-            self.table = sql.join(table, inherits.table, inherit_condition)
+            self.table = sql.join(inherits.table, table, inherit_condition)
         else:
             self.primarytable = self.table
         
@@ -82,7 +82,6 @@ class Mapper(object):
         tf = TableFinder()
         self.table.accept_visitor(tf)
         self.tables = tf.tables
-
 
         # determine primary key columns, either passed in, or get them from our set of tables
         self.pks_by_table = {}
@@ -338,7 +337,7 @@ class Mapper(object):
         
         e.g.   u = usermapper.get_by(user_name = 'fred')
         """
-        x = self.select_by(*args, **params)
+        x = self.select_whereclause(self._by_clause(*args, **params), limit=1)
         if len(x):
             return x[0]
         else:
@@ -416,6 +415,7 @@ class Mapper(object):
     def selectone(self, *args, **params):
         """works like select(), but only returns the first result by itself, or None if no 
         objects returned."""
+        params['limit'] = 1
         ret = self.select(*args, **params)
         if len(ret):
             return ret[0]
@@ -437,14 +437,14 @@ class Mapper(object):
         else:
             return self.select_whereclause(arg, **kwargs)
 
-    def select_whereclause(self, whereclause = None, params=None, **kwargs):
+    def select_whereclause(self, whereclause=None, params=None, **kwargs):
         statement = self._compile(whereclause, **kwargs)
         if params is not None:
             return self.select_statement(statement, **params)
         else:
             return self.select_statement(statement)
 
-    def count(self, whereclause = None, params=None, **kwargs):
+    def count(self, whereclause=None, params=None, **kwargs):
         s = self.table.count(whereclause)
         if params is not None:
             return s.scalar(**params)
@@ -484,6 +484,7 @@ class Mapper(object):
         list."""
           
         for table in self.tables:
+            #print "SAVE_OBJ table ", table.name
             # looping through our set of tables, which are all "real" tables, as opposed
             # to our main table which might be a select statement or something non-writeable
             
@@ -553,7 +554,6 @@ class Mapper(object):
                         update.append(params)
                 else:
                     insert.append((obj, params))
-                uow.register_saved_object(obj)
             if len(update):
                 clause = sql.and_()
                 for col in self.pks_by_table[table]:
@@ -595,7 +595,6 @@ class Mapper(object):
                     delete.append(params)
                 for col in self.pks_by_table[table]:
                     params[col.key] = self._getattrbycolumn(obj, col)
-                uow.register_deleted_object(obj)
                 self.extension.before_delete(self, obj)
             if len(delete):
                 clause = sql.and_()
