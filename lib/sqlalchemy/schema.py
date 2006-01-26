@@ -154,6 +154,12 @@ class Table(SchemaItem):
         ["%s=%s" % (k, repr(getattr(self, k))) for k in ['schema']]
        , ',\n')
     
+    def hash_key(self):
+        return "Table(%s)" % string.join(
+        [repr(self.name)] + [self.engine.hash_key()] +
+        ["%s=%s" % (k, repr(getattr(self, k))) for k in ['schema']], ','
+        )
+        
     def reload_values(self, *args):
         """clears out the columns and other properties of this Table, and reloads them from the 
         given argument list.  This is used with the "redefine" keyword argument sent to the

@@ -184,6 +184,9 @@ class SQLEngine(schema.SchemaEngine):
         else:
             self.logger = logger
 
+    def hash_key(self):
+        return "%s(%s)" % (self.__class__.__name__, repr(self.connect_args()))
+        
     def dispose(self):
         """disposes of the underlying pool manager for this SQLEngine."""
         (cargs, cparams) = self.connect_args()
@@ -697,4 +700,6 @@ class RowProxy:
             return self.parent._get_col(self.row, name)
         except:
             raise AttributeError
+
+
 
