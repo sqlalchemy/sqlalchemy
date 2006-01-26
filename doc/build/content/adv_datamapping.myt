@@ -335,6 +335,7 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
 
         # define a mapper for AddressUser that inherits the User.mapper, and joins on the user_id column
         AddressUser.mapper = mapper(
+		AddressUser,
                 addresses, inherits=User.mapper
                 )
         
@@ -343,6 +344,7 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
 <P>Above, the join condition is determined via the foreign keys between the users and the addresses table.  To specify the join condition explicitly, use <span class="codeline">inherit_condition</span>:
 <&|formatting.myt:code&>
     AddressUser.mapper = mapper(
+            AddressUser,
             addresses, inherits=User.mapper, 
             inherit_condition=users.c.user_id==addresses.c.user_id
         )
