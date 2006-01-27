@@ -391,11 +391,15 @@ class UOWTransaction(object):
 
         head = self._sort_dependencies()
         if LOG or echo:
-            print "Task dump:\n" + head.dump()
+            if head is None:
+                print "Task dump: None"
+            else:
+                print "Task dump:\n" + head.dump()
         if head is not None:
             head.execute(self)
         if LOG or echo:
-            print "\nAfter Execute:\n" + head.dump()
+            if head is not None:
+                print "\nAfter Execute:\n" + head.dump()
             
     def post_exec(self):
         """after an execute/commit is completed, all of the objects and lists that have
@@ -415,8 +419,8 @@ class UOWTransaction(object):
             except KeyError:
                 pass
 
-	# this assertion only applies to a full commit(), not a
-	# partial one
+    # this assertion only applies to a full commit(), not a
+    # partial one
         #if len(self.uow.new) > 0 or len(self.uow.dirty) >0 or len(self.uow.modified_lists) > 0:
         #    raise "assertion failed"
 
