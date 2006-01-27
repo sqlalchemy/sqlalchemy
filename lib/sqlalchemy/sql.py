@@ -399,7 +399,11 @@ class ClauseElement(object):
         """executes this SQL expression via the execute() method, then 
         returns the first column of the first row.  Useful for executing functions,
         sequences, rowcounts, etc."""
-        return self.execute(*multiparams, **params).fetchone()[0]
+        row = self.execute(*multiparams, **params).fetchone()
+        if row is not None:
+            return row[0]
+        else:
+            return None
 
     def __and__(self, other):
         return and_(self, other)
