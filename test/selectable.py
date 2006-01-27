@@ -74,7 +74,11 @@ class SelectableTest(testbase.AssertMixin):
         a = select([table.c.col1.label('acol1'), table.c.col2.label('acol2'), table.c.col3.label('acol3')])
         print str(a)
         print [c for c in a.columns]
+        print str(a.select())
         j = join(a, table2)
+        criterion = a.c.acol1 == table2.c.col2
+        print str(j)
+        self.assert_(criterion.compare(j.onclause))
         
     def testselectaliaslabels(self):
         a = table2.select(use_labels=True).alias('a')
