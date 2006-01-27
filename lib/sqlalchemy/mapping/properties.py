@@ -119,9 +119,9 @@ class DeferredColumnProperty(ColumnProperty):
 mapper.ColumnProperty = ColumnProperty
 
 class PropertyLoader(MapperProperty):
-    LEFT = 0  # one-to-many
-    RIGHT = 1  # many-to-one
-    CENTER = 2  # many-to-many
+    ONETOMANY = 0
+    MANYTOONE = 1
+    MANYTOMANY = 2
 
     """describes an object property that holds a single item or list of items that correspond
     to a related database table."""
@@ -183,7 +183,7 @@ class PropertyLoader(MapperProperty):
 
         self.direction = self._get_direction()
         
-        if self.uselist is None and self.direction == PropertyLoader.RIGHT:
+        if self.uselist is None and self.direction == PropertyLoader.MANYTOONE:
             self.uselist = False
 
         if self.uselist is None:
@@ -196,9 +196,9 @@ class PropertyLoader(MapperProperty):
             # if a backref name is defined, set up an extension to populate 
             # attributes in the other direction
             if self.backref is not None:
-                if self.direction == PropertyLoader.LEFT:
+                if self.direction == PropertyLoader.ONETOMANY:
                     self.attributeext = attributes.OTMBackrefExtension(self.backref)
-                elif self.direction == PropertyLoader.RIGHT:
+                elif self.direction == PropertyLoader.MANYTOONE:
                     self.attributeext = attributes.MTOBackrefExtension(self.backref)
                 else:
                     self.attributeext = attributes.ListBackrefExtension(self.backref)
@@ -231,15 +231,15 @@ class PropertyLoader(MapperProperty):
 #        print self.key, repr(self.parent.table.name), repr(self.parent.primarytable.name), repr(self.foreignkey.table.name)
         if self.parent.table is self.target:
             if self.foreignkey.primary_key:
-                return PropertyLoader.RIGHT
+                return PropertyLoader.MANYTOONE
             else:
-                return PropertyLoader.LEFT
+                return PropertyLoader.ONETOMANY
         elif self.secondaryjoin is not None:
-            return PropertyLoader.CENTER
+            return PropertyLoader.MANYTOMANY
         elif self.foreignkey.table == self.target:
-            return PropertyLoader.LEFT
+            return PropertyLoader.ONETOMANY
         elif self.foreignkey.table == self.parent.table:
-            return PropertyLoader.RIGHT
+            return PropertyLoader.MANYTOONE
         else:
             raise "Cant determine relation direction"
             
@@ -277,25 +277,25 @@ class PropertyLoader(MapperProperty):
                     dest = binary.left
                 else:
                     raise "Cant determine direction for relationship %s = %s" % (binary.left.fullname, binary.right.fullname)
-                if self.direction == PropertyLoader.LEFT:
+                if self.direction == PropertyLoader.ONETOMANY:
                     self.syncrules.append((self.parent, source, self.mapper, dest))
-                elif self.direction == PropertyLoader.RIGHT:
+                elif self.direction == PropertyLoader.MANYTOONE:
                     self.syncrules.append((self.mapper, source, self.parent, dest))
                 else:
                     raise "assert failed"
             else:
                 colmap = {binary.left.table : binary.left, binary.right.table : binary.right}
                 if colmap.has_key(self.parent.primarytable) and colmap.has_key(self.target):
-                    if self.direction == PropertyLoader.LEFT:
+                    if self.direction == PropertyLoader.ONETOMANY:
                         self.syncrules.append((self.parent, colmap[self.parent.primarytable], self.mapper, colmap[self.target]))
-                    elif self.direction == PropertyLoader.RIGHT:
+                    elif self.direction == PropertyLoader.MANYTOONE:
                         self.syncrules.append((self.mapper, colmap[self.target], self.parent, colmap[self.parent.primarytable]))
                     else:
                         raise "assert failed"
                 elif colmap.has_key(self.parent.primarytable) and colmap.has_key(self.secondary):
-                    self.syncrules.append((self.parent, colmap[self.parent.primarytable], PropertyLoader.LEFT, colmap[self.secondary]))
+                    self.syncrules.append((self.parent, colmap[self.parent.primarytable], PropertyLoader.ONETOMANY, colmap[self.secondary]))
                 elif colmap.has_key(self.target) and colmap.has_key(self.secondary):
-                    self.syncrules.append((self.mapper, colmap[self.target], PropertyLoader.RIGHT, colmap[self.secondary]))
+                    self.syncrules.append((self.mapper, colmap[self.target], PropertyLoader.MANYTOONE, colmap[self.secondary]))
 
         self.syncrules = []
         processor = BinaryVisitor(compile)
@@ -380,7 +380,7 @@ class PropertyLoader(MapperProperty):
             uowcommit.register_processor(stub, self, self.parent, False)
             uowcommit.register_processor(stub, self, self.parent, True)
 
-        elif self.direction == PropertyLoader.CENTER:
+        elif self.direction == PropertyLoader.MANYTOMANY:
             # many-to-many.  create a "Stub" mapper to represent the
             # "middle table" in the relationship.  This stub mapper doesnt save
             # or delete any objects, but just marks a dependency on the two
@@ -396,11 +396,11 @@ class PropertyLoader(MapperProperty):
             uowcommit.register_dependency(self.mapper, stub)
             uowcommit.register_processor(stub, self, self.parent, False)
             uowcommit.register_processor(stub, self, self.parent, True)
-        elif self.direction == PropertyLoader.LEFT:
+        elif self.direction == PropertyLoader.ONETOMANY:
             uowcommit.register_dependency(self.parent, self.mapper)
             uowcommit.register_processor(self.parent, self, self.parent, False)
             uowcommit.register_processor(self.parent, self, self.parent, True)
-        elif self.direction == PropertyLoader.RIGHT:
+        elif self.direction == PropertyLoader.MANYTOONE:
             uowcommit.register_dependency(self.mapper, self.parent)
             uowcommit.register_processor(self.mapper, self, self.parent, False)
         else:
@@ -412,7 +412,7 @@ class PropertyLoader(MapperProperty):
     def whose_dependent_on_who(self, obj1, obj2):
         if obj1 is obj2:
             return None
-        elif self.direction == PropertyLoader.LEFT:
+        elif self.direction == PropertyLoader.ONETOMANY:
             return (obj1, obj2)
         else:
             return (obj2, obj1)
@@ -427,7 +427,7 @@ class PropertyLoader(MapperProperty):
 
         # plugin point
         
-        if self.direction == PropertyLoader.CENTER:
+        if self.direction == PropertyLoader.MANYTOMANY:
             secondary_delete = []
             secondary_insert = []
             if delete:
@@ -457,11 +457,11 @@ class PropertyLoader(MapperProperty):
             if len(secondary_insert):
                 statement = self.secondary.insert()
                 statement.execute(*secondary_insert)
-        elif self.direction == PropertyLoader.RIGHT and delete:
+        elif self.direction == PropertyLoader.MANYTOONE and delete:
             # head object is being deleted, and we manage a foreign key object.
             # dont have to do anything to it.
             pass
-        elif self.direction == PropertyLoader.LEFT and delete:
+        elif self.direction == PropertyLoader.ONETOMANY and delete:
             # head object is being deleted, and we manage its list of child objects
             # the child objects have to have their foreign key to the parent set to NULL
             if self.private:
@@ -511,30 +511,30 @@ class PropertyLoader(MapperProperty):
                         uowcommit.register_object(child, isdelete=True)
         else:
             for obj in deplist:
-                if self.direction == PropertyLoader.RIGHT:
+                if self.direction == PropertyLoader.MANYTOONE:
                     uowcommit.register_object(obj)
                 childlist = getlist(obj, passive=True)
                 if childlist is None: continue
                 for child in childlist.added_items():
                     self._synchronize(obj, child, None, False)
-                    if self.direction == PropertyLoader.LEFT:
+                    if self.direction == PropertyLoader.ONETOMANY:
                         uowcommit.register_object(child)
-                if self.direction != PropertyLoader.RIGHT or len(childlist.added_items()) == 0:
+                if self.direction != PropertyLoader.MANYTOONE or len(childlist.added_items()) == 0:
                     for child in childlist.deleted_items():
                         if not self.private:
                             self._synchronize(obj, child, None, True)
-                        if self.direction == PropertyLoader.LEFT:
+                        if self.direction == PropertyLoader.ONETOMANY:
                             uowcommit.register_object(child, isdelete=self.private)
 
                 
     def _synchronize(self, obj, child, associationrow, clearkeys):
-        if self.direction == PropertyLoader.LEFT:
+        if self.direction == PropertyLoader.ONETOMANY:
             source = obj
             dest = child
-        elif self.direction == PropertyLoader.RIGHT:
+        elif self.direction == PropertyLoader.MANYTOONE:
             source = child
             dest = obj
-        elif self.direction == PropertyLoader.CENTER:
+        elif self.direction == PropertyLoader.MANYTOMANY:
             source = None
             dest = associationrow
 
@@ -542,9 +542,9 @@ class PropertyLoader(MapperProperty):
             localsource = source
             (smapper, scol, dmapper, dcol) = rule
             if localsource is None:
-                if dmapper == PropertyLoader.LEFT:
+                if dmapper == PropertyLoader.ONETOMANY:
                     localsource = obj
-                elif dmapper == PropertyLoader.RIGHT:
+                elif dmapper == PropertyLoader.MANYTOONE:
                     localsource = child
 
             if clearkeys:
