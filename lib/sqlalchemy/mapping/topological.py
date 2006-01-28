@@ -30,7 +30,8 @@ work again, then break, etc.   Most of the bugs I've chased down while developin
 have been of this nature - very tricky to reproduce and track down, particularly before I 
 realized this characteristic of the algorithm.
 """
-import string
+import string, StringIO
+from sets import *
 
 class QueueDependencySorter(object):
     """this is a topological sort from wikipedia.  its very stable.  it creates a straight-line
@@ -59,6 +60,13 @@ class QueueDependencySorter(object):
     def __init__(self, tuples, allitems):
         self.tuples = tuples
         self.allitems = allitems
+
+    def _dump_edges(self, edges):
+        s = StringIO.StringIO()
+        for key, value in edges.iteritems():
+            for c in value.keys():
+                s.write("%s->%s\n" % (repr(key), repr(c)))
+        return s.getvalue()
         
     def sort(self, allow_self_cycles=True, allow_all_cycles=False):
         (tuples, allitems) = (self.tuples, self.allitems)
@@ -99,33 +107,31 @@ class QueueDependencySorter(object):
         cycles = {}
         output = []
         while len(edges) > 0:
+            print self._dump_edges(edges)
             if len(queue) == 0:
                 # edges remain but no edgeless nodes to remove; this indicates
                 # a cycle
                 if allow_all_cycles:
-                    # for each cycle, throw all the nodes involved in that 
-                    # cycle into a list attached to one of those nodes, then 
-                    # add just that node to the output.
-                    for parentnode in edges.keys():
-                        d = edges[parentnode]
-                        for childnode in d.keys():
-                            if cycles.has_key(parentnode):
-                                cycles[parentnode].append(childnode)
-                                cycles[childnode] = cycles[parentnode]
-                            elif cycles.has_key(childnode):
-                                cycles[childnode].append(parentnode)
-                                cycles[parentnode] = cycles[childnode]
-                            else:
-                                cycles[parentnode] = parentnode.cycles
-                                parentnode.cycles.append(childnode)
-                                cycles[childnode] = parentnode.cycles
-                                output.append(parentnode)
-                    break
+                    cycle = self._find_cycle(edges)
+                    lead = cycle[0][0]
+                    for edge in cycle:
+                        n = self._remove_edge(edges, edge)
+                        lead.cycles.append(edge[0])
+                        lead.cycles.append(edge[1])
+                        if n is not None:
+                            queue.append(n)
+                            if n is not lead:
+                                n.foo = True
+                    # loop through cycle
+                    # remove edges from the edge dictionary
+                    # install the cycled nodes in the "cycle" list of one of the nodes
+                    continue
                 else:
                     # long cycles not allowed
                     raise "Circular dependency detected " + repr(edges) + repr(queue)
             node = queue.pop()
-            output.append(node)
+            if not hasattr(node, 'foo'):
+                output.append(node)
             nodeedges = edges.pop(node, None)
             if nodeedges is None:
                 continue
@@ -134,7 +140,6 @@ class QueueDependencySorter(object):
                 if len(childnode.edges) == 0:
                     queue.append(childnode)
 
-            
         #print repr(output)
         head = None
         node = None
@@ -149,6 +154,42 @@ class QueueDependencySorter(object):
                 node.children.append(o)
         return head
 
+    def _remove_edge(self, edges, edge):
+        (parentnode, childnode) = edge
+        del edges[parentnode][childnode]
+        del childnode.edges[parentnode]
+        del parentnode.dependencies[childnode]
+        if len(childnode.edges) == 0:
+            return childnode
+        
+    def _find_cycle(self, edges):
+        """given a structure of edges, locates a cycle in the strucure and returns 
+        as a list of tuples representing edges involved in the cycle."""
+        seen = Set()
+        cycled_edges = []
+        def traverse(d, parent=None):
+            for key in d.keys():
+                if not edges.has_key(key):
+                    continue
+                if key in seen:
+                    if parent is not None:
+                        cycled_edges.append((parent, key))
+                    return key
+                seen.add(key)
+                x = traverse(edges[key], parent=key)
+                if x is None:
+                    seen.remove(key)
+                else:
+                    if parent is not None:
+                        cycled_edges.append((parent, key))
+                    return x
+            else:
+                return None
+        s = traverse(edges)
+        if s is None:
+            return None
+        else:
+            return cycled_edges
 
 class TreeDependencySorter(object):
     """

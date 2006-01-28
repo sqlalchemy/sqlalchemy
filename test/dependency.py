@@ -123,13 +123,14 @@ class DependencySortTest(PersistTest):
         node4 = thingy('node4')
         node5 = thingy('node5')
         tuples = [
+            (node4, node5),
+            (node5, node4),
             (node1, node2),
             (node2, node3),
             (node3, node1),
-            (node4, node5),
-            (node5, node4)
+            (node4, node1)
         ]
-        head = DependencySorter(tuples, []).sort()
+        head = DependencySorter(tuples, []).sort(allow_all_cycles=True)
         print "\n" + str(head)
         
 
