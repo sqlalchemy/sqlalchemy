@@ -95,9 +95,7 @@ class QueueDependencySorter(object):
                     raise "Self-referential dependency detected " + repr(t)
             childnode = nodes[t[1]]
             parentnode = nodes[t[0]]
-            edges[parentnode][childnode] = True
-            parentnode.dependencies[childnode] = True
-            childnode.edges[parentnode] = True
+            self._add_edge(edges, (parentnode, childnode))
 
         queue = []
         for n in nodes.values():
@@ -107,7 +105,7 @@ class QueueDependencySorter(object):
         cycles = {}
         output = []
         while len(edges) > 0:
-            print self._dump_edges(edges)
+            #print self._dump_edges(edges)
             if len(queue) == 0:
                 # edges remain but no edgeless nodes to remove; this indicates
                 # a cycle
@@ -153,6 +151,12 @@ class QueueDependencySorter(object):
                         node = x
                 node.children.append(o)
         return head
+
+    def _add_edge(self, edges, edge):
+        (parentnode, childnode) = edge
+        edges[parentnode][childnode] = True
+        parentnode.dependencies[childnode] = True
+        childnode.edges[parentnode] = True
 
     def _remove_edge(self, edges, edge):
         (parentnode, childnode) = edge
