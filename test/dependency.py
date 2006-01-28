@@ -115,6 +115,22 @@ class DependencySortTest(PersistTest):
         ]
         head = DependencySorter(tuples, allitems).sort()
         print "\n" + str(head)
+
+    def testcircular(self):
+        node1 = thingy('node1')
+        node2 = thingy('node2')
+        node3 = thingy('node3')
+        node4 = thingy('node4')
+        node5 = thingy('node5')
+        tuples = [
+            (node1, node2),
+            (node2, node3),
+            (node3, node1),
+            (node4, node5),
+            (node5, node4)
+        ]
+        head = DependencySorter(tuples, []).sort()
+        print "\n" + str(head)
         
 
 if __name__ == "__main__":
