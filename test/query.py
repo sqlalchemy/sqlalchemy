@@ -108,25 +108,39 @@ class QueryTest(PersistTest):
         self.assert_(r.user_id == r['user_id'] == r[self.users.c.user_id] == 2)
         self.assert_(r.user_name == r['user_name'] == r[self.users.c.user_name] == 'jack')
 
+    def test_column_dict_behaviours(self):
+        self.users.insert().execute(user_id=1, user_name='foo')
+        r = self.users.select().execute().fetchone()
+        self.assertEqual(r.keys(), ['user_id', 'user_name'])
+        self.assertEqual(r.items(), [('user_id', 1), ('user_name', 'foo')])
+        self.assertEqual(r.values(), [1, 'foo'])
+        self.assertEqual(zip(r.itervalues(), r.iterkeys()), zip(r.values(), r.keys()))
+        self.assertEqual(repr(r), "{'user_name': u'foo', 'user_id': 1}")
+        
     def test_column_accessor_shadow(self):
         shadowed = Table('test_shadowed', db,
                          Column('shadow_id', INT, primary_key = True),
                          Column('shadow_name', VARCHAR(20)),
                          Column('parent', VARCHAR(20)),
                          Column('row', VARCHAR(20)),
+                         Column('__parent', VARCHAR(20)),
+                         Column('__row', VARCHAR(20)),
             redefine = True
         )
         shadowed.create()
-        shadowed.insert().execute(shadow_id=1, shadow_name='The Shadow', parent='The Light',  row='Without light there is no shadow')
+        shadowed.insert().execute(shadow_id=1, shadow_name='The Shadow', parent='The Light', row='Without light there is no shadow', __parent='Hidden parent', __row='Hidden row')
         r = shadowed.select(shadowed.c.shadow_id==1).execute().fetchone()
         self.assert_(r.shadow_id == r['shadow_id'] == r[shadowed.c.shadow_id] == 1)
         self.assert_(r.shadow_name == r['shadow_name'] == r[shadowed.c.shadow_name] == 'The Shadow')
-        self.failIf(r.parent == 'The Light')
-        self.failIf(r.row == 'Without light there is no shadow')
-        self.assert_(isinstance(r.parent, ResultProxy))
-        self.assert_(isinstance(r.row, tuple))
-        self.assert_(r['parent'] == r[shadowed.c.parent] == 'The Light')
-        self.assert_(r['row'] == r[shadowed.c.row] == 'Without light there is no shadow')
+        self.assert_(r.parent == r['parent'] == r[shadowed.c.parent] == 'The Light')
+        self.assert_(r.row == r['row'] == r[shadowed.c.row] == 'Without light there is no shadow')
+        self.assert_(r['__parent'] == 'Hidden parent')
+        self.assert_(r['__row'] == 'Hidden row')
+        try:
+            print r.__parent, r.__row
+            self.fail('Should not allow access to private attributes')
+        except AttributeError:
+            pass # expected
         
         
 if __name__ == "__main__":

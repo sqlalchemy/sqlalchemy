@@ -631,6 +631,7 @@ class ResultProxy:
         self.rowcount = engine.context.rowcount
         metadata = cursor.description
         self.props = {}
+        self.keys = []
         i = 0
         if metadata is not None:
             for item in metadata:
@@ -644,6 +645,7 @@ class ResultProxy:
                     raise "None for metadata " + colname
                 if self.props.setdefault(colname, rec) is not rec:
                     self.props[colname] = (ResultProxy.AmbiguousColumn(colname), 0)
+                self.keys.append(colname)
                 self.props[i] = rec
                 i+=1
 
@@ -684,22 +686,36 @@ class RowProxy:
     """proxies a single cursor row for a parent ResultProxy."""
     def __init__(self, parent, row):
         """RowProxy objects are constructed by ResultProxy objects."""
-        self.parent = parent
-        self.row = row
+        self.__parent = parent
+        self.__row = row
+    def keys(self):
+        return self.__parent.keys
     def __iter__(self):
-        for i in range(0, len(self.row)):
-            yield self.parent._get_col(self.row, i)
+        for k in self.keys():
+            yield k
     def __eq__(self, other):
-        return (other is self) or (other == tuple([self.parent._get_col(self.row, key) for key in range(0, len(self.row))]))
+        return (other is self) or (other == tuple([self.__parent._get_col(self.__row, key) for key in range(0, len(self.__row))]))
     def __repr__(self):
-        return repr(tuple([self.parent._get_col(self.row, key) for key in range(0, len(self.row))]))
+        return repr(dict(self.iteritems()))
     def __getitem__(self, key):
-        return self.parent._get_col(self.row, key)
+        return self.__parent._get_col(self.__row, key)
     def __getattr__(self, name):
         try:
-            return self.parent._get_col(self.row, name)
+            return self[name]
         except:
             raise AttributeError
+    def iteritems(self):
+        for k in self:
+            yield (k, self[k])
+    def iterkeys(self):
+        return self.__iter__()
+    def itervalues(self):
+        for _, v in self.iteritems():
+            yield v
+    def values(self):
+        return [v for _, v in self.iteritems()]
+    def items(self):
+        return list(self.iteritems())
 
 
 

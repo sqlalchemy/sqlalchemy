@@ -220,18 +220,18 @@ class SaveTest(AssertMixin):
         objectstore.uow().commit()
 
         usertable = users.select(users.c.user_id.in_(u.foo_id)).execute().fetchall()
-        self.assert_(usertable[0].row == (u.foo_id, 'multitester'))
+        self.assertEqual(usertable[0].values(), [u.foo_id, 'multitester'])
         addresstable = addresses.select(addresses.c.address_id.in_(u.address_id)).execute().fetchall()
-        self.assert_(addresstable[0].row == (u.address_id, u.foo_id, 'multi@test.org'))
+        self.assertEqual(addresstable[0].values(), [u.address_id, u.foo_id, 'multi@test.org'])
 
         u.email = 'lala@hey.com'
         u.user_name = 'imnew'
         objectstore.uow().commit()
 
         usertable = users.select(users.c.user_id.in_(u.foo_id)).execute().fetchall()
-        self.assert_(usertable[0].row == (u.foo_id, 'imnew'))
+        self.assertEqual(usertable[0].values(), [u.foo_id, 'imnew'])
         addresstable = addresses.select(addresses.c.address_id.in_(u.address_id)).execute().fetchall()
-        self.assert_(addresstable[0].row == (u.address_id, u.foo_id, 'lala@hey.com'))
+        self.assertEqual(addresstable[0].values(), [u.address_id, u.foo_id, 'lala@hey.com'])
 
         u = m.select(users.c.user_id==u.foo_id)[0]
         self.echo( repr(u.__dict__))
@@ -402,7 +402,7 @@ class SaveTest(AssertMixin):
                 
         ])
         l = sql.select([users, addresses], sql.and_(users.c.user_id==addresses.c.address_id, addresses.c.address_id==a.address_id)).execute()
-        self.echo( repr(l.fetchone().row))
+        self.echo( repr(l.fetchone().values()))
 
         
 
@@ -425,10 +425,10 @@ class SaveTest(AssertMixin):
         objectstore.uow().commit()
 
         usertable = users.select(users.c.user_id.in_(u.user_id)).execute().fetchall()
-        self.assert_(usertable[0].row == (u.user_id, 'one2manytester'))
+        self.assertEqual(usertable[0].values(), [u.user_id, 'one2manytester'])
         addresstable = addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id), order_by=[addresses.c.email_address]).execute().fetchall()
-        self.assert_(addresstable[0].row == (a2.address_id, u.user_id, 'lala@test.org'))
-        self.assert_(addresstable[1].row == (a.address_id, u.user_id, 'one2many@test.org'))
+        self.assertEqual(addresstable[0].values(), [a2.address_id, u.user_id, 'lala@test.org'])
+        self.assertEqual(addresstable[1].values(), [a.address_id, u.user_id, 'one2many@test.org'])
 
         userid = u.user_id
         addressid = a2.address_id
@@ -439,7 +439,7 @@ class SaveTest(AssertMixin):
 
         
         addresstable = addresses.select(addresses.c.address_id == addressid).execute().fetchall()
-        self.assert_(addresstable[0].row == (addressid, userid, 'somethingnew@foo.com'))
+        self.assertEqual(addresstable[0].values(), [addressid, userid, 'somethingnew@foo.com'])
         self.assert_(u.user_id == userid and a2.address_id == addressid)
 
     def testmapperswitch(self):
@@ -570,15 +570,15 @@ class SaveTest(AssertMixin):
         u.addresses.append(a2)
         m.save(u)
         addresstable = addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id)).execute().fetchall()
-        self.echo( repr(addresstable[0].row))
-        self.assert_(addresstable[0].row == (a.address_id, u.user_id, 'one2many@test.org'))
-        self.assert_(addresstable[1].row == (a2.address_id, u.user_id, 'lala@test.org'))
+        self.echo( repr(addresstable[0].values()))
+        self.assertEqual(addresstable[0].values(), [a.address_id, u.user_id, 'one2many@test.org'])
+        self.assertEqual(addresstable[1].values(), [a2.address_id, u.user_id, 'lala@test.org'])
         del u.addresses[1]
         m.save(u)
         addresstable = addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id)).execute().fetchall()
         self.echo( repr(addresstable))
-        self.assert_(addresstable[0].row == (a.address_id, u.user_id, 'one2many@test.org'))
-        self.assert_(addresstable[1].row == (a2.address_id, None, 'lala@test.org'))
+        self.assertEqual(addresstable[0].values(), [a.address_id, u.user_id, 'one2many@test.org'])
+        self.assertEqual(addresstable[1].values(), [a2.address_id, None, 'lala@test.org'])
 
     def testmanytomany(self):
         items = orderitems
