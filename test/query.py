@@ -116,6 +116,7 @@ class QueryTest(PersistTest):
         self.assertEqual(r.values(), [1, 'foo'])
         self.assertEqual(zip(r.itervalues(), r.iterkeys()), zip(r.values(), r.keys()))
         self.assertEqual(repr(r), "{'user_name': u'foo', 'user_id': 1}")
+        self.assertEqual(len(r), 2)
         
     def test_column_accessor_shadow(self):
         shadowed = Table('test_shadowed', db,

@@ -716,6 +716,8 @@ class RowProxy:
         return [v for _, v in self.iteritems()]
     def items(self):
         return list(self.iteritems())
+    def __len__(self):
+        return len(self.keys())
 
 
 
