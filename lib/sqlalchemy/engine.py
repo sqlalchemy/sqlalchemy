@@ -688,36 +688,23 @@ class RowProxy:
         """RowProxy objects are constructed by ResultProxy objects."""
         self.__parent = parent
         self.__row = row
-    def keys(self):
-        return self.__parent.keys
     def __iter__(self):
-        for k in self.keys():
-            yield k
+        for i in range(0, len(self.__row)):
+            yield self.__parent._get_col(self.__row, i)
     def __eq__(self, other):
         return (other is self) or (other == tuple([self.__parent._get_col(self.__row, key) for key in range(0, len(self.__row))]))
     def __repr__(self):
-        return repr(dict(self.iteritems()))
+        return repr(tuple([self.__parent._get_col(self.__row, key) for key in range(0, len(self.__row))]))
     def __getitem__(self, key):
         return self.__parent._get_col(self.__row, key)
     def __getattr__(self, name):
         try:
-            return self[name]
+            return self.__parent._get_col(self.__row, name)
         except:
             raise AttributeError
-    def iteritems(self):
-        for k in self:
-            yield (k, self[k])
-    def iterkeys(self):
-        return self.__iter__()
-    def itervalues(self):
-        for _, v in self.iteritems():
-            yield v
-    def values(self):
-        return [v for _, v in self.iteritems()]
-    def items(self):
-        return list(self.iteritems())
-    def __len__(self):
-        return len(self.keys())
-
-
-
+    def keys(self):
+        return self.__parent.keys
+    def values(self): 
+	return list(self)
+    def __len__(self): 
+	return len(self.__row)

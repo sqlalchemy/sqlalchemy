@@ -108,15 +108,37 @@ class QueryTest(PersistTest):
         self.assert_(r.user_id == r['user_id'] == r[self.users.c.user_id] == 2)
         self.assert_(r.user_name == r['user_name'] == r[self.users.c.user_name] == 'jack')
 
-    def test_column_dict_behaviours(self):
+    def test_keys(self):
         self.users.insert().execute(user_id=1, user_name='foo')
         r = self.users.select().execute().fetchone()
         self.assertEqual(r.keys(), ['user_id', 'user_name'])
-        self.assertEqual(r.items(), [('user_id', 1), ('user_name', 'foo')])
-        self.assertEqual(r.values(), [1, 'foo'])
-        self.assertEqual(zip(r.itervalues(), r.iterkeys()), zip(r.values(), r.keys()))
-        self.assertEqual(repr(r), "{'user_name': u'foo', 'user_id': 1}")
+
+    def test_len(self):
+        self.users.insert().execute(user_id=1, user_name='foo')
+        r = self.users.select().execute().fetchone()
         self.assertEqual(len(r), 2)
+        r = db.execute('select user_name, user_id from query_users', {}).fetchone()
+        self.assertEqual(len(r), 2)
+        r = db.execute('select user_name from query_users', {}).fetchone()
+        self.assertEqual(len(r), 1)
+        
+    def test_column_order_with_simple_query(self):
+        # should return values in column definition order
+        self.users.insert().execute(user_id=1, user_name='foo')
+        r = self.users.select(self.users.c.user_id==1).execute().fetchone()
+        self.assertEqual(r[0], 1)
+        self.assertEqual(r[1], 'foo')
+        self.assertEqual(r.keys(), ['user_id', 'user_name'])
+        self.assertEqual(r.values(), [1, 'foo'])
+        
+    def test_column_order_with_text_query(self):
+        # should return values in query order
+        self.users.insert().execute(user_id=1, user_name='foo')
+        r = db.execute('select user_name, user_id from query_users', {}).fetchone()
+        self.assertEqual(r[0], 'foo')
+        self.assertEqual(r[1], 1)
+        self.assertEqual(r.keys(), ['user_name', 'user_id'])
+        self.assertEqual(r.values(), ['foo', 1])
         
     def test_column_accessor_shadow(self):
         shadowed = Table('test_shadowed', db,
