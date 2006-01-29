@@ -705,6 +705,6 @@ class RowProxy:
     def keys(self):
         return self.__parent.keys
     def values(self): 
-	return list(self)
+        return list(self)
     def __len__(self): 
-	return len(self.__row)
+        return len(self.__row)
