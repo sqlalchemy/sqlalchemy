@@ -95,13 +95,22 @@ class Pool(object):
             self.log("get connection from pool")
             self.log(self.status())
         return self.do_get()
-        
+    
+    def return_invalid(self):
+        if self._echo:
+            self.log("return invalid connection to pool")
+            self.log(self.status())
+        self.do_return_invalid()
+            
     def do_get(self):
         raise NotImplementedError()
         
     def do_return_conn(self, conn):
         raise NotImplementedError()
-    
+        
+    def do_return_invalid(self):
+        raise NotImplementedError()
+        
     def status(self):
         raise NotImplementedError()
 
@@ -115,6 +124,7 @@ class ConnectionFairy(object):
             self.connection = pool.get()
         except:
             self.connection = None
+            self.pool.return_invalid()
             raise
     def cursor(self):
         return CursorFairy(self, self.connection.cursor())
@@ -147,7 +157,12 @@ class SingletonThreadPool(Pool):
 
     def do_return_conn(self, conn):
         pass
-        
+    def do_return_invalid(self):
+        try:
+            del self._conns[thread.get_ident()]
+        except KeyError:
+            pass
+            
     def do_get(self):
         try:
             return self._conns[thread.get_ident()]
@@ -171,6 +186,12 @@ class QueuePool(Pool):
         except Queue.Full:
             self._overflow -= 1
 
+    def do_return_invalid(self):
+        if self._echo:
+            self.log("return invalid connection")
+        if self._pool.full():
+            self._overflow -= 1
+        
     def do_get(self):
         if self._echo:
             self.log("get connection from pool")
