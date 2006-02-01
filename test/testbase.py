@@ -9,7 +9,7 @@ import sqlalchemy.databases.postgres as postgres
 echo = True
 #echo = 'debug'
 db = None
-
+db_uri = None
 
 def parse_argv():
     # we are using the unittest main runner, so we are just popping out the 
@@ -20,21 +20,25 @@ def parse_argv():
     else:
         DBTYPE = 'sqlite'
 
-    global db
+    global db, db_uri
     if DBTYPE == 'sqlite':
         try:
-            db = engine.create_engine('sqlite://filename=:memory:', echo=echo, default_ordering=True)
+            db_uri = 'sqlite://filename=:memory:'
+            db = engine.create_engine(db_uri, echo=echo, default_ordering=True)
         except:
             raise "Could not create sqlite engine.  specify --db <sqlite|sqlite_file|postgres|mysql|oracle> to test runner."
     elif DBTYPE == 'sqlite_file':
-        db = engine.create_engine('sqlite://filename=querytest.db', echo=echo, default_ordering=True)
+        db_uri = 'sqlite://filename=querytest.db'
+        db = engine.create_engine(db_uri, echo=echo, default_ordering=True)
     elif DBTYPE == 'postgres':
-        db = engine.create_engine('postgres://database=test&port=5432&host=127.0.0.1&user=scott&password=tiger',
-         echo=echo, default_ordering=True)
+        db_uri = 'postgres://database=test&port=5432&host=127.0.0.1&user=scott&password=tiger'
+        db = engine.create_engine(db_uri, echo=echo, default_ordering=True)
     elif DBTYPE == 'mysql':
-        db = engine.create_engine('mysql://db=test&host=127.0.0.1&user=scott&passwd=tiger', echo=echo, default_ordering=True)
+        db_uri = 'mysql://db=test&host=127.0.0.1&user=scott&passwd=tiger'
+        db = engine.create_engine(db_uri, echo=echo, default_ordering=True)
     elif DBTYPE == 'oracle':
-        db = engine.create_engine('oracle://user=scott&password=tiger', echo=echo, default_ordering=True)
+        db_uri = 'oracle://user=scott&password=tiger'
+        db = engine.create_engine(db_uri, echo=echo, default_ordering=True)
     db = EngineAssert(db)
 
 class PersistTest(unittest.TestCase):
@@ -222,3 +226,5 @@ def runTests(suite):
     
 def main():
     unittest.main()
+
+
