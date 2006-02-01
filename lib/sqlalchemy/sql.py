@@ -293,6 +293,10 @@ class Compiled(ClauseVisitor):
         """executes this compiled object via the execute() method, then 
         returns the first column of the first row.  Useful for executing functions,
         sequences, rowcounts, etc."""
+        # we are still going off the assumption that fetching only the first row
+        # in a result set is not performance-wise any different than specifying limit=1
+        # else we'd have to construct a copy of the select() object with the limit
+        # installed (else if we change the existing select, not threadsafe)
         row = self.execute(*multiparams, **params).fetchone()
         if row is not None:
             return row[0]
@@ -399,6 +403,10 @@ class ClauseElement(object):
         """executes this SQL expression via the execute() method, then 
         returns the first column of the first row.  Useful for executing functions,
         sequences, rowcounts, etc."""
+        # we are still going off the assumption that fetching only the first row
+        # in a result set is not performance-wise any different than specifying limit=1
+        # else we'd have to construct a copy of the select() object with the limit
+        # installed (else if we change the existing select, not threadsafe)
         row = self.execute(*multiparams, **params).fetchone()
         if row is not None:
             return row[0]
@@ -1324,6 +1332,13 @@ class Select(SelectBaseMixin, FromClause):
     def union_all(self, other, **kwargs):
         return union_all(self, other, **kwargs)
 
+#    def scalar(self, *multiparams, **params):
+        # need to set limit=1, but only in this thread.
+        # we probably need to make a copy of the select().  this
+        # is expensive.  I think cursor.fetchone(), then discard remaining results 
+        # should be fine with most DBs
+        # for now use base scalar() method
+        
     def _find_engine(self):
         """tries to return a SQLEngine, either explicitly set in this object, or searched
         within the from clauses for one"""
