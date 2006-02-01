@@ -137,7 +137,7 @@ def assign_mapper(class_, *args, **params):
     if not isinstance(getattr(class_, '__init__'), types.MethodType):
         def __init__(self, **kwargs):
              for key, value in kwargs.items():
-                 self.__dict__[key] = value
+                 setattr(self, key, value)
         class_.__init__ = __init__
     m = mapper(class_, *args, **params)
     class_.mapper = m
