@@ -9,6 +9,8 @@ import tables
 
 objectstore.LOG = True
 
+"""test cyclical mapper relationships.  No assertions yet, but run it with postgres and the 
+foreign key checks alone will usually not work if something is wrong"""
 class Tester(object):
     def __init__(self, data=None):
         self.data = data
@@ -35,8 +37,8 @@ class SelfCycleTest(AssertMixin):
         t1.create()
         t2.create()
     def tearDownAll(self):
-        t1.drop()    
         t2.drop()
+        t1.drop()
     def setUp(self):
         objectstore.clear()
         clear_mappers()
@@ -48,8 +50,8 @@ class SelfCycleTest(AssertMixin):
             pass
         
         m1 = mapper(C1, t1, properties = {
-            'c1s' : relation(C1),
-            'c2s' : relation(C2, t2)
+            'c1s' : relation(C1, private=True),
+            'c2s' : relation(C2, t2, private=True)
         })
 
         a = C1('head c1')
@@ -59,6 +61,9 @@ class SelfCycleTest(AssertMixin):
         a.c1s[0].c1s.append(C1('subchild2'))
         a.c1s[1].c2s.append(C2('child2 data1'))
         a.c1s[1].c2s.append(C2('child2 data2'))
+        objectstore.commit()
+        
+        objectstore.delete(a)
         objectstore.commit()
         
 class CycleTest(AssertMixin):
