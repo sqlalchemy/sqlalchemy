@@ -32,6 +32,7 @@ realized this characteristic of the algorithm.
 """
 import string, StringIO
 from sets import *
+import sqlalchemy.util as util
 
 class QueueDependencySorter(object):
     """this is a topological sort from wikipedia.  its very stable.  it creates a straight-line
@@ -43,11 +44,10 @@ class QueueDependencySorter(object):
         node 'b', it means 'a's item is *not* dependent on that of 'b'."""
         def __init__(self, item):
             self.item = item
-            self.circular = False
             self.edges = {}
             self.dependencies = {}
             self.children = []
-            self.cycles = []
+            self.cycles = None
         def __str__(self):
             return self.safestr()
         def safestr(self, indent=0):
@@ -88,8 +88,7 @@ class QueueDependencySorter(object):
             if t[0] is t[1]:
                 if allow_self_cycles:
                     n = nodes[t[0]]
-                    n.circular = True
-                    n.cycles.append(n)
+                    n.cycles = Set([n])
                     continue
                 else:
                     raise "Self-referential dependency detected " + repr(t)
@@ -101,7 +100,6 @@ class QueueDependencySorter(object):
         for n in nodes.values():
             if len(n.edges) == 0:
                 queue.append(n)
-        
         cycles = {}
         output = []
         while len(edges) > 0:
@@ -112,14 +110,15 @@ class QueueDependencySorter(object):
                 if allow_all_cycles:
                     cycle = self._find_cycle(edges)
                     lead = cycle[0][0]
+                    lead.cycles = Set()
                     for edge in cycle:
                         n = self._remove_edge(edges, edge)
-                        lead.cycles.append(edge[0])
-                        lead.cycles.append(edge[1])
+                        lead.cycles.add(edge[0])
+                        lead.cycles.add(edge[1])
                         if n is not None:
                             queue.append(n)
                             if n is not lead:
-                                n.foo = True
+                                n._cyclical = True
                     # loop through cycle
                     # remove edges from the edge dictionary
                     # install the cycled nodes in the "cycle" list of one of the nodes
@@ -128,7 +127,7 @@ class QueueDependencySorter(object):
                     # long cycles not allowed
                     raise "Circular dependency detected " + repr(edges) + repr(queue)
             node = queue.pop()
-            if not hasattr(node, 'foo'):
+            if not hasattr(node, '_cyclical'):
                 output.append(node)
             nodeedges = edges.pop(node, None)
             if nodeedges is None:
@@ -211,7 +210,6 @@ class TreeDependencySorter(object):
             self.item = item
             self.children = HashSet()
             self.parent = None
-            self.circular = False
         def append(self, node):
             """appends the given node as a child on this node.  removes the node from 
             its preexisting parent."""
