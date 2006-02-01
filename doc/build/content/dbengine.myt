@@ -104,7 +104,44 @@
         <li>use_oids=False : used only by Postgres, will enable the column name "oid" as the object ID column.  Postgres as of 8.1 has object IDs disabled by default.</li>
     </ul>
     </&>
+    <&|doclib.myt:item, name="proxy", description="Using the Proxy Engine" &>
+    <p>The ProxyEngine is useful for applications that need to swap engines
+    at runtime, or to create their tables and mappers before they know
+    what engine they will use. One use case is an application meant to be
+    pluggable into a mix of other applications, such as a WSGI
+    application. Well-behaved WSGI applications should be relocatable; and
+    since that means that two versions of the same application may be
+    running in the same process (or in the same thread at different
+    times), WSGI applications ought not to depend on module-level or
+    global configuration. Using the ProxyEngine allows a WSGI application
+    to define tables and mappers in a module, but keep the specific
+    database connection uri as an application instance or thread-local
+    value.</p>
 
+    <p>The ProxyEngine is used in the same way as any other engine, with one
+    additional method:</p>
+    
+    <&|formatting.myt:code&>
+    # define the tables and mappers
+    from sqlalchemy import *
+    from sqlalchemy.ext.proxy import ProxyEngine
+
+    engine = ProxyEngine()
+
+    users = Table('users', engine, ... )
+
+    class Users(object):
+        pass
+
+    assign_mapper(Users, users)
+
+    def app(environ, start_response):
+        # later, connect the proxy engine to a real engine via the connect() method
+        engine.connect(environ['db_uri'])
+        # now you have a real db connection and can select, insert, etc.
+    </&>
+    
+    </&>
     <&|doclib.myt:item, name="transactions", description="Transactions" &>
     <p>A SQLEngine also provides an interface to the transactional capabilities of the underlying DBAPI connection object, as well as the connection object itself.  Note that when using the object-relational-mapping package, described in a later section, basic transactional operation is handled for you automatically by its "Unit of Work" system;  the methods described here will usually apply just to literal SQL update/delete/insert operations or those performed via the SQL construction library.</p>
     
