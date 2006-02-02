@@ -138,7 +138,7 @@ assign_mapper(TreeNode, trees, properties=dict(
     root_id=trees.c.root_node_id,
     root=relation(TreeNode, primaryjoin=trees.c.root_node_id==trees.c.node_id, foreignkey=trees.c.node_id, lazy=None, uselist=False),
     children=relation(TreeNode, primaryjoin=trees.c.parent_node_id==trees.c.node_id, lazy=None, uselist=True, private=True),
-    data=relation(TreeData, treedata, properties=dict(id=treedata.c.data_id), private=True, lazy=False)
+    data=relation(mapper(TreeData, treedata, properties=dict(id=treedata.c.data_id)), private=True, lazy=False)
     
 ), extension = TreeLoader())
 TreeNode.mapper

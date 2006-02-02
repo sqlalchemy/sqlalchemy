@@ -85,7 +85,7 @@ class MapperTest(MapperSuperTest):
 
     def testmagic(self):
         m = mapper(User, users, properties = {
-            'addresses' : relation(Address, addresses)
+            'addresses' : relation(mapper(Address, addresses))
         })
         l = m.select_by(user_name='fred')
         self.assert_result(l, User, *[{'user_id':9}])
@@ -155,19 +155,19 @@ class MapperTest(MapperSuperTest):
             
         # assert that allow_column_override cancels the error
         m = mapper(User, users, properties = {
-                'user_name' : relation(Address, addresses)
+                'user_name' : relation(mapper(Address, addresses))
             }, allow_column_override=True)
             
         # assert that the column being named else where also cancels the error
         m = mapper(User, users, properties = {
-                'user_name' : relation(Address, addresses),
+                'user_name' : relation(mapper(Address, addresses)),
                 'foo' : users.c.user_name,
             })
 
     def testeageroptions(self):
         """tests that a lazy relation can be upgraded to an eager relation via the options method"""
         m = mapper(User, users, properties = dict(
-            addresses = relation(Address, addresses, lazy = True)
+            addresses = relation(mapper(Address, addresses), lazy = True)
         ))
         l = m.options(eagerload('addresses')).select()
 
@@ -178,7 +178,7 @@ class MapperTest(MapperSuperTest):
     def testlazyoptions(self):
         """tests that an eager relation can be upgraded to a lazy relation via the options method"""
         m = mapper(User, users, properties = dict(
-            addresses = relation(Address, addresses, lazy = False)
+            addresses = relation(mapper(Address, addresses), lazy = False)
         ))
         l = m.options(lazyload('addresses')).select()
         def go():
@@ -188,11 +188,11 @@ class MapperTest(MapperSuperTest):
     def testdeepoptions(self):
         m = mapper(User, users,
             properties = {
-                'orders': relation(Order, orders, properties = {
-                    'items' : relation(Item, orderitems, properties = {
-                        'keywords' : relation(Keyword, keywords, itemkeywords)
-                    })
-                })
+                'orders': relation(mapper(Order, orders, properties = {
+                    'items' : relation(mapper(Item, orderitems, properties = {
+                        'keywords' : relation(mapper(Keyword, keywords), itemkeywords)
+                    }))
+                }))
             })
             
         m2 = m.options(eagerload('orders.items.keywords'))
@@ -319,11 +319,11 @@ class DeferredTest(MapperSuperTest):
 
     def testdeepoptions(self):
         m = mapper(User, users, properties={
-            'orders':relation(Order, orders, properties={
-                'items':relation(Item, orderitems, properties={
+            'orders':relation(mapper(Order, orders, properties={
+                'items':relation(mapper(Item, orderitems, properties={
                     'item_name':deferred(orderitems.c.item_name)
-                })
-            })
+                }))
+            }))
         })
         l = m.select()
         item = l[0].orders[1].items[1]
@@ -346,7 +346,7 @@ class LazyTest(MapperSuperTest):
     def testbasic(self):
         """tests a basic one-to-many lazy load"""
         m = mapper(User, users, properties = dict(
-            addresses = relation(Address, addresses, lazy = True)
+            addresses = relation(mapper(Address, addresses), lazy = True)
         ))
         l = m.select(users.c.user_id == 7)
         self.assert_result(l, User,
@@ -383,11 +383,11 @@ class LazyTest(MapperSuperTest):
 
     def testlimit(self):
         ordermapper = mapper(Order, orders, properties = dict(
-                items = relation(Item, orderitems, lazy = True)
+                items = relation(mapper(Item, orderitems), lazy = True)
             ))
 
         m = mapper(User, users, properties = dict(
-            addresses = relation(Address, addresses, lazy = True),
+            addresses = relation(mapper(Address, addresses), lazy = True),
             orders = relation(ordermapper, primaryjoin = users.c.user_id==orders.c.user_id, lazy = True),
         ))
         l = m.select(limit=2, offset=1)
@@ -401,14 +401,14 @@ class LazyTest(MapperSuperTest):
         
         objectstore.clear()
         m = mapper(Item, orderitems, is_primary=True, properties = dict(
-                keywords = relation(Keyword, keywords, itemkeywords, lazy = True),
+                keywords = relation(mapper(Keyword, keywords), itemkeywords, lazy = True),
             ))
         l = m.select((Item.c.item_name=='item 2') | (Item.c.item_name=='item 5') | (Item.c.item_name=='item 3'), order_by=[Item.c.item_id], limit=2)        
         self.assert_result(l, Item, *[item_keyword_result[1], item_keyword_result[2]])
 
     def testonetoone(self):
         m = mapper(User, users, properties = dict(
-            address = relation(Address, addresses, lazy = True, uselist = False)
+            address = relation(mapper(Address, addresses), lazy = True, uselist = False)
         ))
         l = m.select(users.c.user_id == 7)
         self.echo(repr(l))
@@ -416,7 +416,7 @@ class LazyTest(MapperSuperTest):
 
     def testbackwardsonetoone(self):
         m = mapper(Address, addresses, properties = dict(
-            user = relation(User, users, properties = {'id':users.c.user_id}, lazy = True)
+            user = relation(mapper(User, users, properties = {'id':users.c.user_id}), lazy = True)
         ))
         l = m.select(addresses.c.address_id == 1)
         self.echo(repr(l))
@@ -430,9 +430,9 @@ class LazyTest(MapperSuperTest):
         openorders = alias(orders, 'openorders')
         closedorders = alias(orders, 'closedorders')
         m = mapper(User, users, properties = dict(
-            addresses = relation(Address, addresses, lazy = False),
-            open_orders = relation(Order, openorders, primaryjoin = and_(openorders.c.isopen == 1, users.c.user_id==openorders.c.user_id), lazy = True),
-            closed_orders = relation(Order, closedorders, primaryjoin = and_(closedorders.c.isopen == 0, users.c.user_id==closedorders.c.user_id), lazy = True)
+            addresses = relation(mapper(Address, addresses), lazy = False),
+            open_orders = relation(mapper(Order, openorders), primaryjoin = and_(openorders.c.isopen == 1, users.c.user_id==openorders.c.user_id), lazy = True),
+            closed_orders = relation(mapper(Order, closedorders), primaryjoin = and_(closedorders.c.isopen == 0, users.c.user_id==closedorders.c.user_id), lazy = True)
         ))
         l = m.select()
         self.assert_result(l, User,
@@ -456,7 +456,7 @@ class LazyTest(MapperSuperTest):
     def testmanytomany(self):
         """tests a many-to-many lazy load"""
         assign_mapper(Item, orderitems, properties = dict(
-                keywords = relation(Keyword, keywords, itemkeywords, lazy = True),
+                keywords = relation(mapper(Keyword, keywords), itemkeywords, lazy = True),
             ))
         l = Item.mapper.select()
         self.assert_result(l, Item, 
@@ -513,11 +513,11 @@ class EagerTest(MapperSuperTest):
     
     def testlimit(self):
         ordermapper = mapper(Order, orders, properties = dict(
-                items = relation(Item, orderitems, lazy = False)
+                items = relation(mapper(Item, orderitems), lazy = False)
             ))
 
         m = mapper(User, users, properties = dict(
-            addresses = relation(Address, addresses, lazy = False),
+            addresses = relation(mapper(Address, addresses), lazy = False),
             orders = relation(ordermapper, primaryjoin = users.c.user_id==orders.c.user_id, lazy = False),
         ))
         l = m.select(limit=2, offset=1)
@@ -531,7 +531,7 @@ class EagerTest(MapperSuperTest):
         self.assert_result(l, User, *user_all_result)
         objectstore.clear()
         m = mapper(Item, orderitems, is_primary=True, properties = dict(
-                keywords = relation(Keyword, keywords, itemkeywords, lazy = False),
+                keywords = relation(mapper(Keyword, keywords), itemkeywords, lazy = False),
             ))
         l = m.select((Item.c.item_name=='item 2') | (Item.c.item_name=='item 5') | (Item.c.item_name=='item 3'), order_by=[Item.c.item_id], limit=2)        
         self.assert_result(l, Item, *[item_keyword_result[1], item_keyword_result[2]])
@@ -540,7 +540,7 @@ class EagerTest(MapperSuperTest):
         
     def testonetoone(self):
         m = mapper(User, users, properties = dict(
-            address = relation(Address, addresses, lazy = False, uselist = False)
+            address = relation(mapper(Address, addresses), lazy = False, uselist = False)
         ))
         l = m.select(users.c.user_id == 7)
         self.assert_result(l, User,
@@ -549,7 +549,7 @@ class EagerTest(MapperSuperTest):
 
     def testbackwardsonetoone(self):
         m = mapper(Address, addresses, properties = dict(
-            user = relation(User, users, lazy = False)
+            user = relation(mapper(User, users), lazy = False)
         ))
         self.echo(repr(m.props['user'].uselist))
         l = m.select(addresses.c.address_id == 1)
@@ -564,7 +564,7 @@ class EagerTest(MapperSuperTest):
         criterion is using the same tables that are used within the eager load.  the mapper must insure that the 
         criterion doesnt interfere with the eager load criterion."""
         m = mapper(User, users, properties = dict(
-            addresses = relation(Address, addresses, primaryjoin = users.c.user_id==addresses.c.user_id, lazy = False)
+            addresses = relation(mapper(Address, addresses), primaryjoin = users.c.user_id==addresses.c.user_id, lazy = False)
         ))
         l = m.select(and_(addresses.c.email_address == 'ed@lala.com', addresses.c.user_id==users.c.user_id))
         self.assert_result(l, User,
@@ -575,7 +575,7 @@ class EagerTest(MapperSuperTest):
     def testcompile(self):
         """tests deferred operation of a pre-compiled mapper statement"""
         m = mapper(User, users, properties = dict(
-            addresses = relation(Address, addresses, lazy = False)
+            addresses = relation(mapper(Address, addresses), lazy = False)
         ))
         s = m.compile(and_(addresses.c.email_address == bindparam('emailad'), addresses.c.user_id==users.c.user_id))
         c = s.compile()
@@ -587,8 +587,8 @@ class EagerTest(MapperSuperTest):
     def testmulti(self):
         """tests eager loading with two relations simultaneously"""
         m = mapper(User, users, properties = dict(
-            addresses = relation(Address, addresses, primaryjoin = users.c.user_id==addresses.c.user_id, lazy = False),
-            orders = relation(Order, orders, lazy = False),
+            addresses = relation(mapper(Address, addresses), primaryjoin = users.c.user_id==addresses.c.user_id, lazy = False),
+            orders = relation(mapper(Order, orders), lazy = False),
         ))
         l = m.select()
         self.assert_result(l, User,
@@ -611,9 +611,9 @@ class EagerTest(MapperSuperTest):
         openorders = alias(orders, 'openorders')
         closedorders = alias(orders, 'closedorders')
         m = mapper(User, users, properties = dict(
-            addresses = relation(Address, addresses, lazy = False),
-            open_orders = relation(Order, openorders, primaryjoin = and_(openorders.c.isopen == 1, users.c.user_id==openorders.c.user_id), lazy = False),
-            closed_orders = relation(Order, closedorders, primaryjoin = and_(closedorders.c.isopen == 0, users.c.user_id==closedorders.c.user_id), lazy = False)
+            addresses = relation(mapper(Address, addresses), lazy = False),
+            open_orders = relation(mapper(Order, openorders), primaryjoin = and_(openorders.c.isopen == 1, users.c.user_id==openorders.c.user_id), lazy = False),
+            closed_orders = relation(mapper(Order, closedorders), primaryjoin = and_(closedorders.c.isopen == 0, users.c.user_id==closedorders.c.user_id), lazy = False)
         ))
         l = m.select()
         self.assert_result(l, User,
@@ -638,11 +638,11 @@ class EagerTest(MapperSuperTest):
         """tests eager loading of a parent item with two types of child items,
         where one of those child items eager loads its own child items."""
         ordermapper = mapper(Order, orders, properties = dict(
-                items = relation(Item, orderitems, lazy = False)
+                items = relation(mapper(Item, orderitems), lazy = False)
             ))
 
         m = mapper(User, users, properties = dict(
-            addresses = relation(Address, addresses, lazy = False),
+            addresses = relation(mapper(Address, addresses), lazy = False),
             orders = relation(ordermapper, primaryjoin = users.c.user_id==orders.c.user_id, lazy = False),
         ))
         l = m.select()
@@ -652,7 +652,7 @@ class EagerTest(MapperSuperTest):
         items = orderitems
         
         m = mapper(Item, items, properties = dict(
-                keywords = relation(Keyword, keywords, itemkeywords, lazy=False),
+                keywords = relation(mapper(Keyword, keywords), itemkeywords, lazy=False),
             ))
         l = m.select()
         self.assert_result(l, Item, *item_keyword_result)
@@ -671,7 +671,7 @@ class EagerTest(MapperSuperTest):
 
         m = mapper(Item, items, 
             properties = dict(
-                keywords = relation(Keyword, keywords, itemkeywords, lazy = False),
+                keywords = relation(mapper(Keyword, keywords), itemkeywords, lazy = False),
             ))
 
         m = mapper(Order, orders, properties = dict(

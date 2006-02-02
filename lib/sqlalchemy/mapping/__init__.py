@@ -24,15 +24,12 @@ __all__ = ['relation', 'eagerload', 'lazyload', 'noload', 'deferred',  'column',
         'assign_mapper'
         ]
 
-def relation(*args, **params):
+def relation(*args, **kwargs):
     """provides a relationship of a primary Mapper to a secondary Mapper, which corresponds
     to a parent-child or associative table relationship."""
-    if isinstance(args[0], type) and len(args) == 1:
-        return _relation_loader(*args, **params)
-    elif isinstance(args[0], Mapper):
-        return _relation_loader(*args, **params)
-    else:
-        return _relation_mapper(*args, **params)
+    if len(args) > 1 and isinstance(args[0], type):
+        raise ValueError("relation(class, table, **kwargs) is deprecated.  Please use relation(class, **kwargs) or relation(mapper, **kwargs).")
+    return _relation_loader(*args, **kwargs)
 
 def _relation_loader(mapper, secondary=None, primaryjoin=None, secondaryjoin=None, lazy=True, **kwargs):
     if lazy:
@@ -41,18 +38,6 @@ def _relation_loader(mapper, secondary=None, primaryjoin=None, secondaryjoin=Non
         return PropertyLoader(mapper, secondary, primaryjoin, secondaryjoin, **kwargs)
     else:
         return EagerLoader(mapper, secondary, primaryjoin, secondaryjoin, **kwargs)
-
-def _relation_mapper(class_, table=None, secondary=None, 
-                    primaryjoin=None, secondaryjoin=None, 
-                    foreignkey=None, uselist=None, private=False, 
-                    live=False, association=None, lazy=True, 
-                    selectalias=None, order_by=None, attributeext=None, **kwargs):
-
-    return _relation_loader(mapper(class_, table, **kwargs), 
-                    secondary, primaryjoin, secondaryjoin, 
-                    foreignkey=foreignkey, uselist=uselist, private=private, 
-                    live=live, association=association, lazy=lazy, 
-                    selectalias=selectalias, order_by=order_by, attributeext=attributeext)
 
 def column(*columns, **kwargs):
     return ColumnProperty(*columns, **kwargs)

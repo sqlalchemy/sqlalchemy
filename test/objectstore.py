@@ -28,7 +28,7 @@ class HistoryTest(AssertMixin):
         should be tested mostly in attributes.py which tests independently of the ORM 
         objects, but I think here we are going for
         the Mapper not interfering with it."""
-        m = mapper(User, users, properties = dict(addresses = relation(Address, addresses)))
+        m = mapper(User, users, properties = dict(addresses = relation(mapper(Address, addresses))))
         u = User()
         u.user_id = 7
         u.user_name = 'afdas'
@@ -238,7 +238,7 @@ class SaveTest(AssertMixin):
 
     def testonetoone(self):
         m = mapper(User, users, properties = dict(
-            address = relation(Address, addresses, lazy = True, uselist = False)
+            address = relation(mapper(Address, addresses), lazy = True, uselist = False)
         ))
         u = User()
         u.user_name = 'one2onetester'
@@ -252,7 +252,7 @@ class SaveTest(AssertMixin):
 
     def testdelete(self):
         m = mapper(User, users, properties = dict(
-            address = relation(Address, addresses, lazy = True, uselist = False, private = False)
+            address = relation(mapper(Address, addresses), lazy = True, uselist = False, private = False)
         ))
         u = User()
         a = Address()
@@ -267,10 +267,10 @@ class SaveTest(AssertMixin):
 
     def testcascadingdelete(self):
         m = mapper(User, users, properties = dict(
-            address = relation(Address, addresses, lazy = False, uselist = False, private = True),
+            address = relation(mapper(Address, addresses), lazy = False, uselist = False, private = True),
             orders = relation(
                 mapper(Order, orders, properties = dict (
-                    items = relation(Item, orderitems, lazy = False, uselist =True, private = True)
+                    items = relation(mapper(Item, orderitems), lazy = False, uselist =True, private = True)
                 )), 
                 lazy = True, uselist = True, private = True)
         ))
@@ -350,7 +350,7 @@ class SaveTest(AssertMixin):
 #        ))
         # TODO: put assertion in here !!!
         m = mapper(Address, addresses, properties = dict(
-            user = relation(User, users, lazy = True, uselist = False)
+            user = relation(mapper(User, users), lazy = True, uselist = False)
         ))
         data = [
             {'user_name' : 'thesub' , 'email_address' : 'bar@foo.com'},
@@ -409,7 +409,7 @@ class SaveTest(AssertMixin):
     def testonetomany(self):
         """test basic save of one to many."""
         m = mapper(User, users, properties = dict(
-            addresses = relation(Address, addresses, lazy = True)
+            addresses = relation(mapper(Address, addresses), lazy = True)
         ))
         u = User()
         u.user_name = 'one2manytester'
@@ -457,7 +457,7 @@ class SaveTest(AssertMixin):
         oldmapper = User.mapper
         # now a mapper with the users table plus a relation to the addresses
         assign_mapper(User, users, is_primary=True, properties = dict(
-            addresses = relation(Address, addresses, lazy = False)
+            addresses = relation(mapper(Address, addresses), lazy = False)
         ))
         self.assert_(oldmapper is not User.mapper)
         u = User.mapper.select()
@@ -484,7 +484,7 @@ class SaveTest(AssertMixin):
         """digs deeper into modifying the child items of an object to insure the correct
         updates take place"""
         m = mapper(User, users, properties = dict(
-            addresses = relation(Address, addresses, lazy = True)
+            addresses = relation(mapper(Address, addresses), lazy = True)
         ))
         u1 = User()
         u1.user_name = 'user1'
@@ -528,7 +528,7 @@ class SaveTest(AssertMixin):
 
     def testbackwardsmanipulations(self):
         m = mapper(Address, addresses, properties = dict(
-            user = relation(User, users, lazy = True, uselist = False)
+            user = relation(mapper(User, users), lazy = True, uselist = False)
         ))
         a1 = Address()
         a1.email_address = 'emailaddress1'
@@ -557,7 +557,7 @@ class SaveTest(AssertMixin):
 
     def _testremove(self):
         m = mapper(User, users, properties = dict(
-            addresses = relation(Address, addresses, lazy = True)
+            addresses = relation(mapper(Address, addresses), lazy = True)
         ))
         u = User()
         u.user_name = 'one2manytester'
@@ -585,7 +585,7 @@ class SaveTest(AssertMixin):
 
         items.select().execute()
         m = mapper(Item, items, properties = dict(
-                keywords = relation(Keyword, keywords, itemkeywords, lazy = False),
+                keywords = relation(mapper(Keyword, keywords), itemkeywords, lazy = False),
             ))
 
         keywordmapper = mapper(Keyword, keywords)
@@ -682,9 +682,10 @@ class SaveTest(AssertMixin):
         keywordmapper = mapper(Keyword, keywords)
 
         m = mapper(Item, items, properties = dict(
-                keywords = relation(IKAssociation, itemkeywords, lazy = False, properties = dict(
-                    keyword = relation(Keyword, keywords, lazy = False, uselist = False)
-                ), primary_key = [itemkeywords.c.item_id, itemkeywords.c.keyword_id])
+                keywords = relation(mapper(IKAssociation, itemkeywords, properties = dict(
+                    keyword = relation(mapper(Keyword, keywords), lazy = False, uselist = False)
+                ), primary_key = [itemkeywords.c.item_id, itemkeywords.c.keyword_id]),
+                lazy = False)
             ))
 
         data = [Item,
@@ -794,7 +795,7 @@ class SaveTest2(AssertMixin):
     
     def testbackwardsnonmatch(self):
         m = mapper(Address, self.addresses, properties = dict(
-            user = relation(User, self.users, lazy = True, uselist = False)
+            user = relation(mapper(User, self.users), lazy = True, uselist = False)
         ))
         data = [
             {'user_name' : 'thesub' , 'email_address' : 'bar@foo.com'},
