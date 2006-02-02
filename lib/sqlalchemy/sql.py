@@ -473,7 +473,7 @@ class CompareMixin(object):
             if obj is None:
                 if operator != '=':
                     raise "Only '=' operator can be used with NULL"
-                return BooleanExpression(self, null(), 'IS')
+                return BooleanExpression(self._compare_self(), null(), 'IS')
             else:
                 obj = self._bind_param(obj)
 
