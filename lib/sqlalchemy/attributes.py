@@ -77,7 +77,10 @@ class PropHistory(object):
     def setattr(self, value):
         if isinstance(value, list):
             raise ("assigning a list to scalar property '%s' on '%s' instance %d" % (self.key, self.obj.__class__.__name__, id(self.obj)))
-        self.orig = self.obj.__dict__.get(self.key, None)
+        orig = self.obj.__dict__.get(self.key, None)
+        if orig is value:
+            return
+        self.orig = orig
         self.obj.__dict__[self.key] = value
         if self.extension is not None and self.orig is not value:
             self.extension.set(self.obj, value, self.orig)
