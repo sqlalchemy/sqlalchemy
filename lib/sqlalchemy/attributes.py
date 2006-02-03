@@ -89,6 +89,10 @@ class PropHistory(object):
         self.obj.__dict__[self.key] = None
         if self.extension is not None:
             self.extension.set(self.obj, None, self.orig)
+    def append(self, obj):
+        self.setattr(obj)
+    def remove(self, obj):
+        self.delattr()
     def rollback(self):
         if self.orig is not PropHistory.NONE:
             self.obj.__dict__[self.key] = self.orig
@@ -242,9 +246,12 @@ class MTOBackrefExtension(AttributeExtension):
         self.key = key
     def set(self, obj, child, oldchild):
         if oldchild is not None:
-            getattr(oldchild, self.key).remove(obj)
+            prop = oldchild.__class__._attribute_manager.get_history(oldchild, self.key)
+            prop.remove(obj)
         if child is not None:
-            getattr(child, self.key).append(obj)
+            prop = child.__class__._attribute_manager.get_history(child, self.key)
+            prop.append(obj)
+            
 class AttributeManager(object):
     """maintains a set of per-attribute history container objects for a set of objects."""
     def __init__(self):
