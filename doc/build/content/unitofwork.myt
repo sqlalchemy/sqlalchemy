@@ -83,27 +83,7 @@
         objectstore.commit()
     </&>
     <p>As always, the actual database transaction begin/commit occurs entirely within the objectstore.commit() operation.</p>
-    
-    <p>Since the begin/commit paradigm works in a stack-based manner, it follows that any level of nesting of begin/commit can be used:</p>
-    <&|formatting.myt:code&>
-        # start with UOW #1 as the thread-local UnitOfWork
-        a = Foo()
-        objectstore.begin()  # push UOW #2 on the stack
-        b = Foo()
-        objectstore.begin()  # push UOW #3 on the stack
-        c = Foo()
-
-        # saves 'c'
-        objectstore.commit() # commit UOW #3
-
-        d = Foo()
-
-        # saves 'b' and 'd'
-        objectstore.commit() # commit UOW #2
-        
-        # saves 'a', everything else prior to it
-        objectstore.commit() # commit thread-local UOW #1
-    </&>
+    <p>At the moment, begin/commit supports the same "nesting" behavior as the SQLEngine (note this behavior is not the original "nested" behavior), meaning that repeated calls to begin() will increment a counter, which is not released until that same number of commit() statements occur.</p>
     </&>
     <&|doclib.myt:item, name="transactionnesting", description="Nesting UnitOfWork in a Database Transaction" &>
     <p>The UOW commit operation places its INSERT/UPDATE/DELETE operations within the scope of a database transaction controlled by a SQLEngine:

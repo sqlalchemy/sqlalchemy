@@ -149,6 +149,10 @@ class UOWAttributeManager(attributes.AttributeManager):
 class UnitOfWork(object):
     def __init__(self, parent = None, is_begun = False):
         self.is_begun = is_begun
+        if is_begun:
+            self.begin_count = 1
+        else:
+            self.begin_count = 0
         if parent is not None:
             self.identity_map = parent.identity_map
         else:
@@ -245,10 +249,17 @@ class UnitOfWork(object):
             
     # TODO: tie in register_new/register_dirty with table transaction begins ?
     def begin(self):
+        if self.is_begun:
+            self.begin_count += 1
+            return
         u = UnitOfWork(self, True)
         uow.set(u)
         
     def commit(self, *objects):
+        if self.is_begun:
+            self.begin_count -= 1
+            if self.begin_count > 0:
+                return
         commit_context = UOWTransaction(self)
 
         if len(objects):
@@ -312,10 +323,9 @@ class UnitOfWork(object):
     def rollback(self):
         if not self.is_begun:
             raise "UOW transaction is not begun"
-        # TODO: locate only objects that are dirty/new/deleted in this UOW,
-        # roll only those back.
-        for obj in self.deleted + self.dirty + self.new:
-            self.attributes.rollback(obj)
+        # roll back attributes ?  nah....
+        #for obj in self.deleted + self.dirty + self.new:
+        #    self.attributes.rollback(obj)
         uow.set(self.parent)
             
 class UOWTransaction(object):
