@@ -7,6 +7,20 @@ from sqlalchemy import *
 from sqlalchemy.ansisql import *
 
 generic_engine = ansisql.engine()
+
+gen_schemata = schema.Table("schemata", generic_engine,
+    Column("catalog_name", String),
+    Column("schema_name", String),
+    Column("schema_owner", String),
+    schema="information_schema")
+
+gen_tables = schema.Table("tables", generic_engine,
+    Column("table_catalog", String),
+    Column("table_schema", String),
+    Column("table_name", String),
+    Column("table_type", String),
+    schema="information_schema")
+
 gen_columns = schema.Table("columns", generic_engine,
     Column("table_schema", String),
     Column("table_name", String),
@@ -39,6 +53,25 @@ gen_key_constraints = schema.Table("key_column_usage", generic_engine,
     Column("column_name", String),
     Column("constraint_name", String),
     schema="information_schema")
+
+class ISchema(object):
+    def __init__(self, engine):
+        self.engine = engine
+        self.cache = {}
+    def __getattr__(self, name):
+        if name not in self.cache:
+            # This is a bit of a hack.
+            # It would probably be better to have a dict
+            # with just the information_schema tables at
+            # the module level, so as to avoid returning
+            # unrelated objects that happen to be named
+            # 'gen_*'
+            try:
+                gen_tbl = globals()['gen_'+name]
+            except KeyError:
+                raise AttributeError('information_schema table %s not found' % name)
+            self.cache[name] = gen_tbl.toengine(self.engine)
+        return self.cache[name]
 
 
 def reflecttable(engine, table, ischema_names, use_mysql=False):

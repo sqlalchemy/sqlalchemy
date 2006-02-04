@@ -178,12 +178,24 @@ class SQLEngine(schema.SchemaEngine):
         self.echo_uow = echo_uow
         self.context = util.ThreadLocal(raiseerror=False)
         self.tables = {}
+        self._ischema = None
         self._figure_paramstyle()
         if logger is None:
             self.logger = sys.stdout
         else:
             self.logger = logger
 
+    def _get_ischema(self):
+        # We use a property for ischema so that the accessor
+        # creation only happens as needed, since otherwise we
+        # have a circularity problem with the generic
+        # ansisql.engine()
+        if self._ischema is None:
+            import sqlalchemy.databases.information_schema as ischema
+            self._ischema = ischema.ISchema(self)
+        return self._ischema
+    ischema = property(_get_ischema, doc="""returns an ISchema object for this engine, which allows access to information_schema tables (if supported)""")
+    
     def hash_key(self):
         return "%s(%s)" % (self.__class__.__name__, repr(self.connect_args()))
         
