@@ -764,6 +764,26 @@ class SaveTest(AssertMixin):
         
         objectstore.delete(u)
         objectstore.commit()
+
+    def testdoublerelation(self):
+        m2 = mapper(Address, addresses)
+        m = mapper(User, users, properties={
+            'boston_addresses' : relation(m2, primaryjoin=
+                        and_(users.c.user_id==Address.c.user_id, 
+                        Address.c.email_address.like('%boston%'))),
+            'newyork_addresses' : relation(m2, primaryjoin=
+                        and_(users.c.user_id==Address.c.user_id, 
+                        Address.c.email_address.like('%newyork%'))),
+        })
+        u = User()
+        a = Address()
+        a.email_address = 'foo@boston.com'
+        b = Address()
+        b.email_address = 'bar@newyork.com'
+        
+        u.boston_addresses.append(a)
+        u.newyork_addresses.append(b)
+        objectstore.commit()
     
 class SaveTest2(AssertMixin):
 
