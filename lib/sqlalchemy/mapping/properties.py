@@ -516,11 +516,10 @@ class PropertyLoader(MapperProperty):
                 childlist = getlist(obj, passive=True)
                 if childlist is None: continue
                 for child in childlist.added_items():
-                    if child is not None:
-                        self._synchronize(obj, child, None, False)
-                        if self.direction == PropertyLoader.ONETOMANY:
-                            # for a cyclical task, this registration is handled by the objectstore
-                            uowcommit.register_object(child)
+                    self._synchronize(obj, child, None, False)
+                    if self.direction == PropertyLoader.ONETOMANY and child is not None:
+                        # for a cyclical task, this registration is handled by the objectstore
+                        uowcommit.register_object(child)
                 if self.direction != PropertyLoader.MANYTOONE or len(childlist.added_items()) == 0:
                     for child in childlist.deleted_items():
                         if not self.private:
@@ -539,6 +538,9 @@ class PropertyLoader(MapperProperty):
         elif self.direction == PropertyLoader.MANYTOMANY:
             source = None
             dest = associationrow
+
+        if dest is None:
+            return
 
         for rule in self.syncrules:
             localsource = source
