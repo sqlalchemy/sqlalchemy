@@ -81,14 +81,16 @@ class TableSingleton(type):
         except KeyError:
             if mustexist:
                 raise "Table '%s.%s' not defined" % (schema, name)
-            table = type.__call__(self, name, engine, *args, **kwargs)
+            table = type.__call__(self, name, engine, **kwargs)
             engine.tables[key] = table
             # load column definitions from the database if 'autoload' is defined
             # we do it after the table is in the singleton dictionary to support
             # circular foreign keys
             if autoload:
                 engine.reflecttable(table)
-
+            # initialize all the column, etc. objects.  done after
+            # reflection to allow user-overrides
+            table._init_items(*args)
             return table
 
         
@@ -98,7 +100,7 @@ class Table(SchemaItem):
     Be sure to look at sqlalchemy.sql.TableImpl for additional methods defined on a Table."""
     __metaclass__ = TableSingleton
     
-    def __init__(self, name, engine, *args, **kwargs):
+    def __init__(self, name, engine, **kwargs):
         """Table objects can be constructed directly.  The init method is actually called via 
         the TableSingleton metaclass.  Arguments are:
         
@@ -138,7 +140,6 @@ class Table(SchemaItem):
         self.primary_key = []
         self.engine = engine
         self._impl = self.engine.tableimpl(self)
-        self._init_items(*args)
         self.schema = kwargs.pop('schema', None)
         if self.schema is not None:
             self.fullname = "%s.%s" % (self.schema, self.name)

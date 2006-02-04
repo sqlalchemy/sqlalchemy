@@ -117,8 +117,30 @@ class EngineTest(PersistTest):
         assert not pgtable.c.name.nullable 
         assert pgtable.c.description.nullable 
         
+    def testoverride(self):
+        table = Table(
+            'override_test', testbase.db, 
+            Column('col1', Integer, primary_key=True),
+            Column('col2', String(20)),
+            Column('col3', Numeric)
+        )
+        table.create()
+        # clear out table registry
+        table.deregister()
+
+        try:
+            table = Table(
+                'override_test', testbase.db,
+                Column('col2', Unicode()),
+                Column('col4', String(30)), autoload=True)
         
-        
+            print repr(table)
+            self.assert_(isinstance(table.c.col1.type, Integer))
+            self.assert_(table.c.col2.type.is_unicode)
+            self.assert_(isinstance(table.c.col4.type, String))
+        finally:
+            table.drop()
+            
 if __name__ == "__main__":
     testbase.main()        
         
