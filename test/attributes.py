@@ -81,8 +81,8 @@ class AttributesTest(PersistTest):
         class Student(object):pass
         class Course(object):pass
         manager = attributes.AttributeManager()
-        manager.register_attribute(Student, 'courses', uselist=True, extension=attributes.ListBackrefExtension('students'))
-        manager.register_attribute(Course, 'students', uselist=True, extension=attributes.ListBackrefExtension('courses'))
+        manager.register_attribute(Student, 'courses', uselist=True, extension=attributes.GenericBackrefExtension('students'))
+        manager.register_attribute(Course, 'students', uselist=True, extension=attributes.GenericBackrefExtension('courses'))
         
         s = Student()
         c = Course()
@@ -102,8 +102,8 @@ class AttributesTest(PersistTest):
         class Post(object):pass
         class Blog(object):pass
         
-        manager.register_attribute(Post, 'blog', uselist=False, extension=attributes.MTOBackrefExtension('posts'))
-        manager.register_attribute(Blog, 'posts', uselist=True, extension=attributes.OTMBackrefExtension('blog'))
+        manager.register_attribute(Post, 'blog', uselist=False, extension=attributes.GenericBackrefExtension('posts'))
+        manager.register_attribute(Blog, 'posts', uselist=True, extension=attributes.GenericBackrefExtension('blog'))
         b = Blog()
         (p1, p2, p3) = (Post(), Post(), Post())
         b.posts.append(p1)
@@ -118,8 +118,19 @@ class AttributesTest(PersistTest):
         p4.blog = b
         self.assert_(b.posts == [p1, p2, p4])
         
+
+        class Port(object):pass
+        class Jack(object):pass
+        manager.register_attribute(Port, 'jack', uselist=False, extension=attributes.GenericBackrefExtension('port'))
+        manager.register_attribute(Jack, 'port', uselist=False, extension=attributes.GenericBackrefExtension('jack'))
+        p = Port()
+        j = Jack()
+        p.jack = j
+        self.assert_(j.port is p)
+        self.assert_(p.jack is not None)
         
-        
+        j.port = None
+        self.assert_(p.jack is None)
         
 if __name__ == "__main__":
     unittest.main()

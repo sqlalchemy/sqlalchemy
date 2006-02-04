@@ -196,12 +196,7 @@ class PropertyLoader(MapperProperty):
             # if a backref name is defined, set up an extension to populate 
             # attributes in the other direction
             if self.backref is not None:
-                if self.direction == PropertyLoader.ONETOMANY:
-                    self.attributeext = attributes.OTMBackrefExtension(self.backref)
-                elif self.direction == PropertyLoader.MANYTOONE:
-                    self.attributeext = attributes.MTOBackrefExtension(self.backref)
-                else:
-                    self.attributeext = attributes.ListBackrefExtension(self.backref)
+                self.attributeext = attributes.GenericBackrefExtension(self.backref)
         
             # set our class attribute
             self._set_class_attribute(parent.class_, key)
@@ -521,10 +516,11 @@ class PropertyLoader(MapperProperty):
                 childlist = getlist(obj, passive=True)
                 if childlist is None: continue
                 for child in childlist.added_items():
-                    self._synchronize(obj, child, None, False)
-                    if self.direction == PropertyLoader.ONETOMANY:
-                        # for a cyclical task, this registration is handled by the objectstore
-                        uowcommit.register_object(child)
+                    if child is not None:
+                        self._synchronize(obj, child, None, False)
+                        if self.direction == PropertyLoader.ONETOMANY:
+                            # for a cyclical task, this registration is handled by the objectstore
+                            uowcommit.register_object(child)
                 if self.direction != PropertyLoader.MANYTOONE or len(childlist.added_items()) == 0:
                     for child in childlist.deleted_items():
                         if not self.private:

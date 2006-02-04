@@ -24,7 +24,7 @@ AttributeManager can also assign a "callable" history container to an object's a
 which is invoked when first accessed, to provide the object's "committed" value.  
 
 The package includes functions for managing "bi-directional" object relationships as well
-via the ListBackrefExtension, OTMBackrefExtension, and MTOBackrefExtension objects.
+via the GenericBackrefExtension object.
 """
 
 import sqlalchemy.util as util
@@ -80,15 +80,18 @@ class PropHistory(object):
         orig = self.obj.__dict__.get(self.key, None)
         if orig is value:
             return
-        self.orig = orig
+        if self.orig is PropHistory.NONE:
+            self.orig = orig
         self.obj.__dict__[self.key] = value
-        if self.extension is not None and self.orig is not value:
-            self.extension.set(self.obj, value, self.orig)
+        if self.extension is not None:
+            self.extension.set(self.obj, value, orig)
     def delattr(self):
-        self.orig = self.obj.__dict__.get(self.key, None)
+        orig = self.obj.__dict__.get(self.key, None)
+        if self.orig is PropHistory.NONE:
+            self.orig = orig
         self.obj.__dict__[self.key] = None
         if self.extension is not None:
-            self.extension.set(self.obj, None, self.orig)
+            self.extension.set(self.obj, None, orig)
     def append(self, obj):
         self.setattr(obj)
     def remove(self, obj):
@@ -223,25 +226,7 @@ class AttributeExtension(object):
     def set(self, obj, child, oldchild):
         pass
         
-class ListBackrefExtension(AttributeExtension):
-    def __init__(self, key):
-        self.key = key
-    def append(self, obj, child):
-        getattr(child, self.key).append(obj)
-    def delete(self, obj, child):
-        getattr(child, self.key).remove(obj)
-class OTMBackrefExtension(AttributeExtension):
-    def __init__(self, key):
-        self.key = key
-    def append(self, obj, child):
-        prop = child.__class__._attribute_manager.get_history(child, self.key)
-        prop.setattr(obj)
-#        prop.setattr(obj)
-    def delete(self, obj, child):
-        prop = child.__class__._attribute_manager.get_history(child, self.key)
-        prop.delattr()
-
-class MTOBackrefExtension(AttributeExtension):
+class GenericBackrefExtension(AttributeExtension):
     def __init__(self, key):
         self.key = key
     def set(self, obj, child, oldchild):
@@ -251,6 +236,13 @@ class MTOBackrefExtension(AttributeExtension):
         if child is not None:
             prop = child.__class__._attribute_manager.get_history(child, self.key)
             prop.append(obj)
+    def append(self, obj, child):
+        prop = child.__class__._attribute_manager.get_history(child, self.key)
+        prop.append(obj)
+    def delete(self, obj, child):
+        prop = child.__class__._attribute_manager.get_history(child, self.key)
+        prop.remove(obj)
+
             
 class AttributeManager(object):
     """maintains a set of per-attribute history container objects for a set of objects."""
