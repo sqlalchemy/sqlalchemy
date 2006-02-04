@@ -71,7 +71,7 @@ class String(NullTypeEngine):
         self.length = length
         self.is_unicode = is_unicode
     def adapt(self, typeobj):
-        return typeobj(self.length)
+        return typeobj(self.length, self.is_unicode)
     def adapt_args(self):
         if self.length is None:
             return TEXT(is_unicode=self.is_unicode)
