@@ -122,7 +122,10 @@ def not_(clause):
     """returns a negation of the given clause, i.e. NOT(clause).  the ~ operator can be used as well."""
     clause.parens=True
     return BooleanExpression(TextClause("NOT"), clause, None)
-            
+
+def between_(ctest, cleft, cright):
+    """ returns BETWEEN predicate clause (clausetest BETWEEN clauseleft AND clauseright) """
+    return BooleanExpression(ctest, and_(cleft, cright), 'BETWEEN')
         
 def exists(*args, **params):
     s = select(*args, **params)
