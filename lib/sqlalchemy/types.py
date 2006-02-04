@@ -7,7 +7,8 @@
 __all__ = [ 'TypeEngine', 'TypeDecorator', 'NullTypeEngine',
             'INT', 'CHAR', 'VARCHAR', 'TEXT', 'FLOAT', 'DECIMAL', 
             'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN', 'String', 'Integer', 'Smallinteger',
-            'Numeric', 'Float', 'DateTime', 'Date', 'Time', 'Binary', 'Boolean', 'Unicode', 'NULLTYPE'
+            'Numeric', 'Float', 'DateTime', 'Date', 'Time', 'Binary', 'Boolean', 'Unicode', 'NULLTYPE',
+		'SMALLINT', 'DATE', 'TIME'
             ]
 
 import sqlalchemy.util as util
