@@ -7,6 +7,7 @@ import sqlalchemy.databases.postgres as postgres
 #import sqlalchemy.databases.mysql as mysql
 
 echo = True
+#echo = False
 #echo = 'debug'
 db = None
 db_uri = None
@@ -14,31 +15,32 @@ db_uri = None
 def parse_argv():
     # we are using the unittest main runner, so we are just popping out the 
     # arguments we need instead of using our own getopt type of thing
-    if len(sys.argv) >= 3:
-        if sys.argv[1] == '--db':
-            (param, DBTYPE) = (sys.argv.pop(1), sys.argv.pop(1))
-    else:
-        DBTYPE = 'sqlite'
-
     global db, db_uri
-    if DBTYPE == 'sqlite':
-        try:
+    
+    DBTYPE = 'sqlite'
+
+    if len(sys.argv) >= 3:
+        if sys.argv[1] == '--dburi':
+            (param, db_uri) =  (sys.argv.pop(1), sys.argv.pop(1))
+        elif sys.argv[1] == '--db':
+            (param, DBTYPE) = (sys.argv.pop(1), sys.argv.pop(1))
+
+    if (None == db_uri):
+        if DBTYPE == 'sqlite':
             db_uri = 'sqlite://filename=:memory:'
-            db = engine.create_engine(db_uri, echo=echo, default_ordering=True)
-        except:
-            raise "Could not create sqlite engine.  specify --db <sqlite|sqlite_file|postgres|mysql|oracle> to test runner."
-    elif DBTYPE == 'sqlite_file':
-        db_uri = 'sqlite://filename=querytest.db'
+        elif DBTYPE == 'sqlite_file':
+            db_uri = 'sqlite://filename=querytest.db'
+        elif DBTYPE == 'postgres':
+            db_uri = 'postgres://database=test&port=5432&host=127.0.0.1&user=scott&password=tiger'
+        elif DBTYPE == 'mysql':
+            db_uri = 'mysql://db=test&host=127.0.0.1&user=scott&passwd=tiger'
+        elif DBTYPE == 'oracle':
+            db_uri = 'oracle://user=scott&password=tiger'
+    try:
         db = engine.create_engine(db_uri, echo=echo, default_ordering=True)
-    elif DBTYPE == 'postgres':
-        db_uri = 'postgres://database=test&port=5432&host=127.0.0.1&user=scott&password=tiger'
-        db = engine.create_engine(db_uri, echo=echo, default_ordering=True)
-    elif DBTYPE == 'mysql':
-        db_uri = 'mysql://db=test&host=127.0.0.1&user=scott&passwd=tiger'
-        db = engine.create_engine(db_uri, echo=echo, default_ordering=True)
-    elif DBTYPE == 'oracle':
-        db_uri = 'oracle://user=scott&password=tiger'
-        db = engine.create_engine(db_uri, echo=echo, default_ordering=True)
+    except:
+        raise "Could not create engine.  specify --db <sqlite|sqlite_file|postgres|mysql|oracle> to test runner."
+        
     db = EngineAssert(db)
 
 class PersistTest(unittest.TestCase):

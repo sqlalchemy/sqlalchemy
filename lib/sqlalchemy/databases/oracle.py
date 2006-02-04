@@ -24,9 +24,17 @@ class OracleNumeric(sqltypes.Numeric):
 class OracleInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
+class OracleSmallInteger(sqltypes.Smallinteger):
+    def get_col_spec(self):
+        return "SMALLINT"
 class OracleDateTime(sqltypes.DateTime):
     def get_col_spec(self):
         return "DATE"
+# Note:
+# Oracle DATE == DATETIME
+# Oracle does not allow milliseconds in DATE
+# Oracle does not support TIME columns
+
 class OracleText(sqltypes.TEXT):
     def get_col_spec(self):
         return "CLOB"
@@ -45,8 +53,10 @@ class OracleBoolean(sqltypes.Boolean):
         
 colspecs = {
     sqltypes.Integer : OracleInteger,
+    sqltypes.Smallinteger : OracleSmallInteger,
     sqltypes.Numeric : OracleNumeric,
     sqltypes.DateTime : OracleDateTime,
+    sqltypes.Date : OracleDateTime,
     sqltypes.String : OracleString,
     sqltypes.Binary : OracleBinary,
     sqltypes.Boolean : OracleBoolean,

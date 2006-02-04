@@ -5,8 +5,6 @@ import testbase
     
 db = testbase.db
 
-
-
 class OverrideTest(PersistTest):
 
     def testprocessing(self):
@@ -21,7 +19,8 @@ class OverrideTest(PersistTest):
                 return typeobj()
             def adapt_args(self):
                 return self
-                
+
+        global users
         users = Table('users', db, 
             Column('user_id', Integer, primary_key = True),
             Column('goofy', MyType, nullable = False)
@@ -41,11 +40,16 @@ class OverrideTest(PersistTest):
         print repr(l)
         self.assert_(l == [(2, u'BIND_INjackBIND_OUT'), (3, u'BIND_INlalaBIND_OUT'), (4, u'BIND_INfredBIND_OUT')])
 
+    def tearDownAll(self):
+        global users
+        users.drop()
+
 
 class ColumnsTest(AssertMixin):
 
     def testcolumns(self):
         expectedResults = { 'int_column': 'int_column INTEGER',
+                            'smallint_column': 'smallint_column SMALLINT',
                                    'varchar_column': 'varchar_column VARCHAR(20)',
                                    'numeric_column': 'numeric_column NUMERIC(12, 3)',
                                    'float_column': 'float_column NUMERIC(25, 2)'
@@ -57,6 +61,7 @@ class ColumnsTest(AssertMixin):
         print db.engine.__module__
         testTable = Table('testColumns', db,
             Column('int_column', Integer),
+            Column('smallint_column', Smallinteger),
             Column('varchar_column', String(20)),
             Column('numeric_column', Numeric(12,3)),
             Column('float_column', Float(25)),
@@ -97,39 +102,60 @@ class BinaryTest(AssertMixin):
         
 class DateTest(AssertMixin):
     def setUpAll(self):
-        global users_with_date
-        users_with_date = Table('query_users_with_date', db,
-        Column('user_id', INT, primary_key = True),
-        Column('user_name', VARCHAR(20)),
-        Column('user_date', DateTime),
-        redefine = True
-        )
+        global users_with_date, insert_data
+
+        insert_data =  [[7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.date(2005,11,10), datetime.time(12,20,2)],
+                        [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.date(2005,10,10), datetime.time(0,0,0)],
+                        [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35, 54839), datetime.date(1970,4,1), datetime.time(23,59,59,999)],
+                        [10, 'colber', None, None, None]]
+
+        fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
+
+        collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime),
+                   Column('user_date', Date), Column('user_time', Time)]
+
+
+        
+        if db.engine.__module__.endswith('mysql'):
+            # strip microseconds -- not supported by this engine (should be an easier way to detect this)
+            for d in insert_data:
+                d[2] = d[2].replace(microsecond=0)
+                d[4] = d[4].replace(microsecond=0)
+        
+        try:
+            db.type_descriptor(types.TIME).get_col_spec()
+            print  "HI"
+        except:
+            # don't test TIME type -- not supported by this engine
+            insert_data = [d[:-1] for d in insert_data]
+            fnames = fnames[:-1]
+            collist = collist[:-1]
+
+
+        users_with_date = Table('query_users_with_date', db, redefine = True, *collist)
         users_with_date.create()
-        users_with_date.insert().execute(user_id = 7, user_name = 'jack', user_date=datetime.datetime(2005,11,10))
-        users_with_date.insert().execute(user_id = 8, user_name = 'roy', user_date=datetime.datetime(2005,11,10, 11,52,35))
-        users_with_date.insert().execute(user_id = 9, user_name = 'foo', user_date=datetime.datetime(2005,11,10, 11,52,35, 54839))
-        users_with_date.insert().execute(user_id = 10, user_name = 'colber', user_date=None)
+
+        insert_dicts = [dict(zip(fnames, d)) for d in insert_data]
+        for idict in insert_dicts:
+            users_with_date.insert().execute(**idict) # insert the data
+
     def tearDownAll(self):
         users_with_date.drop()
 
     def testdate(self):
-        l = users_with_date.select().execute().fetchall()
-        l = [[c for c in r] for r in l]
-        if db.engine.__module__.endswith('mysql'):
-            x = [[7, 'jack', datetime.datetime(2005, 11, 10, 0, 0)], [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35)], [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35)], [10, 'colber', None]]
-        else:
-            x = [[7, 'jack', datetime.datetime(2005, 11, 10, 0, 0)], [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35)], [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35, 54839)], [10, 'colber', None]]
-        print repr(l)
-        print repr(x)
-        self.assert_(l == x)
+        global insert_data
+
+        l = map(list, users_with_date.select().execute().fetchall())
+        self.assert_(l == insert_data, 'DateTest mismatch: got:%s expected:%s' % (l, insert_data))
+
 
     def testtextdate(self):     
-        x = db.text("select user_date from query_users_with_date", typemap={'user_date':DateTime}).execute().fetchall()
+        x = db.text("select user_datetime from query_users_with_date", typemap={'user_datetime':DateTime}).execute().fetchall()
         
         print repr(x)
         self.assert_(isinstance(x[0][0], datetime.datetime))
         
-        #x = db.text("select * from query_users_with_date where user_date=:date", bindparams=[bindparam('date', )]).execute(date=datetime.datetime(2005, 11, 10, 11, 52, 35)).fetchall()
+        #x = db.text("select * from query_users_with_date where user_datetime=:date", bindparams=[bindparam('date', )]).execute(date=datetime.datetime(2005, 11, 10, 11, 52, 35)).fetchall()
         #print repr(x)
         
 if __name__ == "__main__":

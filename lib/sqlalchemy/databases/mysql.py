@@ -28,9 +28,18 @@ class MSFloat(sqltypes.Float):
 class MSInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
+class MSSmallInteger(sqltypes.Smallinteger):
+    def get_col_spec(self):
+        return "SMALLINT"
 class MSDateTime(sqltypes.DateTime):
     def get_col_spec(self):
         return "DATETIME"
+class MSDate(sqltypes.Date):
+    def get_col_spec(self):
+        return "DATE"
+class MSTime(sqltypes.Time):
+    def get_col_spec(self):
+        return "TIME"
 class MSText(sqltypes.TEXT):
     def get_col_spec(self):
         return "TEXT"
@@ -54,9 +63,12 @@ class MSBoolean(sqltypes.Boolean):
         
 colspecs = {
     sqltypes.Integer : MSInteger,
+    sqltypes.Smallinteger : MSSmallInteger,
     sqltypes.Numeric : MSNumeric,
     sqltypes.Float : MSFloat,
     sqltypes.DateTime : MSDateTime,
+    sqltypes.Date : MSDate,
+    sqltypes.Time : MSTime,
     sqltypes.String : MSString,
     sqltypes.Binary : MSBinary,
     sqltypes.Boolean : MSBoolean,
@@ -66,6 +78,7 @@ colspecs = {
 
 ischema_names = {
     'int' : MSInteger,
+    'smallint' : MSSmallInteger,
     'varchar' : MSString,
     'char' : MSChar,
     'text' : MSText,
@@ -73,6 +86,8 @@ ischema_names = {
     'float' : MSFloat,
     'timestamp' : MSDateTime,
     'datetime' : MSDateTime,
+    'date' : MSDate,
+    'time' : MSTime,
     'binary' : MSBinary,
     'blob' : MSBinary,
 }

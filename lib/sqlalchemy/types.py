@@ -6,7 +6,8 @@
 
 __all__ = [ 'TypeEngine', 'TypeDecorator', 'NullTypeEngine',
             'INT', 'CHAR', 'VARCHAR', 'TEXT', 'FLOAT', 'DECIMAL', 
-            'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN', 'String', 'Integer', 'Numeric', 'Float', 'DateTime', 'Binary', 'Boolean', 'Unicode', 'NULLTYPE'
+            'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN', 'String', 'Integer', 'Smallinteger',
+            'Numeric', 'Float', 'DateTime', 'Date', 'Time', 'Binary', 'Boolean', 'Unicode', 'NULLTYPE'
             ]
 
 import sqlalchemy.util as util
@@ -88,6 +89,10 @@ class Integer(NullTypeEngine):
     # seems to be not needed with SQLite, Postgres
     pass
 
+class Smallinteger(Integer):
+    """ smallint datatype """
+    pass
+
 class Numeric(NullTypeEngine):
     def __init__(self, precision = 10, length = 2):
         self.precision = precision
@@ -102,6 +107,12 @@ class Float(NullTypeEngine):
         return typeobj(self.precision)
 
 class DateTime(NullTypeEngine):
+    pass
+
+class Date(NullTypeEngine):
+    pass
+
+class Time(NullTypeEngine):
     pass
 
 class Binary(NullTypeEngine):
@@ -122,8 +133,11 @@ class TEXT(String):pass
 class DECIMAL(Numeric):pass
 class INT(Integer):pass
 INTEGER = INT
+class SMALLINT(Smallinteger):pass
 class TIMESTAMP(DateTime): pass
 class DATETIME(DateTime): pass
+class DATE(Date): pass
+class TIME(Time): pass
 class CLOB(String): pass
 class VARCHAR(String): pass
 class CHAR(String):pass

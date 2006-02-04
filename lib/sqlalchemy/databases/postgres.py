@@ -33,6 +33,9 @@ class PGFloat(sqltypes.Float):
 class PGInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
+class PGSmallInteger(sqltypes.Smallinteger):
+    def get_col_spec(self):
+        return "SMALLINT"
 class PG2DateTime(sqltypes.DateTime):
     def get_col_spec(self):
         return "TIMESTAMP"
@@ -46,6 +49,32 @@ class PG1DateTime(sqltypes.DateTime):
         return value
     def get_col_spec(self):
         return "TIMESTAMP"
+class PG2Date(sqltypes.Date):
+    def get_col_spec(self):
+        return "DATE"
+class PG1Date(sqltypes.Date):
+    def convert_bind_param(self, value, engine):
+        # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
+        # this one doesnt seem to work with the "emulation" mode
+        return psycopg.DateFromMx(value)
+    def convert_result_value(self, value, engine):
+        # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
+        return value
+    def get_col_spec(self):
+        return "DATE"
+class PG2Time(sqltypes.Date):
+    def get_col_spec(self):
+        return "TIME"
+class PG1Time(sqltypes.Date):
+    def convert_bind_param(self, value, engine):
+        # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
+        # this one doesnt seem to work with the "emulation" mode
+        return psycopg.TimeFromMx(value)
+    def convert_result_value(self, value, engine):
+        # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
+        return value
+    def get_col_spec(self):
+        return "TIME"
 class PGText(sqltypes.TEXT):
     def get_col_spec(self):
         return "TEXT"
@@ -64,9 +93,12 @@ class PGBoolean(sqltypes.Boolean):
         
 pg2_colspecs = {
     sqltypes.Integer : PGInteger,
+    sqltypes.Smallinteger : PGSmallInteger,
     sqltypes.Numeric : PGNumeric,
     sqltypes.Float : PGFloat,
     sqltypes.DateTime : PG2DateTime,
+    sqltypes.Date : PG2Date,
+    sqltypes.Time : PG2Time,
     sqltypes.String : PGString,
     sqltypes.Binary : PGBinary,
     sqltypes.Boolean : PGBoolean,
@@ -74,11 +106,16 @@ pg2_colspecs = {
     sqltypes.CHAR: PGChar,
 }
 pg1_colspecs = pg2_colspecs.copy()
-pg1_colspecs[sqltypes.DateTime] = PG1DateTime
+pg1_colspecs.update({
+    sqltypes.DateTime :  PG1DateTime,
+    sqltypes.Date : PG1Date,
+    sqltypes.Time : PG1Time
+    })
 
 pg2_ischema_names = {
     'integer' : PGInteger,
     'bigint' : PGInteger,
+    'smallint' : PGSmallInteger,
     'character varying' : PGString,
     'character' : PGChar,
     'text' : PGText,
@@ -88,12 +125,18 @@ pg2_ischema_names = {
     'double precision' : PGFloat,
     'timestamp with time zone' : PG2DateTime,
     'timestamp without time zone' : PG2DateTime,
+    'date' : PG2Date,
+    'time': PG2Time,
     'bytea' : PGBinary,
     'boolean' : PGBoolean,
 }
 pg1_ischema_names = pg2_ischema_names.copy()
-pg1_ischema_names['timestamp with time zone'] = \
-    pg1_ischema_names['timestamp without time zone'] = PG1DateTime
+pg1_ischema_names.update({
+    'timestamp with time zone' : PG1DateTime,
+    'timestamp without time zone' : PG1DateTime,
+    'date' : PG1Date,
+    'time' : PG1Time
+    })
 
 def engine(opts, **params):
     return PGSQLEngine(opts, **params)

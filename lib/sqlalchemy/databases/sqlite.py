@@ -15,6 +15,8 @@ import sqlalchemy.types as sqltypes
 from sqlalchemy.ansisql import *
 import datetime,time
 
+pysqlite2_timesupport = False   # Change this if the init.d guys ever get around to supporting time cols
+
 try:
     from pysqlite2 import dbapi2 as sqlite
 except:
@@ -26,10 +28,13 @@ class SLNumeric(sqltypes.Numeric):
 class SLInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
+class SLSmallInteger(sqltypes.Smallinteger):
+    def get_col_spec(self):
+        return "SMALLINT"
 class SLDateTime(sqltypes.DateTime):
     def get_col_spec(self):
         return "TIMESTAMP"
-    def convert_result_value(self, value, engine):
+    def _cvt(self, value, engine, fmt):
         if value is None:
             return None
         parts = value.split('.')
@@ -38,9 +43,22 @@ class SLDateTime(sqltypes.DateTime):
             microsecond = int(microsecond)
         except ValueError:
             (value, microsecond) = (value, 0)
-        tup = time.strptime(value, "%Y-%m-%d %H:%M:%S")
-        return datetime.datetime(microsecond=microsecond, *tup[0:6])
-
+        return time.strptime(value, fmt)[0:6] + (microsecond,)
+    def convert_result_value(self, value, engine):
+        tup = self._cvt(value, engine, "%Y-%m-%d %H:%M:%S")
+        return tup and datetime.datetime(*tup)
+class SLDate(SLDateTime):
+    def get_col_spec(self):
+        return "DATE"
+    def convert_result_value(self, value, engine):
+        tup = self._cvt(value, engine, "%Y-%m-%d")
+        return tup and datetime.date(*tup[0:3])
+class SLTime(SLDateTime):
+    def get_col_spec(self):
+        return "TIME"
+    def convert_result_value(self, value, engine):
+        tup = self._cvt(value, engine, "%H:%M:%S")
+        return tup and datetime.time(*tup[4:7])
 class SLText(sqltypes.TEXT):
     def get_col_spec(self):
         return "TEXT"
@@ -59,9 +77,11 @@ class SLBoolean(sqltypes.Boolean):
         
 colspecs = {
     sqltypes.Integer : SLInteger,
+    sqltypes.Smallinteger : SLSmallInteger,
     sqltypes.Numeric : SLNumeric,
     sqltypes.Float : SLNumeric,
     sqltypes.DateTime : SLDateTime,
+    sqltypes.Date : SLDate,
     sqltypes.String : SLString,
     sqltypes.Binary : SLBinary,
     sqltypes.Boolean : SLBoolean,
@@ -71,15 +91,22 @@ colspecs = {
 
 pragma_names = {
     'INTEGER' : SLInteger,
+    'SMALLINT' : SLSmallInteger,
     'VARCHAR' : SLString,
     'CHAR' : SLChar,
     'TEXT' : SLText,
     'NUMERIC' : SLNumeric,
     'FLOAT' : SLNumeric,
     'TIMESTAMP' : SLDateTime,
+    'DATETIME' : SLDateTime,
+    'DATE' : SLDate,
     'BLOB' : SLBinary,
 }
 
+if pysqlite2_timesupport:
+    colspecs.update({sqltypes.Time : SLTime})
+    pragma_names.update({'TIME' : SLTime})
+    
 def engine(opts, **params):
     return SQLiteSQLEngine(opts, **params)
 
