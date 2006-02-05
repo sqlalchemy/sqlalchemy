@@ -212,7 +212,7 @@ class Mapper(object):
         """sets up our classes' overridden __init__ method, this mappers hash key as its
         '_mapper' property, and our columns as its 'c' property.  if the class already had a
         mapper, the old __init__ method is kept the same."""
-        if not hasattr(self.class_, '_mapper'):
+        if not self.class_.__dict__.has_key('_mapper'):
             oldinit = self.class_.__init__
             def init(self, *args, **kwargs):
                 nohist = kwargs.pop('_mapper_nohistory', False)
