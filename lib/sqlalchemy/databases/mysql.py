@@ -215,6 +215,6 @@ class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
             if first_pk and isinstance(column.type, types.Integer):
                 colspec += " AUTO_INCREMENT"
         if column.foreign_key:
-            colspec += " REFERENCES %s(%s)" % (column.column.foreign_key.column.table.name, column.column.foreign_key.column.name) 
+            colspec += ", FOREIGN KEY (%s) REFERENCES %s(%s)" % (column.name, column.column.foreign_key.column.table.name, column.column.foreign_key.column.name) 
         return colspec
 
