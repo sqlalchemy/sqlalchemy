@@ -792,13 +792,13 @@ class SaveTest2(AssertMixin):
         objectstore.clear()
         clear_mappers()
         self.users = Table('users', db,
-            Column('user_id', Integer, primary_key = True),
+            Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key = True),
             Column('user_name', String(20)),
             redefine=True
         )
 
         self.addresses = Table('email_addresses', db,
-            Column('address_id', Integer, primary_key = True),
+            Column('address_id', Integer, Sequence('address_id_seq', optional=True), primary_key = True),
             Column('rel_user_id', Integer, ForeignKey(self.users.c.user_id)),
             Column('email_address', String(20)),
             redefine=True
