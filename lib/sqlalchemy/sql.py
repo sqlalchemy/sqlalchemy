@@ -987,7 +987,7 @@ class ColumnClause(ColumnElement):
         else:
             return BindParamClause(self.table.name + "_" + self.text, obj, shortname = self.text, type=self.type)
     def _make_proxy(self, selectable, name = None):
-        c = ColumnClause(self.text or name, selectable)
+        c = ColumnClause(name or self.text, selectable)
         selectable.columns[c.key] = c
         return c
 

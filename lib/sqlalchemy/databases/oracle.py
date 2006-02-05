@@ -191,17 +191,29 @@ class OracleCompiler(ansisql.ANSICompiler):
 
     def visit_select(self, select):
         """looks for LIMIT and OFFSET in a select statement, and if so tries to wrap it in a 
-        subquery with rownum criterion."""
+        subquery with row_number() criterion."""
+        # TODO: put a real copy-container on Select and copy, or somehow make this
+        # not modify the Select statement
         if getattr(select, '_oracle_visit', False):
+            # cancel out the compiled order_by on the select
+            if hasattr(select, "order_by_clause"):
+                self.strings[select.order_by_clause] = ""
             ansisql.ANSICompiler.visit_select(self, select)
             return
         if select.limit is not None or select.offset is not None:
             select._oracle_visit = True
+            if hasattr(select, "order_by_clause"):
+                orderby = self.strings[select.order_by_clause]
+            else:
+                orderby = "rowid ASC"
+            select.append_column(sql.ColumnClause("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn"))
             limitselect = select.select()
-            if select.limit is not None:
-                limitselect.append_whereclause("rownum<%d" % select.limit)
             if select.offset is not None:
-                limitselect.append_whereclause("rownum>%d" % select.offset)
+                limitselect.append_whereclause("ora_rn>%d" % select.offset)
+                if select.limit is not None:
+                    limitselect.append_whereclause("ora_rn<=%d" % (select.limit + select.offset))
+            else:
+                limitselect.append_whereclause("ora_rn<=%d" % select.limit)
             limitselect.accept_visitor(self)
             self.strings[select] = self.strings[limitselect]
             self.froms[select] = self.froms[limitselect]

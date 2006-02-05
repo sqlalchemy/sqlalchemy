@@ -319,7 +319,9 @@ class ANSICompiler(sql.Compiled):
                 text += " \nWHERE " + t
 
         for tup in select.clauses:
-            text += " " + tup[0] + " " + self.get_str(tup[1])
+            ss = self.get_str(tup[1])
+            if ss:
+                text += " " + tup[0] + " " + ss
 
         if select.having is not None:
             t = self.get_str(select.having)
