@@ -19,9 +19,11 @@ import string
 import StringIO
 from sets import *
 
-__all__ = ['get_id_key', 'get_row_key', 'commit', 'update', 'clear', 'delete', 
-        'begin', 'has_key', 'has_instance', 'UnitOfWork']
+__all__ = ['get_id_key', 'get_row_key', 'is_dirty', 'import_instance', 'commit', 'update', 'clear', 'delete', 'instance_key', 'begin', 'has_key', 'has_instance', 'UnitOfWork']
 
+# a global indicating if all commit() operations should have their plan
+# printed to standard output.  also can be affected by creating an engine
+# with the "echo_uow=True" keyword argument.
 LOG = False
 
 def get_id_key(ident, class_, table):
@@ -88,6 +90,11 @@ def has_instance(instance):
     """returns True if the current thread-local IdentityMap contains the given instance"""
     return uow().identity_map.has_key(instance_key(instance))
 
+def is_dirty(obj):
+    """returns True if the given object is in the current UnitOfWork's new or dirty list,
+    or if its a modified list attribute on an object."""
+    return uow().is_dirty(obj)
+    
 def instance_key(instance):
     """returns the IdentityMap key for the given instance"""
     return object_mapper(instance).instance_key(instance)
@@ -166,6 +173,8 @@ class UnitOfWork(object):
         self.parent = parent
 
     def get(self, class_, *id):
+        """given a class and a list of primary key values in their table-order, locates the mapper 
+        for this class and calls get with the given primary key values."""
         return object_mapper(class_).get(*id)
 
     def _get(self, key):
@@ -175,8 +184,14 @@ class UnitOfWork(object):
         self.identity_map[key] = obj
 
     def has_key(self, key):
+        """returns True if the given key is present in this UnitOfWork's identity map."""
         return self.identity_map.has_key(key)
-        
+    
+    def is_dirty(self, obj):
+        """returns True if the given object is in the dirty, new, modified_lists, or deleted lists of 
+        this UnitOfWork."""
+        return obj in self.dirty or obj in self.new or obj in self.modified_lists or obj in self.deleted
+            
     def _remove_deleted(self, obj):
         if hasattr(obj, "_instance_key"):
             del self.identity_map[obj._instance_key]
