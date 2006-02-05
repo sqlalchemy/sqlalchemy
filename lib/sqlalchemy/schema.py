@@ -417,6 +417,15 @@ class DefaultGenerator(SchemaItem):
         self.column.default = self
     def __repr__(self):
         return "DefaultGenerator()"
+
+class PassiveDefault(DefaultGenerator):
+    """a default that takes effect on the database side"""
+    def __init__(self, text):
+        self.text = text
+    def accept_visitor(self, visitor):
+        return visitor_visit_passive_default(self)
+    def __repr__(self):
+        return "PassiveDefault(%s)" % repr(self.text)
         
 class ColumnDefault(DefaultGenerator):
     """A plain default value on a column.  this could correspond to a constant, 
@@ -476,6 +485,9 @@ class SchemaVisitor(object):
         pass
     def visit_index(self, index):
         """visit an Index (not implemented yet)."""
+        pass
+    def visit_passive_default(self, default):
+        """visit a passive default"""
         pass
     def visit_column_default(self, default):
         """visit a ColumnDefault."""

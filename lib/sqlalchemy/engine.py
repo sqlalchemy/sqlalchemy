@@ -135,6 +135,11 @@ class DefaultRunner(schema.SchemaVisitor):
         else:
             return None
 
+    def visit_passive_default(self, default):
+        """passive defaults by definition return None on the app side,
+        and are post-fetched to get the DB-side value"""
+        return None
+        
     def visit_sequence(self, seq):
         """sequences are not supported by default"""
         return None
@@ -452,10 +457,13 @@ class SQLEngine(schema.SchemaEngine):
             else:
                 plist = [parameters]
             drunner = self.defaultrunner(proxy)
+            self.context.lastrow_has_defaults = False
             for param in plist:
                 last_inserted_ids = []
                 need_lastrowid=False
                 for c in compiled.statement.table.c:
+                    if isinstance(c.default, schema.PassiveDefault):
+                        self.context.lastrow_has_defaults = True
                     if not param.has_key(c.key) or param[c.key] is None:
                         newid = drunner.get_column_default(c)
                         if newid is not None:
@@ -471,7 +479,9 @@ class SQLEngine(schema.SchemaEngine):
                 else:
                     self.context.last_inserted_ids = last_inserted_ids
 
-
+    def lastrow_has_defaults(self):
+        return self.context.lastrow_has_defaults
+        
     def pre_exec(self, proxy, compiled, parameters, **kwargs):
         """called by execute_compiled before the compiled statement is executed."""
         pass

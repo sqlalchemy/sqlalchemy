@@ -578,6 +578,14 @@ class Mapper(object):
                             if self._getattrbycolumn(obj, col) is None:
                                 self._setattrbycolumn(obj, col, primary_key[i])
                             i+=1
+                    if table.engine.lastrow_has_defaults():
+                        clause = sql.and_()
+                        for p in self.pks_by_table[table]:
+                            clause.clauses.append(p == self._getattrbycolumn(obj, p))
+                        row = table.select(clause).execute().fetchone()
+                        for c in table.c:
+                            if self._getattrbycolumn(obj, col) is None:
+                                self._setattrbycolumn(obj, col, row[c])
                     self.extension.after_insert(self, obj)
                     
     def delete_obj(self, objects, uow):
