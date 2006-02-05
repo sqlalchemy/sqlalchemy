@@ -117,7 +117,7 @@ WHERE users.user_id = addresses.address_id
 {}
 </&>
 </&>
-        <p>If you want to use a different label, you can also try using an alias:</p>
+        <p>The table name part of the label is affected if you use a construct such as a table alias:</p>
         <&|formatting.myt:code&>
 
         person = users.alias('person')
@@ -134,6 +134,16 @@ person.password AS person_password, addresses.address_id AS addresses_address_id
 WHERE person.user_id = addresses.address_id
 </&>
         </&>    
+        <p>You can also specify custom labels on a per-column basis using the <span class="codeline">label()</span> function:
+        <&|formatting.myt:code&>
+        <&formatting.myt:poplink&>c = select([users.c.user_id.label('id'), users.c.user_name.label('name')]).execute()  
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT users.user_id AS id, users.user_name AS name
+FROM users
+{}
+</&>
+            
+        </&>
         </&>
         
         <&|doclib.myt:item, name="columns", description="Table/Column Specification" &>
@@ -276,7 +286,7 @@ FROM users WHERE users.user_name = :users_user_name AND users.user_id = :users_u
 </&>
         </&>
             <&|doclib.myt:item, name="operators", description="Operators" &>
-            <p>Supported column operators so far are all the numerical comparison operators, i.e. '==', '>', '>=', etc., as well as like(), startswith(), endswith(), and in().  Boolean operators include not_(), and_() and or_(), which also can be used inline via '~', '&', and '|'.  Math operators are '+', '-', '*', '/'.  Any custom operator can be specified via the op() function shown below.</p>
+            <p>Supported column operators so far are all the numerical comparison operators, i.e. '==', '>', '>=', etc., as well as like(), startswith(), endswith(), between(), and in().  Boolean operators include not_(), and_() and or_(), which also can be used inline via '~', '&', and '|'.  Math operators are '+', '-', '*', '/'.  Any custom operator can be specified via the op() function shown below.</p>
             <&|formatting.myt:code &>
                 # "like" operator
                 users.select(users.c.user_name.like('%ter'))
