@@ -77,7 +77,7 @@ class PKTest(AssertMixin):
         db.echo = False
         self.table = Table(
             'multi', db, 
-            Column('multi_id', Integer, primary_key=True),
+            Column('multi_id', Integer, Sequence("multi_id_seq", optional=True), primary_key=True),
             Column('multi_rev', Integer, primary_key=True),
             Column('name', String(50), nullable=False),
             Column('value', String(100))
