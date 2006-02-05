@@ -36,11 +36,11 @@ def parse_argv():
             db_uri = 'mysql://db=test&host=127.0.0.1&user=scott&passwd=tiger'
         elif DBTYPE == 'oracle':
             db_uri = 'oracle://user=scott&password=tiger'
-    try:
-        db = engine.create_engine(db_uri, echo=echo, default_ordering=True)
-    except:
+
+    if not db_uri:
         raise "Could not create engine.  specify --db <sqlite|sqlite_file|postgres|mysql|oracle> to test runner."
-        
+
+    db = engine.create_engine(db_uri, echo=echo, default_ordering=True)
     db = EngineAssert(db)
 
 class PersistTest(unittest.TestCase):
