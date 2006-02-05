@@ -144,6 +144,8 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
         return SQLiteCompiler(self, statement, bindparams, **kwargs)
 
     def dbapi(self):
+        if sqlite is None:
+            raise "Couldn't import pysqlite2"
         return sqlite
 
     def schemagenerator(self, proxy, **params):
