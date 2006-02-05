@@ -27,7 +27,6 @@ class ProxyEngineTest(PersistTest):
         objectstore.clear()
         
     def test_engine_connect(self):
-
         # connect to a real engine
         module_engine.connect(testbase.db_uri)
         users.create()
@@ -110,7 +109,6 @@ class ProxyEngineTest(PersistTest):
     def test_table_singleton_a(self):
         """set up for table singleton check
         """
-
         #
         # For this 'test', create a proxy engine instance, connect it
         # to a real engine, and make it do some work
@@ -131,7 +129,6 @@ class ProxyEngineTest(PersistTest):
         """check that a table on a 2nd proxy engine instance gets 2nd table
         instance
         """
-
         #
         # Now create a new proxy engine instance and attach the same
         # table as the first test. This should result in 2 table instances,
@@ -163,7 +160,7 @@ class ProxyEngineTest(PersistTest):
                 return 'a'
             
             def type_descriptor(self, typeobj):
-                if typeobj == type(1):
+                if typeobj == types.Integer:
                     return TypeEngineX2()
                 else:
                     return TypeEngineSTR()
@@ -193,18 +190,64 @@ class ProxyEngineTest(PersistTest):
         engine = ProxyEngine()
         engine.storage.engine = EngineA()
 
-        a = engine.type_descriptor(type(1))
+        a = engine.type_descriptor(sqltypes.Integer)
         assert a.convert_bind_param(12, engine) == 24
         assert a.convert_bind_param([1,2,3], engine) == [1, 2, 3, 1, 2, 3]
 
-        a2 = engine.type_descriptor(type('hi'))
+        a2 = engine.type_descriptor(sqltypes.String)
         assert a2.convert_bind_param(12, engine) == "'12'"
         assert a2.convert_bind_param([1,2,3], engine) == "'[1, 2, 3]'"
         
         engine.storage.engine = EngineB()
-        b = engine.type_descriptor(type(1))
+        b = engine.type_descriptor(sqltypes.Integer)
         assert b.convert_bind_param(12, engine) == 'monkey'
         assert b.convert_bind_param([1,2,3], engine) == 'monkey'
+        
+
+    def test_type_engine_autoincrement(self):
+        engine = ProxyEngine()
+        dogs = Table('dogs', engine,
+                     Column('dog_id', Integer, primary_key=True),
+                     Column('breed', String),
+                     Column('name', String))
+        
+        class Dog(object):
+            pass
+        
+        assign_mapper(Dog, dogs)
+
+        engine.connect(testbase.db_uri)
+        dogs.create()
+
+        spot = Dog()
+        spot.breed = 'beagle'
+        spot.name = 'Spot'
+
+        rover = Dog()
+        rover.breed = 'spaniel'
+        rover.name = 'Rover'
+        
+        objectstore.commit()
+        
+        assert spot.dog_id > 0, "Spot did not get an id"
+        assert rover.dog_id != spot.dog_id
+        
+    def  test_type_proxy_schema_gen(self):
+        from sqlalchemy.databases.postgres import PGSchemaGenerator
+
+        engine = ProxyEngine()
+        lizards = Table('lizards', engine,
+                        Column('id', Integer, primary_key=True),
+                        Column('name', String))
+        
+        # this doesn't really CONNECT to pg, just establishes pg as the
+        # actual engine so that we can determine that it gets the right
+        # answer
+        engine.connect('postgres://database=test&port=5432&host=127.0.0.1&user=scott&password=tiger')
+
+        sg = PGSchemaGenerator(engine.proxy())
+        id_spec = sg.get_column_specification(lizards.c.id)
+        assert id_spec == 'id SERIAL NOT NULL PRIMARY KEY'
         
         
 if __name__ == "__main__":

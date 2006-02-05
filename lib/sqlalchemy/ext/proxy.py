@@ -57,7 +57,9 @@ class ProxyEngine(object):
         # something for oid column name, and the call happens too early
         # to proxy, so effecticely no oids are allowed when using
         # proxy engine
-        return None
+        if self.storage.engine is None:
+            return None
+        return self.get_engine().oid_column_name()
     
     def columnimpl(self, column):
         """Proxy point: return a ProxyColumnImpl
@@ -100,47 +102,37 @@ class ProxyTableImpl(sql.TableImpl):
 
     engine = property(lambda self: self._engine.engine)
 
-class ProxyTypeEngine(object):
-    """Proxy type engine; defers engine access to ProxyEngine
+class ProxyType(object):
+    """ProxyType base class; used by ProxyTypeEngine to construct proxying
+    types    
     """
     def __init__(self, engine, typeobj):
         self._engine = engine
         self.typeobj = typeobj
+
+    def __getattribute__(self, attr):
+        if attr.startswith('__') and attr.endswith('__'):
+            return object.__getattribute__(self, attr)
         
-    engine = property(lambda self: self._engine.engine)    
+        engine = object.__getattribute__(self, '_engine').engine
+        typeobj = object.__getattribute__(self, 'typeobj')        
+        return getattr(engine.type_descriptor(typeobj), attr)
 
-    def __getattr__(self, attr):
-        # NOTE:
-        # profiling so far indicates that caching the type_descriptor
-        # results is more trouble than it's worth
-        return getattr(self.engine.type_descriptor(self.typeobj), attr)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    def __repr__(self):
+        return '<Proxy %s>' % (object.__getattribute__(self, 'typeobj'))
+    
+class ProxyTypeEngine(object):
+    """Proxy type engine; creates dynamic proxy type subclass that is instance
+    of actual type, but proxies engine-dependant operations through the proxy
+    engine.    
+    """
+    def __new__(cls, engine, typeobj):
+        """Create a new subclass of ProxyType and typeobj
+        so that internal isinstance() calls will get the expected result.
+        """
+        if isinstance(typeobj, type):
+            typeclass = typeobj
+        else:
+            typeclass = typeobj.__class__
+        typed = type('ProxyTypeHelper', (ProxyType, typeclass), {})
+        return typed(engine, typeobj)    
