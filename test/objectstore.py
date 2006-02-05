@@ -376,14 +376,14 @@ class SaveTest(AssertMixin):
                     "INSERT INTO users (user_name) VALUES (:user_name)",
                     {'user_name': 'imnewlyadded'}
                 ),
-                (
-                    "UPDATE email_addresses SET email_address=:email_address WHERE email_addresses.address_id = :email_addresses_address_id",
+                {
+                    "UPDATE email_addresses SET email_address=:email_address WHERE email_addresses.address_id = :email_addresses_address_id":
                     lambda: [{'email_address': 'imnew@foo.bar', 'email_addresses_address_id': objects[2].address_id}]
-                ),
-                (
-                    "UPDATE email_addresses SET user_id=:user_id WHERE email_addresses.address_id = :email_addresses_address_id",
+                ,
+                
+                    "UPDATE email_addresses SET user_id=:user_id WHERE email_addresses.address_id = :email_addresses_address_id":
                     lambda: [{'user_id': objects[3].user.user_id, 'email_addresses_address_id': objects[3].address_id}]
-                ),
+                },
                 
         ],
         with_sequences=[
@@ -391,14 +391,14 @@ class SaveTest(AssertMixin):
                     "INSERT INTO users (user_id, user_name) VALUES (:user_id, :user_name)",
                     lambda:{'user_name': 'imnewlyadded', 'user_id':db.last_inserted_ids()[0]}
                 ),
-                (
-                    "UPDATE email_addresses SET email_address=:email_address WHERE email_addresses.address_id = :email_addresses_address_id",
+                {
+                    "UPDATE email_addresses SET email_address=:email_address WHERE email_addresses.address_id = :email_addresses_address_id":
                     lambda: [{'email_address': 'imnew@foo.bar', 'email_addresses_address_id': objects[2].address_id}]
-                ),
-                (
-                    "UPDATE email_addresses SET user_id=:user_id WHERE email_addresses.address_id = :email_addresses_address_id",
+                ,
+                
+                    "UPDATE email_addresses SET user_id=:user_id WHERE email_addresses.address_id = :email_addresses_address_id":
                     lambda: [{'user_id': objects[3].user.user_id, 'email_addresses_address_id': objects[3].address_id}]
-                ),
+                },
                 
         ])
         l = sql.select([users, addresses], sql.and_(users.c.user_id==addresses.c.address_id, addresses.c.address_id==a.address_id)).execute()
