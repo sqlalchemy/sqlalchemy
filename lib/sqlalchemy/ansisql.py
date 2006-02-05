@@ -515,8 +515,11 @@ class ANSISchemaGenerator(sqlalchemy.engine.SchemaIterator):
             self.append(", \n")
             self.append("\tPRIMARY KEY (%s)" % string.join([c.name for c in pks],', '))
                     
-        self.append("\n)\n\n")
+        self.append("\n)%s\n\n" % self.post_create_table(table))
         self.execute()
+
+    def post_create_table(self, table):
+        return ''
 
     def visit_column(self, column):
         pass

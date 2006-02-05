@@ -318,7 +318,7 @@ class SQLEngine(schema.SchemaEngine):
         """given a Table object, reflects its columns and properties from the database."""
         raise NotImplementedError()
 
-    def tableimpl(self, table):
+    def tableimpl(self, table, **kwargs):
         """returns a new sql.TableImpl object to correspond to the given Table object.
         A TableImpl provides SQL statement builder operations on a Table metadata object, 
         and a subclass of this object may be provided by a SQLEngine subclass to provide

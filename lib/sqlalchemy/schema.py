@@ -139,14 +139,12 @@ class Table(SchemaItem):
         self.foreign_keys = []
         self.primary_key = []
         self.engine = engine
-        self._impl = self.engine.tableimpl(self)
         self.schema = kwargs.pop('schema', None)
+        self._impl = self.engine.tableimpl(self, **kwargs)
         if self.schema is not None:
             self.fullname = "%s.%s" % (self.schema, self.name)
         else:
             self.fullname = self.name
-        if len(kwargs):
-            raise "Unknown arguments passed to Table: " + repr(kwargs.keys())
 
     def __repr__(self):
         return "Table(%s)" % string.join(

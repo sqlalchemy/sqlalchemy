@@ -26,13 +26,14 @@ class EngineTest(PersistTest):
             Column('test7', String),
             Column('test8', Binary),
             Column('test9', Binary(100)),
-            
+            mysql_engine='InnoDB'
         )
 
         addresses = Table('engine_email_addresses', testbase.db,
             Column('address_id', Integer, primary_key = True),
             Column('remote_user_id', Integer, ForeignKey(users.c.user_id)),
             Column('email_address', String(20)),
+            mysql_engine='InnoDB'
         )
 
         print repr(users)
