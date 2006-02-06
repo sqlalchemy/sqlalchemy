@@ -55,9 +55,9 @@ class BOOLEAN(Boolean)
     class MyType(types.TypeDecorator, types.String):
         """basic type that decorates String, prefixes values with "PREFIX:" on 
         the way in and strips it off on the way out."""
-        def convert_bind_param(self, value):
+        def convert_bind_param(self, value, engine):
             return "PREFIX:" + value
-        def convert_result_value(self, value):
+        def convert_result_value(self, value, engine):
             return value[7:]
 </&>
 <p>Another example, which illustrates a fully defined datatype.  This just overrides the base type class TypeEngine:</p>
@@ -69,9 +69,9 @@ class BOOLEAN(Boolean)
             self.precision = precision
         def get_col_spec(self):
             return "MYTYPE(%s)" % self.precision
-        def convert_bind_param(self, value):
+        def convert_bind_param(self, value, engine):
             return value
-        def convert_result_value(self, value):
+        def convert_result_value(self, value, engine):
             return value
         def adapt(self, typeobj):
             """produces an adaptation of this object given a type which is a subclass of this object"""
