@@ -112,8 +112,62 @@
     </&>
     </&>
     <&|doclib.myt:item, name="identity", description="The Identity Map" &>
+    <p>All object instances which are saved to the database, or loaded from the database, are given an identity by the mapper/objectstore.  This identity is available via the _identity_key property attached to each object instance, and is a tuple consisting of the table's class, the SQLAlchemy-specific "hash key" of the table its persisted to, and an additional tuple of primary key values, in the order that they appear within the table definition:</p>
+    <&|formatting.myt:code&>
+        >>> obj._instance_key 
+        (<class 'test.tables.User'>, "Table('users',SQLiteSQLEngine(([':memory:'], {})),schema=None)", (7,))
+    </&>
+    <p>Note that this identity is a database identity, not an in-memory identity.  An application can have several different objects in different unit-of-work scopes that have the same database identity, or an object can be removed from memory, and constructed again later, with the same database identity.  What can <b>never</b> happen is for two copies of the same object to exist in the same unit-of-work scope with the same database identity; this is guaranteed by the <b>identity map</b>.
+    </p>
+    <p>
+    At the moment that an object is assigned this key, it is also added to the current thread's unit-of-work's identity map.  The identity map is just a WeakValueDictionary which maintains the one and only reference to a particular object within the current unit of work scope.  It is used when result rows are fetched from the database to insure that only one copy of a particular object actually comes from that result set in the case that eager loads or other joins are used, or if the object had already been loaded from a previous result set.  The get() method on a mapper, which retrieves an object based on primary key identity, also checks in the current identity map first to save a database round-trip if possible.  In the case of an object lazy-loading a single child object, the get() method is also used.
+    </p>
+    <p>Methods on mappers and the objectstore module, which are relevant to identity include the following:</p>
+    <&|formatting.myt:code&>
+        # assume 'm' is a mapper
+        m = mapper(User, users)
+        
+        # get the identity key corresponding to a primary key
+        key = m.identity_key(7)
+        
+        # for composite key, list out the values in the order they
+        # appear in the table
+        key = m.identity_key(12, 'rev2')
+
+        # get the identity key given a primary key 
+        # value as a tuple, a class, and a table
+        key = objectstore.get_id_key((12, 'rev2'), User, users)
+        
+        # get the identity key for an object, whether or not it actually
+        # has one attached to it (m is the mapper for obj's class)
+        key = m.instance_key(obj)
+        
+        # same thing, from the objectstore (works for any obj type)
+        key = objectstore.instance_key(obj)
+        
+        # is this key in the current identity map?
+        objectstore.has_key(key)
+        
+        # is this object in the current identity map?
+        objectstore.has_instance(obj)
+
+        # get this object from the current identity map based on 
+        # singular/composite primary key, or if not go 
+        # and load from the database
+        obj = m.get(12, 'rev2')
+    </&>
     </&>
     <&|doclib.myt:item, name="import", description="Bringing External Instances into the UnitOfWork" &>
+    <p>The _identity_key attribute is designed to work with objects that are serialized into strings and brought back again.  As it contains no references to internal structures or database connections, applications that use caches or session storage which require serialization (i.e. pickling) can store SQLAlchemy-loaded objects.  However, as mentioned earlier, an object with a particular database identity is only allowed to exist uniquely within the current unit-of-work scope.  So, upon deserializing such an object, it has to "check in" with the current unit-of-work/identity map combination, to insure that it is the only unique instance.  This is achieved via the <span class="codeline">import_instance()</span> function in objectstore:</p>
+    <&|formatting.myt:code&>
+        # deserialize an object
+        myobj = pickle.loads(mystring)
+        
+        # "import" it.  if the objectstore already had this object in the 
+        # identity map, then you get back the one from the current session.
+        myobj = objectstore.import_instance(myobj)
+    </&>
+<p>Note that the import_instance() function will either mark the deserialized object as the official copy in the current identity map, which includes updating its _identity_key with the current application's class instance, or it will discard it and return the corresponding object that was already present.</p>
     </&>
     <&|doclib.myt:item, name="rollback", description="Rollback" &>
     </&>

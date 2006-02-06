@@ -348,7 +348,31 @@ DELETE FROM addresses WHERE addresses.address_id = :address_id
                 </&>
 <p>Note that when overriding a backreferenced property, we re-specify the backreference as well.  This will not override the existing 'addresses' property on the User class, but just sends a message to the attribute-management system that it should continue to maintain this backreference.</p>
 </&>
+<&|doclib.myt:item, name="cascade", description="Creating Relationships Automatically with cascade_mappers" &>
+<p>The mapper package has a helper function <span class="codeline">cascade_mappers()</span> which can simplify the task of linking several mappers together.  Given a list of classes and/or mappers, it identifies the foreign key relationships between the given mappers or corresponding class mappers, and creates relation() objects representing those relationships, including a backreference.  Attempts to find
+the "secondary" table in a many-to-many relationship as well.  The names of the relations
+are a lowercase version of the related class.  In the case of one-to-many or many-to-many,
+the name is "pluralized", which currently is based on the English language (i.e. an 's' or 
+'es' added to it):</p>
+    <&|formatting.myt:code&>
+        # create two mappers.  the 'users' and 'addresses' tables have a foreign key
+        # relationship
+        mapper1 = mapper(User, users)
+        mapper2 = mapper(Address, addresses)
+        
+        # cascade the two mappers together (can also specify User, Address as the arguments)
+        cascade_mappers(mapper1, mapper2)
+        
+        # two new object instances
+        u = User('user1')
+        a = Address('test')
+        
+        # "addresses" and "user" property are automatically added
+        u.addresses.append(a)
+        print a.user
+    </&>
 
+</&>
     <&|doclib.myt:item, name="lazyload", description="Selecting from Relationships: Lazy Load" &>
     <P>We've seen how the <span class="codeline">relation</span> specifier affects the saving of an object and its child items, how does it affect selecting them?  By default, the relation keyword indicates that the related property should be attached a <b>Lazy Loader</b> when instances of the parent object are loaded from the database; this is just a callable function that when accessed will invoke a second SQL query to load the child objects of the parent.</p>
     
