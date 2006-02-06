@@ -16,6 +16,8 @@
     ext
 </%args>
 
+<link href="style.css" rel="stylesheet" type="text/css"></link>
+<link href="syntaxhighlight.css" rel="stylesheet" type="text/css"></link>
 
 <link href="docs.css" rel="stylesheet" type="text/css"></link>
 <script src="scripts.js"></script>

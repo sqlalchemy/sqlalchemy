@@ -2,8 +2,6 @@
 <html>
 <head>
 	<title><& REQUEST:title &></title>
-	<link href="style.css" rel="stylesheet" type="text/css"></link>
-	<link href="syntaxhighlight.css" rel="stylesheet" type="text/css"></link>
 </head>
 <body>
 
@@ -16,7 +14,7 @@
 
 
 <%method title>
-Welcome to Myghty!
+Documentation
 </%method>
 
 
