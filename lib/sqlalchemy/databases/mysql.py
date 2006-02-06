@@ -164,6 +164,9 @@ class MySQLEngine(ansisql.ANSISQLEngine):
         # to use information_schema:
         #ischema.reflecttable(self, table, ischema_names, use_mysql=True)
         
+        tabletype, foreignkeyD = self.moretableinfo(table=table)
+        table._impl.mysql_engine = tabletype
+        
         c = self.execute("describe " + table.name, {})
         while True:
             row = c.fetchone()
@@ -182,7 +185,44 @@ class MySQLEngine(ansisql.ANSISQLEngine):
                 args = re.findall(r'(\d+)', args)
                 #print "args! " +repr(args)
                 coltype = coltype(*[int(a) for a in args])
-            table.append_item(schema.Column(name, coltype, primary_key=primary_key, nullable=nullable, default=default))
+            
+            arglist = []
+            fkey = foreignkeyD.get(name)
+            if fkey is not None:
+                arglist.append(schema.ForeignKey(fkey))
+    
+            table.append_item(schema.Column(name, coltype, *arglist,
+                                            **dict(primary_key=primary_key,
+                                                   nullable=nullable,
+                                                   default=default
+                                                   )))
+    
+    def moretableinfo(self, table):
+        """Return (tabletype, {colname:foreignkey,...})
+        execute(SHOW CREATE TABLE child) =>
+        CREATE TABLE `child` (
+        `id` int(11) default NULL,
+        `parent_id` int(11) default NULL,
+        KEY `par_ind` (`parent_id`),
+        CONSTRAINT `child_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `parent` (`id`) ON DELETE CASCADE\n) TYPE=InnoDB
+        """
+        c = self.execute("SHOW CREATE TABLE " + table.name, {})
+        desc = c.fetchone()[1].strip()
+        tabletype = ''
+        lastparen = re.search(r'\)[^\)]*\Z', desc)
+        if lastparen:
+            match = re.search(r'\b(?:TYPE|ENGINE)=(?P<ttype>.+)\b', desc[lastparen.start():], re.I)
+            if match:
+                tabletype = match.group('ttype')
+        foreignkeyD = {}
+        fkpat = (r'FOREIGN KEY\s*\(`?(?P<name>.+?)`?\)'
+                 r'\s*REFERENCES\s*`?(?P<reftable>.+?)`?'
+                 r'\s*\(`?(?P<refcol>.+?)`?\)'
+                )
+        for match in re.finditer(fkpat, desc):
+            foreignkeyD[match.group('name')] = match.group('reftable') + '.' + match.group('refcol')
+
+        return (tabletype, foreignkeyD)
         
 
 class MySQLTableImpl(sql.TableImpl):
