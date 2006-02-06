@@ -137,3 +137,52 @@ def assign_mapper(class_, *args, **params):
         objectstore.delete(self)
     class_.commit = commit
     class_.delete = delete
+    
+def cascade_mappers(*classes_or_mappers):
+    """given a list of classes and/or mappers, identifies the foreign key relationships
+    between the given mappers or corresponding class mappers, and creates relation()
+    objects representing those relationships, including a backreference.  Attempts to find
+    the "secondary" table in a many-to-many relationship as well.  The names of the relations
+    will be a lowercase version of the related class.  In the case of one-to-many or many-to-many,
+    the name will be "pluralized", which currently is based on the English language (i.e. an 's' or 
+    'es' added to it)."""
+    table_to_mapper = {}
+    for item in classes_or_mappers:
+        if isinstance(item, Mapper):
+            m = item
+        else:
+            klass = item
+            m = class_mapper(klass)
+        table_to_mapper[m.table] = m
+    def pluralize(name):
+        # oh crap, do we need locale stuff now
+        if name[-1] == 's':
+            return name + "es"
+        else:
+            return name + "s"
+    for table,mapper in table_to_mapper.iteritems():
+        for fk in table.foreign_keys:
+            if fk.column.table is table:
+                continue
+            secondary = None
+            try:
+                m2 = table_to_mapper[fk.column.table]
+            except KeyError:
+                if len(fk.column.table.primary_key):
+                    continue
+                for sfk in fk.column.table.foreign_keys:
+                    if sfk.column.table is table:
+                        continue
+                    m2 = table_to_mapper.get(sfk.column.table)
+                    secondary = fk.column.table
+            if m2 is None:
+                continue
+            if secondary:
+                propname = pluralize(m2.class_.__name__.lower())
+                propname2 = pluralize(mapper.class_.__name__.lower())
+            else:
+                propname = m2.class_.__name__.lower()
+                propname2 = pluralize(mapper.class_.__name__.lower())
+            mapper.add_property(propname, relation(m2, secondary=secondary, backref=propname2))
+            
+            
