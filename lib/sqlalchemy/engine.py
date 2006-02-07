@@ -725,6 +725,7 @@ class RowProxy:
         except:
             raise AttributeError
     def keys(self):
+        print "KEYS", self.__parent.keys
         return self.__parent.keys
     def values(self): 
         return list(self)

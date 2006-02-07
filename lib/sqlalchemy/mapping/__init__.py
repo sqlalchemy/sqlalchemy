@@ -117,6 +117,8 @@ def class_mapper(class_):
         pass
         raise "Class '%s' has no mapper associated with it" % class_.__name__
 
+mapperlib.class_mapper = class_mapper
+
 def assign_mapper(class_, *args, **params):
     params.setdefault("is_primary", True)
     if not isinstance(getattr(class_, '__init__'), types.MethodType):

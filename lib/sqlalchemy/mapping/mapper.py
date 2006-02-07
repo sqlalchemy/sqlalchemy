@@ -174,7 +174,10 @@ class Mapper(object):
             ):
             objectstore.global_attributes.reset_class_managed(self.class_)
             self._init_class()
-            
+            self.identitytable = self.primarytable
+        else:
+            self.identitytable = class_mapper(self.class_).table
+                
         if inherits is not None:
             for key, prop in inherits.props.iteritems():
                 if not self.props.has_key(key):
@@ -678,10 +681,9 @@ class Mapper(object):
         for key, value in self.props.iteritems():
             value.setup(key, statement, **kwargs) 
         return statement
-
         
     def _identity_key(self, row):
-        return objectstore.get_row_key(row, self.class_, self.primarytable, self.pks_by_table[self.table])
+        return objectstore.get_row_key(row, self.class_, self.identitytable, self.pks_by_table[self.table])
 
     def _instance(self, row, imap, result = None, populate_existing = False):
         """pulls an object instance from the given row and appends it to the given result

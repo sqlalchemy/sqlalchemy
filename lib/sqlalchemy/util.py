@@ -161,7 +161,14 @@ class ThreadLocal(object):
     def __setattr__(self, key, value):
         self._tdict["%d_%s" % (thread.get_ident(), key)] = value
 
-
+class DictDecorator(dict):
+    def __init__(self, decorate):
+        self.decorate = decorate
+    def __getitem__(self, key):
+        try:
+            return dict.__getitem__(self, key)
+        except KeyError:
+            return self.decorate[key]
 class HashSet(object):
     """implements a Set."""
     def __init__(self, iter = None, ordered = False):

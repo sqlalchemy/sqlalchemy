@@ -706,7 +706,7 @@ class EagerLoader(PropertyLoader):
             self.eagersecondary = self.secondaryjoin
             self.eager_order_by = self.order_by
             
-    def setup(self, key, statement, recursion_stack = None, **options):
+    def setup(self, key, statement, recursion_stack = None, eagertable=None, **options):
         """add a left outer join to the statement thats being constructed"""
 
         if recursion_stack is None:
@@ -726,12 +726,19 @@ class EagerLoader(PropertyLoader):
         else:
             towrap = self.parent.table
 
+        if eagertable is not None:
+            eagerprimary = self.eagerprimary.copy_container()
+            aliasizer = Aliasizer(self.parent.table, aliases={self.parent.table:eagertable})
+            eagerprimary.accept_visitor(aliasizer)
+        else:
+            eagerprimary = self.eagerprimary
+                
         if self.secondaryjoin is not None:
-            statement._outerjoin = sql.outerjoin(towrap, self.secondary, self.eagerprimary).outerjoin(self.eagertarget, self.eagersecondary)
+            statement._outerjoin = sql.outerjoin(towrap, self.secondary, eagerprimary).outerjoin(self.eagertarget, self.eagersecondary)
             if self.order_by is False and self.secondary.default_order_by() is not None:
                 statement.order_by(*self.secondary.default_order_by())
         else:
-            statement._outerjoin = towrap.outerjoin(self.eagertarget, self.eagerprimary)
+            statement._outerjoin = towrap.outerjoin(self.eagertarget, eagerprimary)
             if self.order_by is False and self.eagertarget.default_order_by() is not None:
                 statement.order_by(*self.eagertarget.default_order_by())
 
@@ -777,6 +784,7 @@ class EagerLoader(PropertyLoader):
         # the values against the columns of the mapper's original non-aliased table.
         if self.selectalias is not None:
             fakerow = {}
+            fakerow = util.DictDecorator(row)
             for c in self.eagertarget.c:
                 fakerow[c.original] = row[c]
             row = fakerow
