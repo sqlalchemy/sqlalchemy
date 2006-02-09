@@ -738,7 +738,7 @@ class UOWTask(object):
         if head is None:
             return None
 
-        print str(head)
+        #print str(head)
 
         def make_task_tree(node, parenttask):
             """takes a dependency-sorted tree of objects and creates a tree of UOWTasks"""
