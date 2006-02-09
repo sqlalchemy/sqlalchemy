@@ -8,6 +8,11 @@ class Place(object):
     def __init__(self, name=None):
         self.name = name
 
+class PlaceThingy(object):
+    '''represents a thingy attached to a Place'''
+    def __init__(self, name=None):
+        self.name = name
+    
 class Transition(object):
     '''represents a transition'''
     def __init__(self, name=None):
@@ -32,6 +37,13 @@ class M2MTest(testbase.AssertMixin):
             Column('name', String(30), nullable=False),
             )
 
+        global place_thingy
+        place_thingy = Table('place_thingy', db,
+            Column('thingy_id', Integer, Sequence('thid_seq', optional=True), primary_key=True),
+            Column('place_id', Integer, ForeignKey('place.place_id'), nullable=False),
+            Column('name', String(30), nullable=False)
+            )
+            
         # association table #1
         global place_input
         place_input = Table('place_input', db,
@@ -50,6 +62,7 @@ class M2MTest(testbase.AssertMixin):
         transition.create()
         place_input.create()
         place_output.create()
+        place_thingy.create()
 
     def tearDownAll(self):
         place_input.drop()
@@ -71,7 +84,10 @@ class M2MTest(testbase.AssertMixin):
         """tests that a mapper can have two eager relations to the same table, via
         two different association tables.  aliases are required."""
 
-        Place.mapper = mapper(Place, place)
+        Place.mapper = mapper(Place, place, properties = {
+            'thingies':relation(mapper(PlaceThingy, place_thingy), lazy=False)
+        })
+        
         Transition.mapper = mapper(Transition, transition, properties = dict(
             inputs = relation(Place.mapper, place_output, lazy=False, selectalias='op_alias'),
             outputs = relation(Place.mapper, place_input, lazy=False, selectalias='ip_alias'),

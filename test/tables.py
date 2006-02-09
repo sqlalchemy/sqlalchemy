@@ -60,6 +60,7 @@ def drop():
     orders.drop()
     addresses.drop()
     users.drop()
+    db.commit()
     
 def delete():
     itemkeywords.delete().execute()

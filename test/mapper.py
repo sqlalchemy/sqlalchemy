@@ -67,10 +67,11 @@ class MapperSuperTest(AssertMixin):
         db.echo = False
         tables.drop()
         db.echo = testbase.echo
-    def setUp(self):
+    def tearDown(self):
         objectstore.clear()
         clear_mappers()
-
+    def setUp(self):
+        pass
     
 class MapperTest(MapperSuperTest):
     def testget(self):
@@ -309,7 +310,6 @@ class DeferredTest(MapperSuperTest):
         ])
         objectstore.clear()
         m3 = m2.options(undefer('user_id'))
-        print m3.hashkey
         def go():
             l = m3.select()
             print l[3].user_id

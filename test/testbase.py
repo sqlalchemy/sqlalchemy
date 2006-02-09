@@ -129,7 +129,7 @@ class EngineAssert(object):
                     for key in item.keys():
                         ckey = self.convert_statement(key)
                         item[ckey] = item[key]
-			if ckey != key:
+                        if ckey != key:
                             del item[key]
                     item['_converted'] = True
                 try:

@@ -3,13 +3,15 @@ from sqlalchemy.ext.proxy import ProxyEngine
 
 from testbase import PersistTest
 import testbase
+import os
 
 #
 # Define an engine, table and mapper at the module level, to show that the
 # table and mapper can be used with different real engines in multiple threads
 #
-module_engine = ProxyEngine()
 
+
+module_engine = ProxyEngine()
 users = Table('users', module_engine, 
               Column('user_id', Integer, primary_key=True),
               Column('user_name', String(16)),
@@ -19,40 +21,53 @@ users = Table('users', module_engine,
 class User(object):
     pass
 
-assign_mapper(User, users)
 
-class ProxyEngineTest(PersistTest):
+class ProxyEngineTest1(PersistTest):
 
     def setUp(self):
+        clear_mappers()
         objectstore.clear()
         
     def test_engine_connect(self):
         # connect to a real engine
         module_engine.connect(testbase.db_uri)
         users.create()
+        assign_mapper(User, users)
+        try:
+            objectstore.begin()
 
-        objectstore.begin()
+            user = User()
+            user.user_name='fred'
+            user.password='*'
+            objectstore.commit()
 
-        user = User()
-        user.user_name='fred'
-        user.password='*'
-        objectstore.commit()
+            # select
+            sqluser = User.select_by(user_name='fred')[0]
+            assert sqluser.user_name == 'fred'
+
+            # modify
+            sqluser.user_name = 'fred jones'
+
+            # commit - saves everything that changed
+            objectstore.commit()
         
-        # select
-        sqluser = User.select_by(user_name='fred')[0]
-        assert sqluser.user_name == 'fred'
-        
-        # modify
-        sqluser.user_name = 'fred jones'
+            allusers = [ user.user_name for user in User.select() ]
+            assert allusers == [ 'fred jones' ]
+        finally:
+            users.drop()
 
-        # commit - saves everything that changed
-        objectstore.commit()
-
-        allusers = [ user.user_name for user in User.select() ]
-        assert allusers == [ 'fred jones' ]
-        users.drop()
+class ThreadProxyTest(PersistTest):
+    def setUp(self):
+        assign_mapper(User, users)
+    def tearDown(self):
+        clear_mappers()
+    def tearDownAll(self):
+        pass            
+        os.remove('threadtesta.db')
+        os.remove('threadtestb.db')
         
     def test_multi_thread(self):
+        
         from threading import Thread
         from Queue import Queue
         
@@ -63,24 +78,26 @@ class ProxyEngineTest(PersistTest):
         qb = Queue()
         def run(db_uri, uname, queue):
             def test():
+                
                 try:
                     module_engine.connect(db_uri)
                     users.create()
+                    try:
+                        objectstore.begin()
 
-                    objectstore.begin()
-                    
-                    all = User.select()[:]
-                    assert all == []
+                        all = User.select()[:]
+                        assert all == []
 
-                    u = User()
-                    u.user_name = uname
-                    u.password = 'whatever'
-                    objectstore.commit()
+                        u = User()
+                        u.user_name = uname
+                        u.password = 'whatever'
+                        objectstore.commit()
 
-                    names = [ us.user_name for us in User.select() ]
-                    assert names == [ uname ]                    
-                    users.drop()
-                    
+                        names = [ us.user_name for us in User.select() ]
+                        assert names == [ uname ]
+                    finally:
+                        users.drop()
+                        module_engine.dispose()
                 except Exception, e:
                     import traceback
                     traceback.print_exc()
@@ -106,6 +123,12 @@ class ProxyEngineTest(PersistTest):
         if res != False:
             raise res
 
+class ProxyEngineTest2(PersistTest):
+
+    def setUp(self):
+        clear_mappers()
+        objectstore.clear()
+
     def test_table_singleton_a(self):
         """set up for table singleton check
         """
@@ -122,7 +145,7 @@ class ProxyEngineTest(PersistTest):
         cats.create()
         cats.drop()
 
-        ProxyEngineTest.cats_table_a = cats
+        ProxyEngineTest2.cats_table_a = cats
         assert isinstance(cats, Table)
 
     def test_table_singleton_b(self):
@@ -139,7 +162,7 @@ class ProxyEngineTest(PersistTest):
         cats = Table('cats', engine,
                      Column('cat_id', Integer, primary_key=True),
                      Column('cat_name', String))
-        assert id(cats) != id(ProxyEngineTest.cats_table_a)
+        assert id(cats) != id(ProxyEngineTest2.cats_table_a)
 
         # the real test -- if we're still using the old engine reference,
         # this will fail because the old reference's local storage will

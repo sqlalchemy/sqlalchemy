@@ -2,6 +2,10 @@ from testbase import PersistTest
 import sqlalchemy.mapping.topological as topological
 import unittest, sys, os
 
+
+# TODO:  need assertion conditions in this suite
+
+
 class DependencySorter(topological.QueueDependencySorter):pass
     
 class thingy(object):

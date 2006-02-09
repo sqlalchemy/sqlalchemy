@@ -7,7 +7,8 @@ import testbase
 from tables import *
 import tables
 
-objectstore.LOG = True
+# TODO: need assertion conditions in this suite
+
 
 """test cyclical mapper relationships.  No assertions yet, but run it with postgres and the 
 foreign key checks alone will usually not work if something is wrong"""
@@ -51,7 +52,7 @@ class SelfCycleTest(AssertMixin):
         
         m1 = mapper(C1, t1, properties = {
             'c1s' : relation(C1, private=True),
-            'c2s' : relation(C2, t2, private=True)
+            'c2s' : relation(mapper(C2, t2), private=True)
         })
 
         a = C1('head c1')
@@ -88,7 +89,7 @@ class CycleTest(AssertMixin):
         t1.drop()    
     def setUp(self):
         objectstore.clear()
-        objectstore.LOG = True
+        #objectstore.LOG = True
         clear_mappers()
     
     def testcycle(self):
@@ -137,9 +138,14 @@ class CycleWDepsTest(AssertMixin):
         
     def setUp(self):
         objectstore.clear()
-        objectstore.LOG = True
+        #objectstore.LOG = True
         clear_mappers()
 
+    def tearDownAll(self):
+        t3.drop()
+        t1.drop()
+        t2.drop()
+        
     def testcycle(self):
         class C1(object):pass
         class C2(object):pass
@@ -150,7 +156,7 @@ class CycleWDepsTest(AssertMixin):
         m2 = mapper(C2, t2)
         m1 = mapper(C1, t1, properties = {
             'c2s' : relation(m2, primaryjoin=t1.c.c2==t2.c.c1, uselist=True),
-            'data' : relation(C1Data, t3)
+            'data' : relation(mapper(C1Data, t3))
         })
         m2.add_property('c1s', relation(m1, primaryjoin=t2.c.c2==t1.c.c1, uselist=True))
         
@@ -171,6 +177,58 @@ class CycleWDepsTest(AssertMixin):
         objectstore.delete(d)
         objectstore.delete(c)
         objectstore.commit()
+
+class CycleTest2(AssertMixin):
+    def setUpAll(self):
+        testbase.db.tables.clear()
+        global person    
+        global ball
+        person = Table('person', db,
+         Column('id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
+         Column('favoriteBall_id', Integer, ForeignKey('ball.id')),
+         )
+        ball = Table('ball', db,
+         Column('id', Integer, Sequence('ball_id_seq', optional=True), primary_key=True),
+         Column('person_id', Integer),
+         )
+
+        person.create()
+        ball.create()
+        ball.c.person_id.append_item(ForeignKey('person.id'))
+        
+    def tearDownAll(self):
+        ball.drop()
+        person.drop()
+        
+    def setUp(self):
+        objectstore.clear()
+        #objectstore.LOG = True
+        clear_mappers()
+
+    def testcycle(self):
+        """this test has a peculiar aspect in that it doesnt create as many dependent 
+        relationships as the other tests, and revealed a small glitch in the circular dependency sorting."""
+        class Person(object):
+         pass
+
+        class Ball(object):
+         pass
+
+        Ball.mapper = mapper(Ball, ball)
+        Person.mapper = mapper(Person, person, properties= dict(
+         balls = relation(Ball.mapper, primaryjoin=ball.c.person_id==person.c.id, foreignkey=ball.c.person_id),
+         favorateBall = relation(Ball.mapper, primaryjoin=person.c.favoriteBall_id==ball.c.id, foreignkey=person.c.favoriteBall_id),
+         )
+        )
+
+        print str(Person.mapper.props['balls'].primaryjoin)
+        
+        b = Ball()
+        p = Person()
+        p.balls.append(b)
+        objectstore.commit()
+
+
         
 if __name__ == "__main__":
     testbase.main()        
