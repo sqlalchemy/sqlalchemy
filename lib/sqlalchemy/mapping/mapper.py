@@ -11,15 +11,16 @@ import sqlalchemy.engine as engine
 import sqlalchemy.util as util
 import objectstore
 import sys
+import weakref
 
-mapper_registry = {}
+# a dictionary mapping classes to their primary mappers
+mapper_registry = weakref.WeakKeyDictionary()
 
 class Mapper(object):
     """Persists object instances to and from schema.Table objects via the sql package.
     Instances of this class should be constructed through this package's mapper() or
     relation() function."""
     def __init__(self, 
-                hashkey, 
                 class_, 
                 table, 
                 primarytable = None, 
@@ -33,18 +34,6 @@ class Mapper(object):
                 allow_column_override = False,
                 **kwargs):
 
-        self.copyargs = {
-            'class_':class_,
-            'table':table,
-            'properties':properties or {},
-            'primary_key':primary_key,
-            'is_primary':None,
-            'inherits':inherits,
-            'inherit_condition':inherit_condition,
-            'extension':extension,
-            'order_by':order_by
-        }
-
         if primarytable is not None:
             sys.stderr.write("'primarytable' argument to mapper is deprecated\n")
             
@@ -52,10 +41,10 @@ class Mapper(object):
             self.extension = MapperExtension()
         else:
             self.extension = extension                
-        self.hashkey = hashkey
         self.class_ = class_
         self.is_primary = is_primary
         self.order_by = order_by
+        self._options = {}
         
         if not issubclass(class_, object):
             raise TypeError("Class '%s' is not a new-style class" % class_.__name__)
@@ -167,26 +156,27 @@ class Mapper(object):
         for primary_key in self.pks_by_table[self.table]:
             self._get_clause.clauses.append(primary_key == sql.bindparam("pk_"+primary_key.key))
 
-        if (
-                (not hasattr(self.class_, '_mapper') or not mapper_registry.has_key(self.class_._mapper))
-                or self.is_primary 
-                or (inherits is not None and inherits._is_primary_mapper())
-            ):
+        if not mapper_registry.has_key(self.class_) or self.is_primary or (inherits is not None and inherits._is_primary_mapper()):
             objectstore.global_attributes.reset_class_managed(self.class_)
             self._init_class()
             self.identitytable = self.primarytable
         else:
-            self.identitytable = class_mapper(self.class_).table
+            self.identitytable = mapper_registry[self.class_].primarytable
                 
         if inherits is not None:
             for key, prop in inherits.props.iteritems():
                 if not self.props.has_key(key):
                     self.props[key] = prop._copy()
+                    self.props[key].parent = self
+                    self.props[key].key = None  # force re-init
+
+        for key, prop in self.props.iteritems():
+            if getattr(prop, 'key', None) is None:
+                prop.init(key, self)
 
     engines = property(lambda s: [t.engine for t in s.tables])
 
     def add_property(self, key, prop):
-        self.copyargs['properties'][key] = prop
         if sql.is_column(prop):
             self.columns[key] = prop
             prop = ColumnProperty(prop)
@@ -197,19 +187,15 @@ class Mapper(object):
                 proplist.append(prop)
         prop.init(key, self)
         
-    def _init_properties(self):
-        for key, prop in self.props.iteritems():
-            if getattr(prop, 'key', None) is None:
-                prop.init(key, self)
-        
     def __str__(self):
         return "Mapper|" + self.class_.__name__ + "|" + self.primarytable.name
         
-    def hash_key(self):
-        return self.hashkey
-
+    
     def _is_primary_mapper(self):
-        return getattr(self.class_, '_mapper', None) == self.hashkey
+        return mapper_registry.get(self.class_, None) is self
+
+    def _primary_mapper(self):
+        return mapper_registry[self.class_]
         
     def _init_class(self):
         """sets up our classes' overridden __init__ method, this mappers hash key as its
@@ -228,7 +214,7 @@ class Mapper(object):
                 if not nohist:
                     objectstore.uow().register_new(self)
             self.class_.__init__ = init
-        self.class_._mapper = self.hashkey
+        mapper_registry[self.class_] = self
         self.class_.c = self.c
         
     def set_property(self, key, prop):
@@ -302,30 +288,25 @@ class Mapper(object):
         compiling or executing it"""
         return self._compile(whereclause, **options)
 
-    def copy(self, hashkey=None):
-        # TODO: at the moment, we are re-using the properties from the original mapper
-        # which stay connected to that first mapper.  if we start making copies of 
-        # mappers where the primary attributes of the mapper change, we might want 
-        # to look into copying all the property objects too.
-        if hashkey is None:
-            hashkey = hash_key(self) + "->copy" 
-        mapper = Mapper(hashkey, **self.copyargs)
-        mapper._init_properties()
+    def copy(self):
+        mapper = Mapper.__new__(Mapper)
+        mapper.__dict__.update(self.__dict__)
+        mapper.props = self.props.copy()
         return mapper
         
     def options(self, *options):
         """uses this mapper as a prototype for a new mapper with different behavior.
         *options is a list of options directives, which include eagerload(), lazyload(), and noload()"""
 
-        hashkey = hash_key(self) + "->" + repr([hash_key(o) for o in options])
+        optkey = repr([hash_key(o) for o in options])
         try:
-            return mapper_registry[hashkey]
+            return self._options[optkey]
         except KeyError:
-            mapper = self.copy(hashkey)
-
+            mapper = self.copy()
             for option in options:
                 option.process(mapper)
-            return mapper_registry.setdefault(hashkey, mapper)
+            self._options[optkey] = mapper
+            return mapper
 
     def get_by(self, *args, **params):
         """returns a single object instance based on the given key/value criterion. 
@@ -509,7 +490,7 @@ class Mapper(object):
             # for this table, in the case that the user
             # specified custom primary key cols.
             for obj in objects:
-                #print "SAVE_OBJ we are " + hash_key(self) + " obj: " +  obj.__class__.__name__ + repr(id(obj))
+                #print "SAVE_OBJ we are Mapper(" + str(id(self)) + ") obj: " +  obj.__class__.__name__ + repr(id(obj))
                 params = {}
 
                 isinsert = not hasattr(obj, "_instance_key")
@@ -577,7 +558,7 @@ class Mapper(object):
                     if primary_key is not None:
                         i = 0
                         for col in self.pks_by_table[table]:
-                    #        print "col: " + table.name + "." + col.key + " val: " + repr(self._getattrbycolumn(obj, col))
+                            #print "col: " + table.name + "." + col.key + " val: " + repr(self._getattrbycolumn(obj, col))
                             if self._getattrbycolumn(obj, col) is None:
                                 self._setattrbycolumn(obj, col, primary_key[i])
                             i+=1
@@ -724,8 +705,6 @@ class Mapper(object):
             instance = self.extension.create_instance(self, row, imap, self.class_)
             if instance is None:
                 instance = self.class_(_mapper_nohistory=True)
-            # attach mapper hashkey to the instance ?
-            #instance._mapper = self.hashkey
             instance._instance_key = identitykey
 
             imap[identitykey] = instance
@@ -880,17 +859,6 @@ def hash_key(obj):
     else:
         return repr(obj)
     
-def mapper_hash_key(class_, table, primarytable = None, properties = None, **kwargs):
-    if properties is None:
-        properties = {}
-    return (
-        "Mapper(%s, %s, primarytable=%s, properties=%s)" % (
-            repr(class_),
-            hash_key(table),
-            hash_key(primarytable),
-            repr(dict([(k, hash_key(p)) for k,p in properties.iteritems()]))
-        )
-    )
 
 
 

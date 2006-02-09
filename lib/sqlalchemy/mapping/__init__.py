@@ -45,23 +45,12 @@ def column(*columns, **kwargs):
 def deferred(*columns, **kwargs):
     return DeferredColumnProperty(*columns, **kwargs)
     
-def mapper(class_, table = None, engine = None, autoload = False, *args, **params):
+def mapper(class_, table=None, *args, **params):
     """returns a new or already cached Mapper object."""
     if table is None:
         return class_mapper(class_)
 
-    if isinstance(table, str):
-        table = schema.Table(table, engine, autoload = autoload, mustexist = not autoload)
-            
-    hashkey = mapper_hash_key(class_, table, *args, **params)
-    #print "HASHKEY: " + hashkey
-    try:
-        return mapper_registry[hashkey]
-    except KeyError:
-        m = Mapper(hashkey, class_, table, *args, **params)
-        mapper_registry.setdefault(hashkey, m)
-        m._init_properties()
-        return mapper_registry[hashkey]
+    return Mapper(class_, table, *args, **params)
 
 def clear_mappers():
     """removes all mappers that have been created thus far.  when new mappers are 
@@ -109,15 +98,15 @@ def object_mapper(object):
 
 def class_mapper(class_):
     """given a class, returns the primary Mapper associated with the class."""
+    return mapper_registry[class_]
     try:
-        return mapper_registry[class_._mapper]
+        return mapper_registry[class_]
     except KeyError:
         pass
     except AttributeError:
         pass
-        raise "Class '%s' has no mapper associated with it" % class_.__name__
+    raise "Class '%s' has no mapper associated with it" % class_.__name__
 
-mapperlib.class_mapper = class_mapper
 
 def assign_mapper(class_, *args, **params):
     params.setdefault("is_primary", True)

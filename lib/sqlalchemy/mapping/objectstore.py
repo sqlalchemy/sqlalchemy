@@ -404,7 +404,9 @@ class UOWTransaction(object):
     def register_dependency(self, mapper, dependency):
         """called by mapper.PropertyLoader to register the objects handled by
         one mapper being dependent on the objects handled by another."""
-        self.dependencies[(mapper, dependency)] = True
+
+        # correct for primary mapper (the mapper offcially associated with the class)
+        self.dependencies[(mapper._primary_mapper(), dependency._primary_mapper())] = True
         self.__modified = True
 
     def register_processor(self, mapper, processor, mapperfrom, isdeletefrom):
@@ -416,6 +418,10 @@ class UOWTransaction(object):
         # to "mapperfrom"'s list of save/delete objects, and send them to "processor"
         # for dependency processing
         #print "registerprocessor", str(mapper), repr(processor.key), str(mapperfrom), repr(isdeletefrom)
+        
+        # correct for primary mapper (the mapper offcially associated with the class)
+        mapper = mapper._primary_mapper()
+        mapperfrom = mapperfrom._primary_mapper()
         task = self.get_task_by_mapper(mapper)
         targettask = self.get_task_by_mapper(mapperfrom)
         task.dependencies.append(UOWDependencyProcessor(processor, targettask, isdeletefrom))
@@ -683,7 +689,7 @@ class UOWTask(object):
                 # create a placeholder UOWTask that may be built into the final
                 # task tree
                 get_object_task(task, obj)
-                for dep in deps_by_targettask[task]:
+                for dep in deps_by_targettask.get(task, []):
                     (processor, targettask, isdelete) = (dep.processor, dep.targettask, dep.isdeletefrom)
                     if taskelement.isdelete is not dep.isdeletefrom:
                         continue
@@ -732,7 +738,7 @@ class UOWTask(object):
         if head is None:
             return None
 
-        #print str(head)
+        print str(head)
 
         def make_task_tree(node, parenttask):
             """takes a dependency-sorted tree of objects and creates a tree of UOWTasks"""
@@ -815,7 +821,7 @@ class UOWTask(object):
         def _repr_task(task):
             if task.mapper is not None:
                 if task.mapper.__class__.__name__ == 'Mapper':
-                    name = task.mapper.class_.__name__ + "/" + task.mapper.primarytable.id
+                    name = task.mapper.class_.__name__ + "/" + task.mapper.primarytable.id + "/" + str(id(task.mapper))
                 else:
                     name = repr(task.mapper)
             else:
