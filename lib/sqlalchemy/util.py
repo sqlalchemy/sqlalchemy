@@ -357,56 +357,45 @@ class HistoryArraySet(UserList.UserList):
         
 class ScopedRegistry(object):
     """a Registry that can store one or multiple instances of a single class 
-    on a per-application or per-thread scoped basis"""
+    on a per-application or per-thread scoped basis
+    
+    createfunc - a callable that returns a new object to be placed in the registry
+    defaultscope - the default scope to be used ('application', 'thread', or 'session')
+    """
     def __init__(self, createfunc, defaultscope):
         self.createfunc = createfunc
         self.defaultscope = defaultscope
-        self.application = createfunc()
-        self.threadlocal = {}
         self.scopes = {
-            'application' : {'call' : self._call_application, 'clear' : self._clear_application, 'set':self._set_application}, 
-            'thread' : {'call' : self._call_thread, 'clear':self._clear_thread, 'set':self._set_thread}
-            }
+            "application": lambda:None,
+            "thread": thread.get_ident,
+        }
+        self.registry = {}
 
-    def __call__(self, scope = None):
-        if scope is None:
-            scope = self.defaultscope
-        return self.scopes[scope]['call']()
+    def add_scope(self, scope, keyfunc, default=True):
+        self.scopes[scope] = keyfunc
+        if default:
+            self.defaultscope = scope
 
-    def set(self, obj, scope = None):
-        if scope is None:
-            scope = self.defaultscope
-        return self.scopes[scope]['set'](obj)
-        
-    def clear(self, scope = None):
-        if scope is None:
-            scope = self.defaultscope
-        return self.scopes[scope]['clear']()
-
-    def _set_thread(self, obj):
-        self.threadlocal[thread.get_ident()] = obj
-    
-    def _call_thread(self):
+    def __call__(self, scope=None):
+        key = self._get_key(scope)
         try:
-            return self.threadlocal[thread.get_ident()]
+            return self.registry[key]
         except KeyError:
-            return self.threadlocal.setdefault(thread.get_ident(), self.createfunc())
+            return self.registry.setdefault(key, self.createfunc())
 
-    def _clear_thread(self):
+    def set(self, obj, scope=None):
+        self.registry[self._get_key(scope)] = obj
+        
+    def clear(self, scope=None):
         try:
-            del self.threadlocal[thread.get_ident()]
+            del self.registry[self._get_key(scope)]
         except KeyError:
             pass
 
-    def _set_application(self, obj):
-        self.application = obj
-        
-    def _call_application(self):
-        return self.application
-
-    def _clear_application(self):
-        self.application = createfunc()
-                
+    def _get_key(self, scope, *args, **kwargs):
+        if scope is None:
+            scope = self.defaultscope
+        return (scope, self.scopes[scope]())
 
 
 def constructor_args(instance, **kwargs):

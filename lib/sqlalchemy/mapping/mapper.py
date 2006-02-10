@@ -205,6 +205,7 @@ class Mapper(object):
             oldinit = self.class_.__init__
             def init(self, *args, **kwargs):
                 nohist = kwargs.pop('_mapper_nohistory', False)
+                session = kwargs.pop('_sa_session', objectstore.session())
                 if oldinit is not None:
                     try:
                         oldinit(self, *args, **kwargs)
@@ -212,7 +213,7 @@ class Mapper(object):
                         # re-raise with the offending class name added to help in debugging
                         raise TypeError, '%s.%s' %(self.__class__.__name__, msg)
                 if not nohist:
-                    objectstore.uow().register_new(self)
+                    session.register_new(self)
             self.class_.__init__ = init
         mapper_registry[self.class_] = self
         self.class_.c = self.c
@@ -245,7 +246,7 @@ class Mapper(object):
                 
         # store new stuff in the identity map
         for value in imap.values():
-            objectstore.uow().register_clean(value)
+            objectstore.session().register_clean(value)
 
         if len(mappers):
             return [result] + otherresults
@@ -262,7 +263,7 @@ class Mapper(object):
         
     def _get(self, key, ident=None):
         try:
-            return objectstore.uow()._get(key)
+            return objectstore.session()._get(key)
         except KeyError:
             if ident is None:
                 ident = key[2]
@@ -676,8 +677,8 @@ class Mapper(object):
         # including modifying any of its related items lists, as its already
         # been exposed to being modified by the application.
         identitykey = self._identity_key(row)
-        if objectstore.uow().has_key(identitykey):
-            instance = objectstore.uow()._get(identitykey)
+        if objectstore.session().has_key(identitykey):
+            instance = objectstore.session()._get(identitykey)
 
             isnew = False
             if populate_existing:
