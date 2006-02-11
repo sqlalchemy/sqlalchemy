@@ -35,8 +35,8 @@ class TypeEngine(object):
         """returns the class that should be sent to the adapt() method.  This class
         will be used to lookup an approprate database-specific subclass."""
         return self.__class__
-    def __repr__(self):
-        return util.generic_repr(self)
+#    def __repr__(self):
+ #       return util.generic_repr(self)
         
 def adapt_type(typeobj, colspecs):
     """given a generic type from this package, and a dictionary of 
@@ -46,7 +46,7 @@ def adapt_type(typeobj, colspecs):
         typeobj = typeobj()
     # if the type is not a base type, i.e. not from our module, or its Null, 
     # we return the type as is
-    if typeobj.__module__ != 'sqlalchemy.types' or typeobj.__class__==NullTypeEngine:
+    if (typeobj.__module__ != 'sqlalchemy.types' or typeobj.__class__ is NullTypeEngine) and not isinstance(typeobj, TypeDecorator):
         return typeobj
     typeobj = typeobj.adapt_args()
     t = typeobj.class_to_adapt()
@@ -71,7 +71,11 @@ class TypeDecorator(object):
     def get_col_spec(self):
         return self.extended.get_col_spec()
     def adapt(self, typeobj):
-        self.extended = self.extended.adapt(typeobj)
+        if self.extended is self:
+            t = self.__class__.__mro__[2]
+            self.extended = t.adapt(self, typeobj)
+        else:
+            self.extended = self.extended.adapt(typeobj)
         return self
     def adapt_args(self):
         t = self.__class__.__mro__[2]

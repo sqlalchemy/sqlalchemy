@@ -139,7 +139,7 @@ class EngineTest(PersistTest):
         
             print repr(table)
             self.assert_(isinstance(table.c.col1.type, Integer))
-            self.assert_(table.c.col2.type.is_unicode)
+            self.assert_(isinstance(table.c.col2.type, Unicode))
             self.assert_(isinstance(table.c.col4.type, String))
         finally:
             table.drop()
