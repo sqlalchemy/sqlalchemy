@@ -67,6 +67,7 @@ class M2MTest(testbase.AssertMixin):
     def tearDownAll(self):
         place_input.drop()
         place_output.drop()
+        place_thingy.drop()
         place.drop()
         transition.drop()
 
