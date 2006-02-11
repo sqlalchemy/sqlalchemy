@@ -54,7 +54,7 @@ class QueryTest(PersistTest):
         f = select([func.count(1)], engine=db).scalar()
         if use_function_defaults:
             def1 = func.current_date()
-            def2 = "current_date"
+            def2 = text("current_date")
             deftype = Date
             ts = select([func.current_date()], engine=db).scalar()
         else:
@@ -72,6 +72,7 @@ class QueryTest(PersistTest):
         t.create()
         try:
             t.insert().execute()
+            self.assert_(t.engine.lastrow_has_defaults())
             t.insert().execute()
             t.insert().execute()
         

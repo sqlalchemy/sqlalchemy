@@ -508,7 +508,8 @@ class Mapper(object):
                             # matching the bindparam we are creating below, i.e. "<tablename>_<colname>"
                             params[col.table.name + "_" + col.key] = self._getattrbycolumn(obj, col)
                         else:
-                            # doing an INSERT? if the primary key values are not populated,
+                            # doing an INSERT, primary key col ? 
+                            # if the primary key values are not populated,
                             # leave them out of the INSERT altogether, since PostGres doesn't want
                             # them to be present for SERIAL to take effect.  A SQLEngine that uses
                             # explicit sequences will put them back in if they are needed
@@ -529,9 +530,15 @@ class Mapper(object):
                                     params[col.key] = a[0]
                                     hasdata = True
                         else:
-                            # doing an INSERT ? add the attribute's value to the 
-                            # bind parameters
-                            params[col.key] = self._getattrbycolumn(obj, col)
+                            # doing an INSERT, non primary key col ? 
+                            # add the attribute's value to the 
+                            # bind parameters, unless its None and the column has a 
+                            # default.  if its None and theres no default, we still might
+                            # not want to put it in the col list but SQLIte doesnt seem to like that
+                            # if theres no columns at all
+                            value = self._getattrbycolumn(obj, col)
+                            if col.default is None or value is not None:
+                                params[col.key] = value
 
                 if not isinsert:
                     if hasdata:
@@ -572,8 +579,8 @@ class Mapper(object):
                             clause.clauses.append(p == self._getattrbycolumn(obj, p))
                         row = table.select(clause).execute().fetchone()
                         for c in table.c:
-                            if self._getattrbycolumn(obj, col) is None:
-                                self._setattrbycolumn(obj, col, row[c])
+                            if self._getattrbycolumn(obj, c) is None:
+                                self._setattrbycolumn(obj, c, row[c])
                     self.extension.after_insert(self, obj)
                     
     def delete_obj(self, objects, uow):

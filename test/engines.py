@@ -16,12 +16,21 @@ class EngineTest(PersistTest):
         
         use_function_defaults = testbase.db.engine.__module__.endswith('postgres') or testbase.db.engine.__module__.endswith('oracle')
         
+        use_string_defaults = use_function_defaults or testbase.db.engine.__module__.endswith('sqlite')
+
         if use_function_defaults:
             defval = func.current_date()
             deftype = Date
         else:
             defval = "3"
             deftype = Integer
+
+        if use_string_defaults:
+            deftype2 = String
+            defval2 = "im a default"
+        else:
+            deftype2 = Integer
+            defval2 = "15"
             
         users = Table('engine_users', testbase.db,
             Column('user_id', INT, primary_key = True),
@@ -36,6 +45,8 @@ class EngineTest(PersistTest):
             Column('test7', String),
             Column('test8', Binary),
             Column('test_passivedefault', deftype, PassiveDefault(defval)),
+            Column('test_passivedefault2', Integer, PassiveDefault("5")),
+            Column('test_passivedefault3', deftype2, PassiveDefault(defval2)),
             Column('test9', Binary(100)),
             mysql_engine='InnoDB'
         )

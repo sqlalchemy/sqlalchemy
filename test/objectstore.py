@@ -103,7 +103,57 @@ class PKTest(AssertMixin):
         objectstore.clear()
         e2 = Entry.mapper.get(e.multi_id, 2)
         self.assert_(e is not e2 and e._instance_key == e2._instance_key)
+
+class DefaultTest(AssertMixin):
+    def setUpAll(self):
+        #db.echo = 'debug'
+        use_string_defaults = db.engine.__module__.endswith('postgres') or db.engine.__module__.endswith('oracle') or db.engine.__module__.endswith('sqlite')
+
+        if use_string_defaults:
+            hohotype = String
+            self.hohoval = "im hoho"
+            self.althohoval = "im different hoho"
+        else:
+            hohotype = Integer
+            self.hohoval = 9
+            self.althohoval = 15
+        self.table = Table('default_test', db,
+        Column('id', Integer, Sequence("dt_seq", optional=True), primary_key=True),
+        Column('hoho', hohotype, PassiveDefault(str(self.hohoval))),
+        Column('counter', Integer, PassiveDefault("7")),
+        Column('foober', String, default="im foober")
+        )
+        self.table.create()
+    def tearDownAll(self):
+        self.table.drop()
+    def testbasic(self):
         
+        class Hoho(object):pass
+        assign_mapper(Hoho, self.table)
+        h1 = Hoho(hoho=self.althohoval)
+        h2 = Hoho(counter=12)
+        h3 = Hoho(hoho=self.althohoval, counter=12)
+        h4 = Hoho()
+        h5 = Hoho(foober='im the new foober')
+        objectstore.commit()
+        self.assert_(h1.hoho==self.althohoval)
+        self.assert_(h3.hoho==self.althohoval)
+        self.assert_(h2.hoho==h4.hoho==h5.hoho==self.hohoval)
+        self.assert_(h3.counter == h2.counter == 12)
+        self.assert_(h1.counter ==  h4.counter==h5.counter==7)
+        self.assert_(h2.foober == h3.foober == h4.foober == 'im foober')
+        self.assert_(h5.foober=='im the new foober')
+        objectstore.clear()
+        l = Hoho.mapper.select()
+        (h1, h2, h3, h4, h5) = l
+        self.assert_(h1.hoho==self.althohoval)
+        self.assert_(h3.hoho==self.althohoval)
+        self.assert_(h2.hoho==h4.hoho==h5.hoho==self.hohoval)
+        self.assert_(h3.counter == h2.counter == 12)
+        self.assert_(h1.counter ==  h4.counter==h5.counter==7)
+        self.assert_(h2.foober == h3.foober == h4.foober == 'im foober')
+        self.assert_(h5.foober=='im the new foober')
+            
 class SaveTest(AssertMixin):
 
     def setUpAll(self):

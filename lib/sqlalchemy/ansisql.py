@@ -522,11 +522,10 @@ class ANSISchemaGenerator(sqlalchemy.engine.SchemaIterator):
 
     def get_column_default_string(self, column):
         if isinstance(column.default, schema.PassiveDefault):
-            if not isinstance(column.default.arg, str):
-                arg = str(column.default.arg.compile(self.engine))
+            if isinstance(column.default.arg, str):
+                return repr(column.default.arg)
             else:
-                arg = column.default.arg
-            return arg
+                return str(column.default.arg.compile(self.engine))
         else:
             return None
 

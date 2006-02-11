@@ -638,7 +638,7 @@ class TextClause(ClauseElement):
     being specified as a bind parameter via the bindparam() method,
     since it provides more information about what it is, including an optional
     type, as well as providing comparison operations."""
-    def __init__(self, text = "", engine=None, bindparams=None, typemap=None):
+    def __init__(self, text = "", engine=None, bindparams=None, typemap=None, escape=True):
         self.parens = False
         self._engine = engine
         self.id = id(self)
@@ -650,8 +650,11 @@ class TextClause(ClauseElement):
         def repl(m):
             self.bindparams[m.group(1)] = bindparam(m.group(1))
             return self.engine.bindtemplate % m.group(1)
-           
-        self.text = re.compile(r':([\w_]+)', re.S).sub(repl, text)
+        
+        if escape: 
+            self.text = re.compile(r':([\w_]+)', re.S).sub(repl, text)
+        else:
+            self.text = text
         if bindparams is not None:
             for b in bindparams:
                 self.bindparams[b.key] = b

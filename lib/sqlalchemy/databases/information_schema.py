@@ -131,7 +131,7 @@ def reflecttable(engine, table, ischema_names, use_mysql=False):
         coltype = coltype(*args)
         colargs= []
         if default is not None:
-            colargs.append(PassiveDefault(default))
+            colargs.append(PassiveDefault(sql.text(default, escape=False)))
         table.append_item(schema.Column(name, coltype, nullable=nullable, *colargs))
 
     s = select([constraints.c.constraint_name, constraints.c.constraint_type, constraints.c.table_name, key_constraints], use_labels=True)
