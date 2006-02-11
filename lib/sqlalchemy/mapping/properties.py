@@ -164,6 +164,8 @@ class PropertyLoader(MapperProperty):
         self.key = key
         self.parent = parent
 
+        if self.secondaryjoin is not None and self.secondary is None:
+            raise ValueError("Property '" + self.key + "' specified with secondary join condition but no secondary argument")
         # if join conditions were not specified, figure them out based on foreign keys
         if self.secondary is not None:
             if self.secondaryjoin is None:
