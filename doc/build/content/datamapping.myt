@@ -598,13 +598,13 @@ VALUES (:address_id, :user_id, :email_address)
         <&|formatting.myt:code&>
     articles = Table('articles', engine,
         Column('article_id', Integer, primary_key = True),
-        Column('article_headline', String(150), key='headline'),
-        Column('article_body', TEXT, key='body'),
+        Column('headline', String(150), key='headline'),
+        Column('body', TEXT, key='body'),
     )
 
     keywords = Table('keywords', engine,
         Column('keyword_id', Integer, primary_key = True),
-        Column('keyword_name', String(50))
+        Column('name', String(50))
     )
 
     itemkeywords = Table('article_keywords', engine,
@@ -619,11 +619,11 @@ VALUES (:address_id, :user_id, :email_address)
 
     class Article(object):
         pass
-        
+    
     # define a mapper that does many-to-many on the 'itemkeywords' association 
     # table
     Article.mapper = mapper(Article, articles, properties = dict(
-            keywords = relation(Keyword, keywords, itemkeywords, lazy=False)
+            keywords = relation(mapper(Keyword, keywords), keywords, itemkeywords, lazy=False)
             )
         )
 
