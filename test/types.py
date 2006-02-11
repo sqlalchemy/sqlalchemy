@@ -1,5 +1,5 @@
 from sqlalchemy import *
-import string,datetime, re
+import string,datetime, re, sys
 from testbase import PersistTest, AssertMixin
 import testbase
     
@@ -70,7 +70,33 @@ class ColumnsTest(AssertMixin):
         for aCol in testTable.c:
             self.assertEquals(expectedResults[aCol.name], db.schemagenerator(None).get_column_specification(aCol))
         
-
+class UnicodeTest(AssertMixin):
+    def setUpAll(self):
+        global unicode_table
+        unicode_table = Table('unicode_table', db, 
+            Column('id', Integer, primary_key=True),
+            Column('unicode_data', Unicode),
+            Column('plain_data', String)
+            )
+        unicode_table.create()
+    def tearDownAll(self):
+        unicode_table.drop()
+    def testbasic(self):
+        rawdata = 'Alors vous imaginez ma surprise, au lever du jour, quand une dr\xc3\xb4le de petit voix m\xe2\x80\x99a r\xc3\xa9veill\xc3\xa9. Elle disait: \xc2\xab S\xe2\x80\x99il vous pla\xc3\xaet\xe2\x80\xa6 dessine-moi un mouton! \xc2\xbb\n'
+        unicodedata = rawdata.decode('utf-8')
+        unicode_table.insert().execute(unicode_data=unicodedata, plain_data=rawdata)
+        x = unicode_table.select().execute().fetchone()
+        self.echo(repr(x['unicode_data']))
+        self.echo(repr(x['plain_data']))
+        self.assert_(isinstance(x['unicode_data'], unicode) and x['unicode_data'] == unicodedata)
+        if isinstance(x['plain_data'], unicode):
+            # SQLLite returns even non-unicode data as unicode
+            self.assert_(sys.modules[db.engine.__module__].descriptor()['name'] == 'sqlite')
+            self.echo("its sqlite !")
+        else:
+            self.assert_(not isinstance(x['plain_data'], unicode) and x['plain_data'] == rawdata)
+            
+    
 class BinaryTest(AssertMixin):
     def setUpAll(self):
         global binary_table
