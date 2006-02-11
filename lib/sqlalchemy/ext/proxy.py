@@ -7,7 +7,7 @@ from sqlalchemy import sql
 from sqlalchemy.engine import create_engine
 from sqlalchemy.types import TypeEngine
 
-import thread
+import thread, weakref
 
 class ProxyEngine(object):
     """
@@ -84,13 +84,23 @@ class ProxyEngine(object):
         raise AttributeError('No connection established in ProxyEngine: '
                              ' no access to %s' % attr)
 
+        
 class ProxyColumnImpl(sql.ColumnImpl):
     """Proxy column; defers engine access to ProxyEngine
     """
     def __init__(self, engine, column):
         sql.ColumnImpl.__init__(self, column)
         self._engine = engine
-
+        self.impls = weakref.WeakKeyDictionary()
+    def _get_impl(self):
+        e = self.engine
+        try:
+            return self.impls[e]
+        except KeyError:
+            impl = e.columnimpl(self.column)
+            self.impls[e] = impl
+    def __getattr__(self, key):
+        return getattr(self._get_impl(), key)
     engine = property(lambda self: self._engine.engine)
 
 class ProxyTableImpl(sql.TableImpl):
@@ -99,6 +109,17 @@ class ProxyTableImpl(sql.TableImpl):
     def __init__(self, engine, table):
         sql.TableImpl.__init__(self, table)
         self._engine = engine
+        self.impls = weakref.WeakKeyDictionary()
+    def _get_impl(self):
+        e = self.engine
+        try:
+            return self.impls[e]
+        except KeyError:
+            impl = e.tableimpl(self.table)
+            self.impls[e] = impl
+            return impl
+    def __getattr__(self, key):
+        return getattr(self._get_impl(), key)
 
     engine = property(lambda self: self._engine.engine)
 

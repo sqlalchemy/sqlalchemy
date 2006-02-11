@@ -241,20 +241,22 @@ class ProxyEngineTest2(PersistTest):
 
         engine.connect(testbase.db_uri)
         dogs.create()
+        try:
+            spot = Dog()
+            spot.breed = 'beagle'
+            spot.name = 'Spot'
 
-        spot = Dog()
-        spot.breed = 'beagle'
-        spot.name = 'Spot'
-
-        rover = Dog()
-        rover.breed = 'spaniel'
-        rover.name = 'Rover'
+            rover = Dog()
+            rover.breed = 'spaniel'
+            rover.name = 'Rover'
         
-        objectstore.commit()
+            objectstore.commit()
         
-        assert spot.dog_id > 0, "Spot did not get an id"
-        assert rover.dog_id != spot.dog_id
-        
+            assert spot.dog_id > 0, "Spot did not get an id"
+            assert rover.dog_id != spot.dog_id
+        finally:
+            dogs.drop()
+            
     def  test_type_proxy_schema_gen(self):
         from sqlalchemy.databases.postgres import PGSchemaGenerator
 
@@ -268,7 +270,7 @@ class ProxyEngineTest2(PersistTest):
         # answer
         engine.connect('postgres://database=test&port=5432&host=127.0.0.1&user=scott&password=tiger')
 
-        sg = PGSchemaGenerator(engine.proxy())
+        sg = PGSchemaGenerator(engine)
         id_spec = sg.get_column_specification(lizards.c.id)
         assert id_spec == 'id SERIAL NOT NULL PRIMARY KEY'
         
