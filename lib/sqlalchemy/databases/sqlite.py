@@ -148,8 +148,8 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
     def dbapi(self):
         return sqlite
 
-    def schemagenerator(self, proxy, **params):
-        return SQLiteSchemaGenerator(proxy, **params)
+    def schemagenerator(self, **params):
+        return SQLiteSchemaGenerator(self, **params)
 
     def reflecttable(self, table):
         c = self.execute("PRAGMA table_info(" + table.name + ")", {})
@@ -226,6 +226,10 @@ class SQLiteCompiler(ansisql.ANSICompiler):
 class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, override_pk=False, **kwargs):
         colspec = column.name + " " + column.type.get_col_spec()
+        default = self.get_column_default_string(column)
+        if default is not None:
+            colspec += " DEFAULT " + default
+
         if not column.nullable:
             colspec += " NOT NULL"
         if column.primary_key and not override_pk:

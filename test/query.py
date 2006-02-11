@@ -5,7 +5,7 @@ import unittest, sys, datetime
 import sqlalchemy.databases.sqlite as sqllite
 
 db = testbase.db
-
+db.echo='debug'
 from sqlalchemy import *
 from sqlalchemy.engine import ResultProxy, RowProxy
 
@@ -46,15 +46,28 @@ class QueryTest(PersistTest):
         def mydefault():
             x['x'] += 1
             return x['x']
-            
+
+        use_function_defaults = db.engine.__module__.endswith('postgres') or db.engine.__module__.endswith('oracle')
+        
         # select "count(1)" from the DB which returns different results
         # on different DBs
-        f = select([func.count(1)], engine=db).execute().fetchone()[0]
-        
+        f = select([func.count(1)], engine=db).scalar()
+        if use_function_defaults:
+            def1 = func.current_date()
+            def2 = "current_date"
+            deftype = Date
+            ts = select([func.current_date()], engine=db).scalar()
+        else:
+            def1 = def2 = "3"
+            ts = 3
+            deftype = Integer
+            
         t = Table('default_test1', db, 
             Column('col1', Integer, primary_key=True, default=mydefault),
             Column('col2', String(20), default="imthedefault"),
             Column('col3', Integer, default=func.count(1)),
+            Column('col4', deftype, PassiveDefault(def1)),
+            Column('col5', deftype, PassiveDefault(def2))
         )
         t.create()
         try:
@@ -63,7 +76,7 @@ class QueryTest(PersistTest):
             t.insert().execute()
         
             l = t.select().execute()
-            self.assert_(l.fetchall() == [(1, 'imthedefault', f), (2, 'imthedefault', f), (3, 'imthedefault', f)])
+            self.assert_(l.fetchall() == [(1, 'imthedefault', f, ts, ts), (2, 'imthedefault', f, ts, ts), (3, 'imthedefault', f, ts, ts)])
         finally:
             t.drop()
         

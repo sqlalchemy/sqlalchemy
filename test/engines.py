@@ -13,6 +13,16 @@ import unittest, re
 class EngineTest(PersistTest):
     def testbasic(self):
         # really trip it up with a circular reference
+        
+        use_function_defaults = testbase.db.engine.__module__.endswith('postgres') or testbase.db.engine.__module__.endswith('oracle')
+        
+        if use_function_defaults:
+            defval = func.current_date()
+            deftype = Date
+        else:
+            defval = "3"
+            deftype = Integer
+            
         users = Table('engine_users', testbase.db,
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20), nullable = False),
@@ -25,6 +35,7 @@ class EngineTest(PersistTest):
             Column('test6', DateTime, nullable = False),
             Column('test7', String),
             Column('test8', Binary),
+            Column('test_passivedefault', deftype, PassiveDefault(defval)),
             Column('test9', Binary(100)),
             mysql_engine='InnoDB'
         )

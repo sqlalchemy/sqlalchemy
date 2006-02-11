@@ -132,8 +132,8 @@ class MySQLEngine(ansisql.ANSISQLEngine):
     def compiler(self, statement, bindparams, **kwargs):
         return MySQLCompiler(self, statement, bindparams, **kwargs)
 
-    def schemagenerator(self, proxy, **params):
-        return MySQLSchemaGenerator(proxy, **params)
+    def schemagenerator(self, **params):
+        return MySQLSchemaGenerator(self, **params)
 
     def get_default_schema_name(self):
         if not hasattr(self, '_default_schema_name'):
@@ -234,6 +234,13 @@ class MySQLTableImpl(sql.TableImpl):
         self.mysql_engine = mysql_engine
 
 class MySQLCompiler(ansisql.ANSICompiler):
+
+    def visit_function(self, func):
+        if len(func.clauses):
+            super(MySQLCompiler, self).visit_function(func)
+        else:
+            self.strings[func] = func.name
+
     def limit_clause(self, select):
         text = ""
         if select.limit is not None:
@@ -248,6 +255,9 @@ class MySQLCompiler(ansisql.ANSICompiler):
 class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, override_pk=False, first_pk=False):
         colspec = column.name + " " + column.type.get_col_spec()
+        default = self.get_column_default_string(column)
+        if default is not None:
+            colspec += " DEFAULT " + default
 
         if not column.nullable:
             colspec += " NOT NULL"

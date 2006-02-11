@@ -103,13 +103,13 @@ def engine_descriptors():
     
 class SchemaIterator(schema.SchemaVisitor):
     """a visitor that can gather text into a buffer and execute the contents of the buffer."""
-    def __init__(self, sqlproxy, **params):
+    def __init__(self, engine, **params):
         """initializes this SchemaIterator and initializes its buffer.
         
         sqlproxy - a callable function returned by SQLEngine.proxy(), which executes a
         statement plus optional parameters.
         """
-        self.sqlproxy = sqlproxy
+        self.engine = engine
         self.buffer = StringIO.StringIO()
 
     def append(self, s):
@@ -120,7 +120,7 @@ class SchemaIterator(schema.SchemaVisitor):
         """executes the contents of the SchemaIterator's buffer using its sql proxy and
         clears out the buffer."""
         try:
-            return self.sqlproxy(self.buffer.getvalue())
+            return self.engine.execute(self.buffer.getvalue(), None)
         finally:
             self.buffer.truncate(0)
 
@@ -250,21 +250,17 @@ class SQLEngine(schema.SchemaEngine):
         """returns a sql.text() object for performing literal queries."""
         return sql.text(text, engine=self, *args, **kwargs)
         
-    def schemagenerator(self, proxy, **params):
+    def schemagenerator(self, **params):
         """returns a schema.SchemaVisitor instance that can generate schemas, when it is
-        invoked to traverse a set of schema objects.  The 
-        "proxy" argument is a callable will execute a given string SQL statement
-        and a dictionary or list of parameters.  
+        invoked to traverse a set of schema objects. 
         
         schemagenerator is called via the create() method.
         """
         raise NotImplementedError()
 
-    def schemadropper(self, proxy, **params):
+    def schemadropper(self, **params):
         """returns a schema.SchemaVisitor instance that can drop schemas, when it is
-        invoked to traverse a set of schema objects.  The 
-        "proxy" argument is a callable will execute a given string SQL statement
-        and a dictionary or list of parameters.  
+        invoked to traverse a set of schema objects. 
         
         schemagenerator is called via the drop() method.
         """
@@ -300,11 +296,11 @@ class SQLEngine(schema.SchemaEngine):
         
     def create(self, table, **params):
         """creates a table within this engine's database connection given a schema.Table object."""
-        table.accept_visitor(self.schemagenerator(self.proxy(), **params))
+        table.accept_visitor(self.schemagenerator(**params))
 
     def drop(self, table, **params):
         """drops a table within this engine's database connection given a schema.Table object."""
-        table.accept_visitor(self.schemadropper(self.proxy(), **params))
+        table.accept_visitor(self.schemadropper(**params))
 
     def compile(self, statement, parameters, **kwargs):
         """given a sql.ClauseElement statement plus optional bind parameters, creates a new
@@ -368,12 +364,6 @@ class SQLEngine(schema.SchemaEngine):
     def do_commit(self, connection):
         """implementations might want to put logic here for turning autocommit on/off, etc."""
         connection.commit()
-
-    def proxy(self, **kwargs):
-        """provides a callable that will execute the given string statement and parameters.
-        The statement and parameters should be in the format specific to the particular database;
-        i.e. named or positional."""
-        return lambda s, p = None: self.execute(s, p, **kwargs)
 
     def connection(self):
         """returns a managed DBAPI connection from this SQLEngine's connection pool."""

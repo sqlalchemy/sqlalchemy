@@ -104,10 +104,10 @@ class OracleSQLEngine(ansisql.ANSISQLEngine):
     def compiler(self, statement, bindparams, **kwargs):
         return OracleCompiler(self, statement, bindparams, use_ansi=self._use_ansi, **kwargs)
 
-    def schemagenerator(self, proxy, **params):
-        return OracleSchemaGenerator(proxy, **params)
-    def schemadropper(self, proxy, **params):
-        return OracleSchemaDropper(proxy, **params)
+    def schemagenerator(self, **params):
+        return OracleSchemaGenerator(self, **params)
+    def schemadropper(self, **params):
+        return OracleSchemaDropper(self, **params)
     def defaultrunner(self, proxy):
         return OracleDefaultRunner(self, proxy)
         
@@ -227,6 +227,9 @@ class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, override_pk=False, **kwargs):
         colspec = column.name
         colspec += " " + column.type.get_col_spec()
+        default = self.get_column_default_string(column)
+        if default is not None:
+            colspec += " DEFAULT " + default
 
         if not column.nullable:
             colspec += " NOT NULL"

@@ -31,6 +31,7 @@ gen_columns = schema.Table("columns", generic_engine,
     Column("character_maximum_length", Integer),
     Column("numeric_precision", Integer),
     Column("numeric_scale", Integer),
+    Column("column_default", Integer),
     schema="information_schema")
     
 gen_constraints = schema.Table("table_constraints", generic_engine,
@@ -109,15 +110,16 @@ def reflecttable(engine, table, ischema_names, use_mysql=False):
         row = c.fetchone()
         if row is None:
             break
-#        print "row! " + repr(row)
+        #print "row! " + repr(row)
  #       continue
-        (name, type, nullable, charlen, numericprec, numericscale) = (
+        (name, type, nullable, charlen, numericprec, numericscale, default) = (
             row[columns.c.column_name], 
             row[columns.c.data_type], 
             row[columns.c.is_nullable] == 'YES', 
             row[columns.c.character_maximum_length],
             row[columns.c.numeric_precision],
             row[columns.c.numeric_scale],
+            row[columns.c.column_default]
             )
 
         args = []
@@ -127,7 +129,10 @@ def reflecttable(engine, table, ischema_names, use_mysql=False):
         coltype = ischema_names[type]
         #print "coltype " + repr(coltype) + " args " +  repr(args)
         coltype = coltype(*args)
-        table.append_item(schema.Column(name, coltype, nullable = nullable))
+        colargs= []
+        if default is not None:
+            colargs.append(PassiveDefault(default))
+        table.append_item(schema.Column(name, coltype, nullable=nullable, *colargs))
 
     s = select([constraints.c.constraint_name, constraints.c.constraint_type, constraints.c.table_name, key_constraints], use_labels=True)
     if not use_mysql:

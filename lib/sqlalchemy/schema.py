@@ -19,7 +19,7 @@ from sqlalchemy.util import *
 from sqlalchemy.types import *
 import copy, re, string
 
-__all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'SchemaEngine', 'SchemaVisitor']
+__all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'SchemaEngine', 'SchemaVisitor', 'PassiveDefault', 'ColumnDefault']
 
 
 class SchemaItem(object):
@@ -418,12 +418,12 @@ class DefaultGenerator(SchemaItem):
 
 class PassiveDefault(DefaultGenerator):
     """a default that takes effect on the database side"""
-    def __init__(self, text):
-        self.text = text
+    def __init__(self, arg):
+        self.arg = arg
     def accept_visitor(self, visitor):
-        return visitor_visit_passive_default(self)
+        return visitor.visit_passive_default(self)
     def __repr__(self):
-        return "PassiveDefault(%s)" % repr(self.text)
+        return "PassiveDefault(%s)" % repr(self.arg)
         
 class ColumnDefault(DefaultGenerator):
     """A plain default value on a column.  this could correspond to a constant, 

@@ -192,11 +192,11 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
     def compiler(self, statement, bindparams, **kwargs):
         return PGCompiler(self, statement, bindparams, **kwargs)
 
-    def schemagenerator(self, proxy, **params):
-        return PGSchemaGenerator(proxy, **params)
+    def schemagenerator(self, **params):
+        return PGSchemaGenerator(self, **params)
 
-    def schemadropper(self, proxy, **params):
-        return PGSchemaDropper(proxy, **params)
+    def schemadropper(self, **params):
+        return PGSchemaDropper(self, **params)
 
     def defaultrunner(self, proxy):
         return PGDefaultRunner(self, proxy)
@@ -254,6 +254,12 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
 
 class PGCompiler(ansisql.ANSICompiler):
 
+    def visit_function(self, func):
+        if len(func.clauses):
+            super(PGCompiler, self).visit_function(func)
+        else:
+            self.strings[func] = func.name
+
     def visit_insert_column(self, column):
         # Postgres advises against OID usage and turns it off in 8.1,
         # effectively making cursor.lastrowid
@@ -273,14 +279,16 @@ class PGCompiler(ansisql.ANSICompiler):
         return text
         
 class PGSchemaGenerator(ansisql.ANSISchemaGenerator):
+        
     def get_column_specification(self, column, override_pk=False, **kwargs):
         colspec = column.name
-        if isinstance(column.default, schema.PassiveDefault):
-            colspec += " DEFAULT " + column.default.text
-        elif column.primary_key and isinstance(column.type, types.Integer) and (column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional)):
+        if column.primary_key and isinstance(column.type, types.Integer) and (column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional)):
             colspec += " SERIAL"
         else:
             colspec += " " + column.type.get_col_spec()
+            default = self.get_column_default_string(column)
+            if default is not None:
+                colspec += " DEFAULT " + default
 
         if not column.nullable:
             colspec += " NOT NULL"

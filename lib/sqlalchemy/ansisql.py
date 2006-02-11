@@ -20,11 +20,11 @@ def engine(**params):
 
 class ANSISQLEngine(sqlalchemy.engine.SQLEngine):
 
-    def schemagenerator(self, proxy, **params):
-        return ANSISchemaGenerator(proxy, **params)
+    def schemagenerator(self, **params):
+        return ANSISchemaGenerator(self, **params)
     
-    def schemadropper(self, proxy, **params):
-        return ANSISchemaDropper(proxy, **params)
+    def schemadropper(self, **params):
+        return ANSISchemaDropper(self, **params)
 
     def compiler(self, statement, parameters, **kwargs):
         return ANSICompiler(self, statement, parameters, **kwargs)
@@ -492,7 +492,6 @@ class ANSICompiler(sql.Compiled):
 
 
 class ANSISchemaGenerator(sqlalchemy.engine.SchemaIterator):
-
     def get_column_specification(self, column, override_pk=False, first_pk=False):
         raise NotImplementedError()
         
@@ -520,6 +519,16 @@ class ANSISchemaGenerator(sqlalchemy.engine.SchemaIterator):
 
     def post_create_table(self, table):
         return ''
+
+    def get_column_default_string(self, column):
+        if isinstance(column.default, schema.PassiveDefault):
+            if not isinstance(column.default.arg, str):
+                arg = str(column.default.arg.compile(self.engine))
+            else:
+                arg = column.default.arg
+            return arg
+        else:
+            return None
 
     def visit_column(self, column):
         pass
