@@ -497,7 +497,8 @@ class Mapper(object):
                 isinsert = not hasattr(obj, "_instance_key")
                 if isinsert:
                     self.extension.before_insert(self, obj)
-
+                else:
+                    self.extension.before_update(self, obj)
                 hasdata = False
                 for col in table.columns:
                     if self.pks_by_table[table].contains(col):
@@ -536,7 +537,7 @@ class Mapper(object):
                     if hasdata:
                         # if none of the attributes changed, dont even
                         # add the row to be updated.
-                        update.append(params)
+                        update.append((obj, params))
                 else:
                     insert.append((obj, params))
             if len(update):
@@ -546,7 +547,9 @@ class Mapper(object):
                 statement = table.update(clause)
                 rows = 0
                 for rec in update:
-                    c = statement.execute(rec)
+                    (obj, params) = rec
+                    c = statement.execute(params)
+                    self.extension.after_update(self, obj)
                     rows += c.cursor.rowcount
                 if table.engine.supports_sane_rowcount() and rows != len(update):
                     raise "ConcurrencyError - updated rowcount %d does not match number of objects updated %d" % (rows, len(update))
@@ -834,6 +837,14 @@ class MapperExtension(object):
         this is a good place to set up primary key values and such that arent handled otherwise."""
         if self.next is not None:
             self.next.before_insert(mapper, instance)
+    def before_update(self, mapper, instance):
+        """called before an object instnace is UPDATED"""
+        if self.next is not None:
+            self.next.before_update(mapper, instance)
+    def after_update(self, mapper, instance):
+        """called after an object instnace is UPDATED"""
+        if self.next is not None:
+            self.next.after_update(mapper, instance)
     def after_insert(self, mapper, instance):
         """called after an object instance has been INSERTed"""
         if self.next is not None:
