@@ -18,8 +18,7 @@ from mapper import *
 from properties import *
 import mapper as mapperlib
 
-__all__ = ['relation', 'eagerload', 'lazyload', 'noload', 'deferred',  'column', 
-        'defer', 'undefer',
+__all__ = ['relation', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer',
         'mapper', 'clear_mappers', 'objectstore', 'sql', 'extension', 'class_mapper', 'object_mapper', 'MapperExtension',
         'assign_mapper'
         ]
@@ -39,9 +38,6 @@ def _relation_loader(mapper, secondary=None, primaryjoin=None, secondaryjoin=Non
     else:
         return EagerLoader(mapper, secondary, primaryjoin, secondaryjoin, **kwargs)
 
-def column(*columns, **kwargs):
-    return ColumnProperty(*columns, **kwargs)
-    
 def deferred(*columns, **kwargs):
     return DeferredColumnProperty(*columns, **kwargs)
     
