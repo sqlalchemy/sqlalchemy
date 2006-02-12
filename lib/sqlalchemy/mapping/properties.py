@@ -4,6 +4,9 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+"""defines a set of MapperProperty objects, including basic column properties as 
+well as relationships.  also defines some MapperOptions that can be used with the
+properties."""
 
 from mapper import *
 import sqlalchemy.sql as sql
@@ -21,31 +24,26 @@ class ColumnProperty(MapperProperty):
         are multiple tables joined together for the mapper, this list represents
         the equivalent column as it appears across each table."""
         self.columns = list(columns)
-
     def getattr(self, object):
         return getattr(object, self.key, None)
     def setattr(self, object, value):
         setattr(object, self.key, value)
     def get_history(self, obj, passive=False):
         return objectstore.global_attributes.get_history(obj, self.key, passive=passive)
-
-    def _copy(self):
+    def copy(self):
         return ColumnProperty(*self.columns)
-
     def setup(self, key, statement, eagertable=None, **options):
         for c in self.columns:
             if eagertable is not None:
                 statement.append_column(eagertable._get_col_by_original(c))
             else:
                 statement.append_column(c)
-
-    def init(self, key, parent):
+    def do_init(self, key, parent):
         self.key = key
         # establish a SmartProperty property manager on the object for this key
         if parent._is_primary_mapper():
             #print "regiser col on class %s key %s" % (parent.class_.__name__, key)
             objectstore.uow().register_attribute(parent.class_, key, uselist = False)
-
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
             instance.__dict__[self.key] = row[self.columns[0]]
@@ -53,23 +51,18 @@ class ColumnProperty(MapperProperty):
 class DeferredColumnProperty(ColumnProperty):
     """describes an object attribute that corresponds to a table column, which also
     will "lazy load" its value from the table.  this is per-column lazy loading."""
-
     def __init__(self, *columns, **kwargs):
         self.group = kwargs.get('group', None)
         ColumnProperty.__init__(self, *columns)
-    
-
-    def _copy(self):
+    def copy(self):
         return DeferredColumnProperty(*self.columns)
-
-    def init(self, key, parent):
+    def do_init(self, key, parent):
         self.key = key
         self.parent = parent
         # establish a SmartProperty property manager on the object for this key, 
         # containing a callable to load in the attribute
-        if parent._is_primary_mapper():
+        if self.is_primary():
             objectstore.uow().register_attribute(parent.class_, key, uselist=False, callable_=lambda i:self.setup_loader(i))
-
     def setup_loader(self, instance):
         def lazyload():
             clause = sql.and_()
@@ -95,19 +88,11 @@ class DeferredColumnProperty(ColumnProperty):
             else:
                 return sql.select([self.columns[0]], clause, use_labels=True).scalar()
         return lazyload
-
-    def _is_primary(self):
-        """a return value of True indicates we are the primary MapperProperty for this loader's
-        attribute on our mapper's class.  It means we can set the object's attribute behavior
-        at the class level.  otherwise we have to set attribute behavior on a per-instance level."""
-        return self.parent._is_primary_mapper()
-
     def setup(self, key, statement, **options):
         pass
-
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
-            if not self._is_primary():
+            if not self.is_primary():
                 objectstore.global_attributes.create_history(instance, self.key, False, callable_=self.setup_loader(instance))
             else:
                 objectstore.global_attributes.reset_history(instance, self.key)
@@ -127,7 +112,19 @@ class PropertyLoader(MapperProperty):
         self.secondary = secondary
         self.primaryjoin = primaryjoin
         self.secondaryjoin = secondaryjoin
-        self.foreignkey = foreignkey
+        
+        # a list of columns representing "the other side"
+        # of the relationship
+        self.foreignkey = util.to_set(foreignkey)
+        
+        # foreign table is then just the table represented 
+        # by the foreignkey
+        for c in self.foreignkey:
+            self.foreigntable = c.table
+            break
+        else:
+            self.foreigntable = None
+            
         self.private = private
         self.live = live
         self.association = association
@@ -141,15 +138,16 @@ class PropertyLoader(MapperProperty):
         self.backref = backref
         self.is_backref = is_backref
 
-    def _copy(self):
+    def copy(self):
         x = self.__class__.__new__(self.__class__)
         x.__dict__.update(self.__dict__)
         return x
         
-    def init_subclass(self, key, parent):
+    def do_init_subclass(self, key, parent):
+        """template method for subclasses of PropertyLoader"""
         pass
         
-    def init(self, key, parent):
+    def do_init(self, key, parent):
         import sqlalchemy.mapping
         if isinstance(self.argument, type):
             self.mapper = sqlalchemy.mapping.class_mapper(self.argument)
@@ -179,10 +177,10 @@ class PropertyLoader(MapperProperty):
         # if the foreign key wasnt specified and theres no assocaition table, try to figure
         # out who is dependent on who. we dont need all the foreign keys represented in the join,
         # just one of them.  
-        if self.foreignkey is None and self.secondaryjoin is None:
+        if self.foreignkey.empty() and self.secondaryjoin is None:
             # else we usually will have a one-to-many where the secondary depends on the primary
             # but its possible that its reversed
-            self.foreignkey = self._find_dependent()
+            self._find_dependent()
 
         self.direction = self._get_direction()
         
@@ -195,7 +193,7 @@ class PropertyLoader(MapperProperty):
         self._compile_synchronizers()
 
         # primary property handler, set up class attributes
-        if self._is_primary():
+        if self.is_primary():
             # if a backref name is defined, set up an extension to populate 
             # attributes in the other direction
             if self.backref is not None:
@@ -215,13 +213,7 @@ class PropertyLoader(MapperProperty):
         elif not objectstore.global_attributes.is_class_managed(parent.class_, key):
             raise "Non-primary property created for attribute '%s' on class '%s', but that attribute is not managed! Insure that the primary mapper for this class defines this property" % (key, parent.class_.__name__)
 
-        self.init_subclass(key, parent)
-        
-    def _is_primary(self):
-        """a return value of True indicates we are the primary PropertyLoader for this loader's
-        attribute on our mapper's class.  It means we can set the object's attribute behavior
-        at the class level.  otherwise we have to set attribute behavior on a per-instance level."""
-        return self.parent._is_primary_mapper()
+        self.do_init_subclass(key, parent)
         
     def _set_class_attribute(self, class_, key):
         """sets attribute behavior on our target class."""
@@ -230,80 +222,47 @@ class PropertyLoader(MapperProperty):
     def _get_direction(self):
 #        print self.key, repr(self.parent.table.name), repr(self.parent.primarytable.name), repr(self.foreignkey.table.name)
         if self.parent.table is self.target:
-            if self.foreignkey.primary_key:
-                return PropertyLoader.MANYTOONE
+            for col in self.foreignkey:
+                if col.primary_key:
+                    return PropertyLoader.MANYTOONE
             else:
                 return PropertyLoader.ONETOMANY
         elif self.secondaryjoin is not None:
             return PropertyLoader.MANYTOMANY
-        elif self.foreignkey.table == self.target:
+        elif self.foreigntable == self.target:
             return PropertyLoader.ONETOMANY
-        elif self.foreignkey.table == self.parent.table:
+        elif self.foreigntable == self.parent.table:
             return PropertyLoader.MANYTOONE
         else:
             raise "Cant determine relation direction"
             
     def _find_dependent(self):
+        """searches through the primary join condition to determine which side
+        has the primary key and which has the foreign key - from this we return 
+        the "foreign key" for this property which helps determine one-to-many/many-to-one."""
+        
+        # set as a reference to allow assignment from inside a first-class function
         dependent = [None]
         def foo(binary):
             if binary.operator != '=':
                 return
             if isinstance(binary.left, schema.Column) and binary.left.primary_key:
-                if dependent[0] is binary.left:
+                if dependent[0] is binary.left.table:
                     raise "bidirectional dependency not supported...specify foreignkey"
-                dependent[0] = binary.right
+                dependent[0] = binary.right.table
+                self.foreignkey.append(binary.right)
             elif isinstance(binary.right, schema.Column) and binary.right.primary_key:
-                if dependent[0] is binary.right:
+                if dependent[0] is binary.right.table:
                     raise "bidirectional dependency not supported...specify foreignkey"
-                dependent[0] = binary.left
+                dependent[0] = binary.left.table
+                self.foreignkey.append(binary.left)
         visitor = BinaryVisitor(foo)
         self.primaryjoin.accept_visitor(visitor)
         if dependent[0] is None:
-            raise "cant determine primary foreign key in the join relationship....specify foreignkey=<column>"
+            raise "cant determine primary foreign key in the join relationship....specify foreignkey=<column> or foreignkey=[<columns>]"
         else:
-            return dependent[0]
+            self.foreigntable = dependent[0]
 
-    def _compile_synchronizers(self):
-        def compile(binary):
-            if binary.operator != '=' or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
-                return
-
-            if binary.left.table == binary.right.table:
-                if binary.left.primary_key:
-                    source = binary.left
-                    dest = binary.right
-                elif binary.right.primary_key:
-                    source = binary.right
-                    dest = binary.left
-                else:
-                    raise "Cant determine direction for relationship %s = %s" % (binary.left.fullname, binary.right.fullname)
-                if self.direction == PropertyLoader.ONETOMANY:
-                    self.syncrules.append((self.parent, source, self.mapper, dest))
-                elif self.direction == PropertyLoader.MANYTOONE:
-                    self.syncrules.append((self.mapper, source, self.parent, dest))
-                else:
-                    raise "assert failed"
-            else:
-                colmap = {binary.left.table : binary.left, binary.right.table : binary.right}
-                if colmap.has_key(self.parent.primarytable) and colmap.has_key(self.target):
-                    if self.direction == PropertyLoader.ONETOMANY:
-                        self.syncrules.append((self.parent, colmap[self.parent.primarytable], self.mapper, colmap[self.target]))
-                    elif self.direction == PropertyLoader.MANYTOONE:
-                        self.syncrules.append((self.mapper, colmap[self.target], self.parent, colmap[self.parent.primarytable]))
-                    else:
-                        raise "assert failed"
-                elif colmap.has_key(self.parent.primarytable) and colmap.has_key(self.secondary):
-                    self.syncrules.append((self.parent, colmap[self.parent.primarytable], PropertyLoader.ONETOMANY, colmap[self.secondary]))
-                elif colmap.has_key(self.target) and colmap.has_key(self.secondary):
-                    self.syncrules.append((self.mapper, colmap[self.target], PropertyLoader.MANYTOONE, colmap[self.secondary]))
-
-        self.syncrules = []
-        processor = BinaryVisitor(compile)
-        self.primaryjoin.accept_visitor(processor)
-        if self.secondaryjoin is not None:
-            self.secondaryjoin.accept_visitor(processor)
-        if len(self.syncrules) == 0:
-            raise "No syncrules generated for join criterion " + str(self.primaryjoin)
             
     def get_criterion(self, key, value):
         """given a key/value pair, determines if this PropertyLoader's mapper contains a key of the
@@ -416,7 +375,8 @@ class PropertyLoader(MapperProperty):
     def whose_dependent_on_who(self, obj1, obj2):
         """given an object pair assuming obj2 is a child of obj1, returns a tuple
         with the dependent object second, or None if they are equal.  
-        used by objectstore's object-level topoligical sort."""
+        used by objectstore's object-level topological sort (i.e. cyclical 
+        table dependency)."""
         if obj1 is obj2:
             return None
         elif self.direction == PropertyLoader.ONETOMANY:
@@ -535,7 +495,67 @@ class PropertyLoader(MapperProperty):
                             # for a cyclical task, this registration is handled by the objectstore
                             uowcommit.register_object(child, isdelete=self.private)
 
+    def execute(self, instance, row, identitykey, imap, isnew):
+        if self.is_primary():
+            return
+        #print "PLAIN PROPLOADER EXEC NON-PRIAMRY", repr(id(self)), repr(self.mapper.class_), self.key
+        objectstore.global_attributes.create_history(instance, self.key, self.uselist)
+
+    def _compile_synchronizers(self):
+        """assembles a list of 'synchronization rules', which are instructions on how to populate
+        the objects on each side of a relationship.  This is done when a PropertyLoader is 
+        first initialized.
+        
+        The list of rules is used within commits by the _synchronize() method when dependent 
+        objects are processed."""
+
+        SyncRule = PropertyLoader.SyncRule
+
+        def compile(binary):
+            """assembles a SyncRule given a single binary condition"""
+            if binary.operator != '=' or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
+                return
+
+            if binary.left.table == binary.right.table:
+                if binary.left.primary_key:
+                    source = binary.left
+                    dest = binary.right
+                elif binary.right.primary_key:
+                    source = binary.right
+                    dest = binary.left
+                else:
+                    raise "Cant determine direction for relationship %s = %s" % (binary.left.fullname, binary.right.fullname)
+                if self.direction == PropertyLoader.ONETOMANY:
+                    self.syncrules.append(SyncRule(self.parent, source, dest, dest_mapper=self.mapper))
+                elif self.direction == PropertyLoader.MANYTOONE:
+                    self.syncrules.append(SyncRule(self.mapper, source, dest, dest_mapper=self.parent))
+                else:
+                    raise "assert failed"
+            else:
+                colmap = {binary.left.table : binary.left, binary.right.table : binary.right}
+                if colmap.has_key(self.parent.primarytable) and colmap.has_key(self.target):
+                    if self.direction == PropertyLoader.ONETOMANY:
+                        self.syncrules.append(SyncRule(self.parent, colmap[self.parent.primarytable], colmap[self.target], dest_mapper=self.mapper))
+                    elif self.direction == PropertyLoader.MANYTOONE:
+                        self.syncrules.append(SyncRule(self.mapper, colmap[self.target], colmap[self.parent.primarytable], dest_mapper=self.parent))
+                    else:
+                        raise "assert failed"
+                elif colmap.has_key(self.parent.primarytable) and colmap.has_key(self.secondary):
+                    self.syncrules.append(SyncRule(self.parent, colmap[self.parent.primarytable],  colmap[self.secondary], direction=PropertyLoader.ONETOMANY))
+                elif colmap.has_key(self.target) and colmap.has_key(self.secondary):
+                    self.syncrules.append(SyncRule(self.mapper, colmap[self.target], colmap[self.secondary], direction=PropertyLoader.MANYTOONE))
+
+        self.syncrules = []
+        processor = BinaryVisitor(compile)
+        self.primaryjoin.accept_visitor(processor)
+        if self.secondaryjoin is not None:
+            self.secondaryjoin.accept_visitor(processor)
+        if len(self.syncrules) == 0:
+            raise "No syncrules generated for join criterion " + str(self.primaryjoin)
+
     def _synchronize(self, obj, child, associationrow, clearkeys):
+        """called during a commit to execute the full list of syncrules on the 
+        given object/child/optional association row"""
         if self.direction == PropertyLoader.ONETOMANY:
             source = obj
             dest = child
@@ -543,40 +563,61 @@ class PropertyLoader(MapperProperty):
             source = child
             dest = obj
         elif self.direction == PropertyLoader.MANYTOMANY:
-            source = None
             dest = associationrow
-
+            source = None
+            
         if dest is None:
             return
 
         for rule in self.syncrules:
-            localsource = source
-            (smapper, scol, dmapper, dcol) = rule
-            if localsource is None:
-                if dmapper == PropertyLoader.ONETOMANY:
-                    localsource = obj
-                elif dmapper == PropertyLoader.MANYTOONE:
-                    localsource = child
+            rule.execute(source, dest, obj, child, clearkeys)
 
+    class SyncRule(object):
+        """An instruction indicating how to populate the objects on each side of a relationship.  
+        i.e. if table1 column A is joined against
+        table2 column B, and we are a one-to-many from table1 to table2, a syncrule would say 
+        'take the A attribute from object1 and assign it to the B attribute on object2'.  
+        
+        A rule contains the source mapper, the source column, destination column, 
+        destination mapper in the case of a one/many relationship, and
+        the integer direction of this mapper relative to the association in the case
+        of a many to many relationship.
+        """
+        def __init__(self, source_mapper, source_column, dest_column, dest_mapper=None, direction=None):
+            self.source_mapper = source_mapper
+            self.source_column = source_column
+            self.direction = direction
+            self.dest_mapper = dest_mapper
+            self.dest_column = dest_column
+
+        def execute(self, source, dest, obj, child, clearkeys):
+            if self.direction is not None:
+                self.exec_many2many(dest, obj, child, clearkeys)
+            else:
+                self.exec_one2many(source, dest, clearkeys)
+
+        def exec_many2many(self, destination, obj, child, clearkeys):
+            if self.direction == PropertyLoader.ONETOMANY:
+                source = obj
+            elif self.direction == PropertyLoader.MANYTOONE:
+                source = child
             if clearkeys:
                 value = None
             else:
-                value = smapper._getattrbycolumn(localsource, scol)
-
-            if dest is associationrow:
-                associationrow[dcol.key] = value
+                value = self.source_mapper._getattrbycolumn(source, self.source_column)
+            destination[self.dest_column.key] = value
+            
+        def exec_one2many(self, source, destination, clearkeys):
+            if clearkeys or source is None:
+                value = None
             else:
-                #print "SYNC VALUE", value, "TO", dest
-                dmapper._setattrbycolumn(dest, dcol, value)
-
-    def execute(self, instance, row, identitykey, imap, isnew):
-        if self._is_primary():
-            return
-        #print "PLAIN PROPLOADER EXEC NON-PRIAMRY", repr(id(self)), repr(self.mapper.class_), self.key
-        objectstore.global_attributes.create_history(instance, self.key, self.uselist)
+                value = self.source_mapper._getattrbycolumn(source, self.source_column)
+            #print "SYNC VALUE", value, "TO", dest
+            self.dest_mapper._setattrbycolumn(destination, self.dest_column, value)
+                
 
 class LazyLoader(PropertyLoader):
-    def init_subclass(self, key, parent):
+    def do_init_subclass(self, key, parent):
         (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.table, self.primaryjoin, self.secondaryjoin, self.foreignkey)
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
@@ -626,7 +667,7 @@ class LazyLoader(PropertyLoader):
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
             # new object instance being loaded from a result row
-            if not self._is_primary():
+            if not self.is_primary():
                 #print "EXEC NON-PRIAMRY", repr(self.mapper.class_), self.key
                 # we are not the primary manager for this attribute on this class - set up a per-instance lazyloader,
                 # which will override the class-level behavior
@@ -643,12 +684,12 @@ def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     binds = {}
     def visit_binary(binary):
         circular = isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column) and binary.left.table is binary.right.table
-        if isinstance(binary.left, schema.Column) and ((not circular and binary.left.table is table) or (circular and foreignkey is binary.right)):
+        if isinstance(binary.left, schema.Column) and ((not circular and binary.left.table is table) or (circular and binary.right in foreignkey)):
             binary.left = binds.setdefault(binary.left,
                     sql.BindParamClause(binary.right.table.name + "_" + binary.right.name, None, shortname = binary.left.name))
             binary.swap()
 
-        if isinstance(binary.right, schema.Column) and ((not circular and binary.right.table is table) or (circular and foreignkey is binary.left)):
+        if isinstance(binary.right, schema.Column) and ((not circular and binary.right.table is table) or (circular and binary.left in foreignkey)):
             binary.right = binds.setdefault(binary.right,
                     sql.BindParamClause(binary.left.table.name + "_" + binary.left.name, None, shortname = binary.right.name))
                     
@@ -664,7 +705,7 @@ def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
 
 class EagerLoader(PropertyLoader):
     """loads related objects inline with a parent query."""
-    def init_subclass(self, key, parent, recursion_stack=None):
+    def do_init_subclass(self, key, parent, recursion_stack=None):
         parent._has_eager = True
 
         if recursion_stack is None:
@@ -724,7 +765,7 @@ class EagerLoader(PropertyLoader):
                 self.mapper = self.mapper.copy()
                 try:
                     for prop in eagerprops:
-                        p = prop._copy()
+                        p = prop.copy()
                         p.use_alias=True
 
                         self.mapper.props[prop.key] = p
@@ -732,7 +773,7 @@ class EagerLoader(PropertyLoader):
                         if recursion_stack.has_key(prop):
                             raise "Circular eager load relationship detected on " + str(self.mapper) + " " + key + repr(self.mapper.props)
 
-                        p.init_subclass(prop.key, prop.parent, recursion_stack)
+                        p.do_init_subclass(prop.key, prop.parent, recursion_stack)
 
                         p.eagerprimary = p.eagerprimary.copy_container()
                         aliasizer = Aliasizer(p.parent.table, aliases={p.parent.table:self.eagertarget})
@@ -834,7 +875,7 @@ class GenericOption(MapperOption):
         tokens = key.split('.', 1)
         if len(tokens) > 1:
             oldprop = mapper.props[tokens[0]]
-            newprop = oldprop._copy()
+            newprop = oldprop.copy()
             newprop.argument = self.process_by_key(oldprop.mapper.copy(), tokens[1])
             mapper.set_property(tokens[0], newprop)
         else:
@@ -866,7 +907,7 @@ class EagerLazyOption(GenericOption):
         oldprop = mapper.props[key]
         newprop = class_.__new__(class_)
         newprop.__dict__.update(oldprop.__dict__)
-        newprop.init_subclass(key, mapper)
+        newprop.do_init_subclass(key, mapper)
         if self.kwargs.get('selectalias', None):
             newprop.use_alias = True
         elif self.kwargs.get('use_alias', None) is not None:

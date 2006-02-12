@@ -259,7 +259,7 @@ class PGCompiler(ansisql.ANSICompiler):
             super(PGCompiler, self).visit_function(func)
         else:
             self.strings[func] = func.name
-
+        
     def visit_insert_column(self, column):
         # Postgres advises against OID usage and turns it off in 8.1,
         # effectively making cursor.lastrowid

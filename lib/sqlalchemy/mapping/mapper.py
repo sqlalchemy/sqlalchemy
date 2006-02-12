@@ -166,7 +166,7 @@ class Mapper(object):
         if inherits is not None:
             for key, prop in inherits.props.iteritems():
                 if not self.props.has_key(key):
-                    self.props[key] = prop._copy()
+                    self.props[key] = prop.copy()
                     self.props[key].parent = self
                     self.props[key].key = None  # force re-init
 
@@ -189,7 +189,6 @@ class Mapper(object):
         
     def __str__(self):
         return "Mapper|" + self.class_.__name__ + "|" + self.primarytable.name
-        
     
     def _is_primary_mapper(self):
         return mapper_registry.get(self.class_, None) is self
@@ -221,7 +220,6 @@ class Mapper(object):
     def set_property(self, key, prop):
         self.props[key] = prop
         prop.init(key, self)
-
     
     def instances(self, cursor, *mappers, **kwargs):
         limit = kwargs.get('limit', None)
@@ -744,7 +742,7 @@ class MapperProperty(object):
         """called when the mapper receives a row.  instance is the parent instance
         corresponding to the row. """
         raise NotImplementedError()
-    def _copy(self):
+    def copy(self):
         raise NotImplementedError()
     def get_criterion(self, key, value):
         """Returns a WHERE clause suitable for this MapperProperty corresponding to the 
@@ -762,15 +760,24 @@ class MapperProperty(object):
     def setup(self, key, statement, **options):
         """called when a statement is being constructed.  """
         return self
-    
     def init(self, key, parent):
         """called when the MapperProperty is first attached to a new parent Mapper."""
+        self.key = key
+        self.parent = parent
+        self.do_init(key, parent)
+    def do_init(self, key, parent):
+        """template method for subclasses"""
         pass
     def register_deleted(self, object, uow):
         """called when the instance is being deleted"""
         pass
     def register_dependencies(self, *args, **kwargs):
         pass
+    def is_primary(self):
+        """a return value of True indicates we are the primary MapperProperty for this loader's
+        attribute on our mapper's class.  It means we can set the object's attribute behavior
+        at the class level.  otherwise we have to set attribute behavior on a per-instance level."""
+        return self.parent._is_primary_mapper()
 
 class MapperOption(object):
     """describes a modification to a Mapper in the context of making a copy

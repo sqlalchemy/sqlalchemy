@@ -15,6 +15,14 @@ def to_list(x):
     else:
         return x
 
+def to_set(x):
+    if x is None:
+        return HashSet()
+    if not isinstance(x, HashSet):
+        return HashSet(to_list(x))
+    else:
+        return x
+        
 def generic_repr(obj, exclude=None):
     L = ['%s=%s' % (a, repr(getattr(obj, a))) for a in dir(obj) if not callable(getattr(obj, a)) and not a.startswith('_') and (exclude is None or not exclude.has_key(a))]
     return '%s(%s)' % (obj.__class__.__name__, ','.join(L))
@@ -171,7 +179,7 @@ class DictDecorator(dict):
             return self.decorate[key]
 class HashSet(object):
     """implements a Set."""
-    def __init__(self, iter = None, ordered = False):
+    def __init__(self, iter=None, ordered=False):
         if ordered:
             self.map = OrderedDict()
         else:
@@ -185,6 +193,8 @@ class HashSet(object):
         return self.map.has_key(item)
     def clear(self):
         self.map.clear()
+    def empty(self):
+        return len(self.map) == 0
     def append(self, item):
         self.map[item] = item
     def remove(self, item):
