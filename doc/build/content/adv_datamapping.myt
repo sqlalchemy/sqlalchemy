@@ -82,15 +82,15 @@
                         Addresses.c.city=='New York')),
         })
         </&>
-        <p>A complication arises with the above pattern if you want the relations to be eager loaded.  Since there will be two separate joins to the addresses table during an eager load, an alias needs to be used to separate them.  You can create an alias of the addresses table to separate them, but then you are in effect creating a brand new mapper for each property, unrelated to the main Address mapper, which can create problems with commit operations.  So an additional argument <span class="codeline">selectalias</span> can be used with an eager relationship to specify the alias to be used just within the eager query:</p>
+        <p>A complication arises with the above pattern if you want the relations to be eager loaded.  Since there will be two separate joins to the addresses table during an eager load, an alias needs to be used to separate them.  You can create an alias of the addresses table to separate them, but then you are in effect creating a brand new mapper for each property, unrelated to the main Address mapper, which can create problems with commit operations.  So an additional argument <span class="codeline">use_alias</span> can be used with an eager relationship to specify the alias to be used just within the eager query:</p>
         <&|formatting.myt:code&>
         User.mapper = mapper(User, users, properties={
             'boston_addreses' : relation(Address.mapper, primaryjoin=
                         and_(User.c.user_id==Address.c.user_id, 
-                        Addresses.c.city=='Boston'), lazy=False, selectalias='boston_ad'),
+                        Addresses.c.city=='Boston'), lazy=False, use_alias=True),
             'newyork_addresses' : relation(Address.mapper, primaryjoin=
                         and_(User.c.user_id==Address.c.user_id, 
-                        Addresses.c.city=='New York'), lazy=False, selectalias='newyork_ad'),
+                        Addresses.c.city=='New York'), lazy=False, use_alias=True),
         })
         
         <&formatting.myt:poplink&>u = User.mapper.select()
@@ -98,18 +98,18 @@
         <&|formatting.myt:codepopper, link="sql" &>
         SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
         users.password AS users_password, 
-        boston_ad.address_id AS boston_ad_address_id, boston_ad.user_id AS boston_ad_user_id, 
-        boston_ad.street AS boston_ad_street, boston_ad.city AS boston_ad_city, 
-        boston_ad.state AS boston_ad_state, boston_ad.zip AS boston_ad_zip, 
-        newyork_ad.address_id AS newyork_ad_address_id, newyork_ad.user_id AS newyork_ad_user_id, 
-        newyork_ad.street AS newyork_ad_street, newyork_ad.city AS newyork_ad_city, 
-        newyork_ad.state AS newyork_ad_state, newyork_ad.zip AS newyork_ad_zip 
+        addresses_EF45.address_id AS addresses_EF45_address_id, addresses_EF45.user_id AS addresses_EF45_user_id, 
+        addresses_EF45.street AS addresses_EF45_street, addresses_EF45.city AS addresses_EF45_city, 
+        addresses_EF45.state AS addresses_EF45_state, addresses_EF45.zip AS addresses_EF45_zip, 
+        addresses_63C5.address_id AS addresses_63C5_address_id, addresses_63C5.user_id AS addresses_63C5_user_id, 
+        addresses_63C5.street AS addresses_63C5_street, addresses_63C5.city AS addresses_63C5_city, 
+        addresses_63C5.state AS addresses_63C5_state, addresses_63C5.zip AS addresses_63C5_zip 
         FROM users 
-        LEFT OUTER JOIN addresses AS boston_ad ON users.user_id = boston_ad.user_id 
-        AND boston_ad.city = :addresses_city 
-        LEFT OUTER JOIN addresses AS newyork_ad ON users.user_id = newyork_ad.user_id 
-        AND newyork_ad.city = :addresses_city_1
-        ORDER BY users.oid, boston_ad.oid, newyork_ad.oid
+        LEFT OUTER JOIN addresses AS addresses_EF45 ON users.user_id = addresses_EF45.user_id 
+        AND addresses_EF45.city = :addresses_city 
+        LEFT OUTER JOIN addresses AS addresses_63C5 ON users.user_id = addresses_63C5.user_id 
+        AND addresses_63C5.city = :addresses_city_1
+        ORDER BY users.oid, addresses_EF45.oid, addresses_63C5.oid
         {'addresses_city_1': 'New York', 'addresses_city': 'Boston'}
         </&>
         </&>
@@ -127,8 +127,8 @@
         <li>backreference - indicates the name of a property to be placed on the related mapper's class that will handle this relationship in the other direction, including synchronizing the object attributes on both sides of the relation.  See the example in <&formatting.myt:link, path="datamapping_relations_backreferences"&>.</li>
         <li>order_by - indicates the ordering that should be applied when loading these items.  See the section <&formatting.myt:link, path="adv_datamapping_orderby" &> for details.</li>
         <li>association - When specifying a many to many relationship with an association object, this keyword should reference the mapper of the target object of the association.  See the example in <&formatting.myt:link, path="datamapping_association"&>.</li>
-        <li>selectalias - Useful with eager loads, this specifies a table alias name that will be used when creating joins against the parent table.  The property is still created against the original table, and the aliased table is used only for the actual query.  Aliased columns in the result set are translated back to that of the original table when creating object instances.</li>
-        <li>live=False - (deprecated) a special type of "lazy load" where the list values will be loaded on every access.  A "live" property should be treated as read-only.  This type of property is useful in combination with "private" when used with a parent object which wants to force a delete of all its child items, attached or not, when it is deleted; since it always loads everything when accessed, you can be guaranteed that all child objects will be properly removed as well.</li>
+        <li>use_alias - Useful with eager loads, a value of True indicates that unique alias names should be generated when creating joins against the parent table, to avoid conflicts with parallel joins of the same two tables.  The unique aliasing will be propigated into all child eager joins as well to maintain their isolation.  This aliasing only occurs when generating SELECT statements, and aliased columns in the result set are translated back to that of the original table when creating object instances.</li>
+        <li>live=False - this option is no longer used.</li>
     </ul>
     </&>
 

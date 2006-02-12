@@ -106,7 +106,7 @@ class PropertyLoader(MapperProperty):
 
     """describes an object property that holds a single item or list of items that correspond
     to a related database table."""
-    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, live=False, association=None, use_alias=False, selectalias=None, order_by=False, attributeext=None, backref=None, is_backref=False):
+    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, association=None, use_alias=False, selectalias=None, order_by=False, attributeext=None, backref=None, is_backref=False):
         self.uselist = uselist
         self.argument = argument
         self.secondary = secondary
@@ -126,7 +126,6 @@ class PropertyLoader(MapperProperty):
             self.foreigntable = None
             
         self.private = private
-        self.live = live
         self.association = association
         if isinstance(selectalias, str):
             print "'selectalias' argument to property is deprecated.  please use 'use_alias=True'"
@@ -626,7 +625,7 @@ class LazyLoader(PropertyLoader):
     def _set_class_attribute(self, class_, key):
         # establish a class-level lazy loader on our class
         #print "SETCLASSATTR LAZY", repr(class_), key
-        objectstore.global_attributes.register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private, live=self.live, callable_=lambda i: self.setup_loader(i), extension=self.attributeext)
+        objectstore.global_attributes.register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private, callable_=lambda i: self.setup_loader(i), extension=self.attributeext)
 
     def setup_loader(self, instance):
         def lazyload():

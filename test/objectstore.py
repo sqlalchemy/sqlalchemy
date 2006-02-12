@@ -789,11 +789,9 @@ class SaveTest(AssertMixin):
         m1 = mapper(User, users, is_primary=True)
         
         m2 = mapper(Address, addresses, properties = dict(
-            user = relation(m1, lazy = False)
+            user = relation(m1, lazy = False, backref='addresses')
         ), is_primary=True)
         
-        # "live" means, when "addresses" is accessed, do a DB call every time
-        m1.add_property('addresses', relation(m2, private=True, lazy=True, live=True))
  
         u = User()
         print repr(u.addresses)
