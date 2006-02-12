@@ -222,7 +222,7 @@ class ANSICompiler(sql.Compiled):
 
     def visit_bindparam(self, bindparam):
         if bindparam.shortname != bindparam.key:
-            self.binds[bindparam.shortname] = bindparam
+            self.binds.setdefault(bindparam.shortname, bindparam)
         count = 1
         key = bindparam.key
 
