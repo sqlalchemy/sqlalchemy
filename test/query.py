@@ -42,7 +42,7 @@ class QueryTest(PersistTest):
         print repr(self.users.select().execute().fetchall())
 
     def testdefaults(self):
-        x = {'x':0}
+        x = {'x':50}
         def mydefault():
             x['x'] += 1
             return x['x']
@@ -51,7 +51,7 @@ class QueryTest(PersistTest):
         
         # select "count(1)" from the DB which returns different results
         # on different DBs
-        f = select([func.count(1)], engine=db).scalar()
+        f = select([func.count(1) + 5], engine=db).scalar()
         if use_function_defaults:
             def1 = func.current_date()
             def2 = text("current_date")
@@ -62,11 +62,20 @@ class QueryTest(PersistTest):
             ts = 3
             deftype = Integer
             
-        t = Table('default_test1', db, 
+        t = Table('default_test1', db,
+            # python function
             Column('col1', Integer, primary_key=True, default=mydefault),
+            
+            # python literal
             Column('col2', String(20), default="imthedefault"),
-            Column('col3', Integer, default=func.count(1)),
+            
+            # preexecute expression
+            Column('col3', Integer, default=func.count(1) + 5),
+            
+            # SQL-side default from sql expression
             Column('col4', deftype, PassiveDefault(def1)),
+            
+            # SQL-side default from literal expression
             Column('col5', deftype, PassiveDefault(def2))
         )
         t.create()
@@ -77,7 +86,7 @@ class QueryTest(PersistTest):
             t.insert().execute()
         
             l = t.select().execute()
-            self.assert_(l.fetchall() == [(1, 'imthedefault', f, ts, ts), (2, 'imthedefault', f, ts, ts), (3, 'imthedefault', f, ts, ts)])
+            self.assert_(l.fetchall() == [(51, 'imthedefault', f, ts, ts), (52, 'imthedefault', f, ts, ts), (53, 'imthedefault', f, ts, ts)])
         finally:
             t.drop()
         
