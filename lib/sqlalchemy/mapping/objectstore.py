@@ -993,8 +993,7 @@ def session(obj=None):
             try:
                 return _sessions[hashkey]
             except KeyError:
-                # oh, its gone, nevermind
-                pass
+                raise "Session '%s' referenced by object '%s' no longer exists" % (hashkey, repr(obj))
 
     try:
         # have a thread-locally defined session (via using_session) ?
