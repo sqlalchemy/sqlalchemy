@@ -32,24 +32,29 @@ class Session(object):
     The registry is capable of maintaining object instances on a thread-local, 
     per-application, or custom user-defined basis."""
     
-    def __init__(self, uow=None, registry=None, hash_key=None):
+    def __init__(self, scope="application", getter=None, hash_key=None, keyfunc=None):
         """Initialize the objectstore with a UnitOfWork registry.  If called
         with no arguments, creates a single UnitOfWork for all operations.
         
-        registry - a sqlalchemy.util.ScopedRegistry to produce UnitOfWork instances.
-        This argument should not be used with the uow argument.
-        uow - a UnitOfWork to use for all operations.  this argument should not be
-        used with the registry argument.
+        scope - "application" or "thread", the two default scopes
+        getter - a callable that takes this Session as an argument and returns a 
+        new UnitOfWork.
         hash_key - the hash_key used to identify objects against this session, which 
         defaults to the id of the Session instance.
-        
+        keyfunc - allows custom scopes by providing a callable to return the "key"
+        identifying the desired UnitOfWork.
         """
-        if registry is None:
-            if uow is None:
-                uow = UnitOfWork(self)
-            self.registry = util.ScopedRegistry(lambda:uow, 'application')
+        if keyfunc is None:
+            if scope=="thread":
+                keyfunc = thread.get_ident
+            elif scope=="application":
+                keyfunc = lambda: True
+        if getter is None:
+            def createfunc():
+                return UnitOfWork(self)
         else:
-            self.registry = registry
+            createfunc = lambda: getter(self)
+        self.registry = util.ScopedRegistry(createfunc, keyfunc)
         self._hash_key = hash_key
 
     def get_id_key(ident, class_, table):
@@ -390,7 +395,7 @@ class UnitOfWork(object):
             for e in engines:
                 e.rollback()
             if self.parent:
-                self.rollback()
+                self.session.registry.set(self.parent)
             raise
         for e in engines:
             e.commit()
@@ -401,15 +406,8 @@ class UnitOfWork(object):
             self.session.registry.set(self.parent)
 
     def rollback_object(self, obj):
+        """'rolls back' the attributes that have been changed on an object instance."""
         self.attributes.rollback(obj)
-
-    def rollback(self):
-        if not self.is_begun:
-            raise "UOW transaction is not begun"
-        # roll back attributes ?  nah....
-        #for obj in self.deleted + self.dirty + self.new:
-        #    self.attributes.rollback(obj)
-        self.session.registry.set(self.parent)
             
 class UOWTransaction(object):
     """handles the details of organizing and executing transaction tasks 
@@ -977,11 +975,11 @@ def object_mapper(obj):
 
 global_attributes = UOWAttributeManager()
 
-thread_session = Session(registry=util.ScopedRegistry(lambda: UnitOfWork(thread_session), "thread"), hash_key='thread')
-uow = thread_session.registry # Note: this is not a UnitOfWork, it is a ScopedRegistry that manages UnitOfWork objects
+global_session = Session(scope="thread", hash_key='thread')
+uow = global_session.registry # Note: this is not a UnitOfWork, it is a ScopedRegistry that manages UnitOfWork objects
 
 _sessions = weakref.WeakValueDictionary()
-_sessions[thread_session.hash_key] = thread_session
+_sessions[global_session.hash_key] = global_session
 
 def session(obj=None):
     # object-specific session ?
@@ -1000,17 +998,26 @@ def session(obj=None):
         return _sessions[thread.get_ident()]
     except KeyError:
         # nope, return the regular session
-        return thread_session
+        return global_session
+
+def push_session(sess):
+    old = _sessions.get(thread.get_ident(), None)
+    sess._previous = old
+    _sessions[sess.hash_key] = sess
+    _sessions[thread.get_ident()] = sess
+    
+def pop_session():
+    sess = _sessions[thread.get_ident()]
+    old = sess._previous
+    sess._previous = None
+    _sessions[old.hash_key] = old
+    _sessions[thread.get_ident()] = old
+    return old
     
 def using_session(sess, func):
-    old = _sessions.get(thread.get_ident(), None)
+    push_session(sess)
     try:
-        _sessions[sess.hash_key] = sess
-        _sessions[thread.get_ident()] = sess
         return func()
     finally:
-        if old is not None:
-            _session[thread.get_ident()] = old
-        else:
-            del _session[thread.get_ident()]
+        pop_session()
 

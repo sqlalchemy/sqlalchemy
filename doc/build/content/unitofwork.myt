@@ -16,40 +16,36 @@
     </ul></p>
     </&>
     <&|doclib.myt:item, name="getting", description="Accessing UnitOfWork Instances" &>
-    <p>To get a hold of the current unit of work, its available inside a thread local registry object (an instance of <span class="codeline">sqlalchemy.util.ScopedRegistry</span>) in the objectstore package:</p>
+    <p>The current unit of work is a thread-local instance maintained within an object called a Session.  These objects are accessed as follows:</p>
         <&|formatting.myt:code&>
-            u = objectstore.uow()
+            # get the current session - there is by default one per application
+            s = objectstore.session()
+            
+            # get the thread local unit of work from the session
+            u = s.uow
         </&>
-    <p>You can also construct your own UnitOfWork object.  However, to get your mappers to talk to it, it has to be placed in the current thread-local scope:</p>
+    <p>The Session object acts as a proxy to all attributes on the current thread's unit of work and also includes the common methods begin(), commit(), etc.  Also, most methods are available as functions on the objectstore package itself so common operations need not explicitly reference the current Session or UnitOfWork instance.
+    </p>
+    <p>To clear out the current thread's UnitOfWork, which has the effect of discarding the Identity Map and the lists of all objects that have been modified, just issue a clear:
+    </p>
     <&|formatting.myt:code&>
-        u = objectstore.UnitOfWork()
-        objectstore.uow.set(u)
+        objectstore.clear()
     </&>
-    <p>Whatever unit of work is present in the registry can be cleared out, which will create a new one upon the next access:</p>
-    <&|formatting.myt:code&>
-        objectstore.uow.clear()
-    </&>
-    <p>The uow attribute also can be made to use "application" scope, instead of "thread" scope, meaning all threads will access the same instance of UnitOfWork:</p>
-    <&|formatting.myt:code&>
-        objectstore.uow.defaultscope = 'application'
-    </&>
-    <p>Although theres not much advantage to doing so, and also would make mapper usage not thread safe.</p>
-    
-    <p>The objectstore package includes many module-level methods which all operate upon the current UnitOfWork object.  These include begin(), commit(), clear(), delete(), has_key(), and import_instance(), which are described below.</p>
+    <p>This is the easiest way to "start fresh", as in a web application that wants to have a newly loaded graph of objects on each request.  Any object instances before the clear operation should be discarded.</p>
     </&>
     <&|doclib.myt:item, name="begincommit", description="Begin/Commit" &>
     <p>The current thread's UnitOfWork object keeps track of objects that are modified.  It maintains the following lists:</p>
     <&|formatting.myt:code&>
         # new objects that were just constructed
-        objectstore.uow().new
+        objectstore.session().new
         
         # objects that exist in the database, that were modified
-        objectstore.uow().dirty
+        objectstore.session().dirty
         
         # objects that have been marked as deleted via objectstore.delete()
-        objectstore.uow().deleted
+        objectstore.session().deleted
     </&>
-    <p>To commit the changes stored in those lists, just issue a commit.  This can be called via <span class="codeline">objectstore.uow().commit()</span>, or through the module-level convenience method in the objectstore module:</p>
+    <p>To commit the changes stored in those lists, just issue a commit.  This can be called via <span class="codeline">objectstore.session().commit()</span>, or through the module-level convenience method in the objectstore module:</p>
     <&|formatting.myt:code&>
         objectstore.commit()
     </&>
@@ -63,7 +59,7 @@
     <&|formatting.myt:code&>
         objectstore.commit(myobj1, myobj2, ...)
     </&>
-    <p>This feature should be used carefully, as it may result in an inconsistent save state between dependent objects (it should manage to locate loaded dependencies and save those also, but it hasnt been tested much).</p>
+    <p>Committing just a subset of instances should be used carefully, as it may result in an inconsistent save state between dependent objects (it should manage to locate loaded dependencies and save those also, but it hasnt been tested much).</p>
     
     <&|doclib.myt:item, name="begin", description="Controlling Scope with begin()" &>
     
@@ -169,6 +165,71 @@
     </&>
 <p>Note that the import_instance() function will either mark the deserialized object as the official copy in the current identity map, which includes updating its _identity_key with the current application's class instance, or it will discard it and return the corresponding object that was already present.</p>
     </&>
-    <&|doclib.myt:item, name="rollback", description="Rollback" &>
+
+    <&|doclib.myt:item, name="advscope", description="Advanced UnitOfWork Scope Management"&>
+    <p>The current thread's UnitOfWork can be replaced with a manually created instance:</p>
+    <&|formatting.myt:code&>
+        # get the Session
+        s = objectstore.session()
+        
+        # create new UnitOfWork
+        u = objectstore.UnitOfWork(s)
+        
+        # set it on the Session for the current thread
+        s.uow = u
+    </&>
+    <p>The global Session can also be replaced.  This allows changing the algorithm used to retrieve the current scoped UnitOfWork object.</p>
+    <&|formatting.myt:code&>
+        # make a new Session, with just one global UnitOfWork
+        s = objectstore.Session()
+        
+        # make a new Session that returns thread-local UnitOfWork objects
+        s = objectstore.Session(scope="thread")
+        
+        # make a new Session, with a custom scope 
+        # give it a "key" function used to identify a UnitOfWork
+        def myreg():
+            return "mykey"
+        s = objectstore.Session(keyfunc=myreg)
+        
+        # make a Session with a custom function to create UnitOfWorks
+        def myuow(session):
+            return UnitOfWork(session)
+        s = objectstore.Session(createfunc=myuow)
+
+        # set this Session as the global "session":
+        objectstore.global_session = s
+    </&>
+
+    <&|doclib.myt:item, name="object", description="Per-Object Sessions" &>
+    <p>Sessions can be created on an ad-hoc basis and used for individual groups of objects and operations.  This has the effect of bypassing the entire "global"/"threadlocal" UnitOfWork system and explicitly using a particular Session:</p>
+    <&|formatting.myt:code&>
+        # make a new Session with a global UnitOfWork
+        s = objectstore.Session()
+        
+        # make objects bound to this Session
+        x = MyObj(_sa_session=s)
+        
+        # perform mapper operations bound to this Session
+        # (this function coming soon)
+        r = MyObj.mapper.using(s).select_by(id=12)
+            
+        # get the session that corresponds to an instance
+        s = objectstore.session(x)
+        
+        # commit 
+        s.commit()
+
+        # perform a block of operations with this session set within the current scope
+        objectstore.push_session(s)
+        try:
+            r = mapper.select_by(id=12)
+            x = new MyObj()
+            objectstore.commit()
+        finally:
+            objectstore.pop_session()
+    </&>
+    </&>
+    
     </&>
 </&>

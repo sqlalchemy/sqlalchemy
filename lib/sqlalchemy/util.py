@@ -367,45 +367,35 @@ class HistoryArraySet(UserList.UserList):
         
 class ScopedRegistry(object):
     """a Registry that can store one or multiple instances of a single class 
-    on a per-application or per-thread scoped basis
+    on a per-thread scoped basis, or on a customized scope
     
     createfunc - a callable that returns a new object to be placed in the registry
-    defaultscope - the default scope to be used ('application', 'thread', or 'session')
+    scopefunc - a callable that will return a key to store/retrieve an object,
+    defaults to thread.get_ident for thread-local objects.  use a value like
+    lambda: True for application scope.
     """
-    def __init__(self, createfunc, defaultscope):
+    def __init__(self, createfunc, scopefunc=None):
         self.createfunc = createfunc
-        self.defaultscope = defaultscope
-        self.scopes = {
-            "application": lambda:None,
-            "thread": thread.get_ident,
-        }
+        if scopefunc is None:
+            scopefunc = thread.get_ident
+        else:
+            self.scopefunc = scopefunc
         self.registry = {}
-
-    def add_scope(self, scope, keyfunc, default=True):
-        self.scopes[scope] = keyfunc
-        if default:
-            self.defaultscope = scope
-
-    def __call__(self, scope=None):
-        key = self._get_key(scope)
+    def __call__(self):
+        key = self._get_key()
         try:
             return self.registry[key]
         except KeyError:
             return self.registry.setdefault(key, self.createfunc())
-
-    def set(self, obj, scope=None):
-        self.registry[self._get_key(scope)] = obj
-        
-    def clear(self, scope=None):
+    def set(self, obj):
+        self.registry[self._get_key()] = obj
+    def clear(self):
         try:
-            del self.registry[self._get_key(scope)]
+            del self.registry[self._get_key()]
         except KeyError:
             pass
-
-    def _get_key(self, scope, *args, **kwargs):
-        if scope is None:
-            scope = self.defaultscope
-        return (scope, self.scopes[scope]())
+    def _get_key(self):
+        return self.scopefunc()
 
 
 def constructor_args(instance, **kwargs):
