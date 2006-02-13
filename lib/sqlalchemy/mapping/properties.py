@@ -106,12 +106,13 @@ class PropertyLoader(MapperProperty):
 
     """describes an object property that holds a single item or list of items that correspond
     to a related database table."""
-    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, association=None, use_alias=False, selectalias=None, order_by=False, attributeext=None, backref=None, is_backref=False):
+    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, association=None, use_alias=False, selectalias=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False):
         self.uselist = uselist
         self.argument = argument
         self.secondary = secondary
         self.primaryjoin = primaryjoin
         self.secondaryjoin = secondaryjoin
+        self.post_update = post_update
         
         # a list of columns representing "the other side"
         # of the relationship
@@ -359,12 +360,20 @@ class PropertyLoader(MapperProperty):
             uowcommit.register_processor(stub, self, self.parent, False)
             uowcommit.register_processor(stub, self, self.parent, True)
         elif self.direction == PropertyLoader.ONETOMANY:
+            if self.post_update:
+                raise "post_update not yet supported with one-to-many relation"
             uowcommit.register_dependency(self.parent, self.mapper)
             uowcommit.register_processor(self.parent, self, self.parent, False)
             uowcommit.register_processor(self.parent, self, self.parent, True)
         elif self.direction == PropertyLoader.MANYTOONE:
-            uowcommit.register_dependency(self.mapper, self.parent)
-            uowcommit.register_processor(self.mapper, self, self.parent, False)
+            if self.post_update:
+                stub = PropertyLoader.MapperStub(self.mapper)
+                uowcommit.register_dependency(self.mapper, stub)
+                uowcommit.register_processor(stub, self, self.parent, False)
+                uowcommit.register_processor(stub, self, self.parent, True)
+            else:
+                uowcommit.register_dependency(self.mapper, self.parent)
+                uowcommit.register_processor(self.mapper, self, self.parent, False)
         else:
             raise " no foreign key ?"
 
@@ -426,7 +435,10 @@ class PropertyLoader(MapperProperty):
         elif self.direction == PropertyLoader.MANYTOONE and delete:
             # head object is being deleted, and we manage a foreign key object.
             # dont have to do anything to it.
-            pass
+            if self.post_update:
+                for obj in deplist:
+                    self._synchronize(obj, None, None, True)
+                    task.mapper.save_obj([obj], uowcommit, postupdate=True)
         elif self.direction == PropertyLoader.ONETOMANY and delete:
             # head object is being deleted, and we manage its list of child objects
             # the child objects have to have their foreign key to the parent set to NULL
@@ -476,7 +488,7 @@ class PropertyLoader(MapperProperty):
                         #print "DELETE ASSOC OBJ", repr(child)
                         uowcommit.register_object(child, isdelete=True)
         else:
-            for obj in deplist:
+            for obj in deplist:            
                 if self.direction == PropertyLoader.MANYTOONE:
                     uowcommit.register_object(obj)
                 childlist = getlist(obj, passive=True)
@@ -484,8 +496,12 @@ class PropertyLoader(MapperProperty):
                 for child in childlist.added_items():
                     self._synchronize(obj, child, None, False)
                     if self.direction == PropertyLoader.ONETOMANY and child is not None:
-                        # for a cyclical task, this registration is handled by the objectstore
-                        uowcommit.register_object(child)
+                        if self.post_update:
+                            task.mapper.save_obj([child],uowcommit, postupdate=True)
+                        else:
+                            uowcommit.register_object(child)
+                if self.post_update:
+                    task.mapper.save_obj([obj], uowcommit, postupdate=True)
                 if self.direction != PropertyLoader.MANYTOONE or len(childlist.added_items()) == 0:
                     for child in childlist.deleted_items():
                         if not self.private:
@@ -611,7 +627,7 @@ class PropertyLoader(MapperProperty):
                 value = None
             else:
                 value = self.source_mapper._getattrbycolumn(source, self.source_column)
-            #print "SYNC VALUE", value, "TO", dest
+            #print "SYNC VALUE", value, "TO", destination
             self.dest_mapper._setattrbycolumn(destination, self.dest_column, value)
                 
 

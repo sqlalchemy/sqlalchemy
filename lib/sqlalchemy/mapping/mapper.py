@@ -461,7 +461,7 @@ class Mapper(object):
         self.columntoproperty[column.original][0].setattr(obj, value)
 
         
-    def save_obj(self, objects, uow):
+    def save_obj(self, objects, uow, postupdate=False):
         """called by a UnitOfWork object to save objects, which involves either an INSERT or
         an UPDATE statement for each table used by this mapper, for each element of the
         list."""
@@ -492,7 +492,10 @@ class Mapper(object):
                 #print "SAVE_OBJ we are Mapper(" + str(id(self)) + ") obj: " +  obj.__class__.__name__ + repr(id(obj))
                 params = {}
 
-                isinsert = not hasattr(obj, "_instance_key")
+                # 'postupdate' means a PropertyLoader is telling us, "yes I know you 
+                # already inserted/updated this row but I need you to UPDATE one more 
+                # time"
+                isinsert = not postupdate and not hasattr(obj, "_instance_key")
                 if isinsert:
                     self.extension.before_insert(self, obj)
                 else:
