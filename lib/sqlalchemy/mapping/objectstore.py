@@ -168,7 +168,7 @@ class Session(object):
             else:
                 instance._instance_key = key
                 u.identity_map[key] = instance
-                self.bind_to(instance)
+                self._bind_to(instance)
         else:
             u.register_new(instance)
         return instance
