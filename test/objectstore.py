@@ -151,7 +151,7 @@ class DefaultTest(AssertMixin):
         use_string_defaults = db.engine.__module__.endswith('postgres') or db.engine.__module__.endswith('oracle') or db.engine.__module__.endswith('sqlite')
 
         if use_string_defaults:
-            hohotype = String
+            hohotype = String(30)
             self.hohoval = "im hoho"
             self.althohoval = "im different hoho"
         else:
@@ -162,7 +162,7 @@ class DefaultTest(AssertMixin):
         Column('id', Integer, Sequence("dt_seq", optional=True), primary_key=True),
         Column('hoho', hohotype, PassiveDefault(str(self.hohoval))),
         Column('counter', Integer, PassiveDefault("7")),
-        Column('foober', String, default="im foober")
+        Column('foober', String(30), default="im foober")
         )
         self.table.create()
     def tearDownAll(self):
