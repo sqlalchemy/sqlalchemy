@@ -20,7 +20,10 @@ pysqlite2_timesupport = False   # Change this if the init.d guys ever get around
 try:
     from pysqlite2 import dbapi2 as sqlite
 except:
-    sqlite = None
+    try:
+        sqlite = __import__('sqlite') # skip ourselves
+    except:
+        sqlite = None
 
 class SLNumeric(sqltypes.Numeric):
     def get_col_spec(self):
