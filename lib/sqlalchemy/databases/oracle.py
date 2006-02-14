@@ -55,6 +55,7 @@ colspecs = {
     sqltypes.Integer : OracleInteger,
     sqltypes.Smallinteger : OracleSmallInteger,
     sqltypes.Numeric : OracleNumeric,
+    sqltypes.Float : OracleNumeric,
     sqltypes.DateTime : OracleDateTime,
     sqltypes.Date : OracleDateTime,
     sqltypes.String : OracleString,
