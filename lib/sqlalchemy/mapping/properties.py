@@ -116,13 +116,9 @@ class PropertyLoader(MapperProperty):
         
         # a list of columns representing "the other side"
         # of the relationship
-        self.foreignkey = util.to_set(foreignkey)
-        
-        # foreign table is then just the table represented 
-        # by the foreignkey
-        for c in self.foreignkey:
-            self.foreigntable = c.table
-            break
+        self.foreignkey = foreignkey  #util.to_set(foreignkey)
+        if foreignkey:
+            self.foreigntable = foreignkey.table
         else:
             self.foreigntable = None
             
@@ -177,7 +173,7 @@ class PropertyLoader(MapperProperty):
         # if the foreign key wasnt specified and theres no assocaition table, try to figure
         # out who is dependent on who. we dont need all the foreign keys represented in the join,
         # just one of them.  
-        if self.foreignkey.empty() and self.secondaryjoin is None:
+        if self.foreignkey is None and self.secondaryjoin is None:
             # else we usually will have a one-to-many where the secondary depends on the primary
             # but its possible that its reversed
             self._find_dependent()
@@ -222,9 +218,8 @@ class PropertyLoader(MapperProperty):
     def _get_direction(self):
 #        print self.key, repr(self.parent.table.name), repr(self.parent.primarytable.name), repr(self.foreignkey.table.name)
         if self.parent.table is self.target:
-            for col in self.foreignkey:
-                if col.primary_key:
-                    return PropertyLoader.MANYTOONE
+            if self.foreignkey.primary_key:
+                return PropertyLoader.MANYTOONE
             else:
                 return PropertyLoader.ONETOMANY
         elif self.secondaryjoin is not None:
@@ -250,12 +245,12 @@ class PropertyLoader(MapperProperty):
                 if dependent[0] is binary.left.table:
                     raise "bidirectional dependency not supported...specify foreignkey"
                 dependent[0] = binary.right.table
-                self.foreignkey.append(binary.right)
+                self.foreignkey= binary.right
             elif isinstance(binary.right, schema.Column) and binary.right.primary_key:
                 if dependent[0] is binary.right.table:
                     raise "bidirectional dependency not supported...specify foreignkey"
                 dependent[0] = binary.left.table
-                self.foreignkey.append(binary.left)
+                self.foreignkey = binary.left
         visitor = BinaryVisitor(foo)
         self.primaryjoin.accept_visitor(visitor)
         if dependent[0] is None:
@@ -699,12 +694,12 @@ def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     binds = {}
     def visit_binary(binary):
         circular = isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column) and binary.left.table is binary.right.table
-        if isinstance(binary.left, schema.Column) and ((not circular and binary.left.table is table) or (circular and binary.right in foreignkey)):
+        if isinstance(binary.left, schema.Column) and ((not circular and binary.left.table is table) or (circular and binary.right is foreignkey)):
             binary.left = binds.setdefault(binary.left,
                     sql.BindParamClause(binary.right.table.name + "_" + binary.right.name, None, shortname = binary.left.name))
             binary.swap()
 
-        if isinstance(binary.right, schema.Column) and ((not circular and binary.right.table is table) or (circular and binary.left in foreignkey)):
+        if isinstance(binary.right, schema.Column) and ((not circular and binary.right.table is table) or (circular and binary.left is foreignkey)):
             binary.right = binds.setdefault(binary.right,
                     sql.BindParamClause(binary.left.table.name + "_" + binary.left.name, None, shortname = binary.right.name))
                     
