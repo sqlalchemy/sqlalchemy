@@ -27,10 +27,7 @@ __all__ = ['get_id_key', 'get_row_key', 'is_dirty', 'import_instance', 'commit',
 LOG = False
     
 class Session(object):
-    """a scope-managed proxy to UnitOfWork instances.  Operations are delegated
-    to UnitOfWork objects which are accessed via a sqlalchemy.util.ScopedRegistry object.  
-    The registry is capable of maintaining object instances on a thread-local, 
-    per-application, or custom user-defined basis."""
+    """Maintains a UnitOfWork instance, including transaction state."""
     
     def __init__(self, nest_transactions=False, hash_key=None):
         """Initialize the objectstore with a UnitOfWork registry.  If called
