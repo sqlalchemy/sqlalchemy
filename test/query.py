@@ -48,11 +48,18 @@ class QueryTest(PersistTest):
             return x['x']
 
         use_function_defaults = db.engine.__module__.endswith('postgres') or db.engine.__module__.endswith('oracle')
-        
+        is_oracle = db.engine.__module__.endswith('oracle')
+ 
         # select "count(1)" from the DB which returns different results
         # on different DBs
-        f = select([func.count(1) + 5], engine=db).scalar()
-        if use_function_defaults:
+        if is_oracle:
+            f = select([func.count(1) + 5], engine=db, from_obj=['DUAL']).scalar()
+            ts = select([func.sysdate()], engine=db, from_obj=['DUAL']).scalar()
+            def1 = func.sysdate()
+            def2 = text("sysdate")
+            deftype = Date
+        elif use_function_defaults:
+            f = select([func.count(1) + 5], engine=db).scalar()
             def1 = func.current_date()
             def2 = text("current_date")
             deftype = Date

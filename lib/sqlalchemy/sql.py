@@ -595,7 +595,7 @@ class FromClause(Selectable):
                     cp = self._proxy_column(co)
                     self._orig_cols[co.original] = cp
     def _exportable_columns(self):
-        raise NotImplementedError(repr(self))
+	return []
     def _proxy_column(self, column):
         return column._make_proxy(self)
     

@@ -42,7 +42,7 @@ def suite():
         
         # extensions
         'proxy_engine',
-        'wsgi_test',
+        #'wsgi_test',
         
         )
 
