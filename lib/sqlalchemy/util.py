@@ -377,7 +377,7 @@ class ScopedRegistry(object):
     def __init__(self, createfunc, scopefunc=None):
         self.createfunc = createfunc
         if scopefunc is None:
-            scopefunc = thread.get_ident
+            self.scopefunc = thread.get_ident
         else:
             self.scopefunc = scopefunc
         self.registry = {}

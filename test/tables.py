@@ -71,6 +71,13 @@ def delete():
     users.delete().execute()
     db.commit()
     
+def user_data():
+    users.insert().execute(
+        dict(user_id = 7, user_name = 'jack'),
+        dict(user_id = 8, user_name = 'ed'),
+        dict(user_id = 9, user_name = 'fred')
+    )
+    
 def data():
     delete()
     

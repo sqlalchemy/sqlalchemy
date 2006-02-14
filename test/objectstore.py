@@ -72,6 +72,47 @@ class HistoryTest(AssertMixin):
         u = m.select()[0]
         print u.addresses[0].user
 
+class SessionTest(AssertMixin):
+    def setUpAll(self):
+        db.echo = False
+        users.create()
+        tables.user_data()
+        db.echo = testbase.echo
+    def tearDownAll(self):
+        db.echo = False
+        users.drop()
+        db.echo = testbase.echo
+    def setUp(self):
+        objectstore.get_session().clear()
+        clear_mappers()
+        
+    def test_nested_begin_commit(self):
+        """test nested session.begin/commit"""
+        class User(object):pass
+        m = mapper(User, users)
+        def name_of(id):
+            return users.select(users.c.user_id == id).execute().fetchone().user_name
+        name1 = "Oliver Twist"
+        name2 = 'Mr. Bumble'
+        self.assert_(name_of(7) != name1, msg="user_name should not be %s" % name1)
+        self.assert_(name_of(8) != name2, msg="user_name should not be %s" % name2)
+        s = objectstore.get_session()
+        s.begin()
+        s.begin()
+        m.get(7).user_name = name1
+        s.begin()
+        m.get(8).user_name = name2
+        s.commit()
+        self.assert_(name_of(7) != name1, msg="user_name should not be %s" % name1)
+        self.assert_(name_of(8) != name2, msg="user_name should not be %s" % name2)
+        s.commit()
+        self.assert_(name_of(7) != name1, msg="user_name should not be %s" % name1)
+        self.assert_(name_of(8) != name2, msg="user_name should not be %s" % name2)
+        s.commit()
+        self.assert_(name_of(7) == name1, msg="user_name should be %s" % name1)
+        self.assert_(name_of(8) == name2, msg="user_name should be %s" % name2)
+
+
 class PKTest(AssertMixin):
     def setUpAll(self):
         db.echo = False
