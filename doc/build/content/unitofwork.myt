@@ -16,20 +16,21 @@
     </ul></p>
     </&>
     <&|doclib.myt:item, name="getting", description="Accessing UnitOfWork Instances" &>
-    <p>The current unit of work is a thread-local instance maintained within an object called a Session.  These objects are accessed as follows:</p>
+    <p>The current unit of work is accessed via the Session interface.  The Session is available in a thread-local context from the objectstore module as follows:</p>
         <&|formatting.myt:code&>
-            # get the current session - there is by default one per application
-            s = objectstore.session()
-            
-            # get the thread local unit of work from the session
-            u = s.uow
+            # get the current thread's session
+            s = objectstore.get_session()
         </&>
-    <p>The Session object acts as a proxy to all attributes on the current thread's unit of work and also includes the common methods begin(), commit(), etc.  Also, most methods are available as functions on the objectstore package itself so common operations need not explicitly reference the current Session or UnitOfWork instance.
+    <p>The Session object acts as a proxy to an underlying UnitOfWork object.  Common methods include commit(), begin(), clear(), and delete().  Most of these methods are available at the module level in the objectstore module, which operate upon the Session returned by the get_session() function.
     </p>
     <p>To clear out the current thread's UnitOfWork, which has the effect of discarding the Identity Map and the lists of all objects that have been modified, just issue a clear:
     </p>
     <&|formatting.myt:code&>
+        # via module
         objectstore.clear()
+        
+        # or via Session
+        objectstore.get_session().clear()
     </&>
     <p>This is the easiest way to "start fresh", as in a web application that wants to have a newly loaded graph of objects on each request.  Any object instances before the clear operation should be discarded.</p>
     </&>
@@ -37,13 +38,13 @@
     <p>The current thread's UnitOfWork object keeps track of objects that are modified.  It maintains the following lists:</p>
     <&|formatting.myt:code&>
         # new objects that were just constructed
-        objectstore.session().new
+        objectstore.get_session().new
         
         # objects that exist in the database, that were modified
-        objectstore.session().dirty
+        objectstore.get_session().dirty
         
         # objects that have been marked as deleted via objectstore.delete()
-        objectstore.session().deleted
+        objectstore.get_session().deleted
     </&>
     <p>To commit the changes stored in those lists, just issue a commit.  This can be called via <span class="codeline">objectstore.session().commit()</span>, or through the module-level convenience method in the objectstore module:</p>
     <&|formatting.myt:code&>
@@ -69,7 +70,7 @@
         myobj1.foo = "something new"
         
         # begin an objectstore scope
-        # this is equivalent to objectstore.uow().begin()
+        # this is equivalent to objectstore.get_session().begin()
         objectstore.begin()
         
         # modify another object
@@ -215,7 +216,7 @@
         r = MyObj.mapper.using(s).select_by(id=12)
             
         # get the session that corresponds to an instance
-        s = objectstore.session(x)
+        s = objectstore.get_session(x)
         
         # commit 
         s.commit()

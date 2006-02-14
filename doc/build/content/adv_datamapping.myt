@@ -163,12 +163,12 @@
 <&|formatting.myt:code&>
     # order address objects by address id
     mapper = mapper(User, users, properties = {
-        'addresses' : relation(Address, addresses, order_by=addresses.c.address_id)
+        'addresses' : relation(mapper(Address, addresses), order_by=addresses.c.address_id)
     })
     
     # eager load with ordering - the ORDER BY clauses of parent/child will be organized properly
     mapper = mapper(User, users, properties = {
-        'addresses' : relation(Address, addresses, order_by=desc(addresses.c.email_address), eager=True)
+        'addresses' : relation(mapper(Address, addresses), order_by=desc(addresses.c.email_address), eager=True)
     }, order_by=users.c.user_id)
     
 </&>
@@ -195,7 +195,7 @@ However, things get tricky when dealing with eager relationships, since a straig
         class Address(object):
             pass
         m = mapper(User, users, properties={
-            'addresses' : relation(Address, addresses, lazy=False)
+            'addresses' : relation(mapper(Address, addresses), lazy=False)
         })
         r = m.select(User.c.user_name.like('F%'), limit=20, offset=10)
 <&|formatting.myt:poppedcode, link="sql" &>
@@ -293,7 +293,7 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
         
         # a 'lazy' relationship
         User.mapper = mapper(User, users, properties = {
-            'addreses':relation(Address, addresses, lazy=True)
+            'addreses':relation(mapper(Address, addresses), lazy=True)
         })
     
         # copy the mapper and convert 'addresses' to be eager
@@ -415,7 +415,7 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
         
         # mapper two - this one will also eager-load address objects in
         m2 = mapper(User, users, properties={
-                'addresses' : relation(Address, addresses, lazy=False)
+                'addresses' : relation(mapper(Address, addresses), lazy=False)
             })
         
         # get a user.  this user will not have an 'addreses' property
