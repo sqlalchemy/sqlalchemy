@@ -93,7 +93,7 @@ class ProxyColumnImpl(sql.ColumnImpl):
         self._engine = engine
         self.impls = weakref.WeakKeyDictionary()
     def _get_impl(self):
-        e = self.engine
+        e = self._engine.engine
         try:
             return self.impls[e]
         except KeyError:
@@ -111,7 +111,7 @@ class ProxyTableImpl(sql.TableImpl):
         self._engine = engine
         self.impls = weakref.WeakKeyDictionary()
     def _get_impl(self):
-        e = self.engine
+        e = self._engine.engine
         try:
             return self.impls[e]
         except KeyError:
