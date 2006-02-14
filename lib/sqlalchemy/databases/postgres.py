@@ -277,6 +277,12 @@ class PGCompiler(ansisql.ANSICompiler):
                 text += " \n LIMIT ALL"
             text += " OFFSET " + str(select.offset)
         return text
+
+    def binary_operator_string(self, binary):
+        if isinstance(binary.type, sqltypes.String) and binary.operator == '+':
+            return '||'
+        else:
+            return ansisql.ANSICompiler.binary_operator_string(self, binary)        
         
 class PGSchemaGenerator(ansisql.ANSISchemaGenerator):
         
