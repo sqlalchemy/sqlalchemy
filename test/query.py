@@ -124,11 +124,11 @@ class QueryTest(PersistTest):
         self.users.insert().execute(user_id=5, user_name='laura')
         self.users.insert().execute(user_id=6, user_name='ralph')
         self.users.insert().execute(user_id=7, user_name='fido')
-        r = self.users.select(limit=3).execute().fetchall()
-        self.assert_(r == [(1, 'john'), (2, 'jack'), (3, 'ed')])
-        r = self.users.select(limit=3, offset=2).execute().fetchall()
+        r = self.users.select(limit=3, order_by=[self.users.c.user_id]).execute().fetchall()
+        self.assert_(r == [(1, 'john'), (2, 'jack'), (3, 'ed')], repr(r))
+        r = self.users.select(limit=3, offset=2, order_by=[self.users.c.user_id]).execute().fetchall()
         self.assert_(r==[(3, 'ed'), (4, 'wendy'), (5, 'laura')])
-        r = self.users.select(offset=5).execute().fetchall()
+        r = self.users.select(offset=5, order_by=[self.users.c.user_id]).execute().fetchall()
         self.assert_(r==[(6, 'ralph'), (7, 'fido')])
         
     def test_column_accessor(self):
@@ -171,6 +171,9 @@ class QueryTest(PersistTest):
         self.assertEqual(r.values(), ['foo', 1])
         
     def test_column_accessor_shadow(self):
+        if db.engine.__module__.endswith('oracle'):
+            return
+
         shadowed = Table('test_shadowed', db,
                          Column('shadow_id', INT, primary_key = True),
                          Column('shadow_name', VARCHAR(20)),
