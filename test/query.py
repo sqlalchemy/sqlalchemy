@@ -65,6 +65,7 @@ class QueryTest(PersistTest):
             deftype = Date
             ts = select([func.current_date()], engine=db).scalar()
         else:
+            f = select([func.count(1) + 5], engine=db).scalar()
             def1 = def2 = "3"
             ts = 3
             deftype = Integer
