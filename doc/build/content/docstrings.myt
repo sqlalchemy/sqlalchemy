@@ -15,5 +15,5 @@
 <& pydoc.myt:obj_doc, obj=sql, classes=[sql.Compiled, sql.ClauseElement, sql.TableImpl, sql.ColumnImpl] &>
 <& pydoc.myt:obj_doc, obj=pool, classes=[pool.DBProxy, pool.Pool, pool.QueuePool, pool.SingletonThreadPool] &>
 <& pydoc.myt:obj_doc, obj=mapping &>
-<& pydoc.myt:obj_doc, obj=mapping.objectstore, classes=[mapping.objectstore.UnitOfWork] &>
+<& pydoc.myt:obj_doc, obj=mapping.objectstore, classes=[mapping.objectstore.Session, mapping.objectstore.UnitOfWork] &>
 </&>
