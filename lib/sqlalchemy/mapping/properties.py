@@ -659,7 +659,7 @@ class LazyLoader(PropertyLoader):
                 if self.use_get:
                     ident = []
                     for primary_key in self.mapper.pks_by_table[self.mapper.table]:
-                        ident.append(params[self.mapper.table.name + "_" + primary_key.key])
+                        ident.append(params[self.mapper.table.name + "_" + primary_key.name])
                     return self.mapper.get(*ident)
                 elif self.order_by is not False:
                     order_by = self.order_by
