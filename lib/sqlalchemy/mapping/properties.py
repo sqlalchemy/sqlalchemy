@@ -114,8 +114,10 @@ class PropertyLoader(MapperProperty):
         self.secondaryjoin = secondaryjoin
         self.post_update = post_update
         
-        # a list of columns representing "the other side"
-        # of the relationship
+        # would like to have foreignkey be a list.
+        # however, have to figure out how to do 
+        # <column> in <list>, since column overrides the == operator or somethign
+        # and it doesnt work
         self.foreignkey = foreignkey  #util.to_set(foreignkey)
         if foreignkey:
             self.foreigntable = foreignkey.table
