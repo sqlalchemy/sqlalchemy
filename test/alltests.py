@@ -39,6 +39,7 @@ def suite():
         # more select/persistence, backrefs
         'manytomany',
         #'onetoone',
+	#'inheritance',
         
         # extensions
         'proxy_engine',

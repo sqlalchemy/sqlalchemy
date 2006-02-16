@@ -14,35 +14,41 @@ db = testbase.db
 users = Table('users', db,
     Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key = True),
     Column('user_name', String(40)),
+    
 )
 
 addresses = Table('email_addresses', db,
     Column('address_id', Integer, Sequence('address_id_seq', optional=True), primary_key = True),
     Column('user_id', Integer, ForeignKey(users.c.user_id)),
     Column('email_address', String(40)),
+    
 )
 
 orders = Table('orders', db,
     Column('order_id', Integer, Sequence('order_id_seq', optional=True), primary_key = True),
     Column('user_id', Integer, ForeignKey(users.c.user_id)),
     Column('description', String(50)),
-    Column('isopen', Integer)
+    Column('isopen', Integer),
+    
 )
 
 orderitems = Table('items', db,
     Column('item_id', INT, Sequence('items_id_seq', optional=True), primary_key = True),
     Column('order_id', INT, ForeignKey("orders")),
-    Column('item_name', VARCHAR(50))
+    Column('item_name', VARCHAR(50)),
+    
 )
 
 keywords = Table('keywords', db,
     Column('keyword_id', Integer, Sequence('keyword_id_seq', optional=True), primary_key = True),
-    Column('name', VARCHAR(50))
+    Column('name', VARCHAR(50)),
+    
 )
 
 itemkeywords = Table('itemkeywords', db,
     Column('item_id', INT, ForeignKey("items")),
-    Column('keyword_id', INT, ForeignKey("keywords"))
+    Column('keyword_id', INT, ForeignKey("keywords")),
+    
 )
 
 def create():
