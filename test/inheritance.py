@@ -4,39 +4,6 @@ import string
 import sqlalchemy.attributes as attr
 
 
-principals = Table(
-    'principals',
-    testbase.db,
-    Column('principal_id', Integer, Sequence('principal_id_seq', optional=False), primary_key=True),
-    Column('name', String(50), nullable=False),    
-    )
-
-users = Table(
-    'prin_users',
-    testbase.db,
-    Column('principal_id', Integer, ForeignKey('principals.principal_id'), primary_key=True),
-    Column('password', String(50), nullable=False),
-    Column('email', String(50), nullable=False),
-    Column('login_id', String(50), nullable=False),
-    
-    )
-
-groups = Table(
-    'prin_groups',
-    testbase.db,
-    Column( 'principal_id', Integer, ForeignKey('principals.principal_id'), primary_key=True),
-    
-    )
-
-user_group_map = Table(
-    'prin_user_group_map',
-    testbase.db,
-    Column('user_id', Integer, ForeignKey( "prin_users.principal_id"), primary_key=True ),
-    Column('group_id', Integer, ForeignKey( "prin_groups.principal_id"), primary_key=True ),
-    #Column('user_id', Integer, ForeignKey( "prin_users.principal_id"),  ),
-    #Column('group_id', Integer, ForeignKey( "prin_groups.principal_id"),  ),    
-    
-    )
 
 class Principal( object ):
     pass
@@ -49,6 +16,46 @@ class Group( Principal ):
 
 class InheritTest(testbase.AssertMixin):
         def setUpAll(self):
+            global principals
+            global users
+            global groups
+            global user_group_map
+            principals = Table(
+                'principals',
+                testbase.db,
+                Column('principal_id', Integer, Sequence('principal_id_seq', optional=False), primary_key=True),
+                Column('name', String(50), nullable=False),    
+                )
+
+            users = Table(
+                'prin_users',
+                testbase.db,
+                Column('principal_id', Integer, ForeignKey('principals.principal_id'), primary_key=True),
+                Column('password', String(50), nullable=False),
+                Column('email', String(50), nullable=False),
+                Column('login_id', String(50), nullable=False),
+
+                )
+
+            groups = Table(
+                'prin_groups',
+                testbase.db,
+                Column( 'principal_id', Integer, ForeignKey('principals.principal_id'), primary_key=True),
+
+                )
+
+            user_group_map = Table(
+                'prin_user_group_map',
+                testbase.db,
+                Column('user_id', Integer, ForeignKey( "prin_users.principal_id"), primary_key=True ),
+                Column('group_id', Integer, ForeignKey( "prin_groups.principal_id"), primary_key=True ),
+                #Column('user_id', Integer, ForeignKey( "prin_users.principal_id"),  ),
+                #Column('group_id', Integer, ForeignKey( "prin_groups.principal_id"),  ),    
+
+                )
+
+
+
             principals.create()
             users.create()
             groups.create()
