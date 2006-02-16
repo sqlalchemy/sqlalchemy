@@ -595,7 +595,7 @@ class FromClause(Selectable):
                     cp = self._proxy_column(co)
                     self._orig_cols[co.original] = cp
     def _exportable_columns(self):
-	return []
+        return []
     def _proxy_column(self, column):
         return column._make_proxy(self)
     
@@ -843,7 +843,7 @@ class Join(FromClause):
         if column.primary_key:
             self._primary_key.append(column)
         if column.foreign_key:
-            self._foreign_keys.append(column)
+            self._foreign_keys.append(column.foreign_key)
         return column
     def _match_primaries(self, primary, secondary):
         crit = []

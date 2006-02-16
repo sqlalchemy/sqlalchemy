@@ -523,12 +523,23 @@ class PropertyLoader(MapperProperty):
 
         SyncRule = PropertyLoader.SyncRule
 
+        parent_tables = util.HashSet(self.parent.tables + [self.parent.primarytable])
+        target_tables = util.HashSet(self.mapper.tables + [self.mapper.primarytable])
+
+        def check_for_table(binary, l):
+            for col in [binary.left, binary.right]:
+                if col.table in l:
+                    return col
+            else:
+                return None
+        
         def compile(binary):
             """assembles a SyncRule given a single binary condition"""
             if binary.operator != '=' or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
                 return
 
             if binary.left.table == binary.right.table:
+                # self-cyclical relation
                 if binary.left.primary_key:
                     source = binary.left
                     dest = binary.right
@@ -544,18 +555,23 @@ class PropertyLoader(MapperProperty):
                 else:
                     raise "assert failed"
             else:
-                colmap = {binary.left.table : binary.left, binary.right.table : binary.right}
-                if colmap.has_key(self.parent.primarytable) and colmap.has_key(self.target):
+                pt = check_for_table(binary, parent_tables)
+                tt = check_for_table(binary, target_tables)
+                st = check_for_table(binary, [self.secondary])
+                #print "parenttable", [t.name for t in parent_tables]
+                #print "ttable", [t.name for t in target_tables]
+                #print "OK", str(binary), pt, tt, st
+                if pt and tt:
                     if self.direction == PropertyLoader.ONETOMANY:
-                        self.syncrules.append(SyncRule(self.parent, colmap[self.parent.primarytable], colmap[self.target], dest_mapper=self.mapper))
+                        self.syncrules.append(SyncRule(self.parent, pt, tt, dest_mapper=self.mapper))
                     elif self.direction == PropertyLoader.MANYTOONE:
-                        self.syncrules.append(SyncRule(self.mapper, colmap[self.target], colmap[self.parent.primarytable], dest_mapper=self.parent))
+                        self.syncrules.append(SyncRule(self.mapper, tt, pt, dest_mapper=self.parent))
                     else:
                         raise "assert failed"
-                elif colmap.has_key(self.parent.primarytable) and colmap.has_key(self.secondary):
-                    self.syncrules.append(SyncRule(self.parent, colmap[self.parent.primarytable],  colmap[self.secondary], direction=PropertyLoader.ONETOMANY))
-                elif colmap.has_key(self.target) and colmap.has_key(self.secondary):
-                    self.syncrules.append(SyncRule(self.mapper, colmap[self.target], colmap[self.secondary], direction=PropertyLoader.MANYTOONE))
+                elif pt and st:
+                    self.syncrules.append(SyncRule(self.parent, pt, st, direction=PropertyLoader.ONETOMANY))
+                elif tt and st:
+                    self.syncrules.append(SyncRule(self.mapper, tt, st, direction=PropertyLoader.MANYTOONE))
 
         self.syncrules = []
         processor = BinaryVisitor(compile)
