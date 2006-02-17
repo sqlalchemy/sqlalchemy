@@ -458,7 +458,7 @@ class SQLEngine(schema.SchemaEngine):
                     if not param.has_key(c.name) or param[c.name] is None:
                         newid = drunner.get_column_default(c)
                         if newid is not None:
-                            param[c.key] = newid
+                            param[c.name] = newid
                             if c.primary_key:
                                 last_inserted_ids.append(param[c.name])
                         elif c.primary_key:

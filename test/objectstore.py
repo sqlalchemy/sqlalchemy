@@ -172,7 +172,7 @@ class PKTest(AssertMixin):
         e.pk_col_2 = 'pk1_related'
         e.data = 'im the data'
         objectstore.commit()
-    def testmulti_column_primary_key(self):
+    def testkeypks(self):
         import datetime
         class Entity(object):
             pass
