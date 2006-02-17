@@ -123,11 +123,19 @@ class PKTest(AssertMixin):
             Column('name', String(50), nullable=False),
             Column('value', String(100))
         )
+        
+        self.table2 = Table('multi2', db,
+            Column('pk_col_1', String(30), primary_key=True),
+            Column('pk_col_2', String(30), primary_key=True),
+            Column('data', String(30), )
+            )
         self.table.create()
+        self.table2.create()
         db.echo = testbase.echo
     def tearDownAll(self):
         db.echo = False
         self.table.drop()
+        self.table2.drop()
         db.echo = testbase.echo
     def setUp(self):
         objectstore.clear()
@@ -144,7 +152,15 @@ class PKTest(AssertMixin):
         objectstore.clear()
         e2 = Entry.mapper.get(e.multi_id, 2)
         self.assert_(e is not e2 and e._instance_key == e2._instance_key)
-
+    def testmanualpk(self):
+        class Entry(object):
+            pass
+        Entry.mapper = mapper(Entry, self.table2)
+        e = Entry()
+        e.pk_col_1 = 'pk1'
+        e.pk_col_2 = 'pk1_related'
+        e.data = 'im the data'
+        objectstore.commit()
 class DefaultTest(AssertMixin):
     def setUpAll(self):
         #db.echo = 'debug'
