@@ -271,6 +271,8 @@ class Column(SchemaItem):
         self.table.primary_key.append(self)
             
     def _set_parent(self, table):
+        if getattr(self, 'table', None) is not None:
+            raise "this Column already has a table!"
         if not self.hidden:
             table.columns[self.key] = self
             if self.primary_key:
