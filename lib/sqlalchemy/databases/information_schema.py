@@ -134,11 +134,9 @@ def reflecttable(engine, table, ischema_names, use_mysql=False):
             colargs.append(PassiveDefault(sql.text(default, escape=False)))
         table.append_item(schema.Column(name, coltype, nullable=nullable, *colargs))
 
-    s = select([constraints.c.constraint_name, constraints.c.constraint_type, constraints.c.table_name, key_constraints], use_labels=True)
+    s = select([constraints.c.constraint_name, constraints.c.constraint_type, constraints.c.table_name, key_constraints], use_labels=True, from_obj=[constraints.join(column_constraints, column_constraints.c.constraint_name==constraints.c.constraint_name).join(key_constraints, key_constraints.c.constraint_name==column_constraints.c.constraint_name)])
     if not use_mysql:
         s.append_column(column_constraints)
-        s.append_whereclause(key_constraints.c.constraint_name==column_constraints.c.constraint_name)
-        s.append_whereclause(column_constraints.c.constraint_name==constraints.c.constraint_name)
         s.append_whereclause(constraints.c.table_name==table.name)
         s.append_whereclause(constraints.c.table_schema==current_schema)
         colmap = [constraints.c.constraint_type, key_constraints.c.column_name, column_constraints.c.table_schema, column_constraints.c.table_name, column_constraints.c.column_name]
