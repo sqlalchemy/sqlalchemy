@@ -15,7 +15,7 @@ def suite():
         
         # schema/tables
         'engines', 
-        'types',
+        'testtypes',
         
         # SQL syntax
         'select',
@@ -46,7 +46,6 @@ def suite():
         #'wsgi_test',
         
         )
-
     alltests = unittest.TestSuite()
     for module in map(__import__, modules_to_test):
         alltests.addTest(unittest.findTestCases(module, suiteClass=None))

@@ -5,30 +5,41 @@ import testbase
     
 db = testbase.db
 
+class MyType(types.TypeEngine):
+    def get_col_spec(self):
+        return "VARCHAR(100)"
+    def convert_bind_param(self, value, engine):
+        return "BIND_IN"+ value
+    def convert_result_value(self, value, engine):
+        return value + "BIND_OUT"
+    def adapt(self, typeobj):
+        return typeobj()
+    def adapt_args(self):
+        return self
+
+class MyDecoratedType(types.TypeDecorator, types.String):
+    def convert_bind_param(self, value, engine):
+        return "BIND_IN"+ value
+    def convert_result_value(self, value, engine):
+        return value + "BIND_OUT"
+
 class OverrideTest(PersistTest):
     """tests user-defined types, including a full type as well as a TypeDecorator"""
 
     def testprocessing(self):
-        class MyType(types.TypeEngine):
-            def get_col_spec(self):
-                return "VARCHAR(100)"
-            def convert_bind_param(self, value, engine):
-                return "BIND_IN"+ value
-            def convert_result_value(self, value, engine):
-                return value + "BIND_OUT"
-            def adapt(self, typeobj):
-                return typeobj()
-            def adapt_args(self):
-                return self
-
-        class MyDecoratedType(types.TypeDecorator, types.String):
-            def convert_bind_param(self, value, engine):
-                return "BIND_IN"+ value
-            def convert_result_value(self, value, engine):
-                return value + "BIND_OUT"
 
         global users
-        users = Table('users', db, 
+        users.insert().execute(user_id = 2, goofy = 'jack', goofy2='jack', goofy3='jack')
+        users.insert().execute(user_id = 3, goofy = 'lala', goofy2='lala', goofy3='lala')
+        users.insert().execute(user_id = 4, goofy = 'fred', goofy2='fred', goofy3='fred')
+        
+        l = users.select().execute().fetchall()
+        print repr(l)
+        self.assert_(l == [(2, 'BIND_INjackBIND_OUT', 'BIND_INjackBIND_OUT', 'BIND_INjackBIND_OUT'), (3, 'BIND_INlalaBIND_OUT', 'BIND_INlalaBIND_OUT', 'BIND_INlalaBIND_OUT'), (4, 'BIND_INfredBIND_OUT', 'BIND_INfredBIND_OUT', 'BIND_INfredBIND_OUT')])
+
+    def setUpAll(self):
+        global users
+        users = Table('type_users', db, 
             Column('user_id', Integer, primary_key = True),
             # totall custom type
             Column('goofy', MyType, nullable = False),
@@ -41,16 +52,6 @@ class OverrideTest(PersistTest):
         )
         
         users.create()
-        
-        users.insert().execute(user_id = 2, goofy = 'jack', goofy2='jack', goofy3='jack')
-        users.insert().execute(user_id = 3, goofy = 'lala', goofy2='lala', goofy3='lala')
-        users.insert().execute(user_id = 4, goofy = 'fred', goofy2='fred', goofy3='fred')
-        
-        l = users.select().execute().fetchall()
-        print repr(l)
-        self.assert_(l == [(2, 'BIND_INjackBIND_OUT', 'BIND_INjackBIND_OUT', 'BIND_INjackBIND_OUT'), (3, 'BIND_INlalaBIND_OUT', 'BIND_INlalaBIND_OUT', 'BIND_INlalaBIND_OUT'), (4, 'BIND_INfredBIND_OUT', 'BIND_INfredBIND_OUT', 'BIND_INfredBIND_OUT')])
-
-
     def tearDownAll(self):
         global users
         users.drop()
@@ -79,7 +80,7 @@ class ColumnsTest(AssertMixin):
         )
 
         for aCol in testTable.c:
-            self.assertEquals(expectedResults[aCol.name], db.schemagenerator(None).get_column_specification(aCol))
+            self.assertEquals(expectedResults[aCol.name], db.schemagenerator().get_column_specification(aCol))
         
 class UnicodeTest(AssertMixin):
     """tests the Unicode type.  also tests the TypeDecorator with instances in the types package."""
@@ -87,8 +88,8 @@ class UnicodeTest(AssertMixin):
         global unicode_table
         unicode_table = Table('unicode_table', db, 
             Column('id', Integer, primary_key=True),
-            Column('unicode_data', Unicode(50)),
-            Column('plain_data', String)
+            Column('unicode_data', Unicode(250)),
+            Column('plain_data', String(250))
             )
         unicode_table.create()
     def tearDownAll(self):

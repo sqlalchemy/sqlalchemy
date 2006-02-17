@@ -62,10 +62,10 @@ class PG1Date(sqltypes.Date):
         return value
     def get_col_spec(self):
         return "DATE"
-class PG2Time(sqltypes.Date):
+class PG2Time(sqltypes.Time):
     def get_col_spec(self):
         return "TIME"
-class PG1Time(sqltypes.Date):
+class PG1Time(sqltypes.Time):
     def convert_bind_param(self, value, engine):
         # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
         # this one doesnt seem to work with the "emulation" mode
