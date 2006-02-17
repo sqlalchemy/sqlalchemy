@@ -116,7 +116,9 @@ class SessionTest(AssertMixin):
 class PKTest(AssertMixin):
     def setUpAll(self):
         db.echo = False
-        self.table = Table(
+        global table
+        global table2
+        table = Table(
             'multi', db, 
             Column('multi_id', Integer, Sequence("multi_id_seq", optional=True), primary_key=True),
             Column('multi_rev', Integer, primary_key=True),
@@ -124,18 +126,18 @@ class PKTest(AssertMixin):
             Column('value', String(100))
         )
         
-        self.table2 = Table('multi2', db,
+        table2 = Table('multi2', db,
             Column('pk_col_1', String(30), primary_key=True),
             Column('pk_col_2', String(30), primary_key=True),
             Column('data', String(30), )
             )
-        self.table.create()
-        self.table2.create()
+        table.create()
+        table2.create()
         db.echo = testbase.echo
     def tearDownAll(self):
         db.echo = False
-        self.table.drop()
-        self.table2.drop()
+        table.drop()
+        table2.drop()
         db.echo = testbase.echo
     def setUp(self):
         objectstore.clear()
@@ -143,7 +145,7 @@ class PKTest(AssertMixin):
     def testprimarykey(self):
         class Entry(object):
             pass
-        Entry.mapper = mapper(Entry, self.table)
+        Entry.mapper = mapper(Entry, table)
         e = Entry()
         e.name = 'entry1'
         e.value = 'this is entry 1'
@@ -155,7 +157,7 @@ class PKTest(AssertMixin):
     def testmanualpk(self):
         class Entry(object):
             pass
-        Entry.mapper = mapper(Entry, self.table2)
+        Entry.mapper = mapper(Entry, table2)
         e = Entry()
         e.pk_col_1 = 'pk1'
         e.pk_col_2 = 'pk1_related'
