@@ -118,6 +118,7 @@ class PKTest(AssertMixin):
         db.echo = False
         global table
         global table2
+        global table3
         table = Table(
             'multi', db, 
             Column('multi_id', Integer, Sequence("multi_id_seq", optional=True), primary_key=True),
@@ -131,13 +132,21 @@ class PKTest(AssertMixin):
             Column('pk_col_2', String(30), primary_key=True),
             Column('data', String(30), )
             )
+        table3 = Table('multi3', db,
+            Column('pri_code', String(30), key='primary', primary_key=True),
+            Column('sec_code', String(30), key='secondary', primary_key=True),
+            Column('date_assigned', Date, key='assigned', primary_key=True),
+            Column('data', String(30), )
+            )
         table.create()
         table2.create()
+        table3.create()
         db.echo = testbase.echo
     def tearDownAll(self):
         db.echo = False
         table.drop()
         table2.drop()
+        table3.drop()
         db.echo = testbase.echo
     def setUp(self):
         objectstore.clear()
@@ -163,6 +172,18 @@ class PKTest(AssertMixin):
         e.pk_col_2 = 'pk1_related'
         e.data = 'im the data'
         objectstore.commit()
+    def testmulti_column_primary_key(self):
+        import datetime
+        class Entity(object):
+            pass
+        Entity.mapper = mapper(Entity, table3)
+        e = Entity()
+        e.primary = 'pk1'
+        e.secondary = 'pk2'
+        e.assigned = datetime.date.today()
+        e.data = 'some more data'
+        objectstore.commit()
+        
 class DefaultTest(AssertMixin):
     def setUpAll(self):
         #db.echo = 'debug'

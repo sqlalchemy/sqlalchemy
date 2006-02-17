@@ -455,16 +455,16 @@ class SQLEngine(schema.SchemaEngine):
                 for c in compiled.statement.table.c:
                     if isinstance(c.default, schema.PassiveDefault):
                         self.context.lastrow_has_defaults = True
-                    if not param.has_key(c.key) or param[c.key] is None:
+                    if not param.has_key(c.name) or param[c.name] is None:
                         newid = drunner.get_column_default(c)
                         if newid is not None:
                             param[c.key] = newid
                             if c.primary_key:
-                                last_inserted_ids.append(param[c.key])
+                                last_inserted_ids.append(param[c.name])
                         elif c.primary_key:
                             need_lastrowid = True
                     elif c.primary_key:
-                        last_inserted_ids.append(param[c.key])
+                        last_inserted_ids.append(param[c.name])
                 if need_lastrowid:
                     self.context.last_inserted_ids = None
                 else:
