@@ -34,12 +34,12 @@ class ProxyEngineTest1(PersistTest):
         users.create()
         assign_mapper(User, users)
         try:
-            objectstore.begin()
+            trans = objectstore.begin()
 
             user = User()
             user.user_name='fred'
             user.password='*'
-            objectstore.commit()
+            trans.commit()
 
             # select
             sqluser = User.select_by(user_name='fred')[0]
@@ -83,7 +83,7 @@ class ThreadProxyTest(PersistTest):
                     module_engine.connect(db_uri)
                     users.create()
                     try:
-                        objectstore.begin()
+                        trans  = objectstore.begin()
 
                         all = User.select()[:]
                         assert all == []
@@ -91,7 +91,7 @@ class ThreadProxyTest(PersistTest):
                         u = User()
                         u.user_name = uname
                         u.password = 'whatever'
-                        objectstore.commit()
+                        trans.commit()
 
                         names = [ us.user_name for us in User.select() ]
                         assert names == [ uname ]

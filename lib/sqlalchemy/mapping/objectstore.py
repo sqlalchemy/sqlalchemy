@@ -203,7 +203,7 @@ def get_row_key(row, class_, table, primary_key):
 def begin():
     """begins a new UnitOfWork transaction.  the next commit will affect only
     objects that are created, modified, or deleted following the begin statement."""
-    get_session().begin()
+    return get_session().begin()
 
 def commit(*obj):
     """commits the current UnitOfWork transaction.  if a transaction was begun 
