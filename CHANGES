@@ -1,3 +1,21 @@
-0.91
+0.1.1
+- fix to date types with MySQL, returned timedelta converted to datetime.time
+- begin/commit now returns a transactional object, to more clearly indicate
+transaction boundaries.
+- Index object with create/drop support added to schema
+- fix to postgres, where it will explicitly pre-execute a PassiveDefault on a table
+if it is a primary key column, pursuant to the ongoing "we cant get inserted rows 
+back from postgres" issue
+- change to information_schema query that gets back postgres table defs, now
+uses explicit JOIN keyword, since one user had faster performance with 8.1
+- fix to engine.process_defaults so it works correctly with a table that has 
+different column name/column keys (changset 982)
+- a column can only be attached to one table - this is now asserted
+- postgres time types descend from Time type
+- fix to alltests so that it runs types test (now named testtypes)
+- fix to Join object so that it correctly exports its foreign keys (cs 973)
+- creating relationships against mappers that use inheritance fixed (cs 973)
+
+0.1.0
 initial release
 
