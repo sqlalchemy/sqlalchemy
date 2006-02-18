@@ -143,37 +143,36 @@ class DateTest(AssertMixin):
     def setUpAll(self):
         global users_with_date, insert_data
 
-        insert_data =  [[7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.date(2005,11,10), datetime.time(12,20,2)],
+        insert_data =  [
+                        [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.date(2005,11,10), datetime.time(12,20,2)],
                         [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.date(2005,10,10), datetime.time(0,0,0)],
                         [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35, 54839), datetime.date(1970,4,1), datetime.time(23,59,59,999)],
-                        [10, 'colber', None, None, None]]
+                        [10, 'colber', None, None, None]
+        ]
 
         fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
 
         collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime),
                    Column('user_date', Date), Column('user_time', Time)]
-
-
         
         if db.engine.__module__.endswith('mysql'):
             # strip microseconds -- not supported by this engine (should be an easier way to detect this)
             for d in insert_data:
-                d[2] = d[2].replace(microsecond=0)
-                d[4] = d[4].replace(microsecond=0)
+                if d[2] is not None:
+                    d[2] = d[2].replace(microsecond=0)
+                if d[4] is not None:
+                    d[4] = d[4].replace(microsecond=0)
         
         try:
             db.type_descriptor(types.TIME).get_col_spec()
-            print  "HI"
         except:
             # don't test TIME type -- not supported by this engine
             insert_data = [d[:-1] for d in insert_data]
             fnames = fnames[:-1]
             collist = collist[:-1]
 
-
         users_with_date = Table('query_users_with_date', db, redefine = True, *collist)
         users_with_date.create()
-
         insert_dicts = [dict(zip(fnames, d)) for d in insert_data]
         for idict in insert_dicts:
             users_with_date.insert().execute(**idict) # insert the data

@@ -1430,4 +1430,25 @@ class Delete(UpdateBase):
             self.whereclause.accept_visitor(visitor)
         visitor.visit_delete(self)
 
+class IndexImpl(ClauseElement):
+
+    def __init__(self, index):
+        self.index = index
+        self.name = index.name
+        self._engine = self.index.table.engine
+
+    table = property(lambda s: s.index.table)
+    columns = property(lambda s: s.index.columns)
         
+    def hash_key(self):
+        return self.index.hash_key()
+    def accept_visitor(self, visitor):
+        visitor.visit_index(self.index)
+    def compare(self, other):
+        return self.index is other
+    def create(self):
+        self._engine.create(self.index)
+    def drop(self):
+        self._engine.drop(self.index)
+    def execute(self):
+        self.create()

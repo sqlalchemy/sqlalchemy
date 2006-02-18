@@ -16,7 +16,8 @@ def suite():
         # schema/tables
         'engines', 
         'testtypes',
-        
+	'indexes',
+	        
         # SQL syntax
         'select',
         'selectable',

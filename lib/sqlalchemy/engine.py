@@ -294,13 +294,13 @@ class SQLEngine(schema.SchemaEngine):
         for the "rowcount" function on a statement handle.  """
         return True
         
-    def create(self, table, **params):
-        """creates a table within this engine's database connection given a schema.Table object."""
-        table.accept_visitor(self.schemagenerator(**params))
+    def create(self, entity, **params):
+        """creates a table or index within this engine's database connection given a schema.Table object."""
+        entity.accept_visitor(self.schemagenerator(**params))
 
-    def drop(self, table, **params):
-        """drops a table within this engine's database connection given a schema.Table object."""
-        table.accept_visitor(self.schemadropper(**params))
+    def drop(self, entity, **params):
+        """drops a table or index within this engine's database connection given a schema.Table object."""
+        entity.accept_visitor(self.schemadropper(**params))
 
     def compile(self, statement, parameters, **kwargs):
         """given a sql.ClauseElement statement plus optional bind parameters, creates a new
@@ -329,6 +329,14 @@ class SQLEngine(schema.SchemaEngine):
         database-specific behavior."""
         return sql.ColumnImpl(column)
 
+    def indeximpl(self, index):
+        """returns a new sql.IndexImpl object to correspond to the given Index
+        object. An IndexImpl provides SQL statement builder operations on an
+        Index metadata object, and a subclass of this object may be provided
+        by a SQLEngine subclass to provide database-specific behavior.
+        """
+        return sql.IndexImpl(index)
+    
     def get_default_schema_name(self):
         """returns the currently selected schema in the current connection."""
         return None

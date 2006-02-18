@@ -168,6 +168,9 @@ class ANSICompiler(sql.Compiled):
     def visit_fromclause(self, fromclause):
         self.froms[fromclause] = fromclause.from_name
 
+    def visit_index(self, index):
+        self.strings[index] = index.name
+        
     def visit_textclause(self, textclause):
         if textclause.parens and len(textclause.text):
             self.strings[textclause] = "(" + textclause.text + ")"
@@ -200,7 +203,7 @@ class ANSICompiler(sql.Compiled):
 
     def visit_function(self, func):
         self.strings[func] = func.name + "(" + string.join([self.get_str(c) for c in func.clauses], ', ') + ")"
-    
+        
     def visit_compound_select(self, cs):
         text = string.join([self.get_str(c) for c in cs.selects], " " + cs.keyword + " ")
         for tup in cs.clauses:
@@ -531,8 +534,22 @@ class ANSISchemaGenerator(sqlalchemy.engine.SchemaIterator):
 
     def visit_column(self, column):
         pass
+
+    def visit_index(self, index):
+        self.append('CREATE ')
+        if index.unique:
+            self.append('UNIQUE ')
+        self.append('INDEX %s ON %s (%s)' \
+                    % (index.name, index.table.name,
+                       string.join([c.name for c in index.columns], ', ')))
+        self.execute()
+        
     
 class ANSISchemaDropper(sqlalchemy.engine.SchemaIterator):
+    def visit_index(self, index):
+        self.append("\nDROP INDEX " + index.name)
+        self.execute()
+        
     def visit_table(self, table):
         self.append("\nDROP TABLE " + table.fullname)
         self.execute()

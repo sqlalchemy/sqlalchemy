@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import sys, StringIO, string, types, re
+import sys, StringIO, string, types, re, datetime
 
 import sqlalchemy.sql as sql
 import sqlalchemy.engine as engine
@@ -40,6 +40,13 @@ class MSDate(sqltypes.Date):
 class MSTime(sqltypes.Time):
     def get_col_spec(self):
         return "TIME"
+    def convert_result_value(self, value, engine):
+        # convert from a timedelta value
+        if value is not None:
+            return datetime.time(value.seconds/60/60, value.seconds/60%60, value.seconds - (value.seconds/60*60))
+        else:
+            return None
+            
 class MSText(sqltypes.TEXT):
     def get_col_spec(self):
         return "TEXT"
@@ -134,6 +141,9 @@ class MySQLEngine(ansisql.ANSISQLEngine):
 
     def schemagenerator(self, **params):
         return MySQLSchemaGenerator(self, **params)
+
+    def schemadropper(self, **params):
+        return MySQLSchemaDropper(self, **params)
 
     def get_default_schema_name(self):
         if not hasattr(self, '_default_schema_name'):
@@ -276,3 +286,7 @@ class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
         else:
             return ""
 
+class MySQLSchemaDropper(ansisql.ANSISchemaDropper):
+    def visit_index(self, index):
+        self.append("\nDROP INDEX " + index.name + " ON " + index.table.name)
+        self.execute()

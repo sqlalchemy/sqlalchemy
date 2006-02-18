@@ -19,8 +19,8 @@ from sqlalchemy.util import *
 from sqlalchemy.types import *
 import copy, re, string
 
-__all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'SchemaEngine', 'SchemaVisitor', 'PassiveDefault', 'ColumnDefault']
-
+__all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index',
+           'SchemaEngine', 'SchemaVisitor', 'PassiveDefault', 'ColumnDefault']
 
 class SchemaItem(object):
     """base class for items that define a database schema."""
@@ -455,6 +455,53 @@ class Sequence(DefaultGenerator):
         """calls the visit_seauence method on the given visitor."""
         return visitor.visit_sequence(self)
 
+class Index(SchemaItem):
+    """Represents an index of columns from a database table
+    """
+
+    def __init__(self, name, *columns, **kw):
+        """Constructs an index object. Arguments are:
+
+        name : the name of the index
+
+        *columns : columns to include in the index. All columns must belong to
+        the same table, and no column may appear more than once.
+
+        **kw : keyword arguments include:
+
+        unique=True : create a unique index
+        """
+        self.name = name
+        self.columns = columns
+        self.unique = kw.pop('unique', False)
+        self._init_items()
+
+    def _init_items(self):
+        # make sure all columns are from the same table
+        # FIXME: and no column is repeated
+        self.table = None
+        for column in self.columns:
+            if self.table is None:
+                self.table = column.table
+            elif column.table != self.table:
+                # all columns muse be from same table
+                raise ValueError("All index columns must be from same table. "
+                                 "%s is from %s not %s" % (column,
+                                                           column.table,
+                                                           self.table))
+        # set my _impl from col.table.engine
+        self._impl = self.table.engine.indeximpl(self)
+        
+    def accept_visitor(self, visitor):
+        visitor.visit_index(self)
+    def __str__(self):
+        return repr(self)
+    def __repr__(self):
+        return 'Index("%s", %s%s)' % (self.name,
+                                      ', '.join([repr(c)
+                                                 for c in self.columns]),
+                                      (self.unique and ', unique=True') or '')
+        
 class SchemaEngine(object):
     """a factory object used to create implementations for schema objects.  This object
     is the ultimate base class for the engine.SQLEngine class."""
@@ -463,6 +510,11 @@ class SchemaEngine(object):
         raise NotImplementedError()
     def columnimpl(self, column):
         """returns a new implementation object for a Column (usually sql.ColumnImpl)"""
+        raise NotImplementedError()
+    def indeximpl(self, index):
+        """returns a new implementation object for an Index (usually
+        sql.IndexImpl)
+        """
         raise NotImplementedError()
     def reflecttable(self, table):
         """given a table, will query the database and populate its Column and ForeignKey 
