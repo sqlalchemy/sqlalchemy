@@ -277,8 +277,7 @@ class ANSICompiler(sql.Compiled):
         collist = string.join([self.get_str(v) for v in inner_columns.values()], ', ')
 
         text = "SELECT "
-        if select.distinct:
-            text += "DISTINCT "
+        text += self.visit_select_precolumns(select)
         text += collist
         
         whereclause = select.whereclause
@@ -330,17 +329,22 @@ class ANSICompiler(sql.Compiled):
             t = self.get_str(select.having)
             if t:
                 text += " \nHAVING " + t
-
-        if select.limit is not None or select.offset is not None:
-            # TODO: ok, so this is a simple limit/offset thing.
-            # need to make this DB neutral for mysql, oracle
-            text += self.limit_clause(select)
-            
+                
+        text += self.visit_select_postclauses(select)
+ 
         if getattr(select, 'issubquery', False):
             self.strings[select] = "(" + text + ")"
         else:
             self.strings[select] = text
         self.froms[select] = "(" + text + ")"
+
+    def visit_select_precolumns(self, select):
+        """ called when building a SELECT statment, position is just before column list """
+        return select.distinct and "DISTINCT " or ""
+
+    def visit_select_postclauses(self, select):
+        """ called when building a SELECT statement, position is after all other SELECT clauses. Most DB syntaxes put LIMIT/OFFSET here """
+        return (select.limit or select.offset) and self.limit_clause(select) or ""
 
     def limit_clause(self, select):
         if select.limit is not None:
