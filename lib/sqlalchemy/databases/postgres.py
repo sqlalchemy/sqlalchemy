@@ -317,12 +317,19 @@ class PGSchemaDropper(ansisql.ANSISchemaDropper):
 
 class PGDefaultRunner(ansisql.ANSIDefaultRunner):
     def get_column_default(self, column):
-        if column.primary_key and isinstance(column.type, types.Integer) and (column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional)):
-            c = self.proxy("select nextval('%s_%s_seq')" % (column.table.name, column.name))
-            return c.fetchone()[0]
+        if column.primary_key:
+            # passive defaults on primary keys have to be overridden
+            if isinstance(column.default, schema.PassiveDefault):
+                c = self.proxy("select %s" % column.default.arg)
+                return c.fetchone()[0]
+            elif isinstance(column.type, types.Integer) and (column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional)):
+                c = self.proxy("select nextval('%s_%s_seq')" % (column.table.name, column.name))
+                return c.fetchone()[0]
+            else:
+                return ansisql.ANSIDefaultRunner.get_column_default(self, column)
         else:
             return ansisql.ANSIDefaultRunner.get_column_default(self, column)
-    
+        
     def visit_sequence(self, seq):
         if not seq.optional:
             c = self.proxy("select nextval('%s')" % seq.name)

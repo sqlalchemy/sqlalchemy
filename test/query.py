@@ -41,6 +41,29 @@ class QueryTest(PersistTest):
         self.users.update(self.users.c.user_id == 7).execute(user_name = 'fred')
         print repr(self.users.select().execute().fetchall())
 
+    def testpassiveoverride(self):
+        """primarily for postgres, tests that when we get a column back 
+        from reflecting a table which has a default value on it, we pre-execute
+        that PassiveDefault upon insert, even though PassiveDefault says 
+        "let the database execute this", because in postgres we have to otherwise
+        we cant locate the inserted row."""
+        try:
+            db.execute("""
+             CREATE TABLE speedy_users
+             (
+                 speedy_user_id   SERIAL     PRIMARY KEY,
+            
+                 user_name        VARCHAR    NOT NULL,
+                 user_password    VARCHAR    NOT NULL
+             );
+            """, None)
+            
+            t = Table("speedy_users", db, autoload=True)
+            t.insert().execute(user_name='user', user_password='lala')
+            l = t.select().execute().fetchall()
+            self.assert_(l == [(1, 'user', 'lala')])
+        finally:
+            db.execute("drop table speedy_users", None)
     def testdefaults(self):
         x = {'x':50}
         def mydefault():
