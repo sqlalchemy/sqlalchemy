@@ -83,7 +83,10 @@ def user_data():
         dict(user_id = 8, user_name = 'ed'),
         dict(user_id = 9, user_name = 'fred')
     )
-    
+def delete_user_data():
+    users.delete().execute()
+    db.commit()
+        
 def data():
     delete()
     

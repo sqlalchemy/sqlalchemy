@@ -76,7 +76,6 @@ class SessionTest(AssertMixin):
     def setUpAll(self):
         db.echo = False
         users.create()
-        tables.user_data()
         db.echo = testbase.echo
     def tearDownAll(self):
         db.echo = False
@@ -85,6 +84,10 @@ class SessionTest(AssertMixin):
     def setUp(self):
         objectstore.get_session().clear()
         clear_mappers()
+        tables.user_data()
+        #db.echo = "debug"
+    def tearDown(self):
+        tables.delete_user_data()
         
     def test_nested_begin_commit(self):
         """test nested session.begin/commit"""
@@ -97,21 +100,47 @@ class SessionTest(AssertMixin):
         self.assert_(name_of(7) != name1, msg="user_name should not be %s" % name1)
         self.assert_(name_of(8) != name2, msg="user_name should not be %s" % name2)
         s = objectstore.get_session()
-        s.begin()
-        s.begin()
+        trans = s.begin()
+        trans2 = s.begin()
         m.get(7).user_name = name1
-        s.begin()
+        trans3 = s.begin()
         m.get(8).user_name = name2
-        s.commit()
+        trans3.commit()
+        s.commit() # should do nothing
         self.assert_(name_of(7) != name1, msg="user_name should not be %s" % name1)
         self.assert_(name_of(8) != name2, msg="user_name should not be %s" % name2)
-        s.commit()
+        trans2.commit()
+        s.commit()  # should do nothing
         self.assert_(name_of(7) != name1, msg="user_name should not be %s" % name1)
         self.assert_(name_of(8) != name2, msg="user_name should not be %s" % name2)
-        s.commit()
+        trans.commit()
         self.assert_(name_of(7) == name1, msg="user_name should be %s" % name1)
         self.assert_(name_of(8) == name2, msg="user_name should be %s" % name2)
 
+    def test_nested_rollback(self):
+        class User(object):pass
+        m = mapper(User, users)
+        def name_of(id):
+            return users.select(users.c.user_id == id).execute().fetchone().user_name
+        name1 = "Oliver Twist"
+        name2 = 'Mr. Bumble'
+        self.assert_(name_of(7) != name1, msg="user_name should not be %s" % name1)
+        self.assert_(name_of(8) != name2, msg="user_name should not be %s" % name2)
+        s = objectstore.get_session()
+        trans = s.begin()
+        trans2 = s.begin()
+        m.get(7).user_name = name1
+        trans3 = s.begin()
+        m.get(8).user_name = name2
+        trans3.rollback()
+        self.assert_(name_of(7) != name1, msg="user_name should not be %s" % name1)
+        self.assert_(name_of(8) != name2, msg="user_name should not be %s" % name2)
+        trans2.commit()
+        self.assert_(name_of(7) != name1, msg="user_name should not be %s" % name1)
+        self.assert_(name_of(8) != name2, msg="user_name should not be %s" % name2)
+        trans.commit()
+        self.assert_(name_of(7) != name1, msg="user_name should not be %s" % name1)
+        self.assert_(name_of(8) != name2, msg="user_name should not be %s" % name2)
 
 class PKTest(AssertMixin):
     def setUpAll(self):

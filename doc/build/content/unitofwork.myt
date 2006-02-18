@@ -65,22 +65,22 @@
     <&|doclib.myt:item, name="begin", description="Controlling Scope with begin()" &>
     
     <p>The "scope" of the unit of work commit can be controlled further by issuing a begin().  A begin operation constructs a new UnitOfWork object and sets it as the currently used UOW.  It maintains a reference to the original UnitOfWork as its "parent", and shares the same "identity map" of objects that have been loaded from the database within the scope of the parent UnitOfWork.  However, the "new", "dirty", and "deleted" lists are empty.  This has the effect that only changes that take place after the begin() operation get logged to the current UnitOfWork, and therefore those are the only changes that get commit()ted.  When the commit is complete, the "begun" UnitOfWork removes itself and places the parent UnitOfWork as the current one again.</p>
+<p>The begin() method returns a transactional object, upon which you can call commit() or rollback().  <b>Only this transactional object controls the transaction</b> - commit() upon the Session will do nothing until commit() or rollback() is called upon the transactional object.</p>
     <&|formatting.myt:code&>
         # modify an object
         myobj1.foo = "something new"
         
         # begin an objectstore scope
         # this is equivalent to objectstore.get_session().begin()
-        objectstore.begin()
+        trans = objectstore.begin()
         
         # modify another object
         myobj2.lala = "something new"
         
         # only 'myobj2' is saved
-        objectstore.commit()
+        trans.commit()
     </&>
-    <p>As always, the actual database transaction begin/commit occurs entirely within the objectstore.commit() operation.</p>
-    <p>At the moment, begin/commit supports the same "nesting" behavior as the SQLEngine (note this behavior is not the original "nested" behavior), meaning that repeated calls to begin() will increment a counter, which is not released until that same number of commit() statements occur.</p>
+    <p>begin/commit supports the same "nesting" behavior as the SQLEngine (note this behavior is not the original "nested" behavior), meaning that many begin() calls can be made, but only the outermost transactional object will actually perform a commit().  Similarly, calls to the commit() method on the Session, which might occur in function calls within the transaction, will not do anything; this allows an external function caller to control the scope of transactions used within the functions.</p>
     </&>
     <&|doclib.myt:item, name="transactionnesting", description="Nesting UnitOfWork in a Database Transaction" &>
     <p>The UOW commit operation places its INSERT/UPDATE/DELETE operations within the scope of a database transaction controlled by a SQLEngine:

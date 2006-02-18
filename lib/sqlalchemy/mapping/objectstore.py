@@ -82,16 +82,43 @@ class Session(object):
         """
         return (class_, table.hash_key(), tuple([row[column] for column in primary_key]))
     get_row_key = staticmethod(get_row_key)
-    
+
+    class UOWTrans(object):
+        def __init__(self, parent, uow, isactive):
+            self.__parent = parent
+            self.__isactive = isactive
+            self.__uow = uow
+        isactive = property(lambda s:s.__isactive)
+        parent = property(lambda s:s.__parent)
+        uow = property(lambda s:s.__uow)
+        def begin(self):
+            return self.parent.begin()
+        def commit(self):
+            self.__parent._trans_commit(self)
+            self.__isactive = False
+        def rollback(self):
+            self.__parent._trans_rollback(self)
+            self.__isactive = False
+
     def begin(self):
         """begins a new UnitOfWork transaction.  the next commit will affect only
         objects that are created, modified, or deleted following the begin statement."""
-        self.begin_count += 1
         if self.parent_uow is not None:
-            return
-        self.parent_uow = self.uow            
+            return Session.UOWTrans(self, self.uow, False)
+        self.parent_uow = self.uow
         self.uow = UnitOfWork(identity_map = self.uow.identity_map)
-        
+        return Session.UOWTrans(self, self.uow, True)
+    
+    def _trans_commit(self, trans):
+        if trans.uow is self.uow and trans.isactive:
+            self.uow.commit()
+            self.uow = self.parent_uow
+            self.parent_uow = None
+    def _trans_rollback(self, trans):
+        if trans.uow is self.uow:
+            self.uow = self.parent_uow
+            self.parent_uow = None
+                        
     def commit(self, *objects):
         """commits the current UnitOfWork transaction.  if a transaction was begun 
         via begin(), commits only those objects that were created, modified, or deleted
@@ -104,14 +131,8 @@ class Session(object):
         if len(objects):
             self.uow.commit(*objects)
             return
-        if self.parent_uow is not None:
-            self.begin_count -= 1
-            if self.begin_count > 0:
-                return
-        self.uow.commit()
-        if self.parent_uow is not None:
-            self.uow = self.parent_uow
-            self.parent_uow = None
+        if self.parent_uow is None:
+            self.uow.commit()
 
     def rollback(self):
         """rolls back the current UnitOfWork transaction, in the case that begin()
