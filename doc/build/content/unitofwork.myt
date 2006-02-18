@@ -63,7 +63,7 @@
     <p>Committing just a subset of instances should be used carefully, as it may result in an inconsistent save state between dependent objects (it should manage to locate loaded dependencies and save those also, but it hasnt been tested much).</p>
     
     <&|doclib.myt:item, name="begin", description="Controlling Scope with begin()" &>
-    
+    <p><b>status</b> - release 0.1.1/SVN head</p>
     <p>The "scope" of the unit of work commit can be controlled further by issuing a begin().  A begin operation constructs a new UnitOfWork object and sets it as the currently used UOW.  It maintains a reference to the original UnitOfWork as its "parent", and shares the same "identity map" of objects that have been loaded from the database within the scope of the parent UnitOfWork.  However, the "new", "dirty", and "deleted" lists are empty.  This has the effect that only changes that take place after the begin() operation get logged to the current UnitOfWork, and therefore those are the only changes that get commit()ted.  When the commit is complete, the "begun" UnitOfWork removes itself and places the parent UnitOfWork as the current one again.</p>
 <p>The begin() method returns a transactional object, upon which you can call commit() or rollback().  <b>Only this transactional object controls the transaction</b> - commit() upon the Session will do nothing until commit() or rollback() is called upon the transactional object.</p>
     <&|formatting.myt:code&>
@@ -167,42 +167,10 @@
 <p>Note that the import_instance() function will either mark the deserialized object as the official copy in the current identity map, which includes updating its _identity_key with the current application's class instance, or it will discard it and return the corresponding object that was already present.</p>
     </&>
 
-    <&|doclib.myt:item, name="advscope", description="Advanced UnitOfWork Scope Management"&>
-    <p>The current thread's UnitOfWork can be replaced with a manually created instance:</p>
-    <&|formatting.myt:code&>
-        # get the Session
-        s = objectstore.session()
-        
-        # create new UnitOfWork
-        u = objectstore.UnitOfWork(s)
-        
-        # set it on the Session for the current thread
-        s.uow = u
-    </&>
-    <p>The global Session can also be replaced.  This allows changing the algorithm used to retrieve the current scoped UnitOfWork object.</p>
-    <&|formatting.myt:code&>
-        # make a new Session, with just one global UnitOfWork
-        s = objectstore.Session()
-        
-        # make a new Session that returns thread-local UnitOfWork objects
-        s = objectstore.Session(scope="thread")
-        
-        # make a new Session, with a custom scope 
-        # give it a "key" function used to identify a UnitOfWork
-        def myreg():
-            return "mykey"
-        s = objectstore.Session(keyfunc=myreg)
-        
-        # make a Session with a custom function to create UnitOfWorks
-        def myuow(session):
-            return UnitOfWork(session)
-        s = objectstore.Session(createfunc=myuow)
-
-        # set this Session as the global "session":
-        objectstore.global_session = s
-    </&>
+    <&|doclib.myt:item, name="advscope", description="Advanced UnitOfWork Management"&>
 
     <&|doclib.myt:item, name="object", description="Per-Object Sessions" &>
+    <p><b>status</b> - 'using' function not yet released</p>
     <p>Sessions can be created on an ad-hoc basis and used for individual groups of objects and operations.  This has the effect of bypassing the entire "global"/"threadlocal" UnitOfWork system and explicitly using a particular Session:</p>
     <&|formatting.myt:code&>
         # make a new Session with a global UnitOfWork
@@ -230,6 +198,67 @@
         finally:
             objectstore.pop_session()
     </&>
+    </&>
+
+    <&|doclib.myt:item, name="scope", description="Custom Session Objects/Custom Scopes" &>
+
+    <p>For users who want to make their own Session subclass, or replace the algorithm used to return scoped Session objects (i.e. the objectstore.get_session() method):</p>
+    <&|formatting.myt:code&>
+        # make a new Session
+        s = objectstore.Session()
+        
+        # set it as the current thread-local session
+        objectstore.session_registry.set(s)
+
+        # set the objectstore's session registry to a different algorithm
+        
+        def create_session():
+            """creates new sessions"""
+            return objectstore.Session()
+        def mykey():
+            """creates contextual keys to store scoped sessions"""
+            return "mykey"
+            
+        objectstore.session_registry = sqlalchemy.util.ScopedRegistry(createfunc=create_session, scopefunc=mykey)
+    </&>
+    </&>
+
+    <&|doclib.myt:item, name="logging", description="Analyzing Object Commits" &>
+    <p>The objectstore module can log an extensive display of its "commit plans", which is a graph of its internal representation of objects before they are committed to the database.  To turn this logging on:
+    <&|formatting.myt:code&>
+        # make an engine with echo_uow
+        engine = create_engine('myengine...', echo_uow=True)
+        
+        # globally turn on echo
+        objectstore.LOG = True
+    </&>
+    <p>Commits will then dump to the standard output displays like the following:</p>
+    <&|formatting.myt:code, syntaxtype=None&>
+    Task dump:
+     UOWTask(6034768) 'User/users/6015696'
+      |
+      |- Save elements
+      |- Save: UOWTaskElement(6034800): User(6016624) (save)
+      |
+      |- Save dependencies
+      |- UOWDependencyProcessor(6035024) 'addresses' attribute on saved User's (UOWTask(6034768) 'User/users/6015696')
+      |       |-UOWTaskElement(6034800): User(6016624) (save)
+      |
+      |- Delete dependencies
+      |- UOWDependencyProcessor(6035056) 'addresses' attribute on User's to be deleted (UOWTask(6034768) 'User/users/6015696')
+      |       |-(no objects)
+      |
+      |- Child tasks
+      |- UOWTask(6034832) 'Address/email_addresses/6015344'
+      |   |
+      |   |- Save elements
+      |   |- Save: UOWTaskElement(6034864): Address(6034384) (save)
+      |   |- Save: UOWTaskElement(6034896): Address(6034256) (save)
+      |   |----
+      | 
+      |----
+    </&>
+    <p>The above graph can be read straight downwards to determine the order of operations.  It indicates "save User 6016624, process each element in the 'addresses' list on User 6016624, save Address 6034384, Address 6034256".
     </&>
     
     </&>
