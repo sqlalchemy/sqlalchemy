@@ -228,6 +228,28 @@ class CycleTest2(AssertMixin):
         p.balls.append(b)
         objectstore.commit()
 
+    def testrowcycle(self):
+        """tests a cycle between two rows"""
+        class Person(object):
+         pass
+
+        class Ball(object):
+         pass
+
+        Ball.mapper = mapper(Ball, ball)
+        Person.mapper = mapper(Person, person, properties= dict(
+         balls = relation(Ball.mapper, primaryjoin=ball.c.person_id==person.c.id, foreignkey=ball.c.person_id),
+         favorateBall = relation(Ball.mapper, primaryjoin=person.c.favoriteBall_id==ball.c.id, foreignkey=person.c.favoriteBall_id),
+         )
+        )
+
+        print str(Person.mapper.props['balls'].primaryjoin)
+
+        b = Ball()
+        p = Person()
+        p.balls.append(b)
+        p.favorateBall = b
+        #objectstore.commit()
 
         
 if __name__ == "__main__":
