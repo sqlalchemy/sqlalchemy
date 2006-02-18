@@ -42,11 +42,11 @@ class QueryTest(PersistTest):
         print repr(self.users.select().execute().fetchall())
 
     def testpassiveoverride(self):
-        """primarily for postgres, tests that when we get a column back 
+        """primarily for postgres, tests that when we get a primary key column back 
         from reflecting a table which has a default value on it, we pre-execute
         that PassiveDefault upon insert, even though PassiveDefault says 
-        "let the database execute this", because in postgres we have to otherwise
-        we cant locate the inserted row."""
+        "let the database execute this", because in postgres we must have all the primary
+        key values in memory before insert; otherwise we cant locate the just inserted row."""
         try:
             db.execute("""
              CREATE TABLE speedy_users
