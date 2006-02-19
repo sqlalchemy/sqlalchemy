@@ -219,6 +219,7 @@ class PropertyLoader(MapperProperty):
         objectstore.uow().register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private, extension=self.attributeext)
         
     def _get_direction(self):
+        """determines our 'direction', i.e. do we represent one to many, many to many, etc."""
 #        print self.key, repr(self.parent.table.name), repr(self.parent.primarytable.name), repr(self.foreignkey.table.name)
         if self.parent.table is self.target:
             if self.foreignkey.primary_key:
@@ -391,6 +392,9 @@ class PropertyLoader(MapperProperty):
             return (obj2, obj1)
 
     def process_dependencies(self, task, deplist, uowcommit, delete = False):
+        """this method is called during a commit operation to synchronize data between a parent and child object.  
+        it also can establish child or parent objects within the unit of work as "to be saved" or "deleted" 
+        in some cases."""
         #print self.mapper.table.name + " " + self.key + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
 
         def getlist(obj, passive=True):

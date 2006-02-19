@@ -99,6 +99,13 @@ class MapperTest(MapperSuperTest):
         self.assert_result(l, User, *[{'user_id':8}])
 
         l = m.select_by(User.c.user_name=='fred', addresses.c.email_address!='ed@bettyboop.com', user_id=9)
+
+    def testprops(self):
+        """tests the various attributes of the properties attached to classes"""
+        m = mapper(User, users, properties = {
+            'addresses' : relation(mapper(Address, addresses))
+        })
+        self.assert_(User.addresses.property is m.props['addresses'])
         
     def testload(self):
         """tests loading rows with a mapper and producing object instances"""

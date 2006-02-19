@@ -27,7 +27,7 @@ The package includes functions for managing "bi-directional" object relationship
 via the GenericBackrefExtension object.
 """
 
-import sqlalchemy.util as util
+import util
 
 class SmartProperty(object):
     """Provides a property object that will communicate set/get/delete operations
@@ -35,22 +35,21 @@ class SmartProperty(object):
     create_prop method on AttributeManger, which can be overridden to provide
     subclasses of SmartProperty.
     """
-    def __init__(self, manager):
+    def __init__(self, manager, key, uselist):
         self.manager = manager
-    def attribute_registry(self):
-        return self.manager
-    def property(self, key, uselist):
-        def set_prop(obj, value):
-            self.attribute_registry().set_attribute(obj, key, value)
-        def del_prop(obj):
-            self.attribute_registry().delete_attribute(obj, key)
-        def get_prop(obj):
-            if uselist:
-                return self.attribute_registry().get_list_attribute(obj, key)
-            else:
-                return self.attribute_registry().get_attribute(obj, key)
-                
-        return property(get_prop, set_prop, del_prop)
+        self.key = key
+        self.uselist = uselist
+    def __set__(self, obj, value):
+        self.manager.set_attribute(obj, self.key, value)
+    def __delete__(self, obj):
+        self.manager.delete_attribute(obj, self.key)
+    def __get__(self, obj, owner):
+        if obj is None:
+            return self
+        if self.uselist:
+            return self.manager.get_list_attribute(obj, self.key)
+        else:
+            return self.manager.get_attribute(obj, self.key)
 
 class PropHistory(object):
     """Used by AttributeManager to track the history of a scalar attribute
@@ -254,10 +253,10 @@ class AttributeManager(object):
         upon an attribute change of value."""
         pass
         
-    def create_prop(self, key, uselist, **kwargs):
+    def create_prop(self, class_, key, uselist, **kwargs):
         """creates a scalar property object, defaulting to SmartProperty, which 
         will communicate change events back to this AttributeManager."""
-        return SmartProperty(self).property(key, uselist)
+        return SmartProperty(self, key, uselist)
     def create_list(self, obj, key, list_, **kwargs):
         """creates a history-aware list property, defaulting to a ListElement which
         is a subclass of HistoryArrayList."""
@@ -411,5 +410,5 @@ class AttributeManager(object):
             return p
         
         self.class_managed(class_)[key] = createprop
-        setattr(class_, key, self.create_prop(key, uselist))
+        setattr(class_, key, self.create_prop(class_, key, uselist))
 

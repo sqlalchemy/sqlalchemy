@@ -178,6 +178,11 @@ class Mapper(object):
     engines = property(lambda s: [t.engine for t in s.tables])
 
     def add_property(self, key, prop):
+        """adds an additional property to this mapper.  this is the same as if it were 
+        specified within the 'properties' argument to the constructor.  if the named
+        property already exists, this will replace it.  Useful for
+        circular relationships, or overriding the parameters of auto-generated properties
+        such as backreferences."""
         if sql.is_column(prop):
             self.columns[key] = prop
             prop = ColumnProperty(prop)

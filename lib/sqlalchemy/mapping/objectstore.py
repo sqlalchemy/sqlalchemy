@@ -243,6 +243,12 @@ def instance_key(instance):
 def import_instance(instance):
     return get_session().import_instance(instance)
 
+class UOWProperty(attributes.SmartProperty):
+    def __init__(self, class_, *args, **kwargs):
+        super(UOWProperty, self).__init__(*args, **kwargs)
+        self.class_ = class_
+    property = property(lambda s:class_mapper(s.class_).props[s.key], doc="returns the MapperProperty object associated with this property")
+    
 class UOWListElement(attributes.ListElement):
     def __init__(self, obj, key, data=None, deleteremoved=False, **kwargs):
         attributes.ListElement.__init__(self, obj, key, data=data, **kwargs)
@@ -269,6 +275,9 @@ class UOWAttributeManager(attributes.AttributeManager):
             get_session(obj).register_dirty(obj)
         else:
             get_session(obj).register_new(obj)
+            
+    def create_prop(self, class_, key, uselist, **kwargs):
+        return UOWProperty(class_, self, key, uselist)
 
     def create_list(self, obj, key, list_, **kwargs):
         return UOWListElement(obj, key, list_, **kwargs)
@@ -991,15 +1000,17 @@ class UOWTask(object):
 
 class DependencySorter(topological.QueueDependencySorter):
     pass
-        
+
 def mapper(*args, **params):
     return sqlalchemy.mapperlib.mapper(*args, **params)
 
 def object_mapper(obj):
     return sqlalchemy.mapperlib.object_mapper(obj)
 
-global_attributes = UOWAttributeManager()
+def class_mapper(class_):
+    return sqlalchemy.mapperlib.class_mapper(class_)
 
+global_attributes = UOWAttributeManager()
 
 session_registry = util.ScopedRegistry(Session) # Default session registry
 _sessions = weakref.WeakValueDictionary() # all referenced sessions (including user-created)
