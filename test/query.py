@@ -47,6 +47,8 @@ class QueryTest(PersistTest):
         that PassiveDefault upon insert, even though PassiveDefault says 
         "let the database execute this", because in postgres we must have all the primary
         key values in memory before insert; otherwise we cant locate the just inserted row."""
+        if not db.engine.__module__.endswith('postgres'):
+            return
         try:
             db.execute("""
              CREATE TABLE speedy_users
@@ -61,6 +63,7 @@ class QueryTest(PersistTest):
             t = Table("speedy_users", db, autoload=True)
             t.insert().execute(user_name='user', user_password='lala')
             l = t.select().execute().fetchall()
+            print l
             self.assert_(l == [(1, 'user', 'lala')])
         finally:
             db.execute("drop table speedy_users", None)
