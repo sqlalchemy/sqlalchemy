@@ -16,8 +16,8 @@ def suite():
         # schema/tables
         'engines', 
         'testtypes',
-	'indexes',
-	        
+        'indexes',
+
         # SQL syntax
         'select',
         'selectable',
@@ -39,8 +39,8 @@ def suite():
         
         # more select/persistence, backrefs
         'manytomany',
-        #'onetoone',
-	'inheritance',
+        'onetoone',
+        'inheritance',
         
         # extensions
         'proxy_engine',
