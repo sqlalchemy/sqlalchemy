@@ -1,7 +1,9 @@
 0.1.1
+- added exceptions module, all raised exceptions (except for some 
+KeyError/AttributeError exceptions) descend from these classes.
 - fix to date types with MySQL, returned timedelta converted to datetime.time
-- begin/commit now returns a transactional object, to more clearly indicate
-transaction boundaries.
+- two-phase objectstore.commit operations (i.e. begin/commit) now return a 
+transactional object (SessionTrans), to more clearly indicate transaction boundaries.
 - Index object with create/drop support added to schema
 - fix to postgres, where it will explicitly pre-execute a PassiveDefault on a table
 if it is a primary key column, pursuant to the ongoing "we cant get inserted rows 
