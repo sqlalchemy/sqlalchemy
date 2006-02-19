@@ -6,6 +6,7 @@
 
 __all__ = ['OrderedProperties', 'OrderedDict', 'generic_repr', 'HashSet']
 import thread, weakref, UserList,string, inspect
+from exceptions import *
 
 def to_list(x):
     if x is None:
@@ -257,7 +258,7 @@ class HistoryArraySet(UserList.UserList):
         return id(self)
     def _setrecord(self, item):
         if self.readonly:
-            raise "This list is read only"
+            raise InvalidRequestError("This list is read only")
         try:
             val = self.records[item]
             if val is True or val is None:
@@ -270,7 +271,7 @@ class HistoryArraySet(UserList.UserList):
             return True
     def _delrecord(self, item):
         if self.readonly:
-            raise "This list is read only"
+            raise InvalidRequestError("This list is read only")
         try:
             val = self.records[item]
             if val is None:
@@ -428,7 +429,7 @@ def constructor_args(instance, **kwargs):
             if hasattr(instance, arg):
                 newparams[arg] = getattr(instance, arg)
             else:
-                raise "instance has no attribute '%s'" % arg
+                raise AssertionError("instance has no attribute '%s'" % arg)
 
     return newparams
     

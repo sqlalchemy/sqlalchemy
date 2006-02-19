@@ -33,6 +33,7 @@ realized this characteristic of the algorithm.
 import string, StringIO
 from sets import *
 import sqlalchemy.util as util
+from sqlalchemy.exceptions import *
 
 class QueueDependencySorter(object):
     """this is a topological sort from wikipedia.  its very stable.  it creates a straight-line
@@ -91,7 +92,7 @@ class QueueDependencySorter(object):
                     n.cycles = Set([n])
                     continue
                 else:
-                    raise "Self-referential dependency detected " + repr(t)
+                    raise CommitError("Self-referential dependency detected " + repr(t))
             childnode = nodes[t[1]]
             parentnode = nodes[t[0]]
             self._add_edge(edges, (parentnode, childnode))
@@ -125,7 +126,7 @@ class QueueDependencySorter(object):
                     continue
                 else:
                     # long cycles not allowed
-                    raise "Circular dependency detected " + repr(edges) + repr(queue)
+                    raise CommitError("Circular dependency detected " + repr(edges) + repr(queue))
             node = queue.pop()
             if not hasattr(node, '_cyclical'):
                 output.append(node)
@@ -291,7 +292,7 @@ class TreeDependencySorter(object):
             elif parentnode.is_descendant_of(childnode):
                 # check for a line thats backwards with nodes in between, this is a 
                 # circular dependency (although confirmation on this would be helpful)
-                raise "Circular dependency detected"
+                raise CommitError("Circular dependency detected")
             elif not childnode.is_descendant_of(parentnode):
                 # if relationship doesnt exist, connect nodes together
                 root = childnode.get_sibling_ancestor(parentnode)

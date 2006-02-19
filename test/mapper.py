@@ -148,10 +148,10 @@ class MapperTest(MapperSuperTest):
         # assert that overriding a column raises an error
         try:
             m = mapper(User, users, properties = {
-                    'user_name' : relation(Address, addresses),
+                    'user_name' : relation(mapper(Address, addresses)),
                 })
-            self.assert_(False, "should have raised ValueError")
-        except ValueError, e:
+            self.assert_(False, "should have raised ArgumentError")
+        except ArgumentError, e:
             self.assert_(True)
             
         # assert that allow_column_override cancels the error

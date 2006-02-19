@@ -23,13 +23,13 @@ The term "database-specific" will be used to describe any object or function tha
 corresponding to a particular vendor, such as mysql-specific, sqlite-specific, etc.
 """
 
-import sqlalchemy.schema as schema
 import sqlalchemy.pool
-import sqlalchemy.util as util
-import sqlalchemy.sql as sql
-import StringIO, sys, re
+import schema
+import exceptions
+import util
+import sql
 import sqlalchemy.types as types
-import sqlalchemy.databases
+import StringIO, sys, re
 
 __all__ = ['create_engine', 'engine_descriptors']
 
@@ -236,7 +236,7 @@ class SQLEngine(schema.SchemaEngine):
             self.bindtemplate = "%%(%s)s"
             self.positional = True
         else:
-            raise "Unsupported paramstyle '%s'" % self._paramstyle
+            raise DBAPIError("Unsupported paramstyle '%s'" % self._paramstyle)
         
     def type_descriptor(self, typeobj):
         """provides a database-specific TypeEngine object, given the generic object
@@ -609,10 +609,10 @@ class SQLEngine(schema.SchemaEngine):
         return ResultProxy(cursor, self, typemap=typemap)
 
     def _execute(self, c, statement, parameters):
-        #try:
-        c.execute(statement, parameters)
-        #except:
-        #    raise "OK ERROR " + statement + " " + repr(parameters)
+        try:
+            c.execute(statement, parameters)
+        except Exception, e:
+            raise exceptions.SQLError(statement, parameters, e)
         self.context.rowcount = c.rowcount
     def _executemany(self, c, statement, parameters):
         c.executemany(statement, parameters)
@@ -642,7 +642,7 @@ class ResultProxy:
         def __init__(self, key):
             self.key = key
         def convert_result_value(self, arg, engine):
-            raise "Ambiguous column name '%s' in result set! try 'use_labels' option on select statement." % (self.key)
+            raise InvalidRequestError("Ambiguous column name '%s' in result set! try 'use_labels' option on select statement." % (self.key))
     
     def __init__(self, cursor, engine, typemap = None):
         """ResultProxy objects are constructed via the execute() method on SQLEngine."""
@@ -663,7 +663,7 @@ class ResultProxy:
                 else:
                     rec = (types.NULLTYPE, i)
                 if rec[0] is None:
-                    raise "None for metadata " + colname
+                    raise DBAPIError("None for metadata " + colname)
                 if self.props.setdefault(colname, rec) is not rec:
                     self.props[colname] = (ResultProxy.AmbiguousColumn(colname), 0)
                 self.keys.append(colname)

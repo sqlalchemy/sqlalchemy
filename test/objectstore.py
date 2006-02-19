@@ -7,7 +7,6 @@ import testbase
 from tables import *
 import tables
 
-
 class HistoryTest(AssertMixin):
     def setUpAll(self):
         db.echo = False

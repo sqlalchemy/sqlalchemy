@@ -6,9 +6,10 @@
 
 """defines the base components of SQL expression trees."""
 
-import sqlalchemy.schema as schema
-import sqlalchemy.util as util
-import sqlalchemy.types as sqltypes
+import schema
+import util
+import types as sqltypes
+from exceptions import *
 import string, re, random
 types = __import__('types')
 
@@ -379,7 +380,7 @@ class ClauseElement(object):
             engine = self.engine
 
         if engine is None:
-            raise "no SQLEngine could be located within this ClauseElement."
+            raise InvalidRequestError("no SQLEngine could be located within this ClauseElement.")
 
         return engine.compile(self, parameters=parameters, typemap=typemap)
 
@@ -475,7 +476,7 @@ class CompareMixin(object):
         if _is_literal(obj):
             if obj is None:
                 if operator != '=':
-                    raise "Only '=' operator can be used with NULL"
+                    raise ArgumentError("Only '=' operator can be used with NULL")
                 return BooleanExpression(self._compare_self(), null(), 'IS')
             else:
                 obj = self._bind_param(obj)
@@ -857,7 +858,7 @@ class Join(FromClause):
                     crit.append(secondary._get_col_by_original(fk.column) == fk.parent)
                     self.foreignkey = fk.parent
         if len(crit) == 0:
-            raise "Cant find any foreign key relationships between '%s' (%s) and '%s' (%s)" % (primary.name, repr(primary), secondary.name, repr(secondary))
+            raise ArgumentError("Cant find any foreign key relationships between '%s' (%s) and '%s' (%s)" % (primary.name, repr(primary), secondary.name, repr(secondary)))
         elif len(crit) == 1:
             return (crit[0])
         else:
@@ -1043,7 +1044,7 @@ class ColumnImpl(ColumnElement):
         if engine is None:
             engine = self.engine
         if engine is None:
-            raise "no SQLEngine could be located within this ClauseElement."
+            raise InvalidRequestError("no SQLEngine could be located within this ClauseElement.")
         return engine.compile(self.column, parameters=parameters, typemap=typemap)
 
 class TableImpl(FromClause):

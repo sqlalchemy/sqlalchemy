@@ -7,6 +7,7 @@
 from engine import *
 from types import *
 from schema import *
+from exceptions import *
 from sql import *
 import mapping as mapperlib
 from mapping import *

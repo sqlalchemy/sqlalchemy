@@ -13,6 +13,7 @@ import sqlalchemy.schema as schema
 import sqlalchemy.engine as engine
 import sqlalchemy.util as util
 import objectstore
+from exceptions import *
 import types as types
 from mapper import *
 from properties import *
@@ -27,7 +28,7 @@ def relation(*args, **kwargs):
     """provides a relationship of a primary Mapper to a secondary Mapper, which corresponds
     to a parent-child or associative table relationship."""
     if len(args) > 1 and isinstance(args[0], type):
-        raise ValueError("relation(class, table, **kwargs) is deprecated.  Please use relation(class, **kwargs) or relation(mapper, **kwargs).")
+        raise ArgumentError("relation(class, table, **kwargs) is deprecated.  Please use relation(class, **kwargs) or relation(mapper, **kwargs).")
     return _relation_loader(*args, **kwargs)
 
 def _relation_loader(mapper, secondary=None, primaryjoin=None, secondaryjoin=None, lazy=True, **kwargs):
@@ -101,7 +102,7 @@ def class_mapper(class_):
         pass
     except AttributeError:
         pass
-    raise "Class '%s' has no mapper associated with it" % class_.__name__
+    raise InvalidRequestError("Class '%s' has no mapper associated with it" % class_.__name__)
 
 
 def assign_mapper(class_, *args, **params):

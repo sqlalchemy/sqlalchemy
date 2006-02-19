@@ -249,7 +249,7 @@ class CycleTest2(AssertMixin):
         p = Person()
         p.balls.append(b)
         p.favorateBall = b
-        #objectstore.commit()
+        objectstore.commit()
 
         
 if __name__ == "__main__":

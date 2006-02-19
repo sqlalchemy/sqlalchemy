@@ -145,8 +145,6 @@ class ANSICompiler(sql.Compiled):
     def visit_label(self, label):
         if len(self.select_stack):
             self.typemap.setdefault(label.name.lower(), label.obj.type)
-            if label.obj.type is None:
-                raise "nonetype" + repr(label.obj)
         self.strings[label] = self.strings[label.obj] + " AS "  + label.name
         
     def visit_column(self, column):

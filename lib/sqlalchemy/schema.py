@@ -15,8 +15,9 @@ the schema package "plugs in" to the SQL package.
 
 """
 
-from sqlalchemy.util import *
-from sqlalchemy.types import *
+from util import *
+from types import *
+from exceptions import *
 import copy, re, string
 
 __all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index',
@@ -76,11 +77,11 @@ class TableSingleton(type):
                 if redefine:
                     table.reload_values(*args)
                 elif not useexisting:
-                    raise "Table '%s.%s' is already defined. specify 'redefine=True' to remap columns, or 'useexisting=True' to use the existing table" % (schema, name)
+                    raise ArgumentError("Table '%s.%s' is already defined. specify 'redefine=True' to remap columns, or 'useexisting=True' to use the existing table" % (schema, name))
             return table
         except KeyError:
             if mustexist:
-                raise "Table '%s.%s' not defined" % (schema, name)
+                raise ArgumentError("Table '%s.%s' not defined" % (schema, name))
             table = type.__call__(self, name, engine, **kwargs)
             engine.tables[key] = table
             # load column definitions from the database if 'autoload' is defined
@@ -248,7 +249,7 @@ class Column(SchemaItem):
         self.foreign_key = None
         self._orig = None
         if len(kwargs):
-            raise "Unknown arguments passed to Column: " + repr(kwargs.keys())
+            raise ArgumentError("Unknown arguments passed to Column: " + repr(kwargs.keys()))
         
     original = property(lambda s: s._orig or s)
     engine = property(lambda s: s.table.engine)
@@ -272,7 +273,7 @@ class Column(SchemaItem):
             
     def _set_parent(self, table):
         if getattr(self, 'table', None) is not None:
-            raise "this Column already has a table!"
+            raise ArgumentError("this Column already has a table!")
         if not self.hidden:
             table.columns[self.key] = self
             if self.primary_key:
@@ -377,7 +378,7 @@ class ForeignKey(SchemaItem):
             if isinstance(self._colspec, str):
                 m = re.match(r"^([\w_-]+)(?:\.([\w_-]+))?(?:\.([\w_-]+))?$", self._colspec)
                 if m is None:
-                    raise ValueError("Invalid foreign key column specification: " + self._colspec)
+                    raise ArgumentError("Invalid foreign key column specification: " + self._colspec)
                 if m.group(3) is None:
                     (tname, colname) = m.group(1, 2)
                     schema = self.parent.original.table.schema
@@ -485,7 +486,7 @@ class Index(SchemaItem):
                 self.table = column.table
             elif column.table != self.table:
                 # all columns muse be from same table
-                raise ValueError("All index columns must be from same table. "
+                raise ArgumentError("All index columns must be from same table. "
                                  "%s is from %s not %s" % (column,
                                                            column.table,
                                                            self.table))

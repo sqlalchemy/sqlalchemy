@@ -16,6 +16,7 @@ import sqlalchemy.util as util
 import sqlalchemy.attributes as attributes
 import mapper
 import objectstore
+from sqlalchemy.exceptions import *
 
 class ColumnProperty(MapperProperty):
     """describes an object attribute that corresponds to a table column."""
@@ -161,7 +162,7 @@ class PropertyLoader(MapperProperty):
         self.parent = parent
 
         if self.secondaryjoin is not None and self.secondary is None:
-            raise ValueError("Property '" + self.key + "' specified with secondary join condition but no secondary argument")
+            raise ArgumentError("Property '" + self.key + "' specified with secondary join condition but no secondary argument")
         # if join conditions were not specified, figure them out based on foreign keys
         if self.secondary is not None:
             if self.secondaryjoin is None:
@@ -209,7 +210,7 @@ class PropertyLoader(MapperProperty):
                     if not self.mapper.props[self.backref].is_backref:
                         self.is_backref=True
         elif not objectstore.global_attributes.is_class_managed(parent.class_, key):
-            raise "Non-primary property created for attribute '%s' on class '%s', but that attribute is not managed! Insure that the primary mapper for this class defines this property" % (key, parent.class_.__name__)
+            raise ArgumentError("Non-primary property created for attribute '%s' on class '%s', but that attribute is not managed! Insure that the primary mapper for this class defines this property" % (key, parent.class_.__name__))
 
         self.do_init_subclass(key, parent)
         
@@ -231,7 +232,7 @@ class PropertyLoader(MapperProperty):
         elif self.foreigntable == self.parent.table:
             return PropertyLoader.MANYTOONE
         else:
-            raise "Cant determine relation direction"
+            raise ArgumentError("Cant determine relation direction")
             
     def _find_dependent(self):
         """searches through the primary join condition to determine which side
@@ -245,18 +246,18 @@ class PropertyLoader(MapperProperty):
                 return
             if isinstance(binary.left, schema.Column) and binary.left.primary_key:
                 if dependent[0] is binary.left.table:
-                    raise "bidirectional dependency not supported...specify foreignkey"
+                    raise ArgumentError("bidirectional dependency not supported...specify foreignkey")
                 dependent[0] = binary.right.table
                 self.foreignkey= binary.right
             elif isinstance(binary.right, schema.Column) and binary.right.primary_key:
                 if dependent[0] is binary.right.table:
-                    raise "bidirectional dependency not supported...specify foreignkey"
+                    raise ArgumentError("bidirectional dependency not supported...specify foreignkey")
                 dependent[0] = binary.left.table
                 self.foreignkey = binary.left
         visitor = BinaryVisitor(foo)
         self.primaryjoin.accept_visitor(visitor)
         if dependent[0] is None:
-            raise "cant determine primary foreign key in the join relationship....specify foreignkey=<column> or foreignkey=[<columns>]"
+            raise ArgumentError("cant determine primary foreign key in the join relationship....specify foreignkey=<column> or foreignkey=[<columns>]")
         else:
             self.foreigntable = dependent[0]
 
@@ -358,7 +359,7 @@ class PropertyLoader(MapperProperty):
             uowcommit.register_processor(stub, self, self.parent, True)
         elif self.direction == PropertyLoader.ONETOMANY:
             if self.post_update:
-                raise "post_update not yet supported with one-to-many relation"
+                raise InvalidRequestError("post_update not yet supported with one-to-many relation")
             uowcommit.register_dependency(self.parent, self.mapper)
             uowcommit.register_processor(self.parent, self, self.parent, False)
             uowcommit.register_processor(self.parent, self, self.parent, True)
@@ -372,7 +373,7 @@ class PropertyLoader(MapperProperty):
                 uowcommit.register_dependency(self.mapper, self.parent)
                 uowcommit.register_processor(self.mapper, self, self.parent, False)
         else:
-            raise " no foreign key ?"
+            raise AssertionError(" no foreign key ?")
 
     def get_object_dependencies(self, obj, uowcommit, passive = True):
         return uowcommit.uow.attributes.get_history(obj, self.key, passive = passive)
@@ -547,13 +548,13 @@ class PropertyLoader(MapperProperty):
                     source = binary.right
                     dest = binary.left
                 else:
-                    raise "Cant determine direction for relationship %s = %s" % (binary.left.fullname, binary.right.fullname)
+                    raise ArgumentError("Cant determine direction for relationship %s = %s" % (binary.left.fullname, binary.right.fullname))
                 if self.direction == PropertyLoader.ONETOMANY:
                     self.syncrules.append(SyncRule(self.parent, source, dest, dest_mapper=self.mapper))
                 elif self.direction == PropertyLoader.MANYTOONE:
                     self.syncrules.append(SyncRule(self.mapper, source, dest, dest_mapper=self.parent))
                 else:
-                    raise "assert failed"
+                    raise AssertionError("assert failed")
             else:
                 pt = check_for_table(binary, parent_tables)
                 tt = check_for_table(binary, target_tables)
@@ -567,7 +568,7 @@ class PropertyLoader(MapperProperty):
                     elif self.direction == PropertyLoader.MANYTOONE:
                         self.syncrules.append(SyncRule(self.mapper, tt, pt, dest_mapper=self.parent))
                     else:
-                        raise "assert failed"
+                        raise AssertionError("assert failed")
                 elif pt and st:
                     self.syncrules.append(SyncRule(self.parent, pt, st, direction=PropertyLoader.ONETOMANY))
                 elif tt and st:
@@ -579,7 +580,7 @@ class PropertyLoader(MapperProperty):
         if self.secondaryjoin is not None:
             self.secondaryjoin.accept_visitor(processor)
         if len(self.syncrules) == 0:
-            raise "No syncrules generated for join criterion " + str(self.primaryjoin)
+            raise ArgumentError("No syncrules generated for join criterion " + str(self.primaryjoin))
 
     def _synchronize(self, obj, child, associationrow, clearkeys):
         """called during a commit to execute the full list of syncrules on the 
@@ -799,7 +800,7 @@ class EagerLoader(PropertyLoader):
                         self.mapper.props[prop.key] = p
 
                         if recursion_stack.has_key(prop):
-                            raise "Circular eager load relationship detected on " + str(self.mapper) + " " + key + repr(self.mapper.props)
+                            raise ArgumentError("Circular eager load relationship detected on " + str(self.mapper) + " " + key + repr(self.mapper.props))
 
                         p.do_init_subclass(prop.key, prop.parent, recursion_stack)
 
@@ -852,7 +853,7 @@ class EagerLoader(PropertyLoader):
         try:
             for key, value in self.mapper.props.iteritems():
                 if recursion_stack.has_key(value):
-                    raise "Circular eager load relationship detected on " + str(self.mapper) + " " + key + repr(self.mapper.props)
+                    raise InvalidRequestError("Circular eager load relationship detected on " + str(self.mapper) + " " + key + repr(self.mapper.props))
                 value.setup(key, statement, recursion_stack=recursion_stack, eagertable=self.eagertarget)
         finally:
             del recursion_stack[self]

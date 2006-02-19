@@ -9,6 +9,7 @@ import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
 import sqlalchemy.engine as engine
 import sqlalchemy.util as util
+from sqlalchemy.exceptions import *
 import objectstore
 import sys
 import weakref
@@ -47,7 +48,7 @@ class Mapper(object):
         self._options = {}
         
         if not issubclass(class_, object):
-            raise TypeError("Class '%s' is not a new-style class" % class_.__name__)
+            raise ArgumentError("Class '%s' is not a new-style class" % class_.__name__)
             
         if isinstance(table, sql.Select):
             # some db's, noteably postgres, dont want to select from a select
@@ -55,7 +56,7 @@ class Mapper(object):
             # the configured properties on the mapper are not matched against the alias 
             # we make, theres workarounds but it starts to get really crazy (its crazy enough
             # the SQL that gets generated) so just require an alias
-            raise TypeError("Mapping against a Select object requires that it has a name.  Use an alias to give it a name, i.e. s = select(...).alias('myselect')")
+            raise ArgumentError("Mapping against a Select object requires that it has a name.  Use an alias to give it a name, i.e. s = select(...).alias('myselect')")
         else:
             self.table = table
 
@@ -87,7 +88,7 @@ class Mapper(object):
                 except KeyError:
                     l = self.pks_by_table.setdefault(t, util.HashSet(ordered=True))
                 if not len(t.primary_key):
-                    raise ValueError("Table " + t.name + " has no primary key columns. Specify primary_key argument to mapper.")
+                    raise ArgumentError("Table " + t.name + " has no primary key columns. Specify primary_key argument to mapper.")
                 for k in t.primary_key:
                     l.append(k)
 
@@ -110,14 +111,14 @@ class Mapper(object):
                     try:
                         prop = self.table._get_col_by_original(prop)
                     except KeyError:
-                        raise ValueError("Column '%s' is not represented in mapper's table" % prop._label)
+                        raise ArgumentError("Column '%s' is not represented in mapper's table" % prop._label)
                     self.columns[key] = prop
                     prop = ColumnProperty(prop)
                 elif isinstance(prop, list) and sql.is_column(prop[0]):
                     try:
                         prop = [self.table._get_col_by_original(p) for p in prop]
                     except KeyError, e:
-                        raise ValueError("Column '%s' is not represented in mapper's table" % e.args[0])
+                        raise ArgumentError("Column '%s' is not represented in mapper's table" % e.args[0])
                     self.columns[key] = prop[0]
                     prop = ColumnProperty(*prop)
                 self.props[key] = prop
@@ -143,7 +144,7 @@ class Mapper(object):
                 prop.columns.append(column)
             else:
                 if not allow_column_override:
-                    raise ValueError("WARNING: column '%s' not being added due to property '%s'.  Specify 'allow_column_override=True' to mapper() to ignore this condition." % (column.key, repr(prop)))
+                    raise ArgumentError("WARNING: column '%s' not being added due to property '%s'.  Specify 'allow_column_override=True' to mapper() to ignore this condition." % (column.key, repr(prop)))
                 else:
                     continue
         
@@ -358,7 +359,7 @@ class Mapper(object):
                 continue
             c = self._get_criterion(key, value)
             if c is None:
-                raise "Cant find criterion for property '"+ key + "'"
+                raise InvalidRequestError("Cant find criterion for property '"+ key + "'")
             if clause is None:
                 clause = c
             else:                
@@ -448,9 +449,9 @@ class Mapper(object):
         except KeyError:
             try:
                 prop = self.props[column.key]
-                raise "Column '%s.%s' is not available, due to conflicting property '%s':%s" % (column.table.name, column.name, column.key, repr(prop))
+                raise InvalidRequestError("Column '%s.%s' is not available, due to conflicting property '%s':%s" % (column.table.name, column.name, column.key, repr(prop)))
             except KeyError:
-                raise "No column %s.%s is configured on mapper %s..." % (column.table.name, column.name, str(self))
+                raise InvalidRequestError("No column %s.%s is configured on mapper %s..." % (column.table.name, column.name, str(self)))
         return prop[0]
         
     def _getattrbycolumn(self, obj, column):
@@ -560,7 +561,7 @@ class Mapper(object):
                     self.extension.after_update(self, obj)
                     rows += c.cursor.rowcount
                 if table.engine.supports_sane_rowcount() and rows != len(update):
-                    raise "ConcurrencyError - updated rowcount %d does not match number of objects updated %d" % (rows, len(update))
+                    raise CommitError("ConcurrencyError - updated rowcount %d does not match number of objects updated %d" % (rows, len(update)))
             if len(insert):
                 statement = table.insert()
                 for rec in insert:
@@ -607,7 +608,7 @@ class Mapper(object):
                 statement = table.delete(clause)
                 c = statement.execute(*delete)
                 if table.engine.supports_sane_rowcount() and c.rowcount != len(delete):
-                    raise "ConcurrencyError - updated rowcount %d does not match number of objects updated %d" % (c.cursor.rowcount, len(delete))
+                    raise CommitError("ConcurrencyError - updated rowcount %d does not match number of objects updated %d" % (c.cursor.rowcount, len(delete)))
 
     def _has_pks(self, table):
         try:
