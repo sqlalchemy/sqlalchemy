@@ -84,14 +84,17 @@ class Session(object):
     get_row_key = staticmethod(get_row_key)
 
     class SessionTrans(object):
+        """returned by Session.begin(), denotes a transactionalized UnitOfWork instance.
+        call commit() on this to commit the transaction."""
         def __init__(self, parent, uow, isactive):
             self.__parent = parent
             self.__isactive = isactive
             self.__uow = uow
-        isactive = property(lambda s:s.__isactive)
-        parent = property(lambda s:s.__parent)
-        uow = property(lambda s:s.__uow)
+        isactive = property(lambda s:s.__isactive, doc="True if this SessionTrans is the 'active' transaction marker, else its a no-op.")
+        parent = property(lambda s:s.__parent, doc="returns the parent Session of this SessionTrans object.")
+        uow = property(lambda s:s.__uow, doc="returns the parent UnitOfWork corresponding to this transaction.")
         def begin(self):
+            """calls begin() on the underlying Session object, returning a new no-op SessionTrans object."""
             return self.parent.begin()
         def commit(self):
             """commits the transaction noted by this SessionTrans object."""
