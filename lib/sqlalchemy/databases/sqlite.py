@@ -12,6 +12,7 @@ import sqlalchemy.engine as engine
 import sqlalchemy.schema as schema
 import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
+from sqlalchemy.exceptions import *
 from sqlalchemy.ansisql import *
 import datetime,time
 
@@ -123,7 +124,7 @@ def descriptor():
 class SQLiteSQLEngine(ansisql.ANSISQLEngine):
     def __init__(self, opts, **params):
         if sqlite is None:
-            raise "Couldn't import pysqlite2"
+            raise ArgumentError("Couldn't import sqlite or pysqlite2")
         self.filename = opts.pop('filename', ':memory:')
         self.opts = opts or {}
         params['poolclass'] = sqlalchemy.pool.SingletonThreadPool

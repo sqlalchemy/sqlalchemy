@@ -11,8 +11,9 @@ import sqlalchemy.engine as engine
 import sqlalchemy.schema as schema
 import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
+from sqlalchemy.exceptions import *
 from sqlalchemy import *
-import sqlalchemy.databases.information_schema as ischema
+import information_schema as ischema
 
 try:
     import psycopg2 as psycopg
@@ -156,7 +157,7 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         self.use_oids = use_oids
         if module is None:
             if psycopg is None:
-                raise "Couldnt locate psycopg1 or psycopg2: specify postgres module argument"
+                raise ArgumentError("Couldnt locate psycopg1 or psycopg2: specify postgres module argument")
             self.module = psycopg
         else:
             self.module = module
@@ -186,9 +187,6 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         else:
             return sqltypes.adapt_type(typeobj, pg1_colspecs)
 
-    def last_inserted_ids(self):
-        return self.context.last_inserted_ids
-
     def compiler(self, statement, bindparams, **kwargs):
         return PGCompiler(self, statement, bindparams, **kwargs)
 
@@ -207,7 +205,10 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         return self._default_schema_name
         
     def last_inserted_ids(self):
-        return self.context.last_inserted_ids
+        if self.context.last_inserted_ids is None:
+            raise InvalidRequestError("no INSERT executed, or cant use cursor.lastrowid without Postgres OIDs enabled")
+        else:
+            return self.context.last_inserted_ids
 
     def oid_column_name(self):
         if self.use_oids:
@@ -221,7 +222,8 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
     def post_exec(self, proxy, compiled, parameters, **kwargs):
         if getattr(compiled, "isinsert", False) and self.context.last_inserted_ids is None:
             if not self.use_oids:
-                raise "cant use cursor.lastrowid without OIDs enabled"
+                pass
+                # will raise invalid error when they go to get them
             else:
                 table = compiled.statement.table
                 cursor = proxy()

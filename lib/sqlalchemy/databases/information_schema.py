@@ -3,6 +3,7 @@ import sqlalchemy.engine as engine
 import sqlalchemy.schema as schema
 import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
+from sqlalchemy.exceptions import *
 from sqlalchemy import *
 from sqlalchemy.ansisql import *
 
@@ -70,7 +71,7 @@ class ISchema(object):
             try:
                 gen_tbl = globals()['gen_'+name]
             except KeyError:
-                raise AttributeError('information_schema table %s not found' % name)
+                raise ArgumentError('information_schema table %s not found' % name)
             self.cache[name] = gen_tbl.toengine(self.engine)
         return self.cache[name]
 
