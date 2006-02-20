@@ -546,7 +546,7 @@ class SQLEngine(schema.SchemaEngine):
                 else:
                     parameters = parameters.values()
 
-            self.execute(statement, parameters, connection=connection, cursor=cursor)        
+            self.execute(statement, parameters, connection=connection, cursor=cursor, return_raw=True)        
             return cursor
 
         self.pre_exec(proxy, compiled, parameters, **kwargs)
@@ -555,7 +555,7 @@ class SQLEngine(schema.SchemaEngine):
         self.post_exec(proxy, compiled, parameters, **kwargs)
         return ResultProxy(cursor, self, typemap=compiled.typemap)
 
-    def execute(self, statement, parameters, connection=None, cursor=None, echo=None, typemap=None, commit=False, **kwargs):
+    def execute(self, statement, parameters, connection=None, cursor=None, echo=None, typemap=None, commit=False, return_raw=False, **kwargs):
         """executes the given string-based SQL statement with the given parameters.  
 
         The parameters can be a dictionary or a list, or a list of dictionaries or lists, depending
@@ -606,7 +606,10 @@ class SQLEngine(schema.SchemaEngine):
         except:
             self.do_rollback(connection)
             raise
-        return ResultProxy(cursor, self, typemap=typemap)
+        if return_raw:
+            return cursor
+        else:
+            return ResultProxy(cursor, self, typemap=typemap)
 
     def _execute(self, c, statement, parameters):
         try:

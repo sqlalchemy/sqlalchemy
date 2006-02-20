@@ -107,7 +107,7 @@ class PropertyLoader(MapperProperty):
 
     """describes an object property that holds a single item or list of items that correspond
     to a related database table."""
-    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, association=None, use_alias=False, selectalias=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False):
+    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, association=None, use_alias=None, selectalias=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False):
         self.uselist = uselist
         self.argument = argument
         self.secondary = secondary
@@ -127,11 +127,10 @@ class PropertyLoader(MapperProperty):
             
         self.private = private
         self.association = association
-        if isinstance(selectalias, str):
-            print "'selectalias' argument to property is deprecated.  please use 'use_alias=True'"
-            self.use_alias = True
-        else:
-            self.use_alias = use_alias
+        if selectalias is not None:
+            print "'selectalias' argument to relation() is deprecated.  eager loads automatically alias-ize tables now."
+        if use_alias is not None:
+            print "'use_alias' argument to relation() is deprecated.  eager loads automatically alias-ize tables now."
         self.order_by = order_by
         self.attributeext=attributeext
         self.backref = backref
@@ -289,7 +288,6 @@ class PropertyLoader(MapperProperty):
         elif self.association is not None:
             c = self.mapper._get_criterion(key, value) & self.primaryjoin
             return c.copy_container()
-
         return None
 
     def register_deleted(self, obj, uow):
@@ -743,97 +741,71 @@ class EagerLoader(PropertyLoader):
 
         if recursion_stack is None:
             recursion_stack = {}
-
-        if self.use_alias:
-            pass
-
-        # figure out tables in the various join clauses we have, because user-defined
-        # whereclauses that reference the same tables will be converted to use
-        # aliases of those tables
-        self.to_alias = util.HashSet()
-        [self.to_alias.append(f) for f in self.primaryjoin._get_from_objects()]
-        if self.secondaryjoin is not None:
-            [self.to_alias.append(f) for f in self.secondaryjoin._get_from_objects()]
-        try:
-            del self.to_alias[parent.table]
-        except KeyError:
-            pass
     
-        # if this eagermapper is to select using an "alias" to isolate it from other
-        # eager mappers against the same table, we have to redefine our secondary
-        # or primary join condition to reference the aliased table (and the order_by).  
-        # else we set up the target clause objects as what they are defined in the 
-        # superclass.
-        if self.use_alias:
-            self.eagertarget = self.target.alias()
-            aliasizer = Aliasizer(self.target, aliases={self.target:self.eagertarget})
-            if self.secondaryjoin is not None:
-                self.eagersecondary = self.secondaryjoin.copy_container()
-                self.eagersecondary.accept_visitor(aliasizer)
-                self.eagerprimary = self.primaryjoin.copy_container()
-                self.eagerprimary.accept_visitor(aliasizer)
-            else:
-                self.eagerprimary = self.primaryjoin.copy_container()
-                self.eagerprimary.accept_visitor(aliasizer)
-            if self.order_by:
-                self.eager_order_by = [o.copy_container() for o in util.to_list(self.order_by)]
-                for i in range(0, len(self.eager_order_by)):
-                    if isinstance(self.eager_order_by[i], schema.Column):
-                        self.eager_order_by[i] = self.eagertarget._get_col_by_original(self.eager_order_by[i])
-                    else:
-                        self.eager_order_by[i].accept_visitor(aliasizer)
-            else:
-                self.eager_order_by = self.order_by
-
-            # we have to propigate the "use_alias" fact into 
-            # any sub-mappers that are also eagerloading so that they create a unique tablename
-            # as well.  this copies our child mapper and replaces any eager properties on the 
-            # new mapper with an equivalent eager property, just containing use_alias=True
-            eagerprops = []
-            for key, prop in self.mapper.props.iteritems():
-                if isinstance(prop, EagerLoader) and not prop.use_alias:
-                    eagerprops.append(prop)
-            if len(eagerprops):
-                recursion_stack[self] = True
-                self.mapper = self.mapper.copy()
-                try:
-                    for prop in eagerprops:
-                        p = prop.copy()
-                        p.use_alias=True
-
-                        self.mapper.props[prop.key] = p
-
-                        if recursion_stack.has_key(prop):
-                            raise ArgumentError("Circular eager load relationship detected on " + str(self.mapper) + " " + key + repr(self.mapper.props))
-
-                        p.do_init_subclass(prop.key, prop.parent, recursion_stack)
-
-                        p.eagerprimary = p.eagerprimary.copy_container()
-                        aliasizer = Aliasizer(p.parent.table, aliases={p.parent.table:self.eagertarget})
-                        p.eagerprimary.accept_visitor(aliasizer)
-                finally:
-                    del recursion_stack[self]
-
+        self.eagertarget = self.target.alias()
+        if self.secondary:
+            self.eagersecondary = self.secondary.alias()
+            self.aliasizer = Aliasizer(self.target, self.secondary, aliases={
+                    self.target:self.eagertarget,
+                    self.secondary:self.eagersecondary
+                    })
+            self.eagersecondaryjoin = self.secondaryjoin.copy_container()
+            self.eagersecondaryjoin.accept_visitor(self.aliasizer)
+            self.eagerprimary = self.primaryjoin.copy_container()
+            self.eagerprimary.accept_visitor(self.aliasizer)
         else:
-            self.eagertarget = self.target
-            self.eagerprimary = self.primaryjoin
-            self.eagersecondary = self.secondaryjoin
-            self.eager_order_by = self.order_by
-            
-    def setup(self, key, statement, recursion_stack = None, eagertable=None, **options):
-        """add a left outer join to the statement thats being constructed"""
-
-        if recursion_stack is None:
-            recursion_stack = {}
+            self.aliasizer = Aliasizer(self.target, aliases={self.target:self.eagertarget})
+            self.eagerprimary = self.primaryjoin.copy_container()
+            self.eagerprimary.accept_visitor(self.aliasizer)
         
-        if statement.whereclause is not None:
-            # "aliasize" the tables referenced in the user-defined whereclause to not 
-            # collide with the tables used by the eager load
-            # note that we arent affecting the mapper's table, nor our own primary or secondary joins
-            aliasizer = Aliasizer(*self.to_alias)
-            statement.whereclause.accept_visitor(aliasizer)
-            for alias in aliasizer.aliases.values():
-                statement.append_from(alias)
+        if self.order_by:
+            self.eager_order_by = self._aliasize_orderby(self.order_by)
+        else:
+            self.eager_order_by = None
+
+        eagerprops = []
+        # create a new "eager chain", starting from this eager loader and descending downwards
+        # through all sub-eagerloaders.  this will copy all those eagerloaders and have them set up
+        # aliases distinct to this eager chain.  if a recursive relationship to any of the tables is detected,
+        # the chain will terminate by copying that eager loader into a lazy loader.
+        for key, prop in self.mapper.props.iteritems():
+            if isinstance(prop, EagerLoader):
+                eagerprops.append(prop)
+        if len(eagerprops):
+            recursion_stack[self.parent.table] = True
+            self.mapper = self.mapper.copy()
+            try:
+                for prop in eagerprops:
+                    if recursion_stack.has_key(prop.target):
+                        # recursion - set the relationship as a LazyLoader
+                        p = EagerLazyOption(None, False).create_prop(self.mapper, prop.key)
+                        continue
+                    p = prop.copy()
+                    self.mapper.props[prop.key] = p
+                    #print "we are:", id(self), self.target.name, (self.secondary and self.secondary.name or "None"), self.parent.table.name
+                    #print "prop is",id(prop), prop.target.name, (prop.secondary and prop.secondary.name or "None"), prop.parent.table.name
+                    p.do_init_subclass(prop.key, prop.parent, recursion_stack)
+                    p.eagerprimary = p.eagerprimary.copy_container()
+                    aliasizer = Aliasizer(p.parent.table, aliases={p.parent.table:self.eagertarget})
+                    p.eagerprimary.accept_visitor(aliasizer)
+                    #print "new eagertqarget", p.eagertarget.name, (p.secondary and p.secondary.name or "none"), p.parent.table.name
+            finally:
+                del recursion_stack[self.parent.table]
+                
+    def _aliasize_orderby(self, orderby, copy=True):
+        if copy:
+            orderby = [o.copy_container() for o in util.to_list(orderby)]
+        else:
+            orderby = util.to_list(orderby)
+        for i in range(0, len(orderby)):
+            if isinstance(orderby[i], schema.Column):
+                orderby[i] = self.eagertarget._get_col_by_original(orderby[i])
+            else:
+                orderby[i].accept_visitor(self.aliasizer)
+        return orderby
+        
+    def setup(self, key, statement, eagertable=None, **options):
+        """add a left outer join to the statement thats being constructed"""
 
         if hasattr(statement, '_outerjoin'):
             towrap = statement._outerjoin
@@ -841,9 +813,9 @@ class EagerLoader(PropertyLoader):
             towrap = self.parent.table
 
         if self.secondaryjoin is not None:
-            statement._outerjoin = sql.outerjoin(towrap, self.secondary, self.eagerprimary).outerjoin(self.eagertarget, self.eagersecondary)
+            statement._outerjoin = sql.outerjoin(towrap, self.eagersecondary, self.eagerprimary).outerjoin(self.eagertarget, self.eagersecondaryjoin)
             if self.order_by is False and self.secondary.default_order_by() is not None:
-                statement.order_by(*self.secondary.default_order_by())
+                statement.order_by(*self.eagersecondary.default_order_by())
         else:
             statement._outerjoin = towrap.outerjoin(self.eagertarget, self.eagerprimary)
             if self.order_by is False and self.eagertarget.default_order_by() is not None:
@@ -851,16 +823,12 @@ class EagerLoader(PropertyLoader):
 
         if self.eager_order_by:
             statement.order_by(*util.to_list(self.eager_order_by))
-            
+        elif getattr(statement, 'order_by_clause', None):
+            self._aliasize_orderby(statement.order_by_clause, False)
+                
         statement.append_from(statement._outerjoin)
-        recursion_stack[self] = True
-        try:
-            for key, value in self.mapper.props.iteritems():
-                if recursion_stack.has_key(value):
-                    raise InvalidRequestError("Circular eager load relationship detected on " + str(self.mapper) + " " + key + repr(self.mapper.props))
-                value.setup(key, statement, recursion_stack=recursion_stack, eagertable=self.eagertarget)
-        finally:
-            del recursion_stack[self]
+        for key, value in self.mapper.props.iteritems():
+            value.setup(key, statement, eagertable=self.eagertarget)
             
     def execute(self, instance, row, identitykey, imap, isnew):
         """receive a row.  tell our mapper to look for a new object instance in the row, and attach
@@ -884,16 +852,10 @@ class EagerLoader(PropertyLoader):
 
     def _instance(self, row, imap, result_list=None):
         """gets an instance from a row, via this EagerLoader's mapper."""
-        # if we have an alias for our mapper's table via the use_alias
-        # parameter, we need to translate the 
-        # aliased columns from the incoming row into a new row that maps
-        # the values against the columns of the mapper's original non-aliased table.
-        if self.use_alias:
-            fakerow = {}
-            fakerow = util.DictDecorator(row)
-            for c in self.eagertarget.c:
-                fakerow[c.original] = row[c]
-            row = fakerow
+        fakerow = util.DictDecorator(row)
+        for c in self.eagertarget.c:
+            fakerow[c.parent] = row[c]
+        row = fakerow
         return self.mapper._instance(row, imap, result_list)
 
 class GenericOption(MapperOption):
@@ -918,6 +880,7 @@ class GenericOption(MapperOption):
     def create_prop(self, mapper, key):
         kwargs = util.constructor_args(oldprop)
         mapper.set_property(key, class_(**kwargs ))
+
             
 class EagerLazyOption(GenericOption):
     """an option that switches a PropertyLoader to be an EagerLoader or LazyLoader"""
@@ -941,10 +904,6 @@ class EagerLazyOption(GenericOption):
         newprop = class_.__new__(class_)
         newprop.__dict__.update(oldprop.__dict__)
         newprop.do_init_subclass(key, mapper)
-        if self.kwargs.get('selectalias', None):
-            newprop.use_alias = True
-        elif self.kwargs.get('use_alias', None) is not None:
-            newprop.use_alias = self.kwargs['use_alias']
         mapper.set_property(key, newprop)
 
 class DeferredOption(GenericOption):
@@ -969,28 +928,26 @@ class Aliasizer(sql.ClauseVisitor):
         for t in tables:
             self.tables[t] = t
         self.binary = None
-        self.match = False
         self.aliases = kwargs.get('aliases', {})
-
     def get_alias(self, table):
         try:
             return self.aliases[table]
         except:
             return self.aliases.setdefault(table, sql.alias(table))
-
     def visit_compound(self, compound):
-        for i in range(0, len(compound.clauses)):
-            if isinstance(compound.clauses[i], schema.Column) and self.tables.has_key(compound.clauses[i].table):
-                compound.clauses[i] = self.get_alias(compound.clauses[i].table)._get_col_by_original(compound.clauses[i])
-                self.match = True
-
+        self.visit_clauselist(compound)
+    def visit_clauselist(self, clist):
+        for i in range(0, len(clist.clauses)):
+            if isinstance(clist.clauses[i], schema.Column) and self.tables.has_key(clist.clauses[i].table):
+                orig = clist.clauses[i]
+                clist.clauses[i] = self.get_alias(clist.clauses[i].table)._get_col_by_original(clist.clauses[i])
+                if clist.clauses[i] is None:
+                    raise "cant get orig for " + str(orig) + " against table " + orig.table.name + " " + self.get_alias(orig.table).name
     def visit_binary(self, binary):
         if isinstance(binary.left, schema.Column) and self.tables.has_key(binary.left.table):
             binary.left = self.get_alias(binary.left.table)._get_col_by_original(binary.left)
-            self.match = True
         if isinstance(binary.right, schema.Column) and self.tables.has_key(binary.right.table):
             binary.right = self.get_alias(binary.right.table)._get_col_by_original(binary.right)
-            self.match = True
 
 class BinaryVisitor(sql.ClauseVisitor):
     def __init__(self, func):

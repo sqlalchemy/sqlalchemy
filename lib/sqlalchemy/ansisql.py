@@ -239,8 +239,8 @@ class ANSICompiler(sql.Compiled):
         return self.engine.bindtemplate % name
         
     def visit_alias(self, alias):
-        self.froms[alias] = self.get_from_text(alias.selectable) + " AS " + alias.name
-        self.strings[alias] = self.get_str(alias.selectable)
+        self.froms[alias] = self.get_from_text(alias.original) + " AS " + alias.name
+        self.strings[alias] = self.get_str(alias.original)
 
     def visit_select(self, select):
         
