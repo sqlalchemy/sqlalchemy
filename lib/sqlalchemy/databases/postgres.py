@@ -44,7 +44,10 @@ class PG1DateTime(sqltypes.DateTime):
     def convert_bind_param(self, value, engine):
         # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
         # this one doesnt seem to work with the "emulation" mode
-        return psycopg.TimestampFromMx(value)
+        if value is not None:
+            return psycopg.TimestampFromMx(value)
+        else:
+            return None
     def convert_result_value(self, value, engine):
         # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
         return value
@@ -57,7 +60,10 @@ class PG1Date(sqltypes.Date):
     def convert_bind_param(self, value, engine):
         # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
         # this one doesnt seem to work with the "emulation" mode
-        return psycopg.DateFromMx(value)
+        if value is not None:
+            return psycopg.DateFromMx(value)
+        else:
+            return None
     def convert_result_value(self, value, engine):
         # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
         return value
@@ -70,7 +76,10 @@ class PG1Time(sqltypes.Time):
     def convert_bind_param(self, value, engine):
         # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
         # this one doesnt seem to work with the "emulation" mode
-        return psycopg.TimeFromMx(value)
+        if value is not None:
+            return psycopg.TimeFromMx(value)
+        else:
+            return None
     def convert_result_value(self, value, engine):
         # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
         return value
