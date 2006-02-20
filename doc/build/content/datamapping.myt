@@ -58,6 +58,7 @@ UPDATE users SET user_name=:user_name
         
         
     </&>
+    <&|doclib.myt:item, name="attaching", description="Attaching Mappers to their Class"&>
     <p>For convenience's sake, the Mapper can be attached as an attribute on the class itself as well:</p>
         <&|formatting.myt:code&>
             User.mapper = mapper(User, users)
@@ -70,6 +71,25 @@ UPDATE users SET user_name=:user_name
         userlist = User.select_by(user_id=12)
     </&>
     <p>Other methods of associating mappers and finder methods with their corresponding classes, such as via common base classes or mixins, can be devised as well.  SQLAlchemy does not aim to dictate application architecture and will always allow the broadest variety of architectural patterns, but may include more helper objects and suggested architectures in the future.</p>
+    </&>
+    <&|doclib.myt:item, name="overriding", description="Overriding Properties"&>
+    <p>A common request is the ability to create custom class properties that override the behavior of setting/getting an attribute.  Currently, the easiest way to do this in SQLAlchemy is just how its done normally; define your attribute with a different name, such as "_attribute", and use a property to get/set its value.  The mapper just needs to be told of the special name:</p>
+    <&|formatting.myt:code&>
+        class MyClass(object):
+            def _set_email(self, email):
+                self._email = email
+            def _get_email(self, email):
+                return self._email
+            email = property(_get_email, _set_email)
+            
+        m = mapper(MyClass, mytable, properties = {
+                # map the '_email' attribute to the "email" column
+                # on the table
+                '_email': mytable.c.email
+        })
+    </&>
+    <p>In a later release, SQLAlchemy will also allow _get_email and _set_email to be attached directly to the "email" property created by the mapper, and will also allow this association to occur via decorators.</p>
+    </&>
 </&>
 <&|doclib.myt:item, name="selecting", description="Selecting from a Mapper" &>
     <p>There are a variety of ways to select from a mapper.  These range from minimalist to explicit.  Below is a synopsis of the these methods:</p>
