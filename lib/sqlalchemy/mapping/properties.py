@@ -716,12 +716,12 @@ def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     binds = {}
     def visit_binary(binary):
         circular = isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column) and binary.left.table is binary.right.table
-        if isinstance(binary.left, schema.Column) and ((not circular and binary.left.table is table) or (circular and binary.right is foreignkey)):
+        if isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column) and ((not circular and binary.left.table is table) or (circular and binary.right is foreignkey)):
             binary.left = binds.setdefault(binary.left,
                     sql.BindParamClause(binary.right.table.name + "_" + binary.right.name, None, shortname = binary.left.name))
             binary.swap()
 
-        if isinstance(binary.right, schema.Column) and ((not circular and binary.right.table is table) or (circular and binary.left is foreignkey)):
+        if isinstance(binary.right, schema.Column) and isinstance(binary.left, schema.Column) and ((not circular and binary.right.table is table) or (circular and binary.left is foreignkey)):
             binary.right = binds.setdefault(binary.right,
                     sql.BindParamClause(binary.left.table.name + "_" + binary.left.name, None, shortname = binary.right.name))
                     
