@@ -238,8 +238,8 @@ class CycleTest2(AssertMixin):
 
         Ball.mapper = mapper(Ball, ball)
         Person.mapper = mapper(Person, person, properties= dict(
-         balls = relation(Ball.mapper, primaryjoin=ball.c.person_id==person.c.id, foreignkey=ball.c.person_id),
-         favorateBall = relation(Ball.mapper, primaryjoin=person.c.favoriteBall_id==ball.c.id, foreignkey=person.c.favoriteBall_id),
+         balls = relation(Ball.mapper, primaryjoin=ball.c.person_id==person.c.id, foreignkey=ball.c.person_id, post_update=False, private=True),
+         favorateBall = relation(Ball.mapper, primaryjoin=person.c.favoriteBall_id==ball.c.id, foreignkey=person.c.favoriteBall_id, post_update=True),
          )
         )
 
@@ -248,7 +248,13 @@ class CycleTest2(AssertMixin):
         b = Ball()
         p = Person()
         p.balls.append(b)
+        p.balls.append(Ball())
+        p.balls.append(Ball())
+        p.balls.append(Ball())
         p.favorateBall = b
+        objectstore.commit()
+        
+        objectstore.delete(p)
         objectstore.commit()
 
         

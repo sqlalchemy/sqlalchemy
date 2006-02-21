@@ -893,6 +893,22 @@ def hash_key(obj):
         return obj.hash_key()
     else:
         return repr(obj)
+        
+def object_mapper(object):
+    """given an object, returns the primary Mapper associated with the object
+    or the object's class."""
+    return class_mapper(object.__class__)
+
+def class_mapper(class_):
+    """given a class, returns the primary Mapper associated with the class."""
+    return mapper_registry[class_]
+    try:
+        return mapper_registry[class_]
+    except KeyError:
+        pass
+    except AttributeError:
+        pass
+    raise InvalidRequestError("Class '%s' has no mapper associated with it" % class_.__name__)
     
 
 

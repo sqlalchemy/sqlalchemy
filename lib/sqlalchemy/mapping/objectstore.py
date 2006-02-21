@@ -454,8 +454,9 @@ class UOWTransaction(object):
         self.dependencies = {}
         self.tasks = {}
         self.saved_histories = util.HashSet()
-
-    def register_object(self, obj, isdelete = False, listonly = False, **kwargs):
+        self.__modified = False
+        
+    def register_object(self, obj, isdelete = False, listonly = False, postupdate=False, **kwargs):
         """adds an object to this UOWTransaction to be updated in the database.
 
         'isdelete' indicates whether the object is to be deleted or saved (update/inserted).
@@ -474,15 +475,19 @@ class UOWTransaction(object):
         self.mappers.append(mapper)
         task = self.get_task_by_mapper(mapper)
         
+        if postupdate:
+            mod = task.append_postupdate(obj)
+            self.__modified = self.__modified or mod
+            return
+            
         # for a cyclical task, things need to be sorted out already,
         # so this object should have already been added to the appropriate sub-task
         # can put an assertion here to make sure....
         if task.circular:
             return
             
-        if obj not in task.objects:
-            self.__modified = True
-        task.append(obj, listonly, isdelete=isdelete, **kwargs)
+        mod = task.append(obj, listonly, isdelete=isdelete, **kwargs)
+        self.__modified = self.__modified or mod
 
     def unregister_object(self, obj):
         mapper = object_mapper(obj)
@@ -665,16 +670,24 @@ class UOWTask(object):
         dependent operations at the per-object instead of per-task level. """
         try:
             rec = self.objects[obj]
+            retval = False
         except KeyError:
             rec = UOWTaskElement(obj)
             self.objects[obj] = rec
+            retval = True
         if not listonly:
             rec.listonly = False
         if childtask:
             rec.childtasks.append(childtask)
         if isdelete:
             rec.isdelete = True
-
+        return retval
+    
+    def append_postupdate(self, obj):
+        # postupdates are UPDATED immeditely (for now)
+        self.mapper.save_obj([obj], self.uowtransaction, postupdate=True)
+        return True
+            
     def delete(self, obj):
         try:
             del self.objects[obj]
@@ -974,6 +987,9 @@ class UOWTask(object):
         for child in self.childtasks:
             header(buf, _indent() + "  |- Child tasks\n")
             child._dump(buf, indent + 1)
+#        for obj in self.postupdate:
+#            header(buf, _indent() + "  |- Post Update objects\n")
+#            buf.write(_repr(obj) + "\n")
         for element in self.todelete_elements():
             for task in element.childtasks:
                 header(buf, _indent() + "  |- Delete subelements of UOWTaskElement(%s)\n" % id(element))
