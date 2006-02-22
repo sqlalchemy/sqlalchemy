@@ -870,7 +870,7 @@ class Join(FromClause):
                     crit.append(secondary._get_col_by_original(fk.column) == fk.parent)
                     self.foreignkey = fk.parent
         if len(crit) == 0:
-            raise ArgumentError("Cant find any foreign key relationships between '%s' (%s) and '%s' (%s)" % (primary.name, repr(primary), secondary.name, repr(secondary)))
+            raise ArgumentError("Cant find any foreign key relationships between '%s' and '%s'" % (primary.name, secondary.name))
         elif len(crit) == 1:
             return (crit[0])
         else:

@@ -740,9 +740,6 @@ class EagerLoader(PropertyLoader):
     def do_init_subclass(self, key, parent, recursion_stack=None):
         parent._has_eager = True
 
-        if recursion_stack is None:
-            recursion_stack = {}
-    
         self.eagertarget = self.target.alias()
         if self.secondary:
             self.eagersecondary = self.secondary.alias()
@@ -764,6 +761,14 @@ class EagerLoader(PropertyLoader):
         else:
             self.eager_order_by = None
 
+
+    def _create_eager_chain(self, in_chain=False, recursion_stack=None):
+        if not in_chain and getattr(self, '_eager_chained', False):
+            return
+            
+        if recursion_stack is None:
+            recursion_stack = {}
+
         eagerprops = []
         # create a new "eager chain", starting from this eager loader and descending downwards
         # through all sub-eagerloaders.  this will copy all those eagerloaders and have them set up
@@ -783,15 +788,17 @@ class EagerLoader(PropertyLoader):
                         continue
                     p = prop.copy()
                     self.mapper.props[prop.key] = p
-                    #print "we are:", id(self), self.target.name, (self.secondary and self.secondary.name or "None"), self.parent.table.name
-                    #print "prop is",id(prop), prop.target.name, (prop.secondary and prop.secondary.name or "None"), prop.parent.table.name
+#                    print "we are:", id(self), self.target.name, (self.secondary and self.secondary.name or "None"), self.parent.table.name
+#                    print "prop is",id(prop), prop.target.name, (prop.secondary and prop.secondary.name or "None"), prop.parent.table.name
                     p.do_init_subclass(prop.key, prop.parent, recursion_stack)
+                    p._create_eager_chain(in_chain=True, recursion_stack=recursion_stack)
                     p.eagerprimary = p.eagerprimary.copy_container()
-                    aliasizer = Aliasizer(p.parent.table, aliases={p.parent.table:self.eagertarget})
-                    p.eagerprimary.accept_visitor(aliasizer)
+#                    aliasizer = Aliasizer(p.parent.table, aliases={p.parent.table:self.eagertarget})
+                    p.eagerprimary.accept_visitor(self.aliasizer)
                     #print "new eagertqarget", p.eagertarget.name, (p.secondary and p.secondary.name or "none"), p.parent.table.name
             finally:
                 del recursion_stack[self.parent.table]
+        self._eager_chained = True
                 
     def _aliasize_orderby(self, orderby, copy=True):
         if copy:
@@ -808,11 +815,15 @@ class EagerLoader(PropertyLoader):
     def setup(self, key, statement, eagertable=None, **options):
         """add a left outer join to the statement thats being constructed"""
 
+        # initialize the eager chains late in the game
+        self._create_eager_chain()
+
         if hasattr(statement, '_outerjoin'):
             towrap = statement._outerjoin
         else:
             towrap = self.parent.table
 
+ #       print "hello, towrap", str(towrap)
         if self.secondaryjoin is not None:
             statement._outerjoin = sql.outerjoin(towrap, self.eagersecondary, self.eagerprimary).outerjoin(self.eagertarget, self.eagersecondaryjoin)
             if self.order_by is False and self.secondary.default_order_by() is not None:

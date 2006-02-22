@@ -154,6 +154,12 @@ class Table(SchemaItem):
         ["%s=%s" % (k, repr(getattr(self, k))) for k in ['schema']]
        , ',\n')
     
+    def __str__(self):
+        if self.schema is None:
+            return self.name
+        else:
+            return self.schema + "." + self.name
+        
     def hash_key(self):
         return "Table(%s)" % string.join(
         [repr(self.name)] + [self.engine.hash_key()] +
