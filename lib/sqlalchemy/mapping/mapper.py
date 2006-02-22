@@ -171,7 +171,8 @@ class Mapper(object):
                     self.props[key].parent = self
                     self.props[key].key = None  # force re-init
 
-        for key, prop in self.props.iteritems():
+        l = [(key, prop) for key, prop in self.props.iteritems()]
+        for key, prop in l:
             if getattr(prop, 'key', None) is None:
                 prop.init(key, self)
 
