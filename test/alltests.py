@@ -3,6 +3,8 @@ import unittest
 
 testbase.echo = False
 
+#test
+
 def suite():
     modules_to_test = (
         # core utilities
