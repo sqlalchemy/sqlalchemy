@@ -119,9 +119,11 @@ class Session(object):
     
     def _trans_commit(self, trans):
         if trans.uow is self.uow and trans.isactive:
-            self.uow.commit()
-            self.uow = self.parent_uow
-            self.parent_uow = None
+            try:
+                self.uow.commit()
+            finally:
+                self.uow = self.parent_uow
+                self.parent_uow = None
     def _trans_rollback(self, trans):
         if trans.uow is self.uow:
             self.uow = self.parent_uow
