@@ -79,5 +79,8 @@ class O2OTest(testbase.AssertMixin):
         self.assert_(p.jack is None)
         objectstore.commit() 
 
+	j.delete()
+	objectstore.commit()
+
 if __name__ == "__main__":    
     testbase.main()

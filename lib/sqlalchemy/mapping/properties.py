@@ -455,8 +455,9 @@ class PropertyLoader(MapperProperty):
             for obj in deplist:
                 childlist = getlist(obj, False)
                 for child in childlist.deleted_items() + childlist.unchanged_items():
-                    self._synchronize(obj, child, None, True)
-                    uowcommit.register_object(child, postupdate=self.post_update)
+                    if child is not None:
+                        self._synchronize(obj, child, None, True)
+                        uowcommit.register_object(child, postupdate=self.post_update)
         elif self.association is not None:
             # manage association objects.
             for obj in deplist:
