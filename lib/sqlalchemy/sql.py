@@ -796,7 +796,9 @@ class Function(ClauseList, ColumnElement):
         return select([self])
     def hash_key(self):
         return self.name + "(" + string.join([c.hash_key() for c in self.clauses], ", ") + ")"
-            
+    def _compare_type(self, obj):
+        return self.type
+                
 class BinaryClause(ClauseElement):
     """represents two clauses with an operator in between"""
     def __init__(self, left, right, operator, type=None):
