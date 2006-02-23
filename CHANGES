@@ -1,4 +1,32 @@
 0.1.1
+- small fix to Function class so that expressions with a func.foo() use the type of the
+Function object (i.e. the left side) as the type of the boolean expression, not the 
+other side which is more of a moving target (changeset 1020).
+- creating self-referring mappers with backrefs slightly easier (but still not that easy -
+changeset 1019)
+- fixes to one-to-one mappings (changeset 1015)
+- psycopg1 date/time issue with None fixed (changeset 1005)
+- two issues related to postgres, which doesnt want to give you the "lastrowid"
+since oids are deprecated:
+   * postgres database-side defaults that are on primary key cols *do* execute 
+explicitly beforehand, even though thats not the idea of a PassiveDefault.  this is
+because sequences on columns get reflected as PassiveDefaults, but need to be explicitly
+executed on a primary key col so we know what we just inserted.  
+   * if you did add a row that has a bunch of database-side defaults on it, 
+and the PassiveDefault thing was working the old way, i.e. they just execute on 
+the DB side, the "cant get the row back without an OID" exception that occurred
+also will not happen unless someone (usually the ORM) explicitly asks for it.
+- fixed a glitch with engine.execute_compiled where it was making a second 
+ResultProxy that just got thrown away.
+- began to implement newer logic in object properities.  you can now say
+myclass.attr.property, which will give you the PropertyLoader corresponding to that
+attribute, i.e. myclass.mapper.props['attr']
+- eager loading has been internally overhauled to use aliases at all times.  more 
+complicated chains of eager loads can now be created without any need for explicit
+"use aliases"-type instructions.  EagerLoader code is also much simpler now.
+- a new somewhat experimental flag "use_update" added to relations, indicates that 
+this relationship should be handled by a second UPDATE statement, either after a 
+primary INSERT or before a primary DELETE.  handles circular row dependencies.
 - added exceptions module, all raised exceptions (except for some 
 KeyError/AttributeError exceptions) descend from these classes.
 - fix to date types with MySQL, returned timedelta converted to datetime.time
