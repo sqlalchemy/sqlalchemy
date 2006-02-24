@@ -1,3 +1,6 @@
+0.1.2
+- fixed a recursive call in schema that was somehow running 994 times then returning
+normally.  broke nothing, slowed down everything.  thanks to jpellerin for finding this.
 0.1.1
 - small fix to Function class so that expressions with a func.foo() use the type of the
 Function object (i.e. the left side) as the type of the boolean expression, not the 

@@ -49,7 +49,7 @@ class SchemaItem(object):
     def __getattr__(self, key):
         """proxies method calls to an underlying implementation object for methods not found
         locally"""
-        if not hasattr(self, '_impl'):
+        if not self.__dict__.has_key('_impl'):
             raise AttributeError(key)
         return getattr(self._impl, key)
 
