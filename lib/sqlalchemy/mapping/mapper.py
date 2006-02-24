@@ -274,7 +274,7 @@ class Mapper(object):
                 ident = key[2]
             i = 0
             params = {}
-            for primary_key in self.pks_by_table[self.primarytable]:
+            for primary_key in self.pks_by_table[self.table]:
                 params["pk_"+primary_key.key] = ident[i]
                 i += 1
             try:
