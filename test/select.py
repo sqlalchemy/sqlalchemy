@@ -57,9 +57,7 @@ addresses = table('addresses',
 
 class SQLTest(PersistTest):
     def runtest(self, clause, result, engine = None, params = None, checkparams = None):
-        if engine is None:
-            engine = db
-        c = clause.compile(engine, params)
+        c = clause.compile(parameters = params, engine=engine)
         self.echo("\nSQL String:\n" + str(c) + repr(c.get_params()))
         cc = re.sub(r'\n', '', str(c))
         self.assert_(cc == result, str(c) + "\n does not match \n" + result)

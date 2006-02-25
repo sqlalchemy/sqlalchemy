@@ -1275,6 +1275,8 @@ class Select(SelectBaseMixin, FromClause):
         if self._engine is not None:
             return self._engine
         for f in self._froms.values():
+            if f is self:
+                continue
             e = f.engine
             if e is not None: 
                 self._engine = e
