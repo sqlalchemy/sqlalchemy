@@ -131,11 +131,6 @@ class MySQLEngine(ansisql.ANSISQLEngine):
     def supports_sane_rowcount(self):
         return False
 
-    def tableimpl(self, table, **kwargs):
-        """returns a new sql.TableImpl object to correspond to the given Table object."""
-        mysql_engine = kwargs.pop('mysql_engine', None)
-        return MySQLTableImpl(table, mysql_engine=mysql_engine)
-
     def compiler(self, statement, bindparams, **kwargs):
         return MySQLCompiler(self, statement, bindparams, **kwargs)
 
@@ -175,7 +170,7 @@ class MySQLEngine(ansisql.ANSISQLEngine):
         #ischema.reflecttable(self, table, ischema_names, use_mysql=True)
         
         tabletype, foreignkeyD = self.moretableinfo(table=table)
-        table._impl.mysql_engine = tabletype
+        table.kwargs['mysql_engine'] = tabletype
         
         c = self.execute("describe " + table.name, {})
         while True:
@@ -235,14 +230,6 @@ class MySQLEngine(ansisql.ANSISQLEngine):
         return (tabletype, foreignkeyD)
         
 
-class MySQLTableImpl(sql.TableImpl):
-    """attached to a schema.Table to provide it with a Selectable interface
-    as well as other functions
-    """
-    def __init__(self, table, mysql_engine=None):
-        super(MySQLTableImpl, self).__init__(table)
-        self.mysql_engine = mysql_engine
-
 class MySQLCompiler(ansisql.ANSICompiler):
 
     def visit_function(self, func):
@@ -277,12 +264,13 @@ class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
             if first_pk and isinstance(column.type, types.Integer):
                 colspec += " AUTO_INCREMENT"
         if column.foreign_key:
-            colspec += ", FOREIGN KEY (%s) REFERENCES %s(%s)" % (column.name, column.column.foreign_key.column.table.name, column.column.foreign_key.column.name) 
+            colspec += ", FOREIGN KEY (%s) REFERENCES %s(%s)" % (column.name, column.foreign_key.column.table.name, column.foreign_key.column.name) 
         return colspec
 
     def post_create_table(self, table):
-        if table.mysql_engine is not None:
-            return " ENGINE=%s" % table.mysql_engine
+        mysql_engine = table.kwargs.get('mysql_engine', None)
+        if mysql_engine is not None:
+            return " ENGINE=%s" % mysql_engine
         else:
             return ""
 

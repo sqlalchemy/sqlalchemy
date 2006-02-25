@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-__all__ = ['OrderedProperties', 'OrderedDict', 'generic_repr', 'HashSet']
+__all__ = ['OrderedProperties', 'OrderedDict', 'generic_repr', 'HashSet', 'AttrProp']
 import thread, weakref, UserList,string, inspect
 from exceptions import *
 
@@ -23,7 +23,21 @@ def to_set(x):
         return HashSet(to_list(x))
     else:
         return x
-        
+
+class AttrProp(object):
+    """a quick way to stick a property accessor on an object"""
+    def __init__(self, key):
+        self.key = key
+    def __set__(self, obj, value):
+        setattr(obj, self.key, value)
+    def __delete__(self, obj):
+        delattr(obj, self.key)
+    def __get__(self, obj, owner):
+        if obj is None:
+            return self
+        else:
+            return getattr(obj, self.key)
+    
 def generic_repr(obj, exclude=None):
     L = ['%s=%s' % (a, repr(getattr(obj, a))) for a in dir(obj) if not callable(getattr(obj, a)) and not a.startswith('_') and (exclude is None or not exclude.has_key(a))]
     return '%s(%s)' % (obj.__class__.__name__, ','.join(L))
@@ -65,9 +79,10 @@ class OrderedProperties(object):
     def __setattr__(self, key, object):
         if not hasattr(self, key):
             self._list.append(key)
-    
         self.__dict__[key] = object
-    
+    def clear(self):
+        for key in self._list[:]:
+            del self[key]
 class RecursionStack(object):
     """a thread-local stack used to detect recursive object traversals."""
     def __init__(self):

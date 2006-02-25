@@ -262,7 +262,7 @@ class Mapper(object):
         """returns an instance of the object based on the given identifier, or None
         if not found.  The *ident argument is a 
         list of primary key columns in the order of the table def's primary key columns."""
-        key = objectstore.get_id_key(ident, self.class_, self.primarytable)
+        key = objectstore.get_id_key(ident, self.class_)
         #print "key: " + repr(key) + " ident: " + repr(ident)
         return self._get(key, ident)
         
@@ -284,7 +284,7 @@ class Mapper(object):
 
         
     def identity_key(self, *primary_key):
-        return objectstore.get_id_key(tuple(primary_key), self.class_, self.primarytable)
+        return objectstore.get_id_key(tuple(primary_key), self.class_)
     
     def instance_key(self, instance):
         return self.identity_key(*[self._getattrbycolumn(instance, column) for column in self.pks_by_table[self.table]])
@@ -683,7 +683,7 @@ class Mapper(object):
         return statement
         
     def _identity_key(self, row):
-        return objectstore.get_row_key(row, self.class_, self.identitytable, self.pks_by_table[self.table])
+        return objectstore.get_row_key(row, self.class_, self.pks_by_table[self.table])
 
     def _instance(self, row, imap, result = None, populate_existing = False):
         """pulls an object instance from the given row and appends it to the given result

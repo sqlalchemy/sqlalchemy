@@ -16,8 +16,7 @@ A SQLEngine is provided to an application as a subclass that is specific to a pa
 of DBAPI, and is the central switching point for abstracting different kinds of database
 behavior into a consistent set of behaviors.  It provides a variety of factory methods 
 to produce everything specific to a certain kind of database, including a Compiler, 
-schema creation/dropping objects, and TableImpl and ColumnImpl objects to augment the
-behavior of table metadata objects.
+schema creation/dropping objects.
 
 The term "database-specific" will be used to describe any object or function that has behavior
 corresponding to a particular vendor, such as mysql-specific, sqlite-specific, etc.
@@ -131,7 +130,7 @@ class DefaultRunner(schema.SchemaVisitor):
 
     def get_column_default(self, column):
         if column.default is not None:
-            return column.default.accept_visitor(self)
+            return column.default.accept_schema_visitor(self)
         else:
             return None
 
@@ -296,11 +295,11 @@ class SQLEngine(schema.SchemaEngine):
         
     def create(self, entity, **params):
         """creates a table or index within this engine's database connection given a schema.Table object."""
-        entity.accept_visitor(self.schemagenerator(**params))
+        entity.accept_schema_visitor(self.schemagenerator(**params))
 
     def drop(self, entity, **params):
         """drops a table or index within this engine's database connection given a schema.Table object."""
-        entity.accept_visitor(self.schemadropper(**params))
+        entity.accept_schema_visitor(self.schemadropper(**params))
 
     def compile(self, statement, parameters, **kwargs):
         """given a sql.ClauseElement statement plus optional bind parameters, creates a new
@@ -315,28 +314,6 @@ class SQLEngine(schema.SchemaEngine):
         """given a Table object, reflects its columns and properties from the database."""
         raise NotImplementedError()
 
-    def tableimpl(self, table, **kwargs):
-        """returns a new sql.TableImpl object to correspond to the given Table object.
-        A TableImpl provides SQL statement builder operations on a Table metadata object, 
-        and a subclass of this object may be provided by a SQLEngine subclass to provide
-        database-specific behavior."""
-        return sql.TableImpl(table)
-
-    def columnimpl(self, column):
-        """returns a new sql.ColumnImpl object to correspond to the given Column object.
-        A ColumnImpl provides SQL statement builder operations on a Column metadata object, 
-        and a subclass of this object may be provided by a SQLEngine subclass to provide
-        database-specific behavior."""
-        return sql.ColumnImpl(column)
-
-    def indeximpl(self, index):
-        """returns a new sql.IndexImpl object to correspond to the given Index
-        object. An IndexImpl provides SQL statement builder operations on an
-        Index metadata object, and a subclass of this object may be provided
-        by a SQLEngine subclass to provide database-specific behavior.
-        """
-        return sql.IndexImpl(index)
-    
     def get_default_schema_name(self):
         """returns the currently selected schema in the current connection."""
         return None

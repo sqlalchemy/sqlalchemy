@@ -2,6 +2,9 @@
 - fix to Oracle "row_number over" clause with mulitple tables
 - mapper.get() was not selecting multiple-keyed objects if the mapper's table was a join,
 such as in an inheritance relationship, this is fixed.
+- overhaul to sql/schema packages so that the sql package can run all on its own,
+producing selects, inserts, etc. without any engine dependencies.  Table/Column
+are the "physical" subclasses of TableClause/ColumnClause.
 0.1.2
 - fixed a recursive call in schema that was somehow running 994 times then returning
 normally.  broke nothing, slowed down everything.  thanks to jpellerin for finding this.

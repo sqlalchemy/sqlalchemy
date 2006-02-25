@@ -13,7 +13,7 @@ class ProxyEngine(object):
     """
     SQLEngine proxy. Supports lazy and late initialization by
     delegating to a real engine (set with connect()), and using proxy
-    classes for TableImpl, ColumnImpl and TypeEngine.
+    classes for TypeEngine.
     """
 
     def __init__(self):
@@ -61,15 +61,6 @@ class ProxyEngine(object):
             return None
         return self.get_engine().oid_column_name()
     
-    def columnimpl(self, column):
-        """Proxy point: return a ProxyColumnImpl
-        """
-        return ProxyColumnImpl(self, column)
-
-    def tableimpl(self, table):
-        """Proxy point: return a ProxyTableImpl
-        """
-        return ProxyTableImpl(self, table)
         
     def type_descriptor(self, typeobj):
         """Proxy point: return a ProxyTypeEngine 
@@ -83,45 +74,6 @@ class ProxyEngine(object):
             return getattr(self.engine, attr)
         raise AttributeError('No connection established in ProxyEngine: '
                              ' no access to %s' % attr)
-
-        
-class ProxyColumnImpl(sql.ColumnImpl):
-    """Proxy column; defers engine access to ProxyEngine
-    """
-    def __init__(self, engine, column):
-        sql.ColumnImpl.__init__(self, column)
-        self._engine = engine
-        self.impls = weakref.WeakKeyDictionary()
-    def _get_impl(self):
-        e = self._engine.engine
-        try:
-            return self.impls[e]
-        except KeyError:
-            impl = e.columnimpl(self.column)
-            self.impls[e] = impl
-    def __getattr__(self, key):
-        return getattr(self._get_impl(), key)
-    engine = property(lambda self: self._engine.engine)
-
-class ProxyTableImpl(sql.TableImpl):
-    """Proxy table; defers engine access to ProxyEngine
-    """
-    def __init__(self, engine, table):
-        sql.TableImpl.__init__(self, table)
-        self._engine = engine
-        self.impls = weakref.WeakKeyDictionary()
-    def _get_impl(self):
-        e = self._engine.engine
-        try:
-            return self.impls[e]
-        except KeyError:
-            impl = e.tableimpl(self.table)
-            self.impls[e] = impl
-            return impl
-    def __getattr__(self, key):
-        return getattr(self._get_impl(), key)
-
-    engine = property(lambda self: self._engine.engine)
 
 class ProxyType(object):
     """ProxyType base class; used by ProxyTypeEngine to construct proxying

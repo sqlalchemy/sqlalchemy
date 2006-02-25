@@ -152,16 +152,11 @@ class ANSICompiler(sql.Compiled):
             # if we are within a visit to a Select, set up the "typemap"
             # for this column which is used to translate result set values
             self.typemap.setdefault(column.key.lower(), column.type)
-        if column.table.name is None:
+        if column.table is not None and column.table.name is None:
             self.strings[column] = column.name
         else:
             self.strings[column] = "%s.%s" % (column.table.name, column.name)
 
-    def visit_columnclause(self, column):
-        if column.table is not None and column.table.name is not None:
-            self.strings[column] = "%s.%s" % (column.table.name, column.text)
-        else:
-            self.strings[column] = column.text
 
     def visit_fromclause(self, fromclause):
         self.froms[fromclause] = fromclause.from_name
@@ -257,11 +252,13 @@ class ANSICompiler(sql.Compiled):
                         l = co.label(co._label)
                         l.accept_visitor(self)
                         inner_columns[co._label] = l
-                    elif select.issubquery and isinstance(co, Column):
+                    # TODO: figure this out, a ColumnClause with a select as a parent
+                    # is different from any other kind of parent
+                    elif select.issubquery and isinstance(co, sql.ColumnClause) and co.table is not None and not isinstance(co.table, sql.Select):
                         # SQLite doesnt like selecting from a subquery where the column
                         # names look like table.colname, so add a label synonomous with
                         # the column name
-                        l = co.label(co.key)
+                        l = co.label(co.text)
                         l.accept_visitor(self)
                         inner_columns[self.get_str(l.obj)] = l
                     else:
@@ -379,7 +376,7 @@ class ANSICompiler(sql.Compiled):
         contains a Sequence object."""
         pass
     
-    def visit_insert_column(selef, column):
+    def visit_insert_column(self, column):
         """called when visiting an Insert statement, for each column in the table
         that is a NULL insert into the table"""
         pass
@@ -395,8 +392,8 @@ class ANSICompiler(sql.Compiled):
                 self.visit_insert_sequence(c, seq)
         vis = DefaultVisitor()
         for c in insert_stmt.table.c:
-            if (self.parameters is None or self.parameters.get(c.key, None) is None):
-                c.accept_visitor(vis)
+            if (isinstance(c, schema.SchemaItem) and (self.parameters is None or self.parameters.get(c.key, None) is None)):
+                c.accept_schema_visitor(vis)
         
         self.isinsert = True
         colparams = self._get_colparams(insert_stmt)
@@ -419,7 +416,7 @@ class ANSICompiler(sql.Compiled):
                 return self.bindparam_string(p.key)
             else:
                 p.accept_visitor(self)
-                if isinstance(p, sql.ClauseElement):
+                if isinstance(p, sql.ClauseElement) and not isinstance(p, sql.ColumnClause):
                     return "(" + self.get_str(p) + ")"
                 else:
                     return self.get_str(p)
@@ -466,7 +463,7 @@ class ANSICompiler(sql.Compiled):
         # now go thru compiled params, get the Column object for each key
         d = {}
         for key, value in parameters.iteritems():
-            if isinstance(key, schema.Column):
+            if isinstance(key, sql.ColumnClause):
                 d[key] = value
             else:
                 try:

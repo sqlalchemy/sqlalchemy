@@ -14,7 +14,7 @@ structure with its own clause-specific objects as well as the visitor interface,
 the schema package "plugs in" to the SQL package.
 
 """
-
+import sql
 from util import *
 from types import *
 from exceptions import *
@@ -29,29 +29,11 @@ class SchemaItem(object):
         for item in args:
             if item is not None:
                 item._set_parent(self)
-
-    def accept_visitor(self, visitor):
-        """all schema items implement an accept_visitor method that should call the appropriate
-        visit_XXXX method upon the given visitor object."""
-        raise NotImplementedError()
-
     def _set_parent(self, parent):
         """a child item attaches itself to its parent via this method."""
         raise NotImplementedError()
-
-    def hash_key(self):
-        """returns a string that identifies this SchemaItem uniquely"""
-        return "%s(%d)" % (self.__class__.__name__, id(self))
-
     def __repr__(self):
         return "%s()" % self.__class__.__name__
-
-    def __getattr__(self, key):
-        """proxies method calls to an underlying implementation object for methods not found
-        locally"""
-        if not self.__dict__.has_key('_impl'):
-            raise AttributeError(key)
-        return getattr(self._impl, key)
 
 def _get_table_key(engine, name, schema):
     if schema is not None and schema == engine.get_default_schema_name():
@@ -95,8 +77,10 @@ class TableSingleton(type):
             return table
 
         
-class Table(SchemaItem):
-    """represents a relational database table.  
+class Table(sql.TableClause, SchemaItem):
+    """represents a relational database table.  This subclasses sql.TableClause to provide
+    a table that is "wired" to an engine.  Whereas TableClause represents a table as its 
+    used in a SQL expression, Table represents a table as its created in the database.  
     
     Be sure to look at sqlalchemy.sql.TableImpl for additional methods defined on a Table."""
     __metaclass__ = TableSingleton
@@ -134,19 +118,15 @@ class Table(SchemaItem):
         the same table twice will result in an exception.
         
         """
-        self.name = name
-        self.columns = OrderedProperties()
-        self.c = self.columns
-        self.foreign_keys = []
-        self.primary_key = []
-        self.engine = engine
+        super(Table, self).__init__(name)
+        self._engine = engine
         self.schema = kwargs.pop('schema', None)
-        self._impl = self.engine.tableimpl(self, **kwargs)
         if self.schema is not None:
             self.fullname = "%s.%s" % (self.schema, self.name)
         else:
             self.fullname = self.name
-
+        self.kwargs = kwargs
+        
     def __repr__(self):
         return "Table(%s)" % string.join(
         [repr(self.name)] + [repr(self.engine)] +
@@ -160,44 +140,45 @@ class Table(SchemaItem):
         else:
             return self.schema + "." + self.name
         
-    def hash_key(self):
-        return "Table(%s)" % string.join(
-        [repr(self.name)] + [self.engine.hash_key()] +
-        ["%s=%s" % (k, repr(getattr(self, k))) for k in ['schema']], ','
-        )
-        
     def reload_values(self, *args):
         """clears out the columns and other properties of this Table, and reloads them from the 
         given argument list.  This is used with the "redefine" keyword argument sent to the
         metaclass constructor."""
-        self.columns = OrderedProperties()
-        self.c = self.columns
-        self.foreign_keys = []
-        self.primary_key = []
-        self._impl = self.engine.tableimpl(self)
+        self._clear()
+        
+        print "RELOAD VALUES", args
         self._init_items(*args)
 
     def append_item(self, item):
         """appends a Column item or other schema item to this Table."""
         self._init_items(item)
-        
+    
+    def append_column(self, column):
+        if not column.hidden:
+            self._columns[column.key] = column
+        if column.primary_key:
+            self.primary_key.append(column)
+        column.table = self
+        column.type = self.engine.type_descriptor(column.type)
+            
     def _set_parent(self, schema):
         schema.tables[self.name] = self
         self.schema = schema
-
-    def accept_visitor(self, visitor): 
+    def accept_schema_visitor(self, visitor): 
         """traverses the given visitor across the Column objects inside this Table,
         then calls the visit_table method on the visitor."""
         for c in self.columns:
-            c.accept_visitor(visitor)
+            c.accept_schema_visitor(visitor)
         return visitor.visit_table(self)
-    
     def deregister(self):
         """removes this table from it's engines table registry.  this does not
         issue a SQL DROP statement."""
         key = _get_table_key(self.engine, self.name, self.schema)
         del self.engine.tables[key]
-        
+    def create(self, **params):
+        self.engine.create(self)
+    def drop(self, **params):
+        self.engine.drop(self)
     def toengine(self, engine, schema=None):
         """returns a singleton instance of this Table with a different engine"""
         try:
@@ -211,8 +192,9 @@ class Table(SchemaItem):
                 args.append(c.copy())
             return Table(self.name, engine, schema=schema, *args)
 
-class Column(SchemaItem):
-    """represents a column in a database table."""
+class Column(sql.ColumnClause, SchemaItem):
+    """represents a column in a database table.  this is a subclass of sql.ColumnClause and
+    represents an actual existing table in the database, in a similar fashion as TableClause/Table."""
     def __init__(self, name, type, *args, **kwargs):
         """constructs a new Column object.  Arguments are:
         
@@ -244,24 +226,27 @@ class Column(SchemaItem):
         hidden=False : indicates this column should not be listed in the table's list of columns.  Used for the "oid" 
         column, which generally isnt in column lists.
         """
-        self.name = str(name) # in case of incoming unicode
-        self.type = type
+        name = str(name) # in case of incoming unicode
+        super(Column, self).__init__(name, None, type)
         self.args = args
         self.key = kwargs.pop('key', name)
-        self.primary_key = kwargs.pop('primary_key', False)
+        self._primary_key = kwargs.pop('primary_key', False)
         self.nullable = kwargs.pop('nullable', not self.primary_key)
         self.hidden = kwargs.pop('hidden', False)
         self.default = kwargs.pop('default', None)
-        self.foreign_key = None
+        self._foreign_key = None
         self._orig = None
         self._parent = None
         if len(kwargs):
             raise ArgumentError("Unknown arguments passed to Column: " + repr(kwargs.keys()))
-        
+
+    primary_key = AttrProp('_primary_key')
+    foreign_key = AttrProp('_foreign_key')
     original = property(lambda s: s._orig or s)
     parent = property(lambda s:s._parent or s)
     engine = property(lambda s: s.table.engine)
-     
+    columns = property(lambda self:[self])
+
     def __repr__(self):
        return "Column(%s)" % string.join(
         [repr(self.name)] + [repr(self.type)] +
@@ -282,16 +267,7 @@ class Column(SchemaItem):
     def _set_parent(self, table):
         if getattr(self, 'table', None) is not None:
             raise ArgumentError("this Column already has a table!")
-        if not self.hidden:
-            table.columns[self.key] = self
-            if self.primary_key:
-                table.primary_key.append(self)
-        self.table = table
-        if self.table.engine is not None:
-            self.type = self.table.engine.type_descriptor(self.type)
-            
-        self._impl = self.table.engine.columnimpl(self)
-
+        table.append_column(self)
         if self.default is not None:
             self.default = ColumnDefault(self.default)
             self._init_items(self.default)
@@ -320,35 +296,19 @@ class Column(SchemaItem):
             selectable.columns[c.key] = c
             if self.primary_key:
                 selectable.primary_key.append(c)
-        c._impl = self.engine.columnimpl(c)
         if fk is not None:
             c._init_items(fk)
         return c
 
-    def accept_visitor(self, visitor):
+    def accept_schema_visitor(self, visitor):
         """traverses the given visitor to this Column's default and foreign key object,
         then calls visit_column on the visitor."""
         if self.default is not None:
-            self.default.accept_visitor(visitor)
+            self.default.accept_schema_visitor(visitor)
         if self.foreign_key is not None:
-            self.foreign_key.accept_visitor(visitor)
+            self.foreign_key.accept_schema_visitor(visitor)
         visitor.visit_column(self)
 
-    def __lt__(self, other): return self._impl.__lt__(other)
-    def __le__(self, other): return self._impl.__le__(other)
-    def __eq__(self, other): return self._impl.__eq__(other)
-    def __ne__(self, other): return self._impl.__ne__(other)
-    def __gt__(self, other): return self._impl.__gt__(other)
-    def __ge__(self, other): return self._impl.__ge__(other)
-    def __add__(self, other): return self._impl.__add__(other)
-    def __sub__(self, other): return self._impl.__sub__(other)
-    def __mul__(self, other): return self._impl.__mul__(other)
-    def __and__(self, other): return self._impl.__and__(other)
-    def __or__(self, other): return self._impl.__or__(other)
-    def __div__(self, other): return self._impl.__div__(other)
-    def __truediv__(self, other): return self._impl.__truediv__(other)
-    def __invert__(self, other): return self._impl.__invert__(other)
-    def __str__(self): return self._impl.__str__()
 
 class ForeignKey(SchemaItem):
     """defines a ForeignKey constraint between two columns.  ForeignKey is 
@@ -374,7 +334,7 @@ class ForeignKey(SchemaItem):
         elif self._colspec.table.schema is not None:
             return "%s.%s.%s" % (self._colspec.table.schema, self._colspec.table.name, self._colspec.column.key)
         else:
-            return "%s.%s" % (self._colspec.table.name, self._colspec.column.key)
+            return "%s.%s" % (self._colspec.table.name, self._colspec.key)
         
     def references(self, table):
         """returns True if the given table is referenced by this ForeignKey."""
@@ -406,7 +366,7 @@ class ForeignKey(SchemaItem):
             
     column = property(lambda s: s._init_column())
 
-    def accept_visitor(self, visitor):
+    def accept_schema_visitor(self, visitor):
         """calls the visit_foreign_key method on the given visitor."""
         visitor.visit_foreign_key(self)
         
@@ -432,7 +392,7 @@ class PassiveDefault(DefaultGenerator):
     """a default that takes effect on the database side"""
     def __init__(self, arg):
         self.arg = arg
-    def accept_visitor(self, visitor):
+    def accept_schema_visitor(self, visitor):
         return visitor.visit_passive_default(self)
     def __repr__(self):
         return "PassiveDefault(%s)" % repr(self.arg)
@@ -442,7 +402,7 @@ class ColumnDefault(DefaultGenerator):
     a callable function, or a SQL clause."""
     def __init__(self, arg):
         self.arg = arg
-    def accept_visitor(self, visitor):
+    def accept_schema_visitor(self, visitor):
         """calls the visit_column_default method on the given visitor."""
         return visitor.visit_column_default(self)
     def __repr__(self):
@@ -461,7 +421,7 @@ class Sequence(DefaultGenerator):
              ["%s=%s" % (k, repr(getattr(self, k))) for k in ['start', 'increment', 'optional']]
             , ',')
     
-    def accept_visitor(self, visitor):
+    def accept_schema_visitor(self, visitor):
         """calls the visit_seauence method on the given visitor."""
         return visitor.visit_sequence(self)
 
@@ -486,6 +446,7 @@ class Index(SchemaItem):
         self.unique = kw.pop('unique', False)
         self._init_items()
 
+    engine = property(lambda s:s.table.engine)
     def _init_items(self):
         # make sure all columns are from the same table
         # FIXME: and no column is repeated
@@ -499,10 +460,13 @@ class Index(SchemaItem):
                                  "%s is from %s not %s" % (column,
                                                            column.table,
                                                            self.table))
-        # set my _impl from col.table.engine
-        self._impl = self.table.engine.indeximpl(self)
-        
-    def accept_visitor(self, visitor):
+    def create(self):
+       self.engine.create(self)
+    def drop(self):
+       self.engine.drop(self)
+    def execute(self):
+       self.create()
+    def accept_schema_visitor(self, visitor):
         visitor.visit_index(self)
     def __str__(self):
         return repr(self)
@@ -515,24 +479,13 @@ class Index(SchemaItem):
 class SchemaEngine(object):
     """a factory object used to create implementations for schema objects.  This object
     is the ultimate base class for the engine.SQLEngine class."""
-    def tableimpl(self, table):
-        """returns a new implementation object for a Table (usually sql.TableImpl)"""
-        raise NotImplementedError()
-    def columnimpl(self, column):
-        """returns a new implementation object for a Column (usually sql.ColumnImpl)"""
-        raise NotImplementedError()
-    def indeximpl(self, index):
-        """returns a new implementation object for an Index (usually
-        sql.IndexImpl)
-        """
-        raise NotImplementedError()
     def reflecttable(self, table):
         """given a table, will query the database and populate its Column and ForeignKey 
         objects."""
         raise NotImplementedError()
         
-class SchemaVisitor(object):
-    """base class for an object that traverses across Schema structures."""
+class SchemaVisitor(sql.ClauseVisitor):
+    """defines the visiting for SchemaItem objects"""
     def visit_schema(self, schema):
         """visit a generic SchemaItem"""
         pass

@@ -961,6 +961,9 @@ class SaveTest2(AssertMixin):
             Column('email_address', String(20)),
             redefine=True
         )
+        x = sql.Join(self.users, self.addresses)
+#        raise repr(self.users) + repr(self.users.primary_key)
+#        raise repr(self.addresses) + repr(self.addresses.foreign_keys)
         self.users.create()
         self.addresses.create()
         db.echo = testbase.echo
