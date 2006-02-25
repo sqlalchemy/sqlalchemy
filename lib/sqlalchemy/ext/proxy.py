@@ -9,7 +9,72 @@ from sqlalchemy.types import TypeEngine
 
 import thread, weakref
 
-class ProxyEngine(object):
+class BaseProxyEngine(object):
+    '''
+    Basis for all proxy engines
+    '''
+    def __init__(self):
+        self.tables = {}
+
+    def get_engine(self):
+        raise NotImplementedError
+
+    def set_engine(self, engine):
+        raise NotImplementedError
+        
+    engine = property(get_engine, set_engine)
+
+    def hash_key(self):
+        return "%s(%s)" % (self.__class__.__name__, id(self))
+
+    def oid_column_name(self):
+        # NOTE: setting up mappers fails unless the proxy engine returns
+        # something for oid column name, and the call happens too early
+        # to proxy, so effecticely no oids are allowed when using
+        # proxy engine
+        e= self.get_engine()
+        if e is None:
+            return None
+        return e.oid_column_name()    
+        
+    def type_descriptor(self, typeobj):
+        """Proxy point: return a ProxyTypeEngine 
+        """
+        return ProxyTypeEngine(self, typeobj)
+
+    def __getattr__(self, attr):
+        # call get_engine() to give subclasses a chance to change
+        # connection establishment behavior
+        e= self.get_engine()
+        if e is not None:
+            return getattr(e, attr)
+        raise AttributeError('No connection established in ProxyEngine: '
+                             ' no access to %s' % attr)
+
+class AutoConnectEngine(BaseProxyEngine):
+    '''
+    An SQLEngine proxy that automatically connects when necessary.
+    '''
+    
+    def __init__(self, dburi, opts=None, **kwargs):
+        BaseProxyEngine.__init__(self)
+        self.dburi= dburi
+        self.opts= opts
+        self.kwargs= kwargs
+        self._engine= None
+        
+    def get_engine(self):
+        if self._engine is None:
+            self._engine= create_engine( self.dburi, self.opts, **self.kwargs )
+        return self._engine
+
+    def set_engine(self, engine):
+        raise NotImplementedError
+        
+    engine = property(get_engine, set_engine)
+
+            
+class ProxyEngine(BaseProxyEngine):
     """
     SQLEngine proxy. Supports lazy and late initialization by
     delegating to a real engine (set with connect()), and using proxy
@@ -17,11 +82,11 @@ class ProxyEngine(object):
     """
 
     def __init__(self):
+        BaseProxyEngine.__init__(self)
         # create the local storage for uri->engine map and current engine
         self.storage = local()
         self.storage.connection = {}
         self.storage.engine = None
-        self.tables = {}
             
     def connect(self, uri, opts=None, **kwargs):
         """Establish connection to a real engine.
@@ -49,31 +114,6 @@ class ProxyEngine(object):
         
     engine = property(get_engine, set_engine)
             
-    def hash_key(self):
-        return "%s(%s)" % (self.__class__.__name__, id(self))
-
-    def oid_column_name(self):
-        # NOTE: setting up mappers fails unless the proxy engine returns
-        # something for oid column name, and the call happens too early
-        # to proxy, so effecticely no oids are allowed when using
-        # proxy engine
-        if self.storage.engine is None:
-            return None
-        return self.get_engine().oid_column_name()
-    
-        
-    def type_descriptor(self, typeobj):
-        """Proxy point: return a ProxyTypeEngine 
-        """
-        return ProxyTypeEngine(self, typeobj)
-
-    def __getattr__(self, attr):
-        # call get_engine() to give subclasses a chance to change
-        # connection establishment behavior
-        if self.get_engine() is not None:
-            return getattr(self.engine, attr)
-        raise AttributeError('No connection established in ProxyEngine: '
-                             ' no access to %s' % attr)
 
 class ProxyType(object):
     """ProxyType base class; used by ProxyTypeEngine to construct proxying
