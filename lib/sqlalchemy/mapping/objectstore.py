@@ -13,6 +13,7 @@ import thread
 import sqlalchemy
 import sqlalchemy.util as util
 import sqlalchemy.attributes as attributes
+from sqlalchemy.exceptions import *
 import topological
 import weakref
 import string
@@ -333,6 +334,12 @@ class UnitOfWork(object):
             pass
         self.attributes.commit(obj)
         self.attributes.remove(obj)
+
+    def _validate_obj(self, obj):
+        """validates that dirty/delete/commit operations can occur upon the given object, by checking
+        if it has an instance key and that the instance key is present in the identity map."""
+        if hasattr(obj, '_instance_key') and not self.identity_map.has_key(obj._instance_key):
+            raise InvalidRequestError("Detected a mapped object not present in the current thread's Identity Map: '%s'.  Use objectstore.import_instance() to place deserialized instances or instances from other threads" % repr(obj._instance_key))
         
     def update(self, obj):
         """called to add an object to this UnitOfWork as though it were loaded from the DB,
@@ -365,6 +372,7 @@ class UnitOfWork(object):
         self.new.append(obj)
         
     def register_dirty(self, obj):
+        self._validate_obj(obj)
         self.dirty.append(obj)
             
     def is_dirty(self, obj):
@@ -374,6 +382,7 @@ class UnitOfWork(object):
             return True
         
     def register_deleted(self, obj):
+        self._validate_obj(obj)
         self.deleted.append(obj)  
         mapper = object_mapper(obj)
         # TODO: should the cascading delete dependency thing
@@ -469,8 +478,7 @@ class UOWTransaction(object):
         #print "REGISTER", repr(obj), repr(getattr(obj, '_instance_key', None)), str(isdelete), str(listonly)
         # things can get really confusing if theres duplicate instances floating around,
         # so make sure everything is OK
-        if hasattr(obj, '_instance_key') and not self.uow.identity_map.has_key(obj._instance_key):
-            raise InvalidRequestError("Detected a mapped object not present in the current thread's Identity Map: '%s'.  Use objectstore.import_instance() to place deserialized instances or instances from other threads" % repr(obj._instance_key))
+        self.uow._validate_obj(obj)
             
         mapper = object_mapper(obj)
         self.mappers.append(mapper)
