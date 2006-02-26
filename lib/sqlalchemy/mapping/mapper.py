@@ -9,6 +9,7 @@ import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
 import sqlalchemy.engine as engine
 import sqlalchemy.util as util
+import sync
 from sqlalchemy.exceptions import *
 import objectstore
 import sys
@@ -64,14 +65,15 @@ class Mapper(object):
             self.primarytable = inherits.primarytable
             # inherit_condition is optional since the join can figure it out
             self.table = sql.join(inherits.table, table, inherit_condition)
+            self._synchronizer = sync.ClauseSynchronizer(self, self, sync.ONETOMANY)
+            self._synchronizer.compile(self.table.onclause, inherits.tables, TableFinder(table))
         else:
             self.primarytable = self.table
-        
+            self._synchronizer = None
+            
         # locate all tables contained within the "table" passed in, which
         # may be a join or other construct
-        tf = TableFinder()
-        self.table.accept_visitor(tf)
-        self.tables = tf.tables
+        self.tables = TableFinder(self.table)
 
         # determine primary key columns, either passed in, or get them from our set of tables
         self.pks_by_table = {}
@@ -170,7 +172,6 @@ class Mapper(object):
                     self.props[key] = prop.copy()
                     self.props[key].parent = self
                     self.props[key].key = None  # force re-init
-
         l = [(key, prop) for key, prop in self.props.iteritems()]
         for key, prop in l:
             if getattr(prop, 'key', None) is None:
@@ -589,6 +590,8 @@ class Mapper(object):
                         for c in table.c:
                             if self._getattrbycolumn(obj, c) is None:
                                 self._setattrbycolumn(obj, c, row[c])
+                    if self._synchronizer is not None:
+                        self._synchronizer.execute(obj, obj)
                     self.extension.after_insert(self, obj)
                     
     def delete_obj(self, objects, uow):
@@ -878,11 +881,20 @@ class MapperExtension(object):
 
 class TableFinder(sql.ClauseVisitor):
     """given a Clause, locates all the Tables within it into a list."""
-    def __init__(self):
+    def __init__(self, table):
         self.tables = []
+        table.accept_visitor(self)
     def visit_table(self, table):
         self.tables.append(table)
-
+    def __getitem__(self, i):
+        return self.tables[i]
+    def __iter__(self):
+        return iter(self.tables)
+    def __contains__(self, obj):
+        return obj in self.tables
+    def __add__(self, obj):
+        return self.tables + obj
+            
 def hash_key(obj):
     if obj is None:
         return 'None'

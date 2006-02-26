@@ -49,7 +49,9 @@ class ColumnProperty(MapperProperty):
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
             instance.__dict__[self.key] = row[self.columns[0]]
-
+    def __repr__(self):
+        return "ColumnProperty(%s)" % repr([str(c) for c in self.columns])
+        
 class DeferredColumnProperty(ColumnProperty):
     """describes an object attribute that corresponds to a table column, which also
     will "lazy load" its value from the table.  this is per-column lazy loading."""

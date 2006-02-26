@@ -1,7 +1,6 @@
 import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
 from sqlalchemy.exceptions import *
-import properties
 
 """contains the ClauseSynchronizer class which is used to map attributes between two objects
 in a manner corresponding to a SQL clause that compares column values."""
@@ -74,7 +73,7 @@ class ClauseSynchronizer(object):
         if len(self.syncrules) == rules_added:
             raise ArgumentError("No syncrules generated for join criterion " + str(sqlclause))
         
-    def execute(self, source, dest, obj, child, clearkeys):
+    def execute(self, source, dest, obj=None, child=None, clearkeys=None):
         for rule in self.syncrules:
             rule.execute(source, dest, obj, child, clearkeys)
         
@@ -110,7 +109,7 @@ class SyncRule(object):
         if isinstance(dest, dict):
             dest[self.dest_column.key] = value
         else:
-            #print "SYNC VALUE", value, "TO", dest
+            #print "SYNC VALUE", value, "TO", dest, self.source_column, self.dest_column
             self.dest_mapper._setattrbycolumn(dest, self.dest_column, value)
             
 class BinaryVisitor(sql.ClauseVisitor):

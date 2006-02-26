@@ -127,8 +127,10 @@ class InheritTest2(testbase.AssertMixin):
                 return "Bar(%s)" % self.data
 
         Bar.mapper = mapper(Bar, bar, inherits=Foo.mapper, properties = {
-                # TODO: use syncrules for this
-                'id':[bar.c.bid, foo.c.id]
+                # the old way, you needed to explicitly set up a compound
+                # column like this.  but now the mapper uses SyncRules to match up
+                # the parent/child inherited columns
+                #'id':[bar.c.bid, foo.c.id]
             })
 
         Bar.mapper.add_property('foos', relation(Foo.mapper, foo_bar, primaryjoin=bar.c.bid==foo_bar.c.bar_id, secondaryjoin=foo_bar.c.foo_id==foo.c.id, lazy=False))
