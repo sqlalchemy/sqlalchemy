@@ -724,8 +724,6 @@ class Mapper(object):
             instance = self.extension.create_instance(self, row, imap, self.class_)
             if instance is None:
                 instance = self.class_(_mapper_nohistory=True)
-            instance._instance_key = identitykey
-
             imap[identitykey] = instance
             isnew = True
         else:
@@ -742,7 +740,7 @@ class Mapper(object):
         if self.extension.append_result(self, row, imap, result, instance, isnew, populate_existing=populate_existing):
             if result is not None:
                 result.append_nohistory(instance)
-            
+
         return instance
 
 class MapperProperty(object):
