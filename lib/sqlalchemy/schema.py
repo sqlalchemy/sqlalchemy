@@ -177,6 +177,7 @@ class Table(sql.TableClause, SchemaItem):
         del self.engine.tables[key]
     def create(self, **params):
         self.engine.create(self)
+        return self
     def drop(self, **params):
         self.engine.drop(self)
     def toengine(self, engine, schema=None):
@@ -462,6 +463,7 @@ class Index(SchemaItem):
                                                            self.table))
     def create(self):
        self.engine.create(self)
+       return self
     def drop(self):
        self.engine.drop(self)
     def execute(self):

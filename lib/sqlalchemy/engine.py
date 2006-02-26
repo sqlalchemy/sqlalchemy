@@ -296,6 +296,7 @@ class SQLEngine(schema.SchemaEngine):
     def create(self, entity, **params):
         """creates a table or index within this engine's database connection given a schema.Table object."""
         entity.accept_schema_visitor(self.schemagenerator(**params))
+        return entity
 
     def drop(self, entity, **params):
         """drops a table or index within this engine's database connection given a schema.Table object."""
