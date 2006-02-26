@@ -90,64 +90,66 @@ class InheritTest(testbase.AssertMixin):
             objectstore.commit()
 
 class InheritTest2(testbase.AssertMixin):
-	def setUpAll(self):
-		engine = testbase.db
-		global foo, bar, foo_bar
-		foo = Table('foo', engine,
-		    Column('id', Integer, primary_key=True),
-			Column('data', String(20)),
-			).create()
+    def setUpAll(self):
+        engine = testbase.db
+        global foo, bar, foo_bar
+        foo = Table('foo', engine,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(20)),
+            ).create()
 
-		bar = Table('bar', engine,
-		    Column('bid', Integer, ForeignKey('foo.id'), primary_key=True),
-		    #Column('fid', Integer, ForeignKey('foo.id'), )
-			).create()
+        bar = Table('bar', engine,
+            Column('bid', Integer, ForeignKey('foo.id'), primary_key=True),
+            #Column('fid', Integer, ForeignKey('foo.id'), )
+            ).create()
 
-		foo_bar = Table('foo_bar', engine,
-		    Column('foo_id', Integer, ForeignKey('foo.id')),
-		    Column('bar_id', Integer, ForeignKey('bar.bid'))).create()
+        foo_bar = Table('foo_bar', engine,
+            Column('foo_id', Integer, ForeignKey('foo.id')),
+            Column('bar_id', Integer, ForeignKey('bar.bid'))).create()
 
-	def tearDownAll(self):
-		foo_bar.drop()
-		bar.drop()
-		foo.drop()
+    def tearDownAll(self):
+        foo_bar.drop()
+        bar.drop()
+        foo.drop()
 
-	def testbasic(self):
-		class Foo(object): 
-			def __init__(self, data=None):
-				self.data = data
-			def __str__(self):
-				return "Foo(%s)" % self.data
-			def __repr__(self):
-				return str(self)
+    def testbasic(self):
+        class Foo(object): 
+            def __init__(self, data=None):
+                self.data = data
+            def __str__(self):
+                return "Foo(%s)" % self.data
+            def __repr__(self):
+                return str(self)
 
-		Foo.mapper = mapper(Foo, foo)
-		class Bar(Foo):
-			def __str__(self):
-				return "Bar(%s)" % self.data
+        Foo.mapper = mapper(Foo, foo)
+        class Bar(Foo):
+            def __str__(self):
+                return "Bar(%s)" % self.data
 
-		Bar.mapper = mapper(Bar, bar, inherits=Foo.mapper, properties = {
-				# TODO: use syncrules for this
-				'id':[bar.c.bid, foo.c.id]
-			})
+        Bar.mapper = mapper(Bar, bar, inherits=Foo.mapper, properties = {
+                # TODO: use syncrules for this
+                'id':[bar.c.bid, foo.c.id]
+            })
 
-		Bar.mapper.add_property('foos', relation(Foo.mapper, foo_bar, primaryjoin=bar.c.bid==foo_bar.c.bar_id, secondaryjoin=foo_bar.c.foo_id==foo.c.id, lazy=False))
-		#Bar.mapper.add_property('foos', relation(Foo.mapper, foo_bar, lazy=False))
+        Bar.mapper.add_property('foos', relation(Foo.mapper, foo_bar, primaryjoin=bar.c.bid==foo_bar.c.bar_id, secondaryjoin=foo_bar.c.foo_id==foo.c.id, lazy=False))
+        #Bar.mapper.add_property('foos', relation(Foo.mapper, foo_bar, lazy=False))
 
+        b = Bar('barfoo')
+        objectstore.commit()
 
-		b = Bar('barfoo')
-		objectstore.commit()
+        b.foos.append(Foo('subfoo1'))
+        b.foos.append(Foo('subfoo2'))
 
+        objectstore.commit()
+        objectstore.clear()
 
-		b.foos.append(Foo('subfoo1'))
-		b.foos.append(Foo('subfoo2'))
-
-		objectstore.commit()
-		objectstore.clear()
-
-		l =b.mapper.select()
-		print l[0]
-		print l[0].foos
+        l =b.mapper.select()
+        print l[0]
+        print l[0].foos
+        self.assert_result(l, Bar,
+#            {'id':1, 'data':'barfoo', 'bid':1, 'foos':(Foo, [{'id':2,'data':'subfoo1'}, {'id':3,'data':'subfoo2'}])},
+            {'id':1, 'data':'barfoo', 'foos':(Foo, [{'id':2,'data':'subfoo1'}, {'id':3,'data':'subfoo2'}])},
+            )
 
 
 if __name__ == "__main__":    

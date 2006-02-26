@@ -352,7 +352,7 @@ class UnitOfWork(object):
 
     def register_callable(self, obj, key, func, uselist, **kwargs):
         self.attributes.set_callable(obj, key, func, uselist, **kwargs)
-        
+    
     def register_clean(self, obj):
         try:
             del self.dirty[obj]

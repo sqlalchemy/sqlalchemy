@@ -14,6 +14,7 @@ import sqlalchemy.schema as schema
 import sqlalchemy.engine as engine
 import sqlalchemy.util as util
 import sqlalchemy.attributes as attributes
+import sync
 import mapper
 import objectstore
 from sqlalchemy.exceptions import *
@@ -202,7 +203,15 @@ class PropertyLoader(MapperProperty):
             if self.backref is not None:
                 # try to set a LazyLoader on our mapper referencing the parent mapper
                 if not self.mapper.props.has_key(self.backref):
-                    self.mapper.add_property(self.backref, LazyLoader(self.parent, self.secondary, self.primaryjoin, self.secondaryjoin, backref=self.key, is_backref=True));
+                    if self.secondaryjoin is not None:
+                        # if setting up a backref to a many-to-many, reverse the order
+                        # of the "primary" and "secondary" joins
+                        pj = self.secondaryjoin
+                        sj = self.primaryjoin
+                    else:
+                        pj = self.primaryjoin
+                        sj = None
+                    self.mapper.add_property(self.backref, LazyLoader(self.parent, self.secondary, pj, sj, backref=self.key, is_backref=True));
                 else:
                     # else set one of us as the "backreference"
                     if not self.mapper.props[self.backref].is_backref:
@@ -525,70 +534,16 @@ class PropertyLoader(MapperProperty):
         The list of rules is used within commits by the _synchronize() method when dependent 
         objects are processed."""
 
-        SyncRule = PropertyLoader.SyncRule
-
         parent_tables = util.HashSet(self.parent.tables + [self.parent.primarytable])
         target_tables = util.HashSet(self.mapper.tables + [self.mapper.primarytable])
 
-        def check_for_table(binary, l):
-            for col in [binary.left, binary.right]:
-                if col.table in l:
-                    return col
-            else:
-                return None
-        
-        def compile(binary):
-            """assembles a SyncRule given a single binary condition"""
-            if binary.operator != '=' or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
-                return
-
-            if binary.left.table == binary.right.table:
-                # self-cyclical relation
-                if binary.left.primary_key:
-                    source = binary.left
-                    dest = binary.right
-                elif binary.right.primary_key:
-                    source = binary.right
-                    dest = binary.left
-                else:
-                    raise ArgumentError("Cant determine direction for relationship %s = %s" % (binary.left.fullname, binary.right.fullname))
-                if self.direction == PropertyLoader.ONETOMANY:
-                    self.syncrules.append(SyncRule(self.parent, source, dest, dest_mapper=self.mapper))
-                elif self.direction == PropertyLoader.MANYTOONE:
-                    self.syncrules.append(SyncRule(self.mapper, source, dest, dest_mapper=self.parent))
-                else:
-                    raise AssertionError("assert failed")
-            else:
-                pt = check_for_table(binary, parent_tables)
-                tt = check_for_table(binary, target_tables)
-                st = check_for_table(binary, [self.secondary])
-                #print "parenttable", [t.name for t in parent_tables]
-                #print "ttable", [t.name for t in target_tables]
-                #print "OK", str(binary), pt, tt, st
-                if pt and tt:
-                    if self.direction == PropertyLoader.ONETOMANY:
-                        self.syncrules.append(SyncRule(self.parent, pt, tt, dest_mapper=self.mapper))
-                    elif self.direction == PropertyLoader.MANYTOONE:
-                        self.syncrules.append(SyncRule(self.mapper, tt, pt, dest_mapper=self.parent))
-                    else:
-                        if visiting is self.primaryjoin:
-                            self.syncrules.append(SyncRule(self.parent, pt, st, direction=PropertyLoader.ONETOMANY))
-                        else:
-                            self.syncrules.append(SyncRule(self.mapper, tt, st, direction=PropertyLoader.MANYTOONE))
-                elif pt and st:
-                    self.syncrules.append(SyncRule(self.parent, pt, st, direction=PropertyLoader.ONETOMANY))
-                elif tt and st:
-                    self.syncrules.append(SyncRule(self.mapper, tt, st, direction=PropertyLoader.MANYTOONE))
-
-        self.syncrules = []
-        processor = BinaryVisitor(compile)
-        visiting = self.primaryjoin
-        self.primaryjoin.accept_visitor(processor)
-        if self.secondaryjoin is not None:
-            visiting = self.secondaryjoin
-            self.secondaryjoin.accept_visitor(processor)
-        if len(self.syncrules) == 0:
-            raise ArgumentError("No syncrules generated for join criterion " + str(self.primaryjoin))
+        self.syncrules = sync.ClauseSynchronizer(self.parent, self.mapper, self.direction)
+        if self.direction == PropertyLoader.MANYTOMANY:
+            #print "COMPILING p/c", self.parent, self.mapper
+            self.syncrules.compile(self.primaryjoin, parent_tables, [self.secondary], False)
+            self.syncrules.compile(self.secondaryjoin, target_tables, [self.secondary], True)
+        else:
+            self.syncrules.compile(self.primaryjoin, parent_tables, target_tables)
 
     def _synchronize(self, obj, child, associationrow, clearkeys):
         """called during a commit to execute the full list of syncrules on the 
@@ -606,53 +561,7 @@ class PropertyLoader(MapperProperty):
         if dest is None:
             return
 
-        for rule in self.syncrules:
-            rule.execute(source, dest, obj, child, clearkeys)
-
-    class SyncRule(object):
-        """An instruction indicating how to populate the objects on each side of a relationship.  
-        i.e. if table1 column A is joined against
-        table2 column B, and we are a one-to-many from table1 to table2, a syncrule would say 
-        'take the A attribute from object1 and assign it to the B attribute on object2'.  
-        
-        A rule contains the source mapper, the source column, destination column, 
-        destination mapper in the case of a one/many relationship, and
-        the integer direction of this mapper relative to the association in the case
-        of a many to many relationship.
-        """
-        def __init__(self, source_mapper, source_column, dest_column, dest_mapper=None, direction=None):
-            self.source_mapper = source_mapper
-            self.source_column = source_column
-            self.direction = direction
-            self.dest_mapper = dest_mapper
-            self.dest_column = dest_column
-            #print "SyncRule", source_mapper, source_column, dest_column, dest_mapper, direction
-
-        def execute(self, source, dest, obj, child, clearkeys):
-            if self.direction is not None:
-                self.exec_many2many(dest, obj, child, clearkeys)
-            else:
-                self.exec_one2many(source, dest, clearkeys)
-
-        def exec_many2many(self, destination, obj, child, clearkeys):
-            if self.direction == PropertyLoader.ONETOMANY:
-                source = obj
-            elif self.direction == PropertyLoader.MANYTOONE:
-                source = child
-            if clearkeys:
-                value = None
-            else:
-                value = self.source_mapper._getattrbycolumn(source, self.source_column)
-            destination[self.dest_column.key] = value
-            
-        def exec_one2many(self, source, destination, clearkeys):
-            if clearkeys or source is None:
-                value = None
-            else:
-                value = self.source_mapper._getattrbycolumn(source, self.source_column)
-            #print "SYNC VALUE", value, "TO", destination
-            self.dest_mapper._setattrbycolumn(destination, self.dest_column, value)
-                
+        self.syncrules.execute(source, dest, obj, child, clearkeys)
 
 class LazyLoader(PropertyLoader):
     def do_init_subclass(self, key, parent):
