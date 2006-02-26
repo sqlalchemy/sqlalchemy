@@ -5,6 +5,10 @@ such as in an inheritance relationship, this is fixed.
 - overhaul to sql/schema packages so that the sql package can run all on its own,
 producing selects, inserts, etc. without any engine dependencies.  Table/Column
 are the "physical" subclasses of TableClause/ColumnClause.
+- fixes to mapper inheritance, involving properties that relate to the same table 
+involved in the mapper inheritance scheme
+- made objectstore "check for out-of-identitymap" more aggressive, will perform the
+check when object attributes are modified or the object is deleted
 0.1.2
 - fixed a recursive call in schema that was somehow running 994 times then returning
 normally.  broke nothing, slowed down everything.  thanks to jpellerin for finding this.

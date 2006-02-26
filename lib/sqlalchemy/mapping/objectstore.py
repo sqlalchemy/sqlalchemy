@@ -372,8 +372,9 @@ class UnitOfWork(object):
         self.new.append(obj)
         
     def register_dirty(self, obj):
-        self._validate_obj(obj)
-        self.dirty.append(obj)
+        if not self.dirty.contains(obj):
+            self._validate_obj(obj)
+            self.dirty.append(obj)
             
     def is_dirty(self, obj):
         if not self.dirty.contains(obj):
@@ -382,12 +383,13 @@ class UnitOfWork(object):
             return True
         
     def register_deleted(self, obj):
-        self._validate_obj(obj)
-        self.deleted.append(obj)  
-        mapper = object_mapper(obj)
-        # TODO: should the cascading delete dependency thing
-        # happen wtihin PropertyLoader.process_dependencies ?
-        mapper.register_deleted(obj, self)
+        if not self.deleted.contains(obj):
+            self._validate_obj(obj)
+            self.deleted.append(obj)  
+            mapper = object_mapper(obj)
+            # TODO: should the cascading delete dependency thing
+            # happen wtihin PropertyLoader.process_dependencies ?
+            mapper.register_deleted(obj, self)
 
     def unregister_deleted(self, obj):
         try:
