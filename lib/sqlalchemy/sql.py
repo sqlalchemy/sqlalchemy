@@ -616,6 +616,8 @@ class BindParamClause(ClauseElement, CompareMixin):
         visitor.visit_bindparam(self)
     def _get_from_objects(self):
         return []
+    def copy_container(self):
+        return BindParamClause(self.key, self.value, self.shortname, self.type)
     def typeprocess(self, value, engine):
         return self._get_convert_type(engine).convert_bind_param(value, engine)
     def compare(self, other):

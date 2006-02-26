@@ -206,7 +206,66 @@ class M2MTest2(testbase.AssertMixin):
         del s.courses[1]
         self.assert_(len(s.courses) == 2)
         
-    
+class M2MTest3(testbase.AssertMixin):    
+	def setUpAll(self):
+		e = testbase.db
+		global c, c2a1, c2a2, b, a
+		c = Table('c', e, 
+			Column('c1', Integer, primary_key = True),
+			Column('c2', String(20)),
+		).create()
+
+		a = Table('a', e, 
+			Column('a1', Integer, primary_key=True),
+			Column('a2', String(20)),
+			Column('c1', Integer, ForeignKey('c.c1'))
+			).create()
+
+		c2a1 = Table('ctoaone', e, 
+			Column('c1', Integer, ForeignKey('c.c1')),
+			Column('a1', Integer, ForeignKey('a.a1'))
+		).create()
+		c2a2 = Table('ctoatwo', e, 
+			Column('c1', Integer, ForeignKey('c.c1')),
+			Column('a1', Integer, ForeignKey('a.a1'))
+		).create()
+
+		b = Table('b', e, 
+			Column('b1', Integer, primary_key=True),
+			Column('a1', Integer, ForeignKey('a.a1')),
+			Column('b2', Boolean)
+		).create()
+
+	def tearDownAll(self):
+		b.drop()
+		c2a2.drop()
+		c2a1.drop()
+		a.drop()
+		c.drop()
+
+	def testbasic(self):
+		class C(object):pass
+		class A(object):pass
+		class B(object):pass
+
+		assign_mapper(B, b)
+
+		assign_mapper(A, a, 
+			properties = {
+				'tbs' : relation(B, primaryjoin=and_(b.c.a1==a.c.a1, b.c.b2 == True), lazy=False),
+			}
+		)
+
+		assign_mapper(C, c, 
+			properties = {
+				'a1s' : relation(A, secondary=c2a1, lazy=False),
+				'a2s' : relation(A, secondary=c2a2, lazy=False)
+			}
+		)
+
+		o1 = C.get(1)
+
+
 
 if __name__ == "__main__":    
     testbase.main()
