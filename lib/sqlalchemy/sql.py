@@ -982,11 +982,14 @@ class TableClause(FromClause):
         super(TableClause, self).__init__(name)
         self.name = self.id = self.fullname = name
         self._columns = util.OrderedProperties()
+        self._indexes = util.OrderedProperties()
         self._foreign_keys = []
         self._primary_key = []
         for c in columns:
             self.append_column(c)
 
+    indexes = property(lambda s:s._indexes)
+    
     def append_column(self, c):
         self._columns[c.text] = c
         c.table = self

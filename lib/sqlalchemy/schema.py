@@ -160,7 +160,10 @@ class Table(sql.TableClause, SchemaItem):
             self.primary_key.append(column)
         column.table = self
         column.type = self.engine.type_descriptor(column.type)
-            
+
+    def append_index(self, index):
+        self.indexes[index.name] = index
+        
     def _set_parent(self, schema):
         schema.tables[self.name] = self
         self.schema = schema
@@ -170,6 +173,32 @@ class Table(sql.TableClause, SchemaItem):
         for c in self.columns:
             c.accept_schema_visitor(visitor)
         return visitor.visit_table(self)
+
+    def append_index_column(self, column, index=None, unique=None):
+        """Add an index or a column to an existing index of the same name.
+        """
+        if index is not None and unique is not None:
+            raise ValueError("index and unique may not both be specified")
+        if index:
+            if index is True:
+                name = 'ix_%s' % column.name
+            else:
+                name = index
+        elif unique:
+            if unique is True:
+                name = 'ux_%s' % column.name
+            else:
+                name = unique
+        # find this index in self.indexes
+        # add this column to it if found
+        # otherwise create new
+        try:
+            index = self.indexes[name]
+            index.append_column(column)
+        except KeyError:
+            index = Index(name, column, unique=unique)
+        return index
+    
     def deregister(self):
         """removes this table from it's engines table registry.  this does not
         issue a SQL DROP statement."""
@@ -224,9 +253,22 @@ class Column(sql.ColumnClause, SchemaItem):
         which will be invoked upon insert if this column is not present in the insert list or is given a value
         of None.
         
-        hidden=False : indicates this column should not be listed in the table's list of columns.  Used for the "oid" 
-        column, which generally isnt in column lists.
-        """
+        hidden=False : indicates this column should not be listed in the
+        table's list of columns.  Used for the "oid" column, which generally
+        isnt in column lists.
+
+        index=None : True or index name. Indicates that this column is
+        indexed. Pass true to autogenerate the index name. Pass a string to
+        specify the index name. Multiple columns that specify the same index
+        name will all be included in the index, in the order of their
+        creation.
+
+        unique=None : True or undex name. Indicates that this column is
+        indexed in a unique index . Pass true to autogenerate the index
+        name. Pass a string to specify the index name. Multiple columns that
+        specify the same index name will all be included in the index, in the
+        order of their creation.  """
+        
         name = str(name) # in case of incoming unicode
         super(Column, self).__init__(name, None, type)
         self.args = args
@@ -235,6 +277,10 @@ class Column(sql.ColumnClause, SchemaItem):
         self.nullable = kwargs.pop('nullable', not self.primary_key)
         self.hidden = kwargs.pop('hidden', False)
         self.default = kwargs.pop('default', None)
+        self.index = kwargs.pop('index', None)
+        self.unique = kwargs.pop('unique', None)
+        if self.index is not None and self.unique is not None:
+            raise ArgumentError("Column may not define both index and unique")
         self._foreign_key = None
         self._orig = None
         self._parent = None
@@ -269,6 +315,10 @@ class Column(sql.ColumnClause, SchemaItem):
         if getattr(self, 'table', None) is not None:
             raise ArgumentError("this Column already has a table!")
         table.append_column(self)
+        if self.index or self.unique:
+            table.append_index_column(self, index=self.index,
+                                      unique=self.unique)
+        
         if self.default is not None:
             self.default = ColumnDefault(self.default)
             self._init_items(self.default)
@@ -429,7 +479,6 @@ class Sequence(DefaultGenerator):
 class Index(SchemaItem):
     """Represents an index of columns from a database table
     """
-
     def __init__(self, name, *columns, **kw):
         """Constructs an index object. Arguments are:
 
@@ -443,24 +492,34 @@ class Index(SchemaItem):
         unique=True : create a unique index
         """
         self.name = name
-        self.columns = columns
+        self.columns = []
+        self.table = None
         self.unique = kw.pop('unique', False)
-        self._init_items()
+        self._init_items(*columns)
 
     engine = property(lambda s:s.table.engine)
-    def _init_items(self):
+    def _init_items(self, *args):
+        for column in args:
+            self.append_column(column)
+            
+    def append_column(self, column):
         # make sure all columns are from the same table
-        # FIXME: and no column is repeated
-        self.table = None
-        for column in self.columns:
-            if self.table is None:
-                self.table = column.table
-            elif column.table != self.table:
-                # all columns muse be from same table
-                raise ArgumentError("All index columns must be from same table. "
-                                 "%s is from %s not %s" % (column,
-                                                           column.table,
-                                                           self.table))
+        # and no column is repeated
+        if self.table is None:
+            self.table = column.table
+            self.table.append_index(self)
+        elif column.table != self.table:
+            # all columns muse be from same table
+            raise ArgumentError("All index columns must be from same table. "
+                                "%s is from %s not %s" % (column,
+                                                          column.table,
+                                                          self.table))
+        elif column.name in [ c.name for c in self.columns ]:
+            raise ArgumentError("A column may not appear twice in the "
+                                "same index (%s already has column %s)"
+                                % (self.name, column))
+        self.columns.append(column)
+        
     def create(self):
        self.engine.create(self)
        return self
@@ -501,7 +560,7 @@ class SchemaVisitor(sql.ClauseVisitor):
         """visit a ForeignKey."""
         pass
     def visit_index(self, index):
-        """visit an Index (not implemented yet)."""
+        """visit an Index."""
         pass
     def visit_passive_default(self, default):
         """visit a passive default"""

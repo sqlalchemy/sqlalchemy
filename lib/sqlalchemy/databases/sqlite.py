@@ -260,6 +260,9 @@ class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
             self.append("\tUNIQUE (%s)" % string.join([c.name for c in table.primary_key],', '))
 
         self.append("\n)\n\n")
-        self.execute()
+        self.execute()        
+        if hasattr(table, 'indexes'):
+            for index in table.indexes:
+                self.visit_index(index)
 
         

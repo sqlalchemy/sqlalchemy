@@ -517,8 +517,11 @@ class ANSISchemaGenerator(sqlalchemy.engine.SchemaIterator):
             self.append("\tPRIMARY KEY (%s)" % string.join([c.name for c in pks],', '))
                     
         self.append("\n)%s\n\n" % self.post_create_table(table))
-        self.execute()
-
+        self.execute()        
+        if hasattr(table, 'indexes'):
+            for index in table.indexes:
+                self.visit_index(index)
+        
     def post_create_table(self, table):
         return ''
 
@@ -550,6 +553,8 @@ class ANSISchemaDropper(sqlalchemy.engine.SchemaIterator):
         self.execute()
         
     def visit_table(self, table):
+        # NOTE: indexes on the table will be automatically dropped, so
+        # no need to drop them individually
         self.append("\nDROP TABLE " + table.fullname)
         self.execute()
 
