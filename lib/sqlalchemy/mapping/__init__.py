@@ -21,7 +21,7 @@ import mapper as mapperlib
 
 __all__ = ['relation', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer',
         'mapper', 'clear_mappers', 'objectstore', 'sql', 'extension', 'class_mapper', 'object_mapper', 'MapperExtension',
-        'assign_mapper'
+        'assign_mapper', 'cascade_mappers'
         ]
 
 def relation(*args, **kwargs):
