@@ -619,7 +619,7 @@ VALUES (:address_id, :user_id, :email_address)
 
     keywords = Table('keywords', engine,
         Column('keyword_id', Integer, primary_key = True),
-        Column('name', String(50))
+        Column('keyword_name', String(50))
     )
 
     itemkeywords = Table('article_keywords', engine,
@@ -630,7 +630,7 @@ VALUES (:address_id, :user_id, :email_address)
     # class definitions
     class Keyword(object):
         def __init__(self, name = None):
-            self.name = name
+            self.keyword_name = name
 
     class Article(object):
         pass
@@ -638,7 +638,7 @@ VALUES (:address_id, :user_id, :email_address)
     # define a mapper that does many-to-many on the 'itemkeywords' association 
     # table
     Article.mapper = mapper(Article, articles, properties = dict(
-            keywords = relation(mapper(Keyword, keywords), keywords, itemkeywords, lazy=False)
+            keywords = relation(mapper(Keyword, keywords), itemkeywords, lazy=False)
             )
         )
 
@@ -666,7 +666,7 @@ INSERT INTO article_keywords (article_id, keyword_id) VALUES (:article_id, :keyw
 [{'keyword_id': 1, 'article_id': 1}, {'keyword_id': 2, 'article_id': 1}]
 </&>
     # select articles based on a keyword.  select_by will handle the extra joins.
-    <&formatting.myt:poplink&>articles = Article.mapper.select_by(keyword='politics')
+    <&formatting.myt:poplink&>articles = Article.mapper.select_by(keyword_name='politics')
 <&|formatting.myt:codepopper, link="sql" &>
 SELECT articles.article_id AS articles_article_id, 
 articles.article_headline AS articles_article_headline, 
