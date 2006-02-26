@@ -254,6 +254,29 @@ class PropertyTest(MapperSuperTest):
         au = AddressUser.mapper.get_by(user_name='jack')
         self.assert_(au.email_address == 'jack@gmail.com')
 
+    def testinherits2(self):
+        class _Order(object):
+            pass
+        class _Address(object):
+            pass
+        class AddressUser(_Address):
+            pass
+        assign_mapper(_Order, orders)
+        assign_mapper(_Address, addresses)
+        assign_mapper(AddressUser, users, inherits = _Address.mapper,
+            properties = {
+                'orders' : relation(_Order.mapper, lazy=False)
+            })
+        l = AddressUser.mapper.select()
+        jack = l[0]
+        self.assert_(jack.user_name=='jack')
+        jack.email_address = 'jack@gmail.com'
+        objectstore.commit()
+        objectstore.clear()
+        au = AddressUser.mapper.get_by(user_name='jack')
+        self.assert_(au.email_address == 'jack@gmail.com')
+            
+
 class DeferredTest(MapperSuperTest):
 
     def testbasic(self):

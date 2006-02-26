@@ -171,7 +171,6 @@ class PropertyLoader(MapperProperty):
         else:
             if self.primaryjoin is None:
                 self.primaryjoin = sql.join(parent.table, self.target).onclause
-        
         # if the foreign key wasnt specified and theres no assocaition table, try to figure
         # out who is dependent on who. we dont need all the foreign keys represented in the join,
         # just one of them.  
@@ -572,7 +571,10 @@ class PropertyLoader(MapperProperty):
                     elif self.direction == PropertyLoader.MANYTOONE:
                         self.syncrules.append(SyncRule(self.mapper, tt, pt, dest_mapper=self.parent))
                     else:
-                        raise AssertionError("assert failed")
+                        if visiting is self.primaryjoin:
+                            self.syncrules.append(SyncRule(self.parent, pt, st, direction=PropertyLoader.ONETOMANY))
+                        else:
+                            self.syncrules.append(SyncRule(self.mapper, tt, st, direction=PropertyLoader.MANYTOONE))
                 elif pt and st:
                     self.syncrules.append(SyncRule(self.parent, pt, st, direction=PropertyLoader.ONETOMANY))
                 elif tt and st:
@@ -580,8 +582,10 @@ class PropertyLoader(MapperProperty):
 
         self.syncrules = []
         processor = BinaryVisitor(compile)
+        visiting = self.primaryjoin
         self.primaryjoin.accept_visitor(processor)
         if self.secondaryjoin is not None:
+            visiting = self.secondaryjoin
             self.secondaryjoin.accept_visitor(processor)
         if len(self.syncrules) == 0:
             raise ArgumentError("No syncrules generated for join criterion " + str(self.primaryjoin))
@@ -622,6 +626,7 @@ class PropertyLoader(MapperProperty):
             self.direction = direction
             self.dest_mapper = dest_mapper
             self.dest_column = dest_column
+            #print "SyncRule", source_mapper, source_column, dest_column, dest_mapper, direction
 
         def execute(self, source, dest, obj, child, clearkeys):
             if self.direction is not None:
