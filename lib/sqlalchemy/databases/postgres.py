@@ -248,7 +248,10 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         to produce this correctly for an executemany, so we do our own executemany here."""
         rowcount = 0
         for param in parameters:
-            c.execute(statement, param)
+            try:
+                c.execute(statement, param)
+            except Exception, e:
+                raise exceptions.SQLError(statement, param, e)
             rowcount += c.rowcount
         self.context.rowcount = rowcount
 
