@@ -1,14 +1,27 @@
 0.1.3
-- fix to Oracle "row_number over" clause with mulitple tables
+- completed "post_update" feature, will add a second update statement before inserts
+and after deletes in order to reconcile a relationship without any dependencies
+being created; used when persisting two rows that are dependent on each other
+- completed mapper.using(session) function, localized per-object Session functionality;
+objects can be declared and manipulated as local to any user-defined Session
+- fix to Oracle "row_number over" clause with multiple tables
 - mapper.get() was not selecting multiple-keyed objects if the mapper's table was a join,
 such as in an inheritance relationship, this is fixed.
 - overhaul to sql/schema packages so that the sql package can run all on its own,
-producing selects, inserts, etc. without any engine dependencies.  Table/Column
-are the "physical" subclasses of TableClause/ColumnClause.
-- fixes to mapper inheritance, involving properties that relate to the same table 
-involved in the mapper inheritance scheme
+producing selects, inserts, etc. without any engine dependencies.  builds upon
+new TableClause/ColumnClause lexical objects.  Schema's Table/Column objects
+are the "physical" subclasses of them.  simplifies schema/sql relationship,
+extensions (like proxyengine), and speeds overall performance by a large margin. 
+removes the entire getattr() behavior that plagued 0.1.1.
+- refactoring of how the mapper "synchronizes" data between two objects into a
+separate module, works better with properties attached to a mapper that has an 
+additional inheritance relationship to one of the related tables, also the same
+methodology used to synchronize parent/child objects now used by mapper to
+synchronize between inherited and inheriting mappers.
 - made objectstore "check for out-of-identitymap" more aggressive, will perform the
 check when object attributes are modified or the object is deleted
+- Index object fully implemented, can be constructed standalone, or via
+"index" and "unique" arguments on Columns.
 
 0.1.2
 - fixed a recursive call in schema that was somehow running 994 times then returning
