@@ -143,7 +143,7 @@ class EngineAssert(object):
 
             query = self.convert_statement(query)
 
-            self.unittest.assert_(statement == query and params == parameters, "Testing for query '%s' params %s, received '%s' with params %s" % (query, repr(params), statement, repr(parameters)))
+            self.unittest.assert_(statement == query and (params is None or params == parameters), "Testing for query '%s' params %s, received '%s' with params %s" % (query, repr(params), statement, repr(parameters)))
         self.sql_count += 1
         return self.realexec(proxy, compiled, parameters, **kwargs)
 

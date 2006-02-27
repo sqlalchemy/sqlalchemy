@@ -19,7 +19,7 @@ class Tester(object):
     def __repr__(self):
         return "%s(%s)" % (self.__class__.__name__, repr(self.data))
         
-class SelfCycleTest(AssertMixin):
+class SelfReferentialTest(AssertMixin):
     """tests a self-referential mapper, with an additional list of child objects."""
     def setUpAll(self):
         testbase.db.tables.clear()
@@ -67,8 +67,8 @@ class SelfCycleTest(AssertMixin):
         objectstore.delete(a)
         objectstore.commit()
         
-class CycleTest(AssertMixin):
-    """tests two mappers with a bi-directional dependency"""
+class BiDirectionalOneToManyTest(AssertMixin):
+    """tests two mappers with a one-to-many relation to each other."""
     def setUpAll(self):
         testbase.db.tables.clear()
         global t1
@@ -112,8 +112,8 @@ class CycleTest(AssertMixin):
         b.c1s.append(c)
         objectstore.commit()
 
-class CycleWDepsTest(AssertMixin):
-    """tests two mappers with a bi-directional dependency, and child objects on one of them"""
+class BiDirectionalOneToManyTest2(AssertMixin):
+    """tests two mappers with a one-to-many relation to each other, with a second one-to-many on one of the mappers"""
     def setUpAll(self):
         testbase.db.tables.clear()
         global t1
@@ -178,25 +178,35 @@ class CycleWDepsTest(AssertMixin):
         objectstore.delete(c)
         objectstore.commit()
 
-class CycleTest2(AssertMixin):
+class OneToManyManyToOneTest(AssertMixin):
+    """tests two mappers, one has a one-to-many on the other mapper, the other has a separate many-to-one relationship to the first.
+    two tests will have a row for each item that is dependent on the other.  without the "post_update" flag, such relationships
+    raise an exception when dependencies are sorted."""
     def setUpAll(self):
         testbase.db.tables.clear()
         global person    
         global ball
-        person = Table('person', db,
-         Column('id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
-         Column('favoriteBall_id', Integer, ForeignKey('ball.id')),
-         )
         ball = Table('ball', db,
          Column('id', Integer, Sequence('ball_id_seq', optional=True), primary_key=True),
          Column('person_id', Integer),
          )
+        person = Table('person', db,
+         Column('id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
+         Column('favoriteBall_id', Integer, ForeignKey('ball.id')),
+#         Column('favoriteBall_id', Integer),
+         )
 
         ball.create()
         person.create()
+#        person.c.favoriteBall_id.append_item(ForeignKey('ball.id'))
         ball.c.person_id.append_item(ForeignKey('person.id'))
         
+        # make the test more complete for postgres
+        if db.engine.__module__.endswith('postgres'):
+            db.execute("alter table ball add constraint fk_ball_person foreign key (person_id) references person(id)", {})
     def tearDownAll(self):
+        if db.engine.__module__.endswith('postgres'):
+            db.execute("alter table ball drop constraint fk_ball_person", {})
         person.drop()
         ball.drop()
         
@@ -228,8 +238,8 @@ class CycleTest2(AssertMixin):
         p.balls.append(b)
         objectstore.commit()
 
-    def testrowcycle(self):
-        """tests a cycle between two rows"""
+    def testpostupdate_m2o(self):
+        """tests a cycle between two rows, with a post_update on the many-to-one"""
         class Person(object):
          pass
 
@@ -252,11 +262,216 @@ class CycleTest2(AssertMixin):
         p.balls.append(Ball())
         p.balls.append(Ball())
         p.favorateBall = b
-        objectstore.commit()
-        
-        objectstore.delete(p)
-        objectstore.commit()
 
+        self.assert_sql(db, lambda: objectstore.uow().commit(), [
+            (
+                "INSERT INTO person (favoriteBall_id) VALUES (:favoriteBall_id)",
+                {'favoriteBall_id': None}
+            ),
+            (
+                "INSERT INTO ball (person_id) VALUES (:person_id)",
+                lambda:{'person_id':p.id}
+            ),
+            (
+                "INSERT INTO ball (person_id) VALUES (:person_id)",
+                lambda:{'person_id':p.id}
+            ),
+            (
+                "INSERT INTO ball (person_id) VALUES (:person_id)",
+                lambda:{'person_id':p.id}
+            ),
+            (
+                "INSERT INTO ball (person_id) VALUES (:person_id)",
+                lambda:{'person_id':p.id}
+            ),
+            (
+                "UPDATE person SET favoriteBall_id=:favoriteBall_id WHERE person.id = :person_id",
+                lambda:[{'favoriteBall_id':p.favorateBall.id,'person_id':p.id}]
+            )
+        ], 
+        with_sequences= [
+                (
+                    "INSERT INTO person (id, favoriteBall_id) VALUES (:id, :favoriteBall_id)",
+                    lambda:{'id':db.last_inserted_ids()[0], 'favoriteBall_id': None}
+                ),
+                (
+                    "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
+                    lambda:{'id':db.last_inserted_ids()[0],'person_id':p.id}
+                ),
+                (
+                    "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
+                    lambda:{'id':db.last_inserted_ids()[0],'person_id':p.id}
+                ),
+                (
+                    "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
+                    lambda:{'id':db.last_inserted_ids()[0],'person_id':p.id}
+                ),
+                (
+                    "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
+                    lambda:{'id':db.last_inserted_ids()[0],'person_id':p.id}
+                ),
+                # heres the post update 
+                (
+                    "UPDATE person SET favoriteBall_id=:favoriteBall_id WHERE person.id = :person_id",
+                    lambda:[{'favoriteBall_id':p.favorateBall.id,'person_id':p.id}]
+                )
+            ])
+        objectstore.delete(p)
+        self.assert_sql(db, lambda: objectstore.uow().commit(), [
+            # heres the post update (which is a pre-update with deletes)
+            (
+                "UPDATE person SET favoriteBall_id=:favoriteBall_id WHERE person.id = :person_id",
+                lambda:[{'person_id': p.id, 'favoriteBall_id': None}]
+            ),
+            (
+                "DELETE FROM ball WHERE ball.id = :id",
+                None
+                # order cant be predicted, but something like:
+                #lambda:[{'id': 1L}, {'id': 4L}, {'id': 3L}, {'id': 2L}]
+            ),
+            (
+                "DELETE FROM person WHERE person.id = :id",
+                lambda:[{'id': p.id}]
+            )
+
+
+        ])
+        
+    def testpostupdate_o2m(self):
+        """tests a cycle between two rows, with a post_update on the one-to-many"""
+        class Person(object):
+         pass
+
+        class Ball(object):
+         pass
+
+        Ball.mapper = mapper(Ball, ball)
+        Person.mapper = mapper(Person, person, properties= dict(
+         balls = relation(Ball.mapper, primaryjoin=ball.c.person_id==person.c.id, foreignkey=ball.c.person_id, private=True, post_update=True),
+         favorateBall = relation(Ball.mapper, primaryjoin=person.c.favoriteBall_id==ball.c.id, foreignkey=person.c.favoriteBall_id),
+         )
+        )
+
+        print str(Person.mapper.props['balls'].primaryjoin)
+
+        b = Ball()
+        p = Person()
+        p.balls.append(b)
+        b2 = Ball()
+        p.balls.append(b2)
+        b3 = Ball()
+        p.balls.append(b3)
+        b4 = Ball()
+        p.balls.append(b4)
+        p.favorateBall = b
+#        objectstore.commit()
+        self.assert_sql(db, lambda: objectstore.uow().commit(), [
+                (
+                    "INSERT INTO ball (person_id) VALUES (:person_id)",
+                    {'person_id':None}
+                ),
+                (
+                    "INSERT INTO ball (person_id) VALUES (:person_id)",
+                    {'person_id':None}
+                ),
+                (
+                    "INSERT INTO ball (person_id) VALUES (:person_id)",
+                    {'person_id':None}
+                ),
+                (
+                    "INSERT INTO ball (person_id) VALUES (:person_id)",
+                    {'person_id':None}
+                ),
+                (
+                    "INSERT INTO person (favoriteBall_id) VALUES (:favoriteBall_id)",
+                    lambda:{'favoriteBall_id':b.id}
+                ),
+                # heres the post update on each one-to-many item
+                (
+                    "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
+                    lambda:[{'person_id':p.id,'ball_id':b.id}]
+                ),
+                (
+                    "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
+                    lambda:[{'person_id':p.id,'ball_id':b2.id}]
+                ),
+                (
+                    "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
+                    lambda:[{'person_id':p.id,'ball_id':b3.id}]
+                ),
+                (
+                    "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
+                    lambda:[{'person_id':p.id,'ball_id':b4.id}]
+                ),
+        ],
+        with_sequences=[
+            (
+                "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
+                lambda:{'id':db.last_inserted_ids()[0], 'person_id':None}
+            ),
+            (
+                "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
+                lambda:{'id':db.last_inserted_ids()[0], 'person_id':None}
+            ),
+            (
+                "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
+                lambda:{'id':db.last_inserted_ids()[0], 'person_id':None}
+            ),
+            (
+                "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
+                lambda:{'id':db.last_inserted_ids()[0], 'person_id':None}
+            ),
+            (
+                "INSERT INTO person (id, favoriteBall_id) VALUES (:id, :favoriteBall_id)",
+                lambda:{'id':db.last_inserted_ids()[0], 'favoriteBall_id':b.id}
+            ),
+            (
+                "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
+                lambda:[{'person_id':p.id,'ball_id':b.id}]
+            ),
+            (
+                "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
+                lambda:[{'person_id':p.id,'ball_id':b2.id}]
+            ),
+            (
+                "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
+                lambda:[{'person_id':p.id,'ball_id':b3.id}]
+            ),
+            (
+                "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
+                lambda:[{'person_id':p.id,'ball_id':b4.id}]
+            ),
+        ])
+
+        objectstore.delete(p)
+        self.assert_sql(db, lambda: objectstore.uow().commit(), [
+            (
+                "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
+                lambda:[{'person_id': None, 'ball_id': b.id}]
+            ),
+            (
+                "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
+                lambda:[{'person_id': None, 'ball_id': b2.id}]
+            ),
+            (
+                "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
+                lambda:[{'person_id': None, 'ball_id': b3.id}]
+            ),
+            (
+                "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
+                lambda:[{'person_id': None, 'ball_id': b4.id}]
+            ),
+            (
+                "DELETE FROM person WHERE person.id = :id",
+                lambda:[{'id':p.id}]
+            ),
+            (
+                "DELETE FROM ball WHERE ball.id = :id",
+                None
+                # the order of deletion is not predictable, but its roughly:
+                # lambda:[{'id': b.id}, {'id': b2.id}, {'id': b3.id}, {'id': b4.id}]
+            )
+        ])
         
 if __name__ == "__main__":
     testbase.main()        

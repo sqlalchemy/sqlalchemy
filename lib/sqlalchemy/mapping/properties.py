@@ -458,7 +458,7 @@ class PropertyLoader(MapperProperty):
         elif self.direction == PropertyLoader.ONETOMANY and delete:
             # head object is being deleted, and we manage its list of child objects
             # the child objects have to have their foreign key to the parent set to NULL
-            if self.private:
+            if self.private and not self.post_update:
                 # if we are privately managed, then all our objects should
                 # have been marked as "todelete" already and no attribute adjustment is needed
                 return
