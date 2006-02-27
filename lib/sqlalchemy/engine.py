@@ -27,6 +27,7 @@ import schema
 import exceptions
 import util
 import sql
+import sqlalchemy.databases
 import sqlalchemy.types as types
 import StringIO, sys, re
 
