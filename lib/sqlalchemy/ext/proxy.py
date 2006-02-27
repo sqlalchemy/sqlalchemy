@@ -65,7 +65,11 @@ class AutoConnectEngine(BaseProxyEngine):
         
     def get_engine(self):
         if self._engine is None:
-            self._engine= create_engine( self.dburi, self.opts, **self.kwargs )
+            if callable(self.dburi):
+                dburi= self.dburi()
+            else:
+                dburi= self.dburi
+            self._engine= create_engine( dburi, self.opts, **self.kwargs )
         return self._engine
 
     def set_engine(self, engine):
