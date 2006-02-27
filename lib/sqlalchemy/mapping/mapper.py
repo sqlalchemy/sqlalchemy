@@ -213,15 +213,22 @@ class Mapper(object):
             def init(self, *args, **kwargs):
                 nohist = kwargs.pop('_mapper_nohistory', False)
                 session = kwargs.pop('_sa_session', objectstore.get_session())
+                if not nohist:
+                    # register new with the correct session, before the object's 
+                    # constructor is called, since further assignments within the
+                    # constructor would otherwise bind it to whatever get_session() is.
+                    session.register_new(self)
                 if oldinit is not None:
                     try:
                         oldinit(self, *args, **kwargs)
                     except TypeError, msg:
                         # re-raise with the offending class name added to help in debugging
                         raise TypeError, '%s.%s' %(self.__class__.__name__, msg)
-                if not nohist:
-                    session.register_new(self)
-            self.class_.__init__ = init
+            # override oldinit, insuring that its not already one of our
+            # own modified inits
+            if oldinit is None or not hasattr(oldinit, '_sa_mapper_init'):
+                init._sa_mapper_init = True
+                self.class_.__init__ = init
         mapper_registry[self.class_] = self
         self.class_.c = self.c
         
@@ -300,7 +307,23 @@ class Mapper(object):
         mapper.__dict__.update(self.__dict__)
         mapper.props = self.props.copy()
         return mapper
-        
+    
+    def using(self, session):
+        """returns a proxying object to this mapper, which will execute methods on the mapper
+        within the context of the given session.  The session is placed as the "current" session
+        via the push_session/pop_session methods in the objectstore module."""
+        mapper = self
+        class Proxy(object):
+            def __getattr__(self, key):
+                def callit(*args, **kwargs):
+                    objectstore.push_session(session)
+                    try:
+                        return getattr(mapper, key)(*args, **kwargs)
+                    finally:
+                        objectstore.pop_session()
+                return callit
+        return Proxy()
+
     def options(self, *options):
         """uses this mapper as a prototype for a new mapper with different behavior.
         *options is a list of options directives, which include eagerload(), lazyload(), and noload()"""

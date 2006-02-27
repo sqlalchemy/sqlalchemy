@@ -369,7 +369,8 @@ class UnitOfWork(object):
         self.attributes.commit(obj)
         
     def register_new(self, obj):
-        self.new.append(obj)
+        if not self.new.contains(obj):
+            self.new.append(obj)
         
     def register_dirty(self, obj):
         if not self.dirty.contains(obj):
@@ -1059,17 +1060,15 @@ def get_session(obj=None):
 uow = get_session # deprecated
 
 def push_session(sess):
-    old = _sessions.get(thread.get_ident(), None)
+    old = get_session()
     sess._previous = old
-    _sessions[sess.hash_key] = sess
-    _sessions[thread.get_ident()] = sess
+    session_registry.set(sess)
     
 def pop_session():
-    sess = _sessions[thread.get_ident()]
+    sess = get_session()
     old = sess._previous
     sess._previous = None
-    _sessions[old.hash_key] = old
-    _sessions[thread.get_ident()] = old
+    session_registry.set(old)
     return old
     
 def using_session(sess, func):
