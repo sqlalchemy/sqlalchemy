@@ -53,13 +53,20 @@ def hash_key(obj):
         return repr(obj)
         
 class OrderedProperties(object):
-    """an object that maintains the order in which attributes are set upon it.
-    also provides an iterator and a very basic dictionary interface to those attributes.
+    """
+    An object that maintains the order in which attributes are set upon it.
+    also provides an iterator and a very basic getitem/setitem interface to those attributes.
+    
+    (Not really a dict, since it iterates over values, not keys.  Not really
+    a list, either, since each value must have a key associated; hence there is
+    no append or extend.)
     """
     def __init__(self):
         self.__dict__['_list'] = []
+    def __len__(self):
+        return len(self._list)
     def keys(self):
-        return self._list
+        return list(self._list)
     def get(self, key, default):
         return getattr(self, key, default)
     def has_key(self, key):
@@ -81,8 +88,9 @@ class OrderedProperties(object):
             self._list.append(key)
         self.__dict__[key] = object
     def clear(self):
-        for key in self._list[:]:
-            del self[key]
+        self.__dict__.clear()
+        self.__dict__['_list'] = []
+
 class RecursionStack(object):
     """a thread-local stack used to detect recursive object traversals."""
     def __init__(self):
@@ -109,17 +117,18 @@ class RecursionStack(object):
         
 class OrderedDict(dict):
     """A Dictionary that keeps its own internal ordering"""
+    
     def __init__(self, values = None):
-        self.list = []
+        self._list = []
         if values is not None:
             for val in values:
                 self.update(val)
 
     def keys(self):
-        return self.list
+        return list(self._list)
 
     def clear(self):
-        self.list = []
+        self._list = []
         dict.clear(self)
     
     def update(self, dict):
@@ -134,29 +143,29 @@ class OrderedDict(dict):
             return self.__getitem__(key)
 
     def values(self):
-        return map(lambda key: self[key], self.list)
+        return map(lambda key: self[key], self._list)
         
     def __iter__(self):
-        return iter(self.list)
+        return iter(self._list)
 
     def itervalues(self):
-        return iter([self[key] for key in self.list])
+        return iter([self[key] for key in self._list])
         
-    def iterkeys(self):return self.__iter__()
+    def iterkeys(self): return self.__iter__()
     
     def iteritems(self):
         return iter([(key, self[key]) for key in self.keys()])
     
     def __delitem__(self, key):
         try:
-            del self.list[self.list.index(key)]
+            del self._list[self._list.index(key)]
         except ValueError:
             raise KeyError(key)
         dict.__delitem__(self, key)
         
     def __setitem__(self, key, object):
         if not self.has_key(key):
-            self.list.append(key)
+            self._list.append(key)
         dict.__setitem__(self, key, object)
         
     def __getitem__(self, key):
