@@ -219,11 +219,7 @@ class Mapper(object):
                     # constructor would otherwise bind it to whatever get_session() is.
                     session.register_new(self)
                 if oldinit is not None:
-                    try:
-                        oldinit(self, *args, **kwargs)
-                    except TypeError, msg:
-                        # re-raise with the offending class name added to help in debugging
-                        raise TypeError, '%s.%s' %(self.__class__.__name__, msg)
+                    oldinit(self, *args, **kwargs)
             # override oldinit, insuring that its not already one of our
             # own modified inits
             if oldinit is None or not hasattr(oldinit, '_sa_mapper_init'):
