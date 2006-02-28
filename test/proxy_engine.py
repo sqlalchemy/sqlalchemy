@@ -22,6 +22,17 @@ class User(object):
     pass
 
 
+class ConstructTest(PersistTest):
+    """tests that we can build SQL constructs without engine-specific parameters, particulary
+    oid_column, being needed, as the proxy engine is usually not connected yet."""
+    def test_join(self):
+        engine = ProxyEngine()
+        t = Table('table1', engine, 
+            Column('col1', Integer, primary_key=True))
+        t2 = Table('table2', engine, 
+            Column('col2', Integer, ForeignKey('table1.col1')))
+        j = join(t, t2)
+        
 class ProxyEngineTest1(PersistTest):
 
     def setUp(self):

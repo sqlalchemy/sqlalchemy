@@ -827,7 +827,9 @@ class Join(FromClause):
         else:
             self.onclause = onclause
         self.isouter = isouter
-        self.oid_column = self.left.oid_column
+
+    oid_column = property(lambda s:s.left.oid_column)
+    
     def _exportable_columns(self):
         return [c for c in self.left.columns] + [c for c in self.right.columns]
     def _proxy_column(self, column):
@@ -1001,6 +1003,7 @@ class TableClause(FromClause):
             if self.engine.oid_column_name() is not None:
                 self._oid_column = schema.Column(self.engine.oid_column_name(), sqltypes.Integer, hidden=True)
                 self._oid_column._set_parent(self)
+                self._orig_columns()[self._oid_column.original] = self._oid_column
             else:
                 self._oid_column = None
         return self._oid_column
@@ -1011,9 +1014,6 @@ class TableClause(FromClause):
             self._orig_cols= {}
             for c in self.columns:
                 self._orig_cols[c.original] = c
-            oid = self.oid_column
-            if oid is not None:
-                self._orig_cols[oid.original] = oid
             return self._orig_cols
     columns = property(lambda s:s._columns)
     c = property(lambda s:s._columns)

@@ -28,10 +28,8 @@ class BaseProxyEngine(object):
         return "%s(%s)" % (self.__class__.__name__, id(self))
 
     def oid_column_name(self):
-        # NOTE: setting up mappers fails unless the proxy engine returns
-        # something for oid column name, and the call happens too early
-        # to proxy, so effecticely no oids are allowed when using
-        # proxy engine
+        # oid_column should not be requested before the engine is connected.
+        # it should ideally only be called at query compilation time.
         e= self.get_engine()
         if e is None:
             return None
