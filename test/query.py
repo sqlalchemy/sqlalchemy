@@ -170,6 +170,11 @@ class QueryTest(PersistTest):
         r = self.users.select().execute().fetchone()
         self.assertEqual(r.keys(), ['user_id', 'user_name'])
 
+    def test_items(self):
+        self.users.insert().execute(user_id=1, user_name='foo')
+        r = self.users.select().execute().fetchone()
+        self.assertEqual(r.items(), [('user_id', 1), ('user_name', 'foo')])
+
     def test_len(self):
         self.users.insert().execute(user_id=1, user_name='foo')
         r = self.users.select().execute().fetchone()

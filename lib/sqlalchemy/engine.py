@@ -705,6 +705,8 @@ class RowProxy:
             return self.__parent._get_col(self.__row, name)
         except:
             raise AttributeError
+    def items(self):
+        return [(key, getattr(self, key)) for key in self.keys()]
     def keys(self):
         return self.__parent.keys
     def values(self): 
