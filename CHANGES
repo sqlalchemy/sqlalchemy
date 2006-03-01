@@ -25,7 +25,8 @@ check when object attributes are modified or the object is deleted
 - added "convert_unicode" flag to SQLEngine, will treat all String/CHAR types
 as Unicode types, with raw-byte/utf-8 translation on the bind parameter and 
 result set side.
-
+- postgres maintains a list of ANSI functions that must have no parenthesis so
+function calls with no arguments work consistently
 0.1.2
 - fixed a recursive call in schema that was somehow running 994 times then returning
 normally.  broke nothing, slowed down everything.  thanks to jpellerin for finding this.

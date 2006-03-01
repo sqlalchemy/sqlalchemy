@@ -6,6 +6,7 @@
 
 import sys, StringIO, string, types, re
 
+import sqlalchemy.util as util
 import sqlalchemy.sql as sql
 import sqlalchemy.engine as engine
 import sqlalchemy.schema as schema
@@ -101,7 +102,18 @@ class PGBinary(sqltypes.Binary):
 class PGBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "BOOLEAN"
-        
+
+ANSI_FUNCS = util.HashSet([
+'CURRENT_TIME',
+'CURRENT_TIMESTAMP',
+'CURRENT_DATE',
+'LOCAL_TIME',
+'LOCAL_TIMESTAMP',
+'CURRENT_USER',
+'SESSION_USER',
+'USER'
+])
+
 pg2_colspecs = {
     sqltypes.Integer : PGInteger,
     sqltypes.Smallinteger : PGSmallInteger,
@@ -270,10 +282,11 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
 class PGCompiler(ansisql.ANSICompiler):
 
     def visit_function(self, func):
-        if len(func.clauses):
-            super(PGCompiler, self).visit_function(func)
-        else:
+        # PG has a bunch of funcs that explicitly need no parenthesis
+        if func.name.upper() in ANSI_FUNCS and not len(func.clauses):
             self.strings[func] = func.name
+        else:
+            super(PGCompiler, self).visit_function(func)
         
     def visit_insert_column(self, column):
         # Postgres advises against OID usage and turns it off in 8.1,
