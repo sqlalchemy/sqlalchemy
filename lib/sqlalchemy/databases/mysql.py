@@ -261,7 +261,7 @@ class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
         if column.primary_key:
             if not override_pk:
                 colspec += " PRIMARY KEY"
-            if first_pk and isinstance(column.type, types.Integer):
+            if not column.foreign_key and first_pk and isinstance(column.type, types.Integer):
                 colspec += " AUTO_INCREMENT"
         if column.foreign_key:
             colspec += ", FOREIGN KEY (%s) REFERENCES %s(%s)" % (column.name, column.foreign_key.column.table.name, column.foreign_key.column.name) 
