@@ -22,6 +22,9 @@ synchronize between inherited and inheriting mappers.
 check when object attributes are modified or the object is deleted
 - Index object fully implemented, can be constructed standalone, or via
 "index" and "unique" arguments on Columns.
+- added "convert_unicode" flag to SQLEngine, will treat all String/CHAR types
+as Unicode types, with raw-byte/utf-8 translation on the bind parameter and 
+result set side.
 
 0.1.2
 - fixed a recursive call in schema that was somehow running 994 times then returning
