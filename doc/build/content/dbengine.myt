@@ -102,6 +102,7 @@
         <li>default_ordering=False : if True, table objects and associated joins and aliases will generate information used for ordering by primary keys (or OIDs, if the database supports OIDs).  This information is used by the Mapper system to when it constructs select queries to supply a default ordering to mapped objects.</li>
         <li>use_ansi=True : used only by Oracle;  when False, the Oracle driver attempts to support a particular "quirk" of some Oracle databases, that the LEFT OUTER JOIN SQL syntax is not supported, and the "Oracle join" syntax of using <% "<column1>(+)=<column2>" |h%> must be used in order to achieve a LEFT OUTER JOIN.  Its advised that the Oracle database be configured to have full ANSI support instead of using this feature.</li>
         <li>use_oids=False : used only by Postgres, will enable the column name "oid" as the object ID column.  Postgres as of 8.1 has object IDs disabled by default.</li>
+        <li>convert_unicode=False : if set to True, all String/character based types will convert Unicode values to raw byte values going into the database, and all raw byte values to Python Unicode coming out in result sets.  This is an engine-wide method to provide unicode across the board.  For unicode conversion on a column-by-column level, use the Unicode column type instead.</li>
     </ul>
     </&>
     <&|doclib.myt:item, name="proxy", description="Using the Proxy Engine" &>

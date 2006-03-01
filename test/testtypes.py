@@ -108,7 +108,21 @@ class UnicodeTest(AssertMixin):
             self.echo("its sqlite !")
         else:
             self.assert_(not isinstance(x['plain_data'], unicode) and x['plain_data'] == rawdata)
-            
+    def testengineparam(self):
+        """tests engine-wide unicode conversion"""
+        prev_unicode = db.engine.convert_unicode
+        try:
+            db.engine.convert_unicode = True
+            rawdata = 'Alors vous imaginez ma surprise, au lever du jour, quand une dr\xc3\xb4le de petit voix m\xe2\x80\x99a r\xc3\xa9veill\xc3\xa9. Elle disait: \xc2\xab S\xe2\x80\x99il vous pla\xc3\xaet\xe2\x80\xa6 dessine-moi un mouton! \xc2\xbb\n'
+            unicodedata = rawdata.decode('utf-8')
+            unicode_table.insert().execute(unicode_data=unicodedata, plain_data=rawdata)
+            x = unicode_table.select().execute().fetchone()
+            self.echo(repr(x['unicode_data']))
+            self.echo(repr(x['plain_data']))
+            self.assert_(isinstance(x['unicode_data'], unicode) and x['unicode_data'] == unicodedata)
+            self.assert_(isinstance(x['plain_data'], unicode) and x['plain_data'] == unicodedata)
+        finally:
+            db.engine.convert_unicode = prev_unicode
     
 class BinaryTest(AssertMixin):
     def setUpAll(self):

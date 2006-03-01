@@ -166,7 +166,7 @@ class SQLEngine(schema.SchemaEngine):
     SQLEngines are constructed via the create_engine() function inside this package.
     """
     
-    def __init__(self, pool=None, echo=False, logger=None, default_ordering=False, echo_pool=False, echo_uow=False, **params):
+    def __init__(self, pool=None, echo=False, logger=None, default_ordering=False, echo_pool=False, echo_uow=False, convert_unicode=False, **params):
         """constructs a new SQLEngine.   SQLEngines should be constructed via the create_engine()
         function which will construct the appropriate subclass of SQLEngine."""
         # get a handle on the connection pool via the connect arguments
@@ -181,6 +181,7 @@ class SQLEngine(schema.SchemaEngine):
         self.default_ordering=default_ordering
         self.echo = echo
         self.echo_uow = echo_uow
+        self.convert_unicode = convert_unicode
         self.context = util.ThreadLocal(raiseerror=False)
         self.tables = {}
         self._ischema = None

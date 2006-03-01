@@ -85,6 +85,7 @@ class PG1Time(sqltypes.Time):
         return value
     def get_col_spec(self):
         return "TIME"
+
 class PGText(sqltypes.TEXT):
     def get_col_spec(self):
         return "TEXT"

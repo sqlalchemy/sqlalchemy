@@ -94,6 +94,16 @@ class String(NullTypeEngine):
             return TEXT()
         else:
             return self
+    def convert_bind_param(self, value, engine):
+        if not engine.convert_unicode or not isinstance(value, unicode):
+            return value
+        else:
+            return value.encode('utf-8')
+    def convert_result_value(self, value, engine):
+        if not engine.convert_unicode or isinstance(value, unicode):
+            return value
+        else:
+            return value.decode('utf-8')
 
 class Unicode(TypeDecorator,String):
     def __init__(self, length=None):
