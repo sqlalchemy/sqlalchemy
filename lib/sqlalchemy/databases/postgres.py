@@ -338,7 +338,12 @@ class PGDefaultRunner(ansisql.ANSIDefaultRunner):
                 c = self.proxy("select %s" % column.default.arg)
                 return c.fetchone()[0]
             elif isinstance(column.type, types.Integer) and (column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional)):
-                c = self.proxy("select nextval('%s_%s_seq')" % (column.table.name, column.name))
+                sch = column.table.schema
+                if sch is not None:
+                    exc = "select nextval('%s.%s_%s_seq')" % (sch, column.table.name, column.name)
+                else:
+                    exc = "select nextval('%s_%s_seq')" % (column.table.name, column.name)
+                c = self.proxy(exc)
                 return c.fetchone()[0]
             else:
                 return ansisql.ANSIDefaultRunner.get_column_default(self, column)

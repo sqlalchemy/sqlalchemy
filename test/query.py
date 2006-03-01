@@ -67,6 +67,29 @@ class QueryTest(PersistTest):
             self.assert_(l == [(1, 'user', 'lala')])
         finally:
             db.execute("drop table speedy_users", None)
+
+    def testschema(self):
+        if not db.engine.__module__.endswith('postgres'):
+            return 
+            
+        test_table = Table('my_table', db,
+                    Column('id', Integer, primary_key=True),
+                    Column('data', String(20), nullable=False),
+                    schema='alt_schema'
+                 )
+        test_table.create()
+        try:
+            # plain insert
+            test_table.insert().execute(data='test')
+
+            # try with a PassiveDefault
+            test_table.deregister()
+            test_table = Table('my_table', db, autoload=True, redefine=True, schema='alt_schema')
+            test_table.insert().execute(data='test')
+
+        finally:
+            test_table.drop()
+
     def testdefaults(self):
         x = {'x':50}
         def mydefault():
