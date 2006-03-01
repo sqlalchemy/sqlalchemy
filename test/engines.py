@@ -58,8 +58,6 @@ class EngineTest(PersistTest):
             mysql_engine='InnoDB'
         )
 
-        print repr(users)
-        print repr(addresses)
         
 #        users.c.parent_user_id.set_foreign_key(ForeignKey(users.c.user_id))
 
@@ -69,14 +67,14 @@ class EngineTest(PersistTest):
         # clear out table registry
         users.deregister()
         addresses.deregister()
-        
+
         try:
             users = Table('engine_users', testbase.db, autoload = True)
             addresses = Table('engine_email_addresses', testbase.db, autoload = True)
         finally:
             addresses.drop()
             users.drop()
-
+        
         users.create()
         addresses.create()
         try:
@@ -86,6 +84,8 @@ class EngineTest(PersistTest):
             # we can now as long as we use InnoDB
 #            if testbase.db.engine.__module__.endswith('mysql'):
  #               addresses.c.remote_user_id.append_item(ForeignKey('engine_users.user_id'))
+            print users
+            print addresses
             j = join(users, addresses)
             print str(j.onclause)
             self.assert_((users.c.user_id==addresses.c.remote_user_id).compare(j.onclause))

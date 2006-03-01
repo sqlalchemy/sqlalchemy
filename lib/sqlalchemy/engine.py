@@ -172,6 +172,7 @@ class SQLEngine(schema.SchemaEngine):
         # get a handle on the connection pool via the connect arguments
         # this insures the SQLEngine instance integrates with the pool referenced
         # by direct usage of pool.manager(<module>).connect(*args, **params)
+        schema.SchemaEngine.__init__(self)
         (cargs, cparams) = self.connect_args()
         if pool is None:
             params['echo'] = echo_pool
@@ -183,7 +184,6 @@ class SQLEngine(schema.SchemaEngine):
         self.echo_uow = echo_uow
         self.convert_unicode = convert_unicode
         self.context = util.ThreadLocal(raiseerror=False)
-        self.tables = {}
         self._ischema = None
         self._figure_paramstyle()
         if logger is None:
@@ -204,6 +204,10 @@ class SQLEngine(schema.SchemaEngine):
     
     def hash_key(self):
         return "%s(%s)" % (self.__class__.__name__, repr(self.connect_args()))
+    
+    def _get_name(self):
+        return sys.modules[self.__module__].descriptor()['name']
+    name = property(_get_name)
         
     def dispose(self):
         """disposes of the underlying pool manager for this SQLEngine."""

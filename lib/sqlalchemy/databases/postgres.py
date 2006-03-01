@@ -199,7 +199,7 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
                 self.opts['port'] = str(self.opts['port'])
                 
         ansisql.ANSISQLEngine.__init__(self, **params)
-
+        
     def connect_args(self):
         return [[], self.opts]
 
@@ -277,7 +277,9 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
         else:
             ischema_names = pg1_ischema_names
 
-        ischema.reflecttable(self, table, ischema_names)
+        # give ischema the given table's engine with which to look up 
+        # other tables, not 'self', since it could be a ProxyEngine
+        ischema.reflecttable(table.engine, table, ischema_names)
 
 class PGCompiler(ansisql.ANSICompiler):
 

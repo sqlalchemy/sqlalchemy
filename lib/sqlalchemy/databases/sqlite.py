@@ -182,7 +182,9 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
                 break
             (tablename, localcol, remotecol) = (row[2], row[3], row[4])
             #print "row! " + repr(row)
-            remotetable = Table(tablename, self, autoload = True)
+            # look up the table based on the given table's engine, not 'self',
+            # since it could be a ProxyEngine
+            remotetable = Table(tablename, table.engine, autoload = True)
             table.c[localcol].append_item(schema.ForeignKey(remotetable.c[remotecol]))
         # check for UNIQUE indexes
         c = self.execute("PRAGMA index_list(" + table.name + ")", {})

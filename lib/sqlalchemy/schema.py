@@ -45,8 +45,10 @@ def _get_table_key(engine, name, schema):
         
 class TableSingleton(type):
     """a metaclass used by the Table object to provide singleton behavior."""
-    def __call__(self, name, engine, *args, **kwargs):
+    def __call__(self, name, engine=None, *args, **kwargs):
         try:
+            if engine is None:
+                engine = default_engine
             name = str(name)    # in case of incoming unicode
             schema = kwargs.get('schema', None)
             autoload = kwargs.pop('autoload', False)
@@ -146,7 +148,6 @@ class Table(sql.TableClause, SchemaItem):
         metaclass constructor."""
         self._clear()
         
-        print "RELOAD VALUES", args
         self._init_items(*args)
 
     def append_item(self, item):
@@ -383,7 +384,7 @@ class ForeignKey(SchemaItem):
         if isinstance(self._colspec, str):
             return self._colspec
         elif self._colspec.table.schema is not None:
-            return "%s.%s.%s" % (self._colspec.table.schema, self._colspec.table.name, self._colspec.column.key)
+            return "%s.%s.%s" % (self._colspec.table.schema, self._colspec.table.name, self._colspec.key)
         else:
             return "%s.%s" % (self._colspec.table.name, self._colspec.key)
         
@@ -412,7 +413,6 @@ class ForeignKey(SchemaItem):
                     self._column = table.c[colname]
             else:
                 self._column = self._colspec
-
         return self._column
             
     column = property(lambda s: s._init_column())
@@ -540,6 +540,11 @@ class Index(SchemaItem):
 class SchemaEngine(object):
     """a factory object used to create implementations for schema objects.  This object
     is the ultimate base class for the engine.SQLEngine class."""
+
+    def __init__(self):
+        # a dictionary that stores Table objects keyed off their name (and possibly schema name)
+        self.tables = {}
+        
     def reflecttable(self, table):
         """given a table, will query the database and populate its Column and ForeignKey 
         objects."""

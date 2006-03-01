@@ -47,7 +47,7 @@ class QueryTest(PersistTest):
         that PassiveDefault upon insert, even though PassiveDefault says 
         "let the database execute this", because in postgres we must have all the primary
         key values in memory before insert; otherwise we cant locate the just inserted row."""
-        if not db.engine.__module__.endswith('postgres'):
+        if db.engine.name != 'postgres':
             return
         try:
             db.execute("""
@@ -96,8 +96,8 @@ class QueryTest(PersistTest):
             x['x'] += 1
             return x['x']
 
-        use_function_defaults = db.engine.__module__.endswith('postgres') or db.engine.__module__.endswith('oracle')
-        is_oracle = db.engine.__module__.endswith('oracle')
+        use_function_defaults = db.engine.name == 'postgres' or db.engine.name == 'oracle'
+        is_oracle = db.engine.name == 'oracle'
  
         # select "count(1)" from the DB which returns different results
         # on different DBs

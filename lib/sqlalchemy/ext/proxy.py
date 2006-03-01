@@ -6,16 +6,14 @@ except ImportError:
 from sqlalchemy import sql
 from sqlalchemy.engine import create_engine
 from sqlalchemy.types import TypeEngine
-
+import sqlalchemy.schema as schema
 import thread, weakref
 
-class BaseProxyEngine(object):
+class BaseProxyEngine(schema.SchemaEngine):
     '''
     Basis for all proxy engines
     '''
-    def __init__(self):
-        self.tables = {}
-
+        
     def get_engine(self):
         raise NotImplementedError
 
@@ -24,6 +22,9 @@ class BaseProxyEngine(object):
         
     engine = property(get_engine, set_engine)
 
+    def reflecttable(self, table):
+        return self.get_engine().reflecttable(table)
+        
     def hash_key(self):
         return "%s(%s)" % (self.__class__.__name__, id(self))
 
@@ -83,16 +84,20 @@ class ProxyEngine(BaseProxyEngine):
     classes for TypeEngine.
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         BaseProxyEngine.__init__(self)
         # create the local storage for uri->engine map and current engine
         self.storage = local()
         self.storage.connection = {}
         self.storage.engine = None
+        self.kwargs = kwargs
             
     def connect(self, uri, opts=None, **kwargs):
         """Establish connection to a real engine.
         """
+        kw = self.kwargs.copy()
+        kw.update(kwargs)
+        kwargs = kw
         key = "%s(%s,%s)" % (uri, repr(opts), repr(kwargs))
         try:
             map = self.storage.connection

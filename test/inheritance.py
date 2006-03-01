@@ -139,8 +139,10 @@ class InheritTest2(testbase.AssertMixin):
         b = Bar('barfoo')
         objectstore.commit()
 
-        b.foos.append(Foo('subfoo1'))
-        b.foos.append(Foo('subfoo2'))
+        f1 = Foo('subfoo1')
+        f2 = Foo('subfoo2')
+        b.foos.append(f1)
+        b.foos.append(f2)
 
         objectstore.commit()
         objectstore.clear()
@@ -150,7 +152,7 @@ class InheritTest2(testbase.AssertMixin):
         print l[0].foos
         self.assert_result(l, Bar,
 #            {'id':1, 'data':'barfoo', 'bid':1, 'foos':(Foo, [{'id':2,'data':'subfoo1'}, {'id':3,'data':'subfoo2'}])},
-            {'id':1, 'data':'barfoo', 'foos':(Foo, [{'id':2,'data':'subfoo1'}, {'id':3,'data':'subfoo2'}])},
+            {'id':b.id, 'data':'barfoo', 'foos':(Foo, [{'id':f1.id,'data':'subfoo1'}, {'id':f2.id,'data':'subfoo2'}])},
             )
 
 
