@@ -27,6 +27,9 @@ as Unicode types, with raw-byte/utf-8 translation on the bind parameter and
 result set side.
 - postgres maintains a list of ANSI functions that must have no parenthesis so
 function calls with no arguments work consistently
+- tables can be created with no engine specified.  this will default their engine
+to a module-scoped "default engine" which is a ProxyEngine.  this engine can 
+be connected via the function "global_connect".
 0.1.2
 - fixed a recursive call in schema that was somehow running 994 times then returning
 normally.  broke nothing, slowed down everything.  thanks to jpellerin for finding this.

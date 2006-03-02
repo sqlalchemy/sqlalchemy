@@ -15,3 +15,7 @@ from mapping import *
 import sqlalchemy.schema
 import sqlalchemy.ext.proxy
 sqlalchemy.schema.default_engine = sqlalchemy.ext.proxy.ProxyEngine()
+
+def global_connect(*args, **kwargs):
+    sqlalchemy.schema.default_engine.connect(*args, **kwargs)
+    

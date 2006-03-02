@@ -47,6 +47,9 @@ class TableSingleton(type):
     """a metaclass used by the Table object to provide singleton behavior."""
     def __call__(self, name, engine=None, *args, **kwargs):
         try:
+            if not isinstance(engine, SchemaEngine):
+                args = [engine] + list(args)
+                engine = None
             if engine is None:
                 engine = default_engine
             name = str(name)    # in case of incoming unicode

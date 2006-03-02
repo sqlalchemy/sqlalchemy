@@ -141,7 +141,27 @@
         engine.connect(environ['db_uri'])
         # now you have a real db connection and can select, insert, etc.
     </&>
+
+    <&|doclib.myt:item, name="defaultproxy", description="Using the Global Proxy" &>
+    <p>There is an instance of ProxyEngine available within the schema package as "default_engine".  You can construct Table objects and not specify the engine parameter, and they will connect to this engine by default.  To connect the default_engine, use the <span class="codeline">global_connect</span> function.</p>
+    <&|formatting.myt:code&>
+    # define the tables and mappers
+    from sqlalchemy import *
+
+    # specify a table with no explicit engine
+    users = Table('users', 
+            Column('user_id', Integer, primary_key=True),
+            Column('user_name', String)
+        )
+        
+    # connect the global proxy engine
+    global_connect('sqlite://filename=foo.db')
     
+    # create the table in the selected database
+    users.create()
+    </&>
+
+    </&>
     </&>
     <&|doclib.myt:item, name="transactions", description="Transactions" &>
     <p>A SQLEngine also provides an interface to the transactional capabilities of the underlying DBAPI connection object, as well as the connection object itself.  Note that when using the object-relational-mapping package, described in a later section, basic transactional operation is handled for you automatically by its "Unit of Work" system;  the methods described here will usually apply just to literal SQL update/delete/insert operations or those performed via the SQL construction library.</p>

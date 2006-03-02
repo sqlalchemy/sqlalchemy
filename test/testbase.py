@@ -1,7 +1,8 @@
 import unittest
 import StringIO
 import sqlalchemy.engine as engine
-import sqlalchemy.ext.proxy
+import sqlalchemy.ext.proxy as proxy
+import sqlalchemy.schema as schema
 import re, sys
 
 echo = True
@@ -47,7 +48,7 @@ def parse_argv():
         raise "Could not create engine.  specify --db <sqlite|sqlite_file|postgres|mysql|oracle> to test runner."
 
     if PROXY:
-        db = sqlalchemy.ext.proxy.ProxyEngine(echo=echo, default_ordering=True)
+        db = proxy.ProxyEngine(echo=echo, default_ordering=True)
         db.connect(db_uri)
     else:
         db = engine.create_engine(db_uri, echo=echo, default_ordering=True)
@@ -103,17 +104,21 @@ class AssertMixin(PersistTest):
         finally:
             self.assert_(db.sql_count == count, "desired statement count %d does not match %d" % (count, db.sql_count))
 
-class EngineAssert(object):
+class EngineAssert(proxy.BaseProxyEngine):
     """decorates a SQLEngine object to match the incoming queries against a set of assertions."""
     def __init__(self, engine):
-        self.engine = engine
+        self._engine = engine
         self.realexec = engine.post_exec
         self.realexec.im_self.post_exec = self.post_exec
         self.logger = engine.logger
         self.set_assert_list(None, None)
         self.sql_count = 0
-    def __getattr__(self, key):
-        return getattr(self.engine, key)
+    def get_engine(self):
+        return self._engine
+    def set_engine(self, e):
+        self._engine = e
+#    def __getattr__(self, key):
+ #       return getattr(self.engine, key)
     def set_assert_list(self, unittest, list):
         self.unittest = unittest
         self.assert_list = list
