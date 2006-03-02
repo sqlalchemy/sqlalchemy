@@ -327,6 +327,10 @@ class HistoryArraySet(UserList.UserList):
         self.records = {}
         for l in list:
             self.append_nohistory(l)
+    def clear(self):
+        """clears the list and removes all history."""
+        self.data[:] = []
+        self.records = {}
     def added_items(self):
         """returns a list of items that have been added since the last "committed" state."""
         return [key for key in self.data if self.records[key] is True]

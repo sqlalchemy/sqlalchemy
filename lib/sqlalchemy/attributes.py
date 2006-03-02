@@ -65,6 +65,8 @@ class PropHistory(object):
         self.extension = extension
     def gethistory(self, *args, **kwargs):
         return self
+    def clear(self):
+        del self.obj.__dict__[self.key]
     def history_contains(self, obj):
         return self.orig is obj or self.obj.__dict__[self.key] is obj
     def setattr_clean(self, value):
@@ -314,7 +316,8 @@ class AttributeManager(object):
                 pass
                 
     def remove(self, obj):
-        """not sure what this is."""
+        """called when an object is totally being removed from memory"""
+        # currently a no-op since the state of the object is attached to the object itself
         pass
 
     def create_history(self, obj, key, uselist, callable_=None, **kwargs):
@@ -350,6 +353,8 @@ class AttributeManager(object):
         When the attribute is next accessed, a new container will be created via the
         class-level history container definition."""
         try:
+            x = self.attribute_history(obj)[key]
+            x.clear()
             del self.attribute_history(obj)[key]
         except KeyError:
             pass

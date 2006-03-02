@@ -144,6 +144,10 @@ class Session(object):
         if self.parent_uow is None:
             self.uow.commit()
 
+    def refresh(self, *obj):
+        for o in obj:
+            self.uow.refresh(o)
+
     def register_clean(self, obj):
         self._bind_to(obj)
         self.uow.register_clean(obj)
@@ -221,6 +225,11 @@ def clear():
     current mapped object instances, as they are no longer in the Identity Map."""
     get_session().clear()
 
+def refresh(*obj):
+    """reloads the state of this object from the database, and cancels any in-memory
+    changes."""
+    get_session().refresh(*obj)
+    
 def delete(*obj):
     """registers the given objects as to be deleted upon the next commit"""
     s = get_session().delete(*obj)
@@ -307,6 +316,10 @@ class UnitOfWork(object):
         
     def _put(self, key, obj):
         self.identity_map[key] = obj
+
+    def refresh(self, obj):
+        self.rollback_object(obj)
+        object_mapper(obj)._get(obj._instance_key, reload=True)
 
     def has_key(self, key):
         """returns True if the given key is present in this UnitOfWork's identity map."""

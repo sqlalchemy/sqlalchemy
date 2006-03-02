@@ -235,6 +235,7 @@ class Mapper(object):
     def instances(self, cursor, *mappers, **kwargs):
         limit = kwargs.get('limit', None)
         offset = kwargs.get('offset', None)
+        populate_existing = kwargs.get('populate_existing', False)
         
         result = util.HistoryArraySet()
         if len(mappers):
@@ -247,7 +248,7 @@ class Mapper(object):
             row = cursor.fetchone()
             if row is None:
                 break
-            self._instance(row, imap, result)
+            self._instance(row, imap, result, populate_existing=populate_existing)
             i = 0
             for m in mappers:
                 m._instance(row, imap, otherresults[i])
@@ -270,21 +271,25 @@ class Mapper(object):
         #print "key: " + repr(key) + " ident: " + repr(ident)
         return self._get(key, ident)
         
-    def _get(self, key, ident=None):
-        try:
-            return objectstore.get_session()._get(key)
-        except KeyError:
-            if ident is None:
-                ident = key[2]
-            i = 0
-            params = {}
-            for primary_key in self.pks_by_table[self.table]:
-                params["pk_"+primary_key.key] = ident[i]
-                i += 1
+    def _get(self, key, ident=None, reload=False):
+        if not reload:
             try:
-                return self.select(self._get_clause, params=params)[0]
-            except IndexError:
-                return None
+                return objectstore.get_session()._get(key)
+            except KeyError:
+                pass
+            
+        if ident is None:
+            ident = key[1]
+        i = 0
+        params = {}
+        for primary_key in self.pks_by_table[self.table]:
+            params["pk_"+primary_key.key] = ident[i]
+            i += 1
+        try:
+            statement = self._compile(self._get_clause)
+            return self._select_statement(statement, params=params, populate_existing=reload)[0]
+        except IndexError:
+            return None
 
         
     def identity_key(self, *primary_key):
@@ -449,10 +454,7 @@ class Mapper(object):
 
     def select_whereclause(self, whereclause=None, params=None, **kwargs):
         statement = self._compile(whereclause, **kwargs)
-        if params is not None:
-            return self.select_statement(statement, **params)
-        else:
-            return self.select_statement(statement)
+        return self._select_statement(statement, params=params)
 
     def count(self, whereclause=None, params=None, **kwargs):
         s = self.table.count(whereclause)
@@ -462,12 +464,17 @@ class Mapper(object):
             return s.scalar()
 
     def select_statement(self, statement, **params):
-        statement.use_labels = True
-        return self.instances(statement.execute(**params))
+        return self._select_statement(statement, params=params)
 
     def select_text(self, text, **params):
         t = sql.text(text, engine=self.primarytable.engine)
         return self.instances(t.execute(**params))
+
+    def _select_statement(self, statement, params=None, **kwargs):
+        statement.use_labels = True
+        if params is None:
+            params = {}
+        return self.instances(statement.execute(**params), **kwargs)
 
     def _getpropbycolumn(self, column):
         try:
@@ -722,11 +729,10 @@ class Mapper(object):
 
             isnew = False
             if populate_existing:
-                isnew = not imap.has_key(identitykey)
-                if isnew:
+                if not imap.has_key(identitykey):
                     imap[identitykey] = instance
                 for prop in self.props.values():
-                    prop.execute(instance, row, identitykey, imap, isnew)
+                    prop.execute(instance, row, identitykey, imap, True)
 
             if self.extension.append_result(self, row, imap, result, instance, isnew, populate_existing=populate_existing):
                 if result is not None:
