@@ -30,6 +30,8 @@ function calls with no arguments work consistently
 - tables can be created with no engine specified.  this will default their engine
 to a module-scoped "default engine" which is a ProxyEngine.  this engine can 
 be connected via the function "global_connect".
+- added "refresh(*obj)" method to objectstore / Session to reload the attributes of
+any set of objects from the database unconditionally
 0.1.2
 - fixed a recursive call in schema that was somehow running 994 times then returning
 normally.  broke nothing, slowed down everything.  thanks to jpellerin for finding this.
