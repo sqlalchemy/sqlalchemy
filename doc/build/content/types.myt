@@ -10,24 +10,29 @@
 </p>
 <p>The standard set of generic types are:</p>
 <&|formatting.myt:code&>
-# sqlalchemy.types package:
-class String(TypeEngine):
-    def __init__(self, length=None)
-    
-class Integer(TypeEngine)
-    
-class Numeric(TypeEngine): 
-    def __init__(self, precision=10, length=2)
-    
-class Float(TypeEngine):
-    def __init__(self, precision=10)
-    
-class DateTime(TypeEngine)
-    
-class Binary(TypeEngine): 
-    def __init__(self, length=None)
-    
-class Boolean(TypeEngine)
+	# sqlalchemy.types package:
+	class String(TypeEngine):
+	    def __init__(self, length=None)
+	    
+	class Integer(TypeEngine)
+	    
+	class Numeric(TypeEngine): 
+	    def __init__(self, precision=10, length=2)
+	    
+	class Float(TypeEngine):
+	    def __init__(self, precision=10)
+	    
+	class DateTime(TypeEngine)
+	    
+	class Binary(TypeEngine): 
+	    def __init__(self, length=None)
+	    
+	class Boolean(TypeEngine)
+
+	# converts unicode strings to raw bytes
+	# as bind params, raw bytes to unicode as 
+	# rowset values
+	class Unicode(String)
 </&>
 <p>More specific subclasses of these types are available, to allow finer grained control over types:</p>
 <&|formatting.myt:code&>
