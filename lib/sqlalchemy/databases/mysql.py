@@ -270,7 +270,7 @@ class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
     def post_create_table(self, table):
         mysql_engine = table.kwargs.get('mysql_engine', None)
         if mysql_engine is not None:
-            return " ENGINE=%s" % mysql_engine
+            return " TYPE=%s" % mysql_engine
         else:
             return ""
 
