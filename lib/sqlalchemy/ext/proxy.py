@@ -20,7 +20,7 @@ class BaseProxyEngine(schema.SchemaEngine):
     def set_engine(self, engine):
         raise NotImplementedError
         
-    engine = property(get_engine, set_engine)
+    engine = property(lambda s:s.get_engine(), lambda s,e:s.set_engine(e))
 
     def reflecttable(self, table):
         return self.get_engine().reflecttable(table)
@@ -71,10 +71,6 @@ class AutoConnectEngine(BaseProxyEngine):
             self._engine= create_engine( dburi, self.opts, **self.kwargs )
         return self._engine
 
-    def set_engine(self, engine):
-        raise NotImplementedError
-        
-    engine = property(get_engine, set_engine)
 
             
 class ProxyEngine(BaseProxyEngine):
@@ -119,8 +115,6 @@ class ProxyEngine(BaseProxyEngine):
     def set_engine(self, engine):
         self.storage.engine = engine
         
-    engine = property(get_engine, set_engine)
-            
 
 class ProxyType(object):
     """ProxyType base class; used by ProxyTypeEngine to construct proxying
