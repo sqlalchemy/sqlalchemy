@@ -25,8 +25,8 @@ class column(object):
         self.colname     = colname
         self.foreign_key = foreign_key
         self.primary_key = primary_key
-        self.unique      = kwargs.pop( 'unique', False )
-        self.indexed     = kwargs.pop( 'indexed', self.unique )
+#         self.unique      = kwargs.pop( 'unique', None )
+#         self.index       = kwargs.pop( 'indexed', None )
         self.kwargs      = kwargs
         self.args        = args
 
@@ -34,14 +34,15 @@ class column(object):
 # declarative relationship declaration
 #
 class relationship(object):
-    def __init__(self, classname, colname=None, backref=None, private=False, lazy=True, uselist=True):
+    def __init__(self, classname, colname=None, backref=None, private=False,
+                 lazy=True, uselist=True, secondary=None):
         self.classname = classname
         self.colname   = colname
         self.backref   = backref
         self.private   = private
         self.lazy      = lazy
         self.uselist   = uselist
-
+        self.secondary = secondary
 
 class one_to_many(relationship):
     def __init__(self, classname, colname=None, backref=None, private=False, lazy=True):
@@ -52,6 +53,10 @@ class one_to_one(relationship):
     def __init__(self, classname, colname=None, backref=None, private=False, lazy=True):
         relationship.__init__(self, classname, colname, backref, private, lazy, uselist=False)
 
+class many_to_many(relationship):
+    def __init__(self, classname, secondary, backref=None, lazy=True):
+        relationship.__init__(self, classname, None, backref, False, lazy,
+                              uselist=True, secondary=secondary)
 
 
 # 
@@ -73,7 +78,8 @@ def process_relationships(klass, was_deferred=False):
         relations = {}
         for propname, reldesc in klass.relations.items():
             relclass = ActiveMapperMeta.classes[reldesc.classname]
-            relations[propname] = relation(relclass, 
+            relations[propname] = relation(relclass.mapper,
+                                           secondary=reldesc.secondary,
                                            backref=reldesc.backref, 
                                            private=reldesc.private, 
                                            lazy=reldesc.lazy, 
@@ -122,10 +128,10 @@ class ActiveMapperMeta(type):
                                      primary_key=value.primary_key,
                                      *value.args, **value.kwargs)
                     columns.append(col)
-                    if value.indexed:
-                        # create a Index object for the column
-                        index= Index( "%s_idx" % (value.colname or name),
-                                      col, unique= value.unique )
+#                     if value.indexed:
+#                         # create a Index object for the column
+#                         index= Index( "%s_idx" % (value.colname or name),
+#                                       col, unique= value.unique )
                     continue
                 
                 if isinstance(value, relationship):
@@ -156,3 +162,4 @@ class ActiveMapper(object):
 def create_tables():
     for klass in ActiveMapperMeta.classes.values():
         klass.table.create()
+
