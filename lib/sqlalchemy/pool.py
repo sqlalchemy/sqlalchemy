@@ -11,6 +11,7 @@ be managed automatically, based on module type and connect arguments,
  simply by calling regular DBAPI connect() methods."""
 
 import Queue, weakref, string, cPickle
+import util
 
 try:
     import thread
@@ -69,10 +70,11 @@ def clear_managers():
 
     
 class Pool(object):
-    def __init__(self, echo = False, use_threadlocal = True):
+    def __init__(self, echo = False, use_threadlocal = True, logger=None):
         self._threadconns = weakref.WeakValueDictionary()
         self._use_threadlocal = use_threadlocal
         self._echo = echo
+        self._logger = logger or util.Logger(origin='pool')
         
     def connect(self):
         if not self._use_threadlocal:
@@ -115,7 +117,7 @@ class Pool(object):
         raise NotImplementedError()
 
     def log(self, msg):
-        print msg
+        self.logger.write(msg)
 
 class ConnectionFairy(object):
     def __init__(self, pool):

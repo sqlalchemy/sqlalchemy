@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 __all__ = ['OrderedProperties', 'OrderedDict', 'generic_repr', 'HashSet', 'AttrProp']
-import thread, weakref, UserList,string, inspect
+import thread, threading, weakref, UserList, time, string, inspect, sys
 from exceptions import *
 
 def to_list(x):
@@ -51,7 +51,34 @@ def hash_key(obj):
         return obj.hash_key()
     else:
         return repr(obj)
-        
+
+class Logger(object):
+    """defines various forms of logging"""
+    def __init__(self, logger=None, usethreads=False, usetimestamp=True, origin=None):
+        self.logger = logger or sys.stdout
+        self.usethreads = usethreads
+        self.usetimestamp = usetimestamp
+        self.origin = origin
+    def write(self, msg):
+        if self.usetimestamp:
+            t = time.time()
+            ms = (t - long(t)) * 1000
+            timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t))
+            timestamp = "[%s,%03d]" % (timestamp, ms)
+        else:
+            timestamp = None
+        if self.origin:
+            origin = "[%s]" % self.origin
+            origin = "%-8s" % origin
+        else:
+            origin = None
+        if self.usethreads:
+            threadname = threading.currentThread().getName()
+            threadname = "[" + threadname + ' '*(8-len(threadname)) + "]"
+        else:
+            threadname = None
+        self.logger.write(string.join([s for s in (timestamp, threadname, origin) if s is not None]) + ": " + msg + "\n")
+    
 class OrderedProperties(object):
     """
     An object that maintains the order in which attributes are set upon it.

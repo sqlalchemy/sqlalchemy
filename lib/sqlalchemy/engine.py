@@ -186,10 +186,7 @@ class SQLEngine(schema.SchemaEngine):
         self.context = util.ThreadLocal(raiseerror=False)
         self._ischema = None
         self._figure_paramstyle()
-        if logger is None:
-            self.logger = sys.stdout
-        else:
-            self.logger = logger
+        self.logger = logger or util.Logger(origin='engine')
 
     def _get_ischema(self):
         # We use a property for ischema so that the accessor
@@ -607,7 +604,7 @@ class SQLEngine(schema.SchemaEngine):
     
     def log(self, msg):
         """logs a message using this SQLEngine's logger stream."""
-        self.logger.write(msg + "\n")
+        self.logger.write(msg)
 
 
 class ResultProxy:
@@ -685,7 +682,7 @@ class ResultProxy:
         """fetches one row, just like DBAPI cursor.fetchone()."""
         row = self.cursor.fetchone()
         if row is not None:
-            if self.echo: print repr(row)
+            if self.echo: self.engine.log(repr(row))
             return RowProxy(self, row)
         else:
             return None

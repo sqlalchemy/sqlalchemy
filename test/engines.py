@@ -121,7 +121,7 @@ class EngineTest(PersistTest):
         table.insert().execute({'multi_id':3,'multi_rev':3,'name':'row3', 'value':'value3'})
         table.select().execute().fetchall()
         table.drop()
-        
+    
     def testtoengine(self):
         db = ansisql.engine()
         
