@@ -179,7 +179,13 @@ DROP TABLE employees
         Column("createdate", DateTime())
     )
     </&>
-    <p>Defining a Sequence means that it will be created along with the table.create() call, and more importantly the sequence will be explicitly used when inserting new rows for this table.  For databases that dont support sequences, the Sequence object has no effect.  A sequence can also be specified with <span class="codeline">optional=True</span> which indicates the Sequence should only be used on a database that requires an explicit sequence (which currently is just Oracle).  A database like Postgres, while it uses sequences to create primary keys, is often used via the SERIAL column option which removes the need for explicit access to the sequence.</p>
+    <p>The Sequence is used when a Postgres or Oracle database schema defines a sequence of a specific name which must be used to create integer values.  If a Sequence is not defined, Postgres will default to regular SERIAL access.  Oracle currently has no default primary key method; so explicit primary key values or Sequence objects are required to insert new rows.</p>
+    
+<p>Defining a Sequence means that it will be created along with the table.create() call, and that the sequence will be explicitly used when inserting new rows for this table, for databases that support sequences.  If the Table is connected to a database that doesnt support sequences, the Sequence object is simply ignored.  Note that a Sequence object is <b>entirely optional for all databases except Oracle</b>, as other databases offer options for auto-creating primary key values, such as AUTOINCREMENT, SERIAL, etc.  SQLAlchemy will use these default methods for creating primary key values if no Sequence is present on the table metadata.</p>
+    
+<p>A sequence can also be specified with <span class="codeline">optional=True</span> which indicates the Sequence should only be used on a database that requires an explicit sequence, and not those that supply some other method of providing integer values.  At the moment, it essentially means "use this sequence only with Oracle and not Postgres".</p>
+
+<p>More docs TODO in this area include the ColumnDefault and PassiveDefault objects which provide more options to automatic generation of column values.</p>
     </&>
 
 </&>
