@@ -500,9 +500,6 @@ class SQLEngine(schema.SchemaEngine):
 
         commit      -  if True, will automatically commit the statement after completion. """
         
-        if parameters is None:
-            parameters = {}
-
         if connection is None:
             connection = self.connection()
 
@@ -565,9 +562,6 @@ class SQLEngine(schema.SchemaEngine):
 
         commit      -  if True, will automatically commit the statement after completion. """
         
-        if parameters is None:
-            parameters = {}
-
         if connection is None:
             connection = self.connection()
 
@@ -594,6 +588,11 @@ class SQLEngine(schema.SchemaEngine):
 
     def _execute(self, c, statement, parameters):
         try:
+            if parameters is None:
+                if self.positional:
+                    parameters = ()
+                else:
+                    parameters = {}
             c.execute(statement, parameters)
         except Exception, e:
             raise exceptions.SQLError(statement, parameters, e)
