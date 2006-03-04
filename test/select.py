@@ -57,15 +57,16 @@ addresses = table('addresses',
 
 class SQLTest(PersistTest):
     def runtest(self, clause, result, engine = None, params = None, checkparams = None):
-        c = clause.compile(parameters = params, engine=engine)
+        print "TEST with e", engine
+        c = clause.compile(parameters=params, engine=engine)
         self.echo("\nSQL String:\n" + str(c) + repr(c.get_params()))
         cc = re.sub(r'\n', '', str(c))
         self.assert_(cc == result, str(c) + "\n does not match \n" + result)
         if checkparams is not None:
             if isinstance(checkparams, list):
-                self.assert_(c.get_params().values() == checkparams, "params dont match")
+                self.assert_(c.get_params().values() == checkparams, "params dont match ")
             else:
-                self.assert_(c.get_params() == checkparams, "params dont match")
+                self.assert_(c.get_params() == checkparams, "params dont match" + repr(c.get_params()))
             
 class SelectTest(SQLTest):
     def testtableselect(self):

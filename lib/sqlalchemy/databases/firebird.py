@@ -102,7 +102,7 @@ class FBSQLEngine(ansisql.ANSISQLEngine):
         return self.context.last_inserted_ids
 
     def compiler(self, statement, bindparams, **kwargs):
-        return FBCompiler(self, statement, bindparams, use_ansi=self._use_ansi, **kwargs)
+        return FBCompiler(statement, bindparams, engine=self, use_ansi=self._use_ansi, **kwargs)
 
     def schemagenerator(self, **params):
         return FBSchemaGenerator(self, **params)

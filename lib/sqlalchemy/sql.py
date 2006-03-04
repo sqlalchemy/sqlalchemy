@@ -257,10 +257,8 @@ class Compiled(ClauseVisitor):
     object be dependent on the actual values of those bind parameters, even though it may
     reference those values as defaults."""
 
-    def __init__(self, engine, statement, parameters):
+    def __init__(self, statement, parameters, engine=None):
         """constructs a new Compiled object.
-        
-        engine - SQLEngine to compile against
         
         statement - ClauseElement to be compiled
         
@@ -271,10 +269,12 @@ class Compiled(ClauseVisitor):
         will also result in the creation of new BindParamClause objects for each key
         and will also affect the generated column list in an INSERT statement and the SET 
         clauses of an UPDATE statement.  The keys of the parameter dictionary can
-        either be the string names of columns or actual sqlalchemy.schema.Column objects."""
-        self.engine = engine
+        either be the string names of columns or ColumnClause objects.
+        
+        engine - optional SQLEngine to compile this statement against"""
         self.parameters = parameters
         self.statement = statement
+        self.engine = engine
 
     def __str__(self):
         """returns the string text of the generated SQL statement."""
@@ -289,6 +289,10 @@ class Compiled(ClauseVisitor):
         "shortname" property of the BindParamClause.
         """
         raise NotImplementedError()
+
+    def compile(self):
+        self.statement.accept_visitor(self)
+        self.after_compile()
 
     def execute(self, *multiparams, **params):
         """executes this compiled object using the underlying SQLEngine"""
@@ -367,20 +371,25 @@ class ClauseElement(object):
             return None
             
     engine = property(lambda s: s._find_engine(), doc="attempts to locate a SQLEngine within this ClauseElement structure, or returns None if none found.")
-    
-    def compile(self, engine = None, parameters = None, typemap=None):
+
+
+    def compile(self, engine = None, parameters = None, typemap=None, compiler=None):
         """compiles this SQL expression using its underlying SQLEngine to produce
         a Compiled object.  If no engine can be found, an ansisql engine is used.
         bindparams is a dictionary representing the default bind parameters to be used with 
         the statement.  """
-        if engine is None:
-            engine = self.engine
-
-        if engine is None:
+        
+        if compiler is None:
+            if engine is not None:
+                compiler = engine.compiler(self, parameters)
+            elif self.engine is not None:
+                compiler = self.engine.compiler(self, parameters)
+                
+        if compiler is None:
             import sqlalchemy.ansisql as ansisql
-            engine = ansisql.engine()
-
-        return engine.compile(self, parameters=parameters, typemap=typemap)
+            compiler = ansisql.ANSICompiler(self, parameters=parameters, typemap=typemap)
+        compiler.compile()
+        return compiler
 
     def __str__(self):
         return str(self.compile())
@@ -638,7 +647,7 @@ class TextClause(ClauseElement):
     being specified as a bind parameter via the bindparam() method,
     since it provides more information about what it is, including an optional
     type, as well as providing comparison operations."""
-    def __init__(self, text = "", engine=None, bindparams=None, typemap=None, escape=True):
+    def __init__(self, text = "", engine=None, bindparams=None, typemap=None):
         self.parens = False
         self._engine = engine
         self.id = id(self)
@@ -649,12 +658,10 @@ class TextClause(ClauseElement):
                 typemap[key] = engine.type_descriptor(typemap[key])
         def repl(m):
             self.bindparams[m.group(1)] = bindparam(m.group(1))
-            return self.engine.bindtemplate % m.group(1)
-        
-        if escape: 
-            self.text = re.compile(r':([\w_]+)', re.S).sub(repl, text)
-        else:
-            self.text = text
+            return ":%s" % m.group(1)
+        # scan the string and search for bind parameter names, add them 
+        # to the list of bindparams
+        self.text = re.compile(r'(?<!:):([\w_]+)', re.S).sub(repl, text)
         if bindparams is not None:
             for b in bindparams:
                 self.bindparams[b.key] = b

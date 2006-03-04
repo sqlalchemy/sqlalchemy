@@ -132,7 +132,7 @@ class MySQLEngine(ansisql.ANSISQLEngine):
         return False
 
     def compiler(self, statement, bindparams, **kwargs):
-        return MySQLCompiler(self, statement, bindparams, **kwargs)
+        return MySQLCompiler(statement, bindparams, engine=self, **kwargs)
 
     def schemagenerator(self, **params):
         return MySQLSchemaGenerator(self, **params)

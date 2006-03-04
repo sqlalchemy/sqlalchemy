@@ -151,7 +151,7 @@ class OracleSQLEngine(ansisql.ANSISQLEngine):
                
             colargs = []
             if default is not None:
-                colargs.append(PassiveDefault(sql.text(default, escape=False)))
+                colargs.append(PassiveDefault(sql.text(default)))
             
             name = name.lower()
             
@@ -207,7 +207,7 @@ class OracleCompiler(ansisql.ANSICompiler):
     def __init__(self, engine, statement, parameters, use_ansi = True, **kwargs):
         self._outertable = None
         self._use_ansi = use_ansi
-        ansisql.ANSICompiler.__init__(self, engine, statement, parameters, **kwargs)
+        ansisql.ANSICompiler.__init__(self, statement, parameters, engine=engine, **kwargs)
         
     def visit_join(self, join):
         if self._use_ansi:

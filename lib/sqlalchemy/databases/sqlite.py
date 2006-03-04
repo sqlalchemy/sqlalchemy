@@ -147,7 +147,7 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
         return ([self.filename], self.opts)
 
     def compiler(self, statement, bindparams, **kwargs):
-        return SQLiteCompiler(self, statement, bindparams, **kwargs)
+        return SQLiteCompiler(statement, bindparams, engine=self, **kwargs)
 
     def dbapi(self):
         return sqlite

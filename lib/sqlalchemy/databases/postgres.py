@@ -210,7 +210,7 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
             return sqltypes.adapt_type(typeobj, pg1_colspecs)
 
     def compiler(self, statement, bindparams, **kwargs):
-        return PGCompiler(self, statement, bindparams, **kwargs)
+        return PGCompiler(statement, bindparams, engine=self, **kwargs)
 
     def schemagenerator(self, **params):
         return PGSchemaGenerator(self, **params)

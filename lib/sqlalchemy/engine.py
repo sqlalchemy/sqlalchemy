@@ -227,15 +227,12 @@ class SQLEngine(schema.SchemaEngine):
             self._paramstyle = 'named'
 
         if self._paramstyle == 'named':
-            self.bindtemplate = ':%s'
             self.positional=False
         elif self._paramstyle == 'pyformat':
-            self.bindtemplate = "%%(%s)s"
             self.positional=False
         elif self._paramstyle == 'qmark' or self._paramstyle == 'format' or self._paramstyle == 'numeric':
             # for positional, use pyformat internally, ANSICompiler will convert
             # to appropriate character upon compilation
-            self.bindtemplate = "%%(%s)s"
             self.positional = True
         else:
             raise DBAPIError("Unsupported paramstyle '%s'" % self._paramstyle)
@@ -310,8 +307,7 @@ class SQLEngine(schema.SchemaEngine):
         instance of this engine's SQLCompiler, compiles the ClauseElement, and returns the
         newly compiled object."""
         compiler = self.compiler(statement, parameters, **kwargs)
-        statement.accept_visitor(compiler)
-        compiler.after_compile()
+        compiler.compile()
         return compiler
 
     def reflecttable(self, table):
