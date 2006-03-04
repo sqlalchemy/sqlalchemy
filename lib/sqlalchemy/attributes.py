@@ -50,7 +50,15 @@ class SmartProperty(object):
             return self.manager.get_list_attribute(obj, self.key)
         else:
             return self.manager.get_attribute(obj, self.key)
-
+    def setattr_clean(self, obj, value):
+        """sets an attribute on an object without triggering a history event"""
+        h = self.manager.get_history(obj, self.key)
+        h.setattr_clean(value)
+    def append_clean(self, obj, value):
+        """appends a value to a list-based attribute without triggering a history event."""
+        h = self.manager.get_history(obj, self.key)
+        h.append_nohistory(value)
+        
 class PropHistory(object):
     """Used by AttributeManager to track the history of a scalar attribute
     on an object instance.  This is the "scalar history container" object.
