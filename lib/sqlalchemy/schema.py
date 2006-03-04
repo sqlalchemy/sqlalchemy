@@ -434,11 +434,12 @@ class ForeignKey(SchemaItem):
         self.parent.table.foreign_keys.append(self)
 
 class DefaultGenerator(SchemaItem):
-    """Base class for column "default" values, which can be a plain default
-    or a Sequence."""
+    """Base class for column "default" values."""
     def _set_parent(self, column):
         self.column = column
         self.column.default = self
+    def execute(self):
+        return self.accept_schema_visitor(self.engine.defaultrunner(self.engine.execute))
     def __repr__(self):
         return "DefaultGenerator()"
 
@@ -464,17 +465,27 @@ class ColumnDefault(DefaultGenerator):
         
 class Sequence(DefaultGenerator):
     """represents a sequence, which applies to Oracle and Postgres databases."""
-    def __init__(self, name, start = None, increment = None, optional=False):
+    def __init__(self, name, start = None, increment = None, optional=False, engine=None):
         self.name = name
         self.start = start
         self.increment = increment
         self.optional=optional
+        self.engine = engine
     def __repr__(self):
         return "Sequence(%s)" % string.join(
              [repr(self.name)] +
              ["%s=%s" % (k, repr(getattr(self, k))) for k in ['start', 'increment', 'optional']]
             , ',')
-    
+    def _set_parent(self, column):
+        super(Sequence, self)._set_parent(column)
+        column.sequence = self
+        if self.engine is None:
+            self.engine = column.table.engine
+    def create(self):
+       self.engine.create(self)
+       return self
+    def drop(self):
+       self.engine.drop(self)
     def accept_schema_visitor(self, visitor):
         """calls the visit_seauence method on the given visitor."""
         return visitor.visit_sequence(self)

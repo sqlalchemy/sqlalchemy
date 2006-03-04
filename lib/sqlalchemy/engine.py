@@ -265,7 +265,7 @@ class SQLEngine(schema.SchemaEngine):
         """
         raise NotImplementedError()
 
-    def defaultrunner(self, proxy):
+    def defaultrunner(self, proxy=None):
         """Returns a schema.SchemaVisitor instance that can execute the default values on a column.
         The base class for this visitor is the DefaultRunner class inside this module.
         This visitor will typically only receive schema.DefaultGenerator schema objects.  The given 
@@ -275,7 +275,7 @@ class SQLEngine(schema.SchemaEngine):
         
         defaultrunner is called within the context of the execute_compiled() method."""
         return DefaultRunner(self, proxy)
-        
+    
     def compiler(self, statement, parameters):
         """returns a sql.ClauseVisitor which will produce a string representation of the given
         ClauseElement and parameter dictionary.  This object is usually a subclass of 
@@ -529,7 +529,7 @@ class SQLEngine(schema.SchemaEngine):
         self.post_exec(proxy, compiled, parameters, **kwargs)
         return ResultProxy(cursor, self, typemap=compiled.typemap)
 
-    def execute(self, statement, parameters, connection=None, cursor=None, echo=None, typemap=None, commit=False, return_raw=False, **kwargs):
+    def execute(self, statement, parameters=None, connection=None, cursor=None, echo=None, typemap=None, commit=False, return_raw=False, **kwargs):
         """executes the given string-based SQL statement with the given parameters.  
 
         The parameters can be a dictionary or a list, or a list of dictionaries or lists, depending

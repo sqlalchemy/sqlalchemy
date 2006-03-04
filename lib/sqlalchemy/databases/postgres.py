@@ -218,7 +218,7 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
     def schemadropper(self, **params):
         return PGSchemaDropper(self, **params)
 
-    def defaultrunner(self, proxy):
+    def defaultrunner(self, proxy=None):
         return PGDefaultRunner(self, proxy)
         
     def get_default_schema_name(self):
@@ -346,7 +346,7 @@ class PGSchemaDropper(ansisql.ANSISchemaDropper):
             self.execute()
 
 class PGDefaultRunner(ansisql.ANSIDefaultRunner):
-    def get_column_default(self, column):
+    def get_column_default(self, column, isinsert=True):
         if column.primary_key:
             # passive defaults on primary keys have to be overridden
             if isinstance(column.default, schema.PassiveDefault):
