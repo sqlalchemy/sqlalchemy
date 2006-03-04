@@ -27,8 +27,8 @@ def suite():
         # assorted round-trip tests
         'query',
         
-        # sequences (postgres/oracle)
-        'sequence',
+        # defaults, sequences (postgres/oracle)
+        'defaults',
         
         # ORM selecting
         'mapper',
