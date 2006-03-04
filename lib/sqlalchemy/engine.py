@@ -596,6 +596,17 @@ class SQLEngine(schema.SchemaEngine):
     def _executemany(self, c, statement, parameters):
         c.executemany(statement, parameters)
         self.context.rowcount = c.rowcount
+
+    def proxy(self, statement=None, parameters=None):
+        executemany = parameters is not None and isinstance(parameters, list)
+
+        if self.positional:
+            if executemany:
+                parameters = [p.values() for p in parameters]
+            else:
+                parameters = parameters.values()
+
+        return self.execute(statement, parameters)
     
     def log(self, msg):
         """logs a message using this SQLEngine's logger stream."""

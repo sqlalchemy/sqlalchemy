@@ -10,7 +10,8 @@ db = testbase.db
 
 class DefaultTest(PersistTest):
 
-    def testdefaults(self):
+    def setUpAll(self):
+        global t, f, ts
         x = {'x':50}
         def mydefault():
             x['x'] += 1
@@ -56,16 +57,26 @@ class DefaultTest(PersistTest):
             Column('col5', deftype, PassiveDefault(def2))
         )
         t.create()
-        try:
-            t.insert().execute()
-            self.assert_(t.engine.lastrow_has_defaults())
-            t.insert().execute()
-            t.insert().execute()
+
+    def teststandalonedefaults(self):
+        x = t.c.col1.default.execute()
+        y = t.c.col2.default.execute()
+        z = t.c.col3.default.execute()
+        self.assert_(50 <= x <= 57)
+        self.assert_(y == 'imthedefault')
+        self.assert_(z == 6)
         
-            l = t.select().execute()
-            self.assert_(l.fetchall() == [(51, 'imthedefault', f, ts, ts), (52, 'imthedefault', f, ts, ts), (53, 'imthedefault', f, ts, ts)])
-        finally:
-            t.drop()
+    def testinsertdefaults(self):
+        t.insert().execute()
+        self.assert_(t.engine.lastrow_has_defaults())
+        t.insert().execute()
+        t.insert().execute()
+    
+        l = t.select().execute()
+        self.assert_(l.fetchall() == [(51, 'imthedefault', f, ts, ts), (52, 'imthedefault', f, ts, ts), (53, 'imthedefault', f, ts, ts)])
+
+    def tearDownAll(self):
+        t.drop()
 
 class SequenceTest(PersistTest):
 
