@@ -7,11 +7,11 @@ from sqlalchemy import *
 import sqlalchemy
 
 db = testbase.db
-
+testbase.echo=False
 class DefaultTest(PersistTest):
 
     def setUpAll(self):
-        global t, f, ts
+        global t, f, ts, currenttime
         x = {'x':50}
         def mydefault():
             x['x'] += 1
@@ -22,18 +22,19 @@ class DefaultTest(PersistTest):
  
         # select "count(1)" from the DB which returns different results
         # on different DBs
+        currenttime = db.func.current_date(type=Date);
         if is_oracle:
-            f = select([func.count(1) + 5], engine=db, from_obj=['DUAL']).scalar()
-            ts = select([func.sysdate()], engine=db, from_obj=['DUAL']).scalar()
-            def1 = func.sysdate()
+            ts = db.func.sysdate().scalar()
+            f = select([func.count(1) + 5], engine=db).scalar()
+            def1 = currenttime
             def2 = text("sysdate")
             deftype = Date
         elif use_function_defaults:
             f = select([func.count(1) + 5], engine=db).scalar()
-            def1 = func.current_date()
+            def1 = currenttime
             def2 = text("current_date")
             deftype = Date
-            ts = select([func.current_date()], engine=db).scalar()
+            ts = db.func.current_date().scalar()
         else:
             f = select([func.count(1) + 5], engine=db).scalar()
             def1 = def2 = "3"
@@ -45,20 +46,29 @@ class DefaultTest(PersistTest):
             Column('col1', Integer, primary_key=True, default=mydefault),
             
             # python literal
-            Column('col2', String(20), default="imthedefault"),
+            Column('col2', String(20), default="imthedefault", onupdate="im the update"),
             
             # preexecute expression
-            Column('col3', Integer, default=func.count(1) + 5),
+            Column('col3', Integer, default=func.count(1) + 5, onupdate=func.count(1) + 14),
             
             # SQL-side default from sql expression
             Column('col4', deftype, PassiveDefault(def1)),
             
             # SQL-side default from literal expression
-            Column('col5', deftype, PassiveDefault(def2))
+            Column('col5', deftype, PassiveDefault(def2)),
+            
+            # preexecute + update timestamp
+            Column('col6', Date, default=currenttime, onupdate=currenttime)
         )
         t.create()
 
-    def teststandalonedefaults(self):
+    def tearDownAll(self):
+        t.drop()
+    
+    def tearDown(self):
+        t.delete().execute()
+        
+    def teststandalone(self):
         x = t.c.col1.default.execute()
         y = t.c.col2.default.execute()
         z = t.c.col3.default.execute()
@@ -66,18 +76,27 @@ class DefaultTest(PersistTest):
         self.assert_(y == 'imthedefault')
         self.assert_(z == 6)
         
-    def testinsertdefaults(self):
+    def testinsert(self):
         t.insert().execute()
         self.assert_(t.engine.lastrow_has_defaults())
         t.insert().execute()
         t.insert().execute()
-    
+
+        ctexec = currenttime.scalar()
+        self.echo("Currenttime "+ repr(ctexec))
         l = t.select().execute()
-        self.assert_(l.fetchall() == [(51, 'imthedefault', f, ts, ts), (52, 'imthedefault', f, ts, ts), (53, 'imthedefault', f, ts, ts)])
+        self.assert_(l.fetchall() == [(51, 'imthedefault', f, ts, ts, ctexec), (52, 'imthedefault', f, ts, ts, ctexec), (53, 'imthedefault', f, ts, ts, ctexec)])
 
-    def tearDownAll(self):
-        t.drop()
-
+    def testupdate(self):
+        t.insert().execute()
+        pk = t.engine.last_inserted_ids()[0]
+        t.update(t.c.col1==pk).execute(col4=None, col5=None)
+        ctexec = currenttime.scalar()
+        self.echo("Currenttime "+ repr(ctexec))
+        l = t.select(t.c.col1==pk).execute()
+        l = l.fetchone()
+        self.assert_(l == (pk, 'im the update', 15, None, None, ctexec))
+        
 class SequenceTest(PersistTest):
 
     def setUpAll(self):

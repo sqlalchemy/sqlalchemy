@@ -762,6 +762,9 @@ class Function(ClauseList, ColumnElement):
     def __init__(self, name, *clauses, **kwargs):
         self.name = name
         self.type = kwargs.get('type', sqltypes.NULLTYPE)
+        self._engine = kwargs.get('engine', None)
+        if self._engine is not None:
+            self.type = self._engine.type_descriptor(self.type)
         ClauseList.__init__(self, parens=True, *clauses)
     key = property(lambda self:self.name)
     def append(self, clause):
@@ -771,6 +774,8 @@ class Function(ClauseList, ColumnElement):
             else:
                 clause = BindParamClause(self.name, clause, shortname=self.name, type=None)
         self.clauses.append(clause)
+    def _process_from_dict(self, data, asfrom):
+        data.setdefault(self, self)
     def copy_container(self):
         clauses = [clause.copy_container() for clause in self.clauses]
         return Function(self.name, type=self.type, *clauses)
@@ -782,6 +787,10 @@ class Function(ClauseList, ColumnElement):
         return BindParamClause(self.name, obj, shortname=self.name, type=self.type)
     def select(self):
         return select([self])
+    def scalar(self):
+        return select([self]).scalar()
+    def execute(self):
+        return select([self]).execute()
     def _compare_type(self, obj):
         return self.type
                 

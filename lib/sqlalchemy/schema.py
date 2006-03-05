@@ -364,6 +364,8 @@ class Column(sql.ColumnClause, SchemaItem):
         then calls visit_column on the visitor."""
         if self.default is not None:
             self.default.accept_schema_visitor(visitor)
+        if self.onupdate is not None:
+            self.onupdate.accept_schema_visitor(visitor)
         if self.foreign_key is not None:
             self.foreign_key.accept_schema_visitor(visitor)
         visitor.visit_column(self)
@@ -473,7 +475,10 @@ class ColumnDefault(DefaultGenerator):
         self.arg = arg
     def accept_schema_visitor(self, visitor):
         """calls the visit_column_default method on the given visitor."""
-        return visitor.visit_column_default(self)
+        if self.for_update:
+            return visitor.visit_column_onupdate(self)
+        else:
+            return visitor.visit_column_default(self)
     def __repr__(self):
         return "ColumnDefault(%s)" % repr(self.arg)
         
@@ -598,6 +603,9 @@ class SchemaVisitor(sql.ClauseVisitor):
         pass
     def visit_column_default(self, default):
         """visit a ColumnDefault."""
+        pass
+    def visit_column_onupdate(self, onupdate):
+        """visit a ColumnDefault with the "for_update" flag set."""
         pass
     def visit_sequence(self, sequence):
         """visit a Sequence."""

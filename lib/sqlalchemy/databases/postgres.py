@@ -103,16 +103,6 @@ class PGBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "BOOLEAN"
 
-ANSI_FUNCS = util.HashSet([
-'CURRENT_TIME',
-'CURRENT_TIMESTAMP',
-'CURRENT_DATE',
-'LOCAL_TIME',
-'LOCAL_TIMESTAMP',
-'CURRENT_USER',
-'SESSION_USER',
-'USER'
-])
 
 pg2_colspecs = {
     sqltypes.Integer : PGInteger,
@@ -283,12 +273,6 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
 
 class PGCompiler(ansisql.ANSICompiler):
 
-    def visit_function(self, func):
-        # PG has a bunch of funcs that explicitly need no parenthesis
-        if func.name.upper() in ANSI_FUNCS and not len(func.clauses):
-            self.strings[func] = func.name
-        else:
-            super(PGCompiler, self).visit_function(func)
         
     def visit_insert_column(self, column):
         # Postgres advises against OID usage and turns it off in 8.1,

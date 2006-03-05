@@ -341,6 +341,17 @@ WHERE substr(users.user_name, :substr) = :substr_1
             </&>
 
         </&>
+        <p>Functions also are callable as standalone values:</p>
+        <&|formatting.myt:code &>
+            # call the "now()" function
+            time = func.now(engine=myengine).scalar()
+            
+            # call myfunc(1,2,3)
+            myvalue = func.myfunc(1, 2, 3, engine=db).execute()
+            
+            # or call them off the engine
+            db.func.now().scalar()
+        </&>
         </&>
         <&|doclib.myt:item, name="literals", description="Literals" &>
         <p>You can drop in a literal value anywhere there isnt a column to attach to via the <span class="codeline">literal</span> keyword:</p>

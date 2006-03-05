@@ -209,6 +209,11 @@ class OracleCompiler(ansisql.ANSICompiler):
         self._use_ansi = use_ansi
         ansisql.ANSICompiler.__init__(self, statement, parameters, engine=engine, **kwargs)
         
+    def default_from(self):
+        """called when a SELECT statement has no froms, and no FROM clause is to be appended.  
+        gives Oracle a chance to tack on a "FROM DUAL" to the string output. """
+        return " FROM DUAL"
+
     def visit_join(self, join):
         if self._use_ansi:
             return ansisql.ANSICompiler.visit_join(self, join)
