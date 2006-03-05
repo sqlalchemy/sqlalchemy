@@ -468,9 +468,9 @@ class SQLEngine(schema.SchemaEngine):
                 last_inserted_ids = []
                 need_lastrowid=False
                 for c in compiled.statement.table.c:
-                    if isinstance(c.default, schema.PassiveDefault):
-                        self.context.lastrow_has_defaults = True
                     if not param.has_key(c.name) or param[c.name] is None:
+                        if isinstance(c.default, schema.PassiveDefault):
+                            self.context.lastrow_has_defaults = True
                         newid = drunner.get_column_default(c)
                         if newid is not None:
                             param[c.name] = newid

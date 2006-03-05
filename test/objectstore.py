@@ -213,6 +213,9 @@ class PKTest(AssertMixin):
         objectstore.commit()
         
 class DefaultTest(AssertMixin):
+    """tests that when saving objects whose table contains DefaultGenerators, either python-side, preexec or database-side,
+    the newly saved instances receive all the default values either through a post-fetch or getting the pre-exec'ed 
+    defaults back from the engine."""
     def setUpAll(self):
         #db.echo = 'debug'
         use_string_defaults = db.engine.__module__.endswith('postgres') or db.engine.__module__.endswith('oracle') or db.engine.__module__.endswith('sqlite')
@@ -236,8 +239,7 @@ class DefaultTest(AssertMixin):
         self.table.drop()
     def setUp(self):
         self.table = Table('default_test', db)
-    def testbasic(self):
-        
+    def testinsert(self):
         class Hoho(object):pass
         assign_mapper(Hoho, self.table)
         h1 = Hoho(hoho=self.althohoval)
@@ -264,6 +266,16 @@ class DefaultTest(AssertMixin):
         self.assert_(h2.foober == h3.foober == h4.foober == 'im foober')
         self.assert_(h5.foober=='im the new foober')
     
+    def testinsertnopostfetch(self):
+        # populates the PassiveDefaults explicitly so there is no "post-update"
+        class Hoho(object):pass
+        assign_mapper(Hoho, self.table)
+        h1 = Hoho(hoho="15", counter="15")
+        objectstore.commit()
+        self.assert_(h1.hoho=="15")
+        self.assert_(h1.counter=="15")
+        self.assert_(h1.foober=="im foober")
+        
     def testupdate(self):
         class Hoho(object):pass
         assign_mapper(Hoho, self.table)
