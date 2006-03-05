@@ -591,6 +591,7 @@ class Mapper(object):
                 for rec in update:
                     (obj, params) = rec
                     c = statement.execute(params)
+                    self._postfetch(table, obj, table.engine.last_updated_params())
                     self.extension.after_update(self, obj)
                     rows += c.cursor.rowcount
                 if table.engine.supports_sane_rowcount() and rows != len(update):
@@ -608,18 +609,30 @@ class Mapper(object):
                             if self._getattrbycolumn(obj, col) is None:
                                 self._setattrbycolumn(obj, col, primary_key[i])
                             i+=1
-                    if table.engine.lastrow_has_defaults():
-                        clause = sql.and_()
-                        for p in self.pks_by_table[table]:
-                            clause.clauses.append(p == self._getattrbycolumn(obj, p))
-                        row = table.select(clause).execute().fetchone()
-                        for c in table.c:
-                            if self._getattrbycolumn(obj, c) is None:
-                                self._setattrbycolumn(obj, c, row[c])
+                    self._postfetch(table, obj, table.engine.last_inserted_params())
                     if self._synchronizer is not None:
                         self._synchronizer.execute(obj, obj)
                     self.extension.after_insert(self, obj)
-                    
+
+    def _postfetch(self, table, obj, params):
+        """after an INSERT or UPDATE, asks the engine if PassiveDefaults fired off on the database side
+        which need to be post-fetched, *or* if pre-exec defaults like ColumnDefaults were fired off
+        and should be populated into the instance. this is only for non-primary key columns."""
+        if table.engine.lastrow_has_defaults():
+            clause = sql.and_()
+            for p in self.pks_by_table[table]:
+                clause.clauses.append(p == self._getattrbycolumn(obj, p))
+            row = table.select(clause).execute().fetchone()
+            for c in table.c:
+                if self._getattrbycolumn(obj, c) is None:
+                    self._setattrbycolumn(obj, c, row[c])
+        else:
+            for c in table.c:
+                if c.primary_key or not params.has_key(c.name):
+                    continue
+                if self._getattrbycolumn(obj, c) != params[c.name]:
+                    self._setattrbycolumn(obj, c, params[c.name])
+
     def delete_obj(self, objects, uow):
         """called by a UnitOfWork object to delete objects, which involves a
         DELETE statement for each table used by this mapper, for each object in the list."""

@@ -229,11 +229,13 @@ class DefaultTest(AssertMixin):
         Column('id', Integer, Sequence("dt_seq", optional=True), primary_key=True),
         Column('hoho', hohotype, PassiveDefault(str(self.hohoval))),
         Column('counter', Integer, PassiveDefault("7")),
-        Column('foober', String(30), default="im foober")
+        Column('foober', String(30), default="im foober", onupdate="im the update")
         )
         self.table.create()
     def tearDownAll(self):
         self.table.drop()
+    def setUp(self):
+        self.table = Table('default_test', db)
     def testbasic(self):
         
         class Hoho(object):pass
@@ -261,7 +263,17 @@ class DefaultTest(AssertMixin):
         self.assert_(h1.counter ==  h4.counter==h5.counter==7)
         self.assert_(h2.foober == h3.foober == h4.foober == 'im foober')
         self.assert_(h5.foober=='im the new foober')
-            
+    
+    def testupdate(self):
+        class Hoho(object):pass
+        assign_mapper(Hoho, self.table)
+        h1 = Hoho()
+        objectstore.commit()
+        self.assert_(h1.foober == 'im foober')
+        h1.counter = 19
+        objectstore.commit()
+        self.assert_(h1.foober == 'im the update')
+        
 class SaveTest(AssertMixin):
 
     def setUpAll(self):

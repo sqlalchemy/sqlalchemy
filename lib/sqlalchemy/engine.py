@@ -484,20 +484,33 @@ class SQLEngine(schema.SchemaEngine):
                     self.context.last_inserted_ids = None
                 else:
                     self.context.last_inserted_ids = last_inserted_ids
+                self.context.last_inserted_params = param
         elif getattr(compiled, 'isupdate', False):
             if isinstance(parameters, list):
                 plist = parameters
             else:
                 plist = [parameters]
             drunner = self.defaultrunner(proxy)
+            self.context.lastrow_has_defaults = False
             for param in plist:
                 for c in compiled.statement.table.c:
                     if c.onupdate is not None and (not param.has_key(c.name) or param[c.name] is None):
                         value = drunner.get_column_onupdate(c)
                         if value is not None:
                             param[c.name] = value
-                        
+                self.context.last_updated_params = param
+    
+    def last_inserted_params(self):
+        """returns a dictionary of the full parameter dictionary for the last compiled INSERT statement,
+        including any ColumnDefaults or Sequences that were pre-executed.  this value is thread-local."""
+        return self.context.last_inserted_params
+    def last_updated_params(self):
+        """returns a dictionary of the full parameter dictionary for the last compiled UPDATE statement,
+        including any ColumnDefaults that were pre-executed. this value is thread-local."""
+        return self.context.last_updated_params                
     def lastrow_has_defaults(self):
+        """returns True if the last row INSERTED via a compiled insert statement contained PassiveDefaults,
+        indicating that the database inserted data beyond that which we gave it. this value is thread-local."""
         return self.context.lastrow_has_defaults
         
     def pre_exec(self, proxy, compiled, parameters, **kwargs):
