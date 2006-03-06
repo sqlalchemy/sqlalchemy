@@ -953,6 +953,7 @@ class Label(ColumnElement):
         self.obj = obj
         obj.parens=True
     key = property(lambda s: s.name)
+    
     _label = property(lambda s: s.name)
     original = property(lambda s:s.obj.original)
     parent = property(lambda s:s.obj.parent)
@@ -971,11 +972,16 @@ class ColumnClause(ColumnElement):
         self.key = self.name = self.text = text
         self.table = selectable
         self.type = type or sqltypes.NullTypeEngine()
+        self.__label = None
     def _get_label(self):
-        if self.table is not None:
-            return self.table.name + "_" + self.text
-        else:
-            return self.text
+        if self.__label is None:
+            if self.table is not None:
+                self.__label =  self.table.name + "_" + self.text
+            else:
+                self.__label = self.text
+            if len(self.__label) >= 30:
+                self.__label = self.__label[0:24] + "_" + hex(random.randint(0, 65535))[2:]
+        return self.__label
     _label = property(_get_label)
     def accept_visitor(self, visitor): 
         visitor.visit_column(self)
