@@ -635,6 +635,9 @@ class BindParamClause(ClauseElement, CompareMixin):
         Since compare() is meant to compare statement syntax, this method
         returns True if the two BindParamClauses have just the same type."""
         return isinstance(other, BindParamClause) and other.type.__class__ == self.type.__class__
+    def _make_proxy(self, selectable, name = None):
+        return self
+#        return self.obj._make_proxy(selectable, name=self.name)
             
 class TextClause(ClauseElement):
     """represents literal a SQL text fragment.  public constructor is the 
@@ -988,7 +991,7 @@ class ColumnClause(ColumnElement):
             return BindParamClause(self.table.name + "_" + self.text, obj, shortname = self.text, type=self.type)
     def _make_proxy(self, selectable, name = None):
         c = ColumnClause(name or self.text, selectable)
-        selectable.columns[c.key] = c
+        selectable.columns[c.name] = c
         return c
     def _compare_type(self, obj):
         return self.type
@@ -1205,6 +1208,11 @@ class Select(SelectBaseMixin, FromClause):
             self.is_where = is_where
         def visit_compound_select(self, cs):
             self.visit_select(cs)
+            # unselect the 'issubquery' flag on the selects within the compound,
+            # i.e. "SELECT foo UNION SELECT bar", since the enclosing compound select
+            # is the "subquery"
+            for s in cs.selects:
+                s.issubquery = False
         def visit_column(self, c):pass
         def visit_table(self, c):pass
         def visit_select(self, select):
