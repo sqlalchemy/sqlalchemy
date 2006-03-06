@@ -222,6 +222,8 @@ class SQLiteCompiler(ansisql.ANSICompiler):
             if select.limit is None:
                 text += " \n LIMIT -1"
             text += " OFFSET " + str(select.offset)
+        else:
+            text += " OFFSET 0"
         return text
     def binary_operator_string(self, binary):
         if isinstance(binary.type, sqltypes.String) and binary.operator == '+':
