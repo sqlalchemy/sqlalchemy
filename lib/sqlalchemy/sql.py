@@ -454,7 +454,7 @@ class CompareMixin(object):
             # assume *other is a list of selects.
             # so put them in a UNION.  if theres only one, you just get one SELECT 
             # statement out of it.
-            return self._compare('IN', union(*other))
+            return self._compare('IN', union(parens=True, *other))
     def startswith(self, other):
         return self._compare('LIKE', str(other) + "%")
     def endswith(self, other):
@@ -1123,6 +1123,7 @@ class CompoundSelect(SelectBaseMixin, FromClause):
         self.keyword = keyword
         self.selects = selects
         self.use_labels = kwargs.pop('use_labels', False)
+        self.parens = kwargs.pop('parens', False)
         self.oid_column = selects[0].oid_column
         for s in self.selects:
             s.group_by(None)
@@ -1209,7 +1210,8 @@ class Select(SelectBaseMixin, FromClause):
         def visit_compound_select(self, cs):
             self.visit_select(cs)
             for s in cs.selects:
-                s.useparens = False
+                s.parens = False
+            print "BUT", id(cs), cs.parens
         def visit_column(self, c):pass
         def visit_table(self, c):pass
         def visit_select(self, select):
@@ -1217,7 +1219,7 @@ class Select(SelectBaseMixin, FromClause):
                 return
             select.is_where = self.is_where
             select.issubquery = True
-            select.useparens = True
+            select.parens = True
             if getattr(select, '_correlated', None) is None:
                 select._correlated = self.select._froms
 

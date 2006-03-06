@@ -952,7 +952,6 @@ def object_mapper(object):
 
 def class_mapper(class_):
     """given a class, returns the primary Mapper associated with the class."""
-    return mapper_registry[class_]
     try:
         return mapper_registry[class_]
     except KeyError:

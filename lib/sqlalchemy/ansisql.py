@@ -240,7 +240,10 @@ class ANSICompiler(sql.Compiled):
         text = string.join([self.get_str(c) for c in cs.selects], " " + cs.keyword + " ")
         for tup in cs.clauses:
             text += " " + tup[0] + " " + self.get_str(tup[1])
-        self.strings[cs] = text
+        if cs.parens:
+            self.strings[cs] = "(" + text + ")"
+        else:
+            self.strings[cs] = text
         self.froms[cs] = "(" + text + ")"
 
     def visit_binary(self, binary):
@@ -368,7 +371,7 @@ class ANSICompiler(sql.Compiled):
                 
         text += self.visit_select_postclauses(select)
  
-        if getattr(select, 'useparens', False):
+        if getattr(select, 'parens', False):
             self.strings[select] = "(" + text + ")"
         else:
             self.strings[select] = text

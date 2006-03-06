@@ -229,7 +229,8 @@ class PropertyLoader(MapperProperty):
         
     def _get_direction(self):
         """determines our 'direction', i.e. do we represent one to many, many to many, etc."""
-#        print self.key, repr(self.parent.table.name), repr(self.parent.primarytable.name), repr(self.foreignkey.table.name)
+        #print self.key, repr(self.parent.table.name), repr(self.parent.primarytable.name), repr(self.foreignkey.table.name), repr(self.target), repr(self.foreigntable.name)
+        
         if self.parent.table is self.target:
             if self.foreignkey.primary_key:
                 return PropertyLoader.MANYTOONE
@@ -237,9 +238,9 @@ class PropertyLoader(MapperProperty):
                 return PropertyLoader.ONETOMANY
         elif self.secondaryjoin is not None:
             return PropertyLoader.MANYTOMANY
-        elif self.foreigntable == self.target:
+        elif self.foreigntable is self.target or self.foreigntable in self.mapper.tables:
             return PropertyLoader.ONETOMANY
-        elif self.foreigntable == self.parent.table:
+        elif self.foreigntable is self.parent.table or self.foreigntable in self.parent.tables:
             return PropertyLoader.MANYTOONE
         else:
             raise ArgumentError("Cant determine relation direction")
