@@ -609,7 +609,7 @@ class ANSISchemaGenerator(sqlalchemy.engine.SchemaIterator):
         if index.unique:
             self.append('UNIQUE ')
         self.append('INDEX %s ON %s (%s)' \
-                    % (index.name, index.table.name,
+                    % (index.name, index.table.fullname,
                        string.join([c.name for c in index.columns], ', ')))
         self.execute()
         
