@@ -1208,11 +1208,8 @@ class Select(SelectBaseMixin, FromClause):
             self.is_where = is_where
         def visit_compound_select(self, cs):
             self.visit_select(cs)
-            # unselect the 'issubquery' flag on the selects within the compound,
-            # i.e. "SELECT foo UNION SELECT bar", since the enclosing compound select
-            # is the "subquery"
             for s in cs.selects:
-                s.issubquery = False
+                s.useparens = False
         def visit_column(self, c):pass
         def visit_table(self, c):pass
         def visit_select(self, select):
@@ -1220,6 +1217,7 @@ class Select(SelectBaseMixin, FromClause):
                 return
             select.is_where = self.is_where
             select.issubquery = True
+            select.useparens = True
             if getattr(select, '_correlated', None) is None:
                 select._correlated = self.select._froms
 

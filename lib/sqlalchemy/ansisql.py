@@ -186,7 +186,7 @@ class ANSICompiler(sql.Compiled):
             # if we are within a visit to a Select, set up the "typemap"
             # for this column which is used to translate result set values
             self.typemap.setdefault(column.key.lower(), column.type)
-        if column.table is not None and column.table.name is None:
+        if column.table is None or column.table.name is None:
             self.strings[column] = column.name
         else:
             self.strings[column] = "%s.%s" % (column.table.name, column.name)
@@ -368,7 +368,7 @@ class ANSICompiler(sql.Compiled):
                 
         text += self.visit_select_postclauses(select)
  
-        if getattr(select, 'issubquery', False):
+        if getattr(select, 'useparens', False):
             self.strings[select] = "(" + text + ")"
         else:
             self.strings[select] = text
