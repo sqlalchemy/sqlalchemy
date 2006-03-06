@@ -534,7 +534,6 @@ class UOWTransaction(object):
     def register_dependency(self, mapper, dependency):
         """called by mapper.PropertyLoader to register the objects handled by
         one mapper being dependent on the objects handled by another."""
-
         # correct for primary mapper (the mapper offcially associated with the class)
         self.dependencies[(mapper._primary_mapper(), dependency._primary_mapper())] = True
         self.__modified = True

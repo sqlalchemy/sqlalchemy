@@ -6,7 +6,8 @@ import sys
 # extend from a common base class, although this same approach can be used
 # with 
 
-db = create_engine('sqlite://', echo=True, echo_uow=False)
+#db = create_engine('sqlite://', echo=True, echo_uow=False)
+db = create_engine('postgres://user=scott&password=tiger&host=127.0.0.1&database=test', echo=True, echo_uow=False)
 
 # a table to store companies
 companies = Table('companies', db, 
@@ -52,9 +53,10 @@ assign_mapper(Engineer, engineers, inherits=Person.mapper)
 assign_mapper(Manager, managers, inherits=Person.mapper)
 
 # next, we define a query that is going to load Managers and Engineers in one shot.
-# this query is tricky since the managers and engineers tables contain the same "description" column,
-# so we set up a full blown select() statement that uses aliases for the description
-# column.  The select() statement is also given an alias 'pjoin', since the mapper requires
+# we will use a UNION ALL with an extra hardcoded column to indicate the type of object.
+# this can also be done via several LEFT OUTER JOINS but a UNION is more appropriate
+# since they are distinct result sets.
+# The select() statement is also given an alias 'pjoin', since the mapper requires
 # that all Selectables have a name.  
 #
 # TECHNIQUE - when you want to load a certain set of objects from a in one query, all the
@@ -65,7 +67,7 @@ assign_mapper(Manager, managers, inherits=Person.mapper)
 #
 person_join = select(
                 [people, managers.c.description,column("'manager'").label('type')], 
-                people.c.person_id==managers.c.person_id).union(
+                people.c.person_id==managers.c.person_id).union_all(
             select(
             [people, engineers.c.description, column("'engineer'").label('type')],
             people.c.person_id==engineers.c.person_id)).alias('pjoin')
@@ -89,19 +91,23 @@ class PersonLoader(MapperExtension):
 ext = PersonLoader()
 
 # set up the polymorphic mapper, which maps the person_join we set up to
-# the Person class, using an instance of PersonLoader.  Note that even though 
-# this mapper is against Person, its not going to screw up the normal operation 
-# of the Person object since its not the "primary" mapper.  In reality, we could even 
-# make this mapper against some other class we dont care about since the creation of
-# objects is hardcoded.
+# the Person class, using an instance of PersonLoader.  
 people_mapper = mapper(Person, person_join, extension=ext)
 
+# create a mapper for Company.  the 'employees' relationship points to 
+# our new people_mapper. 
+#
+# the dependency relationships which take effect on commit (i.e. the order of 
+# inserts/deletes) will be established against the Person class's primary 
+# mapper, and when the Engineer and 
+# Manager objects are found in the 'employees' list, the primary mappers
+# for those subclasses will register 
+# themselves as dependent on the Person mapper's save operations.
+# (translation: it'll work)
+# TODO: get the eager loading to work (the compound select alias doesnt like being aliased itself)
 assign_mapper(Company, companies, properties={
-    'employees': relation(people_mapper),
-    'engineers': relation(Engineer, private=True),
-    'managers':relation(Manager, private=True)
+    'employees': relation(people_mapper, private=True)
 })
-
 
 c = Company(name='company1')
 c.employees.append(Manager(name='pointy haired boss', description='manager1'))
@@ -129,3 +135,9 @@ for e in c.employees:
 
 objectstore.delete(c)
 objectstore.commit()
+
+
+managers.drop()
+engineers.drop()
+people.drop()
+companies.drop()

@@ -67,9 +67,11 @@ class Mapper(object):
             self.table = sql.join(inherits.table, table, inherit_condition)
             self._synchronizer = sync.ClauseSynchronizer(self, self, sync.ONETOMANY)
             self._synchronizer.compile(self.table.onclause, inherits.tables, TableFinder(table))
+            self.inherits = inherits
         else:
             self.primarytable = self.table
             self._synchronizer = None
+            self.inherits = None
             
         # locate all tables contained within the "table" passed in, which
         # may be a join or other construct
@@ -670,13 +672,15 @@ class Mapper(object):
         except KeyError:
             return False
             
-    def register_dependencies(self, *args, **kwargs):
+    def register_dependencies(self, uowcommit, *args, **kwargs):
         """called by an instance of objectstore.UOWTransaction to register 
         which mappers are dependent on which, as well as DependencyProcessor 
         objects which will process lists of objects in between saves and deletes."""
         for prop in self.props.values():
-            prop.register_dependencies(*args, **kwargs)
-
+            prop.register_dependencies(uowcommit, *args, **kwargs)
+        if self.inherits is not None:
+            uowcommit.register_dependency(self.inherits, self)
+            
     def register_deleted(self, obj, uow):
         for prop in self.props.values():
             prop.register_deleted(obj, uow)

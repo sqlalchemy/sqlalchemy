@@ -1211,7 +1211,6 @@ class Select(SelectBaseMixin, FromClause):
             self.visit_select(cs)
             for s in cs.selects:
                 s.parens = False
-            print "BUT", id(cs), cs.parens
         def visit_column(self, c):pass
         def visit_table(self, c):pass
         def visit_select(self, select):
