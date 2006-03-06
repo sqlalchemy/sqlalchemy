@@ -229,6 +229,8 @@ class DictDecorator(dict):
             return dict.__getitem__(self, key)
         except KeyError:
             return self.decorate[key]
+    def __repr__(self):
+        return dict.__repr__(self) + repr(self.decorate)
 class HashSet(object):
     """implements a Set."""
     def __init__(self, iter=None, ordered=False):

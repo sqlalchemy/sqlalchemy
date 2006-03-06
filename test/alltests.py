@@ -32,6 +32,8 @@ def suite():
         
         # ORM selecting
         'mapper',
+        'eagertest1',
+        'eagertest2',
         
         # ORM persistence
         'objectstore',

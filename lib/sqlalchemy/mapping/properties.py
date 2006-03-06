@@ -772,6 +772,11 @@ class EagerLoader(PropertyLoader):
         if not self.uselist:
             if isnew:
                 h.setattr_clean(self._instance(row, imap))
+            else:
+                # call _instance on the row, even though the object has been created,
+                # so that we further descend into properties
+                self._instance(row, imap)
+                
             return
         elif isnew:
             result_list = h
