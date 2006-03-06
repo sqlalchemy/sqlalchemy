@@ -636,7 +636,9 @@ class Mapper(object):
     def delete_obj(self, objects, uow):
         """called by a UnitOfWork object to delete objects, which involves a
         DELETE statement for each table used by this mapper, for each object in the list."""
-        for table in self.tables:
+        l = list(self.tables)
+        l.reverse()
+        for table in l:
             if not self._has_pks(table):
                 continue
             delete = []
