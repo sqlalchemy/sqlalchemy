@@ -232,12 +232,6 @@ class MySQLEngine(ansisql.ANSISQLEngine):
 
 class MySQLCompiler(ansisql.ANSICompiler):
 
-    def visit_function(self, func):
-        if len(func.clauses):
-            super(MySQLCompiler, self).visit_function(func)
-        else:
-            self.strings[func] = func.name
-
     def limit_clause(self, select):
         text = ""
         if select.limit is not None:
