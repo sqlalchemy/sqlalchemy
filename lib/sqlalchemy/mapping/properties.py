@@ -136,7 +136,10 @@ class PropertyLoader(MapperProperty):
             print "'use_alias' argument to relation() is deprecated.  eager loads automatically alias-ize tables now."
         self.order_by = order_by
         self.attributeext=attributeext
-        self.backref = backref
+        if isinstance(backref, str):
+            self.backref = BackRef(backref)
+        else:
+            self.backref = backref
         self.is_backref = is_backref
 
     def copy(self):
@@ -197,27 +200,13 @@ class PropertyLoader(MapperProperty):
             # if a backref name is defined, set up an extension to populate 
             # attributes in the other direction
             if self.backref is not None:
-                self.attributeext = attributes.GenericBackrefExtension(self.backref)
+                self.attributeext = self.backref.get_extension()
         
             # set our class attribute
             self._set_class_attribute(parent.class_, key)
 
             if self.backref is not None:
-                # try to set a LazyLoader on our mapper referencing the parent mapper
-                if not self.mapper.props.has_key(self.backref):
-                    if self.secondaryjoin is not None:
-                        # if setting up a backref to a many-to-many, reverse the order
-                        # of the "primary" and "secondary" joins
-                        pj = self.secondaryjoin
-                        sj = self.primaryjoin
-                    else:
-                        pj = self.primaryjoin
-                        sj = None
-                    self.mapper.add_property(self.backref, LazyLoader(self.parent, self.secondary, pj, sj, backref=self.key, is_backref=True));
-                else:
-                    # else set one of us as the "backreference"
-                    if not self.mapper.props[self.backref].is_backref:
-                        self.is_backref=True
+                self.backref.compile(self)
         elif not objectstore.global_attributes.is_class_managed(parent.class_, key):
             raise ArgumentError("Non-primary property created for attribute '%s' on class '%s', but that attribute is not managed! Insure that the primary mapper for this class defines this property" % (key, parent.class_.__name__))
 
@@ -816,7 +805,33 @@ class GenericOption(MapperOption):
         kwargs = util.constructor_args(oldprop)
         mapper.set_property(key, class_(**kwargs ))
 
-            
+class BackRef(object):
+    """stores the name of a backreference property as well as a relation (PropertyLoader),
+    used to construct more customized backrefs"""
+    def __init__(self, key, **kwargs):
+        self.key = key
+        self.kwargs = kwargs
+    def compile(self, prop):
+        # try to set a LazyLoader on our mapper referencing the parent mapper
+        if not prop.mapper.props.has_key(self.key):
+            if prop.secondaryjoin is not None:
+                # if setting up a backref to a many-to-many, reverse the order
+                # of the "primary" and "secondary" joins
+                pj = prop.secondaryjoin
+                sj = prop.primaryjoin
+            else:
+                pj = prop.primaryjoin
+                sj = None
+            relation = LazyLoader(prop.parent, prop.secondary, pj, sj, backref=prop.key, is_backref=True, **self.kwargs)
+            prop.mapper.add_property(self.key, relation);
+        else:
+            # else set one of us as the "backreference"
+            if not prop.mapper.props[self.key].is_backref:
+                prop.is_backref=True
+        
+    def get_extension(self):
+        return attributes.GenericBackrefExtension(self.key)
+        
 class EagerLazyOption(GenericOption):
     """an option that switches a PropertyLoader to be an EagerLoader or LazyLoader"""
     def __init__(self, key, toeager = True, **kwargs):

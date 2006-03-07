@@ -19,7 +19,7 @@ from mapper import *
 from properties import *
 import mapper as mapperlib
 
-__all__ = ['relation', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer',
+__all__ = ['relation', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer',
         'mapper', 'clear_mappers', 'objectstore', 'sql', 'extension', 'class_mapper', 'object_mapper', 'MapperExtension',
         'assign_mapper', 'cascade_mappers'
         ]
@@ -39,7 +39,12 @@ def _relation_loader(mapper, secondary=None, primaryjoin=None, secondaryjoin=Non
     else:
         return EagerLoader(mapper, secondary, primaryjoin, secondaryjoin, **kwargs)
 
+def backref(name, **kwargs):
+    return BackRef(name, **kwargs)
+    
 def deferred(*columns, **kwargs):
+    """returns a DeferredColumnProperty, which indicates this object attributes should only be loaded 
+    from its corresponding table column when first accessed."""
     return DeferredColumnProperty(*columns, **kwargs)
     
 def mapper(class_, table=None, *args, **params):
