@@ -806,12 +806,14 @@ class GenericOption(MapperOption):
         mapper.set_property(key, class_(**kwargs ))
 
 class BackRef(object):
-    """stores the name of a backreference property as well as a relation (PropertyLoader),
-    used to construct more customized backrefs"""
+    """stores the name of a backreference property as well as options to 
+    be used on the resulting PropertyLoader."""
     def __init__(self, key, **kwargs):
         self.key = key
         self.kwargs = kwargs
     def compile(self, prop):
+        """called by the owning PropertyLoader to set up a backreference on the
+        PropertyLoader's mapper."""
         # try to set a LazyLoader on our mapper referencing the parent mapper
         if not prop.mapper.props.has_key(self.key):
             if prop.secondaryjoin is not None:
@@ -833,8 +835,8 @@ class BackRef(object):
             # else set one of us as the "backreference"
             if not prop.mapper.props[self.key].is_backref:
                 prop.is_backref=True
-        
     def get_extension(self):
+        """returns an attribute extension to use with this backreference."""
         return attributes.GenericBackrefExtension(self.key)
         
 class EagerLazyOption(GenericOption):
