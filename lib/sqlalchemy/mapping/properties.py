@@ -822,7 +822,12 @@ class BackRef(object):
             else:
                 pj = prop.primaryjoin
                 sj = None
-            relation = LazyLoader(prop.parent, prop.secondary, pj, sj, backref=prop.key, is_backref=True, **self.kwargs)
+            lazy = self.kwargs.pop('lazy', True)
+            if lazy:
+                cls = LazyLoader
+            else:
+                cls = EagerLoader
+            relation = cls(prop.parent, prop.secondary, pj, sj, backref=prop.key, is_backref=True, **self.kwargs)
             prop.mapper.add_property(self.key, relation);
         else:
             # else set one of us as the "backreference"
