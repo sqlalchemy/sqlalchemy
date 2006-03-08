@@ -173,7 +173,7 @@ order by UCC.CONSTRAINT_NAME""",{'table_name' : table.name})
             if type=='P' : 
                 table.c[column_name.lower()]._set_primary_key()
             elif type=='R':
-                remotetable = Table(referred_table, referred_table.engine, autoload = True)
+                remotetable = Table(referred_table, table.engine, autoload = True)
                 table.c[column_name.lower()].append_item(schema.ForeignKey(remotetable.primary_key[0]))
 
     def last_inserted_ids(self):
