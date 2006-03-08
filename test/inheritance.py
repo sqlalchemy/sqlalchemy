@@ -2,8 +2,7 @@ from sqlalchemy import *
 import testbase
 import string
 import sqlalchemy.attributes as attr
-
-
+import sys
 
 class Principal( object ):
     pass
@@ -54,8 +53,6 @@ class InheritTest(testbase.AssertMixin):
 
                 )
 
-
-
             principals.create()
             users.create()
             groups.create()
@@ -65,6 +62,7 @@ class InheritTest(testbase.AssertMixin):
             groups.drop()
             users.drop()
             principals.drop()
+            testbase.db.tables.clear()
         def setUp(self):
             objectstore.clear()
             clear_mappers()
@@ -111,6 +109,7 @@ class InheritTest2(testbase.AssertMixin):
         foo_bar.drop()
         bar.drop()
         foo.drop()
+        testbase.db.tables.clear()
 
     def testbasic(self):
         class Foo(object): 
@@ -154,6 +153,112 @@ class InheritTest2(testbase.AssertMixin):
 #            {'id':1, 'data':'barfoo', 'bid':1, 'foos':(Foo, [{'id':2,'data':'subfoo1'}, {'id':3,'data':'subfoo2'}])},
             {'id':b.id, 'data':'barfoo', 'foos':(Foo, [{'id':f1.id,'data':'subfoo1'}, {'id':f2.id,'data':'subfoo2'}])},
             )
+
+class InheritTest3(testbase.AssertMixin):
+    def setUpAll(self):
+        engine = testbase.db
+        global foo, bar, blub, bar_foo, blub_bar, blub_foo,tables
+        engine.engine.echo = 'debug'
+        # the 'data' columns are to appease SQLite which cant handle a blank INSERT
+        foo = Table('foo', engine,
+            Column('id', Integer, Sequence('foo_seq'), primary_key=True),
+            Column('data', String(20)))
+
+        bar = Table('bar', engine,
+            Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
+            Column('data', String(20)))
+
+        blub = Table('blub', engine,
+            Column('id', Integer, ForeignKey('bar.id'), primary_key=True),
+            Column('data', String(20)))
+
+        bar_foo = Table('bar_foo', engine, 
+            Column('bar_id', Integer, ForeignKey('bar.id')),
+            Column('foo_id', Integer, ForeignKey('foo.id')))
+            
+        blub_bar = Table('bar_blub', engine,
+            Column('blub_id', Integer, ForeignKey('blub.id')),
+            Column('bar_id', Integer, ForeignKey('bar.id')))
+
+        blub_foo = Table('blub_foo', engine,
+            Column('blub_id', Integer, ForeignKey('blub.id')),
+            Column('foo_id', Integer, ForeignKey('foo.id')))
+
+        tables = [foo, bar, blub, bar_foo, blub_bar, blub_foo]
+        for table in tables:
+            table.create()
+    def tearDownAll(self):
+        for table in reversed(tables):
+            table.drop()
+        testbase.db.tables.clear()
+
+    def testbasic(self):
+        class Foo(object):
+            def __repr__(self):
+                return "Foo id %d, data %s" % (self.id, self.data)
+        Foo.mapper = mapper(Foo, foo)
+
+        class Bar(object):
+            def __repr__(self):
+                return "Bar id %d, data %s" % (self.id, self.data)
+                
+        Bar.mapper = mapper(Bar, bar, inherits=Foo.mapper, properties={
+            'foos' :relation(Foo.mapper, bar_foo, primaryjoin=bar.c.id==bar_foo.c.bar_id, secondaryjoin=bar_foo.c.foo_id==foo.c.id, lazy=False)
+        })
+
+        Bar.mapper.select()
+    
+    def testadvanced(self):    
+        class Foo(object):
+            def __init__(self, data=None):
+                self.data = data
+            def __repr__(self):
+                return "Foo id %d, data %s" % (self.id, self.data)
+        Foo.mapper = mapper(Foo, foo)
+
+        class Bar(Foo):
+            def __repr__(self):
+                return "Bar id %d, data %s" % (self.id, self.data)
+        Bar.mapper = mapper(Bar, bar, inherits=Foo.mapper)
+
+        class Blub(Bar):
+            def __repr__(self):
+                return "Blub id %d, data %s, bars %s, foos %s" % (self.id, self.data, repr([b for b in self.bars]), repr([f for f in self.foos]))
+            
+        Blub.mapper = mapper(Blub, blub, inherits=Bar.mapper, properties={
+            'bars':relation(Bar.mapper, blub_bar, primaryjoin=blub.c.id==blub_bar.c.blub_id, secondaryjoin=blub_bar.c.bar_id==bar.c.id, lazy=False),
+            'foos':relation(Foo.mapper, blub_foo, primaryjoin=blub.c.id==blub_foo.c.blub_id, secondaryjoin=blub_foo.c.foo_id==foo.c.id, lazy=False),
+        })
+
+        useobjects = True
+        if (useobjects):
+            f1 = Foo("foo #1")
+            b1 = Bar("bar #1")
+            b2 = Bar("bar #2")
+            bl1 = Blub("blub #1")
+            bl1.foos.append(f1)
+            bl1.bars.append(b2)
+            objectstore.commit()
+            compare = repr(bl1)
+            blubid = bl1.id
+            objectstore.clear()
+        else:
+            foo.insert().execute(data='foo #1')
+            foo.insert().execute(data='foo #2')
+            bar.insert().execute(id=1, data="bar #1")
+            bar.insert().execute(id=2, data="bar #2")
+            blub.insert().execute(id=1, data="blub #1")
+            blub_bar.insert().execute(blub_id=1, bar_id=2)
+            blub_foo.insert().execute(blub_id=1, foo_id=2)
+
+        l = Blub.mapper.select()
+        for x in l:
+            print x
+        
+        self.assert_(repr(l[0]) == compare)
+        objectstore.clear()
+        x = Blub.mapper.get_by(id=blubid) #traceback 2
+        self.assert_(repr(x) == compare)
 
 
 if __name__ == "__main__":    

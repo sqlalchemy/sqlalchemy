@@ -712,6 +712,7 @@ class ResultProxy:
                 if self.props.setdefault(colname, rec) is not rec:
                     self.props[colname] = (ResultProxy.AmbiguousColumn(colname), 0)
                 self.keys.append(colname)
+                #print "COLNAME", colname
                 self.props[i] = rec
                 i+=1
 
@@ -719,6 +720,7 @@ class ResultProxy:
         if isinstance(key, schema.Column) or isinstance(key, sql.ColumnElement):
             try:
                 rec = self.props[key._label.lower()]
+                #print "GOT IT FROM LABEL FOR ", key._label
             except KeyError:
                 try:
                     rec = self.props[key.key.lower()]

@@ -7,6 +7,7 @@
 __all__ = ['OrderedProperties', 'OrderedDict', 'generic_repr', 'HashSet', 'AttrProp']
 import thread, threading, weakref, UserList, time, string, inspect, sys
 from exceptions import *
+import __builtin__
 
 def to_list(x):
     if x is None:
@@ -24,6 +25,18 @@ def to_set(x):
     else:
         return x
 
+def reversed(seq):
+    try:
+        return __builtin__.reversed(seq)
+    except:
+        def rev():
+            i = len(seq) -1
+            while  i >= 0:
+                yield seq[i]
+                i -= 1
+            raise StopIteration()
+        return rev()
+        
 class AttrProp(object):
     """a quick way to stick a property accessor on an object"""
     def __init__(self, key):

@@ -145,7 +145,12 @@ class Mapper(object):
                 prop = ColumnProperty(column)
                 self.props[column.key] = prop
             elif isinstance(prop, ColumnProperty):
-                prop.columns.append(column)
+                # the order which columns are appended to a ColumnProperty is significant, as the 
+                # column at index 0 determines which result column is used to populate the object
+                # attribute, in the case of mapping against a join with column names repeated
+                # (and particularly in an inheritance relationship)
+                prop.columns.insert(0, column)
+                #prop.columns.append(column)
             else:
                 if not allow_column_override:
                     raise ArgumentError("WARNING: column '%s' not being added due to property '%s'.  Specify 'allow_column_override=True' to mapper() to ignore this condition." % (column.key, repr(prop)))
@@ -179,6 +184,12 @@ class Mapper(object):
             if getattr(prop, 'key', None) is None:
                 prop.init(key, self)
 
+        # this prints a summary of the object attributes and how they
+        # will be mapped to table columns
+        #print "mapper %s, columntoproperty:" % (self.class_.__name__)
+        #for key, value in self.columntoproperty.iteritems():
+        #    print key.table.name, key.key, [(v.key, v) for v in value]
+            
     engines = property(lambda s: [t.engine for t in s.tables])
 
     def add_property(self, key, prop):
@@ -638,9 +649,7 @@ class Mapper(object):
     def delete_obj(self, objects, uow):
         """called by a UnitOfWork object to delete objects, which involves a
         DELETE statement for each table used by this mapper, for each object in the list."""
-        l = list(self.tables)
-        l.reverse()
-        for table in l:
+        for table in util.reversed(self.tables):
             if not self._has_pks(table):
                 continue
             delete = []
@@ -703,7 +712,8 @@ class Mapper(object):
                 order_by = self.table.default_order_by()
 
         if self._should_nest(**kwargs):
-            s2 = sql.select(self.table.primary_key, whereclause, use_labels=True, **kwargs)
+            s2 = sql.select(self.table.primary_key, whereclause, use_labels=True, from_obj=[self.table], **kwargs)
+#            raise "ok first thing", str(s2)
             if not kwargs.get('distinct', False) and order_by:
                 s2.order_by(*util.to_list(order_by))
             s3 = s2.alias('rowcount')
@@ -711,6 +721,7 @@ class Mapper(object):
             for i in range(0, len(self.table.primary_key)):
                 crit.append(s3.primary_key[i] == self.table.primary_key[i])
             statement = sql.select([], sql.and_(*crit), from_obj=[self.table], use_labels=True)
+ #           raise "OK statement", str(statement)
             if order_by:
                 statement.order_by(*util.to_list(order_by))
         else:
@@ -930,6 +941,8 @@ class TableFinder(sql.ClauseVisitor):
         table.accept_visitor(self)
     def visit_table(self, table):
         self.tables.append(table)
+    def __len__(self):
+        return len(self.tables)
     def __getitem__(self, i):
         return self.tables[i]
     def __iter__(self):

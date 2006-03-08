@@ -129,6 +129,7 @@ def between_(ctest, cleft, cright):
     return BooleanExpression(ctest, and_(cleft, cright), 'BETWEEN')
         
 def exists(*args, **params):
+    params['correlate'] = True
     s = select(*args, **params)
     return BooleanExpression(TextClause("EXISTS"), s, None)
 
@@ -839,7 +840,7 @@ class Join(FromClause):
         self.left = left
         self.right = right
         self.id = self.left.id + "_" + self.right.id
-
+        
         # TODO: if no onclause, do NATURAL JOIN
         if onclause is None:
             self.onclause = self._match_primaries(left, right)
@@ -852,7 +853,7 @@ class Join(FromClause):
     def _exportable_columns(self):
         return [c for c in self.left.columns] + [c for c in self.right.columns]
     def _proxy_column(self, column):
-        self._columns[column.table.name + "_" + column.key] = column
+        self._columns[column._label] = column
         if column.primary_key:
             self._primary_key.append(column)
         if column.foreign_key:
@@ -894,7 +895,9 @@ class Join(FromClause):
             self.join = join
         def _exportable_columns(self):
             return []
-                
+    
+    def alias(self, name=None):
+        return self.select(use_labels=True).alias(name)            
     def _process_from_dict(self, data, asfrom):
         for f in self.onclause._get_from_objects():
             data[f.id] = f
@@ -915,7 +918,7 @@ class Alias(FromClause):
         self.original = baseselectable
         self.selectable = selectable
         if alias is None:
-            n = getattr(self.original, 'name')
+            n = getattr(self.original, 'name', None)
             if n is None:
                 n = 'anon'
             elif len(n) > 15:
@@ -974,7 +977,7 @@ class ColumnClause(ColumnElement):
         self.__label = None
     def _get_label(self):
         if self.__label is None:
-            if self.table is not None:
+            if self.table is not None and self.table.name is not None:
                 self.__label =  self.table.name + "_" + self.text
             else:
                 self.__label = self.text
@@ -1164,7 +1167,7 @@ class CompoundSelect(SelectBaseMixin, FromClause):
 class Select(SelectBaseMixin, FromClause):
     """represents a SELECT statement, with appendable clauses, as well as 
     the ability to execute itself and return a result set."""
-    def __init__(self, columns=None, whereclause = None, from_obj = [], order_by = None, group_by=None, having=None, use_labels = False, distinct=False, engine = None, limit=None, offset=None):
+    def __init__(self, columns=None, whereclause = None, from_obj = [], order_by = None, group_by=None, having=None, use_labels = False, distinct=False, engine = None, limit=None, offset=None, correlate=False):
         self._froms = util.OrderedDict()
         self.use_labels = use_labels
         self.id = "Select(%d)" % id(self)
@@ -1175,6 +1178,7 @@ class Select(SelectBaseMixin, FromClause):
         self.oid_column = None
         self.limit = limit
         self.offset = offset
+        self.correlate = correlate
         
         # indicates if this select statement is a subquery inside another query
         self.issubquery = False
@@ -1224,9 +1228,11 @@ class Select(SelectBaseMixin, FromClause):
             select.is_where = self.is_where
             select.issubquery = True
             select.parens = True
+            if not self.is_where and not select.correlate:
+                return
             if getattr(select, '_correlated', None) is None:
                 select._correlated = self.select._froms
-
+                
     def append_column(self, column):
         if _is_literal(column):
             column = ColumnClause(str(column), self)
@@ -1266,7 +1272,8 @@ class Select(SelectBaseMixin, FromClause):
     def append_from(self, fromclause):
         if type(fromclause) == str:
             fromclause = FromClause(from_name = fromclause)
-
+        if self.oid_column is None and hasattr(fromclause, 'oid_column'):
+            self.oid_column = fromclause.oid_column
         fromclause.accept_visitor(self._correlator)
         fromclause._process_from_dict(self._froms, True)
 

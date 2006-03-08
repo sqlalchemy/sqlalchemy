@@ -418,7 +418,7 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
             select([s, table1])
             ,"SELECT sq2.myid, sq2.name, sq2.description, mytable.myid, mytable.name, mytable.description FROM (SELECT ta.myid AS myid, ta.name AS name, ta.description AS description FROM mytable AS ta WHERE EXISTS (SELECT 1 FROM myothertable WHERE myothertable.otherid = ta.myid)) AS sq2, mytable")
 
-        s = select([addresses.c.street], addresses.c.user_id==users.c.user_id).alias('s')
+        s = select([addresses.c.street], addresses.c.user_id==users.c.user_id, correlate=True).alias('s')
         self.runtest(
             select([users, s.c.street], from_obj=[s]),
             """SELECT users.user_id, users.user_name, users.password, s.street FROM users, (SELECT addresses.street AS street FROM addresses WHERE addresses.user_id = users.user_id) AS s""")

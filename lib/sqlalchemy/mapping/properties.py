@@ -48,6 +48,7 @@ class ColumnProperty(MapperProperty):
             objectstore.uow().register_attribute(parent.class_, key, uselist = False)
     def execute(self, instance, row, identitykey, imap, isnew):
         if isnew:
+            #print "POPULATING OBJ", instance.__class__.__name__, "COL", self.columns[0]._label, "WITH DATA", row[self.columns[0]], "ROW IS A", row.__class__.__name__, "COL ID", id(self.columns[0])
             instance.__dict__[self.key] = row[self.columns[0]]
     def __repr__(self):
         return "ColumnProperty(%s)" % repr([str(c) for c in self.columns])
@@ -648,16 +649,19 @@ class EagerLoader(PropertyLoader):
         parent._has_eager = True
 
         self.eagertarget = self.target.alias()
+#        print "ALIAS", str(self.eagertarget.select()) #selectable.__class__.__name__
         if self.secondary:
             self.eagersecondary = self.secondary.alias()
             self.aliasizer = Aliasizer(self.target, self.secondary, aliases={
                     self.target:self.eagertarget,
                     self.secondary:self.eagersecondary
                     })
+            #print "TARGET", self.target
             self.eagersecondaryjoin = self.secondaryjoin.copy_container()
             self.eagersecondaryjoin.accept_visitor(self.aliasizer)
             self.eagerprimary = self.primaryjoin.copy_container()
             self.eagerprimary.accept_visitor(self.aliasizer)
+            #print "JOINS:", str(self.eagerprimary), "|", str(self.eagersecondaryjoin)
         else:
             self.aliasizer = Aliasizer(self.target, aliases={self.target:self.eagertarget})
             self.eagerprimary = self.primaryjoin.copy_container()
@@ -778,7 +782,8 @@ class EagerLoader(PropertyLoader):
         """gets an instance from a row, via this EagerLoader's mapper."""
         fakerow = util.DictDecorator(row)
         for c in self.eagertarget.c:
-            fakerow[c.parent] = row[c]
+            parent = self.target._get_col_by_original(c.original)
+            fakerow[parent] = row[c]
         row = fakerow
         return self.mapper._instance(row, imap, result_list)
 
@@ -882,15 +887,18 @@ class Aliasizer(sql.ClauseVisitor):
     """converts a table instance within an expression to be an alias of that table."""
     def __init__(self, *tables, **kwargs):
         self.tables = {}
+        self.aliases = kwargs.get('aliases', {})
         for t in tables:
             self.tables[t] = t
+            if not self.aliases.has_key(t):
+                self.aliases[t] = sql.alias(t)
+            if isinstance(t, sql.Join):
+                for t2 in t.columns:
+                    self.tables[t2.table] = t2
+                    self.aliases[t2.table] = self.aliases[t]
         self.binary = None
-        self.aliases = kwargs.get('aliases', {})
     def get_alias(self, table):
-        try:
-            return self.aliases[table]
-        except:
-            return self.aliases.setdefault(table, sql.alias(table))
+        return self.aliases[table]
     def visit_compound(self, compound):
         self.visit_clauselist(compound)
     def visit_clauselist(self, clist):
