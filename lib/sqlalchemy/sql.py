@@ -923,7 +923,6 @@ class Alias(FromClause):
             alias = n + "_" + hex(random.randint(0, 65535))[2:]
         self.name = alias
         self.id = self.name
-        self.count = 0
         if self.selectable.oid_column is not None:
             self.oid_column = self.selectable.oid_column._make_proxy(self)
         else:
