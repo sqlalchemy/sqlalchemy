@@ -123,13 +123,14 @@ class OracleSQLEngine(ansisql.ANSISQLEngine):
         return OracleDefaultRunner(self, proxy)
         
     def reflecttable(self, table):
-        c = self.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from USER_TAB_COLUMNS where TABLE_NAME = :table_name", {'table_name':table.name})
+        c = self.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from USER_TAB_COLUMNS where TABLE_NAME = :table_name", {'table_name':table.name.upper()})
         
         while True:
             row = c.fetchone()
             if row is None:
                 break
 
+            #print "ROW:" , row
             (name, coltype, length, precision, scale, nullable, default) = (row[0], row[1], row[2], row[3], row[4], row[5]=='Y', row[6])
 
             # INTEGER if the scale is 0 and precision is null
@@ -163,17 +164,17 @@ from USER_CONS_COLUMNS UCC, USER_CONSTRAINTS UC, USER_CONSTRAINTS UC2
 where UCC.CONSTRAINT_NAME = UC.CONSTRAINT_NAME
 and UC.R_CONSTRAINT_NAME = UC2.CONSTRAINT_NAME(+)
 and UCC.TABLE_NAME = :table_name
-order by UCC.CONSTRAINT_NAME""",{'table_name' : table.name})
+order by UCC.CONSTRAINT_NAME""",{'table_name' : table.name.upper()})
         while True:
             row = c.fetchone()
             if row is None:
                 break
-                
+            #print "ROW:" , row                
             (cons_name, column_name, type, search, referred_table) = row
             if type=='P' : 
                 table.c[column_name.lower()]._set_primary_key()
             elif type=='R':
-                remotetable = Table(referred_table, table.engine, autoload = True)
+                remotetable = Table(referred_table.lower(), table.engine, autoload = True)
                 table.c[column_name.lower()].append_item(schema.ForeignKey(remotetable.primary_key[0]))
 
     def last_inserted_ids(self):
@@ -310,7 +311,7 @@ class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):
         if column.primary_key and not override_pk:
             colspec += " PRIMARY KEY"
         if column.foreign_key:
-            colspec += " REFERENCES %s(%s)" % (column.column.foreign_key.column.table.name, column.column.foreign_key.column.name) 
+            colspec += " REFERENCES %s(%s)" % (column.foreign_key.column.table.name, column.foreign_key.column.name) 
         return colspec
 
     def visit_sequence(self, sequence):
