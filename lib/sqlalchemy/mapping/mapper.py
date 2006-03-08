@@ -306,11 +306,17 @@ class Mapper(object):
 
         
     def identity_key(self, *primary_key):
+        """returns the instance key for the given identity value.  this is a global tracking object used by the objectstore, and is usually available off a mapped object as instance._instance_key."""
         return objectstore.get_id_key(tuple(primary_key), self.class_)
     
     def instance_key(self, instance):
-        return self.identity_key(*[self._getattrbycolumn(instance, column) for column in self.pks_by_table[self.table]])
+        """returns the instance key for the given instance.  this is a global tracking object used by the objectstore, and is usually available off a mapped object as instance._instance_key."""
+        return self.identity_key(*self.identity(instance))
 
+    def identity(self, instance):
+        """returns the identity (list of primary key values) for the given instance.  The list of values can be fed directly into the get() method as mapper.get(*key)."""
+        return [self._getattrbycolumn(instance, column) for column in self.pks_by_table[self.table]]
+        
     def compile(self, whereclause = None, **options):
         """works like select, except returns the SQL statement object without 
         compiling or executing it"""
