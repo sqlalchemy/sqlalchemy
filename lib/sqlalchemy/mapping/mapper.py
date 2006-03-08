@@ -936,8 +936,9 @@ class MapperExtension(object):
 
 class TableFinder(sql.ClauseVisitor):
     """given a Clause, locates all the Tables within it into a list."""
-    def __init__(self, table):
+    def __init__(self, table, check_columns=False):
         self.tables = []
+        self.check_columns = check_columns
         table.accept_visitor(self)
     def visit_table(self, table):
         self.tables.append(table)
@@ -951,7 +952,10 @@ class TableFinder(sql.ClauseVisitor):
         return obj in self.tables
     def __add__(self, obj):
         return self.tables + obj
-            
+    def visit_column(self, column):
+        if self.check_columns:
+            column.table.accept_visitor(self)
+        
 def hash_key(obj):
     if obj is None:
         return 'None'

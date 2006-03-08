@@ -175,6 +175,11 @@ class PropertyLoader(MapperProperty):
                 self.secondaryjoin = sql.join(self.target, self.secondary).onclause
             if self.primaryjoin is None:
                 self.primaryjoin = sql.join(parent.table, self.secondary).onclause
+            tf = mapper.TableFinder(self.secondaryjoin, check_columns=True)
+            tf2 = mapper.TableFinder(self.primaryjoin, check_columns=True)
+            for t in tf2:
+                if t is not self.secondary and t in tf:
+                    raise ArgumentError("Ambiguous join conditions generated between '%s' and '%s' (primaryjoin='%s', secondaryjoin='%s'); please specify explicit primaryjoin and/or secondaryjoin arguments to property '%s'" % (parent.table.id, self.target.id, self.primaryjoin, self.secondaryjoin, self.key))
         else:
             if self.primaryjoin is None:
                 self.primaryjoin = sql.join(parent.table, self.target).onclause

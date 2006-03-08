@@ -192,21 +192,34 @@ class InheritTest3(testbase.AssertMixin):
             table.drop()
         testbase.db.tables.clear()
 
+    def tearDown(self):
+        for table in reversed(tables):
+            table.delete().execute()
+            
     def testbasic(self):
         class Foo(object):
+            def __init__(self, data=None):
+                self.data = data
             def __repr__(self):
                 return "Foo id %d, data %s" % (self.id, self.data)
         Foo.mapper = mapper(Foo, foo)
 
-        class Bar(object):
+        class Bar(Foo):
             def __repr__(self):
                 return "Bar id %d, data %s" % (self.id, self.data)
                 
         Bar.mapper = mapper(Bar, bar, inherits=Foo.mapper, properties={
-            'foos' :relation(Foo.mapper, bar_foo, primaryjoin=bar.c.id==bar_foo.c.bar_id, secondaryjoin=bar_foo.c.foo_id==foo.c.id, lazy=False)
+        'foos' :relation(Foo.mapper, bar_foo, primaryjoin=bar.c.id==bar_foo.c.bar_id, lazy=False)
+#        'foos' :relation(Foo.mapper, bar_foo, lazy=True)
         })
 
-        Bar.mapper.select()
+        b = Bar('bar #1')
+        b.foos.append(Foo("foo #1"))
+        b.foos.append(Foo("foo #2"))
+        objectstore.commit()
+        objectstore.clear()
+        l = Bar.mapper.select()
+        print l[0], l[0].foos
     
     def testadvanced(self):    
         class Foo(object):
@@ -226,8 +239,8 @@ class InheritTest3(testbase.AssertMixin):
                 return "Blub id %d, data %s, bars %s, foos %s" % (self.id, self.data, repr([b for b in self.bars]), repr([f for f in self.foos]))
             
         Blub.mapper = mapper(Blub, blub, inherits=Bar.mapper, properties={
-            'bars':relation(Bar.mapper, blub_bar, primaryjoin=blub.c.id==blub_bar.c.blub_id, secondaryjoin=blub_bar.c.bar_id==bar.c.id, lazy=False),
-            'foos':relation(Foo.mapper, blub_foo, primaryjoin=blub.c.id==blub_foo.c.blub_id, secondaryjoin=blub_foo.c.foo_id==foo.c.id, lazy=False),
+            'bars':relation(Bar.mapper, blub_bar, primaryjoin=blub.c.id==blub_bar.c.blub_id, lazy=False),
+            'foos':relation(Foo.mapper, blub_foo, primaryjoin=blub.c.id==blub_foo.c.blub_id, lazy=False),
         })
 
         useobjects = True
@@ -252,13 +265,13 @@ class InheritTest3(testbase.AssertMixin):
             blub_foo.insert().execute(blub_id=1, foo_id=2)
 
         l = Blub.mapper.select()
-        for x in l:
-            print x
-        
+        self.echo(l)
         self.assert_(repr(l[0]) == compare)
         objectstore.clear()
         x = Blub.mapper.get_by(id=blubid) #traceback 2
+        self.echo(x)
         self.assert_(repr(x) == compare)
+        
 
 
 if __name__ == "__main__":    
