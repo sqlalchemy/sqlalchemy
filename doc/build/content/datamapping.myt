@@ -734,24 +734,23 @@ INSERT INTO article_keywords (article_id, keyword_id) VALUES (:article_id, :keyw
                 pass
 
             # mapper for KeywordAssociation
-            KeywordAssociation.mapper = mapper(KeywordAssociation, itemkeywords)
-            
-            # mappers for Users, Keywords
-            User.mapper = mapper(User, users)
-            Keyword.mapper = mapper(Keyword, keywords)
-            
-            # define the mapper. when we load an article, we always want to get the keywords via
-            # eager loading.  but the user who added each keyword, we usually dont need so specify 
-            # lazy loading for that.
-            m = mapper(Article, articles, properties=dict(
-                keywords = relation(KeywordAssociation.mapper, lazy=False, association=Keyword, 
+            # specify "primary key" columns manually
+            KeywordAssociation.mapper = mapper(KeywordAssociation, itemkeywords,
                     primary_key = [itemkeywords.c.article_id, itemkeywords.c.keyword_id],
                     properties={
                         'keyword' : relation(Keyword, lazy = False), # uses primary Keyword mapper
                         'user' : relation(User, lazy = True) # uses primary User mapper
                     }
-                )
-                )
+            )
+            
+            # mappers for Users, Keywords
+            User.mapper = mapper(User, users)
+            Keyword.mapper = mapper(Keyword, keywords)
+            
+            # define the mapper. 
+            m = mapper(Article, articles, properties={
+                'keywords':relation(KeywordAssociation.mapper, lazy=False, association=Keyword)
+		}
             )
             
             # bonus step - well, we do want to load the users in one shot, 
