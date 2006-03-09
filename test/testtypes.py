@@ -17,11 +17,17 @@ class MyType(types.TypeEngine):
     def adapt_args(self):
         return self
 
-class MyDecoratedType(types.TypeDecorator, types.String):
+class MyDecoratedType(types.String):
     def convert_bind_param(self, value, engine):
         return "BIND_IN"+ value
     def convert_result_value(self, value, engine):
         return value + "BIND_OUT"
+
+class MyUnicodeType(types.Unicode):
+    def convert_bind_param(self, value, engine):
+        return "UNI_BIND_IN"+ value
+    def convert_result_value(self, value, engine):
+        return value + "UNI_BIND_OUT"
 
 class OverrideTest(PersistTest):
     """tests user-defined types, including a full type as well as a TypeDecorator"""
@@ -29,13 +35,13 @@ class OverrideTest(PersistTest):
     def testprocessing(self):
 
         global users
-        users.insert().execute(user_id = 2, goofy = 'jack', goofy2='jack', goofy3='jack')
-        users.insert().execute(user_id = 3, goofy = 'lala', goofy2='lala', goofy3='lala')
-        users.insert().execute(user_id = 4, goofy = 'fred', goofy2='fred', goofy3='fred')
+        users.insert().execute(user_id = 2, goofy = 'jack', goofy2='jack', goofy3='jack', goofy4='jack')
+        users.insert().execute(user_id = 3, goofy = 'lala', goofy2='lala', goofy3='lala', goofy4='lala')
+        users.insert().execute(user_id = 4, goofy = 'fred', goofy2='fred', goofy3='fred', goofy4='fred')
         
         l = users.select().execute().fetchall()
         print repr(l)
-        self.assert_(l == [(2, 'BIND_INjackBIND_OUT', 'BIND_INjackBIND_OUT', 'BIND_INjackBIND_OUT'), (3, 'BIND_INlalaBIND_OUT', 'BIND_INlalaBIND_OUT', 'BIND_INlalaBIND_OUT'), (4, 'BIND_INfredBIND_OUT', 'BIND_INfredBIND_OUT', 'BIND_INfredBIND_OUT')])
+        self.assert_(l == [(2, 'BIND_INjackBIND_OUT', 'BIND_INjackBIND_OUT', 'BIND_INjackBIND_OUT', u'UNI_BIND_INjackUNI_BIND_OUT'), (3, 'BIND_INlalaBIND_OUT', 'BIND_INlalaBIND_OUT', 'BIND_INlalaBIND_OUT', u'UNI_BIND_INlalaUNI_BIND_OUT'), (4, 'BIND_INfredBIND_OUT', 'BIND_INfredBIND_OUT', 'BIND_INfredBIND_OUT', u'UNI_BIND_INfredUNI_BIND_OUT')])
 
     def setUpAll(self):
         global users
@@ -49,6 +55,9 @@ class OverrideTest(PersistTest):
             
             # decorated type without an argument, it will adapt_args to TEXT
             Column('goofy3', MyDecoratedType, nullable = False),
+
+            Column('goofy4', MyUnicodeType, nullable = False),
+
         )
         
         users.create()

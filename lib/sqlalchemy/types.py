@@ -14,52 +14,48 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'NullTypeEngine',
 import sqlalchemy.util as util
 
 class TypeEngine(object):
-    def get_col_spec(self):
-        raise NotImplementedError()
-    def convert_bind_param(self, value, engine):
-        raise NotImplementedError()
-    def convert_result_value(self, value, engine):
-        raise NotImplementedError()
-    def adapt(self, typeobj):
-        """given a class that is a subclass of this TypeEngine's class, produces a new
-        instance of that class with an equivalent state to this TypeEngine.  The given
-        class is a database-specific subclass which is obtained via a lookup dictionary,
-        mapped against the class returned by the class_to_adapt() method."""
-        return typeobj()
-    def adapt_args(self):
-        """Returns an instance of this TypeEngine instance's class, adapted according
-        to the constructor arguments of this TypeEngine.  Default return value is 
-        just this object instance."""
-        return self
-    def class_to_adapt(self):
-        """returns the class that should be sent to the adapt() method.  This class
-        will be used to lookup an approprate database-specific subclass."""
-        return self.__class__
-#    def __repr__(self):
- #       return util.generic_repr(self)
-        
-def adapt_type(typeobj, colspecs):
-    """given a generic type from this package, and a dictionary of 
-    "conversion" specs from a DB-specific package, adapts the type
-    to a correctly-configured type instance from the DB-specific package."""
-    if type(typeobj) is type:
-        typeobj = typeobj()
-    # if the type is not a base type, i.e. not from our module, or its Null, 
-    # we return the type as is
-    if (typeobj.__module__ != 'sqlalchemy.types' or typeobj.__class__ is NullTypeEngine) and not isinstance(typeobj, TypeDecorator):
-        return typeobj
-    typeobj = typeobj.adapt_args()
-    t = typeobj.class_to_adapt()
-    for t in t.__mro__[0:-1]:
-        try:
-            return typeobj.adapt(colspecs[t])
-        except KeyError, e:
-            pass
-    return typeobj.adapt(typeobj.__class__)
-    
-class NullTypeEngine(TypeEngine):
+    basetypes = []
     def __init__(self, *args, **kwargs):
         pass
+    def _get_impl(self):
+        if hasattr(self, '_impl'):
+            return self._impl
+        else:
+            return NULLTYPE
+    def _set_impl(self, impl):
+        self._impl = impl
+    impl = property(_get_impl, _set_impl)
+    def get_col_spec(self):
+        return self.impl.get_col_spec()
+    def convert_bind_param(self, value, engine):
+        return self.impl.convert_bind_param(value, engine)
+    def convert_result_value(self, value, engine):
+        return self.impl.convert_result_value(value, engine)
+    def set_impl(self, impltype):
+        self.impl = impltype(**self.get_constructor_args())
+    def get_constructor_args(self):
+        return {}
+    def adapt_args(self):
+        return self
+            
+def adapt_type(typeobj, colspecs):
+    if isinstance(typeobj, type):
+        typeobj = typeobj()
+    t2 = typeobj.adapt_args()
+    for t in t2.__class__.__mro__[0:-1]:
+        try:
+            impltype = colspecs[t]
+            break
+        except KeyError:
+            pass
+    else:
+        # couldnt adapt...raise exception ?
+        return typeobj
+    typeobj.set_impl(impltype)
+    typeobj.impl.impl = NULLTYPE
+    return typeobj
+    
+class NullTypeEngine(TypeEngine):
     def get_col_spec(self):
         raise NotImplementedError()
     def convert_bind_param(self, value, engine):
@@ -68,32 +64,15 @@ class NullTypeEngine(TypeEngine):
         return value
 
 class TypeDecorator(object):
-    def get_col_spec(self):
-        return self.extended.get_col_spec()
-    def adapt(self, typeobj):
-        if self.extended is self:
-            t = self.__class__.__mro__[2]
-            self.extended = t.adapt(self, typeobj)
-        else:
-            self.extended = self.extended.adapt(typeobj)
-        return self
-    def adapt_args(self):
-        t = self.__class__.__mro__[2]
-        self.extended = t.adapt_args(self)
-        return self
-    def class_to_adapt(self):
-        return self.extended.__class__
+    """TypeDecorator is deprecated"""
+    pass
     
-class String(NullTypeEngine):
+    
+class String(TypeEngine):
     def __init__(self, length = None):
         self.length = length
-    def adapt(self, typeobj):
-        return typeobj(self.length)
-    def adapt_args(self):
-        if self.length is None:
-            return TEXT()
-        else:
-            return self
+    def get_constructor_args(self):
+        return {'length':self.length}
     def convert_bind_param(self, value, engine):
         if not engine.convert_unicode or value is None or not isinstance(value, unicode):
             return value
@@ -104,10 +83,13 @@ class String(NullTypeEngine):
             return value
         else:
             return value.decode('utf-8')
-
-class Unicode(TypeDecorator,String):
-    def __init__(self, length=None):
-        String.__init__(self, length)
+    def adapt_args(self):
+        if self.length is None:
+            return TEXT()
+        else:
+            return self
+            
+class Unicode(String):
     def convert_bind_param(self, value, engine):
          if isinstance(value, unicode):
               return value.encode('utf-8')
@@ -119,49 +101,48 @@ class Unicode(TypeDecorator,String):
          else:
              return value
               
-class Integer(NullTypeEngine):
+class Integer(TypeEngine):
     """integer datatype"""
-    # TODO: do string bind params need int(value) performed before sending ?  
-    # seems to be not needed with SQLite, Postgres
     pass
-
-class Smallinteger(Integer):
+    
+class SmallInteger(Integer):
     """ smallint datatype """
     pass
-
-class Numeric(NullTypeEngine):
+Smallinteger = SmallInteger
+  
+class Numeric(TypeEngine):
     def __init__(self, precision = 10, length = 2):
         self.precision = precision
         self.length = length
-    def adapt(self, typeobj):
-        return typeobj(self.precision, self.length)
+    def get_constructor_args(self):
+        return {'precision':self.precision, 'length':self.length}
 
-class Float(NullTypeEngine):
+class Float(TypeEngine):
     def __init__(self, precision = 10):
         self.precision = precision
-    def adapt(self, typeobj):
-        return typeobj(self.precision)
+    def get_constructor_args(self):
+        return {'precision':self.precision}
 
-class DateTime(NullTypeEngine):
+class DateTime(TypeEngine):
     pass
 
-class Date(NullTypeEngine):
+class Date(TypeEngine):
     pass
 
-class Time(NullTypeEngine):
+class Time(TypeEngine):
     pass
 
-class Binary(NullTypeEngine):
+class Binary(TypeEngine):
     def __init__(self, length=None):
         self.length = length
     def convert_bind_param(self, value, engine):
         return engine.dbapi().Binary(value)
     def convert_result_value(self, value, engine):
         return value
-    def adapt(self, typeobj):
-        return typeobj(self.length)
+    def get_constructor_args(self):
+        return {'length':self.length}
 
-class Boolean(NullTypeEngine):
+class Boolean(TypeEngine):
     pass
 
 class FLOAT(Float):pass
