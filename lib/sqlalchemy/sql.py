@@ -1132,6 +1132,7 @@ class CompoundSelect(SelectBaseMixin, FromClause):
         self.selects = selects
         self.use_labels = kwargs.pop('use_labels', False)
         self.parens = kwargs.pop('parens', False)
+        self.correlate = kwargs.pop('correlate', False)
         self.oid_column = selects[0].oid_column
         for s in self.selects:
             s.group_by(None)

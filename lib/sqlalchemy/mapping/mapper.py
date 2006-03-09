@@ -68,8 +68,10 @@ class Mapper(object):
             self._synchronizer = sync.ClauseSynchronizer(self, self, sync.ONETOMANY)
             self._synchronizer.compile(self.table.onclause, inherits.tables, TableFinder(table))
             self.inherits = inherits
+            self.noninherited_table = table
         else:
             self.primarytable = self.table
+            self.noninherited_table = self.table
             self._synchronizer = None
             self.inherits = None
             

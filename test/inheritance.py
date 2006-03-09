@@ -132,8 +132,8 @@ class InheritTest2(testbase.AssertMixin):
                 #'id':[bar.c.bid, foo.c.id]
             })
 
-        Bar.mapper.add_property('foos', relation(Foo.mapper, foo_bar, primaryjoin=bar.c.bid==foo_bar.c.bar_id, secondaryjoin=foo_bar.c.foo_id==foo.c.id, lazy=False))
-        #Bar.mapper.add_property('foos', relation(Foo.mapper, foo_bar, lazy=False))
+        #Bar.mapper.add_property('foos', relation(Foo.mapper, foo_bar, primaryjoin=bar.c.bid==foo_bar.c.bar_id, secondaryjoin=foo_bar.c.foo_id==foo.c.id, lazy=False))
+        Bar.mapper.add_property('foos', relation(Foo.mapper, foo_bar, lazy=False))
 
         b = Bar('barfoo')
         objectstore.commit()
@@ -209,8 +209,8 @@ class InheritTest3(testbase.AssertMixin):
                 return "Bar id %d, data %s" % (self.id, self.data)
                 
         Bar.mapper = mapper(Bar, bar, inherits=Foo.mapper, properties={
-        'foos' :relation(Foo.mapper, bar_foo, primaryjoin=bar.c.id==bar_foo.c.bar_id, lazy=False)
-#        'foos' :relation(Foo.mapper, bar_foo, lazy=True)
+        #'foos' :relation(Foo.mapper, bar_foo, primaryjoin=bar.c.id==bar_foo.c.bar_id, lazy=False)
+        'foos' :relation(Foo.mapper, bar_foo, lazy=True)
         })
 
         b = Bar('bar #1')
@@ -239,8 +239,10 @@ class InheritTest3(testbase.AssertMixin):
                 return "Blub id %d, data %s, bars %s, foos %s" % (self.id, self.data, repr([b for b in self.bars]), repr([f for f in self.foos]))
             
         Blub.mapper = mapper(Blub, blub, inherits=Bar.mapper, properties={
-            'bars':relation(Bar.mapper, blub_bar, primaryjoin=blub.c.id==blub_bar.c.blub_id, lazy=False),
-            'foos':relation(Foo.mapper, blub_foo, primaryjoin=blub.c.id==blub_foo.c.blub_id, lazy=False),
+#            'bars':relation(Bar.mapper, blub_bar, primaryjoin=blub.c.id==blub_bar.c.blub_id, lazy=False),
+#            'foos':relation(Foo.mapper, blub_foo, primaryjoin=blub.c.id==blub_foo.c.blub_id, lazy=False),
+            'bars':relation(Bar.mapper, blub_bar, lazy=False),
+            'foos':relation(Foo.mapper, blub_foo, lazy=False),
         })
 
         useobjects = True

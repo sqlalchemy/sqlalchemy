@@ -6,8 +6,8 @@ import sys
 # extend from a common base class, although this same approach can be used
 # with 
 
-#db = create_engine('sqlite://', echo=True, echo_uow=False)
-db = create_engine('postgres://user=scott&password=tiger&host=127.0.0.1&database=test', echo=True, echo_uow=False)
+db = create_engine('sqlite://', echo=True, echo_uow=False)
+#db = create_engine('postgres://user=scott&password=tiger&host=127.0.0.1&database=test', echo=True, echo_uow=False)
 
 # a table to store companies
 companies = Table('companies', db, 

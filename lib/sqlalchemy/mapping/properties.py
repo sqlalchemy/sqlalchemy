@@ -172,17 +172,12 @@ class PropertyLoader(MapperProperty):
         # if join conditions were not specified, figure them out based on foreign keys
         if self.secondary is not None:
             if self.secondaryjoin is None:
-                self.secondaryjoin = sql.join(self.target, self.secondary).onclause
+                self.secondaryjoin = sql.join(self.mapper.noninherited_table, self.secondary).onclause
             if self.primaryjoin is None:
-                self.primaryjoin = sql.join(parent.table, self.secondary).onclause
-            tf = mapper.TableFinder(self.secondaryjoin, check_columns=True)
-            tf2 = mapper.TableFinder(self.primaryjoin, check_columns=True)
-            for t in tf2:
-                if t is not self.secondary and t in tf:
-                    raise ArgumentError("Ambiguous join conditions generated between '%s' and '%s' (primaryjoin='%s', secondaryjoin='%s'); please specify explicit primaryjoin and/or secondaryjoin arguments to property '%s'" % (parent.table.id, self.target.id, self.primaryjoin, self.secondaryjoin, self.key))
+                self.primaryjoin = sql.join(parent.noninherited_table, self.secondary).onclause
         else:
             if self.primaryjoin is None:
-                self.primaryjoin = sql.join(parent.table, self.target).onclause
+                self.primaryjoin = sql.join(parent.noninherited_table, self.target).onclause
         # if the foreign key wasnt specified and theres no assocaition table, try to figure
         # out who is dependent on who. we dont need all the foreign keys represented in the join,
         # just one of them.  
