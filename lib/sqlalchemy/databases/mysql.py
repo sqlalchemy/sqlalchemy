@@ -13,6 +13,7 @@ import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
 from sqlalchemy import *
 import sqlalchemy.databases.information_schema as ischema
+from sqlalchemy.exceptions import *
 
 try:
     import MySQLdb as mysql
@@ -22,9 +23,24 @@ except:
 class MSNumeric(sqltypes.Numeric):
     def get_col_spec(self):
         return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
-class MSFloat(sqltypes.Float):
+class MSDouble(sqltypes.Numeric):
+    def __init__(self, precision = None, length = None):
+        if (precision is None and length is not None) or (precision is not None and length is None):
+            raise ArgumentError("You must specify both precision and length or omit both altogether.")
+        super(MSDouble, self).__init__(precision, length)
     def get_col_spec(self):
-        return "FLOAT(%(precision)s)" % {'precision': self.precision}
+        if self.precision is not None and self.length is not None:
+            return "DOUBLE(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
+        else:
+            return "DOUBLE"
+class MSFloat(sqltypes.Float):
+    def __init__(self, precision = None):
+        super(MSFloat, self).__init__(precision)
+    def get_col_spec(self):
+        if self.precision is not None:
+            return "FLOAT(%(precision)s)" % {'precision': self.precision}
+        else:
+            return "FLOAT"
 class MSInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
@@ -86,11 +102,13 @@ colspecs = {
 ischema_names = {
     'int' : MSInteger,
     'smallint' : MSSmallInteger,
+    'tinyint' : MSSmallInteger, 
     'varchar' : MSString,
     'char' : MSChar,
     'text' : MSText,
     'decimal' : MSNumeric,
     'float' : MSFloat,
+    'double' : MSDouble,
     'timestamp' : MSDateTime,
     'datetime' : MSDateTime,
     'date' : MSDate,
