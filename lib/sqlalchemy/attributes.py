@@ -28,6 +28,7 @@ via the GenericBackrefExtension object.
 """
 
 import util
+from exceptions import *
 
 class SmartProperty(object):
     """Provides a property object that will communicate set/get/delete operations
