@@ -84,6 +84,31 @@ class MapperTest(MapperSuperTest):
         u2 = m.get(7)
         self.assert_(u is not u2)
 
+    def testrefresh(self):
+        m = mapper(User, users)
+        u = m.get(7)
+        u.user_name = 'foo'
+        objectstore.refresh(u)
+        
+        # its refreshed, so not dirty
+        self.assert_(u not in objectstore.get_session().uow.dirty)
+        
+        # username is back to the DB
+        self.assert_(u.user_name == 'jack')
+        
+        u.user_name = 'foo'
+        # now its dirty
+        self.assert_(u in objectstore.get_session().uow.dirty)
+        self.assert_(u.user_name == 'foo')
+        objectstore.expire(u)
+
+        # expired, but not refreshed yet.  still dirty
+        self.assert_(u in objectstore.get_session().uow.dirty)
+        # get the attribute, it refreshes
+        self.assert_(u.user_name == 'jack')
+        # not dirty anymore
+        self.assert_(u not in objectstore.get_session().uow.dirty)
+        
     def testmagic(self):
         m = mapper(User, users, properties = {
             'addresses' : relation(mapper(Address, addresses))

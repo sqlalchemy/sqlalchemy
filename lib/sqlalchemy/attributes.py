@@ -353,10 +353,20 @@ class AttributeManager(object):
         try:
             attr = obj.__dict__['_managed_attributes']
         except KeyError:
+            trigger = obj.__dict__.pop('_managed_trigger', None)
+            if trigger:
+                trigger()
             attr = {}
             obj.__dict__['_managed_attributes'] = attr
         return attr
 
+    def trigger_history(self, obj, callable):
+        try:
+            del obj.__dict__['_managed_attributes']
+        except KeyError:
+            pass
+        obj.__dict__['_managed_trigger'] = callable
+        
     def reset_history(self, obj, key):
         """removes the history object for the given attribute on the given object.
         When the attribute is next accessed, a new container will be created via the

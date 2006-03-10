@@ -145,8 +145,16 @@ class Session(object):
             self.uow.commit()
 
     def refresh(self, *obj):
+        """reloads the attributes for the given objects from the database, clears
+        any changes made."""
         for o in obj:
             self.uow.refresh(o)
+
+    def expire(self, *obj):
+        """invalidates the data in the given objects and sets them to refresh themselves
+        the next time they are requested."""
+        for o in obj:
+            global_attributes.trigger_history(o, lambda: refresh(o))
 
     def register_clean(self, obj):
         self._bind_to(obj)
@@ -229,6 +237,11 @@ def refresh(*obj):
     """reloads the state of this object from the database, and cancels any in-memory
     changes."""
     get_session().refresh(*obj)
+
+def expire(*obj):
+    """invalidates the data in the given objects and sets them to refresh themselves
+    the next time they are requested."""
+    get_session().expire(*obj)
     
 def delete(*obj):
     """registers the given objects as to be deleted upon the next commit"""
