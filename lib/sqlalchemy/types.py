@@ -77,12 +77,12 @@ class String(TypeEngine):
         if not engine.convert_unicode or value is None or not isinstance(value, unicode):
             return value
         else:
-            return value.encode('utf-8')
+            return value.encode(engine.encoding)
     def convert_result_value(self, value, engine):
         if not engine.convert_unicode or value is None or isinstance(value, unicode):
             return value
         else:
-            return value.decode('utf-8')
+            return value.decode(engine.encoding)
     def adapt_args(self):
         if self.length is None:
             return TEXT()
@@ -92,12 +92,12 @@ class String(TypeEngine):
 class Unicode(String):
     def convert_bind_param(self, value, engine):
          if isinstance(value, unicode):
-              return value.encode('utf-8')
+              return value.encode(engine.encoding)
          else:
               return value
     def convert_result_value(self, value, engine):
          if not isinstance(value, unicode):
-             return value.decode('utf-8')
+             return value.decode(engine.encoding)
          else:
              return value
               
