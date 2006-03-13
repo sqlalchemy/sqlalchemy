@@ -228,9 +228,11 @@ class PropertyLoader(MapperProperty):
                 return PropertyLoader.ONETOMANY
         elif self.secondaryjoin is not None:
             return PropertyLoader.MANYTOMANY
-        elif self.foreigntable is self.target or self.foreigntable in self.mapper.tables:
+        elif self.foreigntable == self.target:
+        #elif self.foreigntable is self.target or self.foreigntable in self.mapper.tables:
             return PropertyLoader.ONETOMANY
-        elif self.foreigntable is self.parent.table or self.foreigntable in self.parent.tables:
+        elif self.foreigntable == self.parent.table:
+        #elif self.foreigntable is self.parent.table or self.foreigntable in self.parent.tables:
             return PropertyLoader.MANYTOONE
         else:
             raise ArgumentError("Cant determine relation direction")
