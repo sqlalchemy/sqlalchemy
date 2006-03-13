@@ -593,7 +593,7 @@ FROM addresses WHERE addresses.address_id IN
 
         <P>The sql package supports embedding select statements into other select statements as the criterion in a WHERE condition, or as one of the "selectable" objects in the FROM list of the query.  It does not at the moment directly support embedding a SELECT statement as one of the column criterion for a statement, although this can be achieved via direct text insertion, described later.</p>
         
-        <&|doclib.myt:item, name="scalar", description="Scalar Column Queries"&>
+        <&|doclib.myt:item, name="scalar", description="Scalar Column Subqueries"&>
         <p>Subqueries can be used in the column clause of a select statement by specifying the <span class="codeline">scalar=True</span> flag:</p>
         <&|formatting.myt:code &>
 <&formatting.myt:poplink&>select([table2.c.col1, table2.c.col2, select([table1.c.col1], table1.c.col2==7, scalar=True)])
