@@ -593,9 +593,21 @@ FROM addresses WHERE addresses.address_id IN
 
         <P>The sql package supports embedding select statements into other select statements as the criterion in a WHERE condition, or as one of the "selectable" objects in the FROM list of the query.  It does not at the moment directly support embedding a SELECT statement as one of the column criterion for a statement, although this can be achieved via direct text insertion, described later.</p>
         
+        <&|doclib.myt:item, name="scalar", description="Scalar Column Queries"&>
+        <p>Subqueries can be used in the column clause of a select statement by specifying the <span class="codeline">scalar=True</span> flag:</p>
+        <&|formatting.myt:code &>
+<&formatting.myt:poplink&>select([table2.c.col1, table2.c.col2, select([table1.c.col1], table1.c.col2==7, scalar=True)])
+<&|formatting.myt:codepopper, link="sql" &>
+SELECT table2.col1, table2.col2, 
+(SELECT table1.col1 AS col1 FROM table1 WHERE col2=:table1_col2) 
+FROM table2
+{'table1_col2': 7}
+</&>
+        </&>
+        </&>
         
         <&|doclib.myt:item, name="correlated", description="Correlated Subqueries" &>
-        <P>When a select object is embedded inside of another select object, and both objects reference the same table, SQLAlchemy makes the assumption that the table should be correlated from the child query to the parent query.
+        <P>When a select object is embedded inside of another select object, and both objects reference the same table, SQLAlchemy makes the assumption that the table should be correlated from the child query to the parent query.  To disable this behavior, specify the flag <span class="codeline">correlate=False</span> to the Select statement.</p>
         <&|formatting.myt:code &>
         # make an alias of a regular select.   
         s = select([addresses.c.street], addresses.c.user_id==users.c.user_id).alias('s')

@@ -1,6 +1,7 @@
 0.1.4
-- create_engine() now uses genericized parameters; host/hostname, db/dbname/database, password/passwd, etc. for all engine connections. makes
-engine URIs much more "universal"
+- create_engine() now uses genericized parameters; host/hostname, db/dbname/database, password/passwd, etc. for all engine connections. makes engine URIs much more "universal"
+- added support for SELECT statements embedded into a column clause, using the flag
+"scalar=True"
 - another overhaul to EagerLoading when used in conjunction with mappers that
 inherit; improvements to eager loads figuring out their aliased queries
 correctly, also relations set up against a mapper with inherited mappers will

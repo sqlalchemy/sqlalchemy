@@ -55,6 +55,10 @@ def select(columns=None, whereclause = None, from_obj = [], **kwargs):
     """
     return Select(columns, whereclause = whereclause, from_obj = from_obj, **kwargs)
 
+def subquery(alias, *args, **kwargs):
+    return Select(*args, **kwargs).alias(alias)
+
+    
 def insert(table, values = None, **kwargs):
     """returns an INSERT clause element.  
     
@@ -141,9 +145,6 @@ def union_all(*selects, **params):
 
 def alias(*args, **params):
     return Alias(*args, **params)
-
-def subquery(alias, *args, **params):
-    return Alias(Select(*args, **params), alias)
 
 def literal(value, type=None):
     """returns a literal clause, bound to a bind parameter.  
@@ -346,7 +347,8 @@ class ClauseElement(object):
     """base class for elements of a programmatically constructed SQL expression."""
     def _get_from_objects(self):
         """returns objects represented in this ClauseElement that should be added to the
-        FROM list of a query."""
+        FROM list of a query, when this ClauseElement is placed in the column clause of a Select
+        statement."""
         raise NotImplementedError(repr(self))
     def _process_from_dict(self, data, asfrom):
         """given a dictionary attached to a Select object, places the appropriate
@@ -925,7 +927,8 @@ class Join(FromClause):
             return []
     
     def alias(self, name=None):
-        return self.select(use_labels=True).alias(name)            
+        """creates a Select out of this Join clause and returns an Alias of it.  The Select is not correlating."""
+        return self.select(use_labels=True, correlate=False).alias(name)            
     def _process_from_dict(self, data, asfrom):
         for f in self.onclause._get_from_objects():
             data[f.id] = f
@@ -1148,7 +1151,7 @@ class SelectBaseMixin(object):
     def select(self, whereclauses = None, **params):
         return select([self], whereclauses, **params)
     def _get_from_objects(self):
-        if self.is_where:
+        if self.is_where or self._scalar:
             return []
         else:
             return [self]
@@ -1196,7 +1199,7 @@ class CompoundSelect(SelectBaseMixin, FromClause):
 class Select(SelectBaseMixin, FromClause):
     """represents a SELECT statement, with appendable clauses, as well as 
     the ability to execute itself and return a result set."""
-    def __init__(self, columns=None, whereclause = None, from_obj = [], order_by = None, group_by=None, having=None, use_labels = False, distinct=False, engine = None, limit=None, offset=None, correlate=False):
+    def __init__(self, columns=None, whereclause = None, from_obj = [], order_by = None, group_by=None, having=None, use_labels = False, distinct=False, engine = None, limit=None, offset=None, scalar=False, correlate=True):
         self._froms = util.OrderedDict()
         self.use_labels = use_labels
         self.id = "Select(%d)" % id(self)
@@ -1207,14 +1210,23 @@ class Select(SelectBaseMixin, FromClause):
         self.oid_column = None
         self.limit = limit
         self.offset = offset
+
+        # indicates that this select statement should not expand its columns
+        # into the column clause of an enclosing select, and should instead
+        # act like a single scalar column
+        self._scalar = scalar
+
+        # indicates if this select statement, as a subquery, should correlate
+        # its FROM clause to that of an enclosing select statement
         self.correlate = correlate
         
         # indicates if this select statement is a subquery inside another query
         self.issubquery = False
+        
         # indicates if this select statement is a subquery as a criterion
         # inside of a WHERE clause
         self.is_where = False
-
+        
         self.distinct = distinct
         self._text = None
         self._raw_columns = []
@@ -1257,7 +1269,7 @@ class Select(SelectBaseMixin, FromClause):
             select.is_where = self.is_where
             select.issubquery = True
             select.parens = True
-            if not self.is_where and not select.correlate:
+            if not select.correlate:
                 return
             if getattr(select, '_correlated', None) is None:
                 select._correlated = self.select._froms
@@ -1268,6 +1280,11 @@ class Select(SelectBaseMixin, FromClause):
 
         self._raw_columns.append(column)
 
+        # if the column is a Select statement itself, 
+        # accept visitor
+        column.accept_visitor(self._correlator)
+        
+        # visit the FROM objects of the column looking for more Selects
         for f in column._get_from_objects():
             f.accept_visitor(self._correlator)
         column._process_from_dict(self._froms, False)
@@ -1278,7 +1295,6 @@ class Select(SelectBaseMixin, FromClause):
             return column._make_proxy(self, name=column._label)
         else:
             return column._make_proxy(self, name=column.name)
-            
     def append_whereclause(self, whereclause):
         self._append_condition('whereclause', whereclause)
     def append_having(self, having):

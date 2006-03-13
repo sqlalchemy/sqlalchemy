@@ -280,7 +280,11 @@ class ANSICompiler(sql.Compiled):
 
         self.select_stack.append(select)
         for c in select._raw_columns:
-            if c.is_selectable():
+            # TODO: make this polymorphic?
+            if isinstance(c, sql.Select) and c._scalar:
+                c.accept_visitor(self)
+                inner_columns[self.get_str(c)] = c
+            elif c.is_selectable():
                 for co in c.columns:
                     if select.use_labels:
                         l = co.label(co._label)

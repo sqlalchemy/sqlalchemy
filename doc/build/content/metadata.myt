@@ -307,15 +307,15 @@ DROP TABLE employees
 
     <&|doclib.myt:item, name="primitives", description="Non-engine primitives: TableClause/ColumnClause" &>
     
-    <p>TableClause and ColumnClause are "primitive" versions of the Table and Column objects which dont use engines at all; applications that just want to generate SQL strings but not directly communicate with a database can use TableClause and ColumnClause objects, which are non-singleton and serve as the "lexical" base class of Table and Column:</p>
+    <p>TableClause and ColumnClause are "primitive" versions of the Table and Column objects which dont use engines at all; applications that just want to generate SQL strings but not directly communicate with a database can use TableClause and ColumnClause objects (accessed via 'table' and 'column'), which are non-singleton and serve as the "lexical" base class of Table and Column:</p>
         <&|formatting.myt:code&>
-            tab1 = TableClause('table1',
-                ColumnClause('id'),
-                ColumnClause('name'))
+            tab1 = table('table1',
+                column('id'),
+                column('name'))
             
-            tab2 = TableClause('table2',
-                ColumnClause('id'),
-                ColumnClause('email'))
+            tab2 = table('table2',
+                column('id'),
+                column('email'))
                 
             tab1.select(tab1.c.name == 'foo')
         </&>
