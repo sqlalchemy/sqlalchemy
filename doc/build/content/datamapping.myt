@@ -343,19 +343,14 @@ DELETE FROM addresses WHERE addresses.address_id = :address_id
             True
         </&>
 
-+<p>The backreference feature also works with many-to-many relationships, which are described later.  When creating a backreference, a corresponding property is placed on the child mapper.  This property can be overridden with a custom property using the <span class="codeline">add_property</span> function:
++<p>The backreference feature also works with many-to-many relationships, which are described later.  When creating a backreference, a corresponding property is placed on the child mapper.  The default arguments to this property can be overridden using the <span class="codeline">backref()</span> function:
         <&|formatting.myt:code&>
             Address.mapper = mapper(Address, addresses)
             
             User.mapper = mapper(User, users, properties = {
-                                'addresses' : relation(Address.mapper, backref='user')
+                                'addresses' : relation(Address.mapper, backref=backref('user', lazy=False, private=True))
                             }
                           )
-                          
-            Address.mapper.add_property('user', relation(
-                                User.mapper, lazy=False, private=True, backref='addresses'
-                                ))
-                          
                 </&>
 <p>Note that when overriding a backreferenced property, we re-specify the backreference as well.  This will not override the existing 'addresses' property on the User class, but just sends a message to the attribute-management system that it should continue to maintain this backreference.</p>
 </&>
