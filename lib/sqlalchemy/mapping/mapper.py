@@ -253,7 +253,7 @@ class Mapper(object):
         populate_existing = kwargs.get('populate_existing', False)
         
         result = util.HistoryArraySet()
-        if len(mappers):
+        if mappers:
             otherresults = []
             for m in mappers:
                 otherresults.append(util.HistoryArraySet())
@@ -273,10 +273,9 @@ class Mapper(object):
         for value in imap.values():
             objectstore.get_session().register_clean(value)
 
-        if len(mappers):
-            return [result] + otherresults
-        else:
-            return result
+        if mappers:
+            result.extend(otherresults)
+        return result
             
     def get(self, *ident):
         """returns an instance of the object based on the given identifier, or None
@@ -374,7 +373,7 @@ class Mapper(object):
         e.g.   u = usermapper.get_by(user_name = 'fred')
         """
         x = self.select_whereclause(self._by_clause(*args, **params), limit=1)
-        if len(x):
+        if x:
             return x[0]
         else:
             return None
@@ -393,6 +392,18 @@ class Mapper(object):
         e.g.   result = usermapper.select_by(user_name = 'fred')
         """
         return self.select_whereclause(self._by_clause(*args, **params))
+    
+    def selectfirst_by(self, *args, **params):
+        """works like select_by(), but only returns the first result by itself, or None if no 
+        objects returned.  Synonymous with get_by()"""
+        return self.get_by(*args, **params)
+
+    def selectone_by(self, *args, **params):
+        """works like selectfirst(), but throws an error if not exactly one result was returned."""
+        ret = self.select_by(*args, **params)
+        if len(ret) == 1:
+            return ret[0]
+        raise InvalidRequestError('Multiple rows returned for selectone')
 
     def count_by(self, *args, **params):
         """returns the count of instances based on the given clauses and key/value criterion.
@@ -448,15 +459,22 @@ class Mapper(object):
         else:
             raise AttributeError(key)
         
-    def selectone(self, *args, **params):
+    def selectfirst(self, *args, **params):
         """works like select(), but only returns the first result by itself, or None if no 
         objects returned."""
         params['limit'] = 1
         ret = self.select(*args, **params)
-        if len(ret):
+        if ret:
             return ret[0]
         else:
             return None
+            
+    def selectone(self, *args, **params):
+        """works like selectfirst(), but throws an error if not exactly one result was returned."""
+        ret = self.select(*args, **params)
+        if len(ret) == 1:
+            return ret[0]
+        raise InvalidRequestError('Multiple rows returned for selectone')
             
     def select(self, arg = None, **kwargs):
         """selects instances of the object from the database.  
@@ -983,12 +1001,5 @@ def class_mapper(class_):
     """given a class, returns the primary Mapper associated with the class."""
     try:
         return mapper_registry[class_]
-    except KeyError:
-        pass
-    except AttributeError:
-        pass
-    raise InvalidRequestError("Class '%s' has no mapper associated with it" % class_.__name__)
-    
-
-
-
+    except (KeyError, AttributeError):
+        raise InvalidRequestError("Class '%s' has no mapper associated with it" % class_.__name__)

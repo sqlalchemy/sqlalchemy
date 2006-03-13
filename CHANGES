@@ -7,6 +7,9 @@ correctly, also relations set up against a mapper with inherited mappers will
 create joins against the table that is specific to the mapper itself (i.e. and
 not any tables that are inherited/are further down the inheritance chain),
 this can be overridden by using custom primary/secondary joins.
+- added J.Ellis patch to mapper.py so that selectone() throws an exception 
+if query returns more than one object row, selectfirst() to not throw the 
+exception. also adds selectfirst_by (synonymous with get_by) and selectone_by
 - added onupdate parameter to Column, will exec SQL/python upon an update
 statement.Also adds "for_update=True" to all DefaultGenerator subclasses
 - added user-contributed support for Oracle table reflection; still
