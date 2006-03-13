@@ -96,7 +96,7 @@ class UnicodeTest(AssertMixin):
     def setUpAll(self):
         global unicode_table
         unicode_table = Table('unicode_table', db, 
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, Sequence('uni_id_seq', optional=True), primary_key=True),
             Column('unicode_data', Unicode(250)),
             Column('plain_data', String(250))
             )

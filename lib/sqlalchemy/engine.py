@@ -586,14 +586,7 @@ class SQLEngine(schema.SchemaEngine):
             if statement is None:
                 return cursor
             
-            executemany = parameters is not None and isinstance(parameters, list)
-
-            if self.positional:
-                if executemany:
-                    parameters = [p.values() for p in parameters]
-                else:
-                    parameters = parameters.values()
-
+            parameters = self._convert_compiled_params(parameters)
             self.execute(statement, parameters, connection=connection, cursor=cursor, return_raw=True)        
             return cursor
 
@@ -657,12 +650,12 @@ class SQLEngine(schema.SchemaEngine):
             return ResultProxy(cursor, self, typemap=typemap)
 
     def _execute(self, c, statement, parameters):
+        if parameters is None:
+            if self.positional:
+                parameters = ()
+            else:
+                parameters = {}
         try:
-            if parameters is None:
-                if self.positional:
-                    parameters = ()
-                else:
-                    parameters = {}
             c.execute(statement, parameters)
         except Exception, e:
             raise exceptions.SQLError(statement, parameters, e)
@@ -671,15 +664,26 @@ class SQLEngine(schema.SchemaEngine):
         c.executemany(statement, parameters)
         self.context.rowcount = c.rowcount
 
-    def proxy(self, statement=None, parameters=None):
+    def _convert_compiled_params(self, parameters):
         executemany = parameters is not None and isinstance(parameters, list)
+        # the bind params are a CompiledParams object.  but all the DBAPI's hate
+        # that object (or similar).  so convert it to a clean 
+        # dictionary/list/tuple of dictionary/tuple of list
+        if parameters is not None:
+           if self.positional:
+                if executemany:
+                    parameters = [p.values() for p in parameters]
+                else:
+                    parameters = parameters.values()
+           else:
+                if executemany:
+                    parameters = [p.get_raw_dict() for p in parameters]
+                else:
+                    parameters = parameters.get_raw_dict()
+        return parameters
 
-        if self.positional:
-            if executemany:
-                parameters = [p.values() for p in parameters]
-            else:
-                parameters = parameters.values()
-
+    def proxy(self, statement=None, parameters=None):
+        parameters = self._convert_compiled_params(parameters)
         return self.execute(statement, parameters)
     
     def log(self, msg):

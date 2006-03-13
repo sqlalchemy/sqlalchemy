@@ -144,7 +144,7 @@ class SessionTest(AssertMixin):
 class UnicodeTest(AssertMixin):
     def setUpAll(self):
         global uni_table
-        uni_table = Table('test', db,
+        uni_table = Table('uni_test', db,
             Column('id',  Integer, primary_key=True),
             Column('txt', Unicode(50))).create()
 

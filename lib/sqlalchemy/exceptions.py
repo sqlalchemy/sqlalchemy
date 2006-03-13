@@ -17,6 +17,8 @@ class SQLError(SQLAlchemyError):
         self.statement = statement
         self.params = params
         self.orig = orig
+    def __str__(self):
+        return SQLAlchemyError.__str__(self) + " " + repr(self.statement) + " " + repr(self.params)
 
 class ArgumentError(SQLAlchemyError):
     """raised for all those conditions where invalid arguments are sent to constructed

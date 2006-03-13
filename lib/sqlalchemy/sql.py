@@ -252,6 +252,11 @@ class ClauseParameters(util.OrderedDict):
         return [self[key] for key in self]
     def get_original_dict(self):
         return self.copy()
+    def get_raw_dict(self):
+        d = {}
+        for k in self:
+            d[k] = self[k]
+        return d
         
 class ClauseVisitor(object):
     """Defines the visiting of ClauseElements."""
