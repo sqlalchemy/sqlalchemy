@@ -9,7 +9,8 @@ not any tables that are inherited/are further down the inheritance chain),
 this can be overridden by using custom primary/secondary joins.
 - added onupdate parameter to Column, will exec SQL/python upon an update
 statement.Also adds "for_update=True" to all DefaultGenerator subclasses
-- added rudimentary support for Oracle table reflection.
+- added user-contributed support for Oracle table reflection; still
+some bugs to work out regarding composite primary keys/dictionary selection
 - checked in an initial Firebird module, awaiting testing.
 - added sql.ClauseParameters dictionary object as the result for 
 compiled.get_params(), does late-typeprocessing of bind parameters so 
