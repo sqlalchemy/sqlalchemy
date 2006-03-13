@@ -90,7 +90,7 @@ def descriptor():
 class OracleSQLEngine(ansisql.ANSISQLEngine):
     def __init__(self, opts, use_ansi = True, module = None, **params):
         self._use_ansi = use_ansi
-        self.opts = opts or {}
+        self.opts = self._translate_connect_args((None, 'dsn', 'user', 'password'), opts)
         if module is None:
             self.module = cx_Oracle
         else:
@@ -181,18 +181,7 @@ order by UCC.CONSTRAINT_NAME""",{'table_name' : table.name.upper()})
         return self.context.last_inserted_ids
 
     def pre_exec(self, proxy, compiled, parameters, **kwargs):
-        # this is just an assertion that all the primary key columns in an insert statement
-        # have a value set up, or have a default generator ready to go
-        if getattr(compiled, "isinsert", False):
-            if isinstance(parameters, list):
-                plist = parameters
-            else:
-                plist = [parameters]
-            for param in plist:
-                for primary_key in compiled.statement.table.primary_key:
-                    if not param.has_key(primary_key.key) or param[primary_key.key] is None:
-                        if primary_key.default is None:
-                            raise "Column '%s.%s': Oracle primary key columns require a default value or a schema.Sequence to create ids" % (primary_key.table.name, primary_key.name)
+        pass
 
     def _executemany(self, c, statement, parameters):
         rowcount = 0

@@ -141,6 +141,29 @@ class SessionTest(AssertMixin):
         self.assert_(name_of(7) != name1, msg="user_name should not be %s" % name1)
         self.assert_(name_of(8) != name2, msg="user_name should not be %s" % name2)
 
+class UnicodeTest(AssertMixin):
+    def setUpAll(self):
+        global uni_table
+        uni_table = Table('test', db,
+            Column('id',  Integer, primary_key=True),
+            Column('txt', Unicode(50))).create()
+
+    def tearDownAll(self):
+        uni_table.drop()
+        uni_table.deregister()
+
+    def testbasic(self):
+        class Test(object):
+            pass
+        assign_mapper(Test, uni_table)
+
+        txt = u"\u0160\u0110\u0106\u010c\u017d"
+        t1 = Test(id=1, txt = txt)
+        self.assert_(t1.txt == txt)
+        objectstore.commit()
+        self.assert_(t1.txt == txt)
+
+
 class PKTest(AssertMixin):
     def setUpAll(self):
         db.echo = False
@@ -836,7 +859,6 @@ class SaveTest(AssertMixin):
             )
         ]
         )
-        return
         objects[2].keywords.append(k)
         dkid = objects[5].keywords[1].keyword_id
         del objects[5].keywords[1]

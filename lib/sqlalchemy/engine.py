@@ -203,6 +203,25 @@ class SQLEngine(schema.SchemaEngine):
         self._figure_paramstyle()
         self.logger = logger or util.Logger(origin='engine')
 
+    def _translate_connect_args(self, names, args):
+        """translates a dictionary of connection arguments to those used by a specific dbapi.
+        the names parameter is a tuple of argument names in the form ('host', 'database', 'user', 'password')
+        where the given strings match the corresponding argument names for the dbapi.  Will return a dictionary
+        with the dbapi-specific parameters, the generic ones removed, and any additional parameters still remaining,
+        from the dictionary represented by args.  Will return a blank dictionary if args is null."""
+        if args is None:
+            return {}
+        a = args.copy()
+        standard_names = [('host','hostname'), ('database', 'dbname'), ('user', 'username'), ('password', 'passwd', 'pw')]
+        for n in names:
+            sname = standard_names.pop(0)
+            if n is None:
+                continue
+            for sn in sname:
+                if sn != n and a.has_key(sn):
+                    a[n] = a[sn]
+                    del a[sn]
+        return a
     def _get_ischema(self):
         # We use a property for ischema so that the accessor
         # creation only happens as needed, since otherwise we
@@ -563,7 +582,6 @@ class SQLEngine(schema.SchemaEngine):
             parameters = [compiled.get_params(**m) for m in parameters]
         else:
             parameters = compiled.get_params(**parameters)
-        
         def proxy(statement=None, parameters=None):
             if statement is None:
                 return cursor

@@ -267,7 +267,7 @@ class Column(sql.ColumnClause, SchemaItem):
         name will all be included in the index, in the order of their
         creation.
 
-        unique=None : True or undex name. Indicates that this column is
+        unique=None : True or index name. Indicates that this column is
         indexed in a unique index . Pass true to autogenerate the index
         name. Pass a string to specify the index name. Multiple columns that
         specify the same index name will all be included in the index, in the

@@ -232,6 +232,27 @@ def _is_literal(element):
 def is_column(col):
     return isinstance(col, ColumnElement)
 
+class ClauseParameters(util.OrderedDict):
+    """represents a dictionary/iterator of bind parameter key names/values.  Includes parameters compiled with a Compiled object as well as additional arguments passed to the Compiled object's get_params() method.  Parameter values will be converted as per the TypeEngine objects present in the bind parameter objects.  The non-converted value can be retrieved via the get_original method.  For Compiled objects that compile positional parameters, the values() iteration of the object will return the parameter values in the correct order."""
+    def __init__(self, engine=None):
+        super(ClauseParameters, self).__init__(self)
+        self.engine = engine
+        self.binds = {}
+    def set_parameter(self, key, value, bindparam):
+        self[key] = value
+        self.binds[key] = bindparam
+    def get_original(self, key):
+        return super(ClauseParameters, self).__getitem__(key)
+    def __getitem__(self, key):
+        v = super(ClauseParameters, self).__getitem__(key)
+        if self.engine is not None and self.binds.has_key(key):
+            v = self.binds[key].typeprocess(v, self.engine)
+        return v
+    def values(self):
+        return [self[key] for key in self]
+    def get_original_dict(self):
+        return self.copy()
+        
 class ClauseVisitor(object):
     """Defines the visiting of ClauseElements."""
     def visit_column(self, column):pass
@@ -779,6 +800,8 @@ class Function(ClauseList, ColumnElement):
                 clause = BindParamClause(self.name, clause, shortname=self.name, type=None)
         self.clauses.append(clause)
     def _process_from_dict(self, data, asfrom):
+        super(Function, self)._process_from_dict(data, asfrom)
+        # this helps a Select object get the engine from us
         data.setdefault(self, self)
     def copy_container(self):
         clauses = [clause.copy_container() for clause in self.clauses]

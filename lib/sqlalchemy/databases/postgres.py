@@ -181,7 +181,7 @@ class PGSQLEngine(ansisql.ANSISQLEngine):
                 self.version = 1
         except:
             self.version = 1
-        self.opts = opts or {}
+        self.opts = self._translate_connect_args(('host', 'database', 'user', 'password'), opts)
         if self.opts.has_key('port'):
             if self.version == 2:
                 self.opts['port'] = int(self.opts['port'])

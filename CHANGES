@@ -1,11 +1,46 @@
 0.1.4
+- create_engine() now uses genericized parameters; host/hostname, db/dbname/database, password/passwd, etc. for all engine connections. makes
+engine URIs much more "universal"
+- another overhaul to EagerLoading when used in conjunction with mappers that
+inherit; improvements to eager loads figuring out their aliased queries
+correctly, also relations set up against a mapper with inherited mappers will
+create joins against the table that is specific to the mapper itself (i.e. and
+not any tables that are inherited/are further down the inheritance chain),
+this can be overridden by using custom primary/secondary joins.
+- added onupdate parameter to Column, will exec SQL/python upon an update
+statement.Also adds "for_update=True" to all DefaultGenerator subclasses
+- added rudimentary support for Oracle table reflection.
+- checked in an initial Firebird module, awaiting testing.
+- added sql.ClauseParameters dictionary object as the result for 
+compiled.get_params(), does late-typeprocessing of bind parameters so 
+that the original values are easier to access
+- more docs for indexes, column defaults, connection pooling, engine construction
+- overhaul to the construction of the types system.  uses a simpler inheritance pattern
+so that any of the generic types can be easily subclassed, with no need for TypeDecorator.
+- added "convert_unicode=False" parameter to SQLEngine, will cause all String types to 
+perform unicode encoding/decoding (makes Strings act like Unicodes)
+- added 'encoding="utf8"' parameter to engine.  the given encoding will be 
+used for all encode/decode calls within Unicode types as well as Strings 
+when convert_unicode=True.
+- improved support to column defaults when used by mappers; mappers will pull
+pre-executed defaults from statement's executed bind parameters
+(pre-conversion) to populate them into a saved object's attributes; if any
+PassiveDefaults have fired off, will instead post-fetch the row from the DB to
+populate the object.
+- added 'get_session().invalidate(*obj)' method to objectstore, instances will
+refresh() themselves upon the next attribute access.
+- improvements to SQL func calls including an "engine" keyword argument so
+they can be execute()d or scalar()ed standalone, also added func accessor to
+SQLEngine
 
 0.1.3
-- completed "post_update" feature, will add a second update statement before inserts
-and after deletes in order to reconcile a relationship without any dependencies
-being created; used when persisting two rows that are dependent on each other
-- completed mapper.using(session) function, localized per-object Session functionality;
-objects can be declared and manipulated as local to any user-defined Session
+- completed "post_update" feature, will add a second update statement before
+inserts and after deletes in order to reconcile a relationship without any
+dependencies being created; used when persisting two rows that are dependent
+on each other
+- completed mapper.using(session) function, localized per-object Session
+functionality; objects can be declared and manipulated as local to any
+user-defined Session
 - fix to Oracle "row_number over" clause with multiple tables
 - mapper.get() was not selecting multiple-keyed objects if the mapper's table was a join,
 such as in an inheritance relationship, this is fixed.

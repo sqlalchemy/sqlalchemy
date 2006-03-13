@@ -68,7 +68,6 @@ class IndexTest(testbase.AssertMixin):
     def test_index_create_inline(self):
         """Test indexes defined with tables"""
 
-        testbase.db.echo = True
         capt = []
         class dummy:
             pass

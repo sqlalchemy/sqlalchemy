@@ -278,11 +278,14 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
 
     def testliteral(self):
         self.runtest(select([literal("foo") + literal("bar")], from_obj=[table1]), 
-            "SELECT :literal + :literal_1 FROM mytable", engine=db)
+            "SELECT :literal + :literal_1 FROM mytable")
 
     def testfunction(self):
         self.runtest(func.lala(3, 4, literal("five"), table1.c.myid) * table2.c.otherid, 
-            "lala(:lala, :lala_1, :literal, mytable.myid) * myothertable.otherid", engine=db)
+            "lala(:lala, :lala_1, :literal, mytable.myid) * myothertable.otherid")
+
+        self.runtest(select([func.count(table1.c.myid)]), 
+            "SELECT count(mytable.myid) FROM mytable")
 
     def testjoin(self):
         self.runtest(

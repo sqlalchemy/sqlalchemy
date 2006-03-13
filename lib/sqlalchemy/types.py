@@ -91,12 +91,12 @@ class String(TypeEngine):
             
 class Unicode(String):
     def convert_bind_param(self, value, engine):
-         if isinstance(value, unicode):
+         if value is not None and isinstance(value, unicode):
               return value.encode(engine.encoding)
          else:
               return value
     def convert_result_value(self, value, engine):
-         if not isinstance(value, unicode):
+         if value is not None and not isinstance(value, unicode):
              return value.decode(engine.encoding)
          else:
              return value

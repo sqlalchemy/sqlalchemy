@@ -13,16 +13,23 @@
     <p>
     Engines exist for SQLite, Postgres, MySQL, and Oracle, using the Pysqlite, Psycopg (1 or 2), MySQLDB, and cx_Oracle modules.  Each engine imports its corresponding module which is required to be installed.  For Postgres and Oracle, an alternate module may be specified at construction time as well.
     </p>
-    <p>An example of connecting to each engine is as follows:</p>
+    <p>The string based argument names for connecting are translated to the appropriate names when the connection is made; argument names include "host" or "hostname" for database host, "database", "db", or "dbname" for the database name (also is dsn for Oracle), "user" or "username" for the user, and "password", "pw", or "passwd" for the password.  SQLite expects "filename" or "file" for the filename, or if None it defaults to "":memory:".</p>
+    <p>The connection arguments can be specified as a string + dictionary pair, or a single URL-encoded string, as follows:</p>
     
     <&|formatting.myt:code&>
     from sqlalchemy import *
 
     # sqlite in memory    
     sqlite_engine = create_engine('sqlite', {'filename':':memory:'}, **opts)
+
+    # via URL
+    sqlite_engine = create_engine('sqlite://', **opts)
     
     # sqlite using a file
     sqlite_engine = create_engine('sqlite', {'filename':'querytest.db'}, **opts)
+
+    # via URL
+    sqlite_engine = create_engine('sqlite://filename=querytest.db', **opts)
 
     # postgres
     postgres_engine = create_engine('postgres', 
@@ -31,6 +38,9 @@
                             'user':'scott', 
                             'password':'tiger'}, **opts)
 
+    # via URL
+    postgres_engine = create_engine('postgres://database=test&amp;host=127.0.0.1&amp;user=scott&amp;password=tiger')
+    
     # mysql
     mysql_engine = create_engine('mysql',
                             {
@@ -49,20 +59,17 @@
 
     </&>
     <p>Note that the general form of connecting to an engine is:</p>
-    <&|formatting.myt:code&>
+    <&|formatting.myt:code &>
+            # separate arguments
            engine = create_engine(
                         <enginename>, 
                         {<named DBAPI arguments>}, 
-                        <sqlalchemy options>
+                        <sqlalchemy options>;
                     )
+            
+            # url
+            engine = create_engine('&lt;enginename&gt;://&lt;named DBAPI arguments&gt;', <sqlalchemy options>)
     </&>
-    <p>The second argument is a dictionary whose key/value pairs will be passed to the underlying DBAPI connect() method as keyword arguments.  Any keyword argument supported by the DBAPI module can be in this dictionary.</p>
-    <p>Engines can also be loaded by URL.  The above format is converted into <span class="codeline"><% '<enginename>://key=val&key=val' |h %></span>:
-        <&|formatting.myt:code&>
-            sqlite_engine = create_engine('sqlite://filename=querytest.db')
-            postgres_engine = create_engine('postgres://database=test&user=scott&password=tiger')
-        </&>
-    </p>
     </&>
     <&|doclib.myt:item, name="methods", description="Database Engine Methods" &>
     <p>A few useful methods off the SQLEngine are described here:</p>
@@ -95,7 +102,18 @@
     <&|doclib.myt:item, name="options", description="Database Engine Options" &>
     <p>The remaining arguments to <span class="codeline">create_engine</span> are keyword arguments that are passed to the specific subclass of <span class="codeline">sqlalchemy.engine.SQLEngine</span> being used,  as well as the underlying <span class="codeline">sqlalchemy.pool.Pool</span> instance.  All of the options described in the previous section <&formatting.myt:link, path="pooling_configuration"&> can be specified, as well as engine-specific options:</p>
     <ul>
-        <li>pool=None : an instance of <span class="codeline">sqlalchemy.pool.DBProxy</span> to be used as the underlying source for connections (DBProxy is described in the previous section).  If None, a default DBProxy will be created using the engine's own database module with the given arguments.</li>
+        <li><p>pool=None : an instance of <span class="codeline">sqlalchemy.pool.Pool</span> to be used as the underlying source for connections, overriding the engine's connect arguments (pooling is described in the previous section).  If None, a default Pool (QueuePool or SingletonThreadPool as appropriate) will be created using the engine's connect arguments.</p>
+        <p>Example:</p>
+        <&|formatting.myt:code&>
+            from sqlalchemy import *
+            import sqlalchemy.pool as pool
+            import MySQLdb
+            
+            def getconn():
+                return MySQLdb.connect(user='ed', dbname='mydb')
+                
+            engine = create_engine('mysql', pool=pool.QueuePool(getconn, pool_size=20, max_overflow=40))
+        </&></li>
         <li>echo=False : if True, the SQLEngine will log all statements as well as a repr() of their parameter lists to the engines logger, which defaults to sys.stdout.  A SQLEngine instances' "echo" data member can be modified at any time to turn logging on and off.  If set to the string 'debug', result rows will be printed to the standard output as well.</li>
         <li>logger=None : a file-like object where logging output can be sent, if echo is set to True.  This defaults to sys.stdout.</li>
         <li>module=None : used by Oracle and Postgres, this is a reference to a DBAPI2 module to be used instead of the engine's default module.  For Postgres, the default is psycopg2, or psycopg1 if 2 cannot be found.  For Oracle, its cx_Oracle.</li>
@@ -103,7 +121,8 @@
         <li>use_ansi=True : used only by Oracle;  when False, the Oracle driver attempts to support a particular "quirk" of some Oracle databases, that the LEFT OUTER JOIN SQL syntax is not supported, and the "Oracle join" syntax of using <% "<column1>(+)=<column2>" |h%> must be used in order to achieve a LEFT OUTER JOIN.  Its advised that the Oracle database be configured to have full ANSI support instead of using this feature.</li>
         <li>use_oids=False : used only by Postgres, will enable the column name "oid" as the object ID column.  Postgres as of 8.1 has object IDs disabled by default.</li>
         <li>convert_unicode=False : if set to True, all String/character based types will convert Unicode values to raw byte values going into the database, and all raw byte values to Python Unicode coming out in result sets.  This is an engine-wide method to provide unicode across the board.  For unicode conversion on a column-by-column level, use the Unicode column type instead.</li>
-	<li>encoding='utf-8' : the encoding to use when doing unicode translations.</li>
+	<li>encoding='utf-8' : the encoding to use for Unicode translations - passed to all encode/decode functions.</li>
+	<li>echo_uow=False : when True, logs unit of work commit plans to the standard output.</li>
     </ul>
     </&>
     <&|doclib.myt:item, name="proxy", description="Using the Proxy Engine" &>

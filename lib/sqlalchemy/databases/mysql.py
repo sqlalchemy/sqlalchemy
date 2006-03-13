@@ -134,7 +134,7 @@ class MySQLEngine(ansisql.ANSISQLEngine):
     def __init__(self, opts, module = None, **params):
         if module is None:
             self.module = mysql
-        self.opts = opts or {}
+        self.opts = self._translate_connect_args(('host', 'db', 'user', 'passwd'), opts)
         ansisql.ANSISQLEngine.__init__(self, **params)
 
     def connect_args(self):

@@ -27,10 +27,40 @@
     </p>
     <ul>
         <li>echo=False : if set to True, connections being pulled and retrieved from/to the pool will be logged to the standard output, as well as pool sizing information.</li>
-        <li>use_threadlocal=True : if set to True, repeated calls to connect() within the same application thread will be guaranteed to return the <b>same</b> connection object, if one has already been retrieved from the pool and has not been returned yet.  This allows code to retrieve a connection from the pool, and then while still holding on to that connection, to call other functions which also ask the pool for a connection of the same arguments;  those functions will act upon the same connection that the calling method is using.</li>
-        <li>poolclass=QueuePool :  the Pool class used by the pool module to provide pooling.  QueuePool uses the Python <span class="codeline">Queue.Queue</span> class to maintain a list of available connections.  A developer can supply his or her own Pool class to supply a different pooling algorithm.</li>
+        <li>use_threadlocal=True : if set to True, repeated calls to connect() within the same application thread will be guaranteed to return the <b>same</b> connection object, if one has already been retrieved from the pool and has not been returned yet.  This allows code to retrieve a connection from the pool, and then while still holding on to that connection, to call other functions which also ask the pool for a connection of the same arguments;  those functions will act upon the same connection that the calling method is using.  Note that once the connection is returned to the pool, it then may be used by another thread.  To guarantee a single unique connection per thread that <b>never</b> changes, use the option <span class="codeline">poolclass=SingletonThreadPool</span>, in which case the use_threadlocal parameter is automatically set to False.</li>
+        <li>poolclass=QueuePool :  the Pool class used by the pool module to provide pooling.  QueuePool uses the Python <span class="codeline">Queue.Queue</span> class to maintain a list of available connections.  A developer can supply his or her own Pool class to supply a different pooling algorithm.  Also included is the ThreadSingletonPool, which provides a single distinct connection per thread and is required with SQLite.</li>
         <li>pool_size=5 : used by QueuePool - the size of the pool to be maintained.  This is the largest number of connections that will be kept persistently in the pool.  Note that the pool begins with no connections; once this number of connections is requested, that number of connections will remain.</li>
-        <li>max_overflow=10 : the maximum overflow size of the pool.  When the number of checked-out connections reaches the size set in pool_size, additional connections will be returned up to this limit.  When those additional connections are returned to the pool, they are disconnected and discarded.  It follows then that the total number of simultaneous connections the pool will allow is pool_size + max_overflow, and the total number of "sleeping" connections the pool will allow is pool_size.  max_overflow can be set to -1 to indicate no overflow limit; no limit will be placed on the total number of concurrent connections.</li>
+        <li>max_overflow=10 : used by QueuePool - the maximum overflow size of the pool.  When the number of checked-out connections reaches the size set in pool_size, additional connections will be returned up to this limit.  When those additional connections are returned to the pool, they are disconnected and discarded.  It follows then that the total number of simultaneous connections the pool will allow is pool_size + max_overflow, and the total number of "sleeping" connections the pool will allow is pool_size.  max_overflow can be set to -1 to indicate no overflow limit; no limit will be placed on the total number of concurrent connections.</li>
     </ul>
+    </&>
+    
+    <&|doclib.myt:item, name="custom", description="Custom Pool Construction" &>
+    <p>One level below using a DBProxy to make transparent pools is creating the pool yourself.  The pool module comes with two implementations of connection pools: <span class="codeline">QueuePool</span> and <span class="codeline">SingletonThreadPool</span>.  While QueuePool uses Queue.Queue to provide connections, SingletonThreadPool provides a single per-thread connection which SQLite requires.</p>
+    
+    <p>Constructing your own pool involves passing a callable used to create a connection.  Through this method, custom connection schemes can be made, such as a connection that automatically executes some initialization commands to start.  The options from the previous section can be used as they apply to QueuePool or SingletonThreadPool.</p>
+    <&|formatting.myt:code, title="Plain QueuePool"&>
+        import sqlalchemy.pool as pool
+        import psycopg2
+        
+        def getconn():
+            c = psycopg2.connect(username='ed', host='127.0.0.1', dbname='test')
+            # execute an initialization function on the connection before returning
+            c.cursor.execute("setup_encodings()")
+            return c
+            
+        p = pool.QueuePool(getconn, max_overflow=10, pool_size=5, use_threadlocal=True)
+    </&>
+
+    <&|formatting.myt:code, title="SingletonThreadPool"&>
+        import sqlalchemy.pool as pool
+        import sqlite
+        
+        def getconn():
+            return sqlite.connect(filename='myfile.db')
+        
+        # SQLite connections require the SingletonThreadPool    
+        p = pool.SingletonThreadPool(getconn)
+    </&>
+
     </&>
 </&>

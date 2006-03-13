@@ -118,7 +118,8 @@ class ANSICompiler(sql.Compiled):
         objects compiled within this object.  The output is dependent on the paramstyle
         of the DBAPI being used; if a named style, the return result will be a dictionary
         with keynames matching the compiled statement.  If a positional style, the output
-        will be a list corresponding to the bind positions in the compiled statement.
+        will be a list, with an iterator that will return parameter 
+        values in an order corresponding to the bind positions in the compiled statement.
         
         for an executemany style of call, this method should be called for each element
         in the list of parameter groups that will ultimately be executed.
@@ -129,32 +130,23 @@ class ANSICompiler(sql.Compiled):
             bindparams = {}
         bindparams.update(params)
 
+        d = sql.ClauseParameters(self.engine)
         if self.positional:
-            d = OrderedDict()
             for k in self.positiontup:
                 b = self.binds[k]
-                if self.engine is not None:
-                    d[k] = b.typeprocess(b.value, self.engine)
-                else:
-                    d[k] = b.value
+                d.set_parameter(k, b.value, b)
         else:
-            d = {}
             for b in self.binds.values():
-                if self.engine is not None:
-                    d[b.key] = b.typeprocess(b.value, self.engine)
-                else:
-                    d[b.key] = b.value
+                d.set_parameter(b.key, b.value, b)
             
         for key, value in bindparams.iteritems():
             try:
                 b = self.binds[key]
             except KeyError:
                 continue
-            if self.engine is not None:
-                d[b.key] = b.typeprocess(value, self.engine)
-            else:
-                d[b.key] = value
+            d.set_parameter(b.key, value, b)
 
+        #print "FROM", params, "TO", d
         return d
 
     def get_named_params(self, parameters):

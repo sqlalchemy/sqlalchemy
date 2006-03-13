@@ -301,7 +301,7 @@ class PropertyTest(MapperSuperTest):
         au = AddressUser.mapper.get_by(user_name='jack')
         self.assert_(au.email_address == 'jack@gmail.com')
             
-
+    
 class DeferredTest(MapperSuperTest):
 
     def testbasic(self):

@@ -651,8 +651,8 @@ class Mapper(object):
             for c in table.c:
                 if c.primary_key or not params.has_key(c.name):
                     continue
-                if self._getattrbycolumn(obj, c) != params[c.name]:
-                    self._setattrbycolumn(obj, c, params[c.name])
+                if self._getattrbycolumn(obj, c) != params.get_original(c.name):
+                    self._setattrbycolumn(obj, c, params.get_original(c.name))
 
     def delete_obj(self, objects, uow):
         """called by a UnitOfWork object to delete objects, which involves a
