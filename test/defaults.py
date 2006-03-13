@@ -11,7 +11,7 @@ testbase.echo=False
 class DefaultTest(PersistTest):
 
     def setUpAll(self):
-        global t, f, ts, currenttime
+        global t, f, f2, ts, currenttime
         x = {'x':50}
         def mydefault():
             x['x'] += 1
@@ -26,17 +26,20 @@ class DefaultTest(PersistTest):
         if is_oracle:
             ts = db.func.sysdate().scalar()
             f = select([func.count(1) + 5], engine=db).scalar()
+            f2 = select([func.count(1) + 14], engine=db).scalar()
             def1 = currenttime
             def2 = text("sysdate")
             deftype = Date
         elif use_function_defaults:
             f = select([func.count(1) + 5], engine=db).scalar()
+            f2 = select([func.count(1) + 14], engine=db).scalar()
             def1 = currenttime
             def2 = text("current_date")
             deftype = Date
             ts = db.func.current_date().scalar()
         else:
             f = select([func.count(1) + 5], engine=db).scalar()
+            f2 = select([func.count(1) + 14], engine=db).scalar()
             def1 = def2 = "3"
             ts = 3
             deftype = Integer
@@ -74,7 +77,9 @@ class DefaultTest(PersistTest):
         z = t.c.col3.default.execute()
         self.assert_(50 <= x <= 57)
         self.assert_(y == 'imthedefault')
-        self.assert_(z == 6)
+        self.assert_(z == f)
+        # mysql/other db's return 0 or 1 for count(1)
+        self.assert_(5 <= z <= 6)
         
     def testinsert(self):
         t.insert().execute()
@@ -95,7 +100,9 @@ class DefaultTest(PersistTest):
         self.echo("Currenttime "+ repr(ctexec))
         l = t.select(t.c.col1==pk).execute()
         l = l.fetchone()
-        self.assert_(l == (pk, 'im the update', 15, None, None, ctexec))
+        self.assert_(l == (pk, 'im the update', f2, None, None, ctexec))
+        # mysql/other db's return 0 or 1 for count(1)
+        self.assert_(14 <= f2 <= 15)
         
 class SequenceTest(PersistTest):
 
