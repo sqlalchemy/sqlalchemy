@@ -582,7 +582,7 @@ FROM addresses,
                 s = select([users.c.user_id], users.c.user_name.like('p%'))
             
                 # now select all addresses for those users
-                <&formatting.myt:poplink&>addresses.select(addresses.c.address_id.in_(s)).execute()
+                <&formatting.myt:poplink&>addresses.select(addresses.c.user_id.in_(s)).execute()
 <&|formatting.myt:codepopper, link="sql" &>
 SELECT addresses.address_id, addresses.user_id, addresses.street, 
 addresses.city, addresses.state, addresses.zip
@@ -901,9 +901,9 @@ INSERT INTO users (user_name, password) VALUES (:name, :pw)
             # the generated SQL of the insert (i.e. what columns are present)
             # executemany() is used at the DBAPI level
             <&formatting.myt:poplink&>users.insert().execute(
-                {'user_id':7, 'user_name':'jack', 'password':'asdfasdf'}
-                {'user_id':8, 'user_name':'ed', 'password':'asdffcadf'}
-                {'user_id':9, 'user_name':'fred', 'password':'asttf'}
+                {'user_id':7, 'user_name':'jack', 'password':'asdfasdf'},
+                {'user_id':8, 'user_name':'ed', 'password':'asdffcadf'},
+                {'user_id':9, 'user_name':'fred', 'password':'asttf'},
             )
 <&|formatting.myt:codepopper, link="sql" &>
 INSERT INTO users (user_id, user_name, password) 

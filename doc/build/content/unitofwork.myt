@@ -109,7 +109,7 @@
     </&>
     </&>
     <&|doclib.myt:item, name="identity", description="The Identity Map" &>
-    <p>All object instances which are saved to the database, or loaded from the database, are given an identity by the mapper/objectstore.  This identity is available via the _identity_key property attached to each object instance, and is a tuple consisting of the table's class, the SQLAlchemy-specific "hash key" of the table its persisted to, and an additional tuple of primary key values, in the order that they appear within the table definition:</p>
+    <p>All object instances which are saved to the database, or loaded from the database, are given an identity by the mapper/objectstore.  This identity is available via the _instance_key property attached to each object instance, and is a tuple consisting of the table's class, the SQLAlchemy-specific "hash key" of the table its persisted to, and an additional tuple of primary key values, in the order that they appear within the table definition:</p>
     <&|formatting.myt:code&>
         >>> obj._instance_key 
         (<class 'test.tables.User'>, "Table('users',SQLiteSQLEngine(([':memory:'], {})),schema=None)", (7,))
@@ -155,7 +155,7 @@
     </&>
     </&>
     <&|doclib.myt:item, name="import", description="Bringing External Instances into the UnitOfWork" &>
-    <p>The _identity_key attribute is designed to work with objects that are serialized into strings and brought back again.  As it contains no references to internal structures or database connections, applications that use caches or session storage which require serialization (i.e. pickling) can store SQLAlchemy-loaded objects.  However, as mentioned earlier, an object with a particular database identity is only allowed to exist uniquely within the current unit-of-work scope.  So, upon deserializing such an object, it has to "check in" with the current unit-of-work/identity map combination, to insure that it is the only unique instance.  This is achieved via the <span class="codeline">import_instance()</span> function in objectstore:</p>
+    <p>The _instance_key attribute is designed to work with objects that are serialized into strings and brought back again.  As it contains no references to internal structures or database connections, applications that use caches or session storage which require serialization (i.e. pickling) can store SQLAlchemy-loaded objects.  However, as mentioned earlier, an object with a particular database identity is only allowed to exist uniquely within the current unit-of-work scope.  So, upon deserializing such an object, it has to "check in" with the current unit-of-work/identity map combination, to insure that it is the only unique instance.  This is achieved via the <span class="codeline">import_instance()</span> function in objectstore:</p>
     <&|formatting.myt:code&>
         # deserialize an object
         myobj = pickle.loads(mystring)
@@ -164,7 +164,7 @@
         # identity map, then you get back the one from the current session.
         myobj = objectstore.import_instance(myobj)
     </&>
-<p>Note that the import_instance() function will either mark the deserialized object as the official copy in the current identity map, which includes updating its _identity_key with the current application's class instance, or it will discard it and return the corresponding object that was already present.</p>
+<p>Note that the import_instance() function will either mark the deserialized object as the official copy in the current identity map, which includes updating its _instance_key with the current application's class instance, or it will discard it and return the corresponding object that was already present.</p>
     </&>
 
     <&|doclib.myt:item, name="advscope", description="Advanced UnitOfWork Management"&>
