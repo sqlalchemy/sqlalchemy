@@ -399,11 +399,11 @@ class Mapper(object):
         return self.get_by(*args, **params)
 
     def selectone_by(self, *args, **params):
-        """works like selectfirst(), but throws an error if not exactly one result was returned."""
+        """works like selectfirst_by(), but throws an error if not exactly one result was returned."""
         ret = self.select_by(*args, **params)
         if len(ret) == 1:
             return ret[0]
-        raise InvalidRequestError('Multiple rows returned for selectone')
+        raise InvalidRequestError('Multiple rows returned for selectone_by')
 
     def count_by(self, *args, **params):
         """returns the count of instances based on the given clauses and key/value criterion.
