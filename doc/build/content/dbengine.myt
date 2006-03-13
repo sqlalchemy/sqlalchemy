@@ -121,7 +121,7 @@
         <li>use_ansi=True : used only by Oracle;  when False, the Oracle driver attempts to support a particular "quirk" of some Oracle databases, that the LEFT OUTER JOIN SQL syntax is not supported, and the "Oracle join" syntax of using <% "<column1>(+)=<column2>" |h%> must be used in order to achieve a LEFT OUTER JOIN.  Its advised that the Oracle database be configured to have full ANSI support instead of using this feature.</li>
         <li>use_oids=False : used only by Postgres, will enable the column name "oid" as the object ID column.  Postgres as of 8.1 has object IDs disabled by default.</li>
         <li>convert_unicode=False : if set to True, all String/character based types will convert Unicode values to raw byte values going into the database, and all raw byte values to Python Unicode coming out in result sets.  This is an engine-wide method to provide unicode across the board.  For unicode conversion on a column-by-column level, use the Unicode column type instead.</li>
-	<li>encoding='utf-8' : the encoding to use for Unicode translations - passed to all encode/decode functions.</li>
+	<li>encoding='utf-8' : the encoding to use for Unicode translations - passed to all encode/decode methods.</li>
 	<li>echo_uow=False : when True, logs unit of work commit plans to the standard output.</li>
     </ul>
     </&>
