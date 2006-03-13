@@ -124,7 +124,8 @@ class QueryTest(PersistTest):
         self.assert_(r==[(3, 'ed'), (4, 'wendy'), (5, 'laura')])
         r = self.users.select(offset=5, order_by=[self.users.c.user_id]).execute().fetchall()
         self.assert_(r==[(6, 'ralph'), (7, 'fido')])
-        
+      
+  
     def test_column_accessor(self):
         self.users.insert().execute(user_id=1, user_name='john')
         self.users.insert().execute(user_id=2, user_name='jack')

@@ -174,6 +174,12 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             select([table2.c.othername, func.count(table2.c.otherid)], group_by = [table2.c.othername]),
             "SELECT myothertable.othername, count(myothertable.otherid) FROM myothertable GROUP BY myothertable.othername"
         )
+
+    def testoraclelimit(self):
+        e = create_engine('oracle')
+        users = Table('users', e, Column('name', String(10), key='username'))
+        self.runtest(select([users.c.username], limit=5), "SELECT name FROM (SELECT users.name AS name, ROW_NUMBER() OVER (ORDER BY users.rowid ASC) AS ora_rn FROM users) WHERE ora_rn<=5", engine=e)
+
     def testgroupby_and_orderby(self):
         self.runtest(
             select([table2.c.othername, func.count(table2.c.otherid)], group_by = [table2.c.othername], order_by = [table2.c.othername]),

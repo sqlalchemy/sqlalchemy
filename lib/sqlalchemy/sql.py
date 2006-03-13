@@ -1272,7 +1272,7 @@ class Select(SelectBaseMixin, FromClause):
         if self.use_labels:
             return column._make_proxy(self, name=column._label)
         else:
-            return column._make_proxy(self, name=column.key)
+            return column._make_proxy(self, name=column.name)
             
     def append_whereclause(self, whereclause):
         self._append_condition('whereclause', whereclause)
