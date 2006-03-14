@@ -343,16 +343,16 @@ DELETE FROM addresses WHERE addresses.address_id = :address_id
             True
         </&>
 
-+<p>The backreference feature also works with many-to-many relationships, which are described later.  When creating a backreference, a corresponding property is placed on the child mapper.  The default arguments to this property can be overridden using the <span class="codeline">backref()</span> function:
+<p>The backreference feature also works with many-to-many relationships, which are described later.  When creating a backreference, a corresponding property is placed on the child mapper.  The default arguments to this property can be overridden using the <span class="codeline">backref()</span> function:
         <&|formatting.myt:code&>
             Address.mapper = mapper(Address, addresses)
             
             User.mapper = mapper(User, users, properties = {
-                                'addresses' : relation(Address.mapper, backref=backref('user', lazy=False, private=True))
+                                'addresses' : relation(Address.mapper, 
+                                    backref=backref('user', lazy=False, private=True))
                             }
                           )
                 </&>
-<p>Note that when overriding a backreferenced property, we re-specify the backreference as well.  This will not override the existing 'addresses' property on the User class, but just sends a message to the attribute-management system that it should continue to maintain this backreference.</p>
 </&>
 <&|doclib.myt:item, name="cascade", description="Creating Relationships Automatically with cascade_mappers" &>
 <p>The mapper package has a helper function <span class="codeline">cascade_mappers()</span> which can simplify the task of linking several mappers together.  Given a list of classes and/or mappers, it identifies the foreign key relationships between the given mappers or corresponding class mappers, and creates relation() objects representing those relationships, including a backreference.  Attempts to find
