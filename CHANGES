@@ -1,3 +1,7 @@
+0.1.5
+- fixed attributes bug where if an object is committed, its lazy-loaded list got 
+blown away if it hadnt been loaded
+
 0.1.4
 - create_engine() now uses genericized parameters; host/hostname, db/dbname/database, 
 password/passwd, etc. for all engine connections. makes engine URIs much more "universal"

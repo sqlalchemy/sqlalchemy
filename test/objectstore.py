@@ -386,6 +386,26 @@ class SaveTest(AssertMixin):
         self.assert_(u.user_id == userlist[0].user_id and userlist[0].user_name == 'modifiedname')
         self.assert_(u2.user_id == userlist[1].user_id and userlist[1].user_name == 'savetester2')
 
+    def testlazyattrcommit(self):
+        """tests that when a lazy-loaded list is unloaded, and a commit occurs, that the
+        'passive' call on that list does not blow away its value"""
+        m1 = mapper(User, users, properties = {
+            'addresses': relation(mapper(Address, addresses))
+        })
+        
+        u = User()
+        u.addresses.append(Address())
+        u.addresses.append(Address())
+        u.addresses.append(Address())
+        u.addresses.append(Address())
+        objectstore.commit()
+        objectstore.clear()
+        ulist = m1.select()
+        u1 = ulist[0]
+        u1.user_name = 'newname'
+        objectstore.commit()
+        self.assert_(len(u1.addresses) == 4)
+        
     def testinherits(self):
         m1 = mapper(User, users)
         

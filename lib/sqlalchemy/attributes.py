@@ -214,7 +214,7 @@ class CallableProp(object):
                 value = None
             p = self.manager.create_list(self.obj, self.key, value, readonly=self.live, **self.kwargs)
         
-        if not self.live:
+        if not self.live and not passive:
             # set the new history list as the new attribute, discards ourself
             self.manager.attribute_history(self.obj)[self.key] = p
             self.manager = None
