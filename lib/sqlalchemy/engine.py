@@ -395,6 +395,10 @@ class SQLEngine(schema.SchemaEngine):
         """returns a managed DBAPI connection from this SQLEngine's connection pool."""
         return self._pool.connect()
 
+    def unique_connection(self):
+        """returns a DBAPI connection from this SQLEngine's connection pool that is distinct from the current thread's connection."""
+        return self._pool.unique_connection()
+        
     def multi_transaction(self, tables, func):
         """provides a transaction boundary across tables which may be in multiple databases.
         If you have three tables, and a function that operates upon them, providing the tables as a 

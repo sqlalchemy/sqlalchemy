@@ -75,7 +75,10 @@ class Pool(object):
         self._use_threadlocal = use_threadlocal
         self._echo = echo
         self._logger = logger or util.Logger(origin='pool')
-        
+    
+    def unique_connection(self):
+        return ConnectionFairy(self)
+            
     def connect(self):
         if not self._use_threadlocal:
             return ConnectionFairy(self)
@@ -120,14 +123,17 @@ class Pool(object):
         self.logger.write(msg)
 
 class ConnectionFairy(object):
-    def __init__(self, pool):
+    def __init__(self, pool, connection=None):
         self.pool = pool
-        try:
-            self.connection = pool.get()
-        except:
-            self.connection = None
-            self.pool.return_invalid()
-            raise
+        if connection is not None:
+            self.connection = connection
+        else:
+            try:
+                self.connection = pool.get()
+            except:
+                self.connection = None
+                self.pool.return_invalid()
+                raise
     def cursor(self):
         return CursorFairy(self, self.connection.cursor())
     def __getattr__(self, key):
@@ -156,6 +162,9 @@ class SingletonThreadPool(Pool):
 
     def status(self):
         return "SingletonThreadPool size: %d" % len(self._conns)
+
+    def unique_connection(self):
+        return ConnectionFairy(self, self._creator())
 
     def do_return_conn(self, conn):
         pass
