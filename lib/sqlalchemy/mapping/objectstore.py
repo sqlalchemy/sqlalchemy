@@ -338,11 +338,6 @@ class UnitOfWork(object):
         """returns True if the given key is present in this UnitOfWork's identity map."""
         return self.identity_map.has_key(key)
     
-    def is_dirty(self, obj):
-        """returns True if the given object is in the dirty, new, modified_lists, or deleted lists of 
-        this UnitOfWork."""
-        return obj in self.dirty or obj in self.new or obj in self.modified_lists or obj in self.deleted
-            
     def _remove_deleted(self, obj):
         if hasattr(obj, "_instance_key"):
             del self.identity_map[obj._instance_key]
