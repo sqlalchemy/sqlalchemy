@@ -1,0 +1,151 @@
+Tutorial
+========
+In this tutorial we will guide you to get started with SQLAlchemy, Python SQL toolkit and Object Relational Mapper.
+SQLAlchemy provides a *lot* of functionality that will help you manage your SQL database. But very little is needed to know in order to begin doing useful things with it.
+
+Note that it is not neccessary to read this tutorial, you may wish to skip it and dive into [main manual][manual].
+
+[manual]: rel:howtoread
+
+Installation
+------------
+
+### Installing SQLAlchemy {@name=sqlalchemy}
+
+Installing SQLAlchemy is easy if you have [setuptools][] on your system (if you don't, [install it][install setuptools], it's easy!). Just run this from the command-line:
+    
+    $ easy_install SQLAlchemy
+
+This command will download the latest version of SQLAlchemy from the [Python Cheese Shop][cheese] and install it to your system.
+
+[setuptools]: http://peak.telecommunity.com/DevCenter/setuptools
+[install setuptools]: http://peak.telecommunity.com/DevCenter/EasyInstall#installation-instructions
+[cheese]: http://cheeseshop.python.org/pypi
+
+### Installing Database Manager {@name=dbms}
+
+If you have one of the [supported database managers][supported dbms], you can proceed to the following section. Otherwise we recommend installing [SQLite][].  SQLite needs very little configuration and is easy to work with.
+
+To work with SQLite, you'll need:
+
+  * SQLite library
+  * [pysqlite][] - Python interface for SQLite
+
+If you use Windows, you only have to download and install compiled [pysqlite binary][pysqlite]. It includes SQLite library, so you don't have to install it separately.
+
+If you use Linux or FreeBSD, you may want to install pysqlite and SQLite from [packages][pysqlite packages] made for your operating system. Or you may install them [from sources][pysqlite].
+
+[supported dbms]: rel:dbengine_establishing
+[sqlite]: http://sqlite.org/
+[pysqlite]: http://pysqlite.org/
+[pysqlite packages]: http://initd.org/tracker/pysqlite/wiki/PysqlitePackages
+
+Get Going! {@name=getgoing}
+--------------------------
+
+### Connecting to Database
+
+First of all you need to connect to database you want to work with:
+
+    >>> from sqlalchemy import *
+    >>> db = create_engine('sqlite', {'filename': 'tutorial.db'})
+
+Main documentation: [dbengine](rel:dbengine).
+
+### Creating a Table {@name=table}
+
+SQL tables and your domain classes are different beasts. That's why SQLAlchemy don't mix them. Let's construct an object that represents an SQL table:
+
+    >>> users = Table('users', db,
+    ...     Column('user_id', Integer, primary_key = True),
+    ...     Column('user_name', String(40)),
+    ...     Column('password', String(80))
+    ... )
+
+As you can guess we have just defined a table `users` with 3 columns: `user_id` (which is a primary key), `user_name` and `password`. Currently it is just an object that may not correspond to existing table in your database. So let's create the real table! To make it interesting we will ask SQLAlchemy to echo SQL statements it sends to database:
+
+    >>> db.echo = True
+    >>> users.create() # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
+    CREATE TABLE users(
+        user_id INTEGER NOT NULL PRIMARY KEY,
+        user_name VARCHAR(40),
+        password VARCHAR(80)
+    )
+    ...
+    >>> db.echo = False # you can skip this if you want to keep logging SQL statements
+
+Alternatively, `users` table could already exist (e.g. you're running examples from this introduction for the second time). In this case you can just skip `create()` method call. You can even skip defining `users` table in your code and ask SQLAlchemy to load its definition from the database:
+
+    >>> users = Table('users', db, autoload = True)
+    >>> list(users.columns)[0].name
+    'user_id'
+
+Main documentation: [metadata](rel:metadata).
+
+### Filling the Table
+
+Ok, we have the table. To insert some data into the table you have to prepare a query first. You can use `insert()` method to do it:
+
+    >>> i = users.insert()
+    >>> i # doctest:+ELLIPSIS
+    <sqlalchemy.sql.Insert object at 0x...>
+    >>> print i
+    INSERT INTO users (user_id, user_name, password) VALUES (?, ?, ?)
+
+Call `execute()` method of the prepared query to actually add users:
+
+    >>> for name in ['Tom', 'Dick', 'Harry']: # doctest:+ELLIPSIS
+    ...     i.execute(user_name = name)
+    <sqlalchemy.engine.ResultProxy instance at 0x...>
+    ...
+    >>> i.execute(user_name = 'Mary', password = 'secure') # doctest:+ELLIPSIS
+    <sqlalchemy.engine.ResultProxy instance at 0x...>
+
+If possible, SQLAlchemy will bind values into a prepared query using native database API. This allows for better performance, because the database may cache compiled representation of the statement and reuse it between executions with different values. Also, when using bound values, you need not worry about [SQL injection][] attacks.
+
+[SQL injection]: http://en.wikipedia.org/wiki/SQL_injection
+
+Main documentation: [sql_insert](rel:sql_insert).
+
+### Querying the Table
+
+Let's check that the data we have put into `users` table is actually there. The procedure is analogous to insert example above. The difference is that you have to call `select()` method now:
+
+    >>> s = users.select()
+    >>> print s
+    SELECT users.user_id, users.user_name, users.password 
+    FROM users
+    >>> r = s.execute()
+
+Now we won't ignore return value of `execute()`:
+
+    >>> r # doctest:+ELLIPSIS
+    <sqlalchemy.engine.ResultProxy instance at 0x...>
+    >>> r.keys
+    ['user_id', 'user_name', 'password']
+    >>> row = r.fetchone()
+    >>> row['user_name']
+    u'Tom'
+    >>> r.fetchall()
+    [(2, u'Dick', None), (3, u'Harry', None), (4, u'Mary', u'secure')]
+
+Main documentation: [sql_select](rel:sql_select).
+
+### Related Table
+
+Main documentation: [sql](rel:sql).
+
+### Fancier Querying {@name=fancyquery}
+
+Main documentation: [sql](rel:sql).
+
+### Data Mapping {@name=mapping}
+
+Main documentation: [datamapping](rel:datamapping), [adv_datamapping](rel:adv_datamapping).
+
+### Transactions
+
+Main documentation:  [unitofwork](rel:unitofwork), [dbengine_transactions](rel:dbengine_transactions).
+
+Conclusion
+----------

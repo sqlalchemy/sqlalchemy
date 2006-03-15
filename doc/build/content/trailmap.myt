@@ -1,7 +1,8 @@
 <%flags>inherit='document_base.myt'</%flags>
-<%attr>title='Introduction'</%attr>
-<&|doclib.myt:item, name="intro", description="Introduction" &>
-<p>SQLAlchemy features a lot of tools and patterns to help in every area of writing applications that talk to relational databases.  To achieve this, it has a lot of areas of functionality which work together to provide a cohesive package.  Ultimately, just a little bit of familiarity with each concept is all thats needed to get off the ground.</p>
+<%attr>title='How to Read this Manual'</%attr>
+<&|doclib.myt:item, name="howtoread", description="How to Read this Manual" &>
+
+<p>SQLAlchemy features a lot of tools and patterns to help in every area of writing applications that talk to relational databases.  To achieve this, it has a lot of areas of functionality which work together to provide a cohesive package.  Ultimately, just a little bit of familiarity with each concept is all that's needed to get off the ground.</p>
 
 <p>That said, here's two quick links that summarize the two most prominent features of SQLAlchemy:
 <ul>
