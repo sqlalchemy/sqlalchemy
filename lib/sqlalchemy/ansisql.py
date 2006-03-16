@@ -224,9 +224,9 @@ class ANSICompiler(sql.Compiled):
         if len(self.select_stack):
             self.typemap.setdefault(func.name, func.type)
         if func.name.upper() in ANSI_FUNCS and not len(func.clauses):
-            self.strings[func] = func.name
+            self.strings[func] = ".".join(func.packagenames + [func.name])
         else:
-            self.strings[func] = func.name + "(" + string.join([self.get_str(c) for c in func.clauses], ', ') + ")"
+            self.strings[func] = ".".join(func.packagenames + [func.name]) + "(" + string.join([self.get_str(c) for c in func.clauses], ', ') + ")"
         
     def visit_compound_select(self, cs):
         text = string.join([self.get_str(c) for c in cs.selects], " " + cs.keyword + " ")

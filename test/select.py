@@ -343,12 +343,27 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
             "SELECT :literal + :literal_1 FROM mytable")
 
     def testfunction(self):
+        """tests the generation of functions using the func keyword"""
+        # test an expression with a function
         self.runtest(func.lala(3, 4, literal("five"), table1.c.myid) * table2.c.otherid, 
             "lala(:lala, :lala_1, :literal, mytable.myid) * myothertable.otherid")
 
+        # test it in a SELECT
         self.runtest(select([func.count(table1.c.myid)]), 
             "SELECT count(mytable.myid) FROM mytable")
 
+        # test a "dotted" function name
+        self.runtest(select([func.foo.bar.lala(table1.c.myid)]), 
+            "SELECT foo.bar.lala(mytable.myid) FROM mytable")
+
+        # test the bind parameter name with a "dotted" function name is only the name
+        # (limits the length of the bind param name)
+        self.runtest(select([func.foo.bar.lala(12)]), 
+            "SELECT foo.bar.lala(:lala)")
+
+        # test a dotted func off the engine itself
+        self.runtest(db.func.lala.hoho(7), "lala.hoho(:hoho)")
+        
     def testjoin(self):
         self.runtest(
             join(table2, table1, table1.c.myid == table2.c.otherid).select(),

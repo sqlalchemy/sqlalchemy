@@ -280,10 +280,7 @@ class SQLEngine(schema.SchemaEngine):
         return typeobj
 
     def _func(self):
-        class FunctionGateway(object):
-            def __getattr__(s, name):
-                return lambda *c, **kwargs: sql.Function(name, engine=self, *c, **kwargs)
-        return FunctionGateway()
+        return sql.FunctionGenerator(self)
     func = property(_func)
     
     def text(self, text, *args, **kwargs):

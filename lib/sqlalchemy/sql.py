@@ -218,7 +218,7 @@ class FunctionGateway(object):
     """returns a callable based on an attribute name, which then returns a Function 
     object with that name."""
     def __getattr__(self, name):
-        return lambda *c, **kwargs: Function(name, *c, **kwargs)
+        return getattr(FunctionGenerator(), name)
 func = FunctionGateway()
 
 def _compound_clause(keyword, *clauses):
@@ -794,6 +794,7 @@ class Function(ClauseList, ColumnElement):
     def __init__(self, name, *clauses, **kwargs):
         self.name = name
         self.type = kwargs.get('type', sqltypes.NULLTYPE)
+        self.packagenames = kwargs.get('packagenames')
         self._engine = kwargs.get('engine', None)
         if self._engine is not None:
             self.type = self._engine.type_descriptor(self.type)
@@ -827,6 +828,17 @@ class Function(ClauseList, ColumnElement):
         return select([self]).execute()
     def _compare_type(self, obj):
         return self.type
+
+class FunctionGenerator(object):
+    """generates Function objects based on getattr calls"""
+    def __init__(self, engine=None):
+        self.__engine = engine
+        self.__names = []
+    def __getattr__(self, name):
+        self.__names.append(name)
+        return self
+    def __call__(self, *c, **kwargs):
+        return Function(self.__names[-1], packagenames=self.__names[0:-1], engine=self.__engine, *c, **kwargs)     
                 
 class BinaryClause(ClauseElement):
     """represents two clauses with an operator in between"""
