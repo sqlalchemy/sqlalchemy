@@ -69,7 +69,22 @@ class PoolTest(PersistTest):
         self.assert_(status(p) == (3, 1, 0, 2))
         c2 = None
         self.assert_(status(p) == (3, 2, 0, 1))
-        
+    
+    def testthreadlocal(self):
+        for p in (
+            pool.QueuePool(creator = lambda: sqlite.connect('foo.db'), pool_size = 3, max_overflow = -1, use_threadlocal = True, echo = False),
+            pool.SingletonThreadPool(creator = lambda: sqlite.connect('foo.db'), use_threadlocal = True)
+        ):    
+            c1 = p.connect()
+            c2 = p.connect()
+            self.assert_(c1 is c2)
+            c3 = p.unique_connection()
+            self.assert_(c3 is not c1)
+            c2 = None
+            c2 = p.connect()
+            self.assert_(c1 is c2)
+            self.assert_(c3 is not c1)
+
     def tearDown(self):
        pool.clear_managers()
        for file in ('foo.db', 'bar.db'):

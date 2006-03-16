@@ -120,7 +120,7 @@ class Pool(object):
         raise NotImplementedError()
 
     def log(self, msg):
-        self.logger.write(msg)
+        self._logger.write(msg)
 
 class ConnectionFairy(object):
     def __init__(self, pool, connection=None):
@@ -155,19 +155,17 @@ class SingletonThreadPool(Pool):
     """Maintains one connection per each thread, never moving to another thread.  this is
     used for SQLite and other databases with a similar restriction."""
     def __init__(self, creator, **params):
-        params['use_threadlocal'] = False
         Pool.__init__(self, **params)
         self._conns = {}
         self._creator = creator
 
     def status(self):
-        return "SingletonThreadPool size: %d" % len(self._conns)
-
-    def unique_connection(self):
-        return ConnectionFairy(self, self._creator())
+        return "SingletonThreadPool thread:%d size: %d" % (thread.get_ident(), len(self._conns))
 
     def do_return_conn(self, conn):
-        pass
+        if self._conns.get(thread.get_ident(), None) is None:
+            self._conns[thread.get_ident()] = conn
+
     def do_return_invalid(self):
         try:
             del self._conns[thread.get_ident()]
@@ -176,9 +174,13 @@ class SingletonThreadPool(Pool):
             
     def do_get(self):
         try:
-            return self._conns[thread.get_ident()]
+            c = self._conns[thread.get_ident()]
+            if c is None:
+                return self._creator()
         except KeyError:
-            return self._conns.setdefault(thread.get_ident(), self._creator())
+            c = self._creator()
+        self._conns[thread.get_ident()] = None
+        return c
     
 class QueuePool(Pool):
     """uses Queue.Queue to maintain a fixed-size list of connections."""
