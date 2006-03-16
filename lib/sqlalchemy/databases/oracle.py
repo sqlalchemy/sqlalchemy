@@ -75,6 +75,24 @@ ischema_names = {
     'CLOB' : OracleText
 }
 
+constraintSQL = """SELECT
+  ac.constraint_name,
+  ac.constraint_type,
+  LOWER(loc.column_name) AS local_column,
+  LOWER(rem.table_name) AS remote_table,
+  LOWER(rem.column_name) AS remote_column
+FROM all_constraints ac,
+  all_cons_columns loc,
+  all_cons_columns rem
+WHERE ac.table_name = :table_name
+AND ac.constraint_type IN ('R','P')
+AND ac.owner = loc.owner
+AND ac.constraint_name = loc.constraint_name
+AND ac.r_owner = rem.owner(+)
+AND ac.r_constraint_name = rem.constraint_name(+)
+-- order multiple primary keys correctly
+ORDER BY ac.constraint_name, loc.position"""
+
 def engine(*args, **params):
     return OracleSQLEngine(*args, **params)
 
@@ -123,7 +141,7 @@ class OracleSQLEngine(ansisql.ANSISQLEngine):
         return OracleDefaultRunner(self, proxy)
         
     def reflecttable(self, table):
-        c = self.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from USER_TAB_COLUMNS where TABLE_NAME = :table_name", {'table_name':table.name.upper()})
+        c = self.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from ALL_TAB_COLUMNS where TABLE_NAME = :table_name", {'table_name':table.name.upper()})
         
         while True:
             row = c.fetchone()
@@ -159,23 +177,22 @@ class OracleSQLEngine(ansisql.ANSISQLEngine):
             table.append_item (schema.Column(name, coltype, nullable=nullable, *colargs))
 
    
-        c = self.execute("""select UCC.CONSTRAINT_NAME, UCC.COLUMN_NAME, UC.CONSTRAINT_TYPE, UC.SEARCH_CONDITION, UC2.TABLE_NAME as REFERENCES_TABLE
-from USER_CONS_COLUMNS UCC, USER_CONSTRAINTS UC, USER_CONSTRAINTS UC2
-where UCC.CONSTRAINT_NAME = UC.CONSTRAINT_NAME
-and UC.R_CONSTRAINT_NAME = UC2.CONSTRAINT_NAME(+)
-and UCC.TABLE_NAME = :table_name
-order by UCC.CONSTRAINT_NAME""",{'table_name' : table.name.upper()})
+        c = self.execute(constraintSQL, {'table_name' : table.name.upper()})
         while True:
             row = c.fetchone()
             if row is None:
                 break
             #print "ROW:" , row                
-            (cons_name, column_name, type, search, referred_table) = row
-            if type=='P' : 
-                table.c[column_name.lower()]._set_primary_key()
-            elif type=='R':
-                remotetable = Table(referred_table.lower(), table.engine, autoload = True)
-                table.c[column_name.lower()].append_item(schema.ForeignKey(remotetable.primary_key[0]))
+            (cons_name, cons_type, local_column, remote_table, remote_column) = row
+            if cons_type == 'P':
+                table.c[local_column]._set_primary_key()
+            elif cons_type == 'R':
+                table.c[local_column].append_item(
+                    schema.ForeignKey(Table(remote_table,
+                                            self,
+                                            autoload=True).c[remote_column]
+                                      )
+                    )
 
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
