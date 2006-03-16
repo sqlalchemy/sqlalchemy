@@ -11,7 +11,7 @@
     </p>
     <&|doclib.myt:item, name="establishing", description="Establishing a Database Engine" &>
     <p>
-    Engines exist for SQLite, Postgres, MySQL, and Oracle, using the Pysqlite, Psycopg (1 or 2), MySQLDB, and cx_Oracle modules.  Each engine imports its corresponding module which is required to be installed.  For Postgres and Oracle, an alternate module may be specified at construction time as well.
+    Engines exist for SQLite, Postgres, MySQL, and Oracle, using the Pysqlite, Psycopg (1 or 2), MySQLDB, and cx_Oracle modules (there is also experimental support for Firebird).  Each engine imports its corresponding module which is required to be installed.  For Postgres and Oracle, an alternate module may be specified at construction time as well.
     </p>
     <p>The string based argument names for connecting are translated to the appropriate names when the connection is made; argument names include "host" or "hostname" for database host, "database", "db", or "dbname" for the database name (also is dsn for Oracle), "user" or "username" for the user, and "password", "pw", or "passwd" for the password.  SQLite expects "filename" or "file" for the filename, or if None it defaults to "":memory:".</p>
     <p>The connection arguments can be specified as a string + dictionary pair, or a single URL-encoded string, as follows:</p>

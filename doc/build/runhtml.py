@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 import sys,re,os
 
+print "Running txt2myt.py..."
+execfile("txt2myt.py")
+
 component_root = [
     {'components': './components'},
     {'content' : './content'}

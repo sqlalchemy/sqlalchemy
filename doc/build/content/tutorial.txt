@@ -1,9 +1,9 @@
 Tutorial
 ========
-In this tutorial we will guide you to get started with SQLAlchemy, Python SQL toolkit and Object Relational Mapper.
-SQLAlchemy provides a *lot* of functionality that will help you manage your SQL database. But very little is needed to know in order to begin doing useful things with it.
+This tutorial is a "quick start" guide to SQLAlchemy, the Python SQL Toolkit and Object Relational Mapper.
+SQLAlchemy provides a lot of functionality to help manage SQL databases, but you don't need much in order to begin doing useful things with it.
 
-Note that it is not neccessary to read this tutorial, you may wish to skip it and dive into [main manual][manual].
+Note that it is not neccessary to read this tutorial; you may wish to skip it and dive into the [main manual][manual] which is more reference-oriented.
 
 [manual]: rel:howtoread
 
@@ -22,16 +22,18 @@ This command will download the latest version of SQLAlchemy from the [Python Che
 [install setuptools]: http://peak.telecommunity.com/DevCenter/EasyInstall#installation-instructions
 [cheese]: http://cheeseshop.python.org/pypi
 
-### Installing Database Manager {@name=dbms}
+### Installing A Database Manager {@name=dbms}
 
-If you have one of the [supported database managers][supported dbms], you can proceed to the following section. Otherwise we recommend installing [SQLite][].  SQLite needs very little configuration and is easy to work with.
+ SQLAlchemy is designed to operate with the [DBAPI][DBAPI] built for a particular database, and includes implementations supporting the most popular ones. If you have one of the [supported database managers][supported dbms], you can proceed to the following section. Otherwise we recommend installing [SQLite][] for starters.  SQLite needs very little configuration and is easy to work with.
+
+[DBAPI]: http://www.python.org/doc/peps/pep-0249/
 
 To work with SQLite, you'll need:
 
   * SQLite library
   * [pysqlite][] - Python interface for SQLite
 
-If you use Windows, you only have to download and install compiled [pysqlite binary][pysqlite]. It includes SQLite library, so you don't have to install it separately.
+If you use Windows, you only have to download and install the compiled [pysqlite binary][pysqlite]. It includes the SQLite library already linked in, so you don't have to install it separately.
 
 If you use Linux or FreeBSD, you may want to install pysqlite and SQLite from [packages][pysqlite packages] made for your operating system. Or you may install them [from sources][pysqlite].
 
@@ -43,18 +45,18 @@ If you use Linux or FreeBSD, you may want to install pysqlite and SQLite from [p
 Get Going! {@name=getgoing}
 --------------------------
 
-### Connecting to Database
+### Connecting to the Database
 
-First of all you need to connect to database you want to work with:
+First, you need to connect to the database you want to work with:
 
     >>> from sqlalchemy import *
-    >>> db = create_engine('sqlite', {'filename': 'tutorial.db'})
+    >>> db = create_engine('sqlite://filename=tutorial.db')
 
 Main documentation: [dbengine](rel:dbengine).
 
 ### Creating a Table {@name=table}
 
-SQL tables and your domain classes are different beasts. That's why SQLAlchemy don't mix them. Let's construct an object that represents an SQL table:
+A core philosophy of SQLAlchemy is that tables and domain classes are different beasts. That's why SQLAlchemy doesn't mix them. So let's first work with just tables alone; we construct an object that represents a table:
 
     >>> users = Table('users', db,
     ...     Column('user_id', Integer, primary_key = True),
@@ -62,7 +64,7 @@ SQL tables and your domain classes are different beasts. That's why SQLAlchemy d
     ...     Column('password', String(80))
     ... )
 
-As you can guess we have just defined a table `users` with 3 columns: `user_id` (which is a primary key), `user_name` and `password`. Currently it is just an object that may not correspond to existing table in your database. So let's create the real table! To make it interesting we will ask SQLAlchemy to echo SQL statements it sends to database:
+As you might have guessed, we have just defined a table `users` with 3 columns: `user_id` (which is a primary key column), `user_name` and `password`. Currently it is just an object that may not correspond to an existing table in your database. So let's create the real table! To make it interesting we will ask SQLAlchemy to echo the SQL statements it sends to the database:
 
     >>> db.echo = True
     >>> users.create() # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
@@ -74,7 +76,7 @@ As you can guess we have just defined a table `users` with 3 columns: `user_id` 
     ...
     >>> db.echo = False # you can skip this if you want to keep logging SQL statements
 
-Alternatively, `users` table could already exist (e.g. you're running examples from this introduction for the second time). In this case you can just skip `create()` method call. You can even skip defining `users` table in your code and ask SQLAlchemy to load its definition from the database:
+Alternatively, the `users` table might already exist (such as, if you're running examples from this tutorial for the second time), in which case you can just skip the `create()` method call. You can even skip defining the individual columns in the `users` table and ask SQLAlchemy to load its definition from the database:
 
     >>> users = Table('users', db, autoload = True)
     >>> list(users.columns)[0].name
@@ -84,7 +86,7 @@ Main documentation: [metadata](rel:metadata).
 
 ### Filling the Table
 
-Ok, we have the table. To insert some data into the table you have to prepare a query first. You can use `insert()` method to do it:
+So now we have the table. To insert some data, use the `insert()` method to create a query:
 
     >>> i = users.insert()
     >>> i # doctest:+ELLIPSIS
@@ -92,7 +94,7 @@ Ok, we have the table. To insert some data into the table you have to prepare a 
     >>> print i
     INSERT INTO users (user_id, user_name, password) VALUES (?, ?, ?)
 
-Call `execute()` method of the prepared query to actually add users:
+Call the `execute()` method of the query object to actually add users:
 
     >>> for name in ['Tom', 'Dick', 'Harry']: # doctest:+ELLIPSIS
     ...     i.execute(user_name = name)
@@ -101,7 +103,7 @@ Call `execute()` method of the prepared query to actually add users:
     >>> i.execute(user_name = 'Mary', password = 'secure') # doctest:+ELLIPSIS
     <sqlalchemy.engine.ResultProxy instance at 0x...>
 
-If possible, SQLAlchemy will bind values into a prepared query using native database API. This allows for better performance, because the database may cache compiled representation of the statement and reuse it between executions with different values. Also, when using bound values, you need not worry about [SQL injection][] attacks.
+SQLAlchemy will bind all literal values into bind parameters, according to the paramstyle of the underlying DBAPI. This allows for better performance, because the database may cache a compiled representation of the statement and reuse upon new executions, substituting the new values. Also, when using bound values, you need not worry about [SQL injection][] attacks.
 
 [SQL injection]: http://en.wikipedia.org/wiki/SQL_injection
 
@@ -109,7 +111,7 @@ Main documentation: [sql_insert](rel:sql_insert).
 
 ### Querying the Table
 
-Let's check that the data we have put into `users` table is actually there. The procedure is analogous to insert example above. The difference is that you have to call `select()` method now:
+Let's check that the data we have put into `users` table is actually there. The procedure is analogous to the insert example above, except you now call the `select()` function:
 
     >>> s = users.select()
     >>> print s
@@ -117,7 +119,7 @@ Let's check that the data we have put into `users` table is actually there. The 
     FROM users
     >>> r = s.execute()
 
-Now we won't ignore return value of `execute()`:
+This time, we won't ignore the return value of `execute()`:
 
     >>> r # doctest:+ELLIPSIS
     <sqlalchemy.engine.ResultProxy instance at 0x...>

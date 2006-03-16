@@ -6,7 +6,10 @@ import sys
 import string
 import re
 
-import elementtree.ElementTree as et
+try:
+    import elementtree.ElementTree as et
+except:
+    raise "This module requires ElementTree to run (http://effbot.org/zone/element-index.htm)"
 
 sys.path.insert(0, './lib')
 import markdown
