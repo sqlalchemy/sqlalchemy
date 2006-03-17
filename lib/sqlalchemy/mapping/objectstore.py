@@ -12,7 +12,7 @@ from sqlalchemy import util
 from sqlalchemy.exceptions import *
 import unitofwork
 import weakref
-
+import sqlalchemy
     
 class Session(object):
     """Maintains a UnitOfWork instance, including transaction state."""
