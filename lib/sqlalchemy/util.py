@@ -255,6 +255,8 @@ class HashSet(object):
         return self.map.has_key(item)
     def clear(self):
         self.map.clear()
+    def intersection(self, l):
+        return HashSet([x for x in l if self.contains(x)])
     def empty(self):
         return len(self.map) == 0
     def append(self, item):

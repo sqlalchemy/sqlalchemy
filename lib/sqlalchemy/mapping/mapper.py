@@ -63,10 +63,23 @@ class Mapper(object):
 
         if inherits is not None:
             self.primarytable = inherits.primarytable
-            # inherit_condition is optional since the join can figure it out
+            # inherit_condition is optional.
+            if inherit_condition is None:
+                # figure out inherit condition from our table to the immediate table
+                # of the inherited mapper, not its full table which could pull in other 
+                # stuff we dont want (allows test/inheritance.InheritTest4 to pass)
+                inherit_condition = sql.join(inherits.noninherited_table, table).onclause
             self.table = sql.join(inherits.table, table, inherit_condition)
+            #print "inherit condition", str(self.table.onclause)
+
+            # generate sync rules.  similarly to creating the on clause, specify a 
+            # stricter set of tables to create "sync rules" by,based on the immediate
+            # inherited table, rather than all inherited tables
             self._synchronizer = sync.ClauseSynchronizer(self, self, sync.ONETOMANY)
-            self._synchronizer.compile(self.table.onclause, inherits.tables, TableFinder(table))
+            self._synchronizer.compile(self.table.onclause, util.HashSet([inherits.noninherited_table]), TableFinder(table))
+            # the old rule
+            #self._synchronizer.compile(self.table.onclause, inherits.tables, TableFinder(table))
+
             self.inherits = inherits
             self.noninherited_table = table
         else:
@@ -965,7 +978,8 @@ class TableFinder(sql.ClauseVisitor):
     def __init__(self, table, check_columns=False):
         self.tables = []
         self.check_columns = check_columns
-        table.accept_visitor(self)
+        if table is not None:
+            table.accept_visitor(self)
     def visit_table(self, table):
         self.tables.append(table)
     def __len__(self):
@@ -977,7 +991,7 @@ class TableFinder(sql.ClauseVisitor):
     def __contains__(self, obj):
         return obj in self.tables
     def __add__(self, obj):
-        return self.tables + obj
+        return self.tables + list(obj)
     def visit_column(self, column):
         if self.check_columns:
             column.table.accept_visitor(self)

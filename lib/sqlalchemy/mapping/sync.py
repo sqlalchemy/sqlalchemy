@@ -24,13 +24,15 @@ class ClauseSynchronizer(object):
         self.syncrules = []
 
     def compile(self, sqlclause, source_tables, target_tables, issecondary=None):
-        def check_for_table(binary, l):
-            for col in [binary.left, binary.right]:
-                if col.table in l:
-                    return col
+        def check_for_table(binary, list1, list2):
+            #print "check for table", str(binary), [str(c) for c in l]
+            if binary.left.table in list1 and binary.right.table in list2:
+                return (binary.left, binary.right)
+            elif binary.right.table in list1 and binary.left.table in list2:
+                return (binary.right, binary.left)
             else:
-                return None
-        
+                return (None, None)
+                
         def compile_binary(binary):
             """assembles a SyncRule given a single binary condition"""
             if binary.operator != '=' or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
@@ -53,8 +55,7 @@ class ClauseSynchronizer(object):
                 else:
                     raise AssertionError("assert failed")
             else:
-                pt = check_for_table(binary, source_tables)
-                tt = check_for_table(binary, target_tables)
+                (pt, tt) = check_for_table(binary, source_tables, target_tables)
                 #print "OK", binary, [t.name for t in source_tables], [t.name for t in target_tables]
                 if pt and tt:
                     if self.direction == ONETOMANY:
@@ -94,7 +95,7 @@ class SyncRule(object):
         self.issecondary = issecondary
         self.dest_mapper = dest_mapper
         self.dest_column = dest_column
-        #print "SyncRule", source_mapper, source_column, dest_column, dest_mapper, direction
+        #print "SyncRule", source_mapper, source_column, dest_column, dest_mapper
 
     def execute(self, source, dest, obj, child, clearkeys):
         if source is None:

@@ -228,11 +228,9 @@ class PropertyLoader(MapperProperty):
                 return PropertyLoader.ONETOMANY
         elif self.secondaryjoin is not None:
             return PropertyLoader.MANYTOMANY
-        elif self.foreigntable == self.target:
-        #elif self.foreigntable is self.target or self.foreigntable in self.mapper.tables:
+        elif self.foreigntable == self.mapper.noninherited_table:
             return PropertyLoader.ONETOMANY
-        elif self.foreigntable == self.parent.table:
-        #elif self.foreigntable is self.parent.table or self.foreigntable in self.parent.tables:
+        elif self.foreigntable == self.parent.noninherited_table:
             return PropertyLoader.MANYTOONE
         else:
             raise ArgumentError("Cant determine relation direction")
@@ -528,6 +526,7 @@ class PropertyLoader(MapperProperty):
         
         The list of rules is used within commits by the _synchronize() method when dependent 
         objects are processed."""
+
 
         parent_tables = util.HashSet(self.parent.tables + [self.parent.primarytable])
         target_tables = util.HashSet(self.mapper.tables + [self.mapper.primarytable])

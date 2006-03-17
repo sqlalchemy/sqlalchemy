@@ -14,80 +14,83 @@ class Group( Principal ):
     pass
 
 class InheritTest(testbase.AssertMixin):
-        def setUpAll(self):
-            global principals
-            global users
-            global groups
-            global user_group_map
-            principals = Table(
-                'principals',
-                testbase.db,
-                Column('principal_id', Integer, Sequence('principal_id_seq', optional=False), primary_key=True),
-                Column('name', String(50), nullable=False),    
-                )
+    """deals with inheritance and many-to-many relationships"""
+    def setUpAll(self):
+        global principals
+        global users
+        global groups
+        global user_group_map
+        principals = Table(
+            'principals',
+            testbase.db,
+            Column('principal_id', Integer, Sequence('principal_id_seq', optional=False), primary_key=True),
+            Column('name', String(50), nullable=False),    
+            )
 
-            users = Table(
-                'prin_users',
-                testbase.db,
-                Column('principal_id', Integer, ForeignKey('principals.principal_id'), primary_key=True),
-                Column('password', String(50), nullable=False),
-                Column('email', String(50), nullable=False),
-                Column('login_id', String(50), nullable=False),
+        users = Table(
+            'prin_users',
+            testbase.db,
+            Column('principal_id', Integer, ForeignKey('principals.principal_id'), primary_key=True),
+            Column('password', String(50), nullable=False),
+            Column('email', String(50), nullable=False),
+            Column('login_id', String(50), nullable=False),
 
-                )
+            )
 
-            groups = Table(
-                'prin_groups',
-                testbase.db,
-                Column( 'principal_id', Integer, ForeignKey('principals.principal_id'), primary_key=True),
+        groups = Table(
+            'prin_groups',
+            testbase.db,
+            Column( 'principal_id', Integer, ForeignKey('principals.principal_id'), primary_key=True),
 
-                )
+            )
 
-            user_group_map = Table(
-                'prin_user_group_map',
-                testbase.db,
-                Column('user_id', Integer, ForeignKey( "prin_users.principal_id"), primary_key=True ),
-                Column('group_id', Integer, ForeignKey( "prin_groups.principal_id"), primary_key=True ),
-                #Column('user_id', Integer, ForeignKey( "prin_users.principal_id"),  ),
-                #Column('group_id', Integer, ForeignKey( "prin_groups.principal_id"),  ),    
+        user_group_map = Table(
+            'prin_user_group_map',
+            testbase.db,
+            Column('user_id', Integer, ForeignKey( "prin_users.principal_id"), primary_key=True ),
+            Column('group_id', Integer, ForeignKey( "prin_groups.principal_id"), primary_key=True ),
+            #Column('user_id', Integer, ForeignKey( "prin_users.principal_id"),  ),
+            #Column('group_id', Integer, ForeignKey( "prin_groups.principal_id"),  ),    
 
-                )
+            )
 
-            principals.create()
-            users.create()
-            groups.create()
-            user_group_map.create()
-        def tearDownAll(self):
-            user_group_map.drop()
-            groups.drop()
-            users.drop()
-            principals.drop()
-            testbase.db.tables.clear()
-        def setUp(self):
-            objectstore.clear()
-            clear_mappers()
-            
-        def testbasic(self):
-            assign_mapper( Principal, principals )
-            assign_mapper( 
-                User, 
-                users,
-                inherits=Principal.mapper
-                )
+        principals.create()
+        users.create()
+        groups.create()
+        user_group_map.create()
+    def tearDownAll(self):
+        user_group_map.drop()
+        groups.drop()
+        users.drop()
+        principals.drop()
+        testbase.db.tables.clear()
+    def setUp(self):
+        objectstore.clear()
+        clear_mappers()
+        
+    def testbasic(self):
+        assign_mapper( Principal, principals )
+        assign_mapper( 
+            User, 
+            users,
+            inherits=Principal.mapper
+            )
 
-            assign_mapper( 
-                Group,
-                groups,
-                inherits=Principal.mapper,
-                properties=dict( users = relation(User.mapper, user_group_map, lazy=True, backref="groups") )
-                )
+        assign_mapper( 
+            Group,
+            groups,
+            inherits=Principal.mapper,
+            properties=dict( users = relation(User.mapper, user_group_map, lazy=True, backref="groups") )
+            )
 
-            g = Group(name="group1")
-            g.users.append(User(name="user1", password="pw", email="foo@bar.com", login_id="lg1"))
-            
-            objectstore.commit()
-
+        g = Group(name="group1")
+        g.users.append(User(name="user1", password="pw", email="foo@bar.com", login_id="lg1"))
+        
+        objectstore.commit()
+        # TODO: put an assertion
+        
 class InheritTest2(testbase.AssertMixin):
+    """deals with inheritance and many-to-many relationships"""
     def setUpAll(self):
         engine = testbase.db
         global foo, bar, foo_bar
@@ -155,6 +158,7 @@ class InheritTest2(testbase.AssertMixin):
             )
 
 class InheritTest3(testbase.AssertMixin):
+    """deals with inheritance and many-to-many relationships"""
     def setUpAll(self):
         engine = testbase.db
         global foo, bar, blub, bar_foo, blub_bar, blub_foo,tables
@@ -217,9 +221,11 @@ class InheritTest3(testbase.AssertMixin):
         b.foos.append(Foo("foo #1"))
         b.foos.append(Foo("foo #2"))
         objectstore.commit()
+        compare = repr(b) + repr(b.foos)
         objectstore.clear()
         l = Bar.mapper.select()
-        print l[0], l[0].foos
+        self.echo(repr(l[0]) + repr(l[0].foos))
+        self.assert_(repr(l[0]) + repr(l[0].foos) == compare)
     
     def testadvanced(self):    
         class Foo(object):
@@ -274,7 +280,76 @@ class InheritTest3(testbase.AssertMixin):
         self.echo(x)
         self.assert_(repr(x) == compare)
         
+class InheritTest4(testbase.AssertMixin):
+    """deals with inheritance and one-to-many relationships"""
+    def setUpAll(self):
+        engine = testbase.db
+        global foo, bar, blub, tables
+        engine.engine.echo = 'debug'
+        # the 'data' columns are to appease SQLite which cant handle a blank INSERT
+        foo = Table('foo', engine,
+            Column('id', Integer, Sequence('foo_seq'), primary_key=True),
+            Column('data', String(20)))
 
+        bar = Table('bar', engine,
+            Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
+            Column('data', String(20)))
+
+        blub = Table('blub', engine,
+            Column('id', Integer, ForeignKey('bar.id'), primary_key=True),
+            Column('foo_id', Integer, ForeignKey('foo.id'), nullable=False),
+            Column('data', String(20)))
+
+        tables = [foo, bar, blub]
+        for table in tables:
+            table.create()
+    def tearDownAll(self):
+        for table in reversed(tables):
+            table.drop()
+        testbase.db.tables.clear()
+
+    def tearDown(self):
+        for table in reversed(tables):
+            table.delete().execute()
+
+    def testbasic(self):
+        class Foo(object):
+            def __init__(self, data=None):
+                self.data = data
+            def __repr__(self):
+                return "Foo id %d, data %s" % (self.id, self.data)
+        Foo.mapper = mapper(Foo, foo)
+
+        class Bar(Foo):
+            def __repr__(self):
+                return "Bar id %d, data %s" % (self.id, self.data)
+
+        Bar.mapper = mapper(Bar, bar, inherits=Foo.mapper)
+        
+        class Blub(Bar):
+            def __repr__(self):
+                return "Blub id %d, data %s" % (self.id, self.data)
+
+        Blub.mapper = mapper(Blub, blub, inherits=Bar.mapper, properties={
+            # bug was raised specifically based on the order of cols in the join....
+#            'parent_foo':relation(Foo.mapper, primaryjoin=blub.c.foo_id==foo.c.id)
+#            'parent_foo':relation(Foo.mapper, primaryjoin=foo.c.id==blub.c.foo_id)
+            'parent_foo':relation(Foo.mapper)
+        })
+
+        b1 = Blub("blub #1")
+        b2 = Blub("blub #2")
+        f = Foo("foo #1")
+        b1.parent_foo = f
+        b2.parent_foo = f
+        objectstore.commit()
+        compare = repr(b1) + repr(b2) + repr(b1.parent_foo) + repr(b2.parent_foo)
+        objectstore.clear()
+        l = Blub.mapper.select()
+        result = repr(l[0]) + repr(l[1]) + repr(l[0].parent_foo) + repr(l[1].parent_foo)
+        self.echo(result)
+        self.assert_(compare == result)
+        self.assert_(l[0].parent_foo.data == 'foo #1' and l[1].parent_foo.data == 'foo #1')
 
 if __name__ == "__main__":    
     testbase.main()
