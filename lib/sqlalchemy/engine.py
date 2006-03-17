@@ -171,33 +171,42 @@ class DefaultRunner(schema.SchemaVisitor):
             return default.arg
             
 class SQLSession(object):
-    """represents a particular connection retrieved from a SQLEngine, and associated transactional state."""
+    """represents a a handle to the SQLEngine's connection pool.  the default SQLSession maintains a distinct connection during transactions, otherwise returns connections newly retrieved from the pool each time.  the Pool is usually configured to have use_threadlocal=True so if a particular connection is already checked out, youll get that same connection in the same thread.  There can also be a "unique" SQLSession pushed onto the engine, which returns a connection via the unique_connection() method on Pool; this allows nested transactions to take place, or other operations upon more than one connection at a time.`"""
     def __init__(self, engine, parent=None):
         self.engine = engine
         self.parent = parent
+        # if we have a parent SQLSession, then use a unique connection.
+        # else we use the default connection returned by the pool.
+        if parent is not None:
+            self.__connection = self.engine._pool.unique_connection()
         self.__tcount = 0
     def _connection(self):
         try:
-            return self.__connection
+            return self.__transaction
         except AttributeError:
-            self.__connection = self.engine._pool.connect()
-            return self.__connection
+            try:
+                return self.__connection
+            except AttributeError:
+                return self.engine._pool.connect()
     connection = property(_connection, doc="the connection represented by this SQLSession.  The connection is late-connecting, meaning the call to the connection pool only occurs when it is first called (and the pool will typically only connect the first time it is called as well)")
     
     def begin(self):
         """begins" a transaction on this SQLSession's connection.  repeated calls to begin() will increment a counter that must be decreased by corresponding commit() statements before an actual commit occurs.  this is to provide "nested" behavior of transactions so that different functions in a particular call stack can call begin()/commit() independently of each other without knowledge of an existing transaction."""
         if self.__tcount == 0:
+            self.__transaction = self.connection
             self.engine.do_begin(self.connection)
         self.__tcount += 1
     def rollback(self):
         """rolls back the transaction on this SQLSession's connection.  this can be called regardless of the "begin" counter value, i.e. can be called from anywhere inside a callstack.  the "begin" counter is cleared."""
         if self.__tcount > 0:
             self.engine.do_rollback(self.connection)
+            del self.__transaction
             self.__tcount = 0
     def commit(self):
         """commits the transaction started by begin().  If begin() was called multiple times, a counter will be decreased for each call to commit(), with the actual commit operation occuring when the counter reaches zero.  this is to provide "nested" behavior of transactions so that different functions in a particular call stack can call begin()/commit() independently of each other without knowledge of an existing transaction."""
         if self.__tcount == 1:
             self.engine.do_commit(self.connection)
+            del self.__transaction
             self.__tcount = 0
         elif self.__tcount > 1:
             self.__tcount -= 1
@@ -223,7 +232,7 @@ class SQLEngine(schema.SchemaEngine):
         (cargs, cparams) = self.connect_args()
         if pool is None:
             params['echo'] = echo_pool
-            params['use_threadlocal'] = False
+            params['use_threadlocal'] = True
             self._pool = sqlalchemy.pool.manage(self.dbapi(), **params).get_pool(*cargs, **cparams)
         else:
             self._pool = pool
@@ -417,9 +426,11 @@ class SQLEngine(schema.SchemaEngine):
     def do_rollback(self, connection):
         """implementations might want to put logic here for turning autocommit on/off,
         etc."""
+        #print "ENGINE ROLLBACK ON ", connection.connection
         connection.rollback()
     def do_commit(self, connection):
         """implementations might want to put logic here for turning autocommit on/off, etc."""
+        #print "ENGINE COMMIT ON ", connection.connection
         connection.commit()
 
     def _session(self):

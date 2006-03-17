@@ -196,7 +196,7 @@ class QueuePool(Pool):
     
     def do_return_conn(self, conn):
         if self._echo:
-            self.log("return connection to pool")
+            self.log("return QP connection to pool")
         try:
             self._pool.put(conn, False)
         except Queue.Full:
@@ -210,7 +210,7 @@ class QueuePool(Pool):
         
     def do_get(self):
         if self._echo:
-            self.log("get connection from pool")
+            self.log("get QP connection from pool")
             self.log(self.status())
         try:
             return self._pool.get(self._max_overflow > -1 and self._overflow >= self._max_overflow)
