@@ -170,7 +170,9 @@ class DefaultRunner(schema.SchemaVisitor):
         else:
             return default.arg
             
-
+class SQLSession(object):
+    pass
+    
 class SQLEngine(schema.SchemaEngine):
     """
     The central "database" object used by an application.  Subclasses of this object is used
