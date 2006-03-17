@@ -134,6 +134,9 @@ class ConnectionFairy(object):
                 self.connection = None
                 self.pool.return_invalid()
                 raise
+    def invalidate(self):
+        self.connection = None
+        self.pool.return_invalid()
     def cursor(self):
         return CursorFairy(self, self.connection.cursor())
     def __getattr__(self, key):
