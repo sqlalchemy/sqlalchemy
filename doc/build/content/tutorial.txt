@@ -1,9 +1,6 @@
 Tutorial
 ========
-This tutorial is a "quick start" guide to SQLAlchemy, the Python SQL Toolkit and Object Relational Mapper.
-SQLAlchemy provides a lot of functionality to help manage SQL databases, but you don't need much in order to begin doing useful things with it.
-
-Note that it is not neccessary to read this tutorial; you may wish to skip it and dive into the [main manual][manual] which is more reference-oriented.
+This tutorial is a "quick start" guide to SQLAlchemy.  You may wish to skip it and dive into the [main manual][manual] which is more reference-oriented.
 
 [manual]: rel:howtoread
 
@@ -12,7 +9,7 @@ Installation
 
 ### Installing SQLAlchemy {@name=sqlalchemy}
 
-Installing SQLAlchemy is easy if you have [setuptools][] on your system (if you don't, [install it][install setuptools], it's easy!). Just run this from the command-line:
+Installing SQLAlchemy from scratch is most easily achieved with [setuptools][].  ([setuptools installation][install setuptools]). Just run this from the command-line:
     
     $ easy_install SQLAlchemy
 
@@ -24,25 +21,23 @@ This command will download the latest version of SQLAlchemy from the [Python Che
 
 ### Installing A Database Manager {@name=dbms}
 
- SQLAlchemy is designed to operate with the [DBAPI][DBAPI] built for a particular database, and includes implementations supporting the most popular ones. If you have one of the [supported database managers][supported dbms], you can proceed to the following section. Otherwise we recommend installing [SQLite][] for starters.  SQLite needs very little configuration and is easy to work with.
+ SQLAlchemy is designed to operate with a [DBAPI][DBAPI] implementation built for a particular database, and includes support for the most popular databases. If you have one of the [supported database managers][supported dbms], you can proceed to the following section. Otherwise [SQLite][] is an easy to use database to get started with, requiring very little configuration.
 
 [DBAPI]: http://www.python.org/doc/peps/pep-0249/
 
 To work with SQLite, you'll need:
 
-  * SQLite library
   * [pysqlite][] - Python interface for SQLite
+  * SQLite library 
 
-If you use Windows, you only have to download and install the compiled [pysqlite binary][pysqlite]. It includes the SQLite library already linked in, so you don't have to install it separately.
-
-If you use Linux or FreeBSD, you may want to install pysqlite and SQLite from [packages][pysqlite packages] made for your operating system. Or you may install them [from sources][pysqlite].
+Note that the SQLite library download is not required with Windows, as the Windows Pysqlite library already includes it linked in.  Pysqlite and SQLite can also be installed on Linux or FreeBSD via pre-made [packages][pysqlite packages] or [from sources][pysqlite].
 
 [supported dbms]: rel:dbengine_establishing
 [sqlite]: http://sqlite.org/
 [pysqlite]: http://pysqlite.org/
 [pysqlite packages]: http://initd.org/tracker/pysqlite/wiki/PysqlitePackages
 
-Get Going! {@name=getgoing}
+Getting Started {@name=gettingstarted}
 --------------------------
 
 ### Connecting to the Database
@@ -52,11 +47,11 @@ First, you need to connect to the database you want to work with:
     >>> from sqlalchemy import *
     >>> db = create_engine('sqlite://filename=tutorial.db')
 
-Main documentation: [dbengine](rel:dbengine).
+Documentation on creating engines is available in [dbengine](rel:dbengine).
 
 ### Creating a Table {@name=table}
 
-A core philosophy of SQLAlchemy is that tables and domain classes are different beasts. That's why SQLAlchemy doesn't mix them. So let's first work with just tables alone; we construct an object that represents a table:
+A core philosophy of SQLAlchemy is that tables and domain classes are different beasts.  For this reason, SQLAlchemy provides constructs that represent tables by themselves (known as *table metadata*).  So we will begin by constructing table metadata objects and performing SQL operations with them directly, keeping in mind that there is also an Object Relational Mapper (ORM) which does the same thing except via domain models.  Let's construct an object that represents a table:
 
     >>> users = Table('users', db,
     ...     Column('user_id', Integer, primary_key = True),
@@ -64,7 +59,7 @@ A core philosophy of SQLAlchemy is that tables and domain classes are different 
     ...     Column('password', String(80))
     ... )
 
-As you might have guessed, we have just defined a table `users` with 3 columns: `user_id` (which is a primary key column), `user_name` and `password`. Currently it is just an object that may not correspond to an existing table in your database. So let's create the real table! To make it interesting we will ask SQLAlchemy to echo the SQL statements it sends to the database:
+As you might have guessed, we have just defined a table named `users` which has three columns: `user_id` (which is a primary key column), `user_name` and `password`. Currently it is just an object that may not correspond to an existing table in your database.  To actually create the table, we use the `create()` method.  To make it interesting we will have SQLAlchemy to echo the SQL statements it sends to the database:
 
     >>> db.echo = True
     >>> users.create() # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
@@ -82,11 +77,11 @@ Alternatively, the `users` table might already exist (such as, if you're running
     >>> list(users.columns)[0].name
     'user_id'
 
-Main documentation: [metadata](rel:metadata).
+Documentation on table metadata is available in [metadata](rel:metadata).
 
-### Filling the Table
+### Inserting Rows
 
-So now we have the table. To insert some data, use the `insert()` method to create a query:
+Inserting is achieved via the `insert()` method, which defines a *clause object* representing an INSERT statement:
 
     >>> i = users.insert()
     >>> i # doctest:+ELLIPSIS
@@ -94,7 +89,7 @@ So now we have the table. To insert some data, use the `insert()` method to crea
     >>> print i
     INSERT INTO users (user_id, user_name, password) VALUES (?, ?, ?)
 
-Call the `execute()` method of the query object to actually add users:
+The `execute()` method of the clause object executes the statement at the database level:
 
     >>> for name in ['Tom', 'Dick', 'Harry']: # doctest:+ELLIPSIS
     ...     i.execute(user_name = name)
@@ -103,15 +98,15 @@ Call the `execute()` method of the query object to actually add users:
     >>> i.execute(user_name = 'Mary', password = 'secure') # doctest:+ELLIPSIS
     <sqlalchemy.engine.ResultProxy instance at 0x...>
 
-SQLAlchemy will bind all literal values into bind parameters, according to the paramstyle of the underlying DBAPI. This allows for better performance, because the database may cache a compiled representation of the statement and reuse upon new executions, substituting the new values. Also, when using bound values, you need not worry about [SQL injection][] attacks.
+When constructing clause objects, SQLAlchemy will bind all literal values into bind parameters, according to the paramstyle of the underlying DBAPI. This allows for better performance, as the database may cache a compiled representation of the statement and reuse it for new executions, substituting the new values. Also, when using bound values, you need not worry about [SQL injection][] attacks.
 
 [SQL injection]: http://en.wikipedia.org/wiki/SQL_injection
 
-Main documentation: [sql_insert](rel:sql_insert).
+Documentation on inserting: [sql_insert](rel:sql_insert).
 
-### Querying the Table
+### Constructing Queries
 
-Let's check that the data we have put into `users` table is actually there. The procedure is analogous to the insert example above, except you now call the `select()` function:
+Let's check that the data we have put into `users` table is actually there. The procedure is analogous to the insert example above, except you now call the `select()` method off the `users` table:
 
     >>> s = users.select()
     >>> print s
@@ -131,7 +126,7 @@ This time, we won't ignore the return value of `execute()`:
     >>> r.fetchall()
     [(2, u'Dick', None), (3, u'Harry', None), (4, u'Mary', u'secure')]
 
-Main documentation: [sql_select](rel:sql_select).
+Documentation on selecting: [sql_select](rel:sql_select).
 
 ### Related Table
 
