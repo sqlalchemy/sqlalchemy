@@ -253,12 +253,6 @@ class OracleCompiler(ansisql.ANSICompiler):
         else:
             self.strings[column] = "%s.%s" % (column.table.name, column.name)
        
-    def visit_function(self, func):
-        if len(func.clauses):
-            super(OracleCompiler, self).visit_function(func)
-        else:
-            self.strings[func] = func.name
- 
     def visit_insert(self, insert):
         """inserts are required to have the primary keys be explicitly present.
          mapper will by default not put them in the insert statement to comply
