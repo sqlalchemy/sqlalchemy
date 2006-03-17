@@ -218,13 +218,14 @@
 <%method member_doc>
        <%args>
                name = ""
+               link = ""
                type = None
        </%args>
        <tr>
        <td>
            <div class="darkcell">
-           <A name="<% m.comp('doclib.myt:current').path %>_<% name %>"></a>
-           <b><% name %></b></td>
+           <A name="<% m.comp('doclib.myt:current').path %>_<% link %>"></a>
+           <b><% name %></b>
            <div class="docstring"><% m.content() %></div>
            </div>
        </td>
@@ -235,6 +236,7 @@
 <%method function_doc>
     <%args>
         name = ""
+        link = ""
         alt = None
         arglist = []
         rettype = None
@@ -242,7 +244,7 @@
     <tr>
     <td>
         <div class="darkcell">
-        <A name="<% m.comp('doclib.myt:current').path %>_<% name %>"></a>
+        <A name="<% m.comp('doclib.myt:current').path %>_<% link %>"></a>
         <b><% name %>(<% string.join(map(lambda k: "<i>%s</i>" % k, arglist), ", ")%>)</b>
         <div class="docstring"><% m.content() %></div>
         </div>

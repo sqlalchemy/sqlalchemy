@@ -123,7 +123,7 @@
            argstrings.append("**%s" % varkw)
     </%init>
     
-    <&| formatting.myt:function_doc, name="def " + func.__name__, arglist=argstrings &>
+    <&|formatting.myt:function_doc, name="def " + func.__name__, link=func.__name__, arglist=argstrings &>
     <&|formatting.myt:formatplain&><% format_paragraphs(func.__doc__) %></&>
     </&>
 </%method>
@@ -134,7 +134,7 @@
         name
         prop
     </%args>
-    <&| formatting.myt:member_doc, name=name + " = property()" &>
+    <&|formatting.myt:member_doc, name=name + " = property()", link=name &>
     <&|formatting.myt:formatplain&><% format_paragraphs(prop.__doc__) %></&>
     </&>    
 </%method>
