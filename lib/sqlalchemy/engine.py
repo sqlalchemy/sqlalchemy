@@ -686,6 +686,9 @@ class SQLEngine(schema.SchemaEngine):
                 parameters = {}
         try:
             c.execute(statement, parameters)
+        except self.dbapi().OperationalError, e:
+            c.parent.invalidate()
+            raise exceptions.SQLError(statement, parameters, e)
         except Exception, e:
             raise exceptions.SQLError(statement, parameters, e)
         self.context.rowcount = c.rowcount
