@@ -199,15 +199,19 @@ class SQLSession(object):
     def rollback(self):
         """rolls back the transaction on this SQLSession's connection.  this can be called regardless of the "begin" counter value, i.e. can be called from anywhere inside a callstack.  the "begin" counter is cleared."""
         if self.__tcount > 0:
-            self.engine.do_rollback(self.connection)
-            del self.__transaction
-            self.__tcount = 0
+            try:
+                self.engine.do_rollback(self.connection)
+            finally:
+                del self.__transaction
+                self.__tcount = 0
     def commit(self):
         """commits the transaction started by begin().  If begin() was called multiple times, a counter will be decreased for each call to commit(), with the actual commit operation occuring when the counter reaches zero.  this is to provide "nested" behavior of transactions so that different functions in a particular call stack can call begin()/commit() independently of each other without knowledge of an existing transaction."""
         if self.__tcount == 1:
-            self.engine.do_commit(self.connection)
-            del self.__transaction
-            self.__tcount = 0
+            try:
+                self.engine.do_commit(self.connection)
+            finally:
+                del self.__transaction
+                self.__tcount = 0
         elif self.__tcount > 1:
             self.__tcount -= 1
     def is_begun(self):
