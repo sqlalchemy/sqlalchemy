@@ -14,7 +14,7 @@ db = testbase.db
 users = Table('users', db,
     Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key = True),
     Column('user_name', String(40)),
-    
+    mysql_engine='innodb'
 )
 
 addresses = Table('email_addresses', db,

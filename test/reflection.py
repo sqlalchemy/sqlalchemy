@@ -10,7 +10,7 @@ from testbase import PersistTest
 import testbase
 import unittest, re
 
-class EngineTest(PersistTest):
+class ReflectionTest(PersistTest):
     def testbasic(self):
         # really trip it up with a circular reference
         

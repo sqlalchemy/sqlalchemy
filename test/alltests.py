@@ -12,11 +12,12 @@ def suite():
         'attributes', 
         'dependency',
         
-        # connectivity
+        # connectivity, execution
         'pool', 
+        'engine',
         
         # schema/tables
-        'engines', 
+        'reflection', 
         'testtypes',
         'indexes',
 

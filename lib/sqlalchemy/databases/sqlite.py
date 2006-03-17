@@ -151,6 +151,9 @@ class SQLiteSQLEngine(ansisql.ANSISQLEngine):
 
     def dbapi(self):
         return sqlite
+        
+    def push_session(self):
+        raise InvalidRequestError("SQLite doesn't support nested sessions")
 
     def schemagenerator(self, **params):
         return SQLiteSchemaGenerator(self, **params)
