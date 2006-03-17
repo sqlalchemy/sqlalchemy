@@ -1,6 +1,6 @@
 Tutorial
 ========
-This tutorial is a "quick start" guide to SQLAlchemy.  You may wish to skip it and dive into the [main manual][manual] which is more reference-oriented.
+This tutorial provides a relatively simple walking tour through the basic concepts of SQLAlchemy.  You may wish to skip it and dive into the [main manual][manual] which is more reference-oriented.
 
 [manual]: rel:howtoread
 
@@ -19,9 +19,9 @@ This command will download the latest version of SQLAlchemy from the [Python Che
 [install setuptools]: http://peak.telecommunity.com/DevCenter/EasyInstall#installation-instructions
 [cheese]: http://cheeseshop.python.org/pypi
 
-### Installing A Database Manager {@name=dbms}
+### Installing a Database API {@name=dbms}
 
- SQLAlchemy is designed to operate with a [DBAPI][DBAPI] implementation built for a particular database, and includes support for the most popular databases. If you have one of the [supported database managers][supported dbms], you can proceed to the following section. Otherwise [SQLite][] is an easy to use database to get started with, requiring very little configuration.
+SQLAlchemy is designed to operate with a [DBAPI][DBAPI] implementation built for a particular database, and includes support for the most popular databases. If you have one of the [supported DBAPI implementations][supported dbms], you can proceed to the following section. Otherwise [SQLite][] is an easy-to-use database to get started with, which works with plain files or in-memory databases.
 
 [DBAPI]: http://www.python.org/doc/peps/pep-0249/
 
@@ -42,12 +42,12 @@ Getting Started {@name=gettingstarted}
 
 ### Connecting to the Database
 
-First, you need to connect to the database you want to work with:
+The first thing needed is a handle to the desired database, represented by a `SQLEngine` object.  This object handles the business of managing connections and dealing with the specifics of a particular database.  Below, we will make a SQLite connection to a file-based database called "tutorial.db".
 
     >>> from sqlalchemy import *
     >>> db = create_engine('sqlite://filename=tutorial.db')
 
-Documentation on creating engines is available in [dbengine](rel:dbengine).
+For full information on creating database engines, including those for SQLite and others, see [dbengine](rel:dbengine).
 
 ### Creating a Table {@name=table}
 
