@@ -11,7 +11,7 @@ import os
 #
 
 
-module_engine = ProxyEngine()
+module_engine = ProxyEngine(echo=testbase.echo)
 users = Table('users', module_engine, 
               Column('user_id', Integer, primary_key=True),
               Column('user_name', String(16)),

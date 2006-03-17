@@ -198,6 +198,7 @@ class SQLSession(object):
         """commits the transaction started by begin().  If begin() was called multiple times, a counter will be decreased for each call to commit(), with the actual commit operation occuring when the counter reaches zero.  this is to provide "nested" behavior of transactions so that different functions in a particular call stack can call begin()/commit() independently of each other without knowledge of an existing transaction."""
         if self.__tcount == 1:
             self.engine.do_commit(self.connection)
+            self.__tcount = 0
         elif self.__tcount > 1:
             self.__tcount -= 1
     def is_begun(self):
@@ -711,6 +712,11 @@ class SQLEngine(schema.SchemaEngine):
         return parameters
 
     def proxy(self, statement=None, parameters=None):
+        """returns a callable which will execute the given statement string and parameter object.
+        the parameter object is expected to be the result of a call to compiled.get_params().
+        This callable is a generic version of a connection/cursor-specific callable that
+        is produced within the execute_compiled method, and is used for objects that require
+        this style of proxy when outside of an execute_compiled method, primarily the DefaultRunner."""
         parameters = self._convert_compiled_params(parameters)
         return self.execute(statement, parameters)
     
