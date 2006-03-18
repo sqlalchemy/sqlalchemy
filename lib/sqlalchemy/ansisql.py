@@ -220,10 +220,13 @@ class ANSICompiler(sql.Compiled):
         else:
             self.strings[list] = string.join([self.get_str(c) for c in list.clauses], ', ')
 
+    def apply_function_parens(self, func):
+        return func.name.upper() not in ANSI_FUNCS or len(func.clauses) > 0
+        
     def visit_function(self, func):
         if len(self.select_stack):
             self.typemap.setdefault(func.name, func.type)
-        if func.name.upper() in ANSI_FUNCS and not len(func.clauses):
+        if not self.apply_function_parens(func):
             self.strings[func] = ".".join(func.packagenames + [func.name])
         else:
             self.strings[func] = ".".join(func.packagenames + [func.name]) + "(" + string.join([self.get_str(c) for c in func.clauses], ', ') + ")"

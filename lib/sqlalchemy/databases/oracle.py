@@ -221,6 +221,9 @@ class OracleCompiler(ansisql.ANSICompiler):
         gives Oracle a chance to tack on a "FROM DUAL" to the string output. """
         return " FROM DUAL"
 
+    def apply_function_parens(self, func):
+        return len(func.clauses) > 0
+
     def visit_join(self, join):
         if self._use_ansi:
             return ansisql.ANSICompiler.visit_join(self, join)
