@@ -813,7 +813,7 @@ class Function(ClauseList, ColumnElement):
         data.setdefault(self, self)
     def copy_container(self):
         clauses = [clause.copy_container() for clause in self.clauses]
-        return Function(self.name, type=self.type, packagenames=self.packagenames, *clauses)
+        return Function(self.name, type=self.type, packagenames=self.packagenames, engine=self._engine, *clauses)
     def accept_visitor(self, visitor):
         for c in self.clauses:
             c.accept_visitor(visitor)
