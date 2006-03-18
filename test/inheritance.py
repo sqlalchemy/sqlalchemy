@@ -351,5 +351,39 @@ class InheritTest4(testbase.AssertMixin):
         self.assert_(compare == result)
         self.assert_(l[0].parent_foo.data == 'foo #1' and l[1].parent_foo.data == 'foo #1')
 
+class InheritTest5(testbase.AssertMixin): 
+    def setUpAll(self):
+        engine = testbase.db
+        global content_type, content, product
+        content_type = Table('content_type', engine, 
+            Column('id', Integer, primary_key=True)
+            )
+        content = Table('content', engine,
+            Column('id', Integer, primary_key=True),
+            Column('content_type_id', Integer, ForeignKey('content_type.id'))
+            )
+        product = Table('product', engine, 
+            Column('id', Integer, ForeignKey('content.id'), primary_key=True)
+        )
+    def tearDownAll(self):
+        testbase.db.tables.clear()
+
+    def tearDown(self):
+        pass
+
+    def testbasic(self):
+        class ContentType(object): pass
+        class Content(object): pass
+        class Product(object): pass
+
+        content_types = mapper(ContentType, content_type)
+        contents = mapper(Content, content, properties={
+            'content_type':relation(content_types)
+        })
+        #contents.add_property('content_type', relation(content_types)) #adding this makes the inheritance stop working
+        # shouldnt throw exception
+        products = mapper(Product, product, inherits=contents)
+        
+
 if __name__ == "__main__":    
     testbase.main()

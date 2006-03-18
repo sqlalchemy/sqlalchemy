@@ -118,6 +118,7 @@ class PropertyLoader(MapperProperty):
         self.primaryjoin = primaryjoin
         self.secondaryjoin = secondaryjoin
         self.post_update = post_update
+        self.direction = None
         
         # would like to have foreignkey be a list.
         # however, have to figure out how to do 
@@ -186,7 +187,10 @@ class PropertyLoader(MapperProperty):
             # but its possible that its reversed
             self._find_dependent()
 
-        self.direction = self._get_direction()
+        # if we are re-initializing, as in a copy made for an inheriting 
+        # mapper, dont re-evaluate the direction.
+        if self.direction is None:
+            self.direction = self._get_direction()
         
         if self.uselist is None and self.direction == PropertyLoader.MANYTOONE:
             self.uselist = False
