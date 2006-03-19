@@ -150,6 +150,7 @@ class BinaryTest(AssertMixin):
         binary_table.insert().execute(misc='sql.pyc', data=stream1, data_slice=stream1[0:100])
         binary_table.insert().execute(misc='engine.pyc', data=stream2, data_slice=stream2[0:99])
         l = binary_table.select().execute().fetchall()
+        print 'HI HI HI'
         print len(stream1), len(l[0]['data']), len(l[0]['data_slice'])
         self.assert_(list(stream1) == list(l[0]['data']))
         self.assert_(list(stream1[0:100]) == list(l[0]['data_slice']))
@@ -160,7 +161,8 @@ class BinaryTest(AssertMixin):
             mod = getattr(mod, token)
         f = mod.__file__
         f = re.sub('\.py$', '\.pyc', f)
-        return file(f).read()
+        # put a number less than the typical MySQL default BLOB size
+        return file(f).read(59473)
         
 class DateTest(AssertMixin):
     def setUpAll(self):
