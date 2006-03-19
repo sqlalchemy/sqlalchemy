@@ -124,7 +124,7 @@ for e in c.employees:
 
 print "\n"
 
-dilbert = c.employees[1]
+dilbert = Engineer.mapper.get_by(name='dilbert')
 dilbert.description = 'hes dibert!'
 objectstore.commit()
 
