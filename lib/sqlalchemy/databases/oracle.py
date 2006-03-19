@@ -283,7 +283,7 @@ class OracleCompiler(ansisql.ANSICompiler):
                 orderby = self.strings[select.order_by_clause]
             else:
                 # TODO: try to get "oid_column" to be used here
-                orderby = "%s.rowid ASC" % select.froms[0].id
+                orderby = "%s.rowid ASC" % select.froms[0].name
             select.append_column(sql.ColumnClause("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn"))
             limitselect = sql.select([c for c in select.c if c.key!='ora_rn'])
             if select.offset is not None:

@@ -355,9 +355,9 @@ class ClauseElement(object):
         FROM objects in the dictionary corresponding to this ClauseElement,
         and possibly removes or modifies others."""
         for f in self._get_from_objects():
-            data.setdefault(f.id, f)
+            data.setdefault(f, f)
         if asfrom:
-            data[self.id] = self
+            data[self] = self
     def compare(self, other):
         """compares this ClauseElement to the given ClauseElement.
         
@@ -568,9 +568,8 @@ class ColumnElement(Selectable, CompareMixin):
 
 class FromClause(Selectable):
     """represents an element that can be used within the FROM clause of a SELECT statement."""
-    def __init__(self, from_name = None, from_key = None):
+    def __init__(self, from_name = None):
         self.from_name = from_name
-        self.id = from_key or from_name
     def _get_from_objects(self):
         # this could also be [self], at the moment it doesnt matter to the Select object
         return []
@@ -602,7 +601,7 @@ class FromClause(Selectable):
             if not raiseerr:
                 return None
             else:
-                raise InvalidRequestError("cant get orig for " + str(column) + " with table " + column.table.id + " from table " + self.id)
+                raise InvalidRequestError("cant get orig for " + str(column) + " with table " + column.table.name + " from table " + self.name)
                 
     def _get_exported_attribute(self, name):
         try:
@@ -682,7 +681,6 @@ class TextClause(ClauseElement):
     def __init__(self, text = "", engine=None, bindparams=None, typemap=None):
         self.parens = False
         self._engine = engine
-        self.id = id(self)
         self.bindparams = {}
         self.typemap = typemap
         if typemap is not None:
@@ -881,7 +879,6 @@ class Join(FromClause):
     def __init__(self, left, right, onclause=None, isouter = False):
         self.left = left
         self.right = right
-        self.id = self.left.id + "_" + self.right.id
         
         # TODO: if no onclause, do NATURAL JOIN
         if onclause is None:
@@ -932,8 +929,8 @@ class Join(FromClause):
     engine = property(lambda s:s.left.engine or s.right.engine)
 
     class JoinMarker(FromClause):
-        def __init__(self, id, join):
-            FromClause.__init__(self, from_key=id)
+        def __init__(self, join):
+            FromClause.__init__(self)
             self.join = join
         def _exportable_columns(self):
             return []
@@ -943,12 +940,12 @@ class Join(FromClause):
         return self.select(use_labels=True, correlate=False).alias(name)            
     def _process_from_dict(self, data, asfrom):
         for f in self.onclause._get_from_objects():
-            data[f.id] = f
+            data[f] = f
         for f in self.left._get_from_objects() + self.right._get_from_objects():
             # mark the object as a "blank" "from" that wont be printed
-            data[f.id] = Join.JoinMarker(f.id, self)
+            data[f] = Join.JoinMarker(self)
         # a JOIN always impacts the final FROM list of a select statement
-        data[self.id] = self
+        data[self] = self
         
     def _get_from_objects(self):
         return [self] + self.onclause._get_from_objects() + self.left._get_from_objects() + self.right._get_from_objects()
@@ -968,7 +965,6 @@ class Alias(FromClause):
                 n = n[0:15]
             alias = n + "_" + hex(random.randint(0, 65535))[2:]
         self.name = alias
-        self.id = self.name
         if self.selectable.oid_column is not None:
             self.oid_column = self.selectable.oid_column._make_proxy(self)
         else:
@@ -1052,7 +1048,7 @@ class ColumnClause(ColumnElement):
 class TableClause(FromClause):
     def __init__(self, name, *columns):
         super(TableClause, self).__init__(name)
-        self.name = self.id = self.fullname = name
+        self.name = self.fullname = name
         self._columns = util.OrderedProperties()
         self._indexes = util.OrderedProperties()
         self._foreign_keys = []
@@ -1110,9 +1106,9 @@ class TableClause(FromClause):
         return False
     def _process_from_dict(self, data, asfrom):
         for f in self._get_from_objects():
-            data.setdefault(f.id, f)
+            data.setdefault(f, f)
         if asfrom:
-            data[self.id] = self
+            data[self] = self
     def count(self, whereclause=None, **params):
         return select([func.count(1).label('count')], whereclause, from_obj=[self], **params)
     def join(self, right, *args, **kwargs):
@@ -1170,7 +1166,6 @@ class SelectBaseMixin(object):
             
 class CompoundSelect(SelectBaseMixin, FromClause):
     def __init__(self, keyword, *selects, **kwargs):
-        self.id = "Compound(%d)" % id(self)
         self.keyword = keyword
         self.selects = selects
         self.use_labels = kwargs.pop('use_labels', False)
@@ -1214,7 +1209,6 @@ class Select(SelectBaseMixin, FromClause):
     def __init__(self, columns=None, whereclause = None, from_obj = [], order_by = None, group_by=None, having=None, use_labels = False, distinct=False, engine = None, limit=None, offset=None, scalar=False, correlate=True):
         self._froms = util.OrderedDict()
         self.use_labels = use_labels
-        self.id = "Select(%d)" % id(self)
         self.name = None
         self.whereclause = None
         self.having = None
@@ -1323,8 +1317,8 @@ class Select(SelectBaseMixin, FromClause):
 
     _hash_recursion = util.RecursionStack()
     
-    def clear_from(self, id):
-        self.append_from(FromClause(from_name = None, from_key = id))
+    def clear_from(self, from_obj):
+        self._froms[from_obj] = FromClause(from_name = None)
         
     def append_from(self, fromclause):
         if type(fromclause) == str:
@@ -1335,7 +1329,7 @@ class Select(SelectBaseMixin, FromClause):
         fromclause._process_from_dict(self._froms, True)
 
     def _get_froms(self):
-        return [f for f in self._froms.values() if f is not self and (self._correlated is None or not self._correlated.has_key(f.id))]
+        return [f for f in self._froms.values() if f is not self and (self._correlated is None or not self._correlated.has_key(f))]
     froms = property(lambda s: s._get_froms())
 
     def accept_visitor(self, visitor):
@@ -1400,7 +1394,7 @@ class UpdateBase(ClauseElement):
         for key in parameters.keys():
             value = parameters[key]
             if isinstance(value, Select):
-                value.clear_from(self.table.id)
+                value.clear_from(self.table)
             elif _is_literal(value):
                 if _is_literal(key):
                     col = self.table.c[key]
