@@ -150,7 +150,6 @@ class BinaryTest(AssertMixin):
         binary_table.insert().execute(misc='sql.pyc', data=stream1, data_slice=stream1[0:100])
         binary_table.insert().execute(misc='engine.pyc', data=stream2, data_slice=stream2[0:99])
         l = binary_table.select().execute().fetchall()
-        print 'HI HI HI'
         print len(stream1), len(l[0]['data']), len(l[0]['data_slice'])
         self.assert_(list(stream1) == list(l[0]['data']))
         self.assert_(list(stream1[0:100]) == list(l[0]['data_slice']))
