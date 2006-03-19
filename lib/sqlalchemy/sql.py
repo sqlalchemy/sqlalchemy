@@ -490,6 +490,8 @@ class CompareMixin(object):
         return self._compare('LIKE', "%" + str(other))
     def label(self, name):
         return Label(name, self)
+    def distinct(self):
+        return CompoundClause(None,"DISTNCT", self)
     def op(self, operator):
         return lambda other: self._compare(operator, other)
     # and here come the math operators:

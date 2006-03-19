@@ -3,6 +3,7 @@
 blown away if it hadnt been loaded
 - added unique_connection() method to engine, connection pool to return a connection
 that is not part of the thread-local context or any current transaction
+- added distinct() function to column elements so you can do func.count(mycol.distinct())
 
 0.1.4
 - create_engine() now uses genericized parameters; host/hostname, db/dbname/database, 
