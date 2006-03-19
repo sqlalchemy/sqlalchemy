@@ -57,7 +57,6 @@ addresses = table('addresses',
 
 class SQLTest(PersistTest):
     def runtest(self, clause, result, engine = None, params = None, checkparams = None):
-        print "TEST with e", engine
         c = clause.compile(parameters=params, engine=engine)
         self.echo("\nSQL String:\n" + str(c) + repr(c.get_params()))
         cc = re.sub(r'\n', '', str(c))
@@ -523,6 +522,9 @@ class CRUDTest(SQLTest):
             "INSERT INTO mytable (myid, name, description) VALUES (:myid, :name, :description)",
             checkparams = {'myid':3, 'name':'jack', 'description':'mydescription'}
         )
+    
+    def testinsertexpression(self):
+        self.runtest(insert(table1), "INSERT INTO mytable (myid) VALUES (lala())", params=dict(myid=func.lala()))
         
     def testupdate(self):
         self.runtest(update(table1, table1.c.myid == 7), "UPDATE mytable SET name=:name WHERE mytable.myid = :mytable_myid", params = {table1.c.name:'fred'})
@@ -543,7 +545,7 @@ class CRUDTest(SQLTest):
             values = {
             table1.c.name : table1.c.name + "lala",
             table1.c.myid : func.do_stuff(table1.c.myid, literal('hoho'))
-            }), "UPDATE mytable SET myid=(do_stuff(mytable.myid, :literal_2)), name=(mytable.name + :mytable_name) WHERE mytable.myid = hoho(:hoho) AND mytable.name = :literal + mytable.name + :literal_1")
+            }), "UPDATE mytable SET myid=do_stuff(mytable.myid, :literal_2), name=mytable.name + :mytable_name WHERE mytable.myid = hoho(:hoho) AND mytable.name = :literal + mytable.name + :literal_1")
         
     def testcorrelatedupdate(self):
         # test against a straight text subquery

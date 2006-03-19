@@ -452,13 +452,21 @@ class ANSICompiler(sql.Compiled):
         
         self.isinsert = True
         colparams = self._get_colparams(insert_stmt)
-        for c in colparams:
-            b = c[1]
-            self.binds[b.key] = b
-            self.binds[b.shortname] = b
-            
+
+        def create_param(p):
+            if isinstance(p, sql.BindParamClause):
+                self.binds[p.key] = p
+                self.binds[p.shortname] = p
+                return self.bindparam_string(p.key)
+            else:
+                p.accept_visitor(self)
+                if isinstance(p, sql.ClauseElement) and not isinstance(p, sql.ColumnElement):
+                    return "(" + self.get_str(p) + ")"
+                else:
+                    return self.get_str(p)
+
         text = ("INSERT INTO " + insert_stmt.table.fullname + " (" + string.join([c[0].name for c in colparams], ', ') + ")" +
-         " VALUES (" + string.join([self.bindparam_string(c[1].key) for c in colparams], ', ') + ")")
+         " VALUES (" + string.join([create_param(c[1]) for c in colparams], ', ') + ")")
          
         self.strings[insert_stmt] = text
 
@@ -482,7 +490,7 @@ class ANSICompiler(sql.Compiled):
                 return self.bindparam_string(p.key)
             else:
                 p.accept_visitor(self)
-                if isinstance(p, sql.ClauseElement) and not isinstance(p, sql.ColumnClause):
+                if isinstance(p, sql.ClauseElement) and not isinstance(p, sql.ColumnElement):
                     return "(" + self.get_str(p) + ")"
                 else:
                     return self.get_str(p)
