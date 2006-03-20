@@ -785,10 +785,18 @@ class EagerLoader(PropertyLoader):
 
     def _instance(self, row, imap, result_list=None):
         """gets an instance from a row, via this EagerLoader's mapper."""
+        # since the EagerLoader makes an Alias of its mapper's table,
+        # we translate the actual result columns back to what they 
+        # would normally be into a "virtual row" which is passed to the child mapper.
+        # that way the mapper doesnt have to know about the modified column name
+        # (neither do any MapperExtensions).  The row is keyed off the Column object
+        # (which is what mappers use) as well as its "label" (which might be what
+        # user-defined code is using)
         fakerow = util.DictDecorator(row)
         for c in self.eagertarget.c:
             parent = self.target._get_col_by_original(c.original)
             fakerow[parent] = row[c]
+            fakerow[parent._label] = row[c]
         row = fakerow
         return self.mapper._instance(row, imap, result_list)
 

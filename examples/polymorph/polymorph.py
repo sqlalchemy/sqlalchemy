@@ -71,7 +71,7 @@ person_join = select(
             select(
             [people, engineers.c.description, column("'engineer'").label('type')],
             people.c.person_id==engineers.c.person_id)).alias('pjoin')
-
+            
 
 # lets print out what this Selectable looks like.  The mapper is going to take the selectable and
 # Select off of it, with the flag "use_labels" which indicates to prefix column names with the table
@@ -106,7 +106,7 @@ people_mapper = mapper(Person, person_join, extension=ext)
 # (translation: it'll work)
 # TODO: get the eager loading to work (the compound select alias doesnt like being aliased itself)
 assign_mapper(Company, companies, properties={
-    'employees': relation(people_mapper, private=True)
+    'employees': relation(people_mapper, lazy=False, private=True)
 })
 
 c = Company(name='company1')

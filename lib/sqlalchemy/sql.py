@@ -1040,6 +1040,7 @@ class ColumnClause(ColumnElement):
             return BindParamClause(self.table.name + "_" + self.text, obj, shortname = self.text, type=self.type)
     def _make_proxy(self, selectable, name = None):
         c = ColumnClause(name or self.text, selectable)
+        c._original = self.original
         selectable.columns[c.name] = c
         return c
     def _compare_type(self, obj):
