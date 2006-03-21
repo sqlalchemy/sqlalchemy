@@ -571,7 +571,7 @@ class ColumnElement(Selectable, CompareMixin):
 class FromClause(Selectable):
     """represents an element that can be used within the FROM clause of a SELECT statement."""
     def __init__(self, from_name = None):
-        self.from_name = from_name
+        self.from_name = self.name = from_name
     def _get_from_objects(self):
         # this could also be [self], at the moment it doesnt matter to the Select object
         return []
