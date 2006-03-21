@@ -563,7 +563,7 @@ class PropertyLoader(MapperProperty):
 
 class LazyLoader(PropertyLoader):
     def do_init_subclass(self, key, parent):
-        (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.table, self.primaryjoin, self.secondaryjoin, self.foreignkey)
+        (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.noninherited_table, self.primaryjoin, self.secondaryjoin, self.foreignkey)
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
         self.use_get = not self.uselist and self.mapper._get_clause.compare(self.lazywhere)
@@ -645,6 +645,7 @@ def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     lazywhere = lazywhere.copy_container()
     li = BinaryVisitor(visit_binary)
     lazywhere.accept_visitor(li)
+    print "OK LAZYWHERE, START WITH TAB", table, "PJ", primaryjoin, "SEC", secondaryjoin, "GOT", lazywhere
     return (lazywhere, binds)
         
 
