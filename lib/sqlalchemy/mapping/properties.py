@@ -758,6 +758,8 @@ class EagerLoader(PropertyLoader):
         for key, value in self.mapper.props.iteritems():
             value.setup(key, statement, eagertable=self.eagertarget)
             
+        self._decorator_row = self._create_decorator_row()
+        
     def execute(self, instance, row, identitykey, imap, isnew):
         """receive a row.  tell our mapper to look for a new object instance in the row, and attach
         it to a list on the parent instance."""
@@ -783,6 +785,21 @@ class EagerLoader(PropertyLoader):
     
         self._instance(row, imap, result_list)
 
+    def _create_decorator_row(self):
+        class DecoratorDict(object):
+            def __init__(self, row):
+                self.row = row
+            def __getitem__(self, key):
+                if map.has_key(key):
+                    key = map[key]
+                return self.row[key]
+        map = {}        
+        for c in self.eagertarget.c:
+            parent = self.target._get_col_by_original(c.original)
+            map[parent] = c
+            map[parent._label] = c
+        return DecoratorDict
+        
     def _instance(self, row, imap, result_list=None):
         """gets an instance from a row, via this EagerLoader's mapper."""
         # since the EagerLoader makes an Alias of its mapper's table,
@@ -792,12 +809,7 @@ class EagerLoader(PropertyLoader):
         # (neither do any MapperExtensions).  The row is keyed off the Column object
         # (which is what mappers use) as well as its "label" (which might be what
         # user-defined code is using)
-        fakerow = util.DictDecorator(row)
-        for c in self.eagertarget.c:
-            parent = self.target._get_col_by_original(c.original)
-            fakerow[parent] = row[c]
-            fakerow[parent._label] = row[c]
-        row = fakerow
+        row = self._decorator_row(row)
         return self.mapper._instance(row, imap, result_list)
 
 class GenericOption(MapperOption):
