@@ -239,6 +239,10 @@ class Mapper(object):
         if not self.class_.__dict__.has_key('_mapper'):
             oldinit = self.class_.__init__
             def init(self, *args, **kwargs):
+                # this gets the AttributeManager to do some pre-initialization,
+                # in order to save on KeyErrors later on
+                objectstore.global_attributes.init_attr(self)
+                
                 nohist = kwargs.pop('_mapper_nohistory', False)
                 session = kwargs.pop('_sa_session', objectstore.get_session())
                 if not nohist:

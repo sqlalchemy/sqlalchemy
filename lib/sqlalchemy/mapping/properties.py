@@ -714,6 +714,9 @@ class EagerLoader(PropertyLoader):
                     #print "new eagertqarget", p.eagertarget.name, (p.secondary and p.secondary.name or "none"), p.parent.table.name
             finally:
                 del recursion_stack[self.parent.table]
+
+        self._row_decorator = self._create_decorator_row()
+        
         self._eager_chained = True
                 
     def _aliasize_orderby(self, orderby, copy=True):
@@ -758,7 +761,6 @@ class EagerLoader(PropertyLoader):
         for key, value in self.mapper.props.iteritems():
             value.setup(key, statement, eagertable=self.eagertarget)
             
-        self._decorator_row = self._create_decorator_row()
         
     def execute(self, instance, row, identitykey, imap, isnew):
         """receive a row.  tell our mapper to look for a new object instance in the row, and attach
@@ -809,7 +811,7 @@ class EagerLoader(PropertyLoader):
         # (neither do any MapperExtensions).  The row is keyed off the Column object
         # (which is what mappers use) as well as its "label" (which might be what
         # user-defined code is using)
-        row = self._decorator_row(row)
+        row = self._row_decorator(row)
         return self.mapper._instance(row, imap, result_list)
 
 class GenericOption(MapperOption):

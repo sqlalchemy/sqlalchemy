@@ -72,6 +72,8 @@ class PropHistory(object):
         self.key = key
         self.orig = PropHistory.NONE
         self.extension = extension
+    def plain_init(self, *args):
+        pass
     def gethistory(self, *args, **kwargs):
         return self
     def clear(self):
@@ -152,7 +154,8 @@ class ListElement(util.HistoryArraySet):
             obj.__dict__[key] = []
             
         util.HistoryArraySet.__init__(self, list_, readonly=kwargs.get('readonly', False))
-
+    def plain_init(self, *args):
+        pass
     def gethistory(self, *args, **kwargs):
         return self
     def list_value_changed(self, obj, key, item, listval, isdelete):
@@ -194,6 +197,14 @@ class CallableProp(object):
         self.live = live
         self.kwargs = kwargs
 
+    def plain_init(self, attrhist):
+        if not self.uselist:
+            p = PropHistory(self.obj, self.key, **self.kwargs)
+            self.obj.__dict__[self.key] = None
+        else:
+            p = self.manager.create_list(self.obj, self.key, None, readonly=self.live, **self.kwargs)
+        attrhist[self.key] = p
+            
     def gethistory(self, passive=False, *args, **kwargs):
         if not self.uselist:
             if self.obj.__dict__.get(self.key, None) is None:
@@ -337,12 +348,21 @@ class AttributeManager(object):
         self.attribute_history(obj)[key] = p
         return p
 
+    def init_attr(self, obj):
+        """sets up the _managed_attributes dictionary on an object.  this happens anyway regardless
+        of this method being called, but saves on KeyErrors being thrown in get_history()."""
+        d = {}
+        obj.__dict__['_managed_attributes'] = d
+        cls_managed = self.class_managed(obj.__class__)
+        for value in cls_managed.values():
+            value(obj, d).plain_init(d)
+
     def get_history(self, obj, key, passive=False, **kwargs):
         """returns the "history" container for the given attribute on the given object.
         If the container does not exist, it will be created based on the class-level
         history container definition."""
         try:
-            return self.attribute_history(obj)[key].gethistory(passive=passive, **kwargs)
+            return obj.__dict__['_managed_attributes'][key].gethistory(passive=passive, **kwargs)
         except KeyError, e:
             return self.class_managed(obj.__class__)[key](obj, **kwargs).gethistory(passive=passive, **kwargs)
 
@@ -351,14 +371,14 @@ class AttributeManager(object):
         this dictionary is attached to the object via the attribute '_managed_attributes'.
         If the dictionary does not exist, it will be created."""
         try:
-            attr = obj.__dict__['_managed_attributes']
+            return obj.__dict__['_managed_attributes']
         except KeyError:
             trigger = obj.__dict__.pop('_managed_trigger', None)
             if trigger:
                 trigger()
             attr = {}
             obj.__dict__['_managed_attributes'] = attr
-        return attr
+            return attr
 
     def trigger_history(self, obj, callable):
         try:
@@ -424,13 +444,15 @@ class AttributeManager(object):
         the new object instance as an argument to create the new history container.  
         Extra keyword arguments can be sent which
         will be passed along to newly created history containers."""
-        def createprop(obj):
+        def createprop(obj, attrhist=None):
             if callable_ is not None: 
                 func = callable_(obj)
             else:
                 func = None
             p = self.create_history_container(obj, key, uselist, callable_=func, **kwargs)
-            self.attribute_history(obj)[key] = p
+            if attrhist is None:
+                attrhist = self.attribute_history(obj)
+            attrhist[key] = p
             return p
         
         self.class_managed(class_)[key] = createprop
