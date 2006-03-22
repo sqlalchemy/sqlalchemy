@@ -384,6 +384,48 @@ class InheritTest5(testbase.AssertMixin):
         # shouldnt throw exception
         products = mapper(Product, product, inherits=contents)
         
+class InheritTest6(testbase.AssertMixin):
+    """tests eager load/lazy load of child items off inheritance mappers, tests that
+    LazyLoader constructs the right query condition."""
+    def setUpAll(self):
+        global foo, bar, bar_foo
+        foo = Table('foo', testbase.db, Column('id', Integer, Sequence('foo_seq'), primary_key=True),
+        Column('data', String(30))).create()
+        bar = Table('bar', testbase.db, Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
+     Column('data', String(30))).create()
 
+        bar_foo = Table('bar_foo', testbase.db,
+        Column('bar_id', Integer, ForeignKey('bar.id')),
+        Column('foo_id', Integer, ForeignKey('foo.id'))
+        ).create()
+    def tearDownAll(self):
+        bar_foo.drop()
+        bar.drop()
+        foo.drop()
+        
+    def testbasic(self):
+        class Foo(object): pass
+        class Bar(Foo): pass
+
+        foos = mapper(Foo, foo)
+        bars = mapper(Bar, bar, inherits=foos)
+        bars.add_property('lazy', relation(foos, bar_foo, lazy=True))
+        bars.add_property('eager', relation(foos, bar_foo, lazy=False))
+
+        foo.insert().execute(data='foo1')
+        bar.insert().execute(id=1, data='bar1')
+
+        foo.insert().execute(data='foo2')
+        bar.insert().execute(id=2, data='bar2')
+
+        foo.insert().execute(data='foo3') #3
+        foo.insert().execute(data='foo4') #4
+
+        bar_foo.insert().execute(bar_id=1, foo_id=3)
+        bar_foo.insert().execute(bar_id=2, foo_id=4)
+
+        self.assert_(len(bars.selectfirst().lazy) == 1)
+        self.assert_(len(bars.selectfirst().eager) == 1)
+    
 if __name__ == "__main__":    
     testbase.main()
