@@ -65,7 +65,7 @@ UPDATE users SET user_name=:user_name
             
             userlist = User.mapper.select_by(user_id=12)
         </&>
-    <p>There is also a full-blown "monkeypatch" function that creates a primary mapper, attaches the above mapper class property, and also the  methods <span class="codeline">get, get_by, select, select_by, selectone, commit</span> and <span class="codeline">delete</span>:</p>
+    <p>There is also a full-blown "monkeypatch" function that creates a primary mapper, attaches the above mapper class property, and also the  methods <span class="codeline">get, get_by, select, select_by, selectone, selectfirst, commit</span> and <span class="codeline">delete</span>:</p>
     <&|formatting.myt:code&>
         assign_mapper(User, users)
         userlist = User.select_by(user_id=12)
@@ -124,7 +124,7 @@ UPDATE users SET user_name=:user_name
         result = mapper.select(or_(users.c.user_name == 'john', users.c.user_name=='fred'))
         
         # using a WHERE criterion to get a scalar
-        u = mapper.selectone(users.c.user_name=='john')
+        u = mapper.selectfirst(users.c.user_name=='john')
         
         # using a full select object
         result = mapper.select(users.select(users.c.user_name=='john'))
