@@ -645,7 +645,6 @@ def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     lazywhere = lazywhere.copy_container()
     li = BinaryVisitor(visit_binary)
     lazywhere.accept_visitor(li)
-    print "OK LAZYWHERE, START WITH TAB", table, "PJ", primaryjoin, "SEC", secondaryjoin, "GOT", lazywhere
     return (lazywhere, binds)
         
 
