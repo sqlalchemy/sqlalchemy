@@ -244,8 +244,8 @@ class OracleCompiler(ansisql.ANSICompiler):
        
     def visit_alias(self, alias):
 	"""oracle doesnt like 'FROM table AS alias'.  is the AS standard SQL??"""
-        self.froms[alias] = self.get_from_text(alias.selectable) + " " + alias.name
-        self.strings[alias] = self.get_str(alias.selectable)
+        self.froms[alias] = self.get_from_text(alias.original) + " " + alias.name
+        self.strings[alias] = self.get_str(alias.original)
  
     def visit_column(self, column):
         if self._use_ansi:
@@ -282,8 +282,10 @@ class OracleCompiler(ansisql.ANSICompiler):
             if hasattr(select, "order_by_clause"):
                 orderby = self.strings[select.order_by_clause]
             else:
+                # to use ROW_NUMBER(), an ORDER BY is required.  so here we dig in
+                # as best we can to find some column we can order by
                 # TODO: try to get "oid_column" to be used here
-                orderby = "%s.rowid ASC" % select.froms[0].name
+                orderby = "%s.rowid ASC" % select.primary_key[0].original.table.name
             select.append_column(sql.ColumnClause("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn"))
             limitselect = sql.select([c for c in select.c if c.key!='ora_rn'])
             if select.offset is not None:
