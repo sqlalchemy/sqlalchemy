@@ -89,7 +89,8 @@ class SessionTest(AssertMixin):
         tables.delete_user_data()
         
     def test_nested_begin_commit(self):
-        """test nested session.begin/commit"""
+        """tests that nesting objectstore transactions with multiple commits
+        affects only the outermost transaction"""
         class User(object):pass
         m = mapper(User, users)
         def name_of(id):
@@ -117,6 +118,8 @@ class SessionTest(AssertMixin):
         self.assert_(name_of(8) == name2, msg="user_name should be %s" % name2)
 
     def test_nested_rollback(self):
+        """tests that nesting objectstore transactions with a rollback inside
+        affects only the outermost transaction"""
         class User(object):pass
         m = mapper(User, users)
         def name_of(id):
@@ -141,6 +144,32 @@ class SessionTest(AssertMixin):
         self.assert_(name_of(7) != name1, msg="user_name should not be %s" % name1)
         self.assert_(name_of(8) != name2, msg="user_name should not be %s" % name2)
 
+    def test_true_nested(self):
+        """tests creating a new Session inside a database transaction, in 
+        conjunction with an engine-level nested transaction, which uses
+        a second connection in order to achieve a nested transaction that commits, inside
+        of another engine session that rolls back."""
+#        testbase.db.echo='debug'
+        class User(object):
+            pass
+        testbase.db.begin()
+        try:
+            m = mapper(User, users)
+            name1 = "Oliver Twist"
+            name2 = 'Mr. Bumble'
+            m.get(7).user_name = name1
+            s = objectstore.Session(nest_on=testbase.db)
+            m.using(s).get(8).user_name = name2
+            s.commit()
+            objectstore.commit()
+            testbase.db.rollback()
+        except:
+            testbase.db.rollback()
+            raise
+        objectstore.clear()
+        self.assert_(m.get(8).user_name == name2)
+        self.assert_(m.get(7).user_name != name1)
+        
 class UnicodeTest(AssertMixin):
     def setUpAll(self):
         global uni_table

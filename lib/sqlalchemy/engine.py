@@ -180,6 +180,8 @@ class SQLSession(object):
         if parent is not None:
             self.__connection = self.engine._pool.unique_connection()
         self.__tcount = 0
+    def pop(self):
+        self.engine.pop_session(self)
     def _connection(self):
         try:
             return self.__transaction
@@ -448,11 +450,13 @@ class SQLEngine(schema.SchemaEngine):
         sess = SQLSession(self, self.context.session)
         self.context.session = sess
         return sess
-    def pop_session(self):
+    def pop_session(self, s = None):
         """restores the current thread's SQLSession to that before the last push_session.  Returns the restored SQLSession object.  Raises an exception if there is no SQLSession pushed onto the stack."""
         sess = self.context.session.parent
         if sess is None:
-            raise InvalidRequestError("No SQLSession is pushed onto the stack.")
+            raise exceptions.InvalidRequestError("No SQLSession is pushed onto the stack.")
+        elif s is not None and s is not self.context.session:
+            raise exceptions.InvalidRequestError("Given SQLSession is not the current session on the stack")
         self.context.session = sess
         return sess
         

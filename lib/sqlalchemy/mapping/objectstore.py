@@ -17,7 +17,7 @@ import sqlalchemy
 class Session(object):
     """Maintains a UnitOfWork instance, including transaction state."""
     
-    def __init__(self, nest_transactions=False, hash_key=None):
+    def __init__(self, nest_on=None, hash_key=None):
         """Initialize the objectstore with a UnitOfWork registry.  If called
         with no arguments, creates a single UnitOfWork for all operations.
         
@@ -29,13 +29,28 @@ class Session(object):
         self.uow = unitofwork.UnitOfWork()
         self.parent_uow = None
         self.begin_count = 0
-        self.nest_transactions = nest_transactions
+        self.nest_on = util.to_list(nest_on)
+        self.__pushed_count = 0
         if hash_key is None:
             self.hash_key = id(self)
         else:
             self.hash_key = hash_key
         _sessions[self.hash_key] = self
-        
+    
+    def was_pushed(self):
+        if self.nest_on is None:
+            return
+        self.__pushed_count += 1
+        if self.__pushed_count == 1:
+            for n in self.nest_on:
+                n.push_session()
+    def was_popped(self):
+        if self.nest_on is None or self.__pushed_count == 0:
+            return
+        self.__pushed_count -= 1
+        if self.__pushed_count == 0:
+            for n in self.nest_on:
+                n.pop_session()
     def get_id_key(ident, class_):
         """returns an identity-map key for use in storing/retrieving an item from the identity
         map, given a tuple of the object's primary key values.
@@ -108,7 +123,7 @@ class Session(object):
     def _trans_commit(self, trans):
         if trans.uow is self.uow and trans.isactive:
             try:
-                self.uow.commit()
+                self._commit_uow()
             finally:
                 self.uow = self.parent_uow
                 self.parent_uow = None
@@ -116,6 +131,13 @@ class Session(object):
         if trans.uow is self.uow:
             self.uow = self.parent_uow
             self.parent_uow = None
+
+    def _commit_uow(self, *obj):
+        self.was_pushed()
+        try:
+            self.uow.commit(*obj)
+        finally:
+            self.was_popped()
                         
     def commit(self, *objects):
         """commits the current UnitOfWork transaction.  called with
@@ -126,11 +148,12 @@ class Session(object):
         # if an object list is given, commit just those but dont
         # change begin/commit status
         if len(objects):
+            self._commit_uow(*objects)
             self.uow.commit(*objects)
             return
         if self.parent_uow is None:
-            self.uow.commit()
-
+            self._commit_uow()
+            
     def refresh(self, *obj):
         """reloads the attributes for the given objects from the database, clears
         any changes made."""
@@ -287,14 +310,18 @@ uow = get_session # deprecated
 
 def push_session(sess):
     old = get_session()
+    if getattr(sess, '_previous', None) is not None:
+        raise InvalidRequestError("Given Session is already pushed onto some thread's stack")
     sess._previous = old
     session_registry.set(sess)
+    sess.was_pushed()
     
 def pop_session():
     sess = get_session()
     old = sess._previous
     sess._previous = None
     session_registry.set(old)
+    sess.was_popped()
     return old
     
 def using_session(sess, func):

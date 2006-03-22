@@ -350,6 +350,8 @@ class Mapper(object):
         """returns a proxying object to this mapper, which will execute methods on the mapper
         within the context of the given session.  The session is placed as the "current" session
         via the push_session/pop_session methods in the objectstore module."""
+        if objectstore.get_session() is session:
+            return self
         mapper = self
         class Proxy(object):
             def __getattr__(self, key):
