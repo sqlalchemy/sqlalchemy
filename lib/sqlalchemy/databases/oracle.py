@@ -227,9 +227,9 @@ class OracleCompiler(ansisql.ANSICompiler):
     def visit_join(self, join):
         if self._use_ansi:
             return ansisql.ANSICompiler.visit_join(self, join)
-            
+        
         self.froms[join] = self.get_from_text(join.left) + ", " + self.get_from_text(join.right)
-        self.wheres[join] = join.onclause
+        self.wheres[join] = sql.and_(self.wheres.get(join.left, None), join.onclause)
 
         if join.isouter:
             # if outer join, push on the right side table as the current "outertable"
@@ -241,6 +241,8 @@ class OracleCompiler(ansisql.ANSICompiler):
             join.onclause.accept_visitor(self)
 
             self._outertable = outertable
+
+        self.visit_compound(self.wheres[join])
        
     def visit_alias(self, alias):
 	"""oracle doesnt like 'FROM table AS alias'.  is the AS standard SQL??"""
@@ -250,7 +252,7 @@ class OracleCompiler(ansisql.ANSICompiler):
     def visit_column(self, column):
         if self._use_ansi:
             return ansisql.ANSICompiler.visit_column(self, column)
-            
+        
         if column.table is self._outertable:
             self.strings[column] = "%s.%s(+)" % (column.table.name, column.name)
         else:
@@ -285,7 +287,11 @@ class OracleCompiler(ansisql.ANSICompiler):
                 # to use ROW_NUMBER(), an ORDER BY is required.  so here we dig in
                 # as best we can to find some column we can order by
                 # TODO: try to get "oid_column" to be used here
-                orderby = "%s.rowid ASC" % select.primary_key[0].original.table.name
+                if len(select.primary_key):
+                    col = select.primary_key[0].original.table.name
+                else:
+                    col = select.froms[0].name
+                orderby = "%s.rowid ASC" % col
             select.append_column(sql.ColumnClause("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn"))
             limitselect = sql.select([c for c in select.c if c.key!='ora_rn'])
             if select.offset is not None:

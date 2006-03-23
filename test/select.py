@@ -463,6 +463,10 @@ mytable.name = :mytable_name AND mytable.myid = :mytable_myid AND \
 myothertable.othername != :myothertable_othername AND EXISTS (select yay from foo where boo = lar)",
             engine = oracle.engine({}, use_ansi = False))
 
+        query = table1.outerjoin(table2, table1.c.myid==table2.c.otherid).outerjoin(table3, table3.c.userid==table2.c.otherid)
+        self.runtest(query.select(), "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable LEFT OUTER JOIN myothertable ON mytable.myid = myothertable.otherid LEFT OUTER JOIN thirdtable ON thirdtable.userid = myothertable.otherid")
+        self.runtest(query.select(), "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable, myothertable, thirdtable WHERE mytable.myid = myothertable.otherid(+) AND thirdtable.userid(+) = myothertable.otherid", engine=oracle.engine({}, use_ansi=False))    
+
     def testbindparam(self):
         self.runtest(select(
                     [table1, table2],
