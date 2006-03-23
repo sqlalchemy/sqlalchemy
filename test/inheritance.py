@@ -95,7 +95,7 @@ class InheritTest2(testbase.AssertMixin):
         engine = testbase.db
         global foo, bar, foo_bar
         foo = Table('foo', engine,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, Sequence('foo_id_seq'), primary_key=True),
             Column('data', String(20)),
             ).create()
 

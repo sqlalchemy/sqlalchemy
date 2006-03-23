@@ -25,7 +25,7 @@ def parse_argv():
         elif sys.argv[1] == '--db':
             (param, DBTYPE) = (sys.argv.pop(1), sys.argv.pop(1))
 
-    
+    opts = {} 
     if (None == db_uri):
         p = DBTYPE.split('.')
         if len(p) > 1:
@@ -43,15 +43,18 @@ def parse_argv():
             db_uri = 'mysql://database=test&host=127.0.0.1&user=scott&password=tiger'
         elif DBTYPE == 'oracle':
             db_uri = 'oracle://user=scott&password=tiger'
+        elif DBTYPE == 'oracle8':
+            db_uri = 'oracle://user=scott&password=tiger'
+            opts = {'use_ansi':False}
 
     if not db_uri:
         raise "Could not create engine.  specify --db <sqlite|sqlite_file|postgres|mysql|oracle> to test runner."
 
     if PROXY:
-        db = proxy.ProxyEngine(echo=echo, default_ordering=True)
+        db = proxy.ProxyEngine(echo=echo, default_ordering=True, **opts)
         db.connect(db_uri)
     else:
-        db = engine.create_engine(db_uri, echo=echo, default_ordering=True)
+        db = engine.create_engine(db_uri, echo=echo, default_ordering=True, **opts)
     db = EngineAssert(db)
 
 class PersistTest(unittest.TestCase):

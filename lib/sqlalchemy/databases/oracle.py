@@ -233,14 +233,13 @@ class OracleCompiler(ansisql.ANSICompiler):
 
         if join.isouter:
             # if outer join, push on the right side table as the current "outertable"
-            outertable = self._outertable
             self._outertable = join.right
 
             # now re-visit the onclause, which will be used as a where clause
             # (the first visit occured via the Join object itself right before it called visit_join())
             join.onclause.accept_visitor(self)
 
-            self._outertable = outertable
+            self._outertable = None
 
         self.visit_compound(self.wheres[join])
        
@@ -250,13 +249,9 @@ class OracleCompiler(ansisql.ANSICompiler):
         self.strings[alias] = self.get_str(alias.original)
  
     def visit_column(self, column):
-        if self._use_ansi:
-            return ansisql.ANSICompiler.visit_column(self, column)
-        
-        if column.table is self._outertable:
-            self.strings[column] = "%s.%s(+)" % (column.table.name, column.name)
-        else:
-            self.strings[column] = "%s.%s" % (column.table.name, column.name)
+        ansisql.ANSICompiler.visit_column(self, column)
+        if not self._use_ansi and self._outertable is not None and column.table is self._outertable:
+            self.strings[column] = self.strings[column] + "(+)"
        
     def visit_insert(self, insert):
         """inserts are required to have the primary keys be explicitly present.
