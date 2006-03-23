@@ -290,7 +290,7 @@ class OracleCompiler(ansisql.ANSICompiler):
                 if len(select.primary_key):
                     col = select.primary_key[0].original.table.name
                 else:
-                    col = select.froms[0].name
+                    col = [c for c in select.c][0].original.table.name
                 orderby = "%s.rowid ASC" % col
             select.append_column(sql.ColumnClause("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn"))
             limitselect = sql.select([c for c in select.c if c.key!='ora_rn'])
