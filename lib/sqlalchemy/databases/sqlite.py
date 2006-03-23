@@ -38,6 +38,11 @@ class SLSmallInteger(sqltypes.Smallinteger):
 class SLDateTime(sqltypes.DateTime):
     def get_col_spec(self):
         return "TIMESTAMP"
+    def convert_bind_param(self, value, engine):
+        if value is not None:
+            return str(value)
+        else:
+            return None
     def _cvt(self, value, engine, fmt):
         if value is None:
             return None
