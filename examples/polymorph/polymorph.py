@@ -23,7 +23,7 @@ people = Table('people', db,
    
 engineers = Table('engineers', db, 
    Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
-   Column('description', String(50))).create()
+   Column('special_description', String(50))).create()
    
 managers = Table('managers', db, 
    Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
@@ -36,7 +36,7 @@ class Person(object):
         return "Ordinary person %s" % self.name
 class Engineer(Person):
     def __repr__(self):
-        return "Engineer %s, description %s" % (self.name, self.description)
+        return "Engineer %s, description %s" % (self.name, self.special_description)
 class Manager(Person):
     def __repr__(self):
         return "Manager %s, description %s" % (self.name, self.description)
@@ -69,7 +69,7 @@ person_join = select(
                 [people, managers.c.description,column("'manager'").label('type')], 
                 people.c.person_id==managers.c.person_id).union_all(
             select(
-            [people, engineers.c.description, column("'engineer'").label('type')],
+            [people, engineers.c.special_description.label('description'), column("'engineer'").label('type')],
             people.c.person_id==engineers.c.person_id)).alias('pjoin')
             
 
@@ -83,7 +83,9 @@ print "Person selectable:", str(person_join.select(use_labels=True)), "\n"
 class PersonLoader(MapperExtension):
     def create_instance(self, mapper, row, imap, class_):
         if row['pjoin_type'] =='engineer':
-            return Engineer()
+            e = Engineer()
+            e.special_description = row['pjoin_description']
+            return e
         elif row['pjoin_type'] =='manager':
             return Manager()
         else:
@@ -111,8 +113,8 @@ assign_mapper(Company, companies, properties={
 
 c = Company(name='company1')
 c.employees.append(Manager(name='pointy haired boss', description='manager1'))
-c.employees.append(Engineer(name='dilbert', description='engineer1'))
-c.employees.append(Engineer(name='wally', description='engineer2'))
+c.employees.append(Engineer(name='dilbert', special_description='engineer1'))
+c.employees.append(Engineer(name='wally', special_description='engineer2'))
 c.employees.append(Manager(name='jsmith', description='manager2'))
 objectstore.commit()
 
@@ -125,7 +127,7 @@ for e in c.employees:
 print "\n"
 
 dilbert = Engineer.mapper.get_by(name='dilbert')
-dilbert.description = 'hes dibert!'
+dilbert.special_description = 'hes dibert!'
 objectstore.commit()
 
 objectstore.clear()

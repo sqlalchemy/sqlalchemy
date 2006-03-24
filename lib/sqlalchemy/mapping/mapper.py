@@ -291,7 +291,7 @@ class Mapper(object):
             objectstore.get_session().register_clean(value)
 
         if mappers:
-            result.extend(otherresults)
+            result = [result] + otherresults
         return result
             
     def get(self, *ident):
@@ -837,8 +837,8 @@ class Mapper(object):
         
         # call further mapper properties on the row, to pull further 
         # instances from the row and possibly populate this item.
-        for prop in self.props.values():
-            prop.execute(instance, row, identitykey, imap, isnew)
+        if self.extension.populate_instance(self, instance, row, identitykey, imap, isnew):
+            self.populate_instance(instance, row, identitykey, imap, isnew, translate=False)
 
         if self.extension.append_result(self, row, imap, result, instance, isnew, populate_existing=populate_existing):
             if result is not None:
@@ -846,6 +846,17 @@ class Mapper(object):
 
         return instance
 
+    def populate_instance(self, instance, row, identitykey, imap, isnew, translate=True):
+        if translate:
+            newrow = {}
+            for table in self.tables:
+                for c in table.c:
+                    newrow[c] = row[c.key]
+            row = newrow
+            
+        for prop in self.props.values():
+            prop.execute(instance, row, identitykey, imap, isnew)
+        
 class MapperProperty(object):
     """an element attached to a Mapper that describes and assists in the loading and saving 
     of an attribute on an object instance."""
@@ -930,7 +941,8 @@ class MapperExtension(object):
     def append_result(self, mapper, row, imap, result, instance, isnew, populate_existing=False):
         """called when an object instance is being appended to a result list.
         
-        If it returns True, it is assumed that this method handled the appending itself.
+        If this method returns True, it is assumed that the mapper should do the appending, else
+        if this method returns False, it is assumed that the append was handled by this method.
 
         mapper - the mapper doing the operation
         
@@ -956,6 +968,22 @@ class MapperExtension(object):
             return True
         else:
             return self.next.append_result(mapper, row, imap, result, instance, isnew, populate_existing)
+    def populate_instance(self, mapper, instance, row, identitykey, imap, isnew):
+        """called right before the mapper, after creating an instance from a row, passes the row
+        to its MapperProperty objects which are responsible for populating the object's attributes.
+        If this method returns True, it is assumed that the mapper should do the appending, else
+        if this method returns False, it is assumed that the append was handled by this method.
+        
+        Essentially, this method is used to have a different mapper populate the object:
+        
+            def populate_instance(self, mapper, *args):
+                othermapper.populate_instance(*args)
+                return False
+        """
+        if self.next is None:
+            return True
+        else:
+            return self.next.populate_instance(row, imap, result, instance, isnew)
     def before_insert(self, mapper, instance):
         """called before an object instance is INSERTed into its table.
         

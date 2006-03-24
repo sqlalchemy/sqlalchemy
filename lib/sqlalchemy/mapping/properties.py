@@ -807,11 +807,14 @@ class EagerLoader(PropertyLoader):
                 if map.has_key(key):
                     key = map[key]
                 return self.row[key]
+            def keys(self):
+                return map.keys()
         map = {}        
         for c in self.eagertarget.c:
             parent = self.target._get_col_by_original(c.original)
             map[parent] = c
             map[parent._label] = c
+            map[parent.name] = c
         return DecoratorDict
         
     def _instance(self, row, imap, result_list=None):

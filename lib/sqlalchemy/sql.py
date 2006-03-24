@@ -13,7 +13,7 @@ from exceptions import *
 import string, re, random
 types = __import__('types')
 
-__all__ = ['text', 'table', 'column', 'func', 'select', 'update', 'insert', 'delete', 'join', 'and_', 'or_', 'not_', 'union', 'union_all', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'literal', 'bindparam', 'exists']
+__all__ = ['text', 'table', 'column', 'func', 'select', 'update', 'insert', 'delete', 'join', 'and_', 'or_', 'not_', 'union', 'union_all', 'null', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'literal', 'bindparam', 'exists']
 
 def desc(column):
     """returns a descending ORDER BY clause element, e.g.:
@@ -705,9 +705,11 @@ class TextClause(ClauseElement):
     def _get_from_objects(self):
         return []
 
-class Null(ClauseElement):
+class Null(ColumnElement):
     """represents the NULL keyword in a SQL statement. public contstructor is the
     null() function."""
+    def __init__(self):
+        self.type = sqltypes.NULLTYPE
     def accept_visitor(self, visitor):
         visitor.visit_null(self)
     def _get_from_objects(self):
