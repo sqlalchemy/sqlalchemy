@@ -28,6 +28,7 @@ via the GenericBackrefExtension object.
 """
 
 import util
+import weakref
 from exceptions import *
 
 class SmartProperty(object):
@@ -351,7 +352,7 @@ class AttributeManager(object):
     def init_attr(self, obj):
         """sets up the _managed_attributes dictionary on an object.  this happens anyway regardless
         of this method being called, but saves on KeyErrors being thrown in get_history()."""
-        d = {}
+        d = managed_attribute_dict()
         obj.__dict__['_managed_attributes'] = d
         cls_managed = self.class_managed(obj.__class__)
         for value in cls_managed.values():
@@ -376,7 +377,7 @@ class AttributeManager(object):
             trigger = obj.__dict__.pop('_managed_trigger', None)
             if trigger:
                 trigger()
-            attr = {}
+            attr = managed_attribute_dict()
             obj.__dict__['_managed_attributes'] = attr
             return attr
 
@@ -457,4 +458,10 @@ class AttributeManager(object):
         
         self.class_managed(class_)[key] = createprop
         setattr(class_, key, self.create_prop(class_, key, uselist))
+
+# make this function return a weakref.WeakValueDictionary to avoid
+# creating circular references in objects
+def managed_attribute_dict():
+    return {}
+#    return weakref.WeakValueDictionary()
 
