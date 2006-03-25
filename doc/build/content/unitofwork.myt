@@ -156,18 +156,29 @@
     <p>This second form of commit should be used more carefully as it will not necessarily locate other dependent objects within the session, whose database representation may have foreign constraint relationships with the objects being operated upon.</p>
     
         <&|doclib.myt:item, name="whatis", description="What Commit is, and Isn't" &>
-        <p>The purpose of the Commit operation is to instruct the Unit of Work to analyze its lists of modified objects, assemble them into a dependency graph, and fire off the appopriate INSERT, UPDATE, and DELETE statements via the mappers related to those objects.  <b>And thats it.</b>  This means, it is not going to change anything about your objects as they exist in memory, with the exception of populating scalar object attributes with newly generated default column values which normally only involves primary and foreign key identifiers.  A brief list of what will <b>not</b> happen includes:</p>
+        <p>The purpose of the Commit operation is to instruct the Unit of Work to analyze its lists of modified objects, assemble them into a dependency graph, fire off the appopriate INSERT, UPDATE, and DELETE statements via the mappers related to those objects, and update the identifying object attributes that correspond directly to database columns.  <b>And thats it.</b>  This means, it is not going to change anything about your objects as they exist in memory, with the exception of synchronizing the identifier attributes on saved and updated objects as they correspond directly to newly inserted or updated rows, which typically include only primary key and foreign key attributes that in most cases are integers.  A brief list of what will <b>not</b> happen includes:</p>
             <ul>
-                <li>It will not append or delete any items from any list-based attributes.  Any objects that have been inserted or deleted will be updated as such in the database, but if a deleted object instance is still attached to a parent object, it will remain.</li>
-                <li>It will not set or remove any scalar object attributes, even if the database identifier columns have been committed.  This means, if you set <code>user.address_id</code> to 5, that will be saved, but it will not place an <code>Address</code> object on the <code>user</code> object.  Similarly, if the <code>Address</code> object is deleted but is still attached to the <code>User</code>, it will remain.</li>
+                <li>It will not append or delete any object instances to/from any list-based object attributes.  Any objects that have been created or marked as deleted will be updated as such in the database, but if a newly deleted object instance is still attached to a parent object's list, the object itself will remain in that list.</li>
+                <li>It will not set or remove any scalar references to other objects, even if the corresponding database identifier columns have been committed.</li>
             </ul>
-        <P>So the primary guideline for dealing with commit() is, <b>the developer is responsible for maintaining the objects in memory, the unit of work is responsible for maintaining the database representation.</b></p>
+            <p>This means, if you set <code>address.user_id</code> to 5, that integer attribute will be saved, but it will not place an <code>Address</code> object in the <code>addresses</code> attribute of the corresponding  <code>User</code> object.  In some cases there may be a lazy-loader still attached to an object attribute which when first accesed performs a fresh load from the database and creates the appearance of this behavior, but this behavior should not be relied upon as it is specific to lazy loading and also may disappear in a future release.  Similarly, if the <code>Address</code> object is marked as deleted and a commit is issued, the correct DELETE statements will be issued, but if the object instance itself is still attached to the <code>User</code>, it will remain.</p>
+        <P>So the primary guideline for dealing with commit() is, <b>the developer is responsible for maintaining in-memory objects and their relationships to each other, the unit of work is responsible for maintaining the database representation of the in-memory objects.</b>  The typical pattern is that the manipulation of objects *is* the way that changes get communicated to the unit of work, so that when the commit occurs, the objects are already in their correct in-memory representation and problems dont arise.  The manipulation of identifier attributes like integer key values as well as deletes in particular are a frequent source of confusion.</p>
         
-        <p>A terrific feature of SQLAlchemy which is also a supreme source of confusion is the backreference feature, described in <&formatting.myt:link, path="datamapping_relations_backreferences"&>.  This feature allows two types of objects to maintain attributes that reference each other, typically one object maintaining a list of elements of the other side.  When you append an element to the list, the element gets a "backreference" back to the object which has the list.  When you attach the list-holding element to the child element, the child element gets attached to the list.  <b>This feature has nothing to do whatsoever with the Unit of Work.</b>  It is strictly a small convenience feature added to support an extremely common pattern.  Besides this one little feature, <b>the developer must maintain in-memory object relationships manually</b>.  Note that we are talking about the <b>manipulation</b> of objects, not the initial loading of them which is handled by the mapper.</p>
+        <p>A terrific feature of SQLAlchemy which is also a supreme source of confusion is the backreference feature, described in <&formatting.myt:link, path="datamapping_relations_backreferences"&>.  This feature allows two types of objects to maintain attributes that reference each other, typically one object maintaining a list of elements of the other side, which contains a scalar reference to the list-holding object.  When you append an element to the list, the element gets a "backreference" back to the object which has the list.  When you attach the list-holding element to the child element, the child element gets attached to the list.  <b>This feature has nothing to do whatsoever with the Unit of Work.</b>  It is strictly a small convenience feature intended to support the developer's manual manipulation of in-memory objects, and the backreference operation happens at the moment objects are attached or removed to/from each other, independent of any kind of database operation.  It does not change the golden rule, that the developer is reponsible for maintaining in-memory object relationships.</p>
         </&>
     </&>
 
     <&|doclib.myt:item, name="delete", description="Delete" &>
+    <P>The delete call places an object or objects into the Unit of Work's list of objects to be marked as deleted:</p>
+    <&|formatting.myt:code&>
+        # mark three objects to be deleted
+        objectstore.get_session().delete(obj1, obj2, obj3)
+        
+        # commit
+        objectstore.get_session().commit()
+    </&>
+    <p>When objects which contain references to other objects are deleted, the mappers for those related objects will issue UPDATE statements for those objects that should no longer contain references to the deleted object, setting foreign key identifiers to NULL.  Similarly, when a mapper contains relations with the <code>private=True</code> option, DELETE statements will be issued for objects within that relationship in addition to that of the primary deleted object; this is called a <b>cascading delete</b>.</p>
+    <p>As stated before, the purpose of delete is strictly to issue DELETE statements to the database.  It does not affect the in-memory structure of objects, other than changing the identifying attributes on objects, such as setting foreign key identifiers on updated rows to None.  It has no effect on the status of references between object instances, nor any effect on the Python garbage-collection status of objects.</p>
     </&>
 
     <&|doclib.myt:item, name="clear", description="Clear" &>
@@ -184,9 +195,23 @@
     </&>
 
     <&|doclib.myt:item, name="refreshexpire", description="Refresh / Expire" &>
+    <p>To assist with the Unit of Work's "sticky" behavior, individual objects can have all of their attributes immediately re-loaded from the database, or marked as "expired" which will cause a re-load to occur upon the next access of any of the object's mapped attributes.  This includes all relationships, so lazy-loaders will be re-initialized, eager relationships will be repopulated.  Any changes marked on the object are discarded:</p>
+    <&|formatting.myt:code&>
+        # immediately re-load attributes on obj1, obj2
+        session.refresh(obj1, obj2)
+        
+        # expire objects obj1, obj2, attributes will be reloaded
+        # on the next access:
+        session.expire(obj1, obj2, obj3)
+    </&>
     </&>
     
     <&|doclib.myt:item, name="expunge", description="Expunge" &>
+    <P>Expunge simply removes all record of an object from the current Session.  This includes the identity map, and all history-tracking lists:</p>
+    <&|formatting.myt:code&>
+        session.expunge(obj1)
+    </&>
+    <p>Use <code>expunge</code> when youd like to remove an object altogether from memory, such as before calling <code>del</code> on it, which will prevent any "ghost" operations occuring when the session is committed.</p>
     </&>
 
     <&|doclib.myt:item, name="import", description="Import Instance" &>
