@@ -144,6 +144,8 @@ class ListElement(util.HistoryArraySet):
         # list that might be set on the object already
         try:
             list_ = obj.__dict__[key]
+            if list_ is data:
+                raise InvalidArgumentError("Creating a list element passing the object's list as an argument")
             if data is not None:
                 for d in data:
                     list_.append(d)
@@ -435,8 +437,7 @@ class AttributeManager(object):
         elif not uselist:
             return PropHistory(obj, key, **kwargs)
         else:
-            list_ = obj.__dict__.get(key, None)
-            return self.create_list(obj, key, list_, **kwargs)
+            return self.create_list(obj, key, None, **kwargs)
         
     def register_attribute(self, class_, key, uselist, callable_=None, **kwargs):
         """registers an attribute's behavior at the class level.  This attribute

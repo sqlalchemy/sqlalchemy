@@ -118,6 +118,27 @@ class MapperTest(MapperSuperTest):
         self.assert_(a not in u.addresses)
         # not dirty anymore
         self.assert_(u not in objectstore.get_session().uow.dirty)
+    
+    def testrefresh2(self):
+        assign_mapper(Address, addresses)
+
+        assign_mapper(User, users, properties = dict(addresses=relation(Address.mapper,private=True,lazy=False)) )
+
+        u=User()
+        u.user_name='Justin'
+        a = Address()
+        a.address_id=17  # to work around the hardcoded IDs in this test suite....
+        u.addresses.append(a)
+        objectstore.commit()
+        objectstore.clear()
+        u = User.mapper.selectfirst()
+        print u.user_name
+
+        #ok so far
+        u.expire()        #hangs when
+        print u.user_name #this line runs
+
+        u.refresh() #hangs
         
     def testmagic(self):
         m = mapper(User, users, properties = {

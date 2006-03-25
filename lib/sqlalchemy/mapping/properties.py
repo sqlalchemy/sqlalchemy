@@ -449,6 +449,8 @@ class PropertyLoader(MapperProperty):
                 for obj in deplist:
                     childlist = getlist(obj, False)
                     for child in childlist.deleted_items() + childlist.unchanged_items():
+                        if child is None:
+                            continue
                         uowcommit.register_object(child, isdelete=True)
             elif self.post_update:
                 # post_update means we have to update our row to not reference the child object
@@ -467,6 +469,8 @@ class PropertyLoader(MapperProperty):
                 for obj in deplist:
                     childlist = getlist(obj, False)
                     for child in childlist.deleted_items() + childlist.unchanged_items():
+                        if child is None:
+                            continue
                         uowcommit.register_object(child, isdelete=True)
             else:
                 for obj in deplist:
