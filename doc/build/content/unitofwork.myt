@@ -54,6 +54,50 @@
         [<__main__.User object at 0x712630>, <__main__.Address object at 0x712a70>]
         """  %>
     </&>
+
+    <p>The identity of each object instance is available via the _instance_key property attached to each object instance, and is a tuple consisting of the object's class and an additional tuple of primary key values, in the order that they appear within the table definition:</p>
+    <&|formatting.myt:code&>
+        >>> obj._instance_key 
+        (<class 'test.tables.User'>, (7,))
+    </&>
+
+    <p>
+    At the moment that an object is assigned this key, it is also added to the current thread's unit-of-work's identity map.  
+    </p>
+    
+    <p>The get() method on a mapper, which retrieves an object based on primary key identity, also checks in the current identity map first to save a database round-trip if possible.  In the case of an object lazy-loading a single child object, the get() method is used as well, so scalar-based lazy loads may in some cases not query the database; this is particularly important for backreference relationships as it can save a lot of queries.</p>
+    
+    <p>Methods on mappers and the objectstore module, which are relevant to identity include the following:</p>
+    <&|formatting.myt:code&>
+        # assume 'm' is a mapper
+        m = mapper(User, users)
+        
+        # get the identity key corresponding to a primary key
+        key = m.identity_key(7)
+        
+        # for composite key, list out the values in the order they
+        # appear in the table
+        key = m.identity_key(12, 'rev2')
+
+        # get the identity key given a primary key 
+        # value as a tuple and a class
+        key = objectstore.get_id_key((12, 'rev2'), User)
+        
+        # get the identity key for an object, whether or not it actually
+        # has one attached to it (m is the mapper for obj's class)
+        key = m.instance_key(obj)
+                
+        # is this key in the current identity map?
+        session.has_key(key)
+        
+        # is this object in the current identity map?
+        session.has_instance(obj)
+
+        # get this object from the current identity map based on 
+        # singular/composite primary key, or if not go 
+        # and load from the database
+        obj = m.get(12, 'rev2')
+    </&>
     
     </&>
     
@@ -156,7 +200,7 @@
     <p>This second form of commit should be used more carefully as it will not necessarily locate other dependent objects within the session, whose database representation may have foreign constraint relationships with the objects being operated upon.</p>
     
         <&|doclib.myt:item, name="whatis", description="What Commit is, and Isn't" &>
-        <p>The purpose of the Commit operation is to instruct the Unit of Work to analyze its lists of modified objects, assemble them into a dependency graph, fire off the appopriate INSERT, UPDATE, and DELETE statements via the mappers related to those objects, and update the identifying object attributes that correspond directly to database columns.  <b>And thats it.</b>  This means, it is not going to change anything about your objects as they exist in memory, with the exception of synchronizing the identifier attributes on saved and updated objects as they correspond directly to newly inserted or updated rows, which typically include only primary key and foreign key attributes that in most cases are integers.  A brief list of what will <b>not</b> happen includes:</p>
+        <p>The purpose of the Commit operation is to instruct the Unit of Work to analyze its lists of modified objects, assemble them into a dependency graph, fire off the appopriate INSERT, UPDATE, and DELETE statements via the mappers related to those objects, and to synchronize column-based object attributes that correspond directly to updated/inserted database columns.  <b>And thats it.</b>  It does not affect any <code>relation</code>-based object attributes, that is attributes that reference other objects or lists of other objects, in any way.  A brief list of what will <b>not</b> happen includes:</p>
             <ul>
                 <li>It will not append or delete any object instances to/from any list-based object attributes.  Any objects that have been created or marked as deleted will be updated as such in the database, but if a newly deleted object instance is still attached to a parent object's list, the object itself will remain in that list.</li>
                 <li>It will not set or remove any scalar references to other objects, even if the corresponding database identifier columns have been committed.</li>
@@ -164,7 +208,8 @@
             <p>This means, if you set <code>address.user_id</code> to 5, that integer attribute will be saved, but it will not place an <code>Address</code> object in the <code>addresses</code> attribute of the corresponding  <code>User</code> object.  In some cases there may be a lazy-loader still attached to an object attribute which when first accesed performs a fresh load from the database and creates the appearance of this behavior, but this behavior should not be relied upon as it is specific to lazy loading and also may disappear in a future release.  Similarly, if the <code>Address</code> object is marked as deleted and a commit is issued, the correct DELETE statements will be issued, but if the object instance itself is still attached to the <code>User</code>, it will remain.</p>
         <P>So the primary guideline for dealing with commit() is, <b>the developer is responsible for maintaining in-memory objects and their relationships to each other, the unit of work is responsible for maintaining the database representation of the in-memory objects.</b>  The typical pattern is that the manipulation of objects *is* the way that changes get communicated to the unit of work, so that when the commit occurs, the objects are already in their correct in-memory representation and problems dont arise.  The manipulation of identifier attributes like integer key values as well as deletes in particular are a frequent source of confusion.</p>
         
-        <p>A terrific feature of SQLAlchemy which is also a supreme source of confusion is the backreference feature, described in <&formatting.myt:link, path="datamapping_relations_backreferences"&>.  This feature allows two types of objects to maintain attributes that reference each other, typically one object maintaining a list of elements of the other side, which contains a scalar reference to the list-holding object.  When you append an element to the list, the element gets a "backreference" back to the object which has the list.  When you attach the list-holding element to the child element, the child element gets attached to the list.  <b>This feature has nothing to do whatsoever with the Unit of Work.</b>  It is strictly a small convenience feature intended to support the developer's manual manipulation of in-memory objects, and the backreference operation happens at the moment objects are attached or removed to/from each other, independent of any kind of database operation.  It does not change the golden rule, that the developer is reponsible for maintaining in-memory object relationships.</p>
+        <p>A terrific feature of SQLAlchemy which is also a supreme source of confusion is the backreference feature, described in <&formatting.myt:link, path="datamapping_relations_backreferences"&>.  This feature allows two types of objects to maintain attributes that reference each other, typically one object maintaining a list of elements of the other side, which contains a scalar reference to the list-holding object.  When you append an element to the list, the element gets a "backreference" back to the object which has the list.  When you attach the list-holding element to the child element, the child element gets attached to the list.  <b>This feature has nothing to do whatsoever with the Unit of Work.*</b>  It is strictly a small convenience feature intended to support the developer's manual manipulation of in-memory objects, and the backreference operation happens at the moment objects are attached or removed to/from each other, independent of any kind of database operation.  It does not change the golden rule, that the developer is reponsible for maintaining in-memory object relationships.</p>
+        <p>* there is an internal relationship between two <code>relations</code> that have a backreference, which state that a change operation is only logged once to the unit of work instead of two separate changes since the two changes are "equivalent", so a backreference does affect the information that is sent to the Unit of Work.  But the Unit of Work itself has no knowledge of this arrangement and has no ability to affect it.</p>
         </&>
     </&>
 
@@ -191,7 +236,7 @@
         # or via Session
         objectstore.get_session().clear()
     </&>
-    <p>This is the easiest way to "start fresh", as in a web application that wants to have a newly loaded graph of objects on each request.  Any object instances before the clear operation should be discarded.</p>
+    <p>This is the easiest way to "start fresh", as in a web application that wants to have a newly loaded graph of objects on each request.  Any object instances created before the clear operation should either be discarded or at least not used with any Mapper or Unit Of Work operations (with the exception of <code>import_instance()</code>), as they no longer have any relationship to the current Unit of Work, and their behavior with regards to the current session is undefined.</p>
     </&>
 
     <&|doclib.myt:item, name="refreshexpire", description="Refresh / Expire" &>
@@ -215,48 +260,27 @@
     </&>
 
     <&|doclib.myt:item, name="import", description="Import Instance" &>
+        <p>The _instance_key attribute placed on object instances is designed to work with objects that are serialized into strings and brought back again.  As it contains no references to internal structures or database connections, applications that use caches or session storage which require serialization (i.e. pickling) can store SQLAlchemy-loaded objects.  However, as mentioned earlier, an object with a particular database identity is only allowed to exist uniquely within the current unit-of-work scope.  So, upon deserializing such an object, it has to "check in" with the current Session.  This is achieved via the <code>import_instance()</code> method:</p>
+        <&|formatting.myt:code&>
+            # deserialize an object
+            myobj = pickle.loads(mystring)
+
+            # "import" it.  if the objectstore already had this object in the 
+            # identity map, then you get back the one from the current session.
+            myobj = session.import_instance(myobj)
+        </&>
+    <p>Note that the import_instance() function will either mark the deserialized object as the official copy in the current identity map, which includes updating its _instance_key with the current application's class instance, or it will discard it and return the corresponding object that was already present.  Thats why its important to receive the return results from the method and use the result as the official object instance.</p>
     </&>
-    
-    </&>
-    <&|doclib.myt:item, name="begincommit", description="Begin/Commit" &>
-    <p>The current thread's UnitOfWork object keeps track of objects that are modified.  It maintains the following lists:</p>
-    <&|formatting.myt:code&>
-        # new objects that were just constructed
-        objectstore.get_session().new
-        
-        # objects that exist in the database, that were modified
-        objectstore.get_session().dirty
-        
-        # objects that have been marked as deleted via objectstore.delete()
-        objectstore.get_session().deleted
-    </&>
-    <p>To commit the changes stored in those lists, just issue a commit.  This can be called via <span class="codeline">objectstore.session().commit()</span>, or through the module-level convenience method in the objectstore module:</p>
-    <&|formatting.myt:code&>
-        objectstore.commit()
-    </&>
-    <p>The commit operation takes place within a SQL-level transaction, so any failures that occur will roll back the state of everything to before the commit took place.</p>
-    <p>When mappers are created for classes, new object construction automatically places objects in the "new" list on the UnitOfWork, and object modifications automatically place objects in the "dirty" list.  To mark objects as to be deleted, use the "delete" method on UnitOfWork, or the module level version:</p>
-    <&|formatting.myt:code&>
-        objectstore.delete(myobj1, myobj2, ...)
-    </&>
-    
-    <p>Commit() can also take a list of objects which narrow its scope to looking at just those objects to save:</p>
-    <&|formatting.myt:code&>
-        objectstore.commit(myobj1, myobj2, ...)
-    </&>
-    <p>Committing just a subset of instances should be used carefully, as it may result in an inconsistent save state between dependent objects (it should manage to locate loaded dependencies and save those also, but it hasnt been tested much).</p>
-    
-    <&|doclib.myt:item, name="begin", description="Controlling Scope with begin()" &>
-    <p><b>status</b> - release 0.1.1/SVN head</p>
-    <p>The "scope" of the unit of work commit can be controlled further by issuing a begin().  A begin operation constructs a new UnitOfWork object and sets it as the currently used UOW.  It maintains a reference to the original UnitOfWork as its "parent", and shares the same "identity map" of objects that have been loaded from the database within the scope of the parent UnitOfWork.  However, the "new", "dirty", and "deleted" lists are empty.  This has the effect that only changes that take place after the begin() operation get logged to the current UnitOfWork, and therefore those are the only changes that get commit()ted.  When the commit is complete, the "begun" UnitOfWork removes itself and places the parent UnitOfWork as the current one again.</p>
+
+    <&|doclib.myt:item, name="begin", description="Begin" &>
+    <p>The "scope" of the unit of work commit can be controlled further by issuing a begin().  A begin operation constructs a new UnitOfWork object and sets it as the currently used UOW.  It maintains a reference to the original UnitOfWork as its "parent", and shares the same identity map of objects that have been loaded from the database within the scope of the parent UnitOfWork.  However, the "new", "dirty", and "deleted" lists are empty.  This has the effect that only changes that take place after the begin() operation get logged to the current UnitOfWork, and therefore those are the only changes that get commit()ted.  When the commit is complete, the "begun" UnitOfWork removes itself and places the parent UnitOfWork as the current one again.</p>
 <p>The begin() method returns a transactional object, upon which you can call commit() or rollback().  <b>Only this transactional object controls the transaction</b> - commit() upon the Session will do nothing until commit() or rollback() is called upon the transactional object.</p>
     <&|formatting.myt:code&>
         # modify an object
         myobj1.foo = "something new"
         
-        # begin an objectstore scope
-        # this is equivalent to objectstore.get_session().begin()
-        trans = objectstore.begin()
+        # begin 
+        trans = session.begin()
         
         # modify another object
         myobj2.lala = "something new"
@@ -266,6 +290,11 @@
     </&>
     <p>begin/commit supports the same "nesting" behavior as the SQLEngine (note this behavior is not the original "nested" behavior), meaning that many begin() calls can be made, but only the outermost transactional object will actually perform a commit().  Similarly, calls to the commit() method on the Session, which might occur in function calls within the transaction, will not do anything; this allows an external function caller to control the scope of transactions used within the functions.</p>
     </&>
+    
+    </&>
+
+    <&|doclib.myt:item, name="advscope", description="Advanced UnitOfWork Management"&>
+
     <&|doclib.myt:item, name="transactionnesting", description="Nesting UnitOfWork in a Database Transaction" &>
     <p>The UOW commit operation places its INSERT/UPDATE/DELETE operations within the scope of a database transaction controlled by a SQLEngine:
     <&|formatting.myt:code&>
@@ -291,70 +320,10 @@
     </&>
     
     </&>
-    </&>
-    <&|doclib.myt:item, name="identity", description="The Identity Map" &>
-    <p>All object instances which are saved to the database, or loaded from the database, are given an identity by the mapper/objectstore.  This identity is available via the _instance_key property attached to each object instance, and is a tuple consisting of the table's class, the SQLAlchemy-specific "hash key" of the table its persisted to, and an additional tuple of primary key values, in the order that they appear within the table definition:</p>
-    <&|formatting.myt:code&>
-        >>> obj._instance_key 
-        (<class 'test.tables.User'>, "Table('users',SQLiteSQLEngine(([':memory:'], {})),schema=None)", (7,))
-    </&>
-    <p>Note that this identity is a database identity, not an in-memory identity.  An application can have several different objects in different unit-of-work scopes that have the same database identity, or an object can be removed from memory, and constructed again later, with the same database identity.  What can <b>never</b> happen is for two copies of the same object to exist in the same unit-of-work scope with the same database identity; this is guaranteed by the <b>identity map</b>.
-    </p>
-    <p>
-    At the moment that an object is assigned this key, it is also added to the current thread's unit-of-work's identity map.  The identity map is just a WeakValueDictionary which maintains the one and only reference to a particular object within the current unit of work scope.  It is used when result rows are fetched from the database to insure that only one copy of a particular object actually comes from that result set in the case that eager loads or other joins are used, or if the object had already been loaded from a previous result set.  The get() method on a mapper, which retrieves an object based on primary key identity, also checks in the current identity map first to save a database round-trip if possible.  In the case of an object lazy-loading a single child object, the get() method is also used.
-    </p>
-    <p>Methods on mappers and the objectstore module, which are relevant to identity include the following:</p>
-    <&|formatting.myt:code&>
-        # assume 'm' is a mapper
-        m = mapper(User, users)
-        
-        # get the identity key corresponding to a primary key
-        key = m.identity_key(7)
-        
-        # for composite key, list out the values in the order they
-        # appear in the table
-        key = m.identity_key(12, 'rev2')
 
-        # get the identity key given a primary key 
-        # value as a tuple, a class, and a table
-        key = objectstore.get_id_key((12, 'rev2'), User, users)
-        
-        # get the identity key for an object, whether or not it actually
-        # has one attached to it (m is the mapper for obj's class)
-        key = m.instance_key(obj)
-        
-        # same thing, from the objectstore (works for any obj type)
-        key = objectstore.instance_key(obj)
-        
-        # is this key in the current identity map?
-        objectstore.has_key(key)
-        
-        # is this object in the current identity map?
-        objectstore.has_instance(obj)
-
-        # get this object from the current identity map based on 
-        # singular/composite primary key, or if not go 
-        # and load from the database
-        obj = m.get(12, 'rev2')
-    </&>
-    </&>
-    <&|doclib.myt:item, name="import", description="Bringing External Instances into the UnitOfWork" &>
-    <p>The _instance_key attribute is designed to work with objects that are serialized into strings and brought back again.  As it contains no references to internal structures or database connections, applications that use caches or session storage which require serialization (i.e. pickling) can store SQLAlchemy-loaded objects.  However, as mentioned earlier, an object with a particular database identity is only allowed to exist uniquely within the current unit-of-work scope.  So, upon deserializing such an object, it has to "check in" with the current unit-of-work/identity map combination, to insure that it is the only unique instance.  This is achieved via the <span class="codeline">import_instance()</span> function in objectstore:</p>
-    <&|formatting.myt:code&>
-        # deserialize an object
-        myobj = pickle.loads(mystring)
-        
-        # "import" it.  if the objectstore already had this object in the 
-        # identity map, then you get back the one from the current session.
-        myobj = objectstore.import_instance(myobj)
-    </&>
-<p>Note that the import_instance() function will either mark the deserialized object as the official copy in the current identity map, which includes updating its _instance_key with the current application's class instance, or it will discard it and return the corresponding object that was already present.</p>
-    </&>
-
-    <&|doclib.myt:item, name="advscope", description="Advanced UnitOfWork Management"&>
 
     <&|doclib.myt:item, name="object", description="Per-Object Sessions" &>
-    <p>Sessions can be created on an ad-hoc basis and used for individual groups of objects and operations.  This has the effect of bypassing the entire "global"/"threadlocal" UnitOfWork system and explicitly using a particular Session:</p>
+    <p>Sessions can be created on an ad-hoc basis and used for individual groups of objects and operations.  This has the effect of bypassing the normal thread-local Session and explicitly using a particular Session:</p>
     <&|formatting.myt:code&>
         # make a new Session with a global UnitOfWork
         s = objectstore.Session()
@@ -380,6 +349,30 @@
             objectstore.commit()
         finally:
             objectstore.pop_session()
+    </&>
+    <&|doclib.myt:item, name="nested", description="Nested Transaction Sessions" &>
+    <p>Sessions also now support a "nested transaction" feature whereby a second Session can use a different database connection.  This can be used inside of a larger database transaction to issue commits to the database that will be committed independently of the larger transaction's status:</p>
+    <&|formatting.myt:code&>
+        engine.begin()
+        try:
+            a = MyObj()
+            b = MyObj()
+            
+            sess = Session(nest_on=engine)
+            objectstore.push_session(sess)
+            try:
+                c = MyObj()
+                objectstore.commit()    # will commit "c" to the database,
+                                        # even if the external transaction rolls back
+            finally:
+                objectstore.pop_session()
+            
+            objectstore.commit()  # commit "a" and "b" to the database
+            engine.commit()
+        except:
+            engine.rollback()
+            raise
+    </&>
     </&>
     </&>
 
