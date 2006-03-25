@@ -379,13 +379,14 @@
     <&|doclib.myt:item, name="scope", description="Custom Session Objects/Custom Scopes" &>
 
     <p>For users who want to make their own Session subclass, or replace the algorithm used to return scoped Session objects (i.e. the objectstore.get_session() method):</p>
-    <&|formatting.myt:code&>
+    <&|formatting.myt:code, title="Create a Session"&>
         # make a new Session
         s = objectstore.Session()
         
         # set it as the current thread-local session
         objectstore.session_registry.set(s)
-
+    </&>
+    <&|formatting.myt:code, title="Create a custom Registry Algorithm"&>
         # set the objectstore's session registry to a different algorithm
         
         def create_session():
@@ -404,9 +405,6 @@
     <&|formatting.myt:code&>
         # make an engine with echo_uow
         engine = create_engine('myengine...', echo_uow=True)
-        
-        # globally turn on echo
-        objectstore.LOG = True
     </&>
     <p>Commits will then dump to the standard output displays like the following:</p>
     <&|formatting.myt:code, syntaxtype=None&>
