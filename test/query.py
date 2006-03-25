@@ -4,6 +4,7 @@ import unittest, sys, datetime
 
 import sqlalchemy.databases.sqlite as sqllite
 
+import tables
 db = testbase.db
 #db.echo='debug'
 from sqlalchemy import *
@@ -41,6 +42,16 @@ class QueryTest(PersistTest):
         self.users.update(self.users.c.user_id == 7).execute(user_name = 'fred')
         print repr(self.users.select().execute().fetchall())
 
+    def testrowiteration(self):
+        self.users.insert().execute(user_id = 7, user_name = 'jack')
+        self.users.insert().execute(user_id = 8, user_name = 'ed')
+        self.users.insert().execute(user_id = 9, user_name = 'fred')
+        r = self.users.select().execute()
+        l = []
+        for row in r:
+            l.append(row)
+        self.assert_(len(l) == 3)
+        
     def testpassiveoverride(self):
         """primarily for postgres, tests that when we get a primary key column back 
         from reflecting a table which has a default value on it, we pre-execute

@@ -807,6 +807,14 @@ class ResultProxy:
         else:
             rec = self.props[key]
         return rec[0].convert_result_value(row[rec[1]], self.engine)
+    
+    def __iter__(self):
+        while True:
+            row = self.fetchone()
+            if row is None:
+                raise StopIteration
+            else:
+                yield row
         
     def fetchall(self):
         """fetches all rows, just like DBAPI cursor.fetchall()."""
