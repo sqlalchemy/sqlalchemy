@@ -262,7 +262,10 @@ class ANSICompiler(sql.Compiled):
         # redefine the generated name of the bind param in the case
         # that we have multiple conflicting bind parameters.
         while self.binds.setdefault(key, bindparam) is not bindparam:
-            key = "%s_%d" % (bindparam.key, count)
+            # insure the name doesn't expand the length of the string
+            # in case we're at the edge of max identifier length
+            tag = "_%d" % count
+            key = bindparam.key[0 : len(bindparam.key) - len(tag)] + tag
             count += 1
         bindparam.key = key
         self.strings[bindparam] = self.bindparam_string(key)

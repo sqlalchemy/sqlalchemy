@@ -601,7 +601,7 @@ class LazyLoader(PropertyLoader):
                 if self.use_get:
                     ident = []
                     for primary_key in self.mapper.pks_by_table[self.mapper.table]:
-                        ident.append(params[self.mapper.table.name + "_" + primary_key.name])
+                        ident.append(params[primary_key._label])
                     return self.mapper.get(*ident)
                 elif self.order_by is not False:
                     order_by = self.order_by
@@ -643,12 +643,12 @@ def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
         circular = isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column) and binary.left.table is binary.right.table
         if isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column) and ((not circular and binary.left.table is table) or (circular and binary.right is foreignkey)):
             binary.left = binds.setdefault(binary.left,
-                    sql.BindParamClause(binary.right.table.name + "_" + binary.right.name, None, shortname = binary.left.name))
+                    sql.BindParamClause(binary.right._label, None, shortname = binary.left.name))
             binary.swap()
 
         if isinstance(binary.right, schema.Column) and isinstance(binary.left, schema.Column) and ((not circular and binary.right.table is table) or (circular and binary.left is foreignkey)):
             binary.right = binds.setdefault(binary.right,
-                    sql.BindParamClause(binary.left.table.name + "_" + binary.left.name, None, shortname = binary.right.name))
+                    sql.BindParamClause(binary.left._label, None, shortname = binary.right.name))
                     
     if secondaryjoin is not None:
         lazywhere = sql.and_(primaryjoin, secondaryjoin)

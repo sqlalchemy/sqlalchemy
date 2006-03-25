@@ -610,7 +610,7 @@ class Mapper(object):
                         if not isinsert:
                             # doing an UPDATE?  put primary key values as "WHERE" parameters
                             # matching the bindparam we are creating below, i.e. "<tablename>_<colname>"
-                            params[col.table.name + "_" + col.key] = self._getattrbycolumn(obj, col)
+                            params[col._label] = self._getattrbycolumn(obj, col)
                         else:
                             # doing an INSERT, primary key col ? 
                             # if the primary key values are not populated,
@@ -658,7 +658,7 @@ class Mapper(object):
             if len(update):
                 clause = sql.and_()
                 for col in self.pks_by_table[table]:
-                    clause.clauses.append(col == sql.bindparam(col.table.name + "_" + col.key))
+                    clause.clauses.append(col == sql.bindparam(col._label))
                 statement = table.update(clause)
                 rows = 0
                 for rec in update:

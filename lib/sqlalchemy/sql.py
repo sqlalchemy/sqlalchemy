@@ -1039,7 +1039,7 @@ class ColumnClause(ColumnElement):
         if self.table.name is None:
             return BindParamClause(self.text, obj, shortname=self.text, type=self.type)
         else:
-            return BindParamClause(self.table.name + "_" + self.text, obj, shortname = self.text, type=self.type)
+            return BindParamClause(self._label, obj, shortname = self.text, type=self.type)
     def _make_proxy(self, selectable, name = None):
         c = ColumnClause(name or self.text, selectable)
         c._original = self.original

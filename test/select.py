@@ -176,7 +176,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
                          order_by = ['dist', places.c.nm]
                          )
 
-        self.runtest(q,"SELECT places.id, places.nm, zips.zipcode, latlondist((SELECT zips.latitude AS latitude FROM zips WHERE zips.zipcode = :zips_zipcode_1), (SELECT zips.longitude AS longitude FROM zips WHERE zips.zipcode = :zips_zipcode_2)) AS dist FROM places, zips WHERE zips.zipcode = :zips_zipcode ORDER BY dist, places.nm")
+        self.runtest(q,"SELECT places.id, places.nm, zips.zipcode, latlondist((SELECT zips.latitude AS latitude FROM zips WHERE zips.zipcode = :zips_zipco_1), (SELECT zips.longitude AS longitude FROM zips WHERE zips.zipcode = :zips_zipco_2)) AS dist FROM places, zips WHERE zips.zipcode = :zips_zipcode ORDER BY dist, places.nm")
         
         zalias = zips.alias('main_zip')
         qlat = select([zips.c.latitude], zips.c.zipcode == zalias.c.zipcode, scalar=True)
@@ -199,8 +199,8 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
                 or_(table2.c.othername=='asdf', table2.c.othername == 'foo', table2.c.otherid == 9),
                 "sysdate() = today()", 
             )),
-            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable, myothertable WHERE mytable.myid = :mytable_myid AND (myothertable.othername = :myothertable_othername OR myothertable.othername = :myothertable_othername_1 OR myothertable.otherid = :myothertable_otherid) AND sysdate() = today()",
-            checkparams = {'myothertable_othername': 'asdf', 'myothertable_othername_1':'foo', 'myothertable_otherid': 9, 'mytable_myid': 12}
+            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable, myothertable WHERE mytable.myid = :mytable_myid AND (myothertable.othername = :myothertable_othername OR myothertable.othername = :myothertable_otherna_1 OR myothertable.otherid = :myothertable_otherid) AND sysdate() = today()",
+            checkparams = {'myothertable_othername': 'asdf', 'myothertable_otherna_1':'foo', 'myothertable_otherid': 9, 'mytable_myid': 12}
         )
 
     def testoperators(self):
@@ -210,13 +210,13 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         )
         
         self.runtest(
-            literal("a") + literal("b") * literal("c"), ":literal + :literal_1 * :literal_2", db
+            literal("a") + literal("b") * literal("c"), ":literal + :liter_1 * :liter_2", db
         )
 
     def testmultiparam(self):
         self.runtest(
             select(["*"], or_(table1.c.myid == 12, table1.c.myid=='asdf', table1.c.myid == 'foo')), 
-            "SELECT * FROM mytable WHERE mytable.myid = :mytable_myid OR mytable.myid = :mytable_myid_1 OR mytable.myid = :mytable_myid_2"
+            "SELECT * FROM mytable WHERE mytable.myid = :mytable_myid OR mytable.myid = :mytable_my_1 OR mytable.myid = :mytable_my_2"
         )
 
     def testorderby(self):
@@ -339,13 +339,13 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
 
     def testliteral(self):
         self.runtest(select([literal("foo") + literal("bar")], from_obj=[table1]), 
-            "SELECT :literal + :literal_1 FROM mytable")
+            "SELECT :literal + :liter_1 FROM mytable")
 
     def testfunction(self):
         """tests the generation of functions using the func keyword"""
         # test an expression with a function
         self.runtest(func.lala(3, 4, literal("five"), table1.c.myid) * table2.c.otherid, 
-            "lala(:lala, :lala_1, :literal, mytable.myid) * myothertable.otherid")
+            "lala(:lala, :la_1, :literal, mytable.myid) * myothertable.otherid")
 
         # test it in a SELECT
         self.runtest(select([func.count(table1.c.myid)]), 
@@ -416,7 +416,7 @@ mytable.description FROM myothertable JOIN mytable ON mytable.myid = myothertabl
             self.runtest(x, "SELECT mytable.myid, mytable.name, mytable.description \
 FROM mytable WHERE mytable.myid = :mytable_myid UNION \
 SELECT mytable.myid, mytable.name, mytable.description \
-FROM mytable WHERE mytable.myid = :mytable_myid_1 ORDER BY mytable.myid")
+FROM mytable WHERE mytable.myid = :mytable_my_1 ORDER BY mytable.myid")
   
             self.runtest(
                     union(
@@ -487,7 +487,7 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
 
     def testin(self):
         self.runtest(select([table1], table1.c.myid.in_(1, 2, 3)),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid, :mytable_myid_1, :mytable_myid_2)")
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid, :mytable_my_1, :mytable_my_2)")
 
         self.runtest(select([table1], table1.c.myid.in_(select([table2.c.otherid]))),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (SELECT myothertable.otherid AS otherid FROM myothertable)")
@@ -549,7 +549,7 @@ class CRUDTest(SQLTest):
             values = {
             table1.c.name : table1.c.name + "lala",
             table1.c.myid : func.do_stuff(table1.c.myid, literal('hoho'))
-            }), "UPDATE mytable SET myid=do_stuff(mytable.myid, :literal_2), name=mytable.name + :mytable_name WHERE mytable.myid = hoho(:hoho) AND mytable.name = :literal + mytable.name + :literal_1")
+            }), "UPDATE mytable SET myid=do_stuff(mytable.myid, :liter_2), name=mytable.name + :mytable_name WHERE mytable.myid = hoho(:hoho) AND mytable.name = :literal + mytable.name + :liter_1")
         
     def testcorrelatedupdate(self):
         # test against a straight text subquery
