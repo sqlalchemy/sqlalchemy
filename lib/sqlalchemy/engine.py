@@ -492,12 +492,14 @@ class SQLEngine(schema.SchemaEngine):
         for engine in engines:
             engine.commit()
             
-    def transaction(self, func):
+    def transaction(self, func, *args, **kwargs):
         """executes the given function within a transaction boundary.  this is a shortcut for
-        explicitly calling begin() and commit() and optionally rollback() when execptions are raised."""
+        explicitly calling begin() and commit() and optionally rollback() when execptions are raised.
+        The given *args and **kwargs will be passed to the function as well, which could be handy
+        in constructing decorators."""
         self.begin()
         try:
-            func()
+            func(*args, **kwargs)
         except:
             self.rollback()
             raise
