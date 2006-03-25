@@ -176,7 +176,13 @@ class PythonHighlighter(Highlighter):
                 curstyle = self.get_style(t[0], t[1])
 
             (start, end) = self._line_grid(line, t[2], t[3])
-            tokens.append(line[start[1]:end[1]]) 
+            text = line[start[1]:end[1]]
+            
+            # special hardcoded rule to allow "interactive" demos without 
+            # >>> getting sucked in as >> , > operators
+            if text == '">>>"':
+                text = '>>>'
+            tokens.append(text) 
             curc = t[3][1]
             curl = t[3][0]
 

@@ -58,7 +58,7 @@
     </&>
     
     <&|doclib.myt:item, name="changed", description="Whats Changed ?" &>
-    <p>The next concept is that in addition to the Session storing a record of all objects loaded or saved, it also stores records of all <b>newly created</b> objects,  records of all objects whose attributes have been modified, records of all objects that have been marked as deleted, and records of all list-based attributes where additions or deletions have occurred.  These lists are used when a <code>commit()</code> call is issued to save all changes.  After the commit occurs, these lists are all cleared out.</p>
+    <p>The next concept is that in addition to the Session storing a record of all objects loaded or saved, it also stores records of all <b>newly created</b> objects,  records of all objects whose attributes have been <b>modified</b>, records of all objects that have been marked as <b>deleted</b>, and records of all <b>modified list-based attributes</b> where additions or deletions have occurred.  These lists are used when a <code>commit()</code> call is issued to save all changes.  After the commit occurs, these lists are all cleared out.</p>
     
     <p>These records are all tracked by a collection of <code>Set</code> objects (which are a SQLAlchemy-specific  instance called a <code>HashSet</code>) that are also viewable off the Session:</p>
     <&|formatting.myt:code&>
@@ -76,63 +76,95 @@
     </&>
     <p>Heres an interactive example, assuming the <code>User</code> and <code>Address</code> mapper setup first outlined in <&formatting.myt:link, path="datamapping_relations"&>:</p>
     <&|formatting.myt:code&>
-    >>> session = objectstore.get_session()
+    ">>>" # get the current thread's session
+    ">>>" session = objectstore.get_session()
 
-    >>> u = User(user_name='Fred')
-    >>> u.addresses.append(Address(city='New York'))
-    >>> u.addresses.append(Address(city='Boston'))
+    ">>>" # create a new object, with a list-based attribute 
+    ">>>" # containing two more new objects
+    ">>>" u = User(user_name='Fred')
+    ">>>" u.addresses.append(Address(city='New York'))
+    ">>>" u.addresses.append(Address(city='Boston'))
     
-    >>> session.new
-    [<__main__.User object at 0x713630>, <__main__.Address object at 0x713a70>, <__main__.Address object at 0x713b30>]
+    ">>>" # objects are in the "new" list
+    ">>>" session.new
+    [<__main__.User object at 0x713630>, 
+    <__main__.Address object at 0x713a70>, 
+    <__main__.Address object at 0x713b30>]
     
-    >>> # view the "modified lists" member, reveals our two Address objects as well
-    >>> session.modified_lists
+    ">>>" # view the "modified lists" member, 
+    ">>>" # reveals our two Address objects as well, inside of a list
+    ">>>" session.modified_lists
     [[<__main__.Address object at 0x713a70>, <__main__.Address object at 0x713b30>]]
 
-    >>> # lets view what the class/ID is for the list objects
-    >>> ["%s %s" % (l.__class__, id(l)) for l in session.modified_lists]
+    ">>>" # lets view what the class/ID is for the list object
+    ">>>" ["%s %s" % (l.__class__, id(l)) for l in session.modified_lists]
     ['sqlalchemy.mapping.unitofwork.UOWListElement 7391872']
     
-    >>> # now commit
-    >>> session.commit()
+    ">>>" # now commit
+    ">>>" session.commit()
     
-    >>> # new list is blank
-    >>> session.new
-    []
-    >>> # modified lists is blank
-    >>> session.modified_lists
+    ">>>" # the "new" list is now empty
+    ">>>" session.new
     []
     
-    >>> # now lets modify an object
-    >>> u.user_name='Ed'
+    ">>>" # the "modified lists" list is now empty
+    ">>>" session.modified_lists
+    []
     
-    >>> # it gets placed in "dirty"
-    >>> session.dirty
+    ">>>" # now lets modify an object
+    ">>>" u.user_name='Ed'
+    
+    ">>>" # it gets placed in the "dirty" list
+    ">>>" session.dirty
     [<__main__.User object at 0x713630>]
     
-    >>> # delete one of the addresses 
-    >>> session.delete(u.addresses[0])
-    >>> # and also delete it off the User object, note that this is not automatic
-    >>> del u.addresses[0]
-    >>> session.deleted
+    ">>>" # delete one of the addresses 
+    ">>>" session.delete(u.addresses[0])
+    
+    ">>>" # and also delete it off the User object, note that
+    ">>>" # this is *not automatic* when using session.delete()
+    ">>>" del u.addresses[0]
+    ">>>" session.deleted
     [<__main__.Address object at 0x713a70>]    
     
-    >>> # commit
-    >>> session.commit()
+    ">>>" # commit
+    ">>>" session.commit()
     
-    >>> # all lists are cleared out
-    >>> session.new, session.dirty, session.modified_lists, session.deleted
+    ">>>" # all lists are cleared out
+    ">>>" session.new, session.dirty, session.modified_lists, session.deleted
     ([], [], [], [])
     
-    >>> #identity map has the User and the one remaining Address
-    >>> session.identity_map.values()
+    ">>>" # identity map has the User and the one remaining Address
+    ">>>" session.identity_map.values()
     [<__main__.Address object at 0x713b30>, <__main__.User object at 0x713630>]
     </&>
+    <p>Unlike the identity map, the <code>new</code>, <code>dirty</code>, <code>modified_lists</code>, and <code>deleted</code> lists are <b>not weak referencing.</b>  This means if you abandon all references to new or modified objects within a session, <b>they are still present</b> and will be saved on the next commit operation, unless they are removed from the Session explicitly (more on that later).  The <code>new</code> list may change in a future release to be weak-referencing, however for the <code>deleted</code> list, one can see that its quite natural for a an object marked as deleted to have no references in the application, yet a DELETE operation is still required.</p>
     </&>
         
     <&|doclib.myt:item, name="commit", description="Commit" &>
-    <p>This is the main gateway to what the Unit of Work does best, which is save everything !  
+    <p>This is the main gateway to what the Unit of Work does best, which is save everything !  It should be clear by now that a commit looks like:
     </p>
+    <&|formatting.myt:code&>
+        objectstore.get_session().commit()
+    </&>
+    <p>It also can be called with a list of objects; in this form, the commit operation will be limited only to the objects specified in the list, as well as any child objects within <code>private</code> relationships for a delete operation:</p>
+    <&|formatting.myt:code&>
+        # saves only user1 and address2.  all other modified
+        # objects remain present in the session.
+        objectstore.get_session().commit(user1, address2)
+    </&>
+    <p>This second form of commit should be used more carefully as it will not necessarily locate other dependent objects within the session, whose database representation may have foreign constraint relationships with the objects being operated upon.</p>
+    
+        <&|doclib.myt:item, name="whatis", description="What Commit is, and Isn't" &>
+        <p>The purpose of the Commit operation is to instruct the Unit of Work to analyze its lists of modified objects, assemble them into a dependency graph, and fire off the appopriate INSERT, UPDATE, and DELETE statements via the mappers related to those objects.  <b>And thats it.</b>  This means, it is not going to change anything about your objects as they exist in memory, with the exception of populating scalar object attributes with newly generated default column values which normally only involves primary and foreign key identifiers.  A brief list of what will <b>not</b> happen includes:</p>
+            <ul>
+                <li>It will not append or delete any items from any list-based attributes.  Any objects that have been inserted or deleted will be updated as such in the database, but if a deleted object instance is still attached to a parent object, it will remain.</li>
+                <li>It will not set or remove any scalar object attributes, even if the database identifier columns have been committed.  This means, if you set <code>user.address_id</code> to 5, that will be saved, but it will not place an <code>Address</code> object on the <code>user</code> object.  Similarly, if the <code>Address</code> object is deleted but is still attached to the <code>User</code>, it will remain.</li>
+            </ul>
+        <P>So the primary guideline for dealing with commit() is, <b>the developer is responsible for maintaining the objects in memory, the unit of work is responsible for maintaining the database representation.</b></p>
+        
+        <p>A terrific feature of SQLAlchemy which is also a supreme source of confusion is the backreference feature, described in <&formatting.myt:link, path="datamapping_relations_backreferences"&>.  This feature allows two types of objects to maintain attributes that reference each other, typically one object maintaining a list of elements of the other side.  When you append an element to the list, the element gets a "backreference" back to the object which has the list.  When you attach the list-holding element to the child element, the child element gets attached to the list.  <b>This feature has nothing to do whatsoever with the Unit of Work.</b>  It is strictly a small convenience feature added to support an extremely common pattern.  Besides this one little feature, <b>the developer must maintain in-memory object relationships manually</b>.  Note that we are talking about the <b>manipulation</b> of objects, not the initial loading of them which is handled by the mapper.</p>
+        </&>
     </&>
 
     <&|doclib.myt:item, name="delete", description="Delete" &>

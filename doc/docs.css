@@ -96,6 +96,9 @@ code {
 	font-size:12px;
 }
 
+pre {
+    overflow:auto;
+}
 .codeline {
 	font-family:courier, serif;
 	font-size:12px;
