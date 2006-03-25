@@ -98,6 +98,8 @@ class Session(object):
         uow = property(lambda s:s.__uow, doc="returns the parent UnitOfWork corresponding to this transaction.")
         def begin(self):
             """calls begin() on the underlying Session object, returning a new no-op SessionTrans object."""
+            if self.parent.uow is not self.uow:
+                raise InvalidRequestError("This SessionTrans is no longer valid")
             return self.parent.begin()
         def commit(self):
             """commits the transaction noted by this SessionTrans object."""
