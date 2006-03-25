@@ -65,7 +65,7 @@ UPDATE users SET user_name=:user_name
             
             userlist = User.mapper.select_by(user_id=12)
         </&>
-    <p>There is also a full-blown "monkeypatch" function that creates a primary mapper, attaches the above mapper class property, and also the  methods <code>get, get_by, select, select_by, selectone, selectfirst, commit</code> and <code>delete</code>:</p>
+    <p>There is also a full-blown "monkeypatch" function that creates a primary mapper, attaches the above mapper class property, and also the  methods <code>get, get_by, select, select_by, selectone, selectfirst, commit, expire, refresh, expunge</code> and <code>delete</code>:</p>
     <&|formatting.myt:code&>
         # "assign" a mapper to the User class/users table
         assign_mapper(User, users)
