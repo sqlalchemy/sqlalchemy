@@ -134,7 +134,7 @@ DROP TABLE employees
     <&|doclib.myt:item, name="defaults", description="Column Defaults and OnUpdates" &>
     <p>SQLAlchemy includes flexible constructs in which to create default values for columns upon the insertion of rows, as well as upon update.  These defaults can take several forms: a constant, a Python callable to be pre-executed before the SQL is executed, a SQL expression or function to be pre-executed before the SQL is executed, a pre-executed Sequence (for databases that support sequences), or a "passive" default, which is a default function triggered by the database itself upon insert, the value of which can then be post-fetched by the engine, provided the row provides a primary key in which to call upon.</p>
         <&|doclib.myt:item, name="oninsert", description="Pre-Executed Insert Defaults" &>
-        <p>A basic default is most easily specified by the "default" keyword argument to Column:</p>
+        <p>A basic default is most easily specified by the "default" keyword argument to Column.  This defines a value, function, or SQL expression that will be pre-executed to produce the new value, before the row is inserted:</p>
             <&|formatting.myt:code&>
                 # a function to create primary key ids
                 i = 0
@@ -169,7 +169,7 @@ DROP TABLE employees
         </&>
 
         <&|doclib.myt:item, name="onupdate", description="Pre-Executed OnUpdate Defaults" &>
-        <p>Similar to an on-insert default is an on-update default, which is most easily specified by the "onupdate" keyword to Column, which also can be a constanct, plain Python function or SQL expression:</p>
+        <p>Similar to an on-insert default is an on-update default, which is most easily specified by the "onupdate" keyword to Column, which also can be a constant, plain Python function or SQL expression:</p>
             <&|formatting.myt:code&>
             t = Table("mytable", db, 
                 Column('id', Integer, primary_key=True),
@@ -178,7 +178,7 @@ DROP TABLE employees
                 Column('last_updated', DateTime, onupdate=func.current_timestamp()),
                 )
             </&>
-            <p>To use a ColumnDefault explicitly for an on-update, use the "for_update" keyword argument:</p>
+            <p>To use an explicit ColumnDefault object to specify an on-update, use the "for_update" keyword argument:</p>
             <&|formatting.myt:code&>
                 Column('mycolumn', String(30), ColumnDefault(func.get_data(), for_update=True))
             </&>
@@ -219,7 +219,7 @@ DROP TABLE employees
                 primary_key = table.engine.last_inserted_ids()
                 row = table.select(table.c.id == primary_key[0])
         </&>
-        <p>Tables that are reflected from the database which have default values set on them, will receive those defaults as PassiveDefaults.</p>
+        <p>When Tables are reflected from the database using <code>autoload=True</code>, any DEFAULT values set on the columns will be reflected in the Table object as PassiveDefault instances.</p>
 
         <&|doclib.myt:item, name="postgres", description="The Catch: Postgres Primary Key Defaults always Pre-Execute" &>
         <p>Current Postgres support does not rely upon OID's to determine the identity of a row.  This is because the usage of OIDs has been deprecated with Postgres and they are disabled by default for table creates as of PG version 8.  Pyscopg2's "cursor.lastrowid" function only returns OIDs.  Therefore, when inserting a new row which has passive defaults set on the primary key columns, the default function is <b>still pre-executed</b> since SQLAlchemy would otherwise have no way of retrieving the row just inserted.</p>
@@ -242,7 +242,7 @@ DROP TABLE employees
         </&>
     </&>
     <&|doclib.myt:item, name="indexes", description="Defining Indexes" &>
-    <p>Indexes can be defined on table columns, including named indexes, non-unique or unique, multiple column.  Indexes are included along with table create and drop statements.  They are not used for any kind of run-time constraint checking...SQLAlchemy leaves that job to the expert on constraint checking, the database itself.</p>
+    <p>Indexes can be defined on table columns, including named indexes, non-unique or unique, multiple column.  Indexes are included along with table create and drop statements.  They are not used for any kind of run-time constraint checking; SQLAlchemy leaves that job to the expert on constraint checking, the database itself.</p>
     <&|formatting.myt:code&>
         mytable = Table('mytable', engine, 
         

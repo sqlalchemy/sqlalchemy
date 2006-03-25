@@ -91,6 +91,11 @@
 	padding:5px;
 }
 
+code {
+	font-family:courier, serif;
+	font-size:12px;
+}
+
 .codeline {
 	font-family:courier, serif;
 	font-size:12px;

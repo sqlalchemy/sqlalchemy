@@ -6,9 +6,9 @@
 
 The Mapper's role is to perform SQL operations upon the database, associating individual table rows with instances of those classes, and individual database columns with properties upon those instances, to transparently associate in-memory objects with a persistent database representation. </p>
 
-<p>When a Mapper is created to associate a Table object with a class, all of the columns defined in the Table object are associated with the class via property accessors, which add overriding functionality to the normal process of setting and getting object attributes.  These property accessors also keep track of changes to object attributes; these changes will be stored to the database when the application "commits" the current transactional context (known as a <b>Unit of Work</b>).  The <span class="codeline">__init__()</span> method of the object is also decorated to communicate changes when new instances of the object are created.</p>
+<p>When a Mapper is created to associate a Table object with a class, all of the columns defined in the Table object are associated with the class via property accessors, which add overriding functionality to the normal process of setting and getting object attributes.  These property accessors keep track of changes to object attributes; these changes will be stored to the database when the application "commits" the current transactional context (known as a <b>Unit of Work</b>).  The <code>__init__()</code> method of the object is also decorated to communicate changes when new instances of the object are created.</p>
 
-<p>The Mapper also provides the interface by which instances of the object are loaded from the database.  The primary method for this is its <span class="codeline">select()</span> method, which has similar arguments to a <span class="codeline">sqlalchemy.sql.Select</span> object.  But this select method executes automatically and returns results, instead of awaiting an execute() call.  Instead of returning a cursor-like object, it returns an array of objects.</p>
+<p>The Mapper also provides the interface by which instances of the object are loaded from the database.  The primary method for this is its <code>select()</code> method, which has similar arguments to a <code>sqlalchemy.sql.Select</code> object.  But this select method executes automatically and returns results, instead of awaiting an execute() call.  Instead of returning a cursor-like object, it returns an array of objects.</p>
 
 <p>The three elements to be defined, i.e. the Table metadata, the user-defined class, and the Mapper, are typically defined as module-level variables, and may be defined in any fashion suitable to the application, with the only requirement being that the class and table metadata are described before the mapper.  For the sake of example, we will be defining these elements close together, but this should not be construed as a requirement; since SQLAlchemy is not a framework, those decisions are left to the developer or an external framework.
 </p>
@@ -65,15 +65,26 @@ UPDATE users SET user_name=:user_name
             
             userlist = User.mapper.select_by(user_id=12)
         </&>
-    <p>There is also a full-blown "monkeypatch" function that creates a primary mapper, attaches the above mapper class property, and also the  methods <span class="codeline">get, get_by, select, select_by, selectone, selectfirst, commit</span> and <span class="codeline">delete</span>:</p>
+    <p>There is also a full-blown "monkeypatch" function that creates a primary mapper, attaches the above mapper class property, and also the  methods <code>get, get_by, select, select_by, selectone, selectfirst, commit</code> and <code>delete</code>:</p>
     <&|formatting.myt:code&>
+        # "assign" a mapper to the User class/users table
         assign_mapper(User, users)
+        
+        # methods are attached to the class for selecting
         userlist = User.select_by(user_id=12)
+        
+        myuser = User.get(1)
+        
+        # mark an object as deleted for the next commit
+        myuser.delete()
+        
+        # commit the changes on a specific object
+        myotheruser.commit()
     </&>
     <p>Other methods of associating mappers and finder methods with their corresponding classes, such as via common base classes or mixins, can be devised as well.  SQLAlchemy does not aim to dictate application architecture and will always allow the broadest variety of architectural patterns, but may include more helper objects and suggested architectures in the future.</p>
     </&>
     <&|doclib.myt:item, name="overriding", description="Overriding Properties"&>
-    <p>A common request is the ability to create custom class properties that override the behavior of setting/getting an attribute.  Currently, the easiest way to do this in SQLAlchemy is just how its done normally; define your attribute with a different name, such as "_attribute", and use a property to get/set its value.  The mapper just needs to be told of the special name:</p>
+    <p>A common request is the ability to create custom class properties that override the behavior of setting/getting an attribute.  Currently, the easiest way to do this in SQLAlchemy is how it would be done in any Python program; define your attribute with a different name, such as "_attribute", and use a property to get/set its value.  The mapper just needs to be told of the special name:</p>
     <&|formatting.myt:code&>
         class MyClass(object):
             def _set_email(self, email):
@@ -125,6 +136,10 @@ UPDATE users SET user_name=:user_name
         
         # using a WHERE criterion to get a scalar
         u = mapper.selectfirst(users.c.user_name=='john')
+
+        # selectone() is a stricter version of selectfirst() which
+        # will raise an exception if there is not exactly one row
+        u = mapper.selectone(users.c.user_name=='john')
         
         # using a full select object
         result = mapper.select(users.select(users.c.user_name=='john'))
@@ -135,7 +150,7 @@ UPDATE users SET user_name=:user_name
         # or using a "text" object
         result = mapper.select(text("select * from users where user_name='fred'", engine=engine))
         </&>    
-    <p>The last few examples above show the usage of the mapper's table object to provide the columns for a WHERE Clause.  These columns are also accessible off of the mapped class directly.  When a mapper is assigned to a class, it also attaches a special property accessor <span class="codeline">c</span> to the class itself, which can be used just like the table metadata to access the columns of the table:</p>
+    <p>Some of the above examples above illustrate the usage of the mapper's Table object to provide the columns for a WHERE Clause.  These columns are also accessible off of the mapped class directly.  When a mapper is assigned to a class, it also attaches a special property accessor <code>c</code> to the class itself, which can be used just like the table metadata to access the columns of the table:</p>
         <&|formatting.myt:code&>
             User.mapper = mapper(User, users)
             
@@ -143,9 +158,9 @@ UPDATE users SET user_name=:user_name
         </&>    
 </&>
 <&|doclib.myt:item, name="saving", description="Saving Objects" &>
-    <p>When objects corresponding to mapped classes are created or manipulated, all changes are logged by a package called <span class="codeline">sqlalchemy.mapping.objectstore</span>.   The changes are then written to the database when an application calls <span class="codeline">objectstore.commit()</span>.  This pattern is known as a <b>Unit of Work</b>, and has many advantages over saving individual objects or attributes on those objects with individual method invocations.  Domain models can be built with far greater complexity with no concern over the order of saves and deletes, excessive database round-trips and write operations, or deadlocking issues.  The commit() operation uses a transaction as well, and will also perform "concurrency checking" to insure the proper number of rows were in fact affected (not supported with the current MySQL drivers). Transactional resources are used effectively in all cases; the unit of work handles all the details.</p>
-    
-    <p>When a mapper is created, the target class has its mapped properties decorated by specialized property accessors that track changes, and its <span class="codeline">__init__()</span> method is also decorated to mark new objects as "new".</p>
+    <p>When objects corresponding to mapped classes are created or manipulated, all changes are logged by a package called <code>sqlalchemy.mapping.objectstore</code>.   The changes are then written to the database when an application calls <code>objectstore.commit()</code>.  This pattern is known as a <b>Unit of Work</b>, and has many advantages over saving individual objects or attributes on those objects with individual method invocations.  Domain models can be built with far greater complexity with no concern over the order of saves and deletes, excessive database round-trips and write operations, or deadlocking issues.  The commit() operation uses a transaction as well, and will also perform "concurrency checking" to insure the proper number of rows were in fact affected (not supported with the current MySQL drivers). Transactional resources are used effectively in all cases; the unit of work handles all the details.</p>
+    <p>The Unit of Work is a powerful tool, and has some important concepts that must be understood in order to use it effectively.  While this section illustrates rudimentary Unit of Work usage, it is strongly encouraged to consult the <&formatting.myt:link, path="unitofwork"&> section for a full description on all its operations, including session control, deletion, and developmental guidelines.</p>    
+    <p>When a mapper is created, the target class has its mapped properties decorated by specialized property accessors that track changes, and its <code>__init__()</code> method is also decorated to mark new objects as "new".</p>
         <&|formatting.myt:code&>
             User.mapper = mapper(User, users)
 
@@ -209,13 +224,14 @@ INSERT INTO users (user_name, password) VALUES (:user_name, :password)
         </&>
 
 <p>Recent versions of SQLAlchemy will only put modified object attributes columns into the UPDATE statements generated upon commit.  This is to conserve database traffic and also to successfully interact with a "deferred" attribute, which is a mapped object attribute against the mapper's primary table that isnt loaded until referenced by the application.</p>
+
 </&>
 
 <&|doclib.myt:item, name="relations", description="Defining and Using Relationships" &>
-<p>So that covers how to map the columns in a table to an object, how to load objects, create new ones, and save changes.  The next step is how to define an object's relationships to other database-persisted objects.  This is done via the <span class="codeline">relation</span> function provided by the mapper module.  So with our User class, lets also define the User has having one or more mailing addresses.  First, the table metadata:</p>
+<p>So that covers how to map the columns in a table to an object, how to load objects, create new ones, and save changes.  The next step is how to define an object's relationships to other database-persisted objects.  This is done via the <code>relation</code> function provided by the mapper module.  So with our User class, lets also define the User has having one or more mailing addresses.  First, the table metadata:</p>
         <&|formatting.myt:code&>
         from sqlalchemy import *
-        engine = create_engine('sqlite', {'filename':'mydb'})
+        engine = create_engine('sqlite://filename=mydb')
         
         # define user table
         users = Table('users', engine, 
@@ -250,7 +266,7 @@ INSERT INTO users (user_name, password) VALUES (:user_name, :password)
                     self.state = state
                     self.zip = zip
         </&>
-<p>And then a Mapper that will define a relationship of the User and the Address classes to each other as well as their table metadata.  We will add an additional mapper keyword argument <span class="codeline">properties</span> which is a dictionary relating the name of an object property to a database relationship, in this case a <span class="codeline">relation</span> object against a newly defined  mapper for the Address class:</p>
+<p>And then a Mapper that will define a relationship of the User and the Address classes to each other as well as their table metadata.  We will add an additional mapper keyword argument <code>properties</code> which is a dictionary relating the name of an object property to a database relationship, in this case a <code>relation</code> object against a newly defined  mapper for the Address class:</p>
         <&|formatting.myt:code&>
             User.mapper = mapper(User, users, properties = {
                                 'addresses' : relation(mapper(Address, addresses))
@@ -277,7 +293,7 @@ INSERT INTO addresses (user_id, street, city, state, zip) VALUES (:user_id, :str
         </&>
 <p>A lot just happened there!  The Mapper object figured out how to relate rows in the addresses table to the users table, and also upon commit had to determine the proper order in which to insert rows.  After the insert, all the User and Address objects have all their new primary and foreign keys populated.</p>
 
-<p>Also notice that when we created a Mapper on the User class which defined an 'addresses' relation, the newly created User instance magically had an "addresses" attribute which behaved like a list.   This list is in reality a property accessor function, which returns an instance of <span class="codeline">sqlalchemy.util.HistoryArraySet</span>, which fulfills the full set of Python list accessors, but maintains a <b>unique</b> set of objects (based on their in-memory identity), and also tracks additions and deletions to the list:</p>
+<p>Also notice that when we created a Mapper on the User class which defined an 'addresses' relation, the newly created User instance magically had an "addresses" attribute which behaved like a list.   This list is in reality a property accessor function, which returns an instance of <code>sqlalchemy.util.HistoryArraySet</code>, which fulfills the full set of Python list accessors, but maintains a <b>unique</b> set of objects (based on their in-memory identity), and also tracks additions and deletions to the list:</p>
         <&|formatting.myt:code&>
             del u.addresses[1]
             u.addresses.append(Address('27 New Place', 'Houston', 'TX', '34839'))
@@ -295,7 +311,7 @@ VALUES (:user_id, :street, :city, :state, :zip)
 
         </&>
 <&|doclib.myt:item, name="private", description="Useful Feature: Private Relations" &>
-<p>So our one address that was removed from the list, was updated to have a user_id of <span class="codeline">None</span>, and a new address object was inserted to correspond to the new Address added to the User.  But now, theres a mailing address with no user_id floating around in the database of no use to anyone.  How can we avoid this ?  This is acheived by using the <span class="codeline">private=True</span> parameter of <span class="codeline">relation</span>:
+<p>So our one address that was removed from the list, was updated to have a user_id of <code>None</code>, and a new address object was inserted to correspond to the new Address added to the User.  But now, theres a mailing address with no user_id floating around in the database of no use to anyone.  How can we avoid this ?  This is acheived by using the <code>private=True</code> parameter of <code>relation</code>:
 
         <&|formatting.myt:code&>
             User.mapper = mapper(User, users, properties = {
@@ -315,10 +331,10 @@ DELETE FROM addresses WHERE addresses.address_id = :address_id
 </&>            
 
         </&>
-<p>In this case, with the private flag set, the element that was removed from the addresses list was also removed from the database.  By specifying the <span class="codeline">private</span> flag on a relation, it is indicated to the Mapper that these related objects exist only as children of the parent object, otherwise should be deleted.</p>
+<p>In this case, with the private flag set, the element that was removed from the addresses list was also removed from the database.  By specifying the <code>private</code> flag on a relation, it is indicated to the Mapper that these related objects exist only as children of the parent object, otherwise should be deleted.</p>
 </&>
 <&|doclib.myt:item, name="backreferences", description="Useful Feature: Backreferences" &>
-<p>By creating relations with the <span class="codeline">backref</span> keyword, a bi-directional relationship can be created which will keep both ends of the relationship updated automatically, even without any database queries being executed.  Below, the User mapper is created with an "addresses" property, and the corresponding Address mapper receives a "backreference" to the User object via the property name "user":
+<p>By creating relations with the <code>backref</code> keyword, a bi-directional relationship can be created which will keep both ends of the relationship updated automatically, even without any database queries being executed.  Below, the User mapper is created with an "addresses" property, and the corresponding Address mapper receives a "backreference" to the User object via the property name "user":
         <&|formatting.myt:code&>
             Address.mapper = mapper(Address, addresses)
             User.mapper = mapper(User, users, properties = {
@@ -343,7 +359,7 @@ DELETE FROM addresses WHERE addresses.address_id = :address_id
             True
         </&>
 
-<p>The backreference feature also works with many-to-many relationships, which are described later.  When creating a backreference, a corresponding property is placed on the child mapper.  The default arguments to this property can be overridden using the <span class="codeline">backref()</span> function:
+<p>The backreference feature also works with many-to-many relationships, which are described later.  When creating a backreference, a corresponding property is placed on the child mapper.  The default arguments to this property can be overridden using the <code>backref()</code> function:
         <&|formatting.myt:code&>
             Address.mapper = mapper(Address, addresses)
             
@@ -355,7 +371,7 @@ DELETE FROM addresses WHERE addresses.address_id = :address_id
                 </&>
 </&>
 <&|doclib.myt:item, name="cascade", description="Creating Relationships Automatically with cascade_mappers" &>
-<p>The mapper package has a helper function <span class="codeline">cascade_mappers()</span> which can simplify the task of linking several mappers together.  Given a list of classes and/or mappers, it identifies the foreign key relationships between the given mappers or corresponding class mappers, and creates relation() objects representing those relationships, including a backreference.  Attempts to find
+<p>The mapper package has a helper function <code>cascade_mappers()</code> which can simplify the task of linking several mappers together.  Given a list of classes and/or mappers, it identifies the foreign key relationships between the given mappers or corresponding class mappers, and creates relation() objects representing those relationships, including a backreference.  Attempts to find
 the "secondary" table in a many-to-many relationship as well.  The names of the relations
 are a lowercase version of the related class.  In the case of one-to-many or many-to-many,
 the name is "pluralized", which currently is based on the English language (i.e. an 's' or 
@@ -380,7 +396,7 @@ the name is "pluralized", which currently is based on the English language (i.e.
 
 </&>
     <&|doclib.myt:item, name="lazyload", description="Selecting from Relationships: Lazy Load" &>
-    <P>We've seen how the <span class="codeline">relation</span> specifier affects the saving of an object and its child items, how does it affect selecting them?  By default, the relation keyword indicates that the related property should be attached a <b>Lazy Loader</b> when instances of the parent object are loaded from the database; this is just a callable function that when accessed will invoke a second SQL query to load the child objects of the parent.</p>
+    <P>We've seen how the <code>relation</code> specifier affects the saving of an object and its child items, how does it affect selecting them?  By default, the relation keyword indicates that the related property should be attached a <b>Lazy Loader</b> when instances of the parent object are loaded from the database; this is just a callable function that when accessed will invoke a second SQL query to load the child objects of the parent.</p>
     
         <&|formatting.myt:code&>
             # define a mapper
@@ -411,7 +427,7 @@ WHERE addresses.user_id = :users_user_id ORDER BY addresses.oid
 
         </&>    
         <&|doclib.myt:item, name="relselectby", description="Useful Feature: Creating Joins via select_by" &>
-        <p>In mappers that have relationships, the <span class="codeline">select_by</span> method and its cousins include special functionality that can be used to create joins.  Just specify a key in the argument list which is not present in the primary mapper's list of properties or columns, but *is* present in the property list of one of its relationships:
+        <p>In mappers that have relationships, the <code>select_by</code> method and its cousins include special functionality that can be used to create joins.  Just specify a key in the argument list which is not present in the primary mapper's list of properties or columns, but *is* present in the property list of one of its relationships:
         <&|formatting.myt:code&>
             <&formatting.myt:poplink&>l = User.mapper.select_by(street='123 Green Street')
 <&|formatting.myt:codepopper, link="sql" &>SELECT users.user_id AS users_user_id, 
@@ -441,7 +457,7 @@ ORDER BY users.oid
         </&>
         <p>This operation will clear out all currently mapped object instances, and subsequent select statements will load fresh copies from the databse.</p>
         
-        <p>To operate upon a single object, just use the <span class="codeline">remove</span> function:</p>
+        <p>To operate upon a single object, just use the <code>remove</code> function:</p>
         <&|formatting.myt:code&>
             # (this function coming soon)
             objectstore.remove(myobject)
@@ -497,7 +513,7 @@ ORDER BY users.oid, addresses.oid
             <p>The join implied by passing the "street" parameter is converted into an "aliasized" clause by the eager loader, so that it does not conflict with the join used to eager load the child address objects.</p>
     </&>
     <&|doclib.myt:item, name="options", description="Switching Lazy/Eager, No Load" &>
-    <p>The <span class="codeline">options</span> method of mapper provides an easy way to get alternate forms of a mapper from an original one.  The most common use of this feature is to change the "eager/lazy" loading behavior of a particular mapper, via the functions <span class="codeline">eagerload()</span>, <span class="codeline">lazyload()</span> and <span class="codeline">noload()</span>:
+    <p>The <code>options</code> method of mapper provides an easy way to get alternate forms of a mapper from an original one.  The most common use of this feature is to change the "eager/lazy" loading behavior of a particular mapper, via the functions <code>eagerload()</code>, <code>lazyload()</code> and <code>noload()</code>:
     </p>
         <&|formatting.myt:code&>
           # user mapper with lazy addresses
@@ -527,7 +543,7 @@ ORDER BY users.oid, addresses.oid
 
 
 <&|doclib.myt:item, name="onetoone", description="One to One/Many to One" &>
-<p>The above examples focused on the "one-to-many" relationship.  To do other forms of relationship is easy, as the <span class="codeline">relation</span> function can usually figure out what you want:</p>
+<p>The above examples focused on the "one-to-many" relationship.  To do other forms of relationship is easy, as the <code>relation</code> function can usually figure out what you want:</p>
 
         <&|formatting.myt:code&>
         # a table to store a user's preferences for a site
@@ -604,7 +620,7 @@ VALUES (:address_id, :user_id, :email_address)
 </&>
 
 <&|doclib.myt:item, name="manytomany", description="Many to Many" &>
-<p>The <span class="codeline">relation</span> function handles a basic many-to-many relationship when you specify the association table:</p>
+<p>The <code>relation</code> function handles a basic many-to-many relationship when you specify the association table:</p>
         <&|formatting.myt:code&>
     articles = Table('articles', engine,
         Column('article_id', Integer, primary_key = True),

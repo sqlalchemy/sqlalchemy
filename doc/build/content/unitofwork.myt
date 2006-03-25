@@ -9,20 +9,136 @@
     <ul>
         <li>The ability to monitor scalar and list attributes on object instances, as well as object creates.  This is handled via the attributes package.</li>
         <li>The ability to maintain and process a list of modified objects, and based on the relationships set up by the mappers for those objects as well as the foreign key relationships of the underlying tables, figure out the proper order of operations so that referential integrity is maintained, and also so that on-the-fly values such as newly created primary keys can be propigated to dependent objects that need them before they are saved.  The central algorithm for this is the <b>topological sort</b>.</li>
-        <li>The ability to "roll back" the attributes that have changed on an object instance since the last commit() operation.  this is also handled by the attributes package.</li>
         <li>The ability to define custom functionality that occurs within the unit-of-work commit phase, such as "before insert", "after insert", etc.  This is accomplished via MapperExtension.</li>
         <li>an Identity Map, which is a dictionary storing the one and only instance of an object for a particular table/primary key combination.  This allows many parts of an application to get a handle to a particular object without any chance of modifications going to two different places.</li>
-        <li>Thread-local operation.  the Identity map as well as the Unit of work itself are normally instantiated and accessed in a manner that is local to the current thread.  Another concurrently executing thread will therefore have its own Identity Map/Unit of Work, so unless an application explicitly shares objects between threads, the operation of the object relational mapping is automatically threadsafe.  Unit of Work objects can also be constructed manually to allow any user-defined scoping.</li>
+        <li>Thread-local operation.  the Identity map as well as its enclosing Unit of Work are normally instantiated and accessed in a manner that is local to the current thread, within an object called a Session.  Another concurrently executing thread will therefore have its own Session, so unless an application explicitly shares objects between threads, the operation of the object relational mapping is automatically threadsafe.  Session objects can also be constructed manually to allow any user-defined scoping.</li>
     </ul></p>
     </&>
-    <&|doclib.myt:item, name="getting", description="Accessing UnitOfWork Instances" &>
-    <p>The current unit of work is accessed via the Session interface.  The Session is available in a thread-local context from the objectstore module as follows:</p>
+    <&|doclib.myt:item, name="session", description="The Session Interface" &>
+    <p>The current unit of work is accessed via a Session object.  The Session is available in a thread-local context from the objectstore module as follows:</p>
         <&|formatting.myt:code&>
             # get the current thread's session
-            s = objectstore.get_session()
+            session = objectstore.get_session()
         </&>
-    <p>The Session object acts as a proxy to an underlying UnitOfWork object.  Common methods include commit(), begin(), clear(), and delete().  Most of these methods are available at the module level in the objectstore module, which operate upon the Session returned by the get_session() function.
+    <p>The Session object acts as a proxy to an underlying UnitOfWork object.  Common methods include commit(), begin(), clear(), and delete().  Most of these methods are available at the module level in the objectstore module, which operate upon the Session returned by the get_session() function:
     </p>
+    <&|formatting.myt:code&>
+        # this...
+        objectstore.get_session().commit()
+        
+        # is the same as this:
+        objectstore.commit()
+    </&>
+
+    <p>A description of the most important methods and concepts follows.</p>
+
+    <&|doclib.myt:item, name="identitymap", description="Identity Map" &>
+    <p>The first concept to understand about the Unit of Work is that it is keeping track of all mapped objects which have been loaded from the database, as well as all mapped objects which have been saved to the database in the current session.  This means that everytime you issue a <code>select</code> call to a mapper which returns results, all of those objects are now installed within the current Session, mapped to their identity.</p>
+    
+    <p>In particular, it is insuring that only <b>one</b> instance of a particular object, corresponding to a particular database identity, exists within the Session at one time.  By "database identity" we mean a table or relational concept in the database combined with a particular primary key in that table. The session accomplishes this task using a dictionary known as an <b>Identity Map</b>.  When <code>select</code> or <code>get</code> calls on mappers issue queries to the database, they will in nearly all cases go out to the database on each call to fetch results.  However, when the mapper <b>instantiates</b> objects corresponding to the result set rows it receives, it will <b>check the current identity map first</b> before instantating a new object, and return <b>the same instance</b> already present in the identiy map if it already exists.</p>  
+    
+    <p>Example:</p>
+    <&|formatting.myt:code&>
+        mymapper = mapper(MyClass, mytable)
+        
+        obj1 = mymapper.selectfirst(mytable.c.id==15)
+        obj2 = mymapper.selectfirst(mytable.c.id==15)
+        
+        >>> obj1 is obj2
+        True
+    </&>
+    <p>The Identity Map is an instance of <code>weakref.WeakValueDictionary</code>, so that when an in-memory object falls out of scope, it will be removed automatically.  However, this may not be instant if there are circular references upon the object.  The current SA attributes implementation places some circular refs upon objects, although this may change in the future.  There are other ways to remove object instances from the current session, as well as to clear the current session entirely, which are described later in this section.</p>
+    <p>To view the Session's identity map, it is accessible via the <code>identity_map</code> accessor, and is an instance of <code>weakref.WeakValueDictionary</code>:</p>
+    <&|formatting.myt:code&><% """
+        >>> objectstore.get_session().identity_map.values()
+        [<__main__.User object at 0x712630>, <__main__.Address object at 0x712a70>]
+        """  %>
+    </&>
+    
+    </&>
+    
+    <&|doclib.myt:item, name="changed", description="Whats Changed ?" &>
+    <p>The next concept is that in addition to the Session storing a record of all objects loaded or saved, it also stores records of all <b>newly created</b> objects,  records of all objects whose attributes have been modified, records of all objects that have been marked as deleted, and records of all list-based attributes where additions or deletions have occurred.  These lists are used when a <code>commit()</code> call is issued to save all changes.  After the commit occurs, these lists are all cleared out.</p>
+    
+    <p>These records are all tracked by a collection of <code>Set</code> objects (which are a SQLAlchemy-specific  instance called a <code>HashSet</code>) that are also viewable off the Session:</p>
+    <&|formatting.myt:code&>
+        # new objects that were just constructed
+        session.new
+        
+        # objects that exist in the database, that were modified
+        session.dirty
+        
+        # objects that have been marked as deleted via session.delete(obj)
+        session.deleted
+        
+        # list-based attributes thave been appended
+        session.modified_lists
+    </&>
+    <p>Heres an interactive example, assuming the <code>User</code> and <code>Address</code> mapper setup first outlined in <&formatting.myt:link, path="datamapping_relations"&>:</p>
+    <&|formatting.myt:code&>
+    >>> session = objectstore.get_session()
+
+    >>> u = User(user_name='Fred')
+    >>> u.addresses.append(Address(city='New York'))
+    >>> u.addresses.append(Address(city='Boston'))
+    
+    >>> session.new
+    [<__main__.User object at 0x713630>, <__main__.Address object at 0x713a70>, <__main__.Address object at 0x713b30>]
+    
+    >>> # view the "modified lists" member, reveals our two Address objects as well
+    >>> session.modified_lists
+    [[<__main__.Address object at 0x713a70>, <__main__.Address object at 0x713b30>]]
+
+    >>> # lets view what the class/ID is for the list objects
+    >>> ["%s %s" % (l.__class__, id(l)) for l in session.modified_lists]
+    ['sqlalchemy.mapping.unitofwork.UOWListElement 7391872']
+    
+    >>> # now commit
+    >>> session.commit()
+    
+    >>> # new list is blank
+    >>> session.new
+    []
+    >>> # modified lists is blank
+    >>> session.modified_lists
+    []
+    
+    >>> # now lets modify an object
+    >>> u.user_name='Ed'
+    
+    >>> # it gets placed in "dirty"
+    >>> session.dirty
+    [<__main__.User object at 0x713630>]
+    
+    >>> # delete one of the addresses 
+    >>> session.delete(u.addresses[0])
+    >>> # and also delete it off the User object, note that this is not automatic
+    >>> del u.addresses[0]
+    >>> session.deleted
+    [<__main__.Address object at 0x713a70>]    
+    
+    >>> # commit
+    >>> session.commit()
+    
+    >>> # all lists are cleared out
+    >>> session.new, session.dirty, session.modified_lists, session.deleted
+    ([], [], [], [])
+    
+    >>> #identity map has the User and the one remaining Address
+    >>> session.identity_map.values()
+    [<__main__.Address object at 0x713b30>, <__main__.User object at 0x713630>]
+    </&>
+    </&>
+        
+    <&|doclib.myt:item, name="commit", description="Commit" &>
+    <p>This is the main gateway to what the Unit of Work does best, which is save everything !  
+    </p>
+    </&>
+
+    <&|doclib.myt:item, name="delete", description="Delete" &>
+    </&>
+
+    <&|doclib.myt:item, name="clear", description="Clear" &>
     <p>To clear out the current thread's UnitOfWork, which has the effect of discarding the Identity Map and the lists of all objects that have been modified, just issue a clear:
     </p>
     <&|formatting.myt:code&>
@@ -33,6 +149,17 @@
         objectstore.get_session().clear()
     </&>
     <p>This is the easiest way to "start fresh", as in a web application that wants to have a newly loaded graph of objects on each request.  Any object instances before the clear operation should be discarded.</p>
+    </&>
+
+    <&|doclib.myt:item, name="refreshexpire", description="Refresh / Expire" &>
+    </&>
+    
+    <&|doclib.myt:item, name="expunge", description="Expunge" &>
+    </&>
+
+    <&|doclib.myt:item, name="import", description="Import Instance" &>
+    </&>
+    
     </&>
     <&|doclib.myt:item, name="begincommit", description="Begin/Commit" &>
     <p>The current thread's UnitOfWork object keeps track of objects that are modified.  It maintains the following lists:</p>
@@ -170,7 +297,6 @@
     <&|doclib.myt:item, name="advscope", description="Advanced UnitOfWork Management"&>
 
     <&|doclib.myt:item, name="object", description="Per-Object Sessions" &>
-    <p><b>status</b> - 'using' function not yet released</p>
     <p>Sessions can be created on an ad-hoc basis and used for individual groups of objects and operations.  This has the effect of bypassing the entire "global"/"threadlocal" UnitOfWork system and explicitly using a particular Session:</p>
     <&|formatting.myt:code&>
         # make a new Session with a global UnitOfWork
