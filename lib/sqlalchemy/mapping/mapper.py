@@ -18,6 +18,11 @@ import weakref
 # a dictionary mapping classes to their primary mappers
 mapper_registry = weakref.WeakKeyDictionary()
 
+# a constant returned by _getattrbycolumn to indicate
+# this mapper is not handling an attribute for a particular
+# column
+NO_ATTRIBUTE = object()
+
 class Mapper(object):
     """Persists object instances to and from schema.Table objects via the sql package.
     Instances of this class should be constructed through this package's mapper() or
@@ -534,19 +539,25 @@ class Mapper(object):
             params = {}
         return self.instances(statement.execute(**params), **kwargs)
 
-    def _getpropbycolumn(self, column):
+    def _getpropbycolumn(self, column, raiseerror=True):
         try:
             prop = self.columntoproperty[column.original]
         except KeyError:
             try:
                 prop = self.props[column.key]
+                if not raiseerror:
+                    return None
                 raise InvalidRequestError("Column '%s.%s' is not available, due to conflicting property '%s':%s" % (column.table.name, column.name, column.key, repr(prop)))
             except KeyError:
+                if not raiseerror:
+                    return None
                 raise InvalidRequestError("No column %s.%s is configured on mapper %s..." % (column.table.name, column.name, str(self)))
         return prop[0]
         
-    def _getattrbycolumn(self, obj, column):
-        prop = self._getpropbycolumn(column)
+    def _getattrbycolumn(self, obj, column, raiseerror=True):
+        prop = self._getpropbycolumn(column, raiseerror)
+        if prop is None:
+            return NO_ATTRIBUTE
         return prop.getattr(obj)
 
     def _setattrbycolumn(self, obj, column, value):
@@ -615,7 +626,9 @@ class Mapper(object):
                             # doing an UPDATE ? get the history for the attribute, with "passive"
                             # so as not to trigger any deferred loads.  if there is a new
                             # value, add it to the bind parameters
-                            prop = self._getpropbycolumn(col)
+                            prop = self._getpropbycolumn(col, False)
+                            if prop is None:
+                                continue
                             history = prop.get_history(obj, passive=True)
                             if history:
                                 a = history.added_items()
@@ -629,7 +642,9 @@ class Mapper(object):
                             # default.  if its None and theres no default, we still might
                             # not want to put it in the col list but SQLIte doesnt seem to like that
                             # if theres no columns at all
-                            value = self._getattrbycolumn(obj, col)
+                            value = self._getattrbycolumn(obj, col, False)
+                            if value is NO_ATTRIBUTE:
+                                continue
                             if col.default is None or value is not None:
                                 params[col.key] = value
 
@@ -682,13 +697,16 @@ class Mapper(object):
                 clause.clauses.append(p == self._getattrbycolumn(obj, p))
             row = table.select(clause).execute().fetchone()
             for c in table.c:
-                if self._getattrbycolumn(obj, c) is None:
+                if self._getattrbycolumn(obj, c, False) is None:
                     self._setattrbycolumn(obj, c, row[c])
         else:
             for c in table.c:
                 if c.primary_key or not params.has_key(c.name):
                     continue
-                if self._getattrbycolumn(obj, c) != params.get_original(c.name):
+                v = self._getattrbycolumn(obj, c, False)
+                if v is NO_ATTRIBUTE:
+                    continue
+                elif v != params.get_original(c.name):
                     self._setattrbycolumn(obj, c, params.get_original(c.name))
 
     def delete_obj(self, objects, uow):

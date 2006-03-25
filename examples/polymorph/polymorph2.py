@@ -94,8 +94,6 @@ class PersonLoader(MapperExtension):
             return False
         else:
             return True
-            
-        
 
 people_mapper = mapper(Person, person_join, extension=PersonLoader())
 

@@ -737,7 +737,7 @@ class UOWTask(object):
         def _repr_task(task):
             if task.mapper is not None:
                 if task.mapper.__class__.__name__ == 'Mapper':
-                    name = task.mapper.class_.__name__ + "/" + task.mapper.primarytable.id + "/" + str(id(task.mapper))
+                    name = task.mapper.class_.__name__ + "/" + str(task.mapper.primarytable) + "/" + str(id(task.mapper))
                 else:
                     name = repr(task.mapper)
             else:
