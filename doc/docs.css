@@ -97,7 +97,7 @@ code {
 }
 
 pre {
-    overflow:auto;
+    /*overflow:auto;*/
 }
 .codeline {
 	font-family:courier, serif;
