@@ -113,8 +113,17 @@ def assign_mapper(class_, *args, **params):
         objectstore.commit(self)
     def delete(self):
         objectstore.delete(self)
+    def expire(self):
+        objectstore.expire(self)
+    def refresh(self):
+        objectstore.refresh(self)
+    def expunge(self):
+        objectstore.expunge(self)
     class_.commit = commit
     class_.delete = delete
+    class_.expire = expire
+    class_.refresh = refresh
+    class_.expunge = expunge
     
 def cascade_mappers(*classes_or_mappers):
     """given a list of classes and/or mappers, identifies the foreign key relationships
