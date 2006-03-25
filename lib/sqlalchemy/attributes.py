@@ -397,7 +397,10 @@ class AttributeManager(object):
             x.clear()
             del self.attribute_history(obj)[key]
         except KeyError:
-            pass
+            try:
+                del obj.__dict__[key]
+            except KeyError:
+                pass
         
     def class_managed(self, class_):
         """returns a dictionary of "history container definitions", which is attached to a 

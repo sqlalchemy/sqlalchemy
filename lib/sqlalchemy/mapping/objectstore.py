@@ -166,6 +166,10 @@ class Session(object):
         for o in obj:
             global_attributes.trigger_history(o, lambda: refresh(o))
 
+    def expunge(self, *obj):
+        for o in obj:
+            self.uow.expunge(obj)
+            
     def register_clean(self, obj):
         self._bind_to(obj)
         self.uow.register_clean(obj)
@@ -252,7 +256,10 @@ def expire(*obj):
     """invalidates the data in the given objects and sets them to refresh themselves
     the next time they are requested."""
     get_session().expire(*obj)
-    
+
+def expunge(*obj):
+    get_session().expunge(*obj)
+
 def delete(*obj):
     """registers the given objects as to be deleted upon the next commit"""
     s = get_session().delete(*obj)

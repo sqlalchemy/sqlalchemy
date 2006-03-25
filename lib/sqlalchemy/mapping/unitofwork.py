@@ -104,6 +104,11 @@ class UnitOfWork(object):
         """returns True if the given key is present in this UnitOfWork's identity map."""
         return self.identity_map.has_key(key)
     
+    def expunge(self, obj):
+        """removes this object completely from the UnitOfWork, including the identity map,
+        and the "new", "dirty" and "deleted" lists."""
+        self._remove_deleted(obj)
+        
     def _remove_deleted(self, obj):
         if hasattr(obj, "_instance_key"):
             del self.identity_map[obj._instance_key]
@@ -119,7 +124,7 @@ class UnitOfWork(object):
             del self.new[obj]
         except KeyError:
             pass
-        self.attributes.commit(obj)
+        #self.attributes.commit(obj)
         self.attributes.remove(obj)
 
     def _validate_obj(self, obj):
