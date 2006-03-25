@@ -3,7 +3,7 @@
 <%python scope="global">
 
     files = [
-        'tutorial',
+        #'tutorial',
         'trailmap',
         'pooling',
         'dbengine',

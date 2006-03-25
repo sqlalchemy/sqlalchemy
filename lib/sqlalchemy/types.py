@@ -117,7 +117,7 @@ class Numeric(TypeEngine):
     def get_constructor_args(self):
         return {'precision':self.precision, 'length':self.length}
 
-class Float(TypeEngine):
+class Float(Numeric):
     def __init__(self, precision = 10):
         self.precision = precision
     def get_constructor_args(self):
