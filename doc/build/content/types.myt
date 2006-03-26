@@ -39,6 +39,10 @@
 	# rowset values, using the unicode encoding 
 	# setting on the engine (defaults to 'utf-8')
 	class Unicode(String)
+	
+	# uses the pickle protocol to serialize data
+	# in/out of Binary columns
+	class PickleType(Binary)
 </&>
 <p>More specific subclasses of these types are available, which various database engines may choose to implement specifically, allowing finer grained control over types:</p>
 <&|formatting.myt:code&>
@@ -87,16 +91,21 @@ class BOOLEAN(Boolean)
 <&|formatting.myt:code, title="Pickle Type"&>
     import cPickle
 
-    class PickleType(types.Binary):
-          def __init__(self, protocol=cPickle.HIGHEST_PROTOCOL):
+    class PickleType(Binary):
+          def __init__(self, protocol=pickle.HIGHEST_PROTOCOL):
                """allows the pickle protocol to be specified"""
                self.protocol = protocol
           def convert_result_value(self, value, engine):
-                return cpickle.loads(super(PickleType, self).convert_result_value(value, engine), self.protocol)
+              if value is None:
+                  return None
+              buf = Binary.convert_result_value(self, value, engine)
+              return pickle.loads(str(buf))
           def convert_bind_param(self, value, engine):
-                return super(PickleType, self).convert_bind_param(cpickle.dumps(value, self.protocol), engine)
+              if value is None:
+                  return None
+              return Binary.convert_bind_param(self, pickle.dumps(value, self.protocol), engine)
           def get_constructor_args(self):
-                return {'protocol':self.protocol}
+                return {}
 </&>
 <p>Which can be used like:</p>
 <&|formatting.myt:code&>
