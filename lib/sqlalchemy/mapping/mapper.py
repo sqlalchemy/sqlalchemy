@@ -998,8 +998,8 @@ class MapperExtension(object):
         
         Essentially, this method is used to have a different mapper populate the object:
         
-            def populate_instance(self, mapper, *args):
-                othermapper.populate_instance(*args)
+            def populate_instance(self, mapper, instance, row, identitykey, imap, isnew):
+                othermapper.populate_instance(instance, row, identitykey, imap, isnew, frommapper=mapper)
                 return False
         """
         if self.next is None:

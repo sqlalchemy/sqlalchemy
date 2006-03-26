@@ -1024,7 +1024,7 @@ class ColumnClause(ColumnElement):
                 self.__label =  self.table.name + "_" + self.text
             else:
                 self.__label = self.text
-            if len(self.__label) >= 30:
+            if (self.table is not None and self.table.c.has_key(self.__label)) or len(self.__label) >= 30:
                 self.__label = self.__label[0:24] + "_" + hex(random.randint(0, 65535))[2:]
         return self.__label
     _label = property(_get_label)
