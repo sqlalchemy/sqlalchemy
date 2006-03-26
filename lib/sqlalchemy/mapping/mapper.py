@@ -39,6 +39,7 @@ class Mapper(object):
                 extension = None,
                 order_by = False,
                 allow_column_override = False,
+                always_refresh = False,
                 **kwargs):
 
         if primarytable is not None:
@@ -52,6 +53,7 @@ class Mapper(object):
         self.is_primary = is_primary
         self.order_by = order_by
         self._options = {}
+        self.always_refresh = always_refresh
         
         if not issubclass(class_, object):
             raise ArgumentError("Class '%s' is not a new-style class" % class_.__name__)
@@ -308,7 +310,7 @@ class Mapper(object):
         return self._get(key, ident)
         
     def _get(self, key, ident=None, reload=False):
-        if not reload:
+        if not reload and not self.always_refresh:
             try:
                 return objectstore.get_session()._get(key)
             except KeyError:
@@ -815,6 +817,8 @@ class Mapper(object):
         # look in main identity map.  if its there, we dont do anything to it,
         # including modifying any of its related items lists, as its already
         # been exposed to being modified by the application.
+        
+        populate_existing = populate_existing or self.always_refresh
         identitykey = self._identity_key(row)
         sess = objectstore.get_session()
         if sess.has_key(identitykey):
