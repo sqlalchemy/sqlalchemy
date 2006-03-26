@@ -73,7 +73,8 @@ person_join = select(
                     column("'engineer'").label('type')
                 ],
             people.c.person_id==engineers.c.person_id)).alias('pjoin')
-            
+
+print [c for c in person_join.c]            
     
 # MapperExtension object.
 class PersonLoader(MapperExtension):
@@ -87,10 +88,10 @@ class PersonLoader(MapperExtension):
             
     def populate_instance(self, mapper, instance, row, identitykey, imap, isnew):
         if row[person_join.c.type] =='engineer':
-            Engineer.mapper.populate_instance(instance, row, identitykey, imap, isnew)
+            Engineer.mapper.populate_instance(instance, row, identitykey, imap, isnew, frommapper=mapper)
             return False
         elif row[person_join.c.type] =='manager':
-            Manager.mapper.populate_instance(instance, row, identitykey, imap, isnew)
+            Manager.mapper.populate_instance(instance, row, identitykey, imap, isnew, frommapper=mapper)
             return False
         else:
             return True

@@ -854,19 +854,27 @@ class Mapper(object):
         # call further mapper properties on the row, to pull further 
         # instances from the row and possibly populate this item.
         if self.extension.populate_instance(self, instance, row, identitykey, imap, isnew):
-            self.populate_instance(instance, row, identitykey, imap, isnew, translate=False)
+            self.populate_instance(instance, row, identitykey, imap, isnew)
         if self.extension.append_result(self, row, imap, result, instance, isnew, populate_existing=populate_existing):
             if result is not None:
                 result.append_nohistory(instance)
         return instance
 
-    def populate_instance(self, instance, row, identitykey, imap, isnew, translate=True):
-        if translate:
-            newrow = {}
-            for table in self.tables:
-                for c in table.c:
-                    newrow[c] = row[c.key]
-            row = newrow
+    def translate_row(self, tomapper, row):
+        """attempts to take a row and translate its values to a row that can
+        be understood by another mapper.  breaks the column references down to their
+        bare keynames to accomplish this.  So far this works for the various polymorphic
+        examples."""
+        newrow = util.DictDecorator(row)
+        for c in self.table.c:
+            newrow[c.key] = row[c]
+        for c in tomapper.table.c:
+            newrow[c] = newrow[c.key]
+        return newrow
+        
+    def populate_instance(self, instance, row, identitykey, imap, isnew, frommapper=None):
+        if frommapper is not None:
+            row = frommapper.translate_row(self, row)
             
         for prop in self.props.values():
             prop.execute(instance, row, identitykey, imap, isnew)
