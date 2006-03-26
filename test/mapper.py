@@ -111,14 +111,36 @@ class MapperTest(MapperSuperTest):
         self.assert_(a in u.addresses)
         objectstore.expire(u)
 
-        # expired, but not refreshed yet.  still dirty
-        self.assert_(u in objectstore.get_session().uow.dirty)
         # get the attribute, it refreshes
         self.assert_(u.user_name == 'jack')
         self.assert_(a not in u.addresses)
-        # not dirty anymore
-        self.assert_(u not in objectstore.get_session().uow.dirty)
-    
+
+    def testexpire(self):
+        m = mapper(User, users, properties={'addresses':relation(mapper(Address, addresses))})
+        u = m.get(7)
+        u.user_name = 'foo'
+        objectstore.expire(u)
+        # test plain expire
+        self.assert_(u.user_name =='jack')
+        
+        # we're changing the database here, so if this test fails in the middle,
+        # it'll screw up the other tests which are hardcoded to 7/'jack'
+        u.user_name = 'foo'
+        objectstore.commit()
+        # change the value in the DB
+        users.update(users.c.user_id==7, values=dict(user_name='jack')).execute()
+        objectstore.expire(u)
+        # object isnt refreshed yet, using dict to bypass trigger
+        self.assert_(u.__dict__['user_name'] != 'jack')
+        # do a select
+        m.select()
+        # test that it refreshed
+        self.assert_(u.__dict__['user_name'] == 'jack')
+        
+        # object should be back to normal now, 
+        # this should *not* produce a SELECT statement (not tested here though....)
+        self.assert_(u.user_name =='jack')
+        
     def testrefresh2(self):
         assign_mapper(Address, addresses)
 

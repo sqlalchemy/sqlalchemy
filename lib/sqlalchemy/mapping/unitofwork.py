@@ -100,6 +100,18 @@ class UnitOfWork(object):
         self.rollback_object(obj)
         object_mapper(obj)._get(obj._instance_key, reload=True)
 
+    def expire(self, obj):
+        self.rollback_object(obj)
+        def exp():
+            object_mapper(obj)._get(obj._instance_key, reload=True)
+        global_attributes.trigger_history(obj, exp)
+    
+    def is_expired(self, obj, unexpire=False):
+        ret = global_attributes.has_trigger(obj)
+        if ret and unexpire:
+            global_attributes.untrigger_history(obj)
+        return ret
+            
     def has_key(self, key):
         """returns True if the given key is present in this UnitOfWork's identity map."""
         return self.identity_map.has_key(key)
@@ -247,6 +259,14 @@ class UnitOfWork(object):
     def rollback_object(self, obj):
         """'rolls back' the attributes that have been changed on an object instance."""
         self.attributes.rollback(obj)
+        try:
+            del self.dirty[obj]
+        except KeyError:
+            pass
+        try:
+            del self.deleted[obj]
+        except KeyError:
+            pass
             
 class UOWTransaction(object):
     """handles the details of organizing and executing transaction tasks 

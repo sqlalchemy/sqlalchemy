@@ -398,7 +398,13 @@ class AttributeManager(object):
         except KeyError:
             pass
         obj.__dict__['_managed_trigger'] = callable
+
+    def untrigger_history(self, obj):
+        del obj.__dict__['_managed_trigger']
         
+    def has_trigger(self, obj):
+        return obj.__dict__.has_key('_managed_trigger')
+            
     def reset_history(self, obj, key):
         """removes the history object for the given attribute on the given object.
         When the attribute is next accessed, a new container will be created via the

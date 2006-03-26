@@ -166,7 +166,7 @@ class Session(object):
         """invalidates the data in the given objects and sets them to refresh themselves
         the next time they are requested."""
         for o in obj:
-            global_attributes.trigger_history(o, lambda: refresh(o))
+            self.uow.expire(o)
 
     def expunge(self, *obj):
         for o in obj:

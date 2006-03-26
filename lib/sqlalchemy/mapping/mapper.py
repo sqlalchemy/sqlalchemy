@@ -816,16 +816,16 @@ class Mapper(object):
         # including modifying any of its related items lists, as its already
         # been exposed to being modified by the application.
         identitykey = self._identity_key(row)
-        if objectstore.get_session().has_key(identitykey):
-            instance = objectstore.get_session()._get(identitykey)
+        sess = objectstore.get_session()
+        if sess.has_key(identitykey):
+            instance = sess._get(identitykey)
 
             isnew = False
-            if populate_existing:
+            if populate_existing or sess.is_expired(instance, unexpire=True):
                 if not imap.has_key(identitykey):
                     imap[identitykey] = instance
                 for prop in self.props.values():
                     prop.execute(instance, row, identitykey, imap, True)
-
             if self.extension.append_result(self, row, imap, result, instance, isnew, populate_existing=populate_existing):
                 if result is not None:
                     result.append_nohistory(instance)
