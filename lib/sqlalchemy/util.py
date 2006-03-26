@@ -397,7 +397,7 @@ class HistoryArraySet(UserList.UserList):
     def has_item(self, item):
         return self.records.has_key(item)
     def __setitem__(self, i, item): 
-        if self._setrecord(a):
+        if self._setrecord(item):
             self.data[i] = item
     def __delitem__(self, i):
         self._delrecord(self.data[i])

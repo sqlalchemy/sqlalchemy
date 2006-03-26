@@ -812,7 +812,6 @@ class Mapper(object):
         list. if the instance already exists in the given identity map, its not added.  in
         either case, executes all the property loaders on the instance to also process extra
         information in the row."""
-
         # look in main identity map.  if its there, we dont do anything to it,
         # including modifying any of its related items lists, as its already
         # been exposed to being modified by the application.
@@ -830,7 +829,6 @@ class Mapper(object):
             if self.extension.append_result(self, row, imap, result, instance, isnew, populate_existing=populate_existing):
                 if result is not None:
                     result.append_nohistory(instance)
-
             return instance
                     
         # look in result-local identitymap for it.
@@ -857,11 +855,9 @@ class Mapper(object):
         # instances from the row and possibly populate this item.
         if self.extension.populate_instance(self, instance, row, identitykey, imap, isnew):
             self.populate_instance(instance, row, identitykey, imap, isnew, translate=False)
-
         if self.extension.append_result(self, row, imap, result, instance, isnew, populate_existing=populate_existing):
             if result is not None:
                 result.append_nohistory(instance)
-
         return instance
 
     def populate_instance(self, instance, row, identitykey, imap, isnew, translate=True):

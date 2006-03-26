@@ -7,12 +7,16 @@
 __all__ = [ 'TypeEngine', 'TypeDecorator', 'NullTypeEngine',
             'INT', 'CHAR', 'VARCHAR', 'TEXT', 'FLOAT', 'DECIMAL', 
             'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN', 'String', 'Integer', 'Smallinteger',
-            'Numeric', 'Float', 'DateTime', 'Date', 'Time', 'Binary', 'Boolean', 'Unicode', 'NULLTYPE',
+            'Numeric', 'Float', 'DateTime', 'Date', 'Time', 'Binary', 'Boolean', 'Unicode', 'PickleType', 'NULLTYPE',
         'SMALLINT', 'DATE', 'TIME'
             ]
 
 import sqlalchemy.util as util
-
+try:
+    import cPickle as pickle
+except:
+    import pickle
+    
 class TypeEngine(object):
     basetypes = []
     def __init__(self, *args, **kwargs):
@@ -141,6 +145,22 @@ class Binary(TypeEngine):
         return value
     def get_constructor_args(self):
         return {'length':self.length}
+
+class PickleType(Binary):
+      def __init__(self, protocol=pickle.HIGHEST_PROTOCOL):
+           """allows the pickle protocol to be specified"""
+           self.protocol = protocol
+      def convert_result_value(self, value, engine):
+          if value is None:
+              return None
+          buf = Binary.convert_result_value(self, value, engine)
+          return pickle.loads(str(buf))
+      def convert_bind_param(self, value, engine):
+          if value is None:
+              return None
+          return Binary.convert_bind_param(self, pickle.dumps(value, self.protocol), engine)
+      def get_constructor_args(self):
+            return {}
 
 class Boolean(TypeEngine):
     pass

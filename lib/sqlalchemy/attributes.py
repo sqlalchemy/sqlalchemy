@@ -214,7 +214,12 @@ class CallableProp(object):
                 if passive:
                     value = None
                 else:
-                    value = self.callable_()
+                    try:
+                        value = self.callable_()
+                    except AttributeError, e:
+                        # this catch/raise is because this call is frequently within an 
+                        # AttributeError-sensitive callstack
+                        raise AssertionError("AttributeError caught in callable prop:" + str(e.args))
                 self.obj.__dict__[self.key] = value
 
             p = PropHistory(self.obj, self.key, **self.kwargs)
@@ -223,11 +228,15 @@ class CallableProp(object):
                 if passive:
                     value =  None
                 else:
-                    value = self.callable_()
+                    try:
+                        value = self.callable_()
+                    except AttributeError, e:
+                        # this catch/raise is because this call is frequently within an 
+                        # AttributeError-sensitive callstack
+                        raise AssertionError("AttributeError caught in callable prop:" + str(e.args))
             else:
                 value = None
             p = self.manager.create_list(self.obj, self.key, value, readonly=self.live, **self.kwargs)
-        
         if not self.live and not passive:
             # set the new history list as the new attribute, discards ourself
             self.manager.attribute_history(self.obj)[self.key] = p
