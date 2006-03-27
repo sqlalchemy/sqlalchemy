@@ -31,6 +31,8 @@ commit
 concept of relations on a mapper being made towards the "local" table for that
 mapper, not the tables it inherits.  allows more complex compositional patterns
 to work with lazy/eager loading.
+- added support for mappers to inherit from others based on the same table, 
+just specify the same table as that of both parent/child mapper.
 - some minor speed improvements to the attributes system with regards to 
 instantiating and populating new objects. 
 - fixed MySQL binary unit test
