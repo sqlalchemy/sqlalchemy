@@ -382,6 +382,9 @@ class PropertyLoader(MapperProperty):
             else:
                 uowcommit.register_dependency(self.mapper, self.parent)
                 uowcommit.register_processor(self.mapper, self, self.parent, False)
+                # this dependency processor is used to locate "private" child objects
+                # during a "delete" operation, when the objectstore is being committed
+                # with only a partial list of objects
                 uowcommit.register_processor(self.mapper, self, self.parent, True)
         else:
             raise AssertionError(" no foreign key ?")

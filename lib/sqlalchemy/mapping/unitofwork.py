@@ -647,6 +647,10 @@ class UOWTask(object):
                         childlist = childlist.added_items()
                         
                     for o in childlist:
+                        if o is None:
+                            # this can be None due to the many-to-one dependency processor added
+                            # for deleted items, line 385 properties.py
+                            continue
                         if not o in childtask.objects:
                             # item needs to be saved since its added, or attached to a deleted object
                             childtask.append(o, isdelete=isdelete and dep.processor.private)

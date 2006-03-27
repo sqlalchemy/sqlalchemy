@@ -44,6 +44,19 @@ class SelfReferentialTest(AssertMixin):
         objectstore.clear()
         clear_mappers()
     
+    def testsingle(self):
+        class C1(Tester):
+            pass
+        m1 = mapper(C1, t1, properties = {
+            'c1s':relation(C1, private=True),
+            'parent':relation(C1, primaryjoin=t1.c.parent_c1==t1.c.c1, foreignkey=t1.c.c1, lazy=True, uselist=False)
+        })
+        a = C1('head c1')
+        a.c1s.append(C1('another c1'))
+        objectstore.commit()
+        objectstore.delete(a)
+        objectstore.commit()
+        
     def testcycle(self):
         class C1(Tester):
             pass
