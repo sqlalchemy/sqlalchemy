@@ -56,7 +56,6 @@ use it after a rollback()
 work with pysqlite1
 - improvements to subqueries to more intelligently construct their FROM
 clauses [ticket:116]
-
 - added PickleType to types.
 - fixed two bugs with column labels with regards to bind parameters: bind param
 keynames they are now generated from a column "label" in all relevant cases to
