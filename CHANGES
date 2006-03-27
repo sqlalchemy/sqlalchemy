@@ -1,15 +1,86 @@
 0.1.5
+- added SQLSession concept to SQLEngine. this object keeps track of retrieving a
+connection from the connection pool as well as an in-progress transaction.
+methods push_session() and pop_session() added to SQLEngine which push/pop a new
+SQLSession onto the engine, allowing operation upon a second connection "nested"
+within the previous one, allowing nested transactions. Other tricks are sure to
+come later regarding SQLSession.
+- added nest_on argument to objectstore.Session. This is a single SQLEngine or
+list of engines for which push_session()/pop_session() will be called each time
+this Session becomes the active session (via objectstore.push_session() or
+equivalent). This allows a unit of work Session to take advantage of the nested
+transaction feature without explicitly calling push_session/pop_session on the
+engine.
+- factored apart objectstore/unitofwork to separate "Session scoping" from
+"uow commit heavy lifting"
+- added populate_instance() method to MapperExtension. allows an extension to
+modify the population of object attributes. this method can call the
+populate_instance() method on another mapper to proxy the attribute population
+from one mapper to another; some row translation logic is also built in to help
+with this.
+- fixed Oracle8-compatibility "use_ansi" flag which converts JOINs to 
+comparisons with the = and (+) operators, passes basic unittests
+- tweaks to Oracle LIMIT/OFFSET support
+- Oracle reflection uses ALL_** views instead of USER_** to get larger
+list of stuff to reflect from
+- fixes to Oracle foreign key reflection [ticket:105]
+- objectstore.commit(obj1, obj2,...) adds an extra step to seek out private
+relations on properties and delete child objects, even though its not a global
+commit
+- lots and lots of fixes to mappers which use inheritance, strengthened the 
+concept of relations on a mapper being made towards the "local" table for that
+mapper, not the tables it inherits.  allows more complex compositional patterns
+to work with lazy/eager loading.
+- some minor speed improvements to the attributes system with regards to 
+instantiating and populating new objects. 
+- fixed MySQL binary unit test
+- INSERTs can receive clause elements as VALUES arguments, not just literal
+values
+- support for calling multi-tokened functions, i.e. schema.mypkg.func()
+- added J. Ellis' SQLSoup module to extensions package
+- added "polymorphic" examples illustrating methods to load multiple object types
+from one mapper, the second of which uses the new populate_instance() method.
+small improvements to mapper, UNION construct to help the examples along
+- improvements/fixes to session.refresh()/session.expire() (which may have
+been called "invalidate" earlier..)
+- added session.expunge() which totally removes an object from the current
+session
+- added *args, **kwargs pass-thru to engine.transaction(func) allowing easier
+creation of transactionalizing decorator functions
+- added iterator interface to ResultProxy:  "for row in result:..."
+- added assertion to tx = session.begin(); tx.rollback(); tx.begin(), i.e. cant
+use it after a rollback()
+- added date conversion on bind parameter fix to SQLite enabling dates to
+work with pysqlite1
+- improvements to subqueries to more intelligently construct their FROM
+clauses [ticket:116]
+
+- added PickleType to types.
+- fixed two bugs with column labels with regards to bind parameters: bind param
+keynames they are now generated from a column "label" in all relevant cases to
+take advantage of excess-name-length rules, and checks for a peculiar collision
+against a column named the same as "tablename_colname" added
+- major overhaul to unit of work documentation, other documentation sections.
 - fixed attributes bug where if an object is committed, its lazy-loaded list got 
 blown away if it hadnt been loaded
-- added unique_connection() method to engine, connection pool to return a connection
-that is not part of the thread-local context or any current transaction
-- added distinct() function to column elements so you can do func.count(mycol.distinct())
+- added unique_connection() method to engine, connection pool to return a
+connection that is not part of the thread-local context or any current
+transaction
+- added invalidate() function to pooled connection.  will remove the connection
+from the pool.  still need work for engines to auto-reconnect to a stale DB
+though.
+- added distinct() function to column elements so you can do
+func.count(mycol.distinct())
+- added "always_refresh" flag to Mapper, creates a mapper that will always
+refresh the attributes of objects it gets/selects from the DB, overwriting any
+changes made.
 
 0.1.4
-- create_engine() now uses genericized parameters; host/hostname, db/dbname/database, 
-password/passwd, etc. for all engine connections. makes engine URIs much more "universal"
-- added support for SELECT statements embedded into a column clause, using the flag
-"scalar=True"
+- create_engine() now uses genericized parameters; host/hostname,
+db/dbname/database, password/passwd, etc. for all engine connections. makes
+ engine URIs much more "universal"
+- added support for SELECT statements embedded into a column clause, using the
+flag "scalar=True"
 - another overhaul to EagerLoading when used in conjunction with mappers that
 inherit; improvements to eager loads figuring out their aliased queries
 correctly, also relations set up against a mapper with inherited mappers will
@@ -28,10 +99,11 @@ still some bugs to work out regarding composite primary keys/dictionary selectio
 compiled.get_params(), does late-typeprocessing of bind parameters so 
 that the original values are easier to access
 - more docs for indexes, column defaults, connection pooling, engine construction
-- overhaul to the construction of the types system.  uses a simpler inheritance pattern
-so that any of the generic types can be easily subclassed, with no need for TypeDecorator.
-- added "convert_unicode=False" parameter to SQLEngine, will cause all String types to 
-perform unicode encoding/decoding (makes Strings act like Unicodes)
+- overhaul to the construction of the types system. uses a simpler inheritance
+pattern so that any of the generic types can be easily subclassed, with no need
+for TypeDecorator.
+- added "convert_unicode=False" parameter to SQLEngine, will cause all String
+types to perform unicode encoding/decoding (makes Strings act like Unicodes)
 - added 'encoding="utf8"' parameter to engine.  the given encoding will be 
 used for all encode/decode calls within Unicode types as well as Strings 
 when convert_unicode=True.
