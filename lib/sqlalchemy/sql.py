@@ -491,7 +491,7 @@ class CompareMixin(object):
     def label(self, name):
         return Label(name, self)
     def distinct(self):
-        return CompoundClause(None,"DISTNCT", self)
+        return CompoundClause(None,"DISTINCT", self)
     def op(self, operator):
         return lambda other: self._compare(operator, other)
     # and here come the math operators:
