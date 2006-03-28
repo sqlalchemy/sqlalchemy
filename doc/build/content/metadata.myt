@@ -139,6 +139,7 @@ DROP TABLE employees
                 # a function to create primary key ids
                 i = 0
                 def mydefault():
+                    global i
                     i += 1
                     return i
                 
