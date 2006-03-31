@@ -13,6 +13,8 @@ class SelectResultsExt(mapping.MapperExtension):
             return mapping.EXT_PASS
         else:
             return SelectResults(mapper, arg, ops=kwargs)
+
+MapperExtension = SelectResultsExt
         
 class SelectResults(object):
     def __init__(self, mapper, clause=None, ops={}):
