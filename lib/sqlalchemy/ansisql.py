@@ -373,6 +373,9 @@ class ANSICompiler(sql.Compiled):
                 
         text += self.visit_select_postclauses(select)
  
+        if select.for_update:
+            text += " FOR UPDATE"
+            
         if getattr(select, 'parens', False):
             self.strings[select] = "(" + text + ")"
         else:

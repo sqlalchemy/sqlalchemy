@@ -1176,6 +1176,7 @@ class CompoundSelect(SelectBaseMixin, FromClause):
         self.use_labels = kwargs.pop('use_labels', False)
         self.parens = kwargs.pop('parens', False)
         self.correlate = kwargs.pop('correlate', False)
+        self.for_update = kwargs.pop('for_update', False)
         self.oid_column = selects[0].oid_column
         for s in self.selects:
             s.group_by(None)
@@ -1211,7 +1212,7 @@ class CompoundSelect(SelectBaseMixin, FromClause):
 class Select(SelectBaseMixin, FromClause):
     """represents a SELECT statement, with appendable clauses, as well as 
     the ability to execute itself and return a result set."""
-    def __init__(self, columns=None, whereclause = None, from_obj = [], order_by = None, group_by=None, having=None, use_labels = False, distinct=False, engine = None, limit=None, offset=None, scalar=False, correlate=True):
+    def __init__(self, columns=None, whereclause = None, from_obj = [], order_by = None, group_by=None, having=None, use_labels = False, distinct=False, for_update=False, engine=None, limit=None, offset=None, scalar=False, correlate=True):
         self._froms = util.OrderedDict()
         self.use_labels = use_labels
         self.name = None
@@ -1221,6 +1222,7 @@ class Select(SelectBaseMixin, FromClause):
         self.oid_column = None
         self.limit = limit
         self.offset = offset
+        self.for_update = for_update
 
         # indicates that this select statement should not expand its columns
         # into the column clause of an enclosing select, and should instead
