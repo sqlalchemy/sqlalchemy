@@ -451,7 +451,10 @@ class PropertyLoader(MapperProperty):
                     for child in childlist.deleted_items() + childlist.unchanged_items():
                         if child is None:
                             continue
-                        uowcommit.register_object(child, isdelete=True)
+                        # if private child object, and is in the uow's "deleted" list,
+                        # insure its in the list of items to be deleted
+                        if child in uowcommit.uow.deleted:
+                            uowcommit.register_object(child, isdelete=True)
             elif self.post_update:
                 # post_update means we have to update our row to not reference the child object
                 # before we can DELETE the row
@@ -462,16 +465,15 @@ class PropertyLoader(MapperProperty):
             # head object is being deleted, and we manage its list of child objects
             # the child objects have to have their foreign key to the parent set to NULL
             if self.private and not self.post_update:
-                # if we are privately managed, then all our objects should
-                # have been marked as "todelete" already and no attribute adjustment is needed.
-                # however, if they say objectstore.commit(x), i.e. on an individual object,
-                # then this extra step is more important.
                 for obj in deplist:
                     childlist = getlist(obj, False)
                     for child in childlist.deleted_items() + childlist.unchanged_items():
                         if child is None:
                             continue
-                        uowcommit.register_object(child, isdelete=True)
+                        # if private child object, and is in the uow's "deleted" list,
+                        # insure its in the list of items to be deleted
+                        if child in uowcommit.uow.deleted:
+                            uowcommit.register_object(child, isdelete=True)
             else:
                 for obj in deplist:
                     childlist = getlist(obj, False)
@@ -529,8 +531,6 @@ class PropertyLoader(MapperProperty):
                     for child in childlist.deleted_items():
                         if not self.private:
                             self._synchronize(obj, child, None, True)
-                        if self.direction == PropertyLoader.ONETOMANY:
-                            # for a cyclical task, this registration is handled by the objectstore
                             uowcommit.register_object(child, isdelete=self.private)
 
     def execute(self, instance, row, identitykey, imap, isnew):

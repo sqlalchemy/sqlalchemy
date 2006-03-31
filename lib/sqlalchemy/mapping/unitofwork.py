@@ -44,7 +44,8 @@ class UOWListElement(attributes.ListElement):
     def list_value_changed(self, obj, key, item, listval, isdelete):
         sess = get_session(obj)
         if not isdelete and sess.deleted.contains(item):
-            raise InvalidRequestError("re-inserting a deleted value into a list")
+            #raise InvalidRequestError("re-inserting a deleted value into a list")
+            del sess.deleted[item]
         sess.modified_lists.append(self)
         if self.deleteremoved and isdelete:
             sess.register_deleted(item)
