@@ -19,8 +19,8 @@ import weakref
 # a dictionary mapping classes to their primary mappers
 mapper_registry = weakref.WeakKeyDictionary()
 
-# a list of MapperExtensions that will be installed by default
-extensions = []
+# a list of MapperExtensions that will be installed in all mappers by default
+global_extensions = []
 
 # a constant returned by _getattrbycolumn to indicate
 # this mapper is not handling an attribute for a particular
@@ -56,13 +56,13 @@ class Mapper(object):
         
         ext = MapperExtension()
         
-        for ext_class in extensions:
+        for ext_class in global_extensions:
             ext = ext_class().chain(ext)
+        
+        for ext_obj in util.to_list(extension):
+            ext = ext_obj.chain(ext)
             
-        if extension is not None:
-            self.extension = extension.chain(ext)
-        else:
-            self.extension = ext
+        self.extension = ext
 
         self.class_ = class_
         self.is_primary = is_primary

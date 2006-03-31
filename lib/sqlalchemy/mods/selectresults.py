@@ -3,7 +3,7 @@ import sqlalchemy.sql as sql
 import sqlalchemy.mapping as mapping
 
 def install_plugin():
-    mapping.extensions.append(SelectResultsExt)
+    mapping.global_extensions.append(SelectResultsExt)
     
 class SelectResultsExt(mapping.MapperExtension):
     def select_by(self, mapper, *args, **params):
