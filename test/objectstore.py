@@ -336,7 +336,8 @@ class PrivateAttrTest(AssertMixin):
         b.a = a2
         assert b not in sess.deleted
         objectstore.commit()
-        
+        assert b in sess.identity_map.values()
+                
 class DefaultTest(AssertMixin):
     """tests that when saving objects whose table contains DefaultGenerators, either python-side, preexec or database-side,
     the newly saved instances receive all the default values either through a post-fetch or getting the pre-exec'ed 
