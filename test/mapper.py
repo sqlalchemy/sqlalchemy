@@ -133,7 +133,7 @@ class MapperTest(MapperSuperTest):
         # object isnt refreshed yet, using dict to bypass trigger
         self.assert_(u.__dict__['user_name'] != 'jack')
         # do a select
-        m.select().list()
+        m.select()
         # test that it refreshed
         self.assert_(u.__dict__['user_name'] == 'jack')
         
@@ -255,7 +255,7 @@ class MapperTest(MapperSuperTest):
         m = mapper(User, users, properties = dict(
             addresses = relation(mapper(Address, addresses), lazy = True)
         ))
-        l = m.options(eagerload('addresses')).select().list()
+        l = m.options(eagerload('addresses')).select()
 
         def go():
             self.assert_result(l, User, *user_address_result)
@@ -266,7 +266,7 @@ class MapperTest(MapperSuperTest):
         m = mapper(User, users, properties = dict(
             addresses = relation(mapper(Address, addresses), lazy = False)
         ))
-        l = m.options(lazyload('addresses')).select().list()
+        l = m.options(lazyload('addresses')).select()
         def go():
             self.assert_result(l, User, *user_address_result)
         self.assert_sql_count(db, go, 3)
@@ -282,12 +282,12 @@ class MapperTest(MapperSuperTest):
             })
             
         m2 = m.options(eagerload('orders.items.keywords'))
-        u = m.select().list()
+        u = m.select()
         def go():
             print u[0].orders[1].items[0].keywords[1]
         self.assert_sql_count(db, go, 3)
         objectstore.clear()
-        u = m2.select().list()
+        u = m2.select()
         self.assert_sql_count(db, go, 2)
         
 class PropertyTest(MapperSuperTest):
@@ -368,7 +368,7 @@ class DeferredTest(MapperSuperTest):
         self.assert_(o.description is None)
         
         def go():
-            l = m.select().list()
+            l = m.select()
             o2 = l[2]
             print o2.description
 
@@ -397,7 +397,7 @@ class DeferredTest(MapperSuperTest):
         })
 
         def go():
-            l = m.select().list()
+            l = m.select()
             o2 = l[2]
             print o2.opened, o2.description, o2.userident
         self.assert_sql(db, go, [
@@ -410,7 +410,7 @@ class DeferredTest(MapperSuperTest):
         m = mapper(Order, orders)
         m2 = m.options(defer('user_id'))
         def go():
-            l = m2.select().list()
+            l = m2.select()
             print l[2].user_id
         self.assert_sql(db, go, [
             ("SELECT orders.order_id AS orders_order_id, orders.description AS orders_description, orders.isopen AS orders_isopen FROM orders ORDER BY orders.%s" % orders.default_order_by()[0].key, {}),
@@ -419,7 +419,7 @@ class DeferredTest(MapperSuperTest):
         objectstore.clear()
         m3 = m2.options(undefer('user_id'))
         def go():
-            l = m3.select().list()
+            l = m3.select()
             print l[3].user_id
         self.assert_sql(db, go, [
             ("SELECT orders.order_id AS orders_order_id, orders.user_id AS orders_user_id, orders.description AS orders_description, orders.isopen AS orders_isopen FROM orders ORDER BY orders.%s" % orders.default_order_by()[0].key, {}),

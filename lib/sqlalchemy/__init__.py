@@ -11,10 +11,11 @@ from schema import *
 from exceptions import *
 import mapping as mapperlib
 from mapping import *
-
 import sqlalchemy.schema
 import sqlalchemy.ext.proxy
 sqlalchemy.schema.default_engine = sqlalchemy.ext.proxy.ProxyEngine()
+
+from sqlalchemy.mods import install_mods
 
 def global_connect(*args, **kwargs):
     sqlalchemy.schema.default_engine.connect(*args, **kwargs)

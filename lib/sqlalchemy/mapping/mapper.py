@@ -19,10 +19,16 @@ import weakref
 # a dictionary mapping classes to their primary mappers
 mapper_registry = weakref.WeakKeyDictionary()
 
+# a list of MapperExtensions that will be installed by default
+extensions = []
+
 # a constant returned by _getattrbycolumn to indicate
 # this mapper is not handling an attribute for a particular
 # column
 NO_ATTRIBUTE = object()
+
+# returned by a MapperExtension method to indicate a "do nothing" response
+EXT_PASS = object()
 
 class Mapper(object):
     """Persists object instances to and from schema.Table objects via the sql package.
@@ -47,11 +53,17 @@ class Mapper(object):
 
         if primarytable is not None:
             sys.stderr.write("'primarytable' argument to mapper is deprecated\n")
+        
+        ext = MapperExtension()
+        
+        for ext_class in extensions:
+            ext = ext_class().chain(ext)
             
-        if extension is None:
-            self.extension = MapperExtension()
+        if extension is not None:
+            self.extension = extension.chain(ext)
         else:
-            self.extension = extension                
+            self.extension = ext
+
         self.class_ = class_
         self.is_primary = is_primary
         self.order_by = order_by
@@ -425,7 +437,10 @@ class Mapper(object):
         
         e.g.   result = usermapper.select_by(user_name = 'fred')
         """
-        return mapperutil.SelectResults(self, self._by_clause(*args, **params))
+        ret = self.extension.select_by(self, *args, **params)
+        if ret is not EXT_PASS:
+            return ret
+        return self.select_whereclause(self._by_clause(*args, **params))
     
     def selectfirst_by(self, *args, **params):
         """works like select_by(), but only returns the first result by itself, or None if no 
@@ -434,7 +449,7 @@ class Mapper(object):
 
     def selectone_by(self, *args, **params):
         """works like selectfirst_by(), but throws an error if not exactly one result was returned."""
-        ret = list(self.select_by(*args, **params)[0:2])
+        ret = mapper.select_whereclause(self._by_clause(*args, **params), limit=2)
         if len(ret) == 1:
             return ret[0]
         raise InvalidRequestError('Multiple rows returned for selectone_by')
@@ -510,7 +525,7 @@ class Mapper(object):
             return ret[0]
         raise InvalidRequestError('Multiple rows returned for selectone')
             
-    def select(self, arg = None, **kwargs):
+    def select(self, arg=None, **kwargs):
         """selects instances of the object from the database.  
         
         arg can be any ClauseElement, which will form the criterion with which to
@@ -520,10 +535,14 @@ class Mapper(object):
         will be executed and its resulting rowset used to build new object instances.  
         in this case, the developer must insure that an adequate set of columns exists in the 
         rowset with which to build new object instances."""
-        if arg is not None and isinstance(arg, sql.Selectable):
+
+        ret = self.extension.select(self, arg=arg, **kwargs)
+        if ret is not EXT_PASS:
+            return ret
+        elif arg is not None and isinstance(arg, sql.Selectable):
             return self.select_statement(arg, **kwargs)
         else:
-            return mapperutil.SelectResults(self, arg, ops=kwargs)
+            return self.select_whereclause(whereclause=arg, **kwargs)
 
     def select_whereclause(self, whereclause=None, params=None, **kwargs):
         statement = self._compile(whereclause, **kwargs)
@@ -850,7 +869,7 @@ class Mapper(object):
                     imap[identitykey] = instance
                 for prop in self.props.values():
                     prop.execute(instance, row, identitykey, imap, True)
-            if self.extension.append_result(self, row, imap, result, instance, isnew, populate_existing=populate_existing):
+            if self.extension.append_result(self, row, imap, result, instance, isnew, populate_existing=populate_existing) is EXT_PASS:
                 if result is not None:
                     result.append_nohistory(instance)
             return instance
@@ -865,7 +884,7 @@ class Mapper(object):
                     return None
             # plugin point
             instance = self.extension.create_instance(self, row, imap, self.class_)
-            if instance is None:
+            if instance is EXT_PASS:
                 instance = self.class_(_mapper_nohistory=True)
             imap[identitykey] = instance
             isnew = True
@@ -877,9 +896,9 @@ class Mapper(object):
         
         # call further mapper properties on the row, to pull further 
         # instances from the row and possibly populate this item.
-        if self.extension.populate_instance(self, instance, row, identitykey, imap, isnew):
+        if self.extension.populate_instance(self, instance, row, identitykey, imap, isnew) is EXT_PASS:
             self.populate_instance(instance, row, identitykey, imap, isnew)
-        if self.extension.append_result(self, row, imap, result, instance, isnew, populate_existing=populate_existing):
+        if self.extension.append_result(self, row, imap, result, instance, isnew, populate_existing=populate_existing) is EXT_PASS:
             if result is not None:
                 result.append_nohistory(instance)
         return instance
@@ -966,6 +985,19 @@ class ExtensionOption(MapperOption):
 class MapperExtension(object):
     def __init__(self):
         self.next = None
+    def chain(self, ext):
+        self.next = ext
+        return self    
+    def select_by(self, mapper, *args, **kwargs):
+        if self.next is None:
+            return EXT_PASS
+        else:
+            return self.next.select_by(mapper, *args, **kwargs)
+    def select(self, mapper, *args, **kwargs):
+        if self.next is None:
+            return EXT_PASS
+        else:
+            return self.next.select(mapper, *args, **kwargs)
     def create_instance(self, mapper, row, imap, class_):
         """called when a new object instance is about to be created from a row.  
         the method can choose to create the instance itself, or it can return 
@@ -981,7 +1013,7 @@ class MapperExtension(object):
         class_ - the class we are mapping.
         """
         if self.next is None:
-            return None
+            return EXT_PASS
         else:
             return self.next.create_instance(mapper, row, imap, class_)
     def append_result(self, mapper, row, imap, result, instance, isnew, populate_existing=False):
@@ -1011,7 +1043,7 @@ class MapperExtension(object):
         identity map, i.e. were loaded by a previous select(), get their attributes overwritten
         """
         if self.next is None:
-            return True
+            return EXT_PASS
         else:
             return self.next.append_result(mapper, row, imap, result, instance, isnew, populate_existing)
     def populate_instance(self, mapper, instance, row, identitykey, imap, isnew):
@@ -1024,10 +1056,10 @@ class MapperExtension(object):
         
             def populate_instance(self, mapper, instance, row, identitykey, imap, isnew):
                 othermapper.populate_instance(instance, row, identitykey, imap, isnew, frommapper=mapper)
-                return False
+                return True
         """
         if self.next is None:
-            return True
+            return EXT_PASS
         else:
             return self.next.populate_instance(row, imap, result, instance, isnew)
     def before_insert(self, mapper, instance):

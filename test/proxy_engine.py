@@ -96,7 +96,7 @@ class ThreadProxyTest(PersistTest):
                     try:
                         trans  = objectstore.begin()
 
-                        all = User.select()[:].list()
+                        all = User.select()[:]
                         assert all == []
 
                         u = User()
