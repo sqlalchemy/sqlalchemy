@@ -616,7 +616,7 @@ class LazyLoader(PropertyLoader):
                     order_by = self.secondary.default_order_by()
                 else:
                     order_by = False
-                result = self.mapper.select(self.lazywhere, order_by=order_by, params=params)
+                result = list(self.mapper.select(self.lazywhere, order_by=order_by, params=params))
             else:
                 result = []
             if self.uselist:

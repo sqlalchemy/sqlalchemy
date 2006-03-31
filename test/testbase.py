@@ -74,6 +74,7 @@ class AssertMixin(PersistTest):
     """given a list-based structure of keys/properties which represent information within an object structure, and
     a list of actual objects, asserts that the list of objects corresponds to the structure."""
     def assert_result(self, result, class_, *objects):
+        result = list(result)
         if echo:
             print repr(result)
         self.assert_list(result, class_, objects)

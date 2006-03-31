@@ -9,6 +9,7 @@ import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
 import sqlalchemy.engine as engine
 import sqlalchemy.util as util
+import util as mapperutil
 import sync
 from sqlalchemy.exceptions import *
 import objectstore
@@ -419,7 +420,7 @@ class Mapper(object):
         
         e.g.   result = usermapper.select_by(user_name = 'fred')
         """
-        return self.select_whereclause(self._by_clause(*args, **params))
+        return mapperutil.SelectResults(self, self._by_clause(*args, **params))
     
     def selectfirst_by(self, *args, **params):
         """works like select_by(), but only returns the first result by itself, or None if no 
@@ -428,7 +429,7 @@ class Mapper(object):
 
     def selectone_by(self, *args, **params):
         """works like selectfirst_by(), but throws an error if not exactly one result was returned."""
-        ret = self.select_by(*args, **params)
+        ret = list(self.select_by(*args, **params)[0:2])
         if len(ret) == 1:
             return ret[0]
         raise InvalidRequestError('Multiple rows returned for selectone_by')
@@ -491,7 +492,7 @@ class Mapper(object):
         """works like select(), but only returns the first result by itself, or None if no 
         objects returned."""
         params['limit'] = 1
-        ret = self.select(*args, **params)
+        ret = self.select_whereclause(*args, **params)
         if ret:
             return ret[0]
         else:
@@ -499,7 +500,7 @@ class Mapper(object):
             
     def selectone(self, *args, **params):
         """works like selectfirst(), but throws an error if not exactly one result was returned."""
-        ret = self.select(*args, **params)
+        ret = list(self.select(*args, **params)[0:2])
         if len(ret) == 1:
             return ret[0]
         raise InvalidRequestError('Multiple rows returned for selectone')
@@ -517,7 +518,7 @@ class Mapper(object):
         if arg is not None and isinstance(arg, sql.Selectable):
             return self.select_statement(arg, **kwargs)
         else:
-            return self.select_whereclause(arg, **kwargs)
+            return mapperutil.SelectResults(self, arg, ops=kwargs)
 
     def select_whereclause(self, whereclause=None, params=None, **kwargs):
         statement = self._compile(whereclause, **kwargs)
