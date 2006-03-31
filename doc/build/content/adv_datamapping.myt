@@ -314,7 +314,14 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
         # set the referenced mapper 'photos' to defer its loading of the column 'imagedata'
         m = book_mapper.options(defer('photos.imagedata'))
     </&>
-    
+    <p>Options can also take a limited set of keyword arguments which will be applied to a new mapper.  For example, to create a mapper that refreshes all objects loaded each time:</p>
+    <&|formatting.myt:code&>
+        m2 = mapper.options(always_refresh=True)
+    </&>
+     <p>Or, a mapper with different ordering:</p>
+     <&|formatting.myt:code&>
+         m2 = mapper.options(order_by=[newcol])
+     </&>
      
 </&>
 
@@ -557,7 +564,16 @@ WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
             address = r[1]
     </&>    
 </&>
-
+<&|doclib.myt:item, name="arguments", description="Mapper Arguments" &>
+<p>Other arguments not covered above include:</p>
+<ul>
+    <li>version_id_col=None - an integer-holding Column object that will be assigned an incrementing
+    counter, which is added to the WHERE clause used by UPDATE and DELETE statements.  The matching row
+    count returned by the database is compared to the expected row count, and an exception is raised if they dont match.  This is a basic "optimistic concurrency" check.  Without the version id column, SQLAlchemy still compares the updated rowcount.</li>
+    <li>always_refresh=False - this option will cause the mapper to refresh all the attributes of all objects loaded by select/get statements, regardless of if they already exist in the current session.  this includes all lazy- and eager-loaded relationship attributes, and will also overwrite any changes made to attributes on the column.</li>
+    <li>entity_name=None - this is an optional "entity name" that will be appended to the key used to associate classes to this mapper.  What this basically means is, several primary mappers can be made against the same class by using different entity names; object instances will have the entity name tagged to them, so that all operations will occur on them relative to that mapper.  When instantiating new objects, use <code>_sa_entity='name'</code> to tag them to the appropriate mapper.</li> 
+</ul>
+</&>
 <&|doclib.myt:item, name="extending", description="Extending Mapper" &>
 <p>Mappers can have functionality augmented or replaced at many points in its execution via the usage of the MapperExtension class.  This class is just a series of "hooks" where various functionality takes place.  An application can make its own MapperExtension objects, overriding only the methods it needs.
         <&|formatting.myt:code&>
