@@ -60,8 +60,18 @@ class SmartProperty(object):
         """appends a value to a list-based attribute without triggering a history event."""
         h = self.manager.get_history(obj, self.key)
         h.append_nohistory(value)
+
+class ManagedAttribute(object):
+    def __init__(self, obj, key):
+        self.__obj = weakref.ref(obj)
+        self.key = key
+    obj = property(lambda s:s.__obj())
+    def history(self, **kwargs):
+        return self
+    def plain_init(self, *args, **kwargs):
+        pass
         
-class PropHistory(object):
+class ScalarAttribute(ManagedAttribute):
     """Used by AttributeManager to track the history of a scalar attribute
     on an object instance.  This is the "scalar history container" object.
     Has an interface similar to util.HistoryList
@@ -69,14 +79,9 @@ class PropHistory(object):
     # make our own NONE to distinguish from "None"
     NONE = object()
     def __init__(self, obj, key, extension=None, **kwargs):
-        self.obj = obj
-        self.key = key
-        self.orig = PropHistory.NONE
+        ManagedAttribute.__init__(self, obj, key)
+        self.orig = ScalarAttribute.NONE
         self.extension = extension
-    def plain_init(self, *args):
-        pass
-    def gethistory(self, *args, **kwargs):
-        return self
     def clear(self):
         del self.obj.__dict__[self.key]
     def history_contains(self, obj):
@@ -85,22 +90,22 @@ class PropHistory(object):
         self.obj.__dict__[self.key] = value
     def delattr_clean(self):
         del self.obj.__dict__[self.key]
-    def getattr(self):
+    def getattr(self, **kwargs):
         return self.obj.__dict__[self.key]
-    def setattr(self, value):
+    def setattr(self, value, **kwargs):
         if isinstance(value, list):
             raise InvalidRequestError("assigning a list to scalar property '%s' on '%s' instance %d" % (self.key, self.obj.__class__.__name__, id(self.obj)))
         orig = self.obj.__dict__.get(self.key, None)
         if orig is value:
             return
-        if self.orig is PropHistory.NONE:
+        if self.orig is ScalarAttribute.NONE:
             self.orig = orig
         self.obj.__dict__[self.key] = value
         if self.extension is not None:
             self.extension.set(self.obj, value, orig)
-    def delattr(self):
+    def delattr(self, **kwargs):
         orig = self.obj.__dict__.get(self.key, None)
-        if self.orig is PropHistory.NONE:
+        if self.orig is ScalarAttribute.NONE:
             self.orig = orig
         self.obj.__dict__[self.key] = None
         if self.extension is not None:
@@ -110,35 +115,34 @@ class PropHistory(object):
     def remove(self, obj):
         self.delattr()
     def rollback(self):
-        if self.orig is not PropHistory.NONE:
+        if self.orig is not ScalarAttribute.NONE:
             self.obj.__dict__[self.key] = self.orig
-            self.orig = PropHistory.NONE
+            self.orig = ScalarAttribute.NONE
     def commit(self):
-        self.orig = PropHistory.NONE
+        self.orig = ScalarAttribute.NONE
     def added_items(self):
-        if self.orig is not PropHistory.NONE:
+        if self.orig is not ScalarAttribute.NONE:
             return [self.obj.__dict__[self.key]]
         else:
             return []
     def deleted_items(self):
-        if self.orig is not PropHistory.NONE and self.orig is not None:
+        if self.orig is not ScalarAttribute.NONE and self.orig is not None:
             return [self.orig]
         else:
             return []
     def unchanged_items(self):
-        if self.orig is PropHistory.NONE:
+        if self.orig is ScalarAttribute.NONE:
             return [self.obj.__dict__[self.key]]
         else:
             return []
 
-class ListElement(util.HistoryArraySet):
+class ListAttribute(util.HistoryArraySet, ManagedAttribute):
     """Used by AttributeManager to track the history of a list-based object attribute.
     This is the "list history container" object.
     Subclasses util.HistoryArraySet to provide "onchange" event handling as well
     as a plugin point for BackrefExtension objects."""
     def __init__(self, obj, key, data=None, extension=None, **kwargs):
-        self.obj = obj
-        self.key = key
+        ManagedAttribute.__init__(self, obj, key)
         self.extension = extension
         # if we are given a list, try to behave nicely with an existing
         # list that might be set on the object already
@@ -157,16 +161,12 @@ class ListElement(util.HistoryArraySet):
             obj.__dict__[key] = []
             
         util.HistoryArraySet.__init__(self, list_, readonly=kwargs.get('readonly', False))
-    def plain_init(self, *args):
-        pass
-    def gethistory(self, *args, **kwargs):
-        return self
     def list_value_changed(self, obj, key, item, listval, isdelete):
         pass    
-    def setattr(self, value):
+    def setattr(self, value, **kwargs):
         self.obj.__dict__[self.key] = value
         self.set_data(value)
-    def delattr(self, value):
+    def delattr(self, value, **kwargs):
         pass
     def _setrecord(self, item):
         res = util.HistoryArraySet._setrecord(self, item)
@@ -182,33 +182,39 @@ class ListElement(util.HistoryArraySet):
             if self.extension is not None:
                 self.extension.delete(self.obj, item)
         return res
-
-class CallableProp(object):
+        
+# deprecated
+class ListElement(ListAttribute):pass
+    
+class TriggeredAttribute(ManagedAttribute):
     """Used by AttributeManager to allow the attaching of a callable item, representing the future value
-    of a particular attribute on a particular object instance, to an attribute on an object. 
-    This is the "callable history container" object.
-    When the attributemanager first accesses the object attribute, either to get its history or 
-    its real value, the __call__ method
-    is invoked which runs the underlying callable_ and sets the new value to the object attribute, 
-    at which point the CallableProp itself is dereferenced."""
+    of a particular attribute on a particular object instance, as the current attribute on an object. 
+    When accessed normally, its history() method is invoked to run the underlying callable, which
+    is then used to create a new ScalarAttribute or ListAttribute.  This new attribute object 
+    is then registered with the attribute manager to replace this TriggeredAttribute as the 
+    current ManagedAttribute."""
     def __init__(self, manager, callable_, obj, key, uselist = False, live = False, **kwargs):
+        ManagedAttribute.__init__(self, obj, key)
         self.manager = manager
         self.callable_ = callable_
-        self.obj = obj
-        self.key = key
         self.uselist = uselist
-        self.live = live
         self.kwargs = kwargs
 
     def plain_init(self, attrhist):
         if not self.uselist:
-            p = PropHistory(self.obj, self.key, **self.kwargs)
+            p = ScalarAttribute(self.obj, self.key, **self.kwargs)
             self.obj.__dict__[self.key] = None
         else:
-            p = self.manager.create_list(self.obj, self.key, None, readonly=self.live, **self.kwargs)
+            p = self.manager.create_list(self.obj, self.key, None, **self.kwargs)
         attrhist[self.key] = p
-            
-    def gethistory(self, passive=False, *args, **kwargs):
+    
+    def __getattr__(self, key):
+        def callit(*args, **kwargs):
+            passive = kwargs.pop('passive', False)
+            return getattr(self.history(passive=passive), key)(*args, **kwargs)
+        return callit
+    
+    def history(self, passive=False):
         if not self.uselist:
             if self.obj.__dict__.get(self.key, None) is None:
                 if passive:
@@ -222,9 +228,9 @@ class CallableProp(object):
                         raise AssertionError("AttributeError caught in callable prop:" + str(e.args))
                 self.obj.__dict__[self.key] = value
 
-            p = PropHistory(self.obj, self.key, **self.kwargs)
+            p = ScalarAttribute(self.obj, self.key, **self.kwargs)
         else:
-            if self.live or not self.obj.__dict__.has_key(self.key) or len(self.obj.__dict__[self.key]) == 0:
+            if not self.obj.__dict__.has_key(self.key) or len(self.obj.__dict__[self.key]) == 0:
                 if passive:
                     value =  None
                 else:
@@ -236,12 +242,11 @@ class CallableProp(object):
                         raise AssertionError("AttributeError caught in callable prop:" + str(e.args))
             else:
                 value = None
-            p = self.manager.create_list(self.obj, self.key, value, readonly=self.live, **self.kwargs)
-        if not self.live and not passive:
+            p = self.manager.create_list(self.obj, self.key, value, **self.kwargs)
+        if not passive:
             # set the new history list as the new attribute, discards ourself
             self.manager.attribute_history(self.obj)[self.key] = p
             self.manager = None
-            # unless we are "live", in which case we stay around to execute again
         return p
 
     def commit(self):
@@ -260,6 +265,11 @@ class AttributeExtension(object):
         pass
         
 class GenericBackrefExtension(AttributeExtension):
+    """an attachment to a ScalarAttribute or ListAttribute which receives change events,
+    and upon such an event synchronizes a two-way relationship.  A typical two-way
+    relationship is a parent object containing a list of child objects, where each
+    child object references the parent.  The other are two objects which contain 
+    scalar references to each other."""
     def __init__(self, key):
         self.key = key
     def set(self, obj, child, oldchild):
@@ -292,22 +302,22 @@ class AttributeManager(object):
         will communicate change events back to this AttributeManager."""
         return SmartProperty(self, key, uselist)
     def create_list(self, obj, key, list_, **kwargs):
-        """creates a history-aware list property, defaulting to a ListElement which
+        """creates a history-aware list property, defaulting to a ListAttribute which
         is a subclass of HistoryArrayList."""
-        return ListElement(obj, key, list_, **kwargs)
+        return ListAttribute(obj, key, list_, **kwargs)
     def create_callable(self, obj, key, func, uselist, **kwargs):
         """creates a callable container that will invoke a function the first
         time an object property is accessed.  The return value of the function
         will become the object property's new value."""
-        return CallableProp(self, func, obj, key, uselist, **kwargs)
+        return TriggeredAttribute(self, func, obj, key, uselist, **kwargs)
         
     def get_attribute(self, obj, key, **kwargs):
         """returns the value of an object's scalar attribute, or None if
         its not defined on the object (since we are a property accessor, this
         is considered more appropriate than raising AttributeError)."""
-        h = self.get_history(obj, key, **kwargs)
+        h = self.get_unexec_history(obj, key)
         try:
-            return h.getattr()
+            return h.getattr(**kwargs)
         except KeyError:
             return None
 
@@ -317,12 +327,12 @@ class AttributeManager(object):
         
     def set_attribute(self, obj, key, value, **kwargs):
         """sets the value of an object's attribute."""
-        self.get_history(obj, key, **kwargs).setattr(value)
+        self.get_unexec_history(obj, key).setattr(value, **kwargs)
         self.value_changed(obj, key, value)
     
     def delete_attribute(self, obj, key, **kwargs):
         """deletes the value from an object's attribute."""
-        self.get_history(obj, key, **kwargs).delattr()
+        self.get_unexec_history(obj, key).delattr(**kwargs)
         self.value_changed(obj, key, None)
         
     def rollback(self, *obj):
@@ -363,47 +373,55 @@ class AttributeManager(object):
     def init_attr(self, obj):
         """sets up the _managed_attributes dictionary on an object.  this happens anyway regardless
         of this method being called, but saves on KeyErrors being thrown in get_history()."""
-        d = managed_attribute_dict()
-        obj.__dict__['_managed_attributes'] = d
+        d = {}
+        obj._managed_attributes = d
         cls_managed = self.class_managed(obj.__class__)
         for value in cls_managed.values():
             value(obj, d).plain_init(d)
 
-    def get_history(self, obj, key, passive=False, **kwargs):
+    def get_unexec_history(self, obj, key):
         """returns the "history" container for the given attribute on the given object.
         If the container does not exist, it will be created based on the class-level
         history container definition."""
         try:
-            return obj.__dict__['_managed_attributes'][key].gethistory(passive=passive, **kwargs)
+            return obj._managed_attributes[key]
+        except AttributeError, ae:
+            return self.class_managed(obj.__class__)[key](obj)
         except KeyError, e:
-            return self.class_managed(obj.__class__)[key](obj, **kwargs).gethistory(passive=passive, **kwargs)
+            return self.class_managed(obj.__class__)[key](obj)
+
+    def get_history(self, obj, key, **kwargs):
+        """returns the "history" container, and calls its history() method,
+        which for a TriggeredAttribute will execute the underlying callable and return the
+        resulting ScalarAttribute or ListHistory object."""
+        return self.get_unexec_history(obj, key).history(**kwargs)
 
     def attribute_history(self, obj):
         """returns a dictionary of "history" containers corresponding to the given object.
         this dictionary is attached to the object via the attribute '_managed_attributes'.
         If the dictionary does not exist, it will be created."""
         try:
-            return obj.__dict__['_managed_attributes']
-        except KeyError:
+            return obj._managed_attributes
+        except AttributeError:
             trigger = obj.__dict__.pop('_managed_trigger', None)
             if trigger:
                 trigger()
-            attr = managed_attribute_dict()
-            obj.__dict__['_managed_attributes'] = attr
+            attr = {}
+            obj._managed_attributes = attr
             return attr
 
     def trigger_history(self, obj, callable):
         try:
-            del obj.__dict__['_managed_attributes']
+            del obj._managed_attributes
         except KeyError:
             pass
-        obj.__dict__['_managed_trigger'] = callable
+        obj._managed_trigger = callable
 
     def untrigger_history(self, obj):
-        del obj.__dict__['_managed_trigger']
+        del obj._managed_trigger
         
     def has_trigger(self, obj):
-        return obj.__dict__.has_key('_managed_trigger')
+        return hasattr(obj, '_managed_trigger')
             
     def reset_history(self, obj, key):
         """removes the history object for the given attribute on the given object.
@@ -423,7 +441,7 @@ class AttributeManager(object):
         """returns a dictionary of "history container definitions", which is attached to a 
         class.  creates the dictionary if it doesnt exist."""
         try:
-            attr = getattr(class_, '_class_managed_attributes')
+            attr = class_._class_managed_attributes
         except AttributeError:
             attr = {}
             class_._class_managed_attributes = attr
@@ -432,10 +450,10 @@ class AttributeManager(object):
 
     def reset_class_managed(self, class_):
         try:
-            attr = getattr(class_, '_class_managed_attributes')
+            attr = class_._class_managed_attributes
             for key in attr.keys():
                 delattr(class_, key)
-            delattr(class_, '_class_managed_attributes')
+            del class_._class_managed_attributes
         except AttributeError:
             pass
 
@@ -450,7 +468,7 @@ class AttributeManager(object):
         if callable_ is not None:
             return self.create_callable(obj, key, callable_, uselist=uselist, **kwargs)
         elif not uselist:
-            return PropHistory(obj, key, **kwargs)
+            return ScalarAttribute(obj, key, **kwargs)
         else:
             return self.create_list(obj, key, None, **kwargs)
         
@@ -477,10 +495,4 @@ class AttributeManager(object):
         
         self.class_managed(class_)[key] = createprop
         setattr(class_, key, self.create_prop(class_, key, uselist))
-
-# make this function return a weakref.WeakValueDictionary to avoid
-# creating circular references in objects
-def managed_attribute_dict():
-    return {}
-#    return weakref.WeakValueDictionary()
 
