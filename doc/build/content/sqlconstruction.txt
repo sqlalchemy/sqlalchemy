@@ -1,0 +1,856 @@
+Constructing SQL Queries via Python Expressions
+===============================================
+
+*Note:* This section describes how to use SQLAlchemy to construct SQL queries and receive result sets.  It does *not* cover the object relational mapping capabilities of SQLAlchemy; that is covered later on in [datamapping](rel:datamapping).  However, both areas of functionality work similarly in how selection criterion is constructed, so if you are interested just in ORM, you should probably skim through basic [sql_select_whereclause](rel:sql_select_whereclause) construction before moving on.
+
+Once you have used the `sqlalchemy.schema` module to construct your tables and/or reflect them from the database, performing SQL queries using those table meta data objects is done via the `sqlalchemy.sql` package.  This package defines a large set of classes, each of which represents a particular kind of lexical construct within a SQL query; all are descendants of the common base class `sqlalchemy.sql.ClauseElement`.  A full query is represented via a structure of ClauseElements.  A set of reasonably intuitive creation functions is provided by the `sqlalchemy.sql` package to create these structures; these functions are described in the rest of this section. 
+
+To execute a query, you create its structure, then call the resulting structure's `execute()` method, which returns a cursor-like object (more on that later).  The same clause structure can be used repeatedly.  A ClauseElement is compiled into a string representation by an underlying SQLEngine object, which is located by searching through the clause's child items for a Table object, which provides a reference to its SQLEngine. 
+        
+
+The examples below all include a dump of the generated SQL corresponding to the query object, as well as a dump of the statement's bind parameters.  In all cases, bind parameters are named parameters using the colon format (i.e. ':name').  A named parameter scheme, either ':name' or '%(name)s', is used with all databases, including those that use positional schemes.  For those, the named-parameter statement and its bind values are converted to the proper list-based format right before execution.  Therefore a SQLAlchemy application that uses ClauseElements can standardize on named parameters for all databases.
+
+For this section, we will assume the following tables:
+
+    {python}from sqlalchemy import *
+    db = create_engine('sqlite://filename=mydb', echo=True)
+    
+    # a table to store users
+    users = Table('users', db,
+        Column('user_id', Integer, primary_key = True),
+        Column('user_name', String(40)),
+        Column('password', String(80))
+    )
+    
+    # a table that stores mailing addresses associated with a specific user
+    addresses = Table('addresses', db,
+        Column('address_id', Integer, primary_key = True),
+        Column('user_id', Integer, ForeignKey("users.user_id")),
+        Column('street', String(100)),
+        Column('city', String(80)),
+        Column('state', String(2)),
+        Column('zip', String(10))
+    )
+    
+    # a table that stores keywords
+    keywords = Table('keywords', db,
+        Column('keyword_id', Integer, primary_key = True),
+        Column('name', VARCHAR(50))
+    )
+    
+    # a table that associates keywords with users
+    userkeywords = Table('userkeywords', db,
+        Column('user_id', INT, ForeignKey("users")),
+        Column('keyword_id', INT, ForeignKey("keywords"))
+    )
+
+### Simple Select {@name=select}
+
+A select is done by constructing a `Select` object with the proper arguments, adding any extra arguments if desired, then calling its `execute()` method.
+
+    {python}from sqlalchemy import *
+    
+    # use the select() function defined in the sql package
+    s = select([users])
+    
+    # or, call the select() method off of a Table object
+    s = users.select()
+    
+    # then, call execute on the Select object:
+    {sql}c = s.execute() 
+    SELECT users.user_id, users.user_name, users.password FROM users
+    {}
+    
+    # the SQL text of any clause object can also be viewed via the str() call:
+    >>> str(s)
+    SELECT users.user_id, users.user_name, users.password FROM users
+
+The object returned by the execute call is a `sqlalchemy.engine.ResultProxy` object, which acts much like a DBAPI `cursor` object in the context of a result set, except that the rows returned can address their columns by ordinal position, column name, or even column object:
+
+    {python}# select rows, get resulting ResultProxy object
+    {sql}c = users.select().execute()  
+    SELECT users.user_id, users.user_name, users.password FROM users
+    {}
+    
+    # get one row
+    row = c.fetchone()
+    
+    # get the 'user_id' column via integer index:
+    user_id = row[0]
+    
+    # or column name
+    user_name = row['user_name']
+    
+    # or column object
+    password = row[users.c.password]
+    
+    # or column accessor
+    password = row.password
+    
+    # ResultProxy object also supports fetchall()
+    rows = c.fetchall()
+    
+    # or get the underlying DBAPI cursor object
+    cursor = c.cursor
+
+#### Using Column Labels {@name=labels}
+
+A common need when writing statements that reference multiple tables is to create labels for columns, thereby separating columns from different tables with the same name.  The Select construct supports automatic generation of column labels via the `use_labels=True` parameter:
+
+    {python}{sql}c = select([users, addresses], 
+    users.c.user_id==addresses.c.address_id, 
+    use_labels=True).execute()  
+    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
+    users.password AS users_password, addresses.address_id AS addresses_address_id, 
+    addresses.user_id AS addresses_user_id, addresses.street AS addresses_street, 
+    addresses.city AS addresses_city, addresses.state AS addresses_state, 
+    addresses.zip AS addresses_zip
+    FROM users, addresses
+    WHERE users.user_id = addresses.address_id
+    {}
+
+The table name part of the label is affected if you use a construct such as a table alias:
+
+    {python}person = users.alias('person')
+    {sql}c = select([person, addresses], 
+        person.c.user_id==addresses.c.address_id, 
+        use_labels=True).execute()  
+    SELECT person.user_id AS person_user_id, person.user_name AS person_user_name, 
+    person.password AS person_password, addresses.address_id AS addresses_address_id,
+     addresses.user_id AS addresses_user_id, addresses.street AS addresses_street, 
+     addresses.city AS addresses_city, addresses.state AS addresses_state, 
+     addresses.zip AS addresses_zip FROM users AS person, addresses
+    WHERE person.user_id = addresses.address_id
+
+You can also specify custom labels on a per-column basis using the `label()` function:
+
+    {python}{sql}c = select([users.c.user_id.label('id'), users.c.user_name.label('name')]).execute()  
+    SELECT users.user_id AS id, users.user_name AS name
+    FROM users
+    {}
+
+#### Table/Column Specification {@name=columns}
+
+Calling `select` off a table automatically generates a column clause which includes all the table's columns, in the order they are specified in the source Table object.
+
+But in addition to selecting all the columns off a single table, any set of columns can be specified, as well as full tables, and any combination of the two:
+
+    {python}# individual columns
+    {sql}c = select([users.c.user_id, users.c.user_name]).execute()  
+    SELECT users.user_id, users.user_name FROM users
+    {}
+    
+    # full tables
+    {sql}c = select([users, addresses]).execute()  
+    SELECT users.user_id, users.user_name, users.password, 
+    addresses.address_id, addresses.user_id, 
+    addresses.street, addresses.city, addresses.state, addresses.zip
+    FROM users, addresses
+    {}
+    
+    # combinations
+    {sql}c = select([users, addresses.c.zip]).execute()  
+    SELECT users.user_id, users.user_name, users.password, 
+    addresses.zip FROM users, addresses
+    {}
+
+#### WHERE Clause {@name=whereclause}
+    
+The WHERE condition is the named keyword argument `whereclause`, or the second positional argument to the `select()` constructor and the first positional argument to the `select()` method of `Table`.
+
+WHERE conditions are constructed using column objects, literal values, and functions defined in the `sqlalchemy.sql` module.  Column objects override the standard Python operators to provide clause compositional objects, which compile down to SQL operations:
+
+    {python}{sql}c = users.select(users.c.user_id == 7).execute()  
+    SELECT users.user_id, users.user_name, users.password, 
+    FROM users WHERE users.user_id = :users_user_id
+    {'users_user_id': 7}                
+
+Notice that the literal value "7" was broken out of the query and placed into a bind parameter.  Databases such as Oracle must parse incoming SQL and create a "plan" when new queries are received, which is an expensive process.  By using bind parameters, the same query with various literal values can have its plan compiled only once, and used repeatedly with less overhead.
+            
+More where clauses:
+
+    {python}# another comparison operator
+    {sql}c = select([users], users.c.user_id>7).execute() 
+    SELECT users.user_id, users.user_name, users.password, 
+    FROM users WHERE users.user_id > :users_user_id
+    {'users_user_id': 7}
+    
+    # OR keyword
+    {sql}c = users.select(or_(users.c.user_name=='jack', users.c.user_name=='ed')).execute()  
+    SELECT users.user_id, users.user_name, users.password 
+    FROM users WHERE users.user_name = :users_user_name 
+    OR users.user_name = :users_user_name_1
+    {'users_user_name_1': 'ed', 'users_user_name': 'jack'}
+    
+    # AND keyword
+    {sql}c = users.select(and_(users.c.user_name=='jack', users.c.password=='dog')).execute()  
+    SELECT users.user_id, users.user_name, users.password
+    FROM users WHERE users.user_name = :users_user_name 
+    AND users.password = :users_password
+    {'users_user_name': 'jack', 'users_password': 'dog'}
+    
+    # NOT keyword
+    {sql}c = users.select(not_(
+            or_(users.c.user_name=='jack', users.c.password=='dog')
+        )).execute()  
+    SELECT users.user_id, users.user_name, users.password 
+    FROM users 
+    WHERE NOT (users.user_name = :users_user_name 
+        OR users.password = :users_password)
+    {'users_user_name': 'jack', 'users_password': 'dog'}
+                
+    # IN clause
+    {sql}c = users.select(users.c.user_name.in_('jack', 'ed', 'fred')).execute()  
+    SELECT users.user_id, users.user_name, users.password
+    FROM users WHERE users.user_name 
+    IN (:users_user_name, :users_user_name_1, :users_user_name_2)
+    {'users_user_name': 'jack', 'users_user_name_1': 'ed', 
+    'users_user_name_2': 'fred'}
+
+                
+    # join users and addresses together
+    {sql}c = select([users, addresses], users.c.user_id==addresses.c.address_id).execute()  
+    SELECT users.user_id, users.user_name, users.password,  
+    addresses.address_id, addresses.user_id, addresses.street, addresses.city, 
+    addresses.state, addresses.zip
+    FROM users, addresses
+    WHERE users.user_id = addresses.address_id
+    {}
+
+                
+    # join users and addresses together, but dont specify "addresses" in the 
+    # selection criterion.  The WHERE criterion adds it to the FROM list 
+    # automatically.
+    {sql}c = select([users], and_(
+                    users.c.user_id==addresses.c.user_id,
+                    users.c.user_name=='fred'
+                )).execute()
+    SELECT users.user_id, users.user_name, users.password
+    FROM users, addresses WHERE users.user_id = addresses.user_id 
+    AND users.user_name = :users_user_name
+    {'users_user_name': 'fred'}                
+            
+
+Select statements can also generate a WHERE clause based on the parameters you give it.  If a given parameter, which matches the name of a column or its "label" (the combined tablename + "_" + column name), and does not already correspond to a bind parameter in the select object, it will be added as a comparison against that column.  This is a shortcut to creating a full WHERE clause:
+
+    {python}# specify a match for the "user_name" column
+    {sql}c = users.select().execute(user_name='ed')
+    SELECT users.user_id, users.user_name, users.password
+    FROM users WHERE users.user_name = :users_user_name
+    {'users_user_name': 'ed'}
+
+    # specify a full where clause for the "user_name" column, as well as a
+    # comparison for the "user_id" column
+    {sql}c = users.select(users.c.user_name=='ed').execute(user_id=10)
+    SELECT users.user_id, users.user_name, users.password
+    FROM users WHERE users.user_name = :users_user_name AND users.user_id = :users_user_id
+    {'users_user_name': 'ed', 'users_user_id': 10}
+
+##### Operators {@name=operators}
+
+Supported column operators so far are all the numerical comparison operators, i.e. '==', '>', '>=', etc., as well as like(), startswith(), endswith(), between(), and in().  Boolean operators include not_(), and_() and or_(), which also can be used inline via '~', '&amp;', and '|'.  Math operators are '+', '-', '*', '/'.  Any custom operator can be specified via the op() function shown below.
+ 
+    {python}# "like" operator
+    users.select(users.c.user_name.like('%ter'))
+    
+    # equality operator
+    users.select(users.c.user_name == 'jane')
+    
+    # in opertator
+    users.select(users.c.user_id.in_(1,2,3))
+    
+    # and_, endswith, equality operators
+    users.select(and_(addresses.c.street.endswith('green street'), addresses.c.zip=='11234'))
+    
+    # & operator subsituting for 'and_'
+    users.select(addresses.c.street.endswith('green street') & (addresses.c.zip=='11234'))
+    
+    # + concatenation operator
+    select([users.c.user_name + '_name'])
+    
+    # NOT operator
+    users.select(~(addresses.c.street == 'Green Street'))
+    
+    # any custom operator
+    select([users.c.user_name.op('||')('_category')])
+
+#### Specifying the Engine {@name=engine}
+
+For queries that don't contain any tables, the SQLEngine can be specified to any constructed statement via the `engine` keyword parameter:
+
+    {python}# select a literal
+    select(["hi"], engine=myengine)
+
+    # select a function
+    select([func.now()], engine=db)
+
+#### Functions {@name=functions}
+
+Functions can be specified using the `func` keyword:
+
+    {python}{sql}select([func.count(users.c.user_id)]).execute()
+    SELECT count(users.user_id) FROM users
+    
+    {sql}users.select(func.substr(users.c.user_name, 1) == 'J').execute()
+    SELECT users.user_id, users.user_name, users.password FROM users 
+    WHERE substr(users.user_name, :substr) = :substr_1
+    {'substr_1': 'J', 'substr': 1}
+
+Functions also are callable as standalone values:
+
+    {python}# call the "now()" function
+    time = func.now(engine=myengine).scalar()
+
+    # call myfunc(1,2,3)
+    myvalue = func.myfunc(1, 2, 3, engine=db).execute()
+
+    # or call them off the engine
+    db.func.now().scalar()
+
+#### Literals {@name=literals}
+
+You can drop in a literal value anywhere there isnt a column to attach to via the `literal` keyword:
+
+    {python}{sql}select([literal('foo') + literal('bar'), users.c.user_name]).execute()
+    SELECT :literal + :literal_1, users.user_name 
+    FROM users
+    {'literal_1': 'bar', 'literal': 'foo'}
+
+    # literals have all the same comparison functions as columns
+    {sql}select([literal('foo') == literal('bar')], engine=myengine).scalar()
+    SELECT :literal = :literal_1
+    {'literal_1': 'bar', 'literal': 'foo'}
+
+Literals also take an optional `type` parameter to give literals a type.  This can sometimes be significant, for example when using the "+" operator with SQLite, the String type is detected and the operator is converted to "||":
+
+    {python}{sql}select([literal('foo', type=String) + 'bar'], engine=e).execute()
+    SELECT ? || ?
+    ['foo', 'bar']
+
+#### Order By {@name=orderby}
+
+The ORDER BY clause of a select statement can be specified as individual columns to order by within an array     specified via the `order_by` parameter, and optional usage of the asc() and desc() functions:
+
+    {python}# straight order by
+    {sql}c = users.select(order_by=[users.c.user_name]).execute() 
+    SELECT users.user_id, users.user_name, users.password
+    FROM users ORDER BY users.user_name                
+
+    # descending/ascending order by on multiple columns
+    {sql}c = users.select(
+        users.c.user_name>'J', 
+        order_by=[desc(users.c.user_id), asc(users.c.user_name)]).execute() 
+    SELECT users.user_id, users.user_name, users.password
+    FROM users WHERE users.user_name > :users_user_name 
+    ORDER BY users.user_id DESC, users.user_name ASC
+    {'users_user_name':'J'}
+
+#### DISTINCT, LIMIT and OFFSET {@name=options}
+
+These are specified as keyword arguments:
+
+    {python}{sql}c = select([users.c.user_name], distinct=True).execute()
+    SELECT DISTINCT users.user_name FROM users
+
+    {sql}c = users.select(limit=10, offset=20).execute()
+    SELECT users.user_id, users.user_name, users.password FROM users LIMIT 10 OFFSET 20
+        
+The Oracle driver does not support LIMIT and OFFSET directly, but instead wraps the generated query into a subquery and uses the "rownum" variable to control the rows selected (this is somewhat experimental).
+
+### Inner and Outer Joins {@name=join}
+
+As some of the examples indicated above, a regular inner join can be implicitly stated, just like in a SQL expression, by just specifying the tables to be joined as well as their join conditions:
+
+    {python}{sql}addresses.select(addresses.c.user_id==users.c.user_id).execute() 
+    SELECT addresses.address_id, addresses.user_id, addresses.street, 
+    addresses.city, addresses.state, addresses.zip FROM addresses, users
+    WHERE addresses.user_id = users.user_id
+    {}                   
+
+There is also an explicit join constructor, which can be embedded into a select query via the `from_obj` parameter of the select statement:
+
+    {python}{sql}addresses.select(from_obj=[
+        addresses.join(users, addresses.c.user_id==users.c.user_id)
+    ]).execute() 
+    SELECT addresses.address_id, addresses.user_id, addresses.street, addresses.city, 
+    addresses.state, addresses.zip 
+    FROM addresses JOIN users ON addresses.user_id = users.user_id
+    {}                
+
+The join constructor can also be used by itself:
+
+    {python}{sql}join(users, addresses, users.c.user_id==addresses.c.user_id).select().execute()
+    SELECT users.user_id, users.user_name, users.password, 
+    addresses.address_id, addresses.user_id, addresses.street, addresses.city, 
+    addresses.state, addresses.zip 
+    FROM addresses JOIN users ON addresses.user_id = users.user_id
+    {}                
+
+The join criterion in a join() call is optional.  If not specified, the condition will be derived from the foreign key relationships of the two tables.  If no criterion can be constructed, an exception will be raised.
+
+    {python}{sql}join(users, addresses).select().execute()
+    SELECT users.user_id, users.user_name, users.password, 
+    addresses.address_id, addresses.user_id, addresses.street, addresses.city, 
+    addresses.state, addresses.zip 
+    FROM addresses JOIN users ON addresses.user_id = users.user_id
+    {}                
+
+Notice that this is the first example where the FROM criterion of the select statement is explicitly specified.  In most cases, the FROM criterion is automatically determined from the columns requested as well as the WHERE clause.  The `from_obj` keyword argument indicates a list of explicit FROM clauses to be used in the statement.
+
+A join can be created on its own using the `join` or `outerjoin` functions, or can be created off of an existing Table or other selectable unit via the `join` or `outerjoin` methods:
+        
+    {python}{sql}outerjoin(users, addresses, users.c.user_id==addresses.c.address_id).select().execute()
+    SELECT users.user_id, users.user_name, users.password, addresses.address_id, 
+    addresses.user_id, addresses.street, addresses.city, addresses.state, addresses.zip
+    FROM users LEFT OUTER JOIN addresses ON users.user_id = addresses.address_id
+    {}                
+
+    {sql}users.select(keywords.c.name=='running', from_obj=[
+            users.join(
+                userkeywords, userkeywords.c.user_id==users.c.user_id).join(
+                    keywords, keywords.c.keyword_id==userkeywords.c.keyword_id)
+            ]).execute()   
+    SELECT users.user_id, users.user_name, users.password FROM users 
+    JOIN userkeywords ON userkeywords.user_id = users.user_id 
+    JOIN keywords ON keywords.keyword_id = userkeywords.keyword_id
+    WHERE keywords.name = :keywords_name
+    {'keywords_name': 'running'}                
+
+### Table Aliases {@name=alias}
+
+Aliases are used primarily when you want to use the same table more than once as a FROM expression in a statement:
+    
+    {python}address_b = addresses.alias('addressb')
+    {sql}# select users who have an address on Green street as well as Orange street
+    users.select(and_(
+        users.c.user_id==addresses.c.user_id,
+        addresses.c.street.like('%Green%'),
+        users.c.user_id==address_b.c.user_id,
+        address_b.c.street.like('%Orange%')
+    )).execute()
+    SELECT users.user_id, users.user_name, users.password
+    FROM users, addresses, addresses AS addressb
+    WHERE users.user_id = addresses.user_id 
+    AND addresses.street LIKE :addresses_street 
+    AND users.user_id = addressb.user_id 
+    AND addressb.street LIKE :addressb_street
+    {'addressb_street': '%Orange%', 'addresses_street': '%Green%'}
+
+### Subqueries {@name=subqueries}
+
+SQLAlchemy allows the creation of select statements from not just Table objects, but from a whole class of objects that implement the `Selectable` interface.  This includes Tables, Aliases, Joins and Selects.  Therefore, if you have a Select, you can select from the Select:
+    
+    >>> s = users.select()
+    >>> str(s)
+    SELECT users.user_id, users.user_name, users.password FROM users
+    
+    >>> s = s.select()
+    >>> str(s)
+    SELECT user_id, user_name, password
+    FROM (SELECT users.user_id, users.user_name, users.password FROM users)                
+
+Any Select, Join, or Alias object supports the same column accessors as a Table:
+
+    >>> s = users.select()
+    >>> [c.key for c in s.columns]
+    ['user_id', 'user_name', 'password']            
+
+When you use `use_labels=True` in a Select object, the label version of the column names become the keys of the accessible columns.  In effect you can create your own "view objects":
+        
+    {python}s = select([users, addresses], users.c.user_id==addresses.c.user_id, use_labels=True)
+    {sql}select([
+        s.c.users_user_name, s.c.addresses_street, s.c.addresses_zip
+    ], s.c.addresses_city=='San Francisco').execute()
+    SELECT users_user_name, addresses_street, addresses_zip
+    FROM (SELECT users.user_id AS users_user_id, users.user_name AS users_user_name,
+    users.password AS users_password, addresses.address_id AS addresses_address_id,
+    addresses.user_id AS addresses_user_id, addresses.street AS addresses_street, 
+    addresses.city AS addresses_city, addresses.state AS addresses_state, 
+    addresses.zip AS addresses_zip
+    FROM users, addresses
+    WHERE users.user_id = addresses.user_id)
+    WHERE addresses_city = :addresses_city
+    {'addresses_city': 'San Francisco'}
+
+To specify a SELECT statement as one of the selectable units in a FROM clause, it usually should be given an alias.
+
+    {python}{sql}s = users.select().alias('u')
+    select([addresses, s]).execute()
+    SELECT addresses.address_id, addresses.user_id, addresses.street, addresses.city, 
+    addresses.state, addresses.zip, u.user_id, u.user_name, u.password 
+    FROM addresses, 
+    (SELECT users.user_id, users.user_name, users.password FROM users) AS u
+    {}
+
+Select objects can be used in a WHERE condition, in operators such as IN:
+
+    {python}# select user ids for all users whos name starts with a "p"
+    s = select([users.c.user_id], users.c.user_name.like('p%'))
+    
+    # now select all addresses for those users
+    {sql}addresses.select(addresses.c.user_id.in_(s)).execute()
+    SELECT addresses.address_id, addresses.user_id, addresses.street, 
+    addresses.city, addresses.state, addresses.zip
+    FROM addresses WHERE addresses.address_id IN 
+    (SELECT users.user_id FROM users WHERE users.user_name LIKE :users_user_name)
+    {'users_user_name': 'p%'}
+
+The sql package supports embedding select statements into other select statements as the criterion in a WHERE condition, or as one of the "selectable" objects in the FROM list of the query.  It does not at the moment directly support embedding a SELECT statement as one of the column criterion for a statement, although this can be achieved via direct text insertion, described later.
+        
+#### Scalar Column Subqueries {@name=scalar}
+
+Subqueries can be used in the column clause of a select statement by specifying the `scalar=True` flag:
+
+    {python}{sql}select([table2.c.col1, table2.c.col2, select([table1.c.col1], table1.c.col2==7, scalar=True)])
+    SELECT table2.col1, table2.col2, 
+    (SELECT table1.col1 AS col1 FROM table1 WHERE col2=:table1_col2) 
+    FROM table2
+    {'table1_col2': 7}
+
+### Correlated Subqueries {@name=correlated}
+
+When a select object is embedded inside of another select object, and both objects reference the same table, SQLAlchemy makes the assumption that the table should be correlated from the child query to the parent query.  To disable this behavior, specify the flag `correlate=False` to the Select statement.
+
+    {python}# make an alias of a regular select.   
+    s = select([addresses.c.street], addresses.c.user_id==users.c.user_id).alias('s')
+    >>> str(s)
+    SELECT addresses.street FROM addresses, users 
+    WHERE addresses.user_id = users.user_id
+
+    # now embed that select into another one.  the "users" table is removed from
+    # the embedded query's FROM list and is instead correlated to the parent query
+    s2 = select([users, s.c.street])
+    >>> str(s2)
+    SELECT users.user_id, users.user_name, users.password, s.street
+    FROM users, (SELECT addresses.street FROM addresses
+    WHERE addresses.user_id = users.user_id) s
+
+#### EXISTS Clauses {@name=exists}
+
+An EXISTS clause can function as a higher-scaling version of an IN clause, and is usually used in a correlated fashion:
+
+    {python}# find all users who have an address on Green street:
+    {sql}users.select(
+        exists(
+            [addresses.c.address_id], 
+            and_(
+                addresses.c.user_id==users.c.user_id, 
+                addresses.c.street.like('%Green%')
+            )
+        )
+    )
+    SELECT users.user_id, users.user_name, users.password 
+    FROM users WHERE EXISTS (SELECT addresses.address_id 
+    FROM addresses WHERE addresses.user_id = users.user_id 
+    AND addresses.street LIKE :addresses_street)
+    {'addresses_street': '%Green%'}
+
+### Unions {@name=unions}
+
+Unions come in two flavors, UNION and UNION ALL, which are available via module level functions or methods off a Selectable:
+
+    {python}{sql}union(
+        addresses.select(addresses.c.street=='123 Green Street'),
+        addresses.select(addresses.c.street=='44 Park Ave.'),
+        addresses.select(addresses.c.street=='3 Mill Road'),
+        order_by=[addresses.c.street]
+    ).execute()
+    SELECT addresses.address_id, addresses.user_id, addresses.street, 
+    addresses.city, addresses.state, addresses.zip 
+    FROM addresses WHERE addresses.street = :addresses_street 
+    UNION 
+    SELECT addresses.address_id, addresses.user_id, addresses.street, 
+    addresses.city, addresses.state, addresses.zip 
+    FROM addresses WHERE addresses.street = :addresses_street_1 
+    UNION 
+    SELECT addresses.address_id, addresses.user_id, addresses.street, 
+    addresses.city, addresses.state, addresses.zip 
+    FROM addresses WHERE addresses.street = :addresses_street_2 
+    ORDER BY addresses.street
+    {'addresses_street_1': '44 Park Ave.', 
+    'addresses_street': '123 Green Street', 
+    'addresses_street_2': '3 Mill Road'}
+    
+    {sql}users.select(
+        users.c.user_id==7
+      ).union_all(
+          users.select(
+              users.c.user_id==9
+          ), 
+          order_by=[users.c.user_id]   # order_by is an argument to union_all()
+      ).execute() 
+    SELECT users.user_id, users.user_name, users.password 
+    FROM users WHERE users.user_id = :users_user_id 
+    UNION ALL 
+    SELECT users.user_id, users.user_name, users.password 
+    FROM users WHERE users.user_id = :users_user_id_1 
+    ORDER BY users.user_id
+    {'users_user_id_1': 9, 'users_user_id': 7}
+
+### Custom Bind Parameters {@name=bindparams}
+
+Throughout all these examples, SQLAlchemy is busy creating bind parameters wherever literal expressions occur.  You can also specify your own bind parameters with your own names, and use the same statement repeatedly.  As mentioned at the top of this section, named bind parameters are always used regardless of the type of DBAPI being used; for DBAPI's that expect positional arguments, bind parameters are converted to lists right before execution, and Pyformat strings in statements, i.e. '%(name)s', are converted to the appropriate positional style.
+
+    {python}s = users.select(users.c.user_name==bindparam('username'))
+    {sql}s.execute(username='fred')
+    SELECT users.user_id, users.user_name, users.password 
+    FROM users WHERE users.user_name = :username
+    {'username': 'fred'}
+    
+    {sql}s.execute(username='jane')
+    SELECT users.user_id, users.user_name, users.password 
+    FROM users WHERE users.user_name = :username
+    {'username': 'jane'}
+    
+    {sql}s.execute(username='mary')
+    SELECT users.user_id, users.user_name, users.password 
+    FROM users WHERE users.user_name = :username
+    {'username': 'mary'}
+
+`executemany()` is also available, but that applies more to INSERT/UPDATE/DELETE, described later.
+
+The generation of bind parameters is performed specific to the engine being used.  The examples in this document all show "named" parameters like those used in sqlite and oracle.  Depending on the parameter type specified by the DBAPI module, the correct bind parameter scheme will be used.
+
+#### Precompiling a Query {@name=precompiling}
+
+By throwing the `compile()` method onto the end of any query object, the query can be "compiled" by the SQLEngine into a `sqlalchemy.sql.Compiled` object just once, and the resulting compiled object reused, which eliminates repeated internal compilation of the SQL string:
+
+    {python}s = users.select(users.c.user_name==bindparam('username')).compile()
+    s.execute(username='fred')
+    s.execute(username='jane')
+    s.execute(username='mary')
+
+### Literal Text Blocks {@name=textual}
+
+The sql package tries to allow free textual placement in as many ways as possible.  In the examples below, note that the from_obj parameter is used only when no other information exists within the select object with which to determine table metadata.  Also note that in a query where there isnt even table metadata used, the SQLEngine to be used for the query has to be explicitly specified:
+
+    {python}# strings as column clauses
+    {sql}select(["user_id", "user_name"], from_obj=[users]).execute()
+    SELECT user_id, user_name FROM users
+    {}
+    
+    # strings for full column lists
+    {sql}select(
+            ["user_id, user_name, password, addresses.*"], 
+            from_obj=[users.alias('u'), addresses]).execute()
+    SELECT u.user_id, u.user_name, u.password, addresses.* 
+    FROM users AS u, addresses
+    {}
+    
+    # functions, etc.
+    {sql}select([users.c.user_id, "process_string(user_name)"]).execute()
+    SELECT users.user_id, process_string(user_name) FROM users
+    {}
+    
+    # where clauses
+    {sql}users.select(and_(users.c.user_id==7, "process_string(user_name)=27")).execute()
+    SELECT users.user_id, users.user_name, users.password FROM users 
+    WHERE users.user_id = :users_user_id AND process_string(user_name)=27
+    {'users_user_id': 7}
+    
+    # subqueries
+    {sql}users.select(
+        "exists (select 1 from addresses where addresses.user_id=users.user_id)").execute()
+    SELECT users.user_id, users.user_name, users.password FROM users 
+    WHERE exists (select 1 from addresses where addresses.user_id=users.user_id)
+    {}
+    
+    # custom FROM objects
+    {sql}select(
+            ["*"], 
+            from_obj=["(select user_id, user_name from users)"], 
+            engine=db).execute()
+    SELECT * FROM (select user_id, user_name from users)
+    {}
+    
+    # a full query
+    {sql}text("select user_name from users", engine=db).execute()
+    select user_name from users
+    {}
+    
+    # or call text() off of the engine
+    engine.text("select user_name from users").execute()
+    
+    # execute off the engine directly - you must use the engine's native bind parameter
+    # style (i.e. named, pyformat, positional, etc.)
+    {sql}db.execute(
+            "select user_name from users where user_id=:user_id", 
+            {'user_id':7}).execute()
+    select user_name from users where user_id=:user_id
+    {'user_id':7}
+
+#### Using Bind Parameters in Text Blocks {@name=textual_binds}
+
+Use the format `':paramname'` to define bind parameters inside of a text block.  They will be converted to the appropriate format upon compilation:
+
+    {python}t = engine.text("select foo from mytable where lala=:hoho")
+    r = t.execute(hoho=7)
+
+Bind parameters can also be explicit, which allows typing information to be added.  Just specify them as a list with keys that match those inside the textual statement:
+
+    {python}t = engine.text("select foo from mytable where lala=:hoho", 
+                    bindparams=[bindparam('hoho', type=types.String)])
+        r = t.execute(hoho="im hoho")
+
+Result-row type processing can be added via the `typemap` argument, which is a dictionary of return columns mapped to types:
+
+    {python}# specify DateTime type for the 'foo' column in the result set
+    # sqlite, for example, uses result-row post-processing to construct dates
+    t = engine.text("select foo from mytable where lala=:hoho", 
+            bindparams=[bindparam('hoho', type=types.String)],
+            typemap={'foo':types.DateTime}
+            )
+    r = t.execute(hoho="im hoho")
+    
+    # 'foo' is a datetime
+    year = r.fetchone()['foo'].year
+
+### Building Select Objects {@name=building}
+
+One of the primary motivations for a programmatic SQL library is to allow the piecemeal construction of a SQL statement based on program variables.  All the above examples typically show Select objects being created all at once.  The Select object also includes "builder" methods to allow building up an object.  The below example is a "user search" function, where users can be selected based on primary key, user name, street address, keywords, or any combination:
+
+    {python}def find_users(id=None, name=None, street=None, keywords=None):
+    statement = users.select()
+    if id is not None:
+        statement.append_whereclause(users.c.user_id==id)
+    if name is not None:
+        statement.append_whereclause(users.c.user_name==name)
+    if street is not None:
+        # append_whereclause joins "WHERE" conditions together with AND
+        statement.append_whereclause(users.c.user_id==addresses.c.user_id)
+        statement.append_whereclause(addresses.c.street==street)
+    if keywords is not None:
+        statement.append_from(
+                users.join(userkeywords, users.c.user_id==userkeywords.c.user_id).join(
+                        keywords, userkeywords.c.keyword_id==keywords.c.keyword_id))
+        statement.append_whereclause(keywords.c.name.in_(keywords))
+        # to avoid multiple repeats, set query to be DISTINCT:
+        statement.distinct=True
+    return statement.execute()
+    
+    {sql}find_users(id=7)
+    SELECT users.user_id, users.user_name, users.password 
+    FROM users 
+    WHERE users.user_id = :users_user_id
+    {'users_user_id': 7}
+
+    {sql}find_users(street='123 Green Street')
+    SELECT users.user_id, users.user_name, users.password 
+    FROM users, addresses 
+    WHERE users.user_id = addresses.user_id AND addresses.street = :addresses_street
+    {'addresses_street': '123 Green Street'}
+
+    {sql}find_users(name='Jack', keywords=['jack','foo'])
+    SELECT DISTINCT users.user_id, users.user_name, users.password 
+    FROM users JOIN userkeywords ON users.user_id = userkeywords.user_id 
+    JOIN keywords ON userkeywords.keyword_id = keywords.keyword_id 
+    WHERE users.user_name = :users_user_name AND keywords.name IN ('jack', 'foo')
+    {'users_user_name': 'Jack'}
+
+### Inserts {@name=insert}
+
+An INSERT involves just one table.  The Insert object is used via the insert() function, and the specified columns determine what columns show up in the generated SQL.  If primary key columns are left out of the criterion, the SQL generator will try to populate them as specified by the particular database engine and sequences, i.e. relying upon an auto-incremented column or explicitly calling a sequence beforehand.  Insert statements, as well as updates and deletes, can also execute multiple parameters in one pass via specifying an array of dictionaries as parameters.
+
+The values to be populated for an INSERT or an UPDATE can be specified to the insert()/update() functions as the `values` named argument, or the query will be compiled based on the values of the parameters sent to the execute() method.
+
+    {python}# basic insert
+    {sql}users.insert().execute(user_id=1, user_name='jack', password='asdfdaf')
+    INSERT INTO users (user_id, user_name, password) 
+    VALUES (:user_id, :user_name, :password)
+    {'user_name': 'jack', 'password': 'asdfdaf', 'user_id': 1}
+    
+    # insert just user_name, NULL for others
+    # will auto-populate primary key columns if they are configured
+    # to do so
+    {sql}users.insert().execute(user_name='ed')
+    INSERT INTO users (user_name) VALUES (:user_name)
+    {'user_name': 'ed'}
+    
+    # INSERT with a list:
+    {sql}users.insert(values=(3, 'jane', 'sdfadfas')).execute()
+    INSERT INTO users (user_id, user_name, password) 
+    VALUES (:user_id, :user_name, :password)
+    {'user_id': 3, 'password': 'sdfadfas', 'user_name': 'jane'}
+    
+    # INSERT with user-defined bind parameters
+    i = users.insert(
+        values={'user_name':bindparam('name'), 'password':bindparam('pw')}
+        )
+    {sql}i.execute(name='mary', pw='adas5fs')
+    INSERT INTO users (user_name, password) VALUES (:name, :pw)
+    {'name': 'mary', 'pw': 'adas5fs'}
+    
+    # INSERT many - if no explicit 'values' parameter is sent,
+    # the first parameter list in the list determines
+    # the generated SQL of the insert (i.e. what columns are present)
+    # executemany() is used at the DBAPI level
+    {sql}users.insert().execute(
+        {'user_id':7, 'user_name':'jack', 'password':'asdfasdf'},
+        {'user_id':8, 'user_name':'ed', 'password':'asdffcadf'},
+        {'user_id':9, 'user_name':'fred', 'password':'asttf'},
+    )
+    INSERT INTO users (user_id, user_name, password) 
+    VALUES (:user_id, :user_name, :password)
+    [{'user_name': 'jack', 'password': 'asdfasdf', 'user_id': 7}, 
+    {'user_name': 'ed', 'password': 'asdffcadf', 'user_id': 8}, 
+    {'user_name': 'fred', 'password': 'asttf', 'user_id': 9}]
+
+### Updates {@name=update}
+
+Updates work a lot like INSERTS, except there is an additional WHERE clause that can be specified.
+
+    {python}# change 'jack' to 'ed'
+    {sql}users.update(users.c.user_name=='jack').execute(user_name='ed')
+                UPDATE users SET user_name=:user_name WHERE users.user_name = :users_user_name
+    {'users_user_name': 'jack', 'user_name': 'ed'}
+    
+    # use bind parameters
+    u = users.update(users.c.user_name==bindparam('name'), 
+                    values={'user_name':bindparam('newname')})
+    {sql}u.execute(name='jack', newname='ed')
+    UPDATE users SET user_name=:newname WHERE users.user_name = :name
+    {'newname': 'ed', 'name': 'jack'}
+    
+    # update a column to another column
+    {sql}users.update(values={users.c.password:users.c.user_name}).execute()
+    UPDATE users SET password=users.user_name
+    {}
+    
+    # multi-update
+    {sql}users.update(users.c.user_id==bindparam('id')).execute(
+            {'id':7, 'user_name':'jack', 'password':'fh5jks'},
+            {'id':8, 'user_name':'ed', 'password':'fsr234ks'},
+            {'id':9, 'user_name':'mary', 'password':'7h5jse'},
+        )
+    UPDATE users SET user_name=:user_name, password=:password WHERE users.user_id = :id
+    [{'password': 'fh5jks', 'user_name': 'jack', 'id': 7}, 
+    {'password': 'fsr234ks', 'user_name': 'ed', 'id': 8}, 
+    {'password': '7h5jse', 'user_name': 'mary', 'id': 9}]
+
+#### Correlated Updates {@name=correlated}
+
+A correlated update lets you update a table using selection from another table, or the same table:
+
+    {python}s = select([addresses.c.city], addresses.c.user_id==users.c.user_id)
+    {sql}users.update(
+        and_(users.c.user_id>10, users.c.user_id&lt;20), 
+        values={users.c.user_name:s}
+    ).execute() 
+    UPDATE users SET user_name=(SELECT addresses.city 
+    FROM addresses 
+    WHERE addresses.user_id = users.user_id) 
+    WHERE users.user_id > :users_user_id AND users.user_id &lt; :users_user_id_1
+    {'users_user_id_1': 20, 'users_user_id': 10}
+
+### Deletes {@name=delete}
+
+A delete is formulated like an update, except theres no values:
+
+    {python}users.delete(users.c.user_id==7).execute()
+    users.delete(users.c.user_name.like(bindparam('name'))).execute(
+            {'name':'%Jack%'},
+            {'name':'%Ed%'},
+            {'name':'%Jane%'},
+        )
+    users.delete(exists())
+    

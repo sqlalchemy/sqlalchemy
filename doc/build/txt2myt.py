@@ -84,6 +84,17 @@ def process_code_blocks(tree):
 
     def replace_pre_with_myt(pre, text):
         text = re.sub(DOCTEST_DIRECTIVES, '', text)
+        # process '>>>' to have quotes around it, to work with the myghty python
+        # syntax highlighter which uses the tokenize module
+        text = re.sub(r'>>> ', r'">>>" ', text)
+
+        # indent two spaces.  among other things, this helps comment lines "#  " from being 
+        # consumed as Myghty comments.
+        text = re.compile(r'^(?!<&)', re.M).sub('  ', text)
+
+        sqlre = re.compile(r'{sql}(.*?)((?:SELECT|INSERT|DELETE|UPDATE).*?)\n\s*(\n|$)', re.S)
+        text = sqlre.sub(r"<&formatting.myt:poplink&>\1\n<&|formatting.myt:codepopper, link='sql'&>\2</&>\n\n", text)
+
         pre_parent = parent[pre]
         tag = MyghtyTag(CODE_BLOCK)
         tag.text = text
@@ -138,7 +149,7 @@ def process_headers(tree):
                 name = description.split()[0].lower()
 
             tag = MyghtyTag(SECTION, name=name, description=description)
-            tag.text = node.tail + '\n'
+            tag.text = (node.tail or "") + '\n'
             tag.tail = '\n'
             tag[:] = content
             tree[start:end] = [tag]
@@ -244,10 +255,14 @@ def html2myghtydoc(html):
 
 if __name__ == '__main__':
     import glob
-    for inname in glob.glob('content/*.txt'):
+    filenames = sys.argv[1:]
+    if len(filenames) == 0:
+        filenames = glob.glob('content/*.txt')
+    for inname in filenames:
         outname = inname[:-3] + 'myt'
         print inname, '->', outname
         input = file(inname).read()
         html = markdown.markdown(input)
         myt = html2myghtydoc(html)
+        file(inname[:-3] + "html", 'w').write(html)
         file(outname, 'w').write(myt)

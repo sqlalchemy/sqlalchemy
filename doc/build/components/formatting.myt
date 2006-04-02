@@ -288,7 +288,6 @@
     def hlight(match):
         return "<pre>" + highlight.highlight(fix_indent(match.group(1)), html_escape = html_escape, syntaxtype = syntaxtype) + "</pre>"
     content = p.sub(hlight, "<pre>" + m.content() + "</pre>")
-
 </%init>
 <div class="code">
 % if title is not None:
