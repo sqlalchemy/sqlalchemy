@@ -210,7 +210,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         )
         
         self.runtest(
-            literal("a") + literal("b") * literal("c"), ":literal + :liter_1 * :liter_2", db
+            literal("a") + literal("b") * literal("c"), ":literal + (:liter_1 * :liter_2)", db
         )
 
     def testmultiparam(self):
