@@ -200,6 +200,9 @@ class TriggeredAttribute(ManagedAttribute):
         self.uselist = uselist
         self.kwargs = kwargs
 
+    def clear(self):
+        self.plain_init(self.manager.attribute_history(self.obj))
+        
     def plain_init(self, attrhist):
         if not self.uselist:
             p = ScalarAttribute(self.obj, self.key, **self.kwargs)

@@ -115,6 +115,15 @@ class MapperTest(MapperSuperTest):
         self.assert_(u.user_name == 'jack')
         self.assert_(a not in u.addresses)
 
+    def testrefresh_lazy(self):
+        """tests that when a lazy loader is set as a trigger on an object's attribute (at the attribute level, not the class level), a refresh() operation doesnt fire the lazy loader or create any problems"""
+        m = mapper(User, users, properties={'addresses':relation(mapper(Address, addresses))})
+        m2 = m.options(lazyload('addresses'))
+        u = m2.selectfirst(users.c.user_id==8)
+        def go():
+            objectstore.refresh(u)
+        self.assert_sql_count(db, go, 1)
+
     def testexpire(self):
         m = mapper(User, users, properties={'addresses':relation(mapper(Address, addresses))})
         u = m.get(7)
