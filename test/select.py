@@ -346,6 +346,30 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
         self.runtest(select([literal("foo") + literal("bar")], from_obj=[table1]), 
             "SELECT :literal + :liter_1 FROM mytable")
 
+    def testcalculatedcolumns(self):
+         value_tbl = table('values',
+             Column('id', Integer),
+             Column('val1', Float),
+             Column('val2', Float),
+         )
+
+         self.runtest(
+             select([value_tbl.c.id, (value_tbl.c.val2 -
+     value_tbl.c.val1)/value_tbl.c.val1]),
+             "SELECT values.id, (values.val2 - values.val1) / values.val1 FROM values"
+         )
+
+         self.runtest(
+             select([value_tbl.c.id], (value_tbl.c.val2 -
+     value_tbl.c.val1)/value_tbl.c.val1 > 2.0),
+             "SELECT values.id FROM values WHERE ((values.val2 - values.val1) / values.val1) > :literal"
+         )
+
+         self.runtest(
+             select([value_tbl.c.id], value_tbl.c.val1 / (value_tbl.c.val2 - value_tbl.c.val1) /value_tbl.c.val1 > 2.0),
+             "SELECT values.id FROM values WHERE ((values.val1 / (values.val2 - values.val1)) / values.val1) > :literal"
+         )
+         
     def testfunction(self):
         """tests the generation of functions using the func keyword"""
         # test an expression with a function
@@ -554,7 +578,7 @@ class CRUDTest(SQLTest):
             values = {
             table1.c.name : table1.c.name + "lala",
             table1.c.myid : func.do_stuff(table1.c.myid, literal('hoho'))
-            }), "UPDATE mytable SET myid=do_stuff(mytable.myid, :liter_2), name=mytable.name + :mytable_name WHERE mytable.myid = hoho(:hoho) AND mytable.name = :literal + mytable.name + :liter_1")
+            }), "UPDATE mytable SET myid=do_stuff(mytable.myid, :liter_2), name=mytable.name + :mytable_name WHERE mytable.myid = hoho(:hoho) AND mytable.name = ((:literal + mytable.name) + :liter_1)")
         
     def testcorrelatedupdate(self):
         # test against a straight text subquery

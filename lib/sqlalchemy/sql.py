@@ -850,6 +850,10 @@ class BinaryClause(ClauseElement):
         self.operator = operator
         self.type = type
         self.parens = False
+        if isinstance(self.left, BinaryClause):
+            self.left.parens = True
+        if isinstance(self.right, BinaryClause):
+            self.right.parens = True
     def copy_container(self):
         return BinaryClause(self.left.copy_container(), self.right.copy_container(), self.operator)
     def _get_from_objects(self):
