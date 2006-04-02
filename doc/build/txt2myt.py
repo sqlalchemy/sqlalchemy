@@ -92,7 +92,7 @@ def process_code_blocks(tree):
         # consumed as Myghty comments.
         text = re.compile(r'^(?!<&)', re.M).sub('  ', text)
 
-        sqlre = re.compile(r'{sql}(.*?)((?:SELECT|INSERT|DELETE|UPDATE).*?)\n\s*(\n|$)', re.S)
+        sqlre = re.compile(r'{sql}(.*?)((?:SELECT|INSERT|DELETE|UPDATE|CREATE|DROP).*?)\n\s*(\n|$)', re.S)
         text = sqlre.sub(r"<&formatting.myt:poplink&>\1\n<&|formatting.myt:codepopper, link='sql'&>\2</&>\n\n", text)
 
         pre_parent = parent[pre]
