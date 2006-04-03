@@ -276,9 +276,8 @@ class OracleCompiler(ansisql.ANSICompiler):
             return
         if select.limit is not None or select.offset is not None:
             select._oracle_visit = True
-            if hasattr(select, "order_by_clause"):
-                orderby = self.strings[select.order_by_clause]
-            else:
+            orderby = self.strings[select.order_by_clause]
+            if not orderby:
                 # to use ROW_NUMBER(), an ORDER BY is required.  so here we dig in
                 # as best we can to find some column we can order by
                 # TODO: try to get "oid_column" to be used here

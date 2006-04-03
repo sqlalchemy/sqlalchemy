@@ -233,8 +233,12 @@ class ANSICompiler(sql.Compiled):
         
     def visit_compound_select(self, cs):
         text = string.join([self.get_str(c) for c in cs.selects], " " + cs.keyword + " ")
-        for tup in cs.clauses:
-            text += " " + tup[0] + " " + self.get_str(tup[1])
+        group_by = self.get_str(cs.group_by_clause)
+        if group_by:
+            text += " GROUP BY " + group_by
+        order_by = self.get_str(cs.order_by_clause)
+        if order_by:
+            text += " ORDER BY " + order_by
         if cs.parens:
             self.strings[cs] = "(" + text + ")"
         else:
@@ -361,10 +365,13 @@ class ANSICompiler(sql.Compiled):
             if t:
                 text += " \nWHERE " + t
 
-        for tup in select.clauses:
-            ss = self.get_str(tup[1])
-            if ss:
-                text += " " + tup[0] + " " + ss
+        group_by = self.get_str(select.group_by_clause)
+        if group_by:
+            text += " GROUP BY " + group_by
+
+        order_by = self.get_str(select.order_by_clause)
+        if order_by:
+            text += " ORDER BY " + order_by
 
         if select.having is not None:
             t = self.get_str(select.having)

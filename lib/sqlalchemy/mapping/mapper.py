@@ -1062,7 +1062,7 @@ class MapperExtension(object):
         if self.next is None:
             return EXT_PASS
         else:
-            return self.next.populate_instance(row, imap, result, instance, isnew)
+            return self.next.populate_instance(mapper, instance, row, identitykey, imap, isnew)
     def before_insert(self, mapper, instance):
         """called before an object instance is INSERTed into its table.
         
