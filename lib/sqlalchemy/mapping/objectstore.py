@@ -51,7 +51,7 @@ class Session(object):
         if self.__pushed_count == 0:
             for n in self.nest_on:
                 n.pop_session()
-    def get_id_key(ident, class_):
+    def get_id_key(ident, class_, entity_name=None):
         """returns an identity-map key for use in storing/retrieving an item from the identity
         map, given a tuple of the object's primary key values.
 
@@ -60,15 +60,12 @@ class Session(object):
 
         class_ - a reference to the object's class
 
-        table - a Table object where the object's primary fields are stored.
-
-        selectable - a Selectable object which represents all the object's column-based fields.
-        this Selectable may be synonymous with the table argument or can be a larger construct
-        containing that table. return value: a tuple object which is used as an identity key. """
-        return (class_, tuple(ident))
+        entity_name - optional string name to further qualify the class
+        """
+        return (class_, tuple(ident), entity_name)
     get_id_key = staticmethod(get_id_key)
 
-    def get_row_key(row, class_, primary_key):
+    def get_row_key(row, class_, primary_key, entity_name=None):
         """returns an identity-map key for use in storing/retrieving an item from the identity
         map, given a result set row.
 
@@ -77,13 +74,12 @@ class Session(object):
 
         class_ - a reference to the object's class
 
-        table - a Table object where the object's primary fields are stored.
-
-        selectable - a Selectable object which represents all the object's column-based fields.
-        this Selectable may be synonymous with the table argument or can be a larger construct
-        containing that table. return value: a tuple object which is used as an identity key.
+        primary_key - a list of column objects that will target the primary key values
+        in the given row.
+        
+        entity_name - optional string name to further qualify the class
         """
-        return (class_, tuple([row[column] for column in primary_key]))
+        return (class_, tuple([row[column] for column in primary_key]), entity_name)
     get_row_key = staticmethod(get_row_key)
 
     class SessionTrans(object):
@@ -222,11 +218,11 @@ class Session(object):
             u.register_new(instance)
         return instance
 
-def get_id_key(ident, class_):
-    return Session.get_id_key(ident, class_)
+def get_id_key(ident, class_, entity_name=None):
+    return Session.get_id_key(ident, class_, entity_name)
 
-def get_row_key(row, class_, primary_key):
-    return Session.get_row_key(row, class_, primary_key)
+def get_row_key(row, class_, primary_key, entity_name=None):
+    return Session.get_row_key(row, class_, primary_key, entity_name)
 
 def begin():
     """begins a new UnitOfWork transaction.  the next commit will affect only

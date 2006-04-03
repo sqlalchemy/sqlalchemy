@@ -72,6 +72,11 @@ class SmartProperty(object):
         h.append_nohistory(value)
 
 class ManagedAttribute(object):
+    """base class for a "managed attribute", which is attached to individual instances
+    of a class mapped to the keyname of the property, inside of a dictionary which is
+    attached to the object via the propertyname "_managed_attributes".  Attribute access
+    which occurs through the SmartProperty property object ultimately calls upon 
+    ManagedAttribute objects associated with the instance via this dictionary."""
     def __init__(self, obj, key):
         self.__obj = weakref.ref(obj)
         self.key = key

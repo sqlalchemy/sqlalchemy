@@ -44,6 +44,7 @@ def suite():
         'cycles',
         
         # more select/persistence, backrefs
+        'entity',
         'manytomany',
         'onetoone',
         'inheritance',

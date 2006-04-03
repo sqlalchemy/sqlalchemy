@@ -590,6 +590,8 @@ class LazyLoader(PropertyLoader):
         objectstore.global_attributes.register_attribute(class_, key, uselist = self.uselist, deleteremoved = self.private, callable_=lambda i: self.setup_loader(i), extension=self.attributeext)
 
     def setup_loader(self, instance):
+        if not self.parent.is_assigned(instance):
+            return object_mapper(instance).props[self.key].setup_loader(instance)
         def lazyload():
             params = {}
             allparams = True

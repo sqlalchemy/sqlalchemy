@@ -66,11 +66,12 @@ class Mapper(object):
         self.extension = ext
 
         self.class_ = class_
+        self.entity_name = entity_name
+        self.class_key = ClassKey(class_, entity_name)
         self.is_primary = is_primary
         self.order_by = order_by
         self._options = {}
         self.always_refresh = always_refresh
-        self.entity_name = entity_name
         self.version_id_col = version_id_col
         
         if not issubclass(class_, object):
@@ -208,12 +209,9 @@ class Mapper(object):
         for primary_key in self.pks_by_table[self.table]:
             self._get_clause.clauses.append(primary_key == sql.bindparam("pk_"+primary_key.key))
 
-        if not mapper_registry.has_key(self.class_) or self.is_primary or (inherits is not None and inherits._is_primary_mapper()):
+        if not mapper_registry.has_key(self.class_key) or self.is_primary or (inherits is not None and inherits._is_primary_mapper()):
             objectstore.global_attributes.reset_class_managed(self.class_)
             self._init_class()
-            self.identitytable = self.primarytable
-        else:
-            self.identitytable = mapper_registry[self.class_].primarytable
                 
         if inherits is not None:
             for key, prop in inherits.props.iteritems():
@@ -251,41 +249,50 @@ class Mapper(object):
         prop.init(key, self)
         
     def __str__(self):
-        return "Mapper|" + self.class_.__name__ + "|" + self.primarytable.name
+        return "Mapper|" + self.class_.__name__ + "|" + (self.entity_name is not None and "/%s" % self.entity_name or "") + self.primarytable.name
     
     def _is_primary_mapper(self):
-        return mapper_registry.get(self.class_, None) is self
+        """returns True if this mapper is the primary mapper for its class key (class + entity_name)"""
+        return mapper_registry.get(self.class_key, None) is self
 
     def _primary_mapper(self):
-        return mapper_registry[self.class_]
-        
+        """returns the primary mapper corresponding to this mapper's class key (class + entity_name)"""
+        return mapper_registry[self.class_key]
+
+    def is_assigned(self, instance):
+        """returns True if this mapper is the primary mapper for the given instance.  this is dependent
+        not only on class assignment but the optional "entity_name" parameter as well."""
+        return instance.__class__ is self.class_ and getattr(instance, '_entity_name', None) == self.entity_name
+
     def _init_class(self):
         """sets up our classes' overridden __init__ method, this mappers hash key as its
         '_mapper' property, and our columns as its 'c' property.  if the class already had a
         mapper, the old __init__ method is kept the same."""
-        if not self.class_.__dict__.has_key('_mapper'):
-            oldinit = self.class_.__init__
-            def init(self, *args, **kwargs):
-                # this gets the AttributeManager to do some pre-initialization,
-                # in order to save on KeyErrors later on
-                objectstore.global_attributes.init_attr(self)
-                
-                nohist = kwargs.pop('_mapper_nohistory', False)
-                session = kwargs.pop('_sa_session', objectstore.get_session())
-                if not nohist:
-                    # register new with the correct session, before the object's 
-                    # constructor is called, since further assignments within the
-                    # constructor would otherwise bind it to whatever get_session() is.
-                    session.register_new(self)
-                if oldinit is not None:
-                    oldinit(self, *args, **kwargs)
-            # override oldinit, insuring that its not already one of our
-            # own modified inits
-            if oldinit is None or not hasattr(oldinit, '_sa_mapper_init'):
-                init._sa_mapper_init = True
-                self.class_.__init__ = init
-        mapper_registry[self.class_] = self
-        self.class_.c = self.c
+        oldinit = self.class_.__init__
+        def init(self, *args, **kwargs):
+            self._entity_name = kwargs.pop('_sa_entity_name', None)
+
+            # this gets the AttributeManager to do some pre-initialization,
+            # in order to save on KeyErrors later on
+            objectstore.global_attributes.init_attr(self)
+            
+            nohist = kwargs.pop('_mapper_nohistory', False)
+            session = kwargs.pop('_sa_session', objectstore.get_session())
+            if not nohist:
+                # register new with the correct session, before the object's 
+                # constructor is called, since further assignments within the
+                # constructor would otherwise bind it to whatever get_session() is.
+                session.register_new(self)
+            if oldinit is not None:
+                oldinit(self, *args, **kwargs)
+        # override oldinit, insuring that its not already one of our
+        # own modified inits
+        if oldinit is None or not hasattr(oldinit, '_sa_mapper_init'):
+            init._sa_mapper_init = True
+            self.class_.__init__ = init
+        mapper_registry[self.class_key] = self
+        if self.entity_name is None:
+            self.class_.c = self.c
         
     def set_property(self, key, prop):
         self.props[key] = prop
@@ -325,7 +332,7 @@ class Mapper(object):
         """returns an instance of the object based on the given identifier, or None
         if not found.  The *ident argument is a 
         list of primary key columns in the order of the table def's primary key columns."""
-        key = objectstore.get_id_key(ident, self.class_)
+        key = objectstore.get_id_key(ident, self.class_, self.entity_name)
         #print "key: " + repr(key) + " ident: " + repr(ident)
         return self._get(key, ident)
         
@@ -352,7 +359,7 @@ class Mapper(object):
         
     def identity_key(self, *primary_key):
         """returns the instance key for the given identity value.  this is a global tracking object used by the objectstore, and is usually available off a mapped object as instance._instance_key."""
-        return objectstore.get_id_key(tuple(primary_key), self.class_)
+        return objectstore.get_id_key(tuple(primary_key), self.class_, self.entity_name)
     
     def instance_key(self, instance):
         """returns the instance key for the given instance.  this is a global tracking object used by the objectstore, and is usually available off a mapped object as instance._instance_key."""
@@ -847,7 +854,7 @@ class Mapper(object):
         return statement
         
     def _identity_key(self, row):
-        return objectstore.get_row_key(row, self.class_, self.pks_by_table[self.table])
+        return objectstore.get_row_key(row, self.class_, self.pks_by_table[self.table], self.entity_name)
 
     def _instance(self, row, imap, result = None, populate_existing = False):
         """pulls an object instance from the given row and appends it to the given result
@@ -886,7 +893,7 @@ class Mapper(object):
             # plugin point
             instance = self.extension.create_instance(self, row, imap, self.class_)
             if instance is EXT_PASS:
-                instance = self.class_(_mapper_nohistory=True)
+                instance = self.class_(_mapper_nohistory=True, _sa_entity_name=self.entity_name)
             imap[identitykey] = instance
             isnew = True
         else:
@@ -1086,7 +1093,16 @@ class MapperExtension(object):
         if self.next is not None:
             self.next.before_delete(mapper, instance)
 
-        
+class ClassKey(object):
+    """keys a class and an entity name to a mapper, via the mapper_registry"""
+    def __init__(self, class_, entity_name):
+        self.class_ = class_
+        self.entity_name = entity_name
+    def __hash__(self):
+        return hash((self.class_, self.entity_name))
+    def __eq__(self, other):
+        return self.class_ is other.class_ and self.entity_name == other.entity_name
+            
 def hash_key(obj):
     if obj is None:
         return 'None'
@@ -1100,11 +1116,14 @@ def hash_key(obj):
 def object_mapper(object):
     """given an object, returns the primary Mapper associated with the object
     or the object's class."""
-    return class_mapper(object.__class__)
-
-def class_mapper(class_):
-    """given a class, returns the primary Mapper associated with the class."""
     try:
-        return mapper_registry[class_]
+        return mapper_registry[ClassKey(object.__class__, getattr(object, '_entity_name', None))]
+    except KeyError:
+        raise InvalidRequestError("Class '%s' entity name '%s' has no mapper associated with it" % (object.__class__.__name__, getattr(object, '_entity_name', None)))
+
+def class_mapper(class_, entity_name=None):
+    """given a ClassKey, returns the primary Mapper associated with the key."""
+    try:
+        return mapper_registry[ClassKey(class_, entity_name)]
     except (KeyError, AttributeError):
-        raise InvalidRequestError("Class '%s' has no mapper associated with it" % class_.__name__)
+        raise InvalidRequestError("Class '%s' entity name '%s' has no mapper associated with it" % (class_.__name__, entity_name))
