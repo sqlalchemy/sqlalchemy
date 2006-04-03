@@ -489,7 +489,7 @@ class CompareMixin(object):
     def endswith(self, other):
         return self._compare('LIKE', "%" + str(other))
     def label(self, name):
-        return Label(name, self)
+        return Label(name, self, self.type)
     def distinct(self):
         return CompoundClause(None,"DISTINCT", self)
     def op(self, operator):
@@ -995,11 +995,12 @@ class Alias(FromClause):
 
     
 class Label(ColumnElement):
-    def __init__(self, name, obj):
+    def __init__(self, name, obj, type=None):
         self.name = name
         while isinstance(obj, Label):
             obj = obj.obj
         self.obj = obj
+        self.type = type or sqltypes.NullTypeEngine()
         obj.parens=True
     key = property(lambda s: s.name)
     

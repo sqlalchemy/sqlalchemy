@@ -264,5 +264,5 @@ if __name__ == '__main__':
         input = file(inname).read()
         html = markdown.markdown(input)
         myt = html2myghtydoc(html)
-        file(inname[:-3] + "html", 'w').write(html)
+        #file(inname[:-3] + "html", 'w').write(html)
         file(outname, 'w').write(myt)
