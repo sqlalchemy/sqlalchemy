@@ -1145,14 +1145,14 @@ class TableClause(FromClause):
 class SelectBaseMixin(object):
     """base class for Select and CompoundSelects"""
     def order_by(self, *clauses):
-        if clauses[0] is None:
+        if len(clauses) == 0 or clauses[0] is None:
             self.order_by_clause = ClauseList()
         elif getattr(self, 'order_by_clause', None):
-            self.order_by_clause = ClauseList(*(list(clauses)+list(self.order_by_clause.clauses)))
+            self.order_by_clause = ClauseList(*(list(self.order_by_clause.clauses) + list(clauses)))
         else:
             self.order_by_clause = ClauseList(*clauses)
     def group_by(self, *clauses):
-        if clauses[0] is None:
+        if len(clauses) == 0 or clauses[0] is None:
             self.group_by_clause = ClauseList()
         elif getattr(self, 'group_by_clause', None):
             self.group_by_clause = ClauseList(*(list(clauses)+list(self.group_by_clause.clauses)))
