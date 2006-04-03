@@ -1,3 +1,14 @@
+0.1.6
+- added 'entity_name' keyword argument to mapper. a mapper is now associated
+with a class via the class object as well as an optional entity_name parameter,
+which is a string defaulting to None. any number of primary mappers can be
+created for a class, qualified by the entity name. instances of those classes
+will issue all of their load and save operations through their
+entity_name-qualified mapper, and maintain separate a identity in the identity
+map for an otherwise equilvalent object.
+- overhaul to the attributes system. code has been clarified, and also fixed to
+support proper polymorphic behavior on object attributes.
+
 0.1.5
 - added SQLSession concept to SQLEngine. this object keeps track of retrieving a
 connection from the connection pool as well as an in-progress transaction.
