@@ -430,9 +430,7 @@ class MSSQLCompiler(ansisql.ANSICompiler):
             
     def visit_table(self, table):
         # alias schema-qualified tables
-         if self.tablealiases.has_key(table):
-            super(MSSQLCompiler, self).visit_table(table)
-         elif getattr(table, 'schema', None) is not None:
+        if getattr(table, 'schema', None) is not None and not self.tablealiases.has_key(table):
             alias = table.alias()
             self.tablealiases[table] = alias
             alias.accept_visitor(self)
@@ -441,7 +439,9 @@ class MSSQLCompiler(ansisql.ANSICompiler):
                 c.accept_visitor(self)
             self.tablealiases[alias] = self.froms[table]
             self.froms[table] = self.froms[alias]
-
+        else:
+           super(MSSQLCompiler, self).visit_table(table)
+ 
     def visit_alias(self, alias):
         # translate for schema-qualified table aliases
         if self.froms.has_key(('alias', alias.original)):
