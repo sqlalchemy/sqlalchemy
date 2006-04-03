@@ -66,8 +66,8 @@ class UOWAttributeManager(attributes.AttributeManager):
         else:
             get_session(obj).register_new(obj)
             
-    def create_prop(self, class_, key, uselist, **kwargs):
-        return UOWProperty(class_, self, key, uselist)
+    def create_prop(self, class_, key, uselist, callable_, **kwargs):
+        return UOWProperty(class_, self, key, uselist, callable_, **kwargs)
 
     def create_list(self, obj, key, list_, **kwargs):
         return UOWListElement(obj, key, list_, **kwargs)

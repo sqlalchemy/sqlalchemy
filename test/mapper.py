@@ -125,12 +125,15 @@ class MapperTest(MapperSuperTest):
         self.assert_sql_count(db, go, 1)
 
     def testexpire(self):
-        m = mapper(User, users, properties={'addresses':relation(mapper(Address, addresses))})
+        m = mapper(User, users, properties={'addresses':relation(mapper(Address, addresses), lazy=False)})
         u = m.get(7)
+        assert(len(u.addresses) == 1)
         u.user_name = 'foo'
+        del u.addresses[0]
         objectstore.expire(u)
         # test plain expire
         self.assert_(u.user_name =='jack')
+        self.assert_(len(u.addresses) == 1)
         
         # we're changing the database here, so if this test fails in the middle,
         # it'll screw up the other tests which are hardcoded to 7/'jack'

@@ -1078,7 +1078,6 @@ class SaveTest(AssertMixin):
         a.user = u
         objectstore.commit()
         print repr(u.addresses)
-        print repr(u.addresses)
         x = False
         try:
             u.addresses.append('hi')
@@ -1087,7 +1086,7 @@ class SaveTest(AssertMixin):
             pass
             
         if x:
-            self.assert_(False, "User addresses element should be read-only")
+            self.assert_(False, "User addresses element should be scalar based")
         
         objectstore.delete(u)
         objectstore.commit()

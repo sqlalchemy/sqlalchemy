@@ -131,6 +131,30 @@ class AttributesTest(PersistTest):
         
         j.port = None
         self.assert_(p.jack is None)
+
+    def testinheritance(self):
+        """tests that attributes are polymorphic"""
+        class Foo(object):pass
+        class Bar(Foo):pass
+        
+        manager = attributes.AttributeManager()
+        
+        def func1():
+            return "this is the foo attr"
+        def func2():
+            return "this is the bar attr"
+        def func3():
+            return "this is the shared attr"
+        manager.register_attribute(Foo, 'element', uselist=False, callable_=lambda o:func1)
+        manager.register_attribute(Foo, 'element2', uselist=False, callable_=lambda o:func3)
+        manager.register_attribute(Bar, 'element', uselist=False, callable_=lambda o:func2)
+        
+        x = Foo()
+        y = Bar()
+        assert x.element == 'this is the foo attr'
+        assert y.element == 'this is the bar attr'
+        assert x.element2 == 'this is the shared attr'
+        assert y.element2 == 'this is the shared attr'
         
 if __name__ == "__main__":
     unittest.main()
