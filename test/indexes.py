@@ -42,9 +42,10 @@ class IndexTest(testbase.AssertMixin):
         """test that mixed-case index identifiers are legal"""
         employees = Table('companyEmployees', testbase.db,
                           Column('id', Integer, primary_key=True),
-                          Column('firstName', String),
-                          Column('lastName', String),
-                          Column('emailAddress', String))        
+                          Column('firstName', String(30)),
+                          Column('lastName', String(30)),
+                          Column('emailAddress', String(30)))
+
         employees.create()
         self.created.append(employees)
         

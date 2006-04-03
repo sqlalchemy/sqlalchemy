@@ -193,7 +193,7 @@ class SQLSession(object):
     connection = property(_connection, doc="the connection represented by this SQLSession.  The connection is late-connecting, meaning the call to the connection pool only occurs when it is first called (and the pool will typically only connect the first time it is called as well)")
     
     def begin(self):
-        """begins" a transaction on this SQLSession's connection.  repeated calls to begin() will increment a counter that must be decreased by corresponding commit() statements before an actual commit occurs.  this is to provide "nested" behavior of transactions so that different functions in a particular call stack can call begin()/commit() independently of each other without knowledge of an existing transaction."""
+        """begins a transaction on this SQLSession's connection.  repeated calls to begin() will increment a counter that must be decreased by corresponding commit() statements before an actual commit occurs.  this is to provide "nested" behavior of transactions so that different functions in a particular call stack can call begin()/commit() independently of each other without knowledge of an existing transaction. """
         if self.__tcount == 0:
             self.__transaction = self.connection
             self.engine.do_begin(self.connection)
@@ -506,7 +506,7 @@ class SQLEngine(schema.SchemaEngine):
         self.commit()
         
     def begin(self):
-        """"begins a transaction on the current thread's SQLSession."""
+        """ begins a transaction on the current thread SQLSession. """
         self.session.begin()
             
     def rollback(self):
@@ -647,7 +647,7 @@ class SQLEngine(schema.SchemaEngine):
         return ResultProxy(cursor, self, typemap=compiled.typemap)
 
     def execute(self, statement, parameters=None, connection=None, cursor=None, echo=None, typemap=None, commit=False, return_raw=False, **kwargs):
-        """executes the given string-based SQL statement with the given parameters.  
+        """ executes the given string-based SQL statement with the given parameters.  
 
         The parameters can be a dictionary or a list, or a list of dictionaries or lists, depending
         on the paramstyle of the DBAPI.
@@ -659,7 +659,7 @@ class SQLEngine(schema.SchemaEngine):
         up.
 
         In all error cases, a rollback() is immediately performed on the connection before
-        propigating the exception outwards.
+        propagating the exception outwards.
 
         Other options include:
 

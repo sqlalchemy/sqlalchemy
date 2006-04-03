@@ -46,9 +46,11 @@ def parse_argv():
         elif DBTYPE == 'oracle8':
             db_uri = 'oracle://user=scott&password=tiger'
             opts = {'use_ansi':False}
+        elif DBTYPE == 'mssql':
+            db_uri = 'mssql://database=test&user=scott&password=tiger'
 
     if not db_uri:
-        raise "Could not create engine.  specify --db <sqlite|sqlite_file|postgres|mysql|oracle> to test runner."
+        raise "Could not create engine.  specify --db <sqlite|sqlite_file|postgres|mysql|oracle|oracle8|mssql> to test runner."
 
     if PROXY:
         db = proxy.ProxyEngine(echo=echo, default_ordering=True, **opts)

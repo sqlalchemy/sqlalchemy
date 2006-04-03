@@ -6,6 +6,7 @@ import sqlalchemy.databases.oracle as oracle
 import sqlalchemy.databases.sqlite as sqlite
 
 db = ansisql.engine()
+#db = create_engine('mssql')
 
 from testbase import PersistTest
 import unittest, re
@@ -595,6 +596,7 @@ class CRUDTest(SQLTest):
         
 class SchemaTest(SQLTest):
     def testselect(self):
+        # these tests will fail with the MS-SQL compiler since it will alias schema-qualified tables
         self.runtest(table4.select(), "SELECT remotetable.rem_id, remotetable.datatype_id, remotetable.value FROM remote_owner.remotetable")
         self.runtest(table4.select(and_(table4.c.datatype_id==7, table4.c.value=='hi')), "SELECT remotetable.rem_id, remotetable.datatype_id, remotetable.value FROM remote_owner.remotetable WHERE remotetable.datatype_id = :remotetable_datatype_id AND remotetable.value = :remotetable_value")
 

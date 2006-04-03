@@ -56,6 +56,18 @@ gen_key_constraints = schema.Table("key_column_usage", generic_engine,
     Column("constraint_name", String),
     schema="information_schema")
 
+gen_ref_constraints = schema.Table("referential_constraints", generic_engine,
+    Column("constraint_catalog", String),
+    Column("constraint_schema", String),
+    Column("constraint_name", String),
+    Column("unique_constraint_catlog", String),
+    Column("unique_constraint_schema", String),
+    Column("unique_constraint_name", String),
+    Column("match_option", String),
+    Column("update_rule", String),
+    Column("delete_rule", String),
+    schema="information_schema")
+                                   
 class ISchema(object):
     def __init__(self, engine):
         self.engine = engine

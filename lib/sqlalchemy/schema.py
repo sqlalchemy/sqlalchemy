@@ -256,7 +256,7 @@ class Column(sql.ColumnClause, SchemaItem):
         default=None : a scalar, python callable, or ClauseElement representing the "default value" for this column,
         which will be invoked upon insert if this column is not present in the insert list or is given a value
         of None.
-        
+
         hidden=False : indicates this column should not be listed in the
         table's list of columns.  Used for the "oid" column, which generally
         isnt in column lists.
@@ -271,7 +271,9 @@ class Column(sql.ColumnClause, SchemaItem):
         indexed in a unique index . Pass true to autogenerate the index
         name. Pass a string to specify the index name. Multiple columns that
         specify the same index name will all be included in the index, in the
-        order of their creation.  """
+        order of their creation.
+
+        """
         
         name = str(name) # in case of incoming unicode
         super(Column, self).__init__(name, None, type)
@@ -506,6 +508,7 @@ class Sequence(DefaultGenerator):
     def accept_schema_visitor(self, visitor):
         """calls the visit_seauence method on the given visitor."""
         return visitor.visit_sequence(self)
+
 
 class Index(SchemaItem):
     """Represents an index of columns from a database table

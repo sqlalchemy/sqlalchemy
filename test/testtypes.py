@@ -147,8 +147,8 @@ class BinaryTest(AssertMixin):
     def testbinary(self):
         stream1 =self.get_module_stream('sqlalchemy.sql')
         stream2 =self.get_module_stream('sqlalchemy.engine')
-        binary_table.insert().execute(misc='sql.pyc', data=stream1, data_slice=stream1[0:100])
-        binary_table.insert().execute(misc='engine.pyc', data=stream2, data_slice=stream2[0:99])
+        binary_table.insert().execute(primary_id=1, misc='sql.pyc',    data=stream1, data_slice=stream1[0:100])
+        binary_table.insert().execute(primary_id=2, misc='engine.pyc', data=stream2, data_slice=stream2[0:99])
         l = binary_table.select().execute().fetchall()
         print len(stream1), len(l[0]['data']), len(l[0]['data_slice'])
         self.assert_(list(stream1) == list(l[0]['data']))
@@ -179,7 +179,7 @@ class DateTest(AssertMixin):
         collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime),
                    Column('user_date', Date), Column('user_time', Time)]
         
-        if db.engine.__module__.endswith('mysql'):
+        if db.engine.__module__.endswith('mysql') or db.engine.__module__.endswith('mssql'):
             # strip microseconds -- not supported by this engine (should be an easier way to detect this)
             for d in insert_data:
                 if d[2] is not None:
@@ -198,6 +198,7 @@ class DateTest(AssertMixin):
         users_with_date = Table('query_users_with_date', db, redefine = True, *collist)
         users_with_date.create()
         insert_dicts = [dict(zip(fnames, d)) for d in insert_data]
+
         for idict in insert_dicts:
             users_with_date.insert().execute(**idict) # insert the data
 
