@@ -94,7 +94,7 @@ class PersonLoader(MapperExtension):
             Manager.mapper.populate_instance(instance, row, identitykey, imap, isnew, frommapper=mapper)
             return False
         else:
-            return True
+            return sqlalchemy.mapping.EXT_PASS
 
 people_mapper = mapper(Person, person_join, extension=PersonLoader())
 
