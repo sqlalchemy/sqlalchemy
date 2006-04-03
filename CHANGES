@@ -1,4 +1,10 @@
 0.1.6
+- added 'version_id' keyword argument to mapper. this keyword should reference a
+Column object with type Integer, preferably non-nullable, which will be used on
+the mapped table to track version numbers. this number is incremented on each
+save operation and is specifed in the UPDATE/DELETE conditions so that it
+factors into the returned row count, which results in a ConcurrencyError if the
+value received is not the expected count.
 - added 'entity_name' keyword argument to mapper. a mapper is now associated
 with a class via the class object as well as an optional entity_name parameter,
 which is a string defaulting to None. any number of primary mappers can be

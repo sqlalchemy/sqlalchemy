@@ -169,6 +169,60 @@ class SessionTest(AssertMixin):
         objectstore.clear()
         self.assert_(m.get(8).user_name == name2)
         self.assert_(m.get(7).user_name != name1)
+
+class VersioningTest(AssertMixin):
+    def setUpAll(self):
+        global version_table
+        version_table = Table('version_test', db,
+        Column('id', Integer, primary_key=True),
+        Column('version_id', Integer, nullable=False),
+        Column('value', String(40), nullable=False)
+        ).create()
+    def tearDownAll(self):
+        version_table.drop()
+    def tearDown(self):
+        version_table.delete().execute()
+        objectstore.clear()
+        clear_mappers()
+        
+    def testbasic(self):
+        class Foo(object):pass
+        assign_mapper(Foo, version_table, version_id_col=version_table.c.version_id)
+        f1 =Foo(value='f1')
+        f2 = Foo(value='f2')
+        objectstore.commit()
+        
+        f1.value='f1rev2'
+        objectstore.commit()
+        s = objectstore.Session()
+        f1_s = Foo.mapper.using(s).get(f1.id)
+        f1_s.value='f1rev3'
+        s.commit()
+
+        f1.value='f1rev3mine'
+        success = False
+        try:
+            # a concurrent session has modified this, should throw
+            # an exception
+            objectstore.commit()
+        except SQLAlchemyError:
+            success = True
+        assert success
+        
+        objectstore.clear()
+        f1 = Foo.mapper.get(f1.id)
+        f2 = Foo.mapper.get(f2.id)
+        
+        f1_s.value='f1rev4'
+        s.commit()
+    
+        objectstore.delete(f1, f2)
+        success = False
+        try:
+            objectstore.commit()
+        except SQLAlchemyError:
+            success = True
+        assert success
         
 class UnicodeTest(AssertMixin):
     def setUpAll(self):
