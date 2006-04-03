@@ -1033,6 +1033,12 @@ class ColumnClause(ColumnElement):
     _label = property(_get_label)
     def accept_visitor(self, visitor): 
         visitor.visit_column(self)
+    def to_selectable(self, selectable):
+        """given a Selectable, returns this column's equivalent in that Selectable, if any.
+        
+        for example, this could translate the column "name" from a Table object
+        to an Alias of a Select off of that Table object."""
+        return selectable._get_col_by_original(self.original, False)
     def _get_from_objects(self):
         if self.table is not None:
             return [self.table]
