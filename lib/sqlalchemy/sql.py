@@ -13,7 +13,7 @@ from exceptions import *
 import string, re, random
 types = __import__('types')
 
-__all__ = ['text', 'table', 'column', 'func', 'select', 'update', 'insert', 'delete', 'join', 'and_', 'or_', 'not_', 'union', 'union_all', 'null', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'literal', 'bindparam', 'exists']
+__all__ = ['text', 'table', 'column', 'func', 'select', 'update', 'insert', 'delete', 'join', 'and_', 'or_', 'not_', 'between_', 'cast', 'union', 'union_all', 'null', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'literal', 'bindparam', 'exists']
 
 def desc(column):
     """returns a descending ORDER BY clause element, e.g.:
@@ -131,6 +131,25 @@ def not_(clause):
 def between_(ctest, cleft, cright):
     """ returns BETWEEN predicate clause (clausetest BETWEEN clauseleft AND clauseright) """
     return BooleanExpression(ctest, and_(cleft, cright), 'BETWEEN')
+        
+def cast(clause, totype, **kwargs):
+    """ returns CAST function CAST(clause AS totype) 
+        Use with a sqlalchemy.types.TypeEngine object, i.e
+        cast(table.c.unit_price * table.c.qty, Numeric(10,4))
+         or
+        cast(table.c.timestamp, DATE)
+    """
+    engine = kwargs.get('engine', None)
+    if engine is None:
+        engine = getattr(clause, 'engine', None)
+    if engine is not None:
+        totype_desc = engine.type_descriptor(totype)
+        # handle non-column clauses (e.g. cast(1234, TEXT)
+        if not hasattr(clause, 'label'):
+            clause = literal(clause)
+        return Function('CAST', clause.label(totype_desc.get_col_spec()), type=totype, **kwargs)
+    else:
+        raise InvalidRequestError("No engine available, cannot generate cast for " + str(clause) + " to type " + str(totype))
         
 def exists(*args, **params):
     params['correlate'] = True

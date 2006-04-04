@@ -4,6 +4,7 @@ import sqlalchemy.ansisql as ansisql
 import sqlalchemy.databases.postgres as postgres
 import sqlalchemy.databases.oracle as oracle
 import sqlalchemy.databases.sqlite as sqlite
+import sqlalchemy.databases.mysql as mysql
 
 db = ansisql.engine()
 #db = create_engine('mssql')
@@ -532,6 +533,34 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
 
         self.runtest(table1.select(table1.c.name=='jack'), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = :mytable_myid AND mytable.name = :mytable_name", params={'myid':'3', 'name':'fred'})
         
+    def testcast(self):
+        tbl = table('casttest',
+                    Column('id', Integer),
+                    Column('v1', Float),
+                    Column('v2', Float),
+                    Column('ts', TIMESTAMP),
+                    )
+        
+        def check_results(engine, expected_results, literal):
+            self.assertEqual(len(expected_results), 5, 'Incorrect number of expected results')
+            self.assertEqual(str(cast(tbl.c.v1, Numeric, engine=engine)), 'CAST(casttest.v1 AS %s)' %expected_results[0])
+            self.assertEqual(str(cast(tbl.c.v1, Numeric(12, 9), engine=engine)), 'CAST(casttest.v1 AS %s)' %expected_results[1])
+            self.assertEqual(str(cast(tbl.c.ts, Date, engine=engine)), 'CAST(casttest.ts AS %s)' %expected_results[2])
+            self.assertEqual(str(cast(1234, TEXT, engine=engine)), 'CAST(%s AS %s)' %(literal, expected_results[3]))
+            self.assertEqual(str(cast('test', String(20), engine=engine)), 'CAST(%s AS %s)' %(literal, expected_results[4]))
+            
+        # first test with Postgres engine
+        check_results(postgres.engine({}), ['NUMERIC(10, 2)', 'NUMERIC(12, 9)', 'DATE', 'TEXT', 'VARCHAR(20)'], '%(literal)s')
+
+        # then the Oracle engine
+        check_results(oracle.engine({}, use_ansi = False), ['NUMERIC(10, 2)', 'NUMERIC(12, 9)', 'DATE', 'CLOB', 'VARCHAR(20)'], ':literal')
+
+        # then the sqlite engine
+        check_results(sqlite.engine({}), ['NUMERIC(10, 2)', 'NUMERIC(12, 9)', 'DATE', 'TEXT', 'VARCHAR(20)'], '?')
+
+        # and the MySQL engine
+        check_results(mysql.engine({}), ['NUMERIC(10, 2)', 'NUMERIC(12, 9)', 'DATE', 'TEXT', 'VARCHAR(20)'], '%s')
+
 class CRUDTest(SQLTest):
     def testinsert(self):
         # generic insert, will create bind params for all columns
