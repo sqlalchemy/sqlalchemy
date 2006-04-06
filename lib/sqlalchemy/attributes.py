@@ -109,8 +109,8 @@ class ScalarAttribute(ManagedAttribute):
     def getattr(self, **kwargs):
         return self.obj.__dict__[self.key]
     def setattr(self, value, **kwargs):
-        if isinstance(value, list):
-            raise InvalidRequestError("assigning a list to scalar property '%s' on '%s' instance %d" % (self.key, self.obj.__class__.__name__, id(self.obj)))
+        #if isinstance(value, list):
+        #    raise InvalidRequestError("assigning a list to scalar property '%s' on '%s' instance %d" % (self.key, self.obj.__class__.__name__, id(self.obj)))
         orig = self.obj.__dict__.get(self.key, None)
         if orig is value:
             return
