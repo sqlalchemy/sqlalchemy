@@ -118,6 +118,9 @@ class Session(object):
         self.uow = unitofwork.UnitOfWork(identity_map = self.uow.identity_map)
         return Session.SessionTrans(self, self.uow, True)
     
+    def engines(self, mapper):
+        return [t.engine for t in mapper.tables]
+        
     def _trans_commit(self, trans):
         if trans.uow is self.uow and trans.isactive:
             try:
@@ -133,7 +136,7 @@ class Session(object):
     def _commit_uow(self, *obj):
         self.was_pushed()
         try:
-            self.uow.commit(*obj)
+            self.uow.flush(self, *obj)
         finally:
             self.was_popped()
                         
@@ -147,7 +150,7 @@ class Session(object):
         # change begin/commit status
         if len(objects):
             self._commit_uow(*objects)
-            self.uow.commit(*objects)
+            self.uow.flush(self, *objects)
             return
         if self.parent_uow is None:
             self._commit_uow()
@@ -283,13 +286,13 @@ def import_instance(instance):
     return get_session().import_instance(instance)
 
 def mapper(*args, **params):
-    return sqlalchemy.mapperlib.mapper(*args, **params)
+    return sqlalchemy.mapping.mapper(*args, **params)
 
 def object_mapper(obj):
-    return sqlalchemy.mapperlib.object_mapper(obj)
+    return sqlalchemy.mapping.object_mapper(obj)
 
 def class_mapper(class_):
-    return sqlalchemy.mapperlib.class_mapper(class_)
+    return sqlalchemy.mapping.class_mapper(class_)
 
 global_attributes = unitofwork.global_attributes
 

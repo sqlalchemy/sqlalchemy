@@ -17,6 +17,7 @@
 <& pydoc.myt:obj_doc, obj=sql, classes=[sql.ClauseParameters, sql.Compiled, sql.ClauseElement, sql.TableClause, sql.ColumnClause] &>
 <& pydoc.myt:obj_doc, obj=pool, classes=[pool.DBProxy, pool.Pool, pool.QueuePool, pool.SingletonThreadPool] &>
 <& pydoc.myt:obj_doc, obj=mapping, classes=[mapping.Mapper, mapping.MapperExtension] &>
+<& pydoc.myt:obj_doc, obj=mapping.query, classes=[mapping.query.Query] &>
 <& pydoc.myt:obj_doc, obj=mapping.objectstore, classes=[mapping.objectstore.Session, mapping.objectstore.Session.SessionTrans] &>
 <& pydoc.myt:obj_doc, obj=exceptions &>
 <& pydoc.myt:obj_doc, obj=proxy &>

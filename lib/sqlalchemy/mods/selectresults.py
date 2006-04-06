@@ -6,25 +6,25 @@ def install_plugin():
     mapping.global_extensions.append(SelectResultsExt)
     
 class SelectResultsExt(mapping.MapperExtension):
-    def select_by(self, mapper, *args, **params):
-        return SelectResults(mapper, mapper._by_clause(*args, **params))
-    def select(self, mapper, arg=None, **kwargs):
+    def select_by(self, query, *args, **params):
+        return SelectResults(query, query._by_clause(*args, **params))
+    def select(self, query, arg=None, **kwargs):
         if arg is not None and isinstance(arg, sql.Selectable):
             return mapping.EXT_PASS
         else:
-            return SelectResults(mapper, arg, ops=kwargs)
+            return SelectResults(query, arg, ops=kwargs)
 
 MapperExtension = SelectResultsExt
         
 class SelectResults(object):
-    def __init__(self, mapper, clause=None, ops={}):
-        self._mapper = mapper
+    def __init__(self, query, clause=None, ops={}):
+        self._query = query
         self._clause = clause
         self._ops = {}
         self._ops.update(ops)
 
     def count(self):
-        return self._mapper.count(self._clause)
+        return self._query.count(self._clause)
     
     def min(self, col):
         return sql.select([sql.func.min(col)], self._clause, **self._ops).scalar()
@@ -39,7 +39,7 @@ class SelectResults(object):
         return sql.select([sql.func.avg(col)], self._clause, **self._ops).scalar()
 
     def clone(self):
-        return SelectResults(self._mapper, self._clause, self._ops.copy())
+        return SelectResults(self._query, self._clause, self._ops.copy())
         
     def filter(self, clause):
         new = self.clone()
@@ -83,4 +83,4 @@ class SelectResults(object):
             return list(self[item:item+1])[0]
     
     def __iter__(self):
-        return iter(self._mapper.select_whereclause(self._clause, **self._ops))
+        return iter(self._query.select_whereclause(self._clause, **self._ops))

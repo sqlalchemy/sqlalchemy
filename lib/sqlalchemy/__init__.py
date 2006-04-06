@@ -9,8 +9,9 @@ from types import *
 from sql import *
 from schema import *
 from exceptions import *
-import mapping as mapperlib
-from mapping import *
+import sqlalchemy.sql
+import sqlalchemy.mapping as mapping
+from sqlalchemy.mapping import *
 import sqlalchemy.schema
 import sqlalchemy.ext.proxy
 sqlalchemy.schema.default_engine = sqlalchemy.ext.proxy.ProxyEngine()

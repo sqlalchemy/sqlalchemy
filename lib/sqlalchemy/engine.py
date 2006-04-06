@@ -817,6 +817,17 @@ class ResultProxy:
                 raise StopIteration
             else:
                 yield row
+     
+    def last_inserted_ids(self):
+        return self.engine.last_inserted_ids()
+    def last_updated_params(self):
+        return self.engine.last_updated_params()
+    def last_inserted_params(self):
+        return self.engine.last_inserted_params()
+    def lastrow_has_defaults(self):
+        return self.engine.lastrow_has_defaults()
+    def supports_sane_rowcount(self):
+        return self.engine.supports_sane_rowcount()
         
     def fetchall(self):
         """fetches all rows, just like DBAPI cursor.fetchall()."""

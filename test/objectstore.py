@@ -172,6 +172,7 @@ class SessionTest(AssertMixin):
 
 class VersioningTest(AssertMixin):
     def setUpAll(self):
+        objectstore.clear()
         global version_table
         version_table = Table('version_test', db,
         Column('id', Integer, primary_key=True),
@@ -226,6 +227,7 @@ class VersioningTest(AssertMixin):
         
 class UnicodeTest(AssertMixin):
     def setUpAll(self):
+        objectstore.clear()
         global uni_table
         uni_table = Table('uni_test', db,
             Column('id',  Integer, primary_key=True),

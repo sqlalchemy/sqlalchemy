@@ -5,13 +5,13 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """the internals for the Unit Of Work system.  includes hooks into the attributes package
-enabling the routing of change events to Unit Of Work objects, as well as the commit mechanism
+enabling the routing of change events to Unit Of Work objects, as well as the flush() mechanism
 which creates a dependency structure that executes change operations.  
 
 a Unit of Work is essentially a system of maintaining a graph of in-memory objects and their
 modified state.  Objects are maintained as unique against their primary key identity using
 an "identity map" pattern.  The Unit of Work then maintains lists of objects that are new, 
-dirty, or deleted and provides the capability to commit all those changes at once.
+dirty, or deleted and provides the capability to flush all those changes at once.
 """
 
 from sqlalchemy import attributes
@@ -23,7 +23,7 @@ import weakref
 import topological
 from sets import *
 
-# a global indicating if all commit() operations should have their plan
+# a global indicating if all flush() operations should have their plan
 # printed to standard output.  also can be affected by creating an engine
 # with the "echo_uow=True" keyword argument.
 LOG = False
@@ -73,7 +73,7 @@ class UOWAttributeManager(attributes.AttributeManager):
         return UOWListElement(obj, key, list_, **kwargs)
         
 class UnitOfWork(object):
-    """main UOW object which stores lists of dirty/new/deleted objects, as well as 'modified_lists' for list attributes.  provides top-level "commit" functionality as well as the transaction boundaries with the SQLEngine(s) involved in a write operation."""
+    """main UOW object which stores lists of dirty/new/deleted objects, as well as 'modified_lists' for list attributes.  provides top-level "flush" functionality as well as the transaction boundaries with the SQLEngine(s) involved in a write operation."""
     def __init__(self, identity_map=None):
         if identity_map is not None:
             self.identity_map = identity_map
@@ -141,7 +141,7 @@ class UnitOfWork(object):
         self.attributes.remove(obj)
 
     def _validate_obj(self, obj):
-        """validates that dirty/delete/commit operations can occur upon the given object, by checking
+        """validates that dirty/delete/flush operations can occur upon the given object, by checking
         if it has an instance key and that the instance key is present in the identity map."""
         if hasattr(obj, '_instance_key') and not self.identity_map.has_key(obj._instance_key):
             raise InvalidRequestError("Detected a mapped object not present in the current thread's Identity Map: '%s'.  Use objectstore.import_instance() to place deserialized instances or instances from other threads" % repr(obj._instance_key))
@@ -203,8 +203,8 @@ class UnitOfWork(object):
         except KeyError:
             pass
             
-    def commit(self, *objects):
-        commit_context = UOWTransaction(self)
+    def flush(self, session, *objects):
+        flush_context = UOWTransaction(self, session)
 
         if len(objects):
             objset = util.HashSet(iter=objects)
@@ -216,29 +216,29 @@ class UnitOfWork(object):
                 continue
             if self.deleted.contains(obj):
                 continue
-            commit_context.register_object(obj)
+            flush_context.register_object(obj)
         for item in self.modified_lists:
             obj = item.obj
             if objset is not None and not objset.contains(obj):
                 continue
             if self.deleted.contains(obj):
                 continue
-            commit_context.register_object(obj, listonly = True)
-            commit_context.register_saved_history(item)
+            flush_context.register_object(obj, listonly = True)
+            flush_context.register_saved_history(item)
 
 #            for o in item.added_items() + item.deleted_items():
 #                if self.deleted.contains(o):
 #                    continue
-#                commit_context.register_object(o, listonly=True)
+#                flush_context.register_object(o, listonly=True)
                      
         for obj in self.deleted:
             if objset is not None and not objset.contains(obj):
                 continue
-            commit_context.register_object(obj, isdelete=True)
+            flush_context.register_object(obj, isdelete=True)
                 
         engines = util.HashSet()
-        for mapper in commit_context.mappers:
-            for e in mapper.engines:
+        for mapper in flush_context.mappers:
+            for e in session.engines(mapper):
                 engines.append(e)
         
         echo_commit = False        
@@ -246,7 +246,7 @@ class UnitOfWork(object):
             echo_commit = echo_commit or e.echo_uow
             e.begin()
         try:
-            commit_context.execute(echo=echo_commit)
+            flush_context.execute(echo=echo_commit)
         except:
             for e in engines:
                 e.rollback()
@@ -254,7 +254,7 @@ class UnitOfWork(object):
         for e in engines:
             e.commit()
             
-        commit_context.post_exec()
+        flush_context.post_exec()
         
 
     def rollback_object(self, obj):
@@ -271,10 +271,10 @@ class UnitOfWork(object):
             
 class UOWTransaction(object):
     """handles the details of organizing and executing transaction tasks 
-    during a UnitOfWork object's commit() operation."""
-    def __init__(self, uow):
+    during a UnitOfWork object's flush() operation."""
+    def __init__(self, uow, session):
         self.uow = uow
-
+        self.session = session
         #  unique list of all the mappers we come across
         self.mappers = util.HashSet()
         self.dependencies = {}
@@ -379,8 +379,8 @@ class UOWTransaction(object):
                 print "\nExecute complete (no post-exec changes)\n"
             
     def post_exec(self):
-        """after an execute/commit is completed, all of the objects and lists that have
-        been committed are updated in the parent UnitOfWork object to mark them as clean."""
+        """after an execute/flush is completed, all of the objects and lists that have
+        been flushed are updated in the parent UnitOfWork object to mark them as clean."""
         
         for task in self.tasks.values():
             for elem in task.objects.values():
@@ -396,7 +396,7 @@ class UOWTransaction(object):
             except KeyError:
                 pass
 
-    # this assertion only applies to a full commit(), not a
+    # this assertion only applies to a full flush(), not a
     # partial one
         #if len(self.uow.new) > 0 or len(self.uow.dirty) >0 or len(self.uow.modified_lists) > 0:
         #    raise "assertion failed"

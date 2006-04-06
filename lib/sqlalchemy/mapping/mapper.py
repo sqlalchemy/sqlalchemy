@@ -7,11 +7,11 @@
 
 import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
-import sqlalchemy.engine as engine
 import sqlalchemy.util as util
 import util as mapperutil
 import sync
 from sqlalchemy.exceptions import *
+import query
 import objectstore
 import sys
 import weakref
@@ -205,10 +205,6 @@ class Mapper(object):
             proplist = self.columntoproperty.setdefault(column.original, [])
             proplist.append(prop)
 
-        self._get_clause = sql.and_()
-        for primary_key in self.pks_by_table[self.table]:
-            self._get_clause.clauses.append(primary_key == sql.bindparam("pk_"+primary_key.key))
-
         if not mapper_registry.has_key(self.class_key) or self.is_primary or (inherits is not None and inherits._is_primary_mapper()):
             objectstore.global_attributes.reset_class_managed(self.class_)
             self._init_class()
@@ -229,9 +225,75 @@ class Mapper(object):
         #print "mapper %s, columntoproperty:" % (self.class_.__name__)
         #for key, value in self.columntoproperty.iteritems():
         #    print key.table.name, key.key, [(v.key, v) for v in value]
-            
-    engines = property(lambda s: [t.engine for t in s.tables])
 
+    def _get_query(self):
+        try:
+            if self._query.mapper is not self:
+                self._query = query.Query(self)
+            return self._query
+        except AttributeError:
+            self._query = query.Query(self)
+            return self._query
+    query = property(_get_query, doc=\
+        """returns an instance of sqlalchemy.mapping.query.Query, which implements all the query-constructing
+        methods such as get(), select(), select_by(), etc.  The default Query object uses the global thread-local
+        Session from the objectstore package.  To get a Query object for a specific Session, call the 
+        using(session) method.""")
+    
+    def get(self, *ident, **kwargs):
+        """calls get() on this mapper's default Query object."""
+        return self.query.get(*ident, **kwargs)
+        
+    def _get(self, key, ident=None, reload=False):
+        return self.query._get(key, ident=ident, reload=reload)
+        
+    def get_by(self, *args, **params):
+        """calls get_by() on this mapper's default Query object."""
+        return self.query.get_by(*args, **params)
+
+    def select_by(self, *args, **params):
+        """calls select_by() on this mapper's default Query object."""
+        return self.query.select_by(*args, **params)
+
+    def selectfirst_by(self, *args, **params):
+        """calls selectfirst_by() on this mapper's default Query object."""
+        return self.query.selectfirst_by(*args, **params)
+
+    def selectone_by(self, *args, **params):
+        """calls selectone_by() on this mapper's default Query object."""
+        return self.query.selectone_by(*args, **params)
+
+    def count_by(self, *args, **params):
+        """calls count_by() on this mapper's default Query object."""
+        return self.query.count_by(*args, **params)
+
+    def selectfirst(self, *args, **params):
+        """calls selectfirst() on this mapper's default Query object."""
+        return self.query.selectfirst(*args, **params)
+
+    def selectone(self, *args, **params):
+        """calls selectone() on this mapper's default Query object."""
+        return self.query.selectone(*args, **params)
+
+    def select(self, arg=None, **kwargs):
+        """calls select() on this mapper's default Query object."""
+        return self.query.select(arg=arg, **kwargs)
+
+    def select_whereclause(self, whereclause=None, params=None, **kwargs):
+        """calls select_whereclause() on this mapper's default Query object."""
+        return self.query.select_whereclause(whereclause=whereclause, params=params, **kwargs)
+
+    def count(self, whereclause=None, params=None, **kwargs):
+        """calls count() on this mapper's default Query object."""
+        return self.query.count(whereclause=whereclause, params=params, **kwargs)
+
+    def select_statement(self, statement, **params):
+        """calls select_statement() on this mapper's default Query object."""
+        return self.query.select_statement(statement, **params)
+
+    def select_text(self, text, **params):
+        return self.query.select_text(text, **params)
+            
     def add_property(self, key, prop):
         """adds an additional property to this mapper.  this is the same as if it were 
         specified within the 'properties' argument to the constructor.  if the named
@@ -293,12 +355,18 @@ class Mapper(object):
         mapper_registry[self.class_key] = self
         if self.entity_name is None:
             self.class_.c = self.c
+    
+    def has_eager(self):
+        """returns True if one of the properties attached to this Mapper is eager loading"""
+        return getattr(self, '_has_eager', False)
         
     def set_property(self, key, prop):
         self.props[key] = prop
         prop.init(key, self)
     
     def instances(self, cursor, *mappers, **kwargs):
+        """given a cursor (ResultProxy) from an SQLEngine, returns a list of object instances
+        corresponding to the rows in the cursor."""
         limit = kwargs.get('limit', None)
         offset = kwargs.get('offset', None)
         session = kwargs.get('session', None)
@@ -330,37 +398,6 @@ class Mapper(object):
         if mappers:
             result = [result] + otherresults
         return result
-            
-    def get(self, *ident, **kwargs):
-        """returns an instance of the object based on the given identifier, or None
-        if not found.  The *ident argument is a 
-        list of primary key columns in the order of the table def's primary key columns."""
-        key = objectstore.get_id_key(ident, self.class_, self.entity_name)
-        #print "key: " + repr(key) + " ident: " + repr(ident)
-        return self._get(key, ident, **kwargs)
-        
-    def _get(self, key, ident=None, reload=False, session=None):
-        if not reload and not self.always_refresh:
-            try:
-                if session is None:
-                    session = objectstore.get_session()
-                return session._get(key)
-            except KeyError:
-                pass
-            
-        if ident is None:
-            ident = key[1]
-        i = 0
-        params = {}
-        for primary_key in self.pks_by_table[self.table]:
-            params["pk_"+primary_key.key] = ident[i]
-            i += 1
-        try:
-            statement = self._compile(self._get_clause)
-            return self._select_statement(statement, params=params, populate_existing=reload, session=session)[0]
-        except IndexError:
-            return None
-
         
     def identity_key(self, *primary_key):
         """returns the instance key for the given identity value.  this is a global tracking object used by the objectstore, and is usually available off a mapped object as instance._instance_key."""
@@ -377,7 +414,7 @@ class Mapper(object):
     def compile(self, whereclause = None, **options):
         """works like select, except returns the SQL statement object without 
         compiling or executing it"""
-        return self._compile(whereclause, **options)
+        return self.query._compile(whereclause, **options)
 
     def copy(self, **kwargs):
         mapper = Mapper.__new__(Mapper)
@@ -387,22 +424,11 @@ class Mapper(object):
         return mapper
     
     def using(self, session):
-        """returns a proxying object to this mapper, which will execute methods on the mapper
-        within the context of the given session.  The session is placed as the "current" session
-        via the push_session/pop_session methods in the objectstore module."""
+        """returns a new Query object with the given Session."""
         if objectstore.get_session() is session:
-            return self
-        mapper = self
-        class Proxy(object):
-            def __getattr__(self, key):
-                def callit(*args, **kwargs):
-                    objectstore.push_session(session)
-                    try:
-                        return getattr(mapper, key)(*args, **kwargs)
-                    finally:
-                        objectstore.pop_session()
-                return callit
-        return Proxy()
+            return self.query
+        else:
+            return query.Query(self, session=session)
 
     def options(self, *options, **kwargs):
         """uses this mapper as a prototype for a new mapper with different behavior.
@@ -418,169 +444,12 @@ class Mapper(object):
             self._options[optkey] = mapper
             return mapper
 
-    def get_by(self, *args, **params):
-        """returns a single object instance based on the given key/value criterion. 
-        this is either the first value in the result list, or None if the list is 
-        empty.
-        
-        the keys are mapped to property or column names mapped by this mapper's Table, and the values
-        are coerced into a WHERE clause separated by AND operators.  If the local property/column
-        names dont contain the key, a search will be performed against this mapper's immediate
-        list of relations as well, forming the appropriate join conditions if a matching property
-        is located.
-        
-        e.g.   u = usermapper.get_by(user_name = 'fred')
-        """
-        x = self.select_whereclause(self._by_clause(*args, **params), limit=1)
-        if x:
-            return x[0]
-        else:
-            return None
-            
-    def select_by(self, *args, **params):
-        """returns an array of object instances based on the given clauses and key/value criterion. 
-        
-        *args is a list of zero or more ClauseElements which will be connected by AND operators.
-        **params is a set of zero or more key/value parameters which are converted into ClauseElements.
-        the keys are mapped to property or column names mapped by this mapper's Table, and the values
-        are coerced into a WHERE clause separated by AND operators.  If the local property/column
-        names dont contain the key, a search will be performed against this mapper's immediate
-        list of relations as well, forming the appropriate join conditions if a matching property
-        is located.
-        
-        e.g.   result = usermapper.select_by(user_name = 'fred')
-        """
-        ret = self.extension.select_by(self, *args, **params)
-        if ret is not EXT_PASS:
-            return ret
-        return self.select_whereclause(self._by_clause(*args, **params))
-    
-    def selectfirst_by(self, *args, **params):
-        """works like select_by(), but only returns the first result by itself, or None if no 
-        objects returned.  Synonymous with get_by()"""
-        return self.get_by(*args, **params)
-
-    def selectone_by(self, *args, **params):
-        """works like selectfirst_by(), but throws an error if not exactly one result was returned."""
-        ret = mapper.select_whereclause(self._by_clause(*args, **params), limit=2)
-        if len(ret) == 1:
-            return ret[0]
-        raise InvalidRequestError('Multiple rows returned for selectone_by')
-
-    def count_by(self, *args, **params):
-        """returns the count of instances based on the given clauses and key/value criterion.
-        The criterion is constructed in the same way as the select_by() method."""
-        return self.count(self._by_clause(*args, **params))
-        
-    def _by_clause(self, *args, **params):
-        clause = None
-        for arg in args:
-            if clause is None:
-                clause = arg
-            else:
-                clause &= arg
-        for key, value in params.iteritems():
-            if value is False:
-                continue
-            c = self._get_criterion(key, value)
-            if c is None:
-                raise InvalidRequestError("Cant find criterion for property '"+ key + "'")
-            if clause is None:
-                clause = c
-            else:                
-                clause &= c
-        return clause
-
-    def _get_criterion(self, key, value):
-        """used by select_by to match a key/value pair against
-        local properties, column names, or a matching property in this mapper's
-        list of relations."""
-        if self.props.has_key(key):
-            return self.props[key].columns[0] == value
-        elif self.table.c.has_key(key):
-            return self.table.c[key] == value
-        else:
-            for prop in self.props.values():
-                c = prop.get_criterion(key, value)
-                if c is not None:
-                    return c
-            else:
-                return None
-
     def __getattr__(self, key):
-        if (key.startswith('select_by_')):
-            key = key[10:]
-            def foo(arg):
-                return self.select_by(**{key:arg})
-            return foo
-        elif (key.startswith('get_by_')):
-            key = key[7:]
-            def foo(arg):
-                return self.get_by(**{key:arg})
-            return foo
+        if (key.startswith('select_by_') or key.startswith('get_by_')):
+            return getattr(self.query, key)
         else:
             raise AttributeError(key)
-        
-    def selectfirst(self, *args, **params):
-        """works like select(), but only returns the first result by itself, or None if no 
-        objects returned."""
-        params['limit'] = 1
-        ret = self.select_whereclause(*args, **params)
-        if ret:
-            return ret[0]
-        else:
-            return None
             
-    def selectone(self, *args, **params):
-        """works like selectfirst(), but throws an error if not exactly one result was returned."""
-        ret = list(self.select(*args, **params)[0:2])
-        if len(ret) == 1:
-            return ret[0]
-        raise InvalidRequestError('Multiple rows returned for selectone')
-            
-    def select(self, arg=None, **kwargs):
-        """selects instances of the object from the database.  
-        
-        arg can be any ClauseElement, which will form the criterion with which to
-        load the objects.
-        
-        For more advanced usage, arg can also be a Select statement object, which
-        will be executed and its resulting rowset used to build new object instances.  
-        in this case, the developer must insure that an adequate set of columns exists in the 
-        rowset with which to build new object instances."""
-
-        ret = self.extension.select(self, arg=arg, **kwargs)
-        if ret is not EXT_PASS:
-            return ret
-        elif arg is not None and isinstance(arg, sql.Selectable):
-            return self.select_statement(arg, **kwargs)
-        else:
-            return self.select_whereclause(whereclause=arg, **kwargs)
-
-    def select_whereclause(self, whereclause=None, params=None, session=None, **kwargs):
-        statement = self._compile(whereclause, **kwargs)
-        return self._select_statement(statement, params=params, session=session)
-
-    def count(self, whereclause=None, params=None, **kwargs):
-        s = self.table.count(whereclause)
-        if params is not None:
-            return s.scalar(**params)
-        else:
-            return s.scalar()
-
-    def select_statement(self, statement, **params):
-        return self._select_statement(statement, params=params)
-
-    def select_text(self, text, **params):
-        t = sql.text(text, engine=self.primarytable.engine)
-        return self.instances(t.execute(**params))
-
-    def _select_statement(self, statement, params=None, **kwargs):
-        statement.use_labels = True
-        if params is None:
-            params = {}
-        return self.instances(statement.execute(**params), **kwargs)
-
     def _getpropbycolumn(self, column, raiseerror=True):
         try:
             prop = self.columntoproperty[column.original]
@@ -604,7 +473,6 @@ class Mapper(object):
 
     def _setattrbycolumn(self, obj, column, value):
         self.columntoproperty[column.original][0].setattr(obj, value)
-
         
     def save_obj(self, objects, uow, postupdate=False):
         """called by a UnitOfWork object to save objects, which involves either an INSERT or
@@ -714,17 +582,17 @@ class Mapper(object):
                 for rec in update:
                     (obj, params) = rec
                     c = statement.execute(params)
-                    self._postfetch(table, obj, table.engine.last_updated_params())
+                    self._postfetch(table, obj, c, c.last_updated_params())
                     self.extension.after_update(self, obj)
                     rows += c.cursor.rowcount
-                if table.engine.supports_sane_rowcount() and rows != len(update):
+                if c.supports_sane_rowcount() and rows != len(update):
                     raise CommitError("ConcurrencyError - updated rowcount %d does not match number of objects updated %d" % (rows, len(update)))
             if len(insert):
                 statement = table.insert()
                 for rec in insert:
                     (obj, params) = rec
-                    statement.execute(**params)
-                    primary_key = table.engine.last_inserted_ids()
+                    c = statement.execute(**params)
+                    primary_key = c.last_inserted_ids()
                     if primary_key is not None:
                         i = 0
                         for col in self.pks_by_table[table]:
@@ -732,16 +600,16 @@ class Mapper(object):
                             if self._getattrbycolumn(obj, col) is None:
                                 self._setattrbycolumn(obj, col, primary_key[i])
                             i+=1
-                    self._postfetch(table, obj, table.engine.last_inserted_params())
+                    self._postfetch(table, obj, c, c.last_inserted_params())
                     if self._synchronizer is not None:
                         self._synchronizer.execute(obj, obj)
                     self.extension.after_insert(self, obj)
 
-    def _postfetch(self, table, obj, params):
-        """after an INSERT or UPDATE, asks the engine if PassiveDefaults fired off on the database side
+    def _postfetch(self, table, obj, resultproxy, params):
+        """after an INSERT or UPDATE, asks the returned result if PassiveDefaults fired off on the database side
         which need to be post-fetched, *or* if pre-exec defaults like ColumnDefaults were fired off
         and should be populated into the instance. this is only for non-primary key columns."""
-        if table.engine.lastrow_has_defaults():
+        if resultproxy.lastrow_has_defaults():
             clause = sql.and_()
             for p in self.pks_by_table[table]:
                 clause.clauses.append(p == self._getattrbycolumn(obj, p))
@@ -785,7 +653,7 @@ class Mapper(object):
                     clause.clauses.append(self.version_id_col == sql.bindparam(self.version_id_col.key))
                 statement = table.delete(clause)
                 c = statement.execute(*delete)
-                if table.engine.supports_sane_rowcount() and c.rowcount != len(delete):
+                if c.supports_sane_rowcount() and c.rowcount != len(delete):
                     raise CommitError("ConcurrencyError - updated rowcount %d does not match number of objects updated %d" % (c.cursor.rowcount, len(delete)))
 
     def _has_pks(self, table):
@@ -811,52 +679,6 @@ class Mapper(object):
         for prop in self.props.values():
             prop.register_deleted(obj, uow)
     
-    def _should_nest(self, **kwargs):
-        """returns True if the given statement options indicate that we should "nest" the
-        generated query as a subquery inside of a larger eager-loading query.  this is used
-        with keywords like distinct, limit and offset and the mapper defines eager loads."""
-        return (
-            getattr(self, '_has_eager', False)
-            and (kwargs.has_key('limit') or kwargs.has_key('offset') or kwargs.get('distinct', False))
-        )
-        
-    def _compile(self, whereclause = None, **kwargs):
-        order_by = kwargs.pop('order_by', False)
-        if order_by is False:
-            order_by = self.order_by
-        if order_by is False:
-            if self.table.default_order_by() is not None:
-                order_by = self.table.default_order_by()
-
-        if self._should_nest(**kwargs):
-            s2 = sql.select(self.table.primary_key, whereclause, use_labels=True, from_obj=[self.table], **kwargs)
-#            raise "ok first thing", str(s2)
-            if not kwargs.get('distinct', False) and order_by:
-                s2.order_by(*util.to_list(order_by))
-            s3 = s2.alias('rowcount')
-            crit = []
-            for i in range(0, len(self.table.primary_key)):
-                crit.append(s3.primary_key[i] == self.table.primary_key[i])
-            statement = sql.select([], sql.and_(*crit), from_obj=[self.table], use_labels=True)
- #           raise "OK statement", str(statement)
-            if order_by:
-                statement.order_by(*util.to_list(order_by))
-        else:
-            statement = sql.select([], whereclause, from_obj=[self.table], use_labels=True, **kwargs)
-            if order_by:
-                statement.order_by(*util.to_list(order_by))
-            # for a DISTINCT query, you need the columns explicitly specified in order
-            # to use it in "order_by".  insure they are in the column criterion (particularly oid).
-            # TODO: this should be done at the SQL level not the mapper level
-            if kwargs.get('distinct', False) and order_by:
-                statement.append_column(*util.to_list(order_by))
-        # plugin point
-        
-            
-        # give all the attached properties a chance to modify the query
-        for key, value in self.props.iteritems():
-            value.setup(key, statement, **kwargs) 
-        return statement
         
     def _identity_key(self, row):
         return objectstore.get_row_key(row, self.class_, self.pks_by_table[self.table], self.entity_name)
@@ -1003,16 +825,18 @@ class MapperExtension(object):
     def chain(self, ext):
         self.next = ext
         return self    
-    def select_by(self, mapper, *args, **kwargs):
+    def select_by(self, query, *args, **kwargs):
+        """overrides the select_by method of the Query object"""
         if self.next is None:
             return EXT_PASS
         else:
-            return self.next.select_by(mapper, *args, **kwargs)
-    def select(self, mapper, *args, **kwargs):
+            return self.next.select_by(query, *args, **kwargs)
+    def select(self, query, *args, **kwargs):
+        """overrides the select method of the Query object"""
         if self.next is None:
             return EXT_PASS
         else:
-            return self.next.select(mapper, *args, **kwargs)
+            return self.next.select(query, *args, **kwargs)
     def create_instance(self, mapper, row, imap, class_):
         """called when a new object instance is about to be created from a row.  
         the method can choose to create the instance itself, or it can return 
