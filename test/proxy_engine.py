@@ -194,7 +194,7 @@ class ProxyEngineTest2(PersistTest):
                 return 'a'
             
             def type_descriptor(self, typeobj):
-                if typeobj == types.Integer:
+                if isinstance(typeobj, types.Integer):
                     return TypeEngineX2()
                 else:
                     return TypeEngineSTR()
@@ -224,16 +224,16 @@ class ProxyEngineTest2(PersistTest):
         engine = ProxyEngine()
         engine.storage.engine = EngineA()
 
-        a = engine.type_descriptor(sqltypes.Integer)
+        a = sqltypes.Integer().engine_impl(engine)
         assert a.convert_bind_param(12, engine) == 24
         assert a.convert_bind_param([1,2,3], engine) == [1, 2, 3, 1, 2, 3]
 
-        a2 = engine.type_descriptor(sqltypes.String)
+        a2 = sqltypes.String().engine_impl(engine)
         assert a2.convert_bind_param(12, engine) == "'12'"
         assert a2.convert_bind_param([1,2,3], engine) == "'[1, 2, 3]'"
         
         engine.storage.engine = EngineB()
-        b = engine.type_descriptor(sqltypes.Integer)
+        b = sqltypes.Integer().engine_impl(engine)
         assert b.convert_bind_param(12, engine) == 'monkey'
         assert b.convert_bind_param([1,2,3], engine) == 'monkey'
         

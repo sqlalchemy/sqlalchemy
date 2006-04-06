@@ -241,7 +241,7 @@ class SQLiteCompiler(ansisql.ANSICompiler):
         
 class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, override_pk=False, **kwargs):
-        colspec = column.name + " " + column.type.get_col_spec()
+        colspec = column.name + " " + column.type.engine_impl(self.engine).get_col_spec()
         default = self.get_column_default_string(column)
         if default is not None:
             colspec += " DEFAULT " + default

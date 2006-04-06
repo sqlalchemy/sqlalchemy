@@ -460,7 +460,7 @@ class MSSQLCompiler(ansisql.ANSICompiler):
         
 class MSSQLSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, override_pk=False, first_pk=False):
-        colspec = column.name + " " + column.type.get_col_spec()
+        colspec = column.name + " " + column.type.engine_impl(self.engine).get_col_spec()
 
         # install a IDENTITY Sequence if we have an implicit IDENTITY column
         if column.primary_key and isinstance(column.type, types.Integer):

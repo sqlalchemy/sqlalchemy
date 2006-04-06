@@ -319,7 +319,7 @@ class SQLEngine(schema.SchemaEngine):
             self.positional = True
         else:
             raise DBAPIError("Unsupported paramstyle '%s'" % self._paramstyle)
-        
+    
     def type_descriptor(self, typeobj):
         """provides a database-specific TypeEngine object, given the generic object
         which comes from the types module.  Subclasses will usually use the adapt_type()
@@ -808,7 +808,7 @@ class ResultProxy:
             rec = self.props[key.lower()]
         else:
             rec = self.props[key]
-        return rec[0].convert_result_value(row[rec[1]], self.engine)
+        return rec[0].engine_impl(self.engine).convert_result_value(row[rec[1]], self.engine)
     
     def __iter__(self):
         while True:

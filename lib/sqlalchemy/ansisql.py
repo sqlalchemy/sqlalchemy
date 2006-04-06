@@ -189,7 +189,10 @@ class ANSICompiler(sql.Compiled):
 
     def visit_index(self, index):
         self.strings[index] = index.name
-        
+    
+    def visit_typeclause(self, typeclause):
+        self.strings[typeclause] = typeclause.type.engine_impl(self.engine).get_col_spec()
+            
     def visit_textclause(self, textclause):
         if textclause.parens and len(textclause.text):
             self.strings[textclause] = "(" + textclause.text + ")"

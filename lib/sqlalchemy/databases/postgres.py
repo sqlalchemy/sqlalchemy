@@ -305,7 +305,7 @@ class PGSchemaGenerator(ansisql.ANSISchemaGenerator):
         if column.primary_key and isinstance(column.type, types.Integer) and (column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional)):
             colspec += " SERIAL"
         else:
-            colspec += " " + column.type.get_col_spec()
+            colspec += " " + column.type.engine_impl(self.engine).get_col_spec()
             default = self.get_column_default_string(column)
             if default is not None:
                 colspec += " DEFAULT " + default

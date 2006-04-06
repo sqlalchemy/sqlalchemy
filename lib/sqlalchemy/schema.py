@@ -163,7 +163,6 @@ class Table(sql.TableClause, SchemaItem):
         if column.primary_key:
             self.primary_key.append(column)
         column.table = self
-        column.type = self.engine.type_descriptor(column.type)
 
     def append_index(self, index):
         self.indexes[index.name] = index

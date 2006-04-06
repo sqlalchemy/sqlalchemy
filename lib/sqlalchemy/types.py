@@ -16,11 +16,22 @@ try:
     import cPickle as pickle
 except:
     import pickle
-    
+
 class TypeEngine(object):
-    basetypes = []
     def __init__(self, *args, **kwargs):
         pass
+    def _get_impl_dict(self):
+        try:
+            return self._impl_dict
+        except AttributeError:
+            self._impl_dict = {}
+            return self._impl_dict
+    impl_dict = property(_get_impl_dict)
+    def engine_impl(self, engine):
+        try:
+            return self.impl_dict[engine]
+        except:
+            return self.impl_dict.setdefault(engine, engine.type_descriptor(self))
     def _get_impl(self):
         if hasattr(self, '_impl'):
             return self._impl
@@ -41,7 +52,14 @@ class TypeEngine(object):
         return {}
     def adapt_args(self):
         return self
-            
+
+def to_instance(typeobj):
+    if typeobj is None:
+        return NULLTYPE
+    elif isinstance(typeobj, type):
+        return typeobj()
+    else:
+        return typeobj
 def adapt_type(typeobj, colspecs):
     if isinstance(typeobj, type):
         typeobj = typeobj()

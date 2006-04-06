@@ -263,7 +263,7 @@ class MySQLCompiler(ansisql.ANSICompiler):
         
 class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, override_pk=False, first_pk=False):
-        colspec = column.name + " " + column.type.get_col_spec()
+        colspec = column.name + " " + column.type.engine_impl(self.engine).get_col_spec()
         default = self.get_column_default_string(column)
         if default is not None:
             colspec += " DEFAULT " + default

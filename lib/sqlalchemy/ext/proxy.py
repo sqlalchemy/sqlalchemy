@@ -36,11 +36,6 @@ class BaseProxyEngine(schema.SchemaEngine):
             return None
         return e.oid_column_name()    
         
-    def type_descriptor(self, typeobj):
-        """Proxy point: return a ProxyTypeEngine 
-        """
-        return ProxyTypeEngine(self, typeobj)
-
     def __getattr__(self, attr):
         # call get_engine() to give subclasses a chance to change
         # connection establishment behavior
@@ -116,37 +111,3 @@ class ProxyEngine(BaseProxyEngine):
         self.storage.engine = engine
         
 
-class ProxyType(object):
-    """ProxyType base class; used by ProxyTypeEngine to construct proxying
-    types    
-    """
-    def __init__(self, engine, typeobj):
-        self._engine = engine
-        self.typeobj = typeobj
-
-    def __getattribute__(self, attr):
-        if attr.startswith('__') and attr.endswith('__'):
-            return object.__getattribute__(self, attr)
-        
-        engine = object.__getattribute__(self, '_engine').engine
-        typeobj = object.__getattribute__(self, 'typeobj')        
-        return getattr(engine.type_descriptor(typeobj), attr)
-
-    def __repr__(self):
-        return '<Proxy %s>' % (object.__getattribute__(self, 'typeobj'))
-    
-class ProxyTypeEngine(object):
-    """Proxy type engine; creates dynamic proxy type subclass that is instance
-    of actual type, but proxies engine-dependant operations through the proxy
-    engine.    
-    """
-    def __new__(cls, engine, typeobj):
-        """Create a new subclass of ProxyType and typeobj
-        so that internal isinstance() calls will get the expected result.
-        """
-        if isinstance(typeobj, type):
-            typeclass = typeobj
-        else:
-            typeclass = typeobj.__class__
-        typed = type('ProxyTypeHelper', (ProxyType, typeclass), {})
-        return typed(engine, typeobj)    
