@@ -124,6 +124,13 @@ class MapperTest(MapperSuperTest):
             objectstore.refresh(u)
         self.assert_sql_count(db, go, 1)
 
+    def testsessionpropigation(self):
+        sess = objectstore.Session()
+        m = mapper(User, users, properties={'addresses':relation(mapper(Address, addresses), lazy=True)})
+        u = m.get(7, session=sess)
+        assert objectstore.get_session(u) is sess
+        assert objectstore.get_session(u.addresses[0]) is sess
+        
     def testexpire(self):
         m = mapper(User, users, properties={'addresses':relation(mapper(Address, addresses), lazy=False)})
         u = m.get(7)

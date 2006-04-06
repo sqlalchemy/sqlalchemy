@@ -46,7 +46,7 @@ class ColumnProperty(MapperProperty):
         if parent._is_primary_mapper():
             #print "regiser col on class %s key %s" % (parent.class_.__name__, key)
             objectstore.uow().register_attribute(parent.class_, key, uselist = False)
-    def execute(self, instance, row, identitykey, imap, isnew):
+    def execute(self, session, instance, row, identitykey, imap, isnew):
         if isnew:
             #print "POPULATING OBJ", instance.__class__.__name__, "COL", self.columns[0]._label, "WITH DATA", row[self.columns[0]], "ROW IS A", row.__class__.__name__, "COL ID", id(self.columns[0])
             instance.__dict__[self.key] = row[self.columns[0]]
@@ -95,7 +95,7 @@ class DeferredColumnProperty(ColumnProperty):
         return lazyload
     def setup(self, key, statement, **options):
         pass
-    def execute(self, instance, row, identitykey, imap, isnew):
+    def execute(self, session, instance, row, identitykey, imap, isnew):
         if isnew:
             if not self.is_primary():
                 objectstore.global_attributes.create_history(instance, self.key, False, callable_=self.setup_loader(instance))
@@ -533,7 +533,7 @@ class PropertyLoader(MapperProperty):
                             self._synchronize(obj, child, None, True)
                             uowcommit.register_object(child, isdelete=self.private)
 
-    def execute(self, instance, row, identitykey, imap, isnew):
+    def execute(self, session, instance, row, identitykey, imap, isnew):
         if self.is_primary():
             return
         #print "PLAIN PROPLOADER EXEC NON-PRIAMRY", repr(id(self)), repr(self.mapper.class_), self.key
@@ -595,6 +595,7 @@ class LazyLoader(PropertyLoader):
         def lazyload():
             params = {}
             allparams = True
+            session = objectstore.get_session(instance)
             #print "setting up loader, lazywhere", str(self.lazywhere)
             for col, bind in self.lazybinds.iteritems():
                 params[bind.key] = self.parent._getattrbycolumn(instance, col)
@@ -608,14 +609,14 @@ class LazyLoader(PropertyLoader):
                     ident = []
                     for primary_key in self.mapper.pks_by_table[self.mapper.table]:
                         ident.append(params[primary_key._label])
-                    return self.mapper.get(*ident)
+                    return self.mapper.get(session=session, *ident)
                 elif self.order_by is not False:
                     order_by = self.order_by
                 elif self.secondary is not None and self.secondary.default_order_by() is not None:
                     order_by = self.secondary.default_order_by()
                 else:
                     order_by = False
-                result = self.mapper.select_whereclause(self.lazywhere, order_by=order_by, params=params)
+                result = self.mapper.select_whereclause(self.lazywhere, order_by=order_by, params=params, session=session)
             else:
                 result = []
             if self.uselist:
@@ -627,7 +628,7 @@ class LazyLoader(PropertyLoader):
                     return None
         return lazyload
         
-    def execute(self, instance, row, identitykey, imap, isnew):
+    def execute(self, session, instance, row, identitykey, imap, isnew):
         if isnew:
             # new object instance being loaded from a result row
             if not self.is_primary():
@@ -780,7 +781,7 @@ class EagerLoader(PropertyLoader):
             value.setup(key, statement, eagertable=self.eagertarget)
             
         
-    def execute(self, instance, row, identitykey, imap, isnew):
+    def execute(self, session, instance, row, identitykey, imap, isnew):
         """receive a row.  tell our mapper to look for a new object instance in the row, and attach
         it to a list on the parent instance."""
         
@@ -791,11 +792,11 @@ class EagerLoader(PropertyLoader):
             
         if not self.uselist:
             if isnew:
-                h.setattr_clean(self._instance(row, imap))
+                h.setattr_clean(self._instance(session, row, imap))
             else:
                 # call _instance on the row, even though the object has been created,
                 # so that we further descend into properties
-                self._instance(row, imap)
+                self._instance(session, row, imap)
                 
             return
         elif isnew:
@@ -803,7 +804,7 @@ class EagerLoader(PropertyLoader):
         else:
             result_list = getattr(instance, self.key)
     
-        self._instance(row, imap, result_list)
+        self._instance(session, row, imap, result_list)
 
     def _create_decorator_row(self):
         class DecoratorDict(object):
@@ -823,7 +824,7 @@ class EagerLoader(PropertyLoader):
             map[parent.name] = c
         return DecoratorDict
         
-    def _instance(self, row, imap, result_list=None):
+    def _instance(self, session, row, imap, result_list=None):
         """gets an instance from a row, via this EagerLoader's mapper."""
         # since the EagerLoader makes an Alias of its mapper's table,
         # we translate the actual result columns back to what they 
@@ -833,7 +834,7 @@ class EagerLoader(PropertyLoader):
         # (which is what mappers use) as well as its "label" (which might be what
         # user-defined code is using)
         row = self._row_decorator(row)
-        return self.mapper._instance(row, imap, result_list)
+        return self.mapper._instance(session, row, imap, result_list)
 
 class GenericOption(MapperOption):
     """a mapper option that can handle dotted property names,

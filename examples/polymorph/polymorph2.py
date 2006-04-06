@@ -86,12 +86,12 @@ class PersonLoader(MapperExtension):
         else:
             return Person()
             
-    def populate_instance(self, mapper, instance, row, identitykey, imap, isnew):
+    def populate_instance(self, mapper, session, instance, row, identitykey, imap, isnew):
         if row[person_join.c.type] =='engineer':
-            Engineer.mapper.populate_instance(instance, row, identitykey, imap, isnew, frommapper=mapper)
+            Engineer.mapper.populate_instance(session, instance, row, identitykey, imap, isnew, frommapper=mapper)
             return False
         elif row[person_join.c.type] =='manager':
-            Manager.mapper.populate_instance(instance, row, identitykey, imap, isnew, frommapper=mapper)
+            Manager.mapper.populate_instance(session, instance, row, identitykey, imap, isnew, frommapper=mapper)
             return False
         else:
             return sqlalchemy.mapping.EXT_PASS

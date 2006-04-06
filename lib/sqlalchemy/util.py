@@ -294,6 +294,8 @@ class HistoryArraySet(UserList.UserList):
         else:
             self.data = []
         self.readonly=readonly
+#    def __iter__(self):
+#        return iter([k for k in self.records if self.records[k] is not False])
     def __getattr__(self, attr):
         """proxies unknown HistoryArraySet methods and attributes to the underlying
         data array.  this allows custom list classes to be used."""

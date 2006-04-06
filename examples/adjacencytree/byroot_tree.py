@@ -45,6 +45,7 @@ class NodeList(util.OrderedDict):
     def __iter__(self):
         return iter(self.values())
 
+
 class TreeNode(object):
     """a hierarchical Tree class, which adds the concept of a "root node".  The root is 
     the topmost node in a tree, or in other words a node whose parent ID is NULL.  

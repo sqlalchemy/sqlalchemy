@@ -301,6 +301,9 @@ class Mapper(object):
     def instances(self, cursor, *mappers, **kwargs):
         limit = kwargs.get('limit', None)
         offset = kwargs.get('offset', None)
+        session = kwargs.get('session', None)
+        if session is None:
+            session = objectstore.get_session()
         populate_existing = kwargs.get('populate_existing', False)
         
         result = util.HistoryArraySet()
@@ -314,32 +317,34 @@ class Mapper(object):
             row = cursor.fetchone()
             if row is None:
                 break
-            self._instance(row, imap, result, populate_existing=populate_existing)
+            self._instance(session, row, imap, result, populate_existing=populate_existing)
             i = 0
             for m in mappers:
-                m._instance(row, imap, otherresults[i])
+                m._instance(session, row, imap, otherresults[i])
                 i+=1
                 
         # store new stuff in the identity map
         for value in imap.values():
-            objectstore.get_session().register_clean(value)
+            session.register_clean(value)
 
         if mappers:
             result = [result] + otherresults
         return result
             
-    def get(self, *ident):
+    def get(self, *ident, **kwargs):
         """returns an instance of the object based on the given identifier, or None
         if not found.  The *ident argument is a 
         list of primary key columns in the order of the table def's primary key columns."""
         key = objectstore.get_id_key(ident, self.class_, self.entity_name)
         #print "key: " + repr(key) + " ident: " + repr(ident)
-        return self._get(key, ident)
+        return self._get(key, ident, **kwargs)
         
-    def _get(self, key, ident=None, reload=False):
+    def _get(self, key, ident=None, reload=False, session=None):
         if not reload and not self.always_refresh:
             try:
-                return objectstore.get_session()._get(key)
+                if session is None:
+                    session = objectstore.get_session()
+                return session._get(key)
             except KeyError:
                 pass
             
@@ -352,7 +357,7 @@ class Mapper(object):
             i += 1
         try:
             statement = self._compile(self._get_clause)
-            return self._select_statement(statement, params=params, populate_existing=reload)[0]
+            return self._select_statement(statement, params=params, populate_existing=reload, session=session)[0]
         except IndexError:
             return None
 
@@ -552,9 +557,9 @@ class Mapper(object):
         else:
             return self.select_whereclause(whereclause=arg, **kwargs)
 
-    def select_whereclause(self, whereclause=None, params=None, **kwargs):
+    def select_whereclause(self, whereclause=None, params=None, session=None, **kwargs):
         statement = self._compile(whereclause, **kwargs)
-        return self._select_statement(statement, params=params)
+        return self._select_statement(statement, params=params, session=session)
 
     def count(self, whereclause=None, params=None, **kwargs):
         s = self.table.count(whereclause)
@@ -856,7 +861,7 @@ class Mapper(object):
     def _identity_key(self, row):
         return objectstore.get_row_key(row, self.class_, self.pks_by_table[self.table], self.entity_name)
 
-    def _instance(self, row, imap, result = None, populate_existing = False):
+    def _instance(self, session, row, imap, result = None, populate_existing = False):
         """pulls an object instance from the given row and appends it to the given result
         list. if the instance already exists in the given identity map, its not added.  in
         either case, executes all the property loaders on the instance to also process extra
@@ -865,18 +870,20 @@ class Mapper(object):
         # including modifying any of its related items lists, as its already
         # been exposed to being modified by the application.
         
+        if session is None:
+            session = objectstore.get_session()
+            
         populate_existing = populate_existing or self.always_refresh
         identitykey = self._identity_key(row)
-        sess = objectstore.get_session()
-        if sess.has_key(identitykey):
-            instance = sess._get(identitykey)
+        if session.has_key(identitykey):
+            instance = session._get(identitykey)
 
             isnew = False
-            if populate_existing or sess.is_expired(instance, unexpire=True):
+            if populate_existing or session.is_expired(instance, unexpire=True):
                 if not imap.has_key(identitykey):
                     imap[identitykey] = instance
                 for prop in self.props.values():
-                    prop.execute(instance, row, identitykey, imap, True)
+                    prop.execute(session, instance, row, identitykey, imap, True)
             if self.extension.append_result(self, row, imap, result, instance, isnew, populate_existing=populate_existing) is EXT_PASS:
                 if result is not None:
                     result.append_nohistory(instance)
@@ -893,7 +900,7 @@ class Mapper(object):
             # plugin point
             instance = self.extension.create_instance(self, row, imap, self.class_)
             if instance is EXT_PASS:
-                instance = self.class_(_mapper_nohistory=True, _sa_entity_name=self.entity_name)
+                instance = self.class_(_mapper_nohistory=True, _sa_entity_name=self.entity_name, _sa_session=session)
             imap[identitykey] = instance
             isnew = True
         else:
@@ -904,8 +911,8 @@ class Mapper(object):
         
         # call further mapper properties on the row, to pull further 
         # instances from the row and possibly populate this item.
-        if self.extension.populate_instance(self, instance, row, identitykey, imap, isnew) is EXT_PASS:
-            self.populate_instance(instance, row, identitykey, imap, isnew)
+        if self.extension.populate_instance(self, session, instance, row, identitykey, imap, isnew) is EXT_PASS:
+            self.populate_instance(session, instance, row, identitykey, imap, isnew)
         if self.extension.append_result(self, row, imap, result, instance, isnew, populate_existing=populate_existing) is EXT_PASS:
             if result is not None:
                 result.append_nohistory(instance)
@@ -923,17 +930,17 @@ class Mapper(object):
             newrow[c] = newrow[c.key]
         return newrow
         
-    def populate_instance(self, instance, row, identitykey, imap, isnew, frommapper=None):
+    def populate_instance(self, session, instance, row, identitykey, imap, isnew, frommapper=None):
         if frommapper is not None:
             row = frommapper.translate_row(self, row)
             
         for prop in self.props.values():
-            prop.execute(instance, row, identitykey, imap, isnew)
+            prop.execute(session, instance, row, identitykey, imap, isnew)
         
 class MapperProperty(object):
     """an element attached to a Mapper that describes and assists in the loading and saving 
     of an attribute on an object instance."""
-    def execute(self, instance, row, identitykey, imap, isnew):
+    def execute(self, session, instance, row, identitykey, imap, isnew):
         """called when the mapper receives a row.  instance is the parent instance
         corresponding to the row. """
         raise NotImplementedError()
@@ -1054,7 +1061,7 @@ class MapperExtension(object):
             return EXT_PASS
         else:
             return self.next.append_result(mapper, row, imap, result, instance, isnew, populate_existing)
-    def populate_instance(self, mapper, instance, row, identitykey, imap, isnew):
+    def populate_instance(self, mapper, session, instance, row, identitykey, imap, isnew):
         """called right before the mapper, after creating an instance from a row, passes the row
         to its MapperProperty objects which are responsible for populating the object's attributes.
         If this method returns True, it is assumed that the mapper should do the appending, else
@@ -1062,14 +1069,14 @@ class MapperExtension(object):
         
         Essentially, this method is used to have a different mapper populate the object:
         
-            def populate_instance(self, mapper, instance, row, identitykey, imap, isnew):
-                othermapper.populate_instance(instance, row, identitykey, imap, isnew, frommapper=mapper)
+            def populate_instance(self, mapper, session, instance, row, identitykey, imap, isnew):
+                othermapper.populate_instance(session, instance, row, identitykey, imap, isnew, frommapper=mapper)
                 return True
         """
         if self.next is None:
             return EXT_PASS
         else:
-            return self.next.populate_instance(mapper, instance, row, identitykey, imap, isnew)
+            return self.next.populate_instance(mapper, session, instance, row, identitykey, imap, isnew)
     def before_insert(self, mapper, instance):
         """called before an object instance is INSERTed into its table.
         
