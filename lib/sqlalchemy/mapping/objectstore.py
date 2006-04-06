@@ -17,7 +17,7 @@ import sqlalchemy
 class Session(object):
     """Maintains a UnitOfWork instance, including transaction state."""
     
-    def __init__(self, nest_on=None, hash_key=None):
+    def __init__(self, hash_key=None, new_imap=True, import_session=None):
         """Initialize the objectstore with a UnitOfWork registry.  If called
         with no arguments, creates a single UnitOfWork for all operations.
         
@@ -26,31 +26,23 @@ class Session(object):
         hash_key - the hash_key used to identify objects against this session, which 
         defaults to the id of the Session instance.
         """
-        self.uow = unitofwork.UnitOfWork()
-        self.parent_uow = None
-        self.begin_count = 0
-        self.nest_on = util.to_list(nest_on)
-        self.__pushed_count = 0
+        if import_session is not None:
+            self.uow = unitofwork.UnitOfWork(identity_map=import_session.uow.identity_map)
+        elif new_imap is False:
+            self.uow = unitofwork.UnitOfWork(identity_map=objectstore.get_session().uow.identity_map)
+        else:
+            self.uow = unitofwork.UnitOfWork()
+            
+        self.binds = {}
         if hash_key is None:
             self.hash_key = id(self)
         else:
             self.hash_key = hash_key
         _sessions[self.hash_key] = self
     
-    def was_pushed(self):
-        if self.nest_on is None:
-            return
-        self.__pushed_count += 1
-        if self.__pushed_count == 1:
-            for n in self.nest_on:
-                n.push_session()
-    def was_popped(self):
-        if self.nest_on is None or self.__pushed_count == 0:
-            return
-        self.__pushed_count -= 1
-        if self.__pushed_count == 0:
-            for n in self.nest_on:
-                n.pop_session()
+    def bind_table(self, table, bindto):
+        self.binds[table] = bindto
+                
     def get_id_key(ident, class_, entity_name=None):
         """returns an identity-map key for use in storing/retrieving an item from the identity
         map, given a tuple of the object's primary key values.
@@ -81,79 +73,12 @@ class Session(object):
         """
         return (class_, tuple([row[column] for column in primary_key]), entity_name)
     get_row_key = staticmethod(get_row_key)
-
-    class SessionTrans(object):
-        """returned by Session.begin(), denotes a transactionalized UnitOfWork instance.
-        call commit() on this to commit the transaction."""
-        def __init__(self, parent, uow, isactive):
-            self.__parent = parent
-            self.__isactive = isactive
-            self.__uow = uow
-        isactive = property(lambda s:s.__isactive, doc="True if this SessionTrans is the 'active' transaction marker, else its a no-op.")
-        parent = property(lambda s:s.__parent, doc="returns the parent Session of this SessionTrans object.")
-        uow = property(lambda s:s.__uow, doc="returns the parent UnitOfWork corresponding to this transaction.")
-        def begin(self):
-            """calls begin() on the underlying Session object, returning a new no-op SessionTrans object."""
-            if self.parent.uow is not self.uow:
-                raise InvalidRequestError("This SessionTrans is no longer valid")
-            return self.parent.begin()
-        def commit(self):
-            """commits the transaction noted by this SessionTrans object."""
-            self.__parent._trans_commit(self)
-            self.__isactive = False
-        def rollback(self):
-            """rolls back the current UnitOfWork transaction, in the case that begin()
-            has been called.  The changes logged since the begin() call are discarded."""
-            self.__parent._trans_rollback(self)
-            self.__isactive = False
-
-    def begin(self):
-        """begins a new UnitOfWork transaction and returns a tranasaction-holding
-        object.  commit() or rollback() should be called on the returned object.
-        commit() on the Session will do nothing while a transaction is pending, and further
-        calls to begin() will return no-op transactional objects."""
-        if self.parent_uow is not None:
-            return Session.SessionTrans(self, self.uow, False)
-        self.parent_uow = self.uow
-        self.uow = unitofwork.UnitOfWork(identity_map = self.uow.identity_map)
-        return Session.SessionTrans(self, self.uow, True)
     
     def engines(self, mapper):
         return [t.engine for t in mapper.tables]
         
-    def _trans_commit(self, trans):
-        if trans.uow is self.uow and trans.isactive:
-            try:
-                self._commit_uow()
-            finally:
-                self.uow = self.parent_uow
-                self.parent_uow = None
-    def _trans_rollback(self, trans):
-        if trans.uow is self.uow:
-            self.uow = self.parent_uow
-            self.parent_uow = None
-
-    def _commit_uow(self, *obj):
-        self.was_pushed()
-        try:
-            self.uow.flush(self, *obj)
-        finally:
-            self.was_popped()
-                        
-    def commit(self, *objects):
-        """commits the current UnitOfWork transaction.  called with
-        no arguments, this is only used
-        for "implicit" transactions when there was no begin().
-        if individual objects are submitted, then only those objects are committed, and the 
-        begin/commit cycle is not affected."""
-        # if an object list is given, commit just those but dont
-        # change begin/commit status
-        if len(objects):
-            self._commit_uow(*objects)
-            self.uow.flush(self, *objects)
-            return
-        if self.parent_uow is None:
-            self._commit_uow()
+    def flush(self, *obj):
+        self.uow.flush(self, *obj)
             
     def refresh(self, *obj):
         """reloads the attributes for the given objects from the database, clears
@@ -221,6 +146,95 @@ class Session(object):
             u.register_new(instance)
         return instance
 
+class LegacySession(Session):
+    def __init__(self, nest_on=None, hash_key=None, **kwargs):
+        super(LegacySession, self).__init__(**kwargs)
+        self.parent_uow = None
+        self.begin_count = 0
+        self.nest_on = util.to_list(nest_on)
+        self.__pushed_count = 0
+    def was_pushed(self):
+        if self.nest_on is None:
+            return
+        self.__pushed_count += 1
+        if self.__pushed_count == 1:
+            for n in self.nest_on:
+                n.push_session()
+    def was_popped(self):
+        if self.nest_on is None or self.__pushed_count == 0:
+            return
+        self.__pushed_count -= 1
+        if self.__pushed_count == 0:
+            for n in self.nest_on:
+                n.pop_session()
+    class SessionTrans(object):
+        """returned by Session.begin(), denotes a transactionalized UnitOfWork instance.
+        call commit() on this to commit the transaction."""
+        def __init__(self, parent, uow, isactive):
+            self.__parent = parent
+            self.__isactive = isactive
+            self.__uow = uow
+        isactive = property(lambda s:s.__isactive, doc="True if this SessionTrans is the 'active' transaction marker, else its a no-op.")
+        parent = property(lambda s:s.__parent, doc="returns the parent Session of this SessionTrans object.")
+        uow = property(lambda s:s.__uow, doc="returns the parent UnitOfWork corresponding to this transaction.")
+        def begin(self):
+            """calls begin() on the underlying Session object, returning a new no-op SessionTrans object."""
+            if self.parent.uow is not self.uow:
+                raise InvalidRequestError("This SessionTrans is no longer valid")
+            return self.parent.begin()
+        def commit(self):
+            """commits the transaction noted by this SessionTrans object."""
+            self.__parent._trans_commit(self)
+            self.__isactive = False
+        def rollback(self):
+            """rolls back the current UnitOfWork transaction, in the case that begin()
+            has been called.  The changes logged since the begin() call are discarded."""
+            self.__parent._trans_rollback(self)
+            self.__isactive = False
+    def begin(self):
+        """begins a new UnitOfWork transaction and returns a tranasaction-holding
+        object.  commit() or rollback() should be called on the returned object.
+        commit() on the Session will do nothing while a transaction is pending, and further
+        calls to begin() will return no-op transactional objects."""
+        if self.parent_uow is not None:
+            return Session.SessionTrans(self, self.uow, False)
+        self.parent_uow = self.uow
+        self.uow = unitofwork.UnitOfWork(identity_map = self.uow.identity_map)
+        return Session.SessionTrans(self, self.uow, True)
+    def commit(self, *objects):
+        """commits the current UnitOfWork transaction.  called with
+        no arguments, this is only used
+        for "implicit" transactions when there was no begin().
+        if individual objects are submitted, then only those objects are committed, and the 
+        begin/commit cycle is not affected."""
+        # if an object list is given, commit just those but dont
+        # change begin/commit status
+        if len(objects):
+            self._commit_uow(*objects)
+            self.uow.flush(self, *objects)
+            return
+        if self.parent_uow is None:
+            self._commit_uow()
+    def _trans_commit(self, trans):
+        if trans.uow is self.uow and trans.isactive:
+            try:
+                self._commit_uow()
+            finally:
+                self.uow = self.parent_uow
+                self.parent_uow = None
+    def _trans_rollback(self, trans):
+        if trans.uow is self.uow:
+            self.uow = self.parent_uow
+            self.parent_uow = None
+    def _commit_uow(self, *obj):
+        self.was_pushed()
+        try:
+            self.uow.flush(self, *obj)
+        finally:
+            self.was_popped()
+
+Session = LegacySession
+
 def get_id_key(ident, class_, entity_name=None):
     return Session.get_id_key(ident, class_, entity_name)
 
@@ -228,19 +242,22 @@ def get_row_key(row, class_, primary_key, entity_name=None):
     return Session.get_row_key(row, class_, primary_key, entity_name)
 
 def begin():
-    """begins a new UnitOfWork transaction.  the next commit will affect only
-    objects that are created, modified, or deleted following the begin statement."""
+    """deprecated.  use s = Session(new_imap=False)."""
     return get_session().begin()
 
 def commit(*obj):
-    """commits the current UnitOfWork transaction.  if a transaction was begun 
-    via begin(), commits only those objects that were created, modified, or deleted
-    since that begin statement.  otherwise commits all objects that have been
+    """deprecated; use flush(*obj)"""
+    get_session().flush(*obj)
+
+def flush(*obj):
+    """flushes the current UnitOfWork transaction.  if a transaction was begun 
+    via begin(), flushes only those objects that were created, modified, or deleted
+    since that begin statement.  otherwise flushes all objects that have been
     changed.
-    
+
     if individual objects are submitted, then only those objects are committed, and the 
     begin/commit cycle is not affected."""
-    get_session().commit(*obj)
+    get_session().flush(*obj)
 
 def clear():
     """removes all current UnitOfWorks and IdentityMaps for this thread and 

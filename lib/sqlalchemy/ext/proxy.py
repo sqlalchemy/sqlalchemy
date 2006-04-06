@@ -24,7 +24,15 @@ class BaseProxyEngine(schema.SchemaEngine):
 
     def reflecttable(self, table):
         return self.get_engine().reflecttable(table)
-        
+    def execute_compiled(self, *args, **kwargs):
+        return self.get_engine().execute_compiled(*args, **kwargs)
+    def compiler(self, *args, **kwargs):
+        return self.get_engine().compiler(*args, **kwargs)
+    def schemagenerator(self, *args, **kwargs):
+        return self.get_engine().schemagenerator(*args, **kwargs)
+    def schemadropper(self, *args, **kwargs):
+        return self.get_engine().schemadropper(*args, **kwargs)
+            
     def hash_key(self):
         return "%s(%s)" % (self.__class__.__name__, id(self))
 

@@ -246,6 +246,12 @@ def _is_literal(element):
 def is_column(col):
     return isinstance(col, ColumnElement)
 
+class AbstractEngine(object):
+    def execute_compiled(self, compiled, parameters, echo=None, **kwargs):
+        raise NotImplementedError()
+    def compiler(self, statement, parameters, **kwargs):
+        raise NotImplementedError()
+
 class ClauseParameters(util.OrderedDict):
     """represents a dictionary/iterator of bind parameter key names/values.  Includes parameters compiled with a Compiled object as well as additional arguments passed to the Compiled object's get_params() method.  Parameter values will be converted as per the TypeEngine objects present in the bind parameter objects.  The non-converted value can be retrieved via the get_original method.  For Compiled objects that compile positional parameters, the values() iteration of the object will return the parameter values in the correct order."""
     def __init__(self, engine=None):
@@ -340,8 +346,11 @@ class Compiled(ClauseVisitor):
         """executes this compiled object using the underlying SQLEngine"""
         if len(multiparams):
             params = multiparams
-            
-        return self.engine.execute_compiled(self, params)
+        
+        e = self.engine
+        if e is None:
+            raise InvalidRequestError("This Compiled object is not bound to any engine.")
+        return e.execute_compiled(self, params)
 
     def scalar(self, *multiparams, **params):
         """executes this compiled object via the execute() method, then 
@@ -356,7 +365,26 @@ class Compiled(ClauseVisitor):
             return row[0]
         else:
             return None
-        
+
+class Executor(object):
+    """handles the compilation/execution of a ClauseElement within the context of a particular AbtractEngine.  This 
+    AbstractEngine will usually be a SQLEngine or ConnectionProxy."""
+    def __init__(self, clauseelement, abstractengine=None):
+        self.engine=abstractengine
+        self.clauseelement = clauseelement
+    def execute(self, *multiparams, **params):
+        return self.compile(*multiparams, **params).execute(*multiparams, **params)
+    def scalar(self, *multiparams, **params):
+        return self.compile(*multiparams, **params).scalar(*multiparams, **params)
+    def compile(self, *multiparams, **params):
+        if len(multiparams):
+            bindparams = multiparams[0]
+        else:
+            bindparams = params
+        compiler = self.engine.compiler(self.clauseelement, bindparams)
+        compiler.compile()
+        return compiler
+            
 class ClauseElement(object):
     """base class for elements of a programmatically constructed SQL expression."""
     def _get_from_objects(self):
@@ -415,10 +443,12 @@ class ClauseElement(object):
             
     engine = property(lambda s: s._find_engine(), doc="attempts to locate a SQLEngine within this ClauseElement structure, or returns None if none found.")
 
-
+    def using(self, abstractengine):
+        return Executor(self, abstractengine)
+        
     def compile(self, engine = None, parameters = None, typemap=None, compiler=None):
         """compiles this SQL expression using its underlying SQLEngine to produce
-        a Compiled object.  If no engine can be found, an ansisql engine is used.
+        a Compiled object.  If no engine can be found, an ANSICompiler is used with no engine.
         bindparams is a dictionary representing the default bind parameters to be used with 
         the statement.  """
         
@@ -430,7 +460,7 @@ class ClauseElement(object):
                 
         if compiler is None:
             import sqlalchemy.ansisql as ansisql
-            compiler = ansisql.ANSICompiler(self, parameters=parameters, typemap=typemap)
+            compiler = ansisql.ANSICompiler(self, parameters=parameters)
         compiler.compile()
         return compiler
 
@@ -438,30 +468,10 @@ class ClauseElement(object):
         return str(self.compile())
         
     def execute(self, *multiparams, **params):
-        """compiles and executes this SQL expression using its underlying SQLEngine. the
-        given **params are used as bind parameters when compiling and executing the
-        expression. the DBAPI cursor object is returned."""
-        e = self.engine
-        if len(multiparams):
-            bindparams = multiparams[0]
-        else:
-            bindparams = params
-        c = self.compile(e, parameters=bindparams)
-        return c.execute(*multiparams, **params)
+        return self.using(self.engine).execute(*multiparams, **params)
 
     def scalar(self, *multiparams, **params):
-        """executes this SQL expression via the execute() method, then 
-        returns the first column of the first row.  Useful for executing functions,
-        sequences, rowcounts, etc."""
-        # we are still going off the assumption that fetching only the first row
-        # in a result set is not performance-wise any different than specifying limit=1
-        # else we'd have to construct a copy of the select() object with the limit
-        # installed (else if we change the existing select, not threadsafe)
-        row = self.execute(*multiparams, **params).fetchone()
-        if row is not None:
-            return row[0]
-        else:
-            return None
+        return self.using(self.engine).scalar(*multiparams, **params)
 
     def __and__(self, other):
         return and_(self, other)

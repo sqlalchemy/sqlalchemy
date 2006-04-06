@@ -10,6 +10,7 @@ class Query(object):
         self.mapper = mapper
         self.always_refresh = kwargs.pop('always_refresh', self.mapper.always_refresh)
         self.order_by = kwargs.pop('order_by', self.mapper.order_by)
+        self.extension = kwargs.pop('extension', self.mapper.extension)
         self._session = kwargs.pop('session', None)
         if not hasattr(mapper, '_get_clause'):
             _get_clause = sql.and_()
@@ -66,7 +67,7 @@ class Query(object):
 
         e.g.   result = usermapper.select_by(user_name = 'fred')
         """
-        ret = self.mapper.extension.select_by(self, *args, **params)
+        ret = self.extension.select_by(self, *args, **params)
         if ret is not mapper.EXT_PASS:
             return ret
         return self.select_whereclause(self._by_clause(*args, **params))
@@ -116,7 +117,7 @@ class Query(object):
         in this case, the developer must insure that an adequate set of columns exists in the 
         rowset with which to build new object instances."""
 
-        ret = self.mapper.extension.select(self, arg=arg, **kwargs)
+        ret = self.extension.select(self, arg=arg, **kwargs)
         if ret is not mapper.EXT_PASS:
             return ret
         elif arg is not None and isinstance(arg, sql.Selectable):
