@@ -78,9 +78,10 @@ class ManagedAttribute(object):
     which occurs through the SmartProperty property object ultimately calls upon 
     ManagedAttribute objects associated with the instance via this dictionary."""
     def __init__(self, obj, key):
-        self.__obj = weakref.ref(obj)
+        #self.__obj = weakref.ref(obj)
+        self.obj = obj
         self.key = key
-    obj = property(lambda s:s.__obj())
+    #obj = property(lambda s:s.__obj())
     def history(self, **kwargs):
         return self
     def plain_init(self, *args, **kwargs):
@@ -493,6 +494,27 @@ class AttributeManager(object):
         the new object instance as an argument to create the new ManagedAttribute.  
         Extra keyword arguments can be sent which
         will be passed along to newly created ManagedAttribute."""
-        class_._attribute_manager = self
+        if not hasattr(class_, '_attribute_manager'):
+            class_._attribute_manager = self
+            class_._managed_attributes = ObjectAttributeGateway()
         setattr(class_, key, self.create_prop(class_, key, uselist, callable_, **kwargs))
 
+managed_attributes = weakref.WeakKeyDictionary()
+
+class ObjectAttributeGateway(object):
+    """handles the dictionary of ManagedAttributes for instances.  this level of indirection
+    is to prevent circular references upon objects, as well as keeping them Pickle-compatible."""
+    def __set__(self, obj, value):
+        managed_attributes[obj] = value
+    def __delete__(self, obj):
+        try:
+            del managed_attributes[obj]
+        except KeyError:
+            raise AttributeError()
+    def __get__(self, obj, owner):
+        if obj is None:
+            return self
+        try:
+            return managed_attributes[obj]
+        except KeyError:
+            raise AttributeError()
