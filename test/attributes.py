@@ -2,8 +2,10 @@ from testbase import PersistTest
 import sqlalchemy.util as util
 import sqlalchemy.attributes as attributes
 import unittest, sys, os
+import pickle
 
 
+class MyTest(object):pass
     
 class AttributesTest(PersistTest):
     """tests for the attributes.py module, which deals with tracking attribute changes on an object."""
@@ -35,6 +37,15 @@ class AttributesTest(PersistTest):
         manager.rollback(u)
         print repr(u.__dict__)
         self.assert_(u.user_id == 7 and u.user_name == 'john' and u.email_address == 'lala@123.com')
+
+    def testpickleness(self):
+        manager = attributes.AttributeManager()
+        manager.register_attribute(MyTest, 'user_id', uselist = False)
+        manager.register_attribute(MyTest, 'user_name', uselist = False)
+        manager.register_attribute(MyTest, 'email_address', uselist = False)
+	x = MyTest()
+	x.user_id=7
+	pickle.dumps(x)
 
     def testlist(self):
         class User(object):pass
