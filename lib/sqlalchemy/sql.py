@@ -247,6 +247,7 @@ def is_column(col):
     return isinstance(col, ColumnElement)
 
 class AbstractEngine(object):
+    """represents a 'thing that can produce Compiler objects an execute them'."""
     def execute_compiled(self, compiled, parameters, echo=None, **kwargs):
         raise NotImplementedError()
     def compiler(self, statement, parameters, **kwargs):
@@ -343,7 +344,7 @@ class Compiled(ClauseVisitor):
         self.after_compile()
 
     def execute(self, *multiparams, **params):
-        """executes this compiled object using the underlying SQLEngine"""
+        """executes this compiled object using the AbstractEngine it is bound to."""
         if len(multiparams):
             params = multiparams
         
@@ -1350,8 +1351,6 @@ class Select(SelectBaseMixin, FromClause):
         else:
             setattr(self, attribute, condition)
 
-    _hash_recursion = util.RecursionStack()
-    
     def clear_from(self, from_obj):
         self._froms[from_obj] = FromClause(from_name = None)
         

@@ -4,7 +4,6 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-__all__ = ['OrderedProperties', 'OrderedDict', 'generic_repr', 'HashSet', 'AttrProp']
 import thread, threading, weakref, UserList, time, string, inspect, sys
 from exceptions import *
 import __builtin__
@@ -36,9 +35,9 @@ def reversed(seq):
                 i -= 1
             raise StopIteration()
         return rev()
-        
-class AttrProp(object):
-    """a quick way to stick a property accessor on an object"""
+
+class SimpleProperty(object):
+    """a "default" property accessor."""
     def __init__(self, key):
         self.key = key
     def __set__(self, obj, value):
@@ -50,20 +49,6 @@ class AttrProp(object):
             return self
         else:
             return getattr(obj, self.key)
-    
-def generic_repr(obj, exclude=None):
-    L = ['%s=%s' % (a, repr(getattr(obj, a))) for a in dir(obj) if not callable(getattr(obj, a)) and not a.startswith('_') and (exclude is None or not exclude.has_key(a))]
-    return '%s(%s)' % (obj.__class__.__name__, ','.join(L))
-
-def hash_key(obj):
-    if obj is None:
-        return 'None'
-    elif isinstance(obj, list):
-        return repr([hash_key(o) for o in obj])
-    elif hasattr(obj, 'hash_key'):
-        return obj.hash_key()
-    else:
-        return repr(obj)
 
 class Logger(object):
     """defines various forms of logging"""
@@ -130,30 +115,6 @@ class OrderedProperties(object):
     def clear(self):
         self.__dict__.clear()
         self.__dict__['_list'] = []
-
-class RecursionStack(object):
-    """a thread-local stack used to detect recursive object traversals."""
-    def __init__(self):
-        self.stacks = {}
-    def _get_stack(self):
-        try:
-            stack = self.stacks[thread.get_ident()]
-        except KeyError:
-            stack = {}
-            self.stacks[thread.get_ident()] = stack
-        return stack
-    def push(self, obj):
-        s = self._get_stack()
-        if s.has_key(obj):
-            return True
-        else:
-            s[obj] = True
-            return False
-    def pop(self, obj):
-        stack = self._get_stack()
-        del stack[obj]
-        if len(stack) == 0:
-            del self.stacks[thread.get_ident()]
         
 class OrderedDict(dict):
     """A Dictionary that keeps its own internal ordering"""
@@ -163,52 +124,40 @@ class OrderedDict(dict):
         if values is not None:
             for val in values:
                 self.update(val)
-
     def keys(self):
         return list(self._list)
-
     def clear(self):
         self._list = []
         dict.clear(self)
-    
     def update(self, dict):
         for key in dict.keys():
             self.__setitem__(key, dict[key])
-
     def setdefault(self, key, value):
         if not self.has_key(key):
             self.__setitem__(key, value)
             return value
         else:
             return self.__getitem__(key)
-
     def values(self):
         return map(lambda key: self[key], self._list)
-        
     def __iter__(self):
         return iter(self._list)
-
     def itervalues(self):
         return iter([self[key] for key in self._list])
-        
     def iterkeys(self): 
         return self.__iter__()
-    
     def iteritems(self):
         return iter([(key, self[key]) for key in self.keys()])
-    
     def __delitem__(self, key):
         try:
             del self._list[self._list.index(key)]
         except ValueError:
             raise KeyError(key)
         dict.__delitem__(self, key)
-        
     def __setitem__(self, key, object):
         if not self.has_key(key):
             self._list.append(key)
         dict.__setitem__(self, key, object)
-        
     def __getitem__(self, key):
         return dict.__getitem__(self, key)
 
@@ -230,6 +179,7 @@ class ThreadLocal(object):
         self._tdict["%d_%s" % (thread.get_ident(), key)] = value
 
 class DictDecorator(dict):
+    """a Dictionary that delegates items not found to a second wrapped dictionary."""
     def __init__(self, decorate):
         self.decorate = decorate
     def __getitem__(self, key):
@@ -239,8 +189,9 @@ class DictDecorator(dict):
             return self.decorate[key]
     def __repr__(self):
         return dict.__repr__(self) + repr(self.decorate)
+        
 class HashSet(object):
-    """implements a Set."""
+    """implements a Set, including ordering capability"""
     def __init__(self, iter=None, ordered=False):
         if ordered:
             self.map = OrderedDict()
@@ -474,6 +425,12 @@ class ScopedRegistry(object):
 
 
 def constructor_args(instance, **kwargs):
+    """given an object instance and keyword arguments, inspects the 
+    argument signature of the instance's __init__ method and returns 
+    a tuple of list and keyword arguments, suitable for creating a new
+    instance of the class.  The returned arguments are drawn from the
+    given keyword dictionary, or if not found are drawn from the 
+    corresponding attributes of the original instance."""
     classobj = instance.__class__
         
     argspec = inspect.getargspec(classobj.__init__.im_func)

@@ -317,8 +317,8 @@ class Column(sql.ColumnClause, SchemaItem):
         if len(kwargs):
             raise ArgumentError("Unknown arguments passed to Column: " + repr(kwargs.keys()))
 
-    primary_key = AttrProp('_primary_key')
-    foreign_key = AttrProp('_foreign_key')
+    primary_key = SimpleProperty('_primary_key')
+    foreign_key = SimpleProperty('_foreign_key')
     original = property(lambda s: s._orig or s)
     parent = property(lambda s:s._parent or s)
     engine = property(lambda s: s.table.engine)

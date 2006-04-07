@@ -1,3 +1,11 @@
+# mapper/sync.py
+# Copyright (C) 2005,2006 Michael Bayer mike_mp@zzzcomputing.com
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: http://www.opensource.org/licenses/mit-license.php
+
+
+
 import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
 from sqlalchemy.exceptions import *
