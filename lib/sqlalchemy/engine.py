@@ -47,9 +47,10 @@ def create_engine(name, opts=None,**kwargs):
     In both cases, **kwargs represents options to be sent to the SQLEngine itself.  A possibly
     partial listing of those options is as follows:
     
-    pool=None : an instance of sqlalchemy.pool.DBProxy to be used as the underlying source 
-    for connections (DBProxy is described in the previous section).  If None, a default DBProxy 
-    will be created using the engine's own database module with the given arguments.
+    pool=None : an instance of sqlalchemy.pool.DBProxy or sqlalchemy.pool.Pool to be used as the
+    underlying source for connections (DBProxy/Pool is described in the previous section). If None,
+    a default DBProxy will be created using the engine's own database module with the given
+    arguments.
     
     echo=False : if True, the SQLEngine will log all statements as well as a repr() of their 
     parameter lists to the engines logger, which defaults to sys.stdout.  A SQLEngine instances' 
@@ -240,6 +241,8 @@ class SQLEngine(schema.SchemaEngine):
             params['echo'] = echo_pool
             params['use_threadlocal'] = True
             self._pool = sqlalchemy.pool.manage(self.dbapi(), **params).get_pool(*cargs, **cparams)
+        elif isinstance(pool, sqlalchemy.pool.DBProxy):
+            self._pool = pool.get_pool(*cargs, **cparams)
         else:
             self._pool = pool
         self.default_ordering=default_ordering
