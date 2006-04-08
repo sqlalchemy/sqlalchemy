@@ -1,4 +1,4 @@
-from sqlalchemy             import objectstore, create_engine, assign_mapper, relation, mapper
+from sqlalchemy             import objectstore, create_engine, assign_mapper, relation, mapper, join
 from sqlalchemy             import and_, or_
 from sqlalchemy             import Table, Column, ForeignKey
 from sqlalchemy.ext.proxy   import ProxyEngine
@@ -25,8 +25,6 @@ class column(object):
         self.colname     = colname
         self.foreign_key = foreign_key
         self.primary_key = primary_key
-#         self.unique      = kwargs.pop( 'unique', None )
-#         self.index       = kwargs.pop( 'indexed', None )
         self.kwargs      = kwargs
         self.args        = args
 
@@ -84,7 +82,8 @@ def process_relationships(klass, was_deferred=False):
                                            private=reldesc.private, 
                                            lazy=reldesc.lazy, 
                                            uselist=reldesc.uselist)
-        assign_mapper(klass, klass.table, properties=relations)
+        assign_mapper(klass, klass.table, properties=relations,
+                      inherits=getattr(klass, "_base_mapper", None))
         if was_deferred: __deferred_classes__.remove(klass)
     
     if not was_deferred:
@@ -128,17 +127,18 @@ class ActiveMapperMeta(type):
                                      primary_key=value.primary_key,
                                      *value.args, **value.kwargs)
                     columns.append(col)
-#                     if value.indexed:
-#                         # create a Index object for the column
-#                         index= Index( "%s_idx" % (value.colname or name),
-#                                       col, unique= value.unique )
                     continue
                 
                 if isinstance(value, relationship):
                     relations[name] = value
             assert _engine is not None, "No engine specified"
             cls.table = Table(table_name, _engine, *columns)
-            assign_mapper(cls, cls.table)
+            # check for inheritence
+            if hasattr( bases[0], "mapping" ):
+                cls._base_mapper= bases[0].mapper
+                assign_mapper(cls, cls.table, inherits=cls._base_mapper)
+            else:
+                assign_mapper(cls, cls.table)
             cls.relations = relations
             ActiveMapperMeta.classes[clsname] = cls
             
