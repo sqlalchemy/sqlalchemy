@@ -1,5 +1,110 @@
 from sqlalchemy import *
 
+"""
+SqlSoup provides a convenient way to access database tables without having
+to declare table or mapper classes ahead of time.
+
+Suppose we have a database with users, books, and loans tables
+(corresponding to the PyWebOff dataset, if you're curious).
+For testing purposes, we can create this db as follows:
+
+>>> from sqlalchemy import create_engine
+>>> e = create_engine('sqlite://filename=:memory:')
+>>> for sql in _testsql: e.execute(sql)
+... 
+
+Creating a SqlSoup gateway is just like creating an SqlAlchemy engine:
+>>> from sqlalchemy.ext.sqlsoup import SqlSoup
+>>> soup = SqlSoup('sqlite://filename=:memory:')
+
+or, you can re-use an existing engine:
+>>> soup = SqlSoup(e)
+
+Loading objects is as easy as this:
+>>> users = soup.users.select()
+>>> users.sort()
+>>> users
+[Class_Users(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1), Class_Users(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0)]
+
+Of course, letting the database do the sort is better (".c" is short for ".columns"):
+>>> soup.users.select(order_by=[soup.users.c.name])
+[Class_Users(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1), 
+ Class_Users(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0)]
+
+Field access is intuitive:
+>>> users[0].email
+u'basepair@example.edu'
+
+Of course, you don't want to load all users very often.  The common case is to
+select by a key or other field:
+>>> soup.users.selectone_by(name='Bhargan Basepair')
+Class_Users(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)
+
+All the SqlAlchemy mapper select variants (select, select_by, selectone, selectone_by, selectfirst, selectfirst_by)
+are available.  See the SqlAlchemy documentation for details:
+http://www.sqlalchemy.org/docs/sqlconstruction.myt
+
+Modifying objects is intuitive:
+>>> user = _
+>>> user.email = 'basepair+nospam@example.edu'
+>>> soup.commit()
+
+(SqlSoup leverages the sophisticated SqlAlchemy unit-of-work code, so
+multiple updates to a single object will be turned into a single UPDATE
+statement when you commit.)
+
+Finally, insert and delete.  Let's insert a new loan, then delete it:
+>>> soup.loans.insert(book_id=soup.books.selectfirst().id, user_name=user.name)
+Class_Loans(book_id=1,user_name='Bhargan Basepair',loan_date=None)
+>>> soup.commit()
+
+>>> loan = soup.loans.selectone_by(book_id=1, user_name='Bhargan Basepair')
+>>> soup.delete(loan)
+>>> soup.commit()
+"""
+
+_testsql = """
+CREATE TABLE books (
+    id                   integer PRIMARY KEY, -- auto-SERIAL in sqlite
+    title                text NOT NULL,
+    published_year       char(4) NOT NULL,
+    authors              text NOT NULL
+);
+
+CREATE TABLE users (
+    name                 varchar(32) PRIMARY KEY,
+    email                varchar(128) NOT NULL,
+    password             varchar(128) NOT NULL,
+    classname            text,
+    admin                int NOT NULL -- 0 = false
+);
+
+CREATE TABLE loans (
+    book_id              int PRIMARY KEY REFERENCES books(id),
+    user_name            varchar(32) references users(name) 
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    loan_date            date NOT NULL DEFAULT current_timestamp
+);
+
+insert into users(name, email, password, admin)
+values('Bhargan Basepair', 'basepair@example.edu', 'basepair', 1);
+insert into users(name, email, password, admin)
+values('Joe Student', 'student@example.edu', 'student', 0);
+
+insert into books(title, published_year, authors)
+values('Mustards I Have Known', '1989', 'Jones');
+insert into books(title, published_year, authors)
+values('Regional Variation in Moss', '1971', 'Flim and Flam');
+
+insert into loans(book_id, user_name)
+values (
+    (select min(id) from books), 
+    (select name from users where name like 'Joe%'))
+;
+""".split(';')
+
+__all__ = ['NoSuchTableError', 'SqlSoup']
+
 class NoSuchTableError(SQLAlchemyError): pass
 
 # metaclass is necessary to expose class methods with getattr, e.g.
@@ -40,6 +145,7 @@ class SqlSoup:
         from sqlalchemy.engine import SQLEngine
         # meh, sometimes having method overloading instead of kwargs would be easier
         if isinstance(args[0], SQLEngine):
+            args = list(args)
             engine = args.pop(0)
             if args or kwargs:
                 raise ArgumentError('Extra arguments not allowed when engine is given')
@@ -70,3 +176,7 @@ class SqlSoup:
         if not t:
             raise NoSuchTableError('%s does not exist' % attr)
         return t
+
+if __name__ == '__main__':
+    import doctest
+    doctest.testmod()
