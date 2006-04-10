@@ -1,4 +1,4 @@
-Database Engines
+Database Engines {@name=dbengine}
 ================
 
 A database engine is a subclass of `sqlalchemy.engine.SQLEngine`, and is the starting point for where SQLAlchemy provides a layer of abstraction on top of the various DBAPI2 database modules.  It serves as an abstract factory for database-specific implementation objects as well as a layer of abstraction over the most essential tasks of a database connection, including connecting, executing queries, returning result sets, and managing transactions.
@@ -97,7 +97,7 @@ A few useful methods off the SQLEngine are described here:
                
 ### Database Engine Options {@name=options}
 
-The remaining arguments to `create_engine` are keyword arguments that are passed to the specific subclass of `sqlalchemy.engine.SQLEngine` being used,  as well as the underlying `sqlalchemy.pool.Pool` instance.  All of the options described in the previous section [pooling_configuration][pooling_configuration] can be specified, as well as engine-specific options:
+The remaining arguments to `create_engine` are keyword arguments that are passed to the specific subclass of `sqlalchemy.engine.SQLEngine` being used,  as well as the underlying `sqlalchemy.pool.Pool` instance.  All of the options described in the previous section [pooling_configuration](rel:pooling_configuration) can be specified, as well as engine-specific options:
     
 * pool=None : an instance of `sqlalchemy.pool.Pool` to be used as the underlying source for connections, overriding the engine's connect arguments (pooling is described in the previous section).  If None, a default Pool (QueuePool or SingletonThreadPool as appropriate) will be created using the engine's connect arguments.
 

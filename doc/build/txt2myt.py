@@ -64,7 +64,6 @@ def MyghtyTag(name_, attrib_={}, **extra):
     return element
 
 CODE_BLOCK = 'formatting.myt:code'
-CODE_BLOCK_MARKER = '{python}'
 DOCTEST_DIRECTIVES = re.compile(r'#\s*doctest:\s*[+-]\w+(,[+-]\w+)*\s*$', re.M)
 LINK = 'formatting.myt:link'
 LINK_MARKER = 'rel:'
@@ -80,9 +79,8 @@ def process_code_blocks(tree):
     Note: also remove all doctest directives
     """
     parent = get_parent_map(tree)
-    keyword = CODE_BLOCK_MARKER
 
-    def replace_pre_with_myt(pre, text):
+    def replace_pre_with_myt(pre, text, type=None, title=None):
         text = re.sub(DOCTEST_DIRECTIVES, '', text)
         # process '>>>' to have quotes around it, to work with the myghty python
         # syntax highlighter which uses the tokenize module
@@ -95,17 +93,30 @@ def process_code_blocks(tree):
         sqlre = re.compile(r'{sql}(.*?)((?:SELECT|INSERT|DELETE|UPDATE|CREATE|DROP).*?)\n\s*(\n|$)', re.S)
         text = sqlre.sub(r"<&formatting.myt:poplink&>\1\n<&|formatting.myt:codepopper, link='sql'&>\2</&>\n\n", text)
 
+        sqlre2 = re.compile(r'{opensql}(.*?)((?:SELECT|INSERT|DELETE|UPDATE|CREATE|DROP).*?)\n\s*(\n|$)', re.S)
+        text = sqlre2.sub(r"<&|formatting.myt:poppedcode &>\1\n\2</&>\n\n", text)
+
         pre_parent = parent[pre]
-        tag = MyghtyTag(CODE_BLOCK)
+        if type == 'python':
+            syntype = 'python'
+        else:
+            syntype = None
+        if title is not None:
+            tag = MyghtyTag(CODE_BLOCK, {'title':title, 'syntaxtype':syntype})
+        else:
+            tag = MyghtyTag(CODE_BLOCK, {'syntaxtype':syntype})
         tag.text = text
         tag.tail = pre.tail
         pre_parent[index(pre_parent, pre)] = tag
 
     for precode in tree.findall('.//pre/code'):
-        if precode.text.lstrip().startswith(keyword):
+        m = re.match(r'\{(python|code)(?: title="(.*?)"){0,1}\}', precode.text.lstrip())
+        if m:
+            code = m.group(1)
+            title = m.group(2)
             text = precode.text.lstrip()
-            text = text.replace(keyword, '', 1).lstrip()
-            replace_pre_with_myt(parent[precode], text)
+            text = re.sub(r'{(python|code).*?}(\n\s*)?', '', text)
+            replace_pre_with_myt(parent[precode], text, type=code, title=title)
         elif precode.text.lstrip().startswith('>>> '):
             replace_pre_with_myt(parent[precode], precode.text)
 
@@ -263,6 +274,6 @@ if __name__ == '__main__':
         print inname, '->', outname
         input = file(inname).read()
         html = markdown.markdown(input)
+        file(inname[:-3] + "html", 'w').write(html)
         myt = html2myghtydoc(html)
-        #file(inname[:-3] + "html", 'w').write(html)
         file(outname, 'w').write(myt)

@@ -329,7 +329,7 @@ Literals also take an optional `type` parameter to give literals a type.  This c
 
 #### Order By {@name=orderby}
 
-The ORDER BY clause of a select statement can be specified as individual columns to order by within an array     specified via the `order_by` parameter, and optional usage of the asc() and desc() functions:
+The ORDER BY clause of a select statement can be specified as individual columns to order by within an array specified via the `order_by` parameter, and optional usage of the asc() and desc() functions:
 
     {python}# straight order by
     {sql}c = users.select(order_by=[users.c.user_name]).execute() 
