@@ -1,4 +1,20 @@
 0.1.6
+- support for MS-SQL added courtesy Rick Morrison, Runar Petursson
+- the latest SQLSoup from J. Ellis
+- ActiveMapper has preliminary support for inheritance (Jeff Watkins)
+- added a "mods" system which allows pluggable modules that modify/augment
+core functionality, using the function "install_mods(*modnames)".
+- added the first "mod", SelectResults, which modifies mapper selects to
+return generators that turn ranges into LIMIT/OFFSET queries (Jonas Borgström)
+- factored out querying capabilities of Mapper into a separate Query object
+which is Session-centric.  this improves the performance of mapper.using(session)
+and makes other things possible.
+- objectstore/Session refactored, the official way to save objects is now 
+via the flush() method.  The begin/commit functionality of Session is factored
+into LegacySession which is still established as the default behavior, until
+the 0.2 series.
+- types system is bound to an engine at query compile time, not schema
+construction time.  this simplifies the types system as well as the ProxyEngine.
 - added 'version_id' keyword argument to mapper. this keyword should reference a
 Column object with type Integer, preferably non-nullable, which will be used on
 the mapped table to track version numbers. this number is incremented on each
@@ -14,6 +30,10 @@ entity_name-qualified mapper, and maintain separate a identity in the identity
 map for an otherwise equilvalent object.
 - overhaul to the attributes system. code has been clarified, and also fixed to
 support proper polymorphic behavior on object attributes.
+- added "for_update" flag to Select objects
+- some fixes for backrefs
+- fix for postgres1 DateTime type
+- documentation pages mostly switched over to Markdown syntax
 
 0.1.5
 - added SQLSession concept to SQLEngine. this object keeps track of retrieving a
