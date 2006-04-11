@@ -374,7 +374,7 @@ class InheritTest5(testbase.AssertMixin):
     def testbasic(self):
         class ContentType(object): pass
         class Content(object): pass
-        class Product(object): pass
+        class Product(Content): pass
 
         content_types = mapper(ContentType, content_type)
         contents = mapper(Content, content, properties={
@@ -383,7 +383,22 @@ class InheritTest5(testbase.AssertMixin):
         #contents.add_property('content_type', relation(content_types)) #adding this makes the inheritance stop working
         # shouldnt throw exception
         products = mapper(Product, product, inherits=contents)
+    
+    def testbackref(self):
+        class ContentType(object): pass
+        class Content(object): pass
+        class Product(Content): pass
+
+        # this test fails currently
+        contents = mapper(Content, content)
+        products = mapper(Product, product, inherits=contents)
+        content_types = mapper(ContentType, content_type, properties={
+            'content':relation(contents, backref='contenttype')
+        })
+        p = Product()
+        p.contenttype = ContentType()
         
+            
 class InheritTest6(testbase.AssertMixin):
     """tests eager load/lazy load of child items off inheritance mappers, tests that
     LazyLoader constructs the right query condition."""
