@@ -422,7 +422,6 @@ class UOWTransaction(object):
         mappers = util.HashSet()
         for task in self.tasks.values():
             mappers.append(task.mapper)
-    
         head = DependencySorter(self.dependencies, mappers).sort(allow_all_cycles=True)
         #print str(head)
         task = sort_hier(head)

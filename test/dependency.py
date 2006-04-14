@@ -17,6 +17,26 @@ class thingy(object):
         return repr(self)
         
 class DependencySortTest(PersistTest):
+    
+    def _assert_sort(self, tuples, allnodes, **kwargs):
+
+        head = DependencySorter(tuples, allnodes).sort(**kwargs)
+
+        print "\n" + str(head)
+        def findnode(t, n, parent=False):
+            if n.item is t[0]:
+                parent=True
+            elif n.item is t[1]:
+                if not parent and t[0] not in [c.item for c in n.cycles]:
+                    self.assert_(False, "Node " + str(t[1]) + " not a child of " +str(t[0]))
+                else:
+                    return
+            for c in n.children:
+                findnode(t, c, parent)
+            
+        for t in tuples:
+            findnode(t, head)
+            
     def testsort(self):
         rootnode = thingy('root')
         node2 = thingy('node2')
@@ -27,6 +47,7 @@ class DependencySortTest(PersistTest):
         subnode3 = thingy('subnode3')
         subnode4 = thingy('subnode4')
         subsubnode1 = thingy('subsubnode1')
+        allnodes = [rootnode, node2,node3,node4,subnode1,subnode2,subnode3,subnode4,subsubnode1]
         tuples = [
             (subnode3, subsubnode1),
             (node2, subnode1),
@@ -37,8 +58,8 @@ class DependencySortTest(PersistTest):
             (node4, subnode3),
             (node4, subnode4)
         ]
-        head = DependencySorter(tuples, []).sort()
-        print "\n" + str(head)
+
+        self._assert_sort(tuples, allnodes)
 
     def testsort2(self):
         node1 = thingy('node1')
@@ -55,8 +76,7 @@ class DependencySortTest(PersistTest):
             (node5, node6),
             (node6, node2)
         ]
-        head = DependencySorter(tuples, [node7]).sort()
-        print "\n" + str(head)
+        self._assert_sort(tuples, [node1,node2,node3,node4,node5,node6,node7])
 
     def testsort3(self):
         ['Mapper|Keyword|keywords,Mapper|IKAssociation|itemkeywords', 'Mapper|Item|items,Mapper|IKAssociation|itemkeywords']
@@ -68,15 +88,10 @@ class DependencySortTest(PersistTest):
             (node3, node2),
             (node1,node3)
         ]
-        head1 = DependencySorter(tuples, [node1, node2, node3]).sort()
-        head2 = DependencySorter(tuples, [node3, node1, node2]).sort()
-        head3 = DependencySorter(tuples, [node3, node2, node1]).sort()
+        self._assert_sort(tuples, [node1, node2, node3])
+        self._assert_sort(tuples, [node3, node1, node2])
+        self._assert_sort(tuples, [node3, node2, node1])
         
-        # TODO: figure out a "node == node2" function
-        #self.assert_(str(head1) == str(head2) == str(head3))
-        print "\n" + str(head1)
-        print "\n" + str(head2)
-        print "\n" + str(head3)
 
     def testsort4(self):
         node1 = thingy('keywords')
@@ -89,8 +104,7 @@ class DependencySortTest(PersistTest):
             (node1, node3),
             (node3, node2)
         ]
-        head = DependencySorter(tuples, []).sort()
-        print "\n" + str(head)
+        self._assert_sort(tuples, [node1,node2,node3,node4])
 
     def testsort5(self):
         # this one, depenending on the weather, 
@@ -117,8 +131,21 @@ class DependencySortTest(PersistTest):
             node3,
             node4
         ]
-        head = DependencySorter(tuples, allitems).sort()
-        print "\n" + str(head)
+        self._assert_sort(tuples, allitems)
+
+    def testsort6(self):
+        #('tbl_c', 'tbl_d'), ('tbl_a', 'tbl_c'), ('tbl_b', 'tbl_d')
+        nodea = thingy('tbl_a')
+        nodeb = thingy('tbl_b')
+        nodec = thingy('tbl_c')
+        noded = thingy('tbl_d')
+        tuples = [
+            (nodec, noded),
+            (nodea, nodec),
+            (nodeb, noded)
+        ]
+        allitems = [nodea,nodeb,nodec,noded]
+        self._assert_sort(tuples, allitems)
 
     def testcircular(self):
         node1 = thingy('node1')
@@ -134,8 +161,7 @@ class DependencySortTest(PersistTest):
             (node3, node1),
             (node4, node1)
         ]
-        head = DependencySorter(tuples, []).sort(allow_all_cycles=True)
-        print "\n" + str(head)
+        self._assert_sort(tuples, [node1,node2,node3,node4,node5], allow_all_cycles=True)
         
 
 if __name__ == "__main__":

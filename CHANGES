@@ -1,3 +1,6 @@
+next
+- some fixes to topological sort algorithm
+
 0.1.6
 - support for MS-SQL added courtesy Rick Morrison, Runar Petursson
 - the latest SQLSoup from J. Ellis

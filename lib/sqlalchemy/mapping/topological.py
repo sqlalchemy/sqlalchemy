@@ -141,15 +141,16 @@ class QueueDependencySorter(object):
         #print repr(output)
         head = None
         node = None
+        # put the sorted list into a "tree".  this is not much of a 
+        # "tree" at the moment as its more of a linked list.  it would be nice
+        # to group non-dependent nodes into sibling nodes, which allows better batching
+        # of SQL statements, but this algorithm has proved tricky
         for o in output:
             if head is None:
                 head = o
-                node = o
             else:
-                for x in node.children:
-                    if x.dependencies.has_key(o):
-                        node = x
                 node.children.append(o)
+            node = o
         return head
 
     def _add_edge(self, edges, edge):
