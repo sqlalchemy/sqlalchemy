@@ -24,10 +24,10 @@ class DependencySortTest(PersistTest):
 
         print "\n" + str(head)
         def findnode(t, n, parent=False):
-            if n.item is t[0]:
+            if n.item is t[0] or (n.cycles is not None and t[0] in [c.item for c in n.cycles]):
                 parent=True
             elif n.item is t[1]:
-                if not parent and t[0] not in [c.item for c in n.cycles]:
+                if not parent and (n.cycles is None or t[0] not in [c.item for c in n.cycles]):
                     self.assert_(False, "Node " + str(t[1]) + " not a child of " +str(t[0]))
                 else:
                     return
@@ -148,6 +148,7 @@ class DependencySortTest(PersistTest):
         self._assert_sort(tuples, allitems)
 
     def testcircular(self):
+        #print "TESTCIRCULAR"
         node1 = thingy('node1')
         node2 = thingy('node2')
         node3 = thingy('node3')
@@ -162,6 +163,7 @@ class DependencySortTest(PersistTest):
             (node4, node1)
         ]
         self._assert_sort(tuples, [node1,node2,node3,node4,node5], allow_all_cycles=True)
+        #print "TESTCIRCULAR DONE"
         
 
 if __name__ == "__main__":

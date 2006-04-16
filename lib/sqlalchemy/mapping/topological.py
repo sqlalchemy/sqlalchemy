@@ -57,6 +57,16 @@ class QueueDependencySorter(object):
             return "%s  (idself=%s)" % (str(self.item), repr(id(self)))
         def __repr__(self):
             return self.describe()
+        def is_dependent(self, child):
+            if self.cycles is not None:
+                for c in self.cycles:
+                    if c.dependencies.has_key(child):
+                        return True
+            if child.cycles is not None:
+                for c in child.cycles:
+                    if self.dependencies.has_key(c):
+                        return True
+            return self.dependencies.has_key(child)
             
     def __init__(self, tuples, allitems):
         self.tuples = tuples
@@ -138,21 +148,46 @@ class QueueDependencySorter(object):
                 if len(childnode.edges) == 0:
                     queue.append(childnode)
 
-        #print repr(output)
-        head = None
-        node = None
-        # put the sorted list into a "tree".  this is not much of a 
-        # "tree" at the moment as its more of a linked list.  it would be nice
-        # to group non-dependent nodes into sibling nodes, which allows better batching
-        # of SQL statements, but this algorithm has proved tricky
-        for o in output:
-            if head is None:
-                head = o
-            else:
-                node.children.append(o)
-            node = o
-        return head
+        return self._create_batched_tree(output)
+        
 
+    def _create_batched_tree(self, nodes):
+        """given a list of nodes from a topological sort, organizes the nodes into a tree structure,
+        with as many non-dependent nodes set as silbings to each other as possible."""
+        def sort(index=None, l=None):
+            if index is None:
+                index = 0
+            
+            if index >= len(nodes):
+                return None
+            
+            node = nodes[index]
+            l2 = []
+            sort(index + 1, l2)
+            for n in l2:
+                if l is None or search_dep(node, n):
+                    node.children.append(n)
+                else:
+                    l.append(n)
+            if l is not None:
+                l.append(node)
+            return node
+            
+        def search_dep(parent, child):
+            if child is None:
+                return False
+            elif parent.is_dependent(child):
+                return True
+            else:
+                for c in child.children:
+                    x = search_dep(parent, c)
+                    if x is True:
+                        return True
+                else:
+                    return False
+        return sort()
+        
+        
     def _add_edge(self, edges, edge):
         (parentnode, childnode) = edge
         edges[parentnode][childnode] = True
