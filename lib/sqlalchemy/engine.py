@@ -30,6 +30,7 @@ import sql
 import sqlalchemy.databases
 import sqlalchemy.types as types
 import StringIO, sys, re
+from cgi import parse_qsl
 
 __all__ = ['create_engine', 'engine_descriptors']
 
@@ -71,13 +72,10 @@ def create_engine(name, opts=None,**kwargs):
     have full ANSI support instead of using this feature.
 
     """
-    m = re.match(r'(\w+)://(.*)', name)
+    m = re.match(r'(\w+)://(.*)',  name)
     if m is not None:
         (name, args) = m.group(1, 2)
-        opts = {}
-        def assign(m):
-            opts[m.group(1)] = m.group(2)
-        re.sub(r'([^&]+)=([^&]*)', assign, args)
+        opts = dict( parse_qsl( args ) )
     module = getattr(__import__('sqlalchemy.databases.%s' % name).databases, name)
     return module.engine(opts, **kwargs)
 
