@@ -747,9 +747,9 @@ class Mapper(object):
         examples."""
         newrow = util.DictDecorator(row)
         for c in self.table.c:
-            newrow[c.key] = row[c]
+            newrow[c.name] = row[c]
         for c in tomapper.table.c:
-            newrow[c] = newrow[c.key]
+            newrow[c] = newrow[c.name]
         return newrow
         
     def populate_instance(self, session, instance, row, identitykey, imap, isnew, frommapper=None):
