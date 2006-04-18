@@ -9,6 +9,7 @@ import objectstore
 import sqlalchemy.sql as sql
 import sqlalchemy.util as util
 import mapper
+from sqlalchemy.exceptions import *
 
 class Query(object):
     """encapsulates the object-fetching operations provided by Mappers."""

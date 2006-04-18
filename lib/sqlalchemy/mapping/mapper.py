@@ -88,6 +88,8 @@ class Mapper(object):
             self.table = table
 
         if inherits is not None:
+            if self.class_.__mro__[1] != inherits.class_:
+                raise ArgumentError("Class '%s' does not inherit from '%s'" % (self.class_.__name__, inherits.class_.__name__))
             self.primarytable = inherits.primarytable
             # inherit_condition is optional.
             if not table is inherits.noninherited_table:
@@ -214,7 +216,7 @@ class Mapper(object):
                 if not self.props.has_key(key):
                     self.props[key] = prop.copy()
                     self.props[key].parent = self
-                    self.props[key].key = None  # force re-init
+            #        self.props[key].key = None  # force re-init
         l = [(key, prop) for key, prop in self.props.iteritems()]
         for key, prop in l:
             if getattr(prop, 'key', None) is None:
