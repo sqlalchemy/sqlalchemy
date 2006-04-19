@@ -94,7 +94,7 @@ class Session(object):
 
     def expunge(self, *obj):
         for o in obj:
-            self.uow.expunge(obj)
+            self.uow.expunge(o)
             
     def register_clean(self, obj):
         self._bind_to(obj)

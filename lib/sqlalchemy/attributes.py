@@ -78,10 +78,10 @@ class ManagedAttribute(object):
     which occurs through the SmartProperty property object ultimately calls upon 
     ManagedAttribute objects associated with the instance via this dictionary."""
     def __init__(self, obj, key):
-        #self.__obj = weakref.ref(obj)
-        self.obj = obj
+        self.__obj = weakref.ref(obj)
+        #self.obj = obj
         self.key = key
-    #obj = property(lambda s:s.__obj())
+    obj = property(lambda s:s.__obj())
     def history(self, **kwargs):
         return self
     def plain_init(self, *args, **kwargs):

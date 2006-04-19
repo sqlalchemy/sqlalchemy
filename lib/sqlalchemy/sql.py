@@ -131,7 +131,8 @@ def not_(clause):
 def between_(ctest, cleft, cright):
     """ returns BETWEEN predicate clause (clausetest BETWEEN clauseleft AND clauseright) """
     return BooleanExpression(ctest, and_(cleft, cright), 'BETWEEN')
-        
+between = between_
+   
 def cast(clause, totype, **kwargs):
     """ returns CAST function CAST(clause AS totype) 
         Use with a sqlalchemy.types.TypeEngine object, i.e
@@ -517,6 +518,8 @@ class CompareMixin(object):
         return Label(name, self, self.type)
     def distinct(self):
         return CompoundClause(None,"DISTINCT", self)
+    def between(self, cleft, cright):
+        return between_(self, cleft, cright)
     def op(self, operator):
         return lambda other: self._compare(operator, other)
     # and here come the math operators:
