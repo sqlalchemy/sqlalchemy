@@ -7,6 +7,10 @@ class Place(object):
     '''represents a place'''
     def __init__(self, name=None):
         self.name = name
+    def __str__(self):
+        return "(Place '%s')" % self.name
+    def __repr__(self):
+        return str(self)
 
 class PlaceThingy(object):
     '''represents a thingy attached to a Place'''
@@ -58,28 +62,86 @@ class M2MTest(testbase.AssertMixin):
             Column('transition_id', Integer, ForeignKey('transition.transition_id')),
             )
 
+        global place_place
+        place_place = Table('place_place', db,
+            Column('pl1_id', Integer, ForeignKey('place.place_id')),
+            Column('pl2_id', Integer, ForeignKey('place.place_id')),
+            )
+
         place.create()
         transition.create()
         place_input.create()
         place_output.create()
         place_thingy.create()
+        place_place.create()
 
     def tearDownAll(self):
+        place_place.drop()
         place_input.drop()
         place_output.drop()
         place_thingy.drop()
         place.drop()
         transition.drop()
+        #testbase.db.tables.clear()
 
     def setUp(self):
         objectstore.clear()
         clear_mappers()
 
     def tearDown(self):
+        place_place.delete().execute()
         place_input.delete().execute()
         place_output.delete().execute()
         transition.delete().execute()
         place.delete().execute()
+
+    def testcircular(self):
+        """tests a many-to-many relationship from a table to itself."""
+
+        Place.mapper = mapper(Place, place)
+
+        Place.mapper.add_property('places', relation(
+            Place.mapper, secondary=place_place, primaryjoin=place.c.place_id==place_place.c.pl1_id,
+            secondaryjoin=place.c.place_id==place_place.c.pl2_id,
+            order_by=place_place.c.pl2_id,
+            lazy=True,
+            ))
+
+        p1 = Place('place1')
+        p2 = Place('place2')
+        p3 = Place('place3')
+        p4 = Place('place4')
+        p5 = Place('place5')
+        p6 = Place('place6')
+        p7 = Place('place7')
+
+        p1.places.append(p2)
+        p1.places.append(p3)
+        p5.places.append(p6)
+        p6.places.append(p1)
+        p7.places.append(p1)
+        p1.places.append(p5)
+        p4.places.append(p3)
+        p3.places.append(p4)
+        objectstore.flush()
+
+        objectstore.clear()
+        l = Place.mapper.select(order_by=place.c.place_id)
+        (p1, p2, p3, p4, p5, p6, p7) = l
+        assert p1.places == [p2,p3,p5]
+        assert p5.places == [p6]
+        assert p7.places == [p1]
+        assert p6.places == [p1]
+        assert p4.places == [p3]
+        assert p3.places == [p4]
+        assert p2.places == []
+
+        for p in l:
+            pp = p.places
+            self.echo("Place " + str(p) +" places " + repr(pp))
+
+        objectstore.delete(p1,p2,p3,p4,p5,p6,p7)
+        objectstore.flush()
 
     def testdouble(self):
         """tests that a mapper can have two eager relations to the same table, via
@@ -110,17 +172,14 @@ class M2MTest(testbase.AssertMixin):
             }
             )    
 
-    def testcircular(self):
-        """tests a circular many-to-many relationship.  this requires that the mapper
-        "break off" a new "mapper stub" to indicate a third depedendent processor."""
+    def testbidirectional(self):
+        """tests a bi-directional many-to-many relationship."""
         Place.mapper = mapper(Place, place)
         Transition.mapper = mapper(Transition, transition, properties = dict(
             inputs = relation(Place.mapper, place_output, lazy=True, backref='inputs'),
             outputs = relation(Place.mapper, place_input, lazy=True, backref='outputs'),
             )
         )
-        #Place.mapper.add_property('inputs', relation(Transition.mapper, place_output, lazy=True, attributeext=attr.ListBackrefExtension('inputs')))
-        #Place.mapper.add_property('outputs', relation(Transition.mapper, place_input, lazy=True, attributeext=attr.ListBackrefExtension('outputs')))
 
         Place.eagermapper = Place.mapper.options(
             eagerload('inputs', selectalias='ip_alias'), 
@@ -167,6 +226,7 @@ class M2MTest2(testbase.AssertMixin):
         enrolTbl.drop()
         studentTbl.drop()
         courseTbl.drop()
+        #testbase.db.tables.clear()
 
     def setUp(self):
         objectstore.clear()
@@ -242,6 +302,7 @@ class M2MTest3(testbase.AssertMixin):
 		c2a1.drop()
 		a.drop()
 		c.drop()
+        #testbase.db.tables.clear()
 
 	def testbasic(self):
 		class C(object):pass

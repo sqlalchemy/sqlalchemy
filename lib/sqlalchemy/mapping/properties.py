@@ -225,13 +225,13 @@ class PropertyLoader(MapperProperty):
         """determines our 'direction', i.e. do we represent one to many, many to many, etc."""
         #print self.key, repr(self.parent.table.name), repr(self.parent.primarytable.name), repr(self.foreignkey.table.name), repr(self.target), repr(self.foreigntable.name)
         
-        if self.parent.table is self.target:
+        if self.secondaryjoin is not None:
+            return PropertyLoader.MANYTOMANY
+        elif self.parent.table is self.target:
             if self.foreignkey.primary_key:
                 return PropertyLoader.MANYTOONE
             else:
                 return PropertyLoader.ONETOMANY
-        elif self.secondaryjoin is not None:
-            return PropertyLoader.MANYTOMANY
         elif self.foreigntable == self.mapper.noninherited_table:
             return PropertyLoader.ONETOMANY
         elif self.foreigntable == self.parent.noninherited_table:
@@ -657,13 +657,11 @@ def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
             binary.right = binds.setdefault(binary.right,
                     sql.BindParamClause(binary.left._label, None, shortname = binary.right.name))
                     
-    if secondaryjoin is not None:
-        lazywhere = sql.and_(primaryjoin, secondaryjoin)
-    else:
-        lazywhere = primaryjoin
-    lazywhere = lazywhere.copy_container()
+    lazywhere = primaryjoin.copy_container()
     li = BinaryVisitor(visit_binary)
     lazywhere.accept_visitor(li)
+    if secondaryjoin is not None:
+        lazywhere = sql.and_(lazywhere, secondaryjoin)
     return (lazywhere, binds)
         
 
