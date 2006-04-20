@@ -65,15 +65,44 @@ class many_to_many(relationship):
 # 
 
 __deferred_classes__  = []
-def process_relationships(klass, was_deferred=False):
+__processed_classes__ = []
+
+def check_relationships(klass):
+    #Check the class for foreign_keys recursively. If some foreign table is not found, the processing of the table
+    #must be defered.
+    for keyname in klass.table._foreign_keys:
+        xtable = keyname._colspec[:keyname._colspec.find('.')]
+        tablefound = False
+        for xclass in ActiveMapperMeta.classes:
+            if ActiveMapperMeta.classes[xclass].table.from_name == xtable:
+                tablefound = True
+                break
+        if tablefound==False:
+            #The refered table has not yet been created.
+            return False
+
+    return True
+
+
+def process_relationships(klass):
     defer = False
     for propname, reldesc in klass.relations.items():
-        if not reldesc.classname in ActiveMapperMeta.classes:
-            if not was_deferred: __deferred_classes__.append(klass)
+        #We require that every related table has been processed first
+        if not reldesc.classname in __processed_classes__:
+            if not klass._classname in __deferred_classes__: __deferred_classes__.append(klass._classname)
             defer = True
-    
+
+
+    #Check every column item to see if it points to an existing table
+    #if it does not, defer...
+    if not defer:
+            if not check_relationships(klass):
+                if not klass._classname in __deferred_classes__: __deferred_classes__.append(klass._classname)
+                defer = True
+
     if not defer:
         relations = {}
+        __processed_classes__.append(klass._classname)
         for propname, reldesc in klass.relations.items():
             relclass = ActiveMapperMeta.classes[reldesc.classname]
             relations[propname] = relation(relclass.mapper,
@@ -82,38 +111,39 @@ def process_relationships(klass, was_deferred=False):
                                            private=reldesc.private, 
                                            lazy=reldesc.lazy, 
                                            uselist=reldesc.uselist)
-        assign_mapper(klass, klass.table, properties=relations,
-                      inherits=getattr(klass, "_base_mapper", None))
-        if was_deferred: __deferred_classes__.remove(klass)
-    
-    if not was_deferred:
+        if len(relations)>0:
+            assign_mapper(klass, klass.table, properties=relations)
+
+        if klass._classname in __deferred_classes__: __deferred_classes__.remove(klass._classname)
+
         for deferred_class in __deferred_classes__:
-            process_relationships(deferred_class, was_deferred=True)
+            process_relationships(ActiveMapperMeta.classes[deferred_class])
+
 
 
 
 class ActiveMapperMeta(type):
     classes = {}
-    
+
     def __init__(cls, clsname, bases, dict):
         table_name = clsname.lower()
         columns    = []
         relations  = {}
         _engine    = getattr( sys.modules[cls.__module__], "__engine__", engine )
-        
+
         if 'mapping' in dict:
             members = inspect.getmembers(dict.get('mapping'))
             for name, value in members:
                 if name == '__table__':
                     table_name = value
                     continue
-                
+
                 if '__engine__' == name:
                     _engine= value
                     continue
-                    
+
                 if name.startswith('__'): continue
-                
+
                 if isinstance(value, column):
                     if value.foreign_key:
                         col = Column(value.colname or name, 
@@ -128,7 +158,7 @@ class ActiveMapperMeta(type):
                                      *value.args, **value.kwargs)
                     columns.append(col)
                     continue
-                
+
                 if isinstance(value, relationship):
                     relations[name] = value
             assert _engine is not None, "No engine specified"
@@ -140,16 +170,16 @@ class ActiveMapperMeta(type):
             else:
                 assign_mapper(cls, cls.table)
             cls.relations = relations
+            cls._classname = clsname
             ActiveMapperMeta.classes[clsname] = cls
-            
             process_relationships(cls)
-        
+
         super(ActiveMapperMeta, cls).__init__(clsname, bases, dict)
 
 
 class ActiveMapper(object):
     __metaclass__ = ActiveMapperMeta
-    
+
     def set(self, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -162,4 +192,3 @@ class ActiveMapper(object):
 def create_tables():
     for klass in ActiveMapperMeta.classes.values():
         klass.table.create()
-
