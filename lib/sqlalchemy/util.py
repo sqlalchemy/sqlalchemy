@@ -383,6 +383,9 @@ class HistoryArraySet(UserList.UserList):
     def remove(self, item): 
         if self._delrecord(item):
             self.data.remove(item)
+    def extend(self, item_list):
+        for item in item_list:
+            self.append(item)            
     def __add__(self, other):
         raise NotImplementedError()
     def __radd__(self, other):
