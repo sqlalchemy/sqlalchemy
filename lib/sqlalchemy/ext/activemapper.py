@@ -1,17 +1,8 @@
-from sqlalchemy             import objectstore, create_engine, assign_mapper, relation, mapper, join
-from sqlalchemy             import and_, or_
+from sqlalchemy             import assign_mapper, relation, exceptions
 from sqlalchemy             import Table, Column, ForeignKey
-from sqlalchemy.ext.proxy   import ProxyEngine
 
 import inspect
 import sys
-
-#
-# the "proxy" to the database engine... this can be swapped out at runtime
-#
-engine = ProxyEngine()
-
-
 
 #
 # declarative column declaration - this is so that we can infer the colname
@@ -87,22 +78,21 @@ def check_relationships(klass):
 def process_relationships(klass):
     defer = False
     for propname, reldesc in klass.relations.items():
-        #We require that every related table has been processed first
+        # we require that every related table has been processed first
         if not reldesc.classname in __processed_classes__:
             if not klass._classname in __deferred_classes__: __deferred_classes__.append(klass._classname)
             defer = True
-
-
-    #Check every column item to see if it points to an existing table
-    #if it does not, defer...
+    
+    # check every column item to see if it points to an existing table
+    # if it does not, defer...
     if not defer:
-            if not check_relationships(klass):
-                if not klass._classname in __deferred_classes__: __deferred_classes__.append(klass._classname)
-                defer = True
-
+        if not check_relationships(klass):
+            if not klass._classname in __deferred_classes__: __deferred_classes__.append(klass._classname)
+            defer = True
+    
     if not defer:
         relations = {}
-        __processed_classes__.append(klass._classname)
+        
         for propname, reldesc in klass.relations.items():
             relclass = ActiveMapperMeta.classes[reldesc.classname]
             relations[propname] = relation(relclass.mapper,
@@ -111,15 +101,21 @@ def process_relationships(klass):
                                            private=reldesc.private, 
                                            lazy=reldesc.lazy, 
                                            uselist=reldesc.uselist)
-        if len(relations)>0:
-            assign_mapper(klass, klass.table, properties=relations)
+        if len(relations) > 0:
+            assign_ok = True
+            try:
+                assign_mapper(klass, klass.table, properties=relations)
+            except exceptions.ArgumentError:
+                assign_ok = False
 
-        if klass._classname in __deferred_classes__: __deferred_classes__.remove(klass._classname)
+            if assign_ok:
+                __processed_classes__.append(klass._classname)
+                if klass._classname in __deferred_classes__: __deferred_classes__.remove(klass._classname)
+        else:
+            __processed_classes__.append(klass._classname)
 
         for deferred_class in __deferred_classes__:
             process_relationships(ActiveMapperMeta.classes[deferred_class])
-
-
 
 
 class ActiveMapperMeta(type):
@@ -129,17 +125,12 @@ class ActiveMapperMeta(type):
         table_name = clsname.lower()
         columns    = []
         relations  = {}
-        _engine    = getattr( sys.modules[cls.__module__], "__engine__", engine )
 
         if 'mapping' in dict:
             members = inspect.getmembers(dict.get('mapping'))
             for name, value in members:
                 if name == '__table__':
                     table_name = value
-                    continue
-
-                if '__engine__' == name:
-                    _engine= value
                     continue
 
                 if name.startswith('__'): continue
@@ -161,13 +152,14 @@ class ActiveMapperMeta(type):
 
                 if isinstance(value, relationship):
                     relations[name] = value
-            assert _engine is not None, "No engine specified"
-            cls.table = Table(table_name, _engine, *columns)
+            
+            cls.table = Table(table_name, redefine=True, *columns)
+            
             # check for inheritence
-            if hasattr( bases[0], "mapping" ):
-                cls._base_mapper= bases[0].mapper
+            if hasattr(bases[0], "mapping"):
+                cls._base_mapper = bases[0].mapper
                 assign_mapper(cls, cls.table, inherits=cls._base_mapper)
-            else:
+            elif len(relations) == 0:
                 assign_mapper(cls, cls.table)
             cls.relations = relations
             cls._classname = clsname
@@ -192,3 +184,10 @@ class ActiveMapper(object):
 def create_tables():
     for klass in ActiveMapperMeta.classes.values():
         klass.table.create()
+
+#
+# a utility function to drop all tables for all ActiveMapper classes
+#
+def drop_tables():
+    for klass in ActiveMapperMeta.classes.values():
+        klass.table.drop()

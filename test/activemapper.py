@@ -1,11 +1,11 @@
-from activemapper           import ActiveMapper, column, one_to_many, one_to_one
-from sqlalchemy             import objectstore
-from sqlalchemy             import and_, or_
-from sqlalchemy             import ForeignKey, String, Integer, DateTime
-from datetime               import datetime
+from sqlalchemy.ext.activemapper    import ActiveMapper, column, one_to_many, one_to_one
+from sqlalchemy.ext                 import activemapper
+from sqlalchemy                     import objectstore, global_connect
+from sqlalchemy                     import and_, or_
+from sqlalchemy                     import ForeignKey, String, Integer, DateTime
+from datetime                       import datetime
 
 import unittest
-import activemapper
 
 #
 # application-level model objects
@@ -130,6 +130,9 @@ class testcase(unittest.TestCase):
     
     
     def test_create(self):
+        global_connect('sqlite:///', echo=False)
+        activemapper.create_tables()
+        
         p1 = self.create_person_one()
         
         objectstore.commit()
@@ -222,9 +225,4 @@ class testcase(unittest.TestCase):
 
     
 if __name__ == '__main__':
-    # go ahead and setup the database connection, and create the tables
-    activemapper.engine.connect('sqlite:///', echo=False)
-    activemapper.create_tables()
-    
-    # launch the unit tests
     unittest.main()
