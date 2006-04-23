@@ -49,6 +49,7 @@ class Mapper(object):
                 entity_name = None,
                 always_refresh = False,
                 version_id_col = None,
+                construct_new = False,
                 **kwargs):
 
         if primarytable is not None:
@@ -73,6 +74,7 @@ class Mapper(object):
         self._options = {}
         self.always_refresh = always_refresh
         self.version_id_col = version_id_col
+        self.construct_new = construct_new
         
         if not issubclass(class_, object):
             raise ArgumentError("Class '%s' is not a new-style class" % class_.__name__)
@@ -724,7 +726,7 @@ class Mapper(object):
             # plugin point
             instance = self.extension.create_instance(self, row, imap, self.class_)
             if instance is EXT_PASS:
-                instance = self.class_(_mapper_nohistory=True, _sa_entity_name=self.entity_name, _sa_session=session)
+                instance = self._create_instance(session)
             imap[identitykey] = instance
             isnew = True
         else:
@@ -741,6 +743,21 @@ class Mapper(object):
             if result is not None:
                 result.append_nohistory(instance)
         return instance
+
+    def _create_instance(self, session):
+        if not self.construct_new:
+            return self.class_(_mapper_nohistory=True, _sa_entity_name=self.entity_name, _sa_session=session)
+
+        obj = self.class_.__new__(self.class_)
+        obj._entity_name = self.entity_name
+
+        # this gets the AttributeManager to do some pre-initialization,
+        # in order to save on KeyErrors later on
+        objectstore.global_attributes.init_attr(obj)
+
+        session._bind_to(obj)
+
+        return obj
 
     def translate_row(self, tomapper, row):
         """attempts to take a row and translate its values to a row that can
