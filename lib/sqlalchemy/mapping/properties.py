@@ -660,7 +660,7 @@ def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
             binary.left = binds.setdefault(binary.left,
                     sql.BindParamClause(bind_label(), None, shortname = binary.left.name))
             reverselookup[binary.right] = binds[col]
-            binary.swap()
+            #binary.swap()
 
         if isinstance(binary.right, schema.Column) and isinstance(binary.left, schema.Column) and ((not circular and binary.right.table is table) or (circular and binary.left is foreignkey)):
             col = binary.right
@@ -671,7 +671,7 @@ def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     lazywhere = primaryjoin.copy_container()
     li = BinaryVisitor(visit_binary)
     lazywhere.accept_visitor(li)
-    #print "PRIMARYJOIN", str(lazywhere), [b.key for b in binds.values()]
+    print "PRIMARYJOIN", str(lazywhere), [b.key for b in binds.values()]
     if secondaryjoin is not None:
         lazywhere = sql.and_(lazywhere, secondaryjoin)
     return (lazywhere, binds, reverselookup)

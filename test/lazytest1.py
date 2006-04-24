@@ -56,6 +56,9 @@ class LazyTest(AssertMixin):
         rel_table.drop()
         info_table.drop()
     
+    def setUp(self):
+        clear_mappers()
+        
     def testone(self):
         """tests a lazy load which has multiple join conditions, including two that are against
         the same column in the child table"""
@@ -76,7 +79,8 @@ class LazyTest(AssertMixin):
         Relation.mapper.add_property('datas', relation(Data.mapper,
         	primaryjoin=and_(Relation.c.info_pk==Data.c.info_pk,
         	Data.c.timeval >= Relation.c.start,
-        	Data.c.timeval <= Relation.c.finish),
+        	Data.c.timeval <= Relation.c.finish
+            ),
         	foreignkey=Data.c.info_pk))
 
         Information.mapper.add_property('rels', relation(Relation.mapper))
@@ -85,6 +89,39 @@ class LazyTest(AssertMixin):
         assert info
         assert len(info.rels) == 2
         assert len(info.rels[0].datas) == 3
+
+    def testtwo(self):
+        """same thing, but reversing the order of the cols in the join"""
+        class Information(object):
+        	pass
+
+        class Relation(object):
+        	pass
+
+        class Data(object):
+        	pass
+
+        # Create the basic mappers, with no frills or modifications
+        Information.mapper = mapper(Information, info_table)
+        Data.mapper = mapper(Data, data_table)
+        Relation.mapper = mapper(Relation, rel_table)
+
+        Relation.mapper.add_property('datas', relation(Data.mapper,
+        	primaryjoin=and_(Relation.c.info_pk==Data.c.info_pk,
+            Relation.c.start <= Data.c.timeval,
+           Relation.c.finish >= Data.c.timeval,
+    #    	Data.c.timeval >= Relation.c.start,
+    #    	Data.c.timeval <= Relation.c.finish
+            ),
+        	foreignkey=Data.c.info_pk))
+
+        Information.mapper.add_property('rels', relation(Relation.mapper))
+
+        info = Information.mapper.get(1)
+        assert info
+        assert len(info.rels) == 2
+        assert len(info.rels[0].datas) == 3
+
 
 if __name__ == "__main__":    
     testbase.main()
