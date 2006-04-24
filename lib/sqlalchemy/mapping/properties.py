@@ -18,6 +18,7 @@ import sync
 import mapper
 import objectstore
 from sqlalchemy.exceptions import *
+import random
 
 class ColumnProperty(MapperProperty):
     """describes an object attribute that corresponds to a table column."""
@@ -579,7 +580,7 @@ class PropertyLoader(MapperProperty):
 
 class LazyLoader(PropertyLoader):
     def do_init_subclass(self, key, parent):
-        (self.lazywhere, self.lazybinds) = create_lazy_clause(self.parent.noninherited_table, self.primaryjoin, self.secondaryjoin, self.foreignkey)
+        (self.lazywhere, self.lazybinds, self.lazyreverse) = create_lazy_clause(self.parent.noninherited_table, self.primaryjoin, self.secondaryjoin, self.foreignkey)
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
         self.use_get = not self.uselist and self.mapper.query._get_clause.compare(self.lazywhere)
@@ -608,7 +609,8 @@ class LazyLoader(PropertyLoader):
                 if self.use_get:
                     ident = []
                     for primary_key in self.mapper.pks_by_table[self.mapper.table]:
-                        ident.append(params[primary_key._label])
+                        bind = self.lazyreverse[primary_key]
+                        ident.append(params[bind.key])
                     return self.mapper.using(session).get(*ident)
                 elif self.order_by is not False:
                     order_by = self.order_by
@@ -646,23 +648,33 @@ class LazyLoader(PropertyLoader):
  
 def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     binds = {}
+    reverselookup = {}
+    
+    def bind_label():
+        return "lazy_" + hex(random.randint(0, 65535))[2:]
+        
     def visit_binary(binary):
         circular = isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column) and binary.left.table is binary.right.table
         if isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column) and ((not circular and binary.left.table is table) or (circular and binary.right is foreignkey)):
+            col = binary.left
             binary.left = binds.setdefault(binary.left,
-                    sql.BindParamClause(binary.right._label, None, shortname = binary.left.name))
+                    sql.BindParamClause(bind_label(), None, shortname = binary.left.name))
+            reverselookup[binary.right] = binds[col]
             binary.swap()
 
         if isinstance(binary.right, schema.Column) and isinstance(binary.left, schema.Column) and ((not circular and binary.right.table is table) or (circular and binary.left is foreignkey)):
+            col = binary.right
             binary.right = binds.setdefault(binary.right,
-                    sql.BindParamClause(binary.left._label, None, shortname = binary.right.name))
+                    sql.BindParamClause(bind_label(), None, shortname = binary.right.name))
+            reverselookup[binary.left] = binds[col]
                     
     lazywhere = primaryjoin.copy_container()
     li = BinaryVisitor(visit_binary)
     lazywhere.accept_visitor(li)
+    #print "PRIMARYJOIN", str(lazywhere), [b.key for b in binds.values()]
     if secondaryjoin is not None:
         lazywhere = sql.and_(lazywhere, secondaryjoin)
-    return (lazywhere, binds)
+    return (lazywhere, binds, reverselookup)
         
 
 class EagerLoader(PropertyLoader):

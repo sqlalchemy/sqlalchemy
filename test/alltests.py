@@ -34,6 +34,7 @@ def suite():
         # ORM selecting
         'mapper',
         'selectresults',
+        'lazytest1',
         'eagertest1',
         'eagertest2',
         
