@@ -124,6 +124,20 @@ class MapperTest(MapperSuperTest):
             objectstore.refresh(u)
         self.assert_sql_count(db, go, 1)
 
+    def testexpire_eager(self):
+        """tests that an eager load will populate expire()'d objects"""
+        m = mapper(User, users, properties={'addresses':relation(mapper(Address, addresses))})
+        [u1, u2, u3] = m.select(users.c.user_id.in_(7, 8, 9))
+        self.echo([repr(x.addresses) for x in [u1, u2, u3]])
+        [objectstore.expire(u) for u in [u1, u2, u3]]
+        m2 = m.options(eagerload('addresses'))
+        l = m2.select(users.c.user_id.in_(7,8,9))
+        def go():
+            u1.addresses
+            u2.addresses
+            u3.addresses
+        self.assert_sql_count(db, go, 0)
+        
     def testsessionpropigation(self):
         sess = objectstore.Session()
         m = mapper(User, users, properties={'addresses':relation(mapper(Address, addresses), lazy=True)})
