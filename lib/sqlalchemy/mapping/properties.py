@@ -671,7 +671,7 @@ def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     lazywhere = primaryjoin.copy_container()
     li = BinaryVisitor(visit_binary)
     lazywhere.accept_visitor(li)
-    print "PRIMARYJOIN", str(lazywhere), [b.key for b in binds.values()]
+    #print "PRIMARYJOIN", str(lazywhere), [b.key for b in binds.values()]
     if secondaryjoin is not None:
         lazywhere = sql.and_(lazywhere, secondaryjoin)
     return (lazywhere, binds, reverselookup)

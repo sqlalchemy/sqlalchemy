@@ -58,7 +58,7 @@ class EngineMixin(object):
     engine = property(_get_engine)
     
 def _get_table_key(engine, name, schema):
-    if schema is not None and schema == engine.get_default_schema_name():
+    if schema is not None:# and schema == engine.get_default_schema_name():
         schema = None
     if schema is None:
         return name
