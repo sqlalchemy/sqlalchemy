@@ -79,8 +79,12 @@ class ManagedAttribute(object):
     ManagedAttribute objects associated with the instance via this dictionary."""
     def __init__(self, obj, key):
         self.__obj = weakref.ref(obj)
-        #self.obj = obj
         self.key = key
+    def __getstate__(self):
+        return {'key':self.key, 'obj':self.obj}
+    def __setstate__(self, d):
+        self.key = d['key']
+        self.__obj = weakref.ref(d['obj'])
     obj = property(lambda s:s.__obj())
     def history(self, **kwargs):
         return self
@@ -496,25 +500,4 @@ class AttributeManager(object):
         will be passed along to newly created ManagedAttribute."""
         if not hasattr(class_, '_attribute_manager'):
             class_._attribute_manager = self
-            class_._managed_attributes = ObjectAttributeGateway()
         setattr(class_, key, self.create_prop(class_, key, uselist, callable_, **kwargs))
-
-managed_attributes = weakref.WeakKeyDictionary()
-
-class ObjectAttributeGateway(object):
-    """handles the dictionary of ManagedAttributes for instances.  this level of indirection
-    is to prevent circular references upon objects, as well as keeping them Pickle-compatible."""
-    def __set__(self, obj, value):
-        managed_attributes[obj] = value
-    def __delete__(self, obj):
-        try:
-            del managed_attributes[obj]
-        except KeyError:
-            raise AttributeError()
-    def __get__(self, obj, owner):
-        if obj is None:
-            return self
-        try:
-            return managed_attributes[obj]
-        except KeyError:
-            raise AttributeError()

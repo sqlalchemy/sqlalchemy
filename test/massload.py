@@ -56,7 +56,7 @@ class LoadTest(AssertMixin):
                 a.value = 'changed...'
             assert len(objectstore.get_session().dirty) == len(l)
             assert len(objectstore.get_session().identity_map) == len(l)
-            assert len(attributes.managed_attributes) == len(l)
+            #assert len(attributes.managed_attributes) == len(l)
             print len(objectstore.get_session().dirty)
             print len(objectstore.get_session().identity_map)
             objectstore.expunge(*l)
