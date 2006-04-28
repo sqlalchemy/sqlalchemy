@@ -543,7 +543,6 @@ class CompareMixin(object):
                 return BooleanExpression(self._compare_self(), null(), 'IS')
             else:
                 obj = self._bind_param(obj)
-
         return BooleanExpression(self._compare_self(), obj, operator, type=self._compare_type(obj))
     def _operate(self, operator, obj):
         if _is_literal(obj):
@@ -884,9 +883,9 @@ class BinaryClause(ClauseElement):
         self.operator = operator
         self.type = sqltypes.to_instance(type)
         self.parens = False
-        if isinstance(self.left, BinaryClause):
+        if isinstance(self.left, BinaryClause) or isinstance(self.left, Selectable):
             self.left.parens = True
-        if isinstance(self.right, BinaryClause):
+        if isinstance(self.right, BinaryClause) or isinstance(self.right, Selectable):
             self.right.parens = True
     def copy_container(self):
         return BinaryClause(self.left.copy_container(), self.right.copy_container(), self.operator)

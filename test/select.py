@@ -151,6 +151,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         self.runtest(
             select([users, s.c.street], from_obj=[s]),
             """SELECT users.user_id, users.user_name, users.password, s.street FROM users, (SELECT addresses.street AS street FROM addresses WHERE addresses.user_id = users.user_id) AS s""")
+
         
     def testcolumnsubquery(self):
         s = select([table1.c.myid], scalar=True, correlate=False)
@@ -622,6 +623,11 @@ class CRUDTest(SQLTest):
         s = select([table2], table2.c.otherid == table1.c.myid)
         u = update(table1, table1.c.name == 'jack', values = {table1.c.name : s})
         self.runtest(u, "UPDATE mytable SET name=(SELECT myothertable.otherid, myothertable.othername FROM myothertable WHERE myothertable.otherid = mytable.myid) WHERE mytable.name = :mytable_name")
+        
+        # test a correlated WHERE clause
+        s = select([table2.c.othername], table2.c.otherid == 7)
+        u = update(table1, table1.c.name==s)
+        self.runtest(u, "UPDATE mytable SET myid=:myid, name=:name, description=:description WHERE mytable.name = (SELECT myothertable.othername FROM myothertable WHERE myothertable.otherid = :myothertable_otherid)")
         
     def testdelete(self):
         self.runtest(delete(table1, table1.c.myid == 7), "DELETE FROM mytable WHERE mytable.myid = :mytable_myid")
