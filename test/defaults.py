@@ -92,6 +92,12 @@ class DefaultTest(PersistTest):
         l = t.select().execute()
         self.assert_(l.fetchall() == [(51, 'imthedefault', f, ts, ts, ctexec), (52, 'imthedefault', f, ts, ts, ctexec), (53, 'imthedefault', f, ts, ts, ctexec)])
 
+    def testinsertvalues(self):
+        t.insert(values={'col3':50}).execute()
+        l = t.select().execute()
+        self.assert_(l.fetchone()['col3'] == 50)
+        
+        
     def testupdate(self):
         t.insert().execute()
         pk = t.engine.last_inserted_ids()[0]
@@ -103,6 +109,14 @@ class DefaultTest(PersistTest):
         self.assert_(l == (pk, 'im the update', f2, None, None, ctexec))
         # mysql/other db's return 0 or 1 for count(1)
         self.assert_(14 <= f2 <= 15)
+
+    def testupdatevalues(self):
+        t.insert().execute()
+        pk = t.engine.last_inserted_ids()[0]
+        t.update(t.c.col1==pk, values={'col3': 55}).execute()
+        l = t.select(t.c.col1==pk).execute()
+        l = l.fetchone()
+        self.assert_(l['col3'] == 55)
         
 class SequenceTest(PersistTest):
 
