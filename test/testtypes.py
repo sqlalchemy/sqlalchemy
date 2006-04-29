@@ -17,7 +17,8 @@ class MyType(types.TypeEngine):
     def adapt_args(self):
         return self
 
-class MyDecoratedType(types.String):
+class MyDecoratedType(types.TypeDecorator):
+    impl = String
     def convert_bind_param(self, value, engine):
         return "BIND_IN"+ value
     def convert_result_value(self, value, engine):
@@ -29,6 +30,21 @@ class MyUnicodeType(types.Unicode):
     def convert_result_value(self, value, engine):
         return value + "UNI_BIND_OUT"
 
+class AdaptTest(PersistTest):
+    def testadapt(self):
+        e1 = create_engine('postgres://')
+        e2 = create_engine('sqlite://')
+        e3 = create_engine('mysql://')
+        
+        type = String(40)
+        
+        t1 = type.engine_impl(e1)
+        t2 = type.engine_impl(e2)
+        t3 = type.engine_impl(e3)
+        assert t1 != t2
+        assert t2 != t3
+        assert t3 != t1
+        
 class OverrideTest(PersistTest):
     """tests user-defined types, including a full type as well as a TypeDecorator"""
 
@@ -132,6 +148,15 @@ class UnicodeTest(AssertMixin):
             self.assert_(isinstance(x['plain_data'], unicode) and x['plain_data'] == unicodedata)
         finally:
             db.engine.convert_unicode = prev_unicode
+
+
+class Foo(object):
+    def __init__(self, moredata):
+        self.data = 'im data'
+        self.stuff = 'im stuff'
+        self.moredata = moredata
+    def __eq__(self, other):
+        return other.data == self.data and other.stuff == self.stuff and other.moredata==self.moredata
     
 class BinaryTest(AssertMixin):
     def setUpAll(self):
@@ -140,20 +165,29 @@ class BinaryTest(AssertMixin):
         Column('primary_id', Integer, primary_key=True),
         Column('data', Binary),
         Column('data_slice', Binary(100)),
-        Column('misc', String(30)))
+        Column('misc', String(30)),
+        Column('pickled', PickleType))
         binary_table.create()
     def tearDownAll(self):
         binary_table.drop()
     def testbinary(self):
+        testobj1 = Foo('im foo 1')
+        testobj2 = Foo('im foo 2')
+        
         stream1 =self.get_module_stream('sqlalchemy.sql')
         stream2 =self.get_module_stream('sqlalchemy.engine')
-        binary_table.insert().execute(primary_id=1, misc='sql.pyc',    data=stream1, data_slice=stream1[0:100])
-        binary_table.insert().execute(primary_id=2, misc='engine.pyc', data=stream2, data_slice=stream2[0:99])
+        binary_table.insert().execute(primary_id=1, misc='sql.pyc',    data=stream1, data_slice=stream1[0:100], pickled=testobj1)
+        binary_table.insert().execute(primary_id=2, misc='engine.pyc', data=stream2, data_slice=stream2[0:99], pickled=testobj2)
         l = binary_table.select().execute().fetchall()
+        print type(l[0]['data'])
+        return
         print len(stream1), len(l[0]['data']), len(l[0]['data_slice'])
         self.assert_(list(stream1) == list(l[0]['data']))
         self.assert_(list(stream1[0:100]) == list(l[0]['data_slice']))
         self.assert_(list(stream2) == list(l[1]['data']))
+        self.assert_(testobj1 == l[0]['pickled'])
+        self.assert_(testobj2 == l[1]['pickled'])
+
     def get_module_stream(self, name):
         mod = __import__(name)
         for token in name.split('.')[1:]:

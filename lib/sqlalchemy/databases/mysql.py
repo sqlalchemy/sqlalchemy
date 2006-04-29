@@ -79,6 +79,11 @@ class MSBinary(sqltypes.Binary):
             return "BINARY(%d)" % self.length
         else:
             return "BLOB"
+    def convert_result_value(self, value, engine):
+        if value is None:
+            return None
+        else:
+            return buffer(value)
 
 class MSBoolean(sqltypes.Boolean):
     def get_col_spec(self):
@@ -142,7 +147,6 @@ class MySQLEngine(ansisql.ANSISQLEngine):
 
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
-
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
 

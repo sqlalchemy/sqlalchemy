@@ -17,9 +17,7 @@ try:
 except:
     import pickle
 
-class TypeEngine(object):
-    def __init__(self, *args, **kwargs):
-        pass
+class AbstractType(object):
     def _get_impl_dict(self):
         try:
             return self._impl_dict
@@ -27,32 +25,45 @@ class TypeEngine(object):
             self._impl_dict = {}
             return self._impl_dict
     impl_dict = property(_get_impl_dict)
+    def get_constructor_args(self):
+        return {}
+    def adapt_args(self):
+        return self
+
+class TypeEngine(AbstractType):
+    def __init__(self, *args, **params):
+        pass
     def engine_impl(self, engine):
         try:
             return self.impl_dict[engine]
         except:
             return self.impl_dict.setdefault(engine, engine.type_descriptor(self))
-    def _get_impl(self):
-        if hasattr(self, '_impl'):
-            return self._impl
-        else:
-            return NULLTYPE
-    def _set_impl(self, impl):
-        self._impl = impl
-    impl = property(_get_impl, _set_impl)
+    def get_col_spec(self):
+        raise NotImplementedError()
+    def convert_bind_param(self, value, engine):
+        return value
+    def convert_result_value(self, value, engine):
+        return value
+
+class TypeDecorator(AbstractType):
+    def __init__(self, *args, **params):
+        pass
+    def engine_impl(self, engine):
+        try:
+            return self.impl_dict[engine]
+        except:
+            typedesc = engine.type_descriptor(self.impl)
+            tt = self.__class__(**self.get_constructor_args())
+            tt.impl = typedesc
+            self.impl_dict[engine] = tt
+            return tt
     def get_col_spec(self):
         return self.impl.get_col_spec()
     def convert_bind_param(self, value, engine):
         return self.impl.convert_bind_param(value, engine)
     def convert_result_value(self, value, engine):
         return self.impl.convert_result_value(value, engine)
-    def set_impl(self, impltype):
-        self.impl = impltype(**self.get_constructor_args())
-    def get_constructor_args(self):
-        return {}
-    def adapt_args(self):
-        return self
-
+        
 def to_instance(typeobj):
     if typeobj is None:
         return NULLTYPE
@@ -73,9 +84,7 @@ def adapt_type(typeobj, colspecs):
     else:
         # couldnt adapt...raise exception ?
         return typeobj
-    typeobj.set_impl(impltype)
-    typeobj.impl.impl = NULLTYPE
-    return typeobj
+    return impltype(**t2.get_constructor_args())
     
 class NullTypeEngine(TypeEngine):
     def get_col_spec(self):
@@ -85,10 +94,6 @@ class NullTypeEngine(TypeEngine):
     def convert_result_value(self, value, engine):
         return value
 
-class TypeDecorator(object):
-    """TypeDecorator is deprecated"""
-    pass
-    
     
 class String(TypeEngine):
     def __init__(self, length = None):
@@ -111,7 +116,8 @@ class String(TypeEngine):
         else:
             return self
             
-class Unicode(String):
+class Unicode(TypeDecorator):
+    impl = String
     def convert_bind_param(self, value, engine):
          if value is not None and isinstance(value, unicode):
               return value.encode(engine.encoding)
@@ -164,19 +170,20 @@ class Binary(TypeEngine):
     def get_constructor_args(self):
         return {'length':self.length}
 
-class PickleType(Binary):
+class PickleType(TypeDecorator):
       def __init__(self, protocol=pickle.HIGHEST_PROTOCOL):
            """allows the pickle protocol to be specified"""
            self.protocol = protocol
+           self.impl = Binary()
       def convert_result_value(self, value, engine):
           if value is None:
               return None
-          buf = Binary.convert_result_value(self, value, engine)
+          buf = self.impl.convert_result_value(value, engine)
           return pickle.loads(str(buf))
       def convert_bind_param(self, value, engine):
           if value is None:
               return None
-          return Binary.convert_bind_param(self, pickle.dumps(value, self.protocol), engine)
+          return self.impl.convert_bind_param(pickle.dumps(value, self.protocol), engine)
       def get_constructor_args(self):
             return {}
 
