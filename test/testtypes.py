@@ -14,8 +14,6 @@ class MyType(types.TypeEngine):
         return value + "BIND_OUT"
     def adapt(self, typeobj):
         return typeobj()
-    def adapt_args(self):
-        return self
 
 class MyDecoratedType(types.TypeDecorator):
     impl = String
@@ -23,12 +21,16 @@ class MyDecoratedType(types.TypeDecorator):
         return "BIND_IN"+ value
     def convert_result_value(self, value, engine):
         return value + "BIND_OUT"
-
+    def copy(self):
+        return MyDecoratedType()
+        
 class MyUnicodeType(types.Unicode):
     def convert_bind_param(self, value, engine):
         return "UNI_BIND_IN"+ value
     def convert_result_value(self, value, engine):
         return value + "UNI_BIND_OUT"
+    def copy(self):
+        return MyUnicodeType(self.impl.length)
 
 class AdaptTest(PersistTest):
     def testadapt(self):
@@ -44,6 +46,15 @@ class AdaptTest(PersistTest):
         assert t1 != t2
         assert t2 != t3
         assert t3 != t1
+    
+    def testdecorator(self):
+        t1 = Unicode(20)
+        t2 = Unicode()
+        assert isinstance(t1.impl, String)
+        assert not isinstance(t1.impl, TEXT)
+        assert (t1.impl.length == 20)
+        assert isinstance(t2.impl, TEXT)
+        assert t2.impl.length is None
         
 class OverrideTest(PersistTest):
     """tests user-defined types, including a full type as well as a TypeDecorator"""
