@@ -384,7 +384,9 @@ class InheritTest5(testbase.AssertMixin):
         # shouldnt throw exception
         products = mapper(Product, product, inherits=contents)
     
+    
     def testbackref(self):
+        """this test is currently known to fail in the 0.1 series of SQLAlchemy, pending the resolution of [ticket:154]"""
         class ContentType(object): pass
         class Content(object): pass
         class Product(Content): pass

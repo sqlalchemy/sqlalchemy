@@ -143,7 +143,8 @@ class SessionTest(AssertMixin):
         trans.commit()
         self.assert_(name_of(7) != name1, msg="user_name should not be %s" % name1)
         self.assert_(name_of(8) != name2, msg="user_name should not be %s" % name2)
-
+    
+    @testbase.unsupported('sqlite')
     def test_true_nested(self):
         """tests creating a new Session inside a database transaction, in 
         conjunction with an engine-level nested transaction, which uses
@@ -185,7 +186,8 @@ class VersioningTest(AssertMixin):
         version_table.delete().execute()
         objectstore.clear()
         clear_mappers()
-        
+    
+    @testbase.unsupported('mysql')
     def testbasic(self):
         class Foo(object):pass
         assign_mapper(Foo, version_table, version_id_col=version_table.c.version_id)
@@ -287,6 +289,8 @@ class PKTest(AssertMixin):
     def setUp(self):
         objectstore.clear()
         clear_mappers()
+        
+    @testbase.unsupported('sqlite')
     def testprimarykey(self):
         class Entry(object):
             pass

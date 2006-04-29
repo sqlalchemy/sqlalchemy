@@ -42,8 +42,14 @@ class SelectResultsTest(PersistTest):
         assert self.res.count() == 100
         assert self.res.filter(foo.c.bar<30).min(foo.c.bar) == 0
         assert self.res.filter(foo.c.bar<30).max(foo.c.bar) == 29
+
+    @testbase.unsupported('mysql')
+    def test_aggregate_1(self):
         # this one fails in mysql as the result comes back as a string
         assert self.res.filter(foo.c.bar<30).sum(foo.c.bar) == 435
+
+    @testbase.unsupported('postgres', 'mysql')
+    def test_aggregate_2(self):
         # this one fails with postgres, the floating point comparison fails
         assert self.res.filter(foo.c.bar<30).avg(foo.c.bar) == 14.5
 

@@ -59,13 +59,44 @@ def parse_argv():
         db = engine.create_engine(db_uri, echo=echo, default_ordering=True, **opts)
     db = EngineAssert(db)
 
+def unsupported(*dbs):
+    """a decorator that marks a test as unsupported by one or more database implementations"""
+    def decorate(func):
+        name = db.name
+        for d in dbs:
+            if d == name:
+                def lala(self):
+                    echo_text("'" + func.__name__ + "' unsupported on DB implementation '" + name + "'")
+                lala.__name__ = func.__name__
+                return lala
+        else:
+            return func
+    return decorate
+
+def supported(*dbs):
+    """a decorator that marks a test as supported by one or more database implementations"""
+    def decorate(func):
+        name = db.name
+        for d in dbs:
+            if d == name:
+                return func
+        else:
+            def lala(self):
+                echo_text("'" + func.__name__ + "' unsupported on DB implementation '" + name + "'")
+            lala.__name__ = func.__name__
+            return lala
+    return decorate
+
+def echo_text(text):
+    print text
+        
 class PersistTest(unittest.TestCase):
     """persist base class, provides default setUpAll, tearDownAll and echo functionality"""
     def __init__(self, *args, **params):
         unittest.TestCase.__init__(self, *args, **params)
     def echo(self, text):
         if echo:
-            print text
+            echo_text(text)
     def setUpAll(self):
         pass
     def tearDownAll(self):
