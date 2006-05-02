@@ -309,6 +309,20 @@ class PGCompiler(ansisql.ANSICompiler):
             text += " OFFSET " + str(select.offset)
         return text
 
+    def visit_select_precolumns(self, select):
+        if select.distinct:
+            if type(select.distinct) == bool:
+                return "DISTINCT "
+            if type(select.distinct) == list:
+                dist_set = "DISTINCT ON ("
+                for col in select.distinct:
+                    dist_set += self.strings[col] + ", "
+                    dist_set = dist_set[:-2] + ") "
+                return dist_set
+            return "DISTINCT ON (" + str(select.distinct) + ") "
+        else:
+            return ""
+             
     def binary_operator_string(self, binary):
         if isinstance(binary.type, sqltypes.String) and binary.operator == '+':
             return '||'
