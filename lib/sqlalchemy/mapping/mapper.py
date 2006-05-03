@@ -114,6 +114,8 @@ class Mapper(object):
                 self._synchronizer = None
             self.inherits = inherits
             self.noninherited_table = table
+            if self.order_by is False:
+                self.order_by = inherits.order_by
         else:
             self.primarytable = self.table
             self.noninherited_table = self.table

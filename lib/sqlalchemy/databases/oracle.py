@@ -276,16 +276,10 @@ class OracleCompiler(ansisql.ANSICompiler):
             return
         if select.limit is not None or select.offset is not None:
             select._oracle_visit = True
+            # to use ROW_NUMBER(), an ORDER BY is required. 
             orderby = self.strings[select.order_by_clause]
             if not orderby:
-                # to use ROW_NUMBER(), an ORDER BY is required.  so here we dig in
-                # as best we can to find some column we can order by
-                # TODO: try to get "oid_column" to be used here
-                if len(select.primary_key):
-                    col = select.primary_key[0].original.table.name
-                else:
-                    col = [c for c in select.c][0].original.table.name
-                orderby = "%s.rowid ASC" % col
+                orderby = select.oid_column
             select.append_column(sql.ColumnClause("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn"))
             limitselect = sql.select([c for c in select.c if c.key!='ora_rn'])
             if select.offset is not None:
