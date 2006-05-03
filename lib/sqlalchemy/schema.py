@@ -406,7 +406,8 @@ class ForeignKey(SchemaItem):
         "schemaname.tablename.columnname" """
         self._colspec = column
         self._column = None
-
+        if isinstance(column, unicode):
+            column = str(column)
     def __repr__(self):
         return "ForeignKey(%s)" % repr(self._get_colspec())
         
