@@ -531,6 +531,8 @@ class CompareMixin(object):
         return self._operate('*', other)
     def __div__(self, other):
         return self._operate('/', other)
+    def __mod__(self, other):
+        return self._operate('%', other)
     def __truediv__(self, other):
         return self._operate('/', other)
     def _bind_param(self, obj):

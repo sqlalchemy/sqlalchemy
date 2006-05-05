@@ -33,7 +33,7 @@ class TypeEngine(AbstractType):
     def engine_impl(self, engine):
         try:
             return self.impl_dict[engine]
-        except:
+        except KeyError:
             return self.impl_dict.setdefault(engine, engine.type_descriptor(self))
     def get_col_spec(self):
         raise NotImplementedError()

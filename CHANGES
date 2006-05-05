@@ -1,6 +1,7 @@
 0.1.7
 - some fixes to topological sort algorithm
 - added DISTINCT ON support to Postgres (just supply distinct=[col1,col2..])
+- added __mod__ (% operator) to sql expressions
 - "order_by" mapper property inherited from inheriting mapper
 - fix to column type used when mapper UPDATES/DELETEs
 - with convert_unicode=True, reflection was failing, has been fixed
