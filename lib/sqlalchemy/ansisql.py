@@ -371,14 +371,14 @@ class ANSICompiler(sql.Compiled):
         if group_by:
             text += " GROUP BY " + group_by
 
-        order_by = self.get_str(select.order_by_clause)
-        if order_by:
-            text += " ORDER BY " + order_by
-
         if select.having is not None:
             t = self.get_str(select.having)
             if t:
                 text += " \nHAVING " + t
+
+        order_by = self.get_str(select.order_by_clause)
+        if order_by:
+            text += " ORDER BY " + order_by
                 
         text += self.visit_select_postclauses(select)
  

@@ -1,5 +1,30 @@
-next
+0.1.7
 - some fixes to topological sort algorithm
+- added DISTINCT ON support to Postgres (just supply distinct=[col1,col2..])
+- "order_by" mapper property inherited from inheriting mapper
+- fix to column type used when mapper UPDATES/DELETEs
+- with convert_unicode=True, reflection was failing, has been fixed
+- types types types!  still werent working....have to use TypeDecorator again :(
+- mysql binary type converts array output to buffer, fixes PickleType
+- fixed the attributes.py memory leak once and for all
+- unittests are qualified based on the databases that support each one
+- fixed bug where column defaults would clobber VALUES clause of insert objects
+- fixed bug where table def w/ schema name would force engine connection
+- fix for parenthesis to work correctly with subqueries in INSERT/UPDATE
+- HistoryArraySet gets extend() method
+- fixed lazyload support for other comparison operators besides =
+- lazyload fix where two comparisons in the join condition point to the 
+samem column
+- added "construct_new" flag to mapper, will use __new__ to create instances
+instead of __init__ (standard in 0.2)
+- added selectresults.py to SVN, missed it last time
+- tweak to allow a many-to-many relationship from a table to itself via
+an association table
+- small fix to "translate_row" function used by polymorphic example
+- create_engine uses cgi.parse_qsl to read query string (out the window in 0.2)
+- tweaks to CAST operator
+- fixed function names LOCAL_TIME/LOCAL_TIMESTAMP -> LOCALTIME/LOCALTIMESTAMP
+- fixed order of ORDER BY/HAVING in compile
 
 0.1.6
 - support for MS-SQL added courtesy Rick Morrison, Runar Petursson
