@@ -24,7 +24,7 @@
     onepage='documentation'
     index='index'
     title='SQLAlchemy Documentation'
-    version = '0.1.6'
+    version = '0.1.7'
 </%attr>
 
 <%method title>

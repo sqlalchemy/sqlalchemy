@@ -67,7 +67,9 @@ class TypeDecorator(AbstractType):
     def convert_result_value(self, value, engine):
         return self.impl.convert_result_value(value, engine)
     def copy(self):
-        raise NotImplementedError()
+        instance = self.__class__.__new__(self.__class__)
+        instance.__dict__.update(self.__dict__)
+        return instance
         
 def to_instance(typeobj):
     if typeobj is None:
@@ -132,8 +134,6 @@ class Unicode(TypeDecorator):
              return value.decode(engine.encoding)
          else:
              return value
-    def copy(self):
-        return Unicode(self.impl.length)
         
 class Integer(TypeEngine):
     """integer datatype"""
@@ -194,8 +194,6 @@ class PickleType(TypeDecorator):
       if value is None:
           return None
       return self.impl.convert_bind_param(pickle.dumps(value, self.protocol), engine)
-    def copy(self):
-        return PickleType(self.protocol)
 
 class Boolean(TypeEngine):
     pass
