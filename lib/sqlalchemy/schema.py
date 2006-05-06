@@ -404,10 +404,11 @@ class ForeignKey(SchemaItem):
         object representing the relationship, or just its string name given as 
         "tablename.columnname".  schema can be specified as 
         "schemaname.tablename.columnname" """
-        self._colspec = column
-        self._column = None
         if isinstance(column, unicode):
             column = str(column)
+        self._colspec = column
+        self._column = None
+
     def __repr__(self):
         return "ForeignKey(%s)" % repr(self._get_colspec())
         
