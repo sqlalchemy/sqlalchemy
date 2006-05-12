@@ -4,6 +4,9 @@ import sys,re,os
 print "Running txt2myt.py..."
 execfile("txt2myt.py")
 
+print "Generating docstring data"
+execfile("compile_docstrings.py")
+
 component_root = [
     {'components': './components'},
     {'content' : './content'}
@@ -11,7 +14,7 @@ component_root = [
 doccomp = ['document_base.myt']
 output = os.path.dirname(os.getcwd())
 
-sys.path = ['../../lib', './lib/'] + sys.path
+sys.path = ['./lib/'] + sys.path
 
 import documentgen
 
