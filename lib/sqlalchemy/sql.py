@@ -540,8 +540,12 @@ class CompareMixin(object):
     def _compare(self, operator, obj):
         if _is_literal(obj):
             if obj is None:
-                if operator != '=':
-                    raise ArgumentError("Only '=' operator can be used with NULL")
+                if operator == '=':
+                    return BooleanExpression(self._compare_self(), null(), 'IS')
+                elif operator == '!=':
+                    return BooleanExpression(self._compare_self(), null(), 'IS NOT')
+                else:
+                    raise exceptions.ArgumentError("Only '='/'!=' operators can be used with NULL")
                 return BooleanExpression(self._compare_self(), null(), 'IS')
             else:
                 obj = self._bind_param(obj)
