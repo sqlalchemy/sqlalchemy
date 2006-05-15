@@ -23,16 +23,16 @@
     wrapper='section_wrapper.myt'
     onepage='documentation'
     index='index'
-    title='SQLAlchemy Documentation'
+    title='SQLAlchemy 0.1 Documentation'
     version = '0.1.7'
 </%attr>
 
 <%method title>
 % try:
 #  avoid inheritance via attr instead of attributes
-    <% m.base_component.attr['title'] %> - SQLAlchemy Documentation
+    <% m.base_component.attr['title'] %> - SQLAlchemy 0.1 Documentation
 % except KeyError:
-    SQLAlchemy Documentation
+    SQLAlchemy 0.1 Documentation
 %
 </%method>
 
