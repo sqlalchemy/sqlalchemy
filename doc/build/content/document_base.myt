@@ -30,11 +30,12 @@
 <%method title>
 % try:
 #  avoid inheritance via attr instead of attributes
-    <% m.base_component.attr['title'] %> - SQLAlchemy 0.1 Documentation
+    <% m.base_component.attr['title'] %> - <% self.owner.attr['title'] %>
 % except KeyError:
-    SQLAlchemy 0.1 Documentation
+    <% self.owner.attr['title'] %>
 %
 </%method>
+
 
 
 
