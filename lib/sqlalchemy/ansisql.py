@@ -224,7 +224,13 @@ class ANSICompiler(sql.Compiled):
 
     def apply_function_parens(self, func):
         return func.name.upper() not in ANSI_FUNCS or len(func.clauses) > 0
-        
+
+    def visit_calculatedclause(self, list):
+        if list.parens:
+            self.strings[list] = "(" + string.join([self.get_str(c) for c in list.clauses], ' ') + ")"
+        else:
+            self.strings[list] = string.join([self.get_str(c) for c in list.clauses], ' ')
+       
     def visit_function(self, func):
         if len(self.select_stack):
             self.typemap.setdefault(func.name, func.type)
