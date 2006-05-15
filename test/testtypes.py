@@ -130,6 +130,13 @@ class UnicodeTest(AssertMixin):
         unicode_table.create()
     def tearDownAll(self):
         unicode_table.drop()
+    def testwhereclause(self):
+        l = unicode_table.select(unicode_table.c.unicode_data==u'this is also unicode').execute()
+    def testmapperwhere(self):
+        class Foo(object):pass
+        m = mapper(Foo, unicode_table)
+        l = m.get_by(unicode_data=unicode('this is also unicode'))
+        l = m.get_by(plain_data=unicode('this is also unicode'))
     def testbasic(self):
         rawdata = 'Alors vous imaginez ma surprise, au lever du jour, quand une dr\xc3\xb4le de petit voix m\xe2\x80\x99a r\xc3\xa9veill\xc3\xa9. Elle disait: \xc2\xab S\xe2\x80\x99il vous pla\xc3\xaet\xe2\x80\xa6 dessine-moi un mouton! \xc2\xbb\n'
         unicodedata = rawdata.decode('utf-8')

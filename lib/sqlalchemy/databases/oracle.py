@@ -106,9 +106,10 @@ def descriptor():
     ]}
     
 class OracleSQLEngine(ansisql.ANSISQLEngine):
-    def __init__(self, opts, use_ansi = True, module = None, **params):
+    def __init__(self, opts, use_ansi = True, module = None, threaded=False, **params):
         self._use_ansi = use_ansi
         self.opts = self._translate_connect_args((None, 'dsn', 'user', 'password'), opts)
+        self.opts['threaded'] = threaded
         if module is None:
             self.module = cx_Oracle
         else:
