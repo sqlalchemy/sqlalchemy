@@ -114,7 +114,7 @@ There are a variety of ways to select from a mapper.  These range from minimalis
 
     # select_by can also combine SQL criterion with key/value properties
     result = mapper.select_by(users.c.user_name=='john', 
-            addresses.c.zip_code=='12345, street='123 green street')
+            addresses.c.zip_code=='12345', street='123 green street')
     
     # get_by, which takes the same arguments as select_by
     # returns a single scalar result or None if no results
