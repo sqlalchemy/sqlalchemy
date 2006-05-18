@@ -70,11 +70,11 @@ class SelectResults(object):
             else:
                 res = self.clone()
                 if start is not None and stop is not None:
-                    res._ops.update(dict(offset=start, limit=stop-start))
+                    res._ops.update(dict(offset=self._ops.get('offset', 0)+start, limit=stop-start))
                 elif start is None and stop is not None:
                     res._ops.update(dict(limit=stop))
                 elif start is not None and stop is None:
-                    res._ops.update(dict(offset=start))
+                    res._ops.update(dict(offset=self._ops.get('offset', 0)+start))
                 if item.step is not None:
                     return list(res)[None:None:item.step]
                 else:

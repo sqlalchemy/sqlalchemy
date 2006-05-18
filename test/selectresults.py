@@ -37,6 +37,7 @@ class SelectResultsTest(PersistTest):
         assert list(self.res[:10]) == self.orig[:10]
         assert list(self.res[10:40:3]) == self.orig[10:40:3]
         assert list(self.res[-5:]) == self.orig[-5:]
+        assert self.res[10:20][5] == self.orig[10:20][5]
 
     def test_aggregate(self):
         assert self.res.count() == 100
