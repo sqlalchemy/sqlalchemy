@@ -208,12 +208,12 @@ class Table(sql.TableClause, SchemaItem):
             raise ValueError("index and unique may not both be specified")
         if index:
             if index is True:
-                name = 'ix_%s' % column.name
+                name = 'ix_%s' % column._label
             else:
                 name = index
         elif unique:
             if unique is True:
-                name = 'ux_%s' % column.name
+                name = 'ux_%s' % column._label
             else:
                 name = unique
         # find this index in self.indexes

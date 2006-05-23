@@ -1,3 +1,6 @@
+next
+- anonymous indexes (via Column(unique=True) etc) use column._label for naming
+to avoid collisions
 0.1.7
 - some fixes to topological sort algorithm
 - added DISTINCT ON support to Postgres (just supply distinct=[col1,col2..])

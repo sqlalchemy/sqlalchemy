@@ -87,8 +87,8 @@ class IndexTest(testbase.AssertMixin):
                        Column('winner', String(30), index='idx_winners'))
         
         index_names = [ ix.name for ix in events.indexes ]
-        assert 'ux_name' in index_names
-        assert 'ix_location' in index_names
+        assert 'ux_events_name' in index_names
+        assert 'ix_events_location' in index_names
         assert 'sport_announcer' in index_names
         assert 'idx_winners' in index_names
         assert len(index_names) == 4
@@ -104,9 +104,9 @@ class IndexTest(testbase.AssertMixin):
         
         assert capt[0].strip().startswith('CREATE TABLE events')
         assert capt[2].strip() == \
-            'CREATE UNIQUE INDEX ux_name ON events (name)'
+            'CREATE UNIQUE INDEX ux_events_name ON events (name)'
         assert capt[4].strip() == \
-            'CREATE INDEX ix_location ON events (location)'
+            'CREATE INDEX ix_events_location ON events (location)'
         assert capt[6].strip() == \
             'CREATE UNIQUE INDEX sport_announcer ON events (sport, announcer)'
         assert capt[8].strip() == \
