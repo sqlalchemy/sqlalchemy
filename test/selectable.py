@@ -25,6 +25,13 @@ table2 = Table('table2', db,
     redefine=True
 )
 
+table3 = Table('table3', db, 
+    Column('col1', Integer, ForeignKey('table1.col1'), primary_key=True),
+    Column('col2', Integer),
+    Column('col3', String(20)),
+    redefine=True
+    )
+
 class SelectableTest(testbase.AssertMixin):
     def testtablealias(self):
         a = table.alias('a')
@@ -36,6 +43,17 @@ class SelectableTest(testbase.AssertMixin):
         print str(j)
         self.assert_(criterion.compare(j.onclause))
 
+    def testjoinpks(self):
+        a = join(table, table3)
+        b = join(table, table3, table.c.col1==table3.c.col2)
+        c = join(table, table3, table.c.col2==table3.c.col2)
+        d = join(table, table3, table.c.col2==table3.c.col1)
+        
+        self.assert_(a.primary_key==[table.c.col1])
+        self.assert_(b.primary_key==[table.c.col1, table3.c.col1])
+        self.assert_(c.primary_key==[table.c.col1, table3.c.col1])
+        self.assert_(d.primary_key==[table.c.col1, table3.c.col1])
+        
     def testjoin(self):
         a = join(table, table2)
         print str(a.select(use_labels=True))
