@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-import sys, StringIO, string
+import sys, StringIO, string, datetime
 
 import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
@@ -30,6 +30,16 @@ class FBSmallInteger(sqltypes.Smallinteger):
 class FBDateTime(sqltypes.DateTime):
     def get_col_spec(self):
         return "DATE"
+    def convert_bind_param(self, value, engine):
+        if value is not None:
+            if isinstance(value, datetime.datetime):
+                seconds = float(str(value.second) + "."
+                                + str(value.microsecond))
+                return kinterbasdb.date_conv_out((value.year, value.month, value.day,
+                                                  value.hour, value.minute, seconds))
+            return kinterbasdb.timestamp_conv_in(value)
+        else:
+            return None
 class FBText(sqltypes.TEXT):
     def get_col_spec(self):
         return "BLOB SUB_TYPE 2"
@@ -74,13 +84,12 @@ def descriptor():
     ]}
     
 class FBSQLEngine(ansisql.ANSISQLEngine):
-    def __init__(self, opts, use_ansi = True, module = None, **params):
-        self._use_ansi = use_ansi
-        self.opts = opts or {}
+    def __init__(self, opts, module=None, use_oids=False, **params):
         if module is None:
             self.module = kinterbasdb
         else:
             self.module = module
+        self.opts = self._translate_connect_args(('host', 'database', 'user', 'password'), opts)
         ansisql.ANSISQLEngine.__init__(self, **params)
 
     def do_commit(self, connection):
@@ -102,7 +111,7 @@ class FBSQLEngine(ansisql.ANSISQLEngine):
         return self.context.last_inserted_ids
 
     def compiler(self, statement, bindparams, **kwargs):
-        return FBCompiler(statement, bindparams, engine=self, use_ansi=self._use_ansi, **kwargs)
+        return FBCompiler(statement, bindparams, engine=self,  **kwargs)
 
     def schemagenerator(self, **params):
         return FBSchemaGenerator(self, **params)
@@ -188,21 +197,6 @@ class FBSQLEngine(ansisql.ANSISQLEngine):
 class FBCompiler(ansisql.ANSICompiler):
     """firebird compiler modifies the lexical structure of Select statements to work under 
     non-ANSI configured Firebird databases, if the use_ansi flag is False."""
-    
-    def __init__(self, engine, statement, parameters, use_ansi = True, **kwargs):
-        self._outertable = None
-        self._use_ansi = use_ansi
-        ansisql.ANSICompiler.__init__(self, engine, statement, parameters, **kwargs)
-      
-    def visit_column(self, column):
-        if self._use_ansi:
-            return ansisql.ANSICompiler.visit_column(self, column)
-            
-        if column.table is self._outertable:
-            self.strings[column] = "%s.%s(+)" % (column.table.name, column.name)
-        else:
-            self.strings[column] = "%s.%s" % (column.table.name, column.name)
-       
     def visit_function(self, func):
         if len(func.clauses):
             super(FBCompiler, self).visit_function(func)
@@ -223,10 +217,11 @@ class FBCompiler(ansisql.ANSICompiler):
         """ called when building a SELECT statment, position is just before column list 
         Firebird puts the limit and offset right after the select...thanks for adding the
         visit_select_precolumns!!!"""
+        result = ''
         if select.offset:
-            result +=" FIRST " + select.offset
+            result +=" FIRST %s "  % select.offset
         if select.limit:
-            result += " SKIP " + select.limit
+            result += " SKIP %s " % select.limit
         if select.distinct:
             result += " DISTINCT "
         return result
@@ -234,6 +229,8 @@ class FBCompiler(ansisql.ANSICompiler):
     def limit_clause(self, select):
         """Already taken care of in the visit_select_precolumns method."""
         return ""
+    def default_from(self):
+        return ' from RDB$DATABASE '
 
 class FBSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, override_pk=False, **kwargs):
