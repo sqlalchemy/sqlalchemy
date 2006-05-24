@@ -549,17 +549,16 @@ class CompareMixin(object):
     def _bind_param(self, obj):
         return BindParamClause('literal', obj, shortname=None, type=self.type)
     def _compare(self, operator, obj):
-        if _is_literal(obj):
-            if obj is None:
-                if operator == '=':
-                    return BooleanExpression(self._compare_self(), null(), 'IS')
-                elif operator == '!=':
-                    return BooleanExpression(self._compare_self(), null(), 'IS NOT')
-                else:
-                    raise exceptions.ArgumentError("Only '='/'!=' operators can be used with NULL")
+        if obj is None or isinstance(obj, Null):
+            if operator == '=':
+                return BooleanExpression(self._compare_self(), null(), 'IS')
+            elif operator == '!=':
+                return BooleanExpression(self._compare_self(), null(), 'IS NOT')
                 return BooleanExpression(self._compare_self(), null(), 'IS')
             else:
-                obj = self._bind_param(obj)
+                raise exceptions.ArgumentError("Only '='/'!=' operators can be used with NULL")
+        elif _is_literal(obj):
+            obj = self._bind_param(obj)
         return BooleanExpression(self._compare_self(), obj, operator, type=self._compare_type(obj))
     def _operate(self, operator, obj):
         if _is_literal(obj):
