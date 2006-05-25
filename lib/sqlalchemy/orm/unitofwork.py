@@ -607,10 +607,18 @@ class UOWTask(object):
     def execute(self, trans):
         """executes this UOWTask.  saves objects to be saved, processes all dependencies
         that have been registered, and deletes objects to be deleted. """
+        
+        # a "circular" task is a circularly-sorted collection of UOWTask/UOWTaskElements
+        # derived from the components of this UOWTask, which accounts for inter-row dependencies.  
+        # if one was created for this UOWTask, it replaces the execution for this UOWTask.
         if self.circular is not None:
             self.circular.execute(trans)
             return
 
+        # TODO: apply the same recursive inheritance logic to the cyclical tasks/dependencies
+        # TODO: add a visitation system to the UOW classes and have this execution called
+        # from a separate executor object ? (would also handle dumping)
+        
         self._save_objects(trans)
         for dep in self.cyclical_dependencies:
             dep.execute(trans, False)
@@ -784,7 +792,7 @@ class UOWTask(object):
         return buf.getvalue()
         
     def _dump(self, buf, indent=0, circularparent=None):
-
+        # TODO: the dumper should go into a separate module/class, allow different dumper implementations
         def _indent():
             return "  | " * indent
 
