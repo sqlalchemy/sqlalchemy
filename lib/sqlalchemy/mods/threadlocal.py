@@ -29,18 +29,15 @@ class Objectstore(SessionContext):
 def assign_mapper(class_, *args, **kwargs):
     assignmapper.assign_mapper(objectstore, class_, *args, **kwargs)
 
-def _mapper_extension():
-    return SessionContext._get_mapper_extension(objectstore)
-
 objectstore = Objectstore(Session)
 def install_plugin():
     sqlalchemy.objectstore = objectstore
-    global_extensions.append(_mapper_extension)
+    global_extensions.append(objectstore.mapper_extension)
     engine.default_strategy = 'threadlocal'
     sqlalchemy.assign_mapper = assign_mapper
 
 def uninstall_plugin():
     engine.default_strategy = 'plain'
-    global_extensions.remove(_mapper_extension)
+    global_extensions.remove(objectstore.mapper_extension)
 
 install_plugin()
