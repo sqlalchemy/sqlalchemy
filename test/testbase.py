@@ -349,7 +349,12 @@ def runTests(suite):
     runner.run(suite)
     
 def main():
-    suite = unittest.TestLoader().loadTestsFromModule(__import__('__main__'))
+    if len(sys.argv[1:]):
+        suite =unittest.TestLoader().loadTestsFromNames(sys.argv[1:], __import__('__main__'))
+    else:
+        suite = unittest.TestLoader().loadTestsFromModule(__import__('__main__'))
+
+
     runTests(suite)
 
 
