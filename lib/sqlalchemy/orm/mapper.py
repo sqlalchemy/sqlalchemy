@@ -282,6 +282,13 @@ class Mapper(object):
                     elif (isinstance(column, list) and sql.is_column(column[0])):
                         props[key] = [self.select_table.corresponding_column(c) for c in prop]
             self.__surrogate_mapper = Mapper(self.class_, self.select_table, non_primary=True, properties=props, polymorphic_map=self.polymorphic_map, polymorphic_on=self.polymorphic_on)
+    
+    def base_mapper(self):
+        """returns the ultimate base mapper in an inheritance chain"""
+        if self.inherits is not None:
+            return self.inherits.base_mapper()
+        else:
+            return self
             
     def add_polymorphic_mapping(self, key, class_or_mapper, entity_name=None):
         if isinstance(class_or_mapper, type):
@@ -640,7 +647,6 @@ class Mapper(object):
                     if primary_key is not None:
                         i = 0
                         for col in self.pks_by_table[table]:
-                            #print "col: " + table.name + "." + col.key + " val: " + repr(self._getattrbycolumn(obj, col))
                             if self._getattrbycolumn(obj, col) is None:
                                 self._setattrbycolumn(obj, col, primary_key[i])
                             i+=1
@@ -722,8 +728,6 @@ class Mapper(object):
         objects which will process lists of objects in between saves and deletes."""
         for prop in self.props.values():
             prop.register_dependencies(uowcommit, *args, **kwargs)
-        if self.inherits is not None:
-            uowcommit.register_dependency(self.inherits, self)
     
     def cascade_iterator(self, type, object, recursive=None):
         if recursive is None:

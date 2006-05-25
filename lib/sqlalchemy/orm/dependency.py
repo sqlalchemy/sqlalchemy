@@ -203,7 +203,7 @@ class ManyToOneDP(DependencyProcessor):
                     uowcommit.register_object(obj, postupdate=True)
             
     def preprocess_dependencies(self, task, deplist, uowcommit, delete = False):
-        #print self.mapper.table.name + " " + self.key + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
+        #print self.mapper.mapped_table.name + " " + self.key + " " + repr(len(deplist)) + " PRE process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
         # TODO: post_update instructions should be established in this step as well
         # (and executed in the regular traversal)
         if self.post_update:
@@ -359,6 +359,7 @@ class MapperStub(object):
     for the many-to-many update task."""
     def __init__(self, mapper):
         self.mapper = mapper
+        self._inheriting_mappers = []
     def register_dependencies(self, uowcommit):
         pass
     def save_obj(self, *args, **kwargs):
@@ -366,4 +367,6 @@ class MapperStub(object):
     def delete_obj(self, *args, **kwargs):
         pass
     def _primary_mapper(self):
+        return self
+    def base_mapper(self):
         return self

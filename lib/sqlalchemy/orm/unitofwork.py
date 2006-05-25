@@ -333,7 +333,10 @@ class UOWTransaction(object):
         """called by mapper.PropertyLoader to register the objects handled by
         one mapper being dependent on the objects handled by another."""
         # correct for primary mapper (the mapper offcially associated with the class)
-        self.dependencies[(mapper._primary_mapper(), dependency._primary_mapper())] = True
+        mapper = mapper._primary_mapper().base_mapper()
+        dependency = dependency._primary_mapper().base_mapper()
+        
+        self.dependencies[(mapper, dependency)] = True
         self._mark_modified()
 
     def register_processor(self, mapper, processor, mapperfrom):
@@ -349,6 +352,7 @@ class UOWTransaction(object):
         # correct for primary mapper (the mapper offcially associated with the class)
         mapper = mapper._primary_mapper()
         mapperfrom = mapperfrom._primary_mapper()
+        
         task = self.get_task_by_mapper(mapper)
         targettask = self.get_task_by_mapper(mapperfrom)
         up = UOWDependencyProcessor(processor, targettask)
@@ -422,7 +426,21 @@ class UOWTransaction(object):
         mappers = util.HashSet()
         for task in self.tasks.values():
             mappers.append(task.mapper)
-    
+
+        def inheriting_tasks(task):
+            if task.mapper not in mappers:
+                return
+            for mapper in task.mapper._inheriting_mappers:
+                inherit_task = self.tasks.get(mapper, None)
+                if inherit_task is None:
+                    continue
+                inheriting_tasks(inherit_task)
+                task.inheriting_tasks.append(inherit_task)
+                del mappers[mapper]
+                
+        for task in self.tasks.values():
+            inheriting_tasks(task)
+                
         head = DependencySorter(self.dependencies, mappers).sort(allow_all_cycles=True)
         #print str(head)
         task = sort_hier(head)
@@ -525,6 +543,7 @@ class UOWTask(object):
         self.cyclical_dependencies = []
         self.circular = None
         self.childtasks = []
+        self.inheriting_tasks = []
         
     def is_empty(self):
         return len(self.objects) == 0 and len(self.dependencies) == 0 and len(self.childtasks) == 0
@@ -563,7 +582,28 @@ class UOWTask(object):
             del self.objects[obj]
         except KeyError:
             pass
-        
+
+    def _save_objects(self, trans):
+        self.mapper.save_obj(self.tosave_objects, trans)
+        for task in self.inheriting_tasks:
+            task._save_objects(trans)
+    def _delete_objects(self, trans):
+        self.mapper.delete_obj(self.todelete_objects, trans)
+        for task in self.inheriting_tasks:
+            task._delete_objects(trans)
+    def _execute_dependencies(self, trans):
+        for dep in self.dependencies:
+            dep.execute(trans, False)
+        for task in self.inheriting_tasks:
+            task._execute_dependencies(trans)
+        for dep in self.dependencies:
+            dep.execute(trans, True)
+    def _execute_childtasks(self, trans):
+        for child in self.childtasks:
+            child.execute(trans)
+        for task in self.inheriting_tasks:
+            task._execute_childtasks(trans)
+            
     def execute(self, trans):
         """executes this UOWTask.  saves objects to be saved, processes all dependencies
         that have been registered, and deletes objects to be deleted. """
@@ -571,24 +611,20 @@ class UOWTask(object):
             self.circular.execute(trans)
             return
 
-        self.mapper.save_obj(self.tosave_objects, trans)
+        self._save_objects(trans)
         for dep in self.cyclical_dependencies:
             dep.execute(trans, False)
         for element in self.tosave_elements:
             for task in element.childtasks:
                 task.execute(trans)
-        for dep in self.dependencies:
-            dep.execute(trans, False)
-        for dep in self.dependencies:
-            dep.execute(trans, True)
+        self._execute_dependencies(trans)
         for dep in self.cyclical_dependencies:
             dep.execute(trans, True)
-        for child in self.childtasks:
-            child.execute(trans)
+        self._execute_childtasks(trans)
         for element in self.todelete_elements:
             for task in element.childtasks:
                 task.execute(trans)
-        self.mapper.delete_obj(self.todelete_objects, trans)
+        self._delete_objects(trans)
 
     tosave_elements = property(lambda self: [rec for rec in self.objects.values() if not rec.isdelete])
     todelete_elements = property(lambda self:[rec for rec in self.objects.values() if rec.isdelete])
@@ -808,6 +844,47 @@ class UOWTask(object):
         def _repr(obj):
             return "%s(%d)" % (obj.__class__.__name__, id(obj))
 
+        def _inheritance_tag(task):
+            if task is not self:
+                return (" (inheriting task %s)" % _repr_task(task))
+            else:
+                return ""
+
+        def _dump_saveelements(task):
+            for rec in task.tosave_elements:
+                if rec.listonly:
+                    continue
+                header(buf, _indent() + "  |- Save elements"+ _inheritance_tag(task) + "\n")
+                buf.write(_indent() + "  |- " + _repr_task_element(rec)  + "\n")
+            for t in task.inheriting_tasks:
+                _dump_saveelements(t)
+
+        def _dump_deleteelements(task):
+            for rec in task.todelete_elements:
+                if rec.listonly:
+                    continue
+                header(buf, _indent() + "  |- Delete elements"+ _inheritance_tag(task) + "\n")
+                buf.write(_indent() + "  |- " + _repr_task_element(rec) + "\n")
+            for t in task.inheriting_tasks:
+                _dump_deleteelements(t)
+
+        def _dump_dependencies(task):
+            for dep in task.dependencies:
+                header(buf, _indent() + "  |- Save dependencies" + _inheritance_tag(task) + "\n")
+                _dump_processor(dep, False)
+            for t in task.inheriting_tasks:
+                _dump_dependencies(t)
+            for dep in task.dependencies:
+                header(buf, _indent() + "  |- Delete dependencies" + _inheritance_tag(task) + "\n")
+                _dump_processor(dep, True)
+        
+        def _dump_childtasks(task):
+            for child in task.childtasks:
+                header(buf, _indent() + "  |- Child tasks" + _inheritance_tag(task) + "\n")
+                child._dump(buf, indent + 1)
+            for t in task.inheriting_tasks:
+                _dump_childtasks(t)
+            
         if self.circular is not None:
             self.circular._dump(buf, indent, self)
             return
@@ -822,11 +899,7 @@ class UOWTask(object):
             buf.write(i + " " + _repr_task(self))
             
         buf.write("\n")
-        for rec in self.tosave_elements:
-            if rec.listonly:
-                continue
-            header(buf, _indent() + "  |- Save elements\n")
-            buf.write(_indent() + "  |- " + _repr_task_element(rec) + "\n")
+        _dump_saveelements(self)
         for dep in self.cyclical_dependencies:
             header(buf, _indent() + "  |- Cyclical Save dependencies\n")
             _dump_processor(dep, False)
@@ -834,31 +907,16 @@ class UOWTask(object):
             for task in element.childtasks:
                 header(buf, _indent() + "  |- Save subelements of UOWTaskElement(%s)\n" % id(element))
                 task._dump(buf, indent + 1)
-        for dep in self.dependencies:
-            header(buf, _indent() + "  |- Save dependencies\n")
-            _dump_processor(dep, False)
-        for dep in self.dependencies:
-            header(buf, _indent() + "  |- Delete dependencies\n")
-            _dump_processor(dep, True)
+        _dump_dependencies(self)
         for dep in self.cyclical_dependencies:
             header(buf, _indent() + "  |- Cyclical Delete dependencies\n")
             _dump_processor(dep, True)
-        for child in self.childtasks:
-            header(buf, _indent() + "  |- Child tasks\n")
-            child._dump(buf, indent + 1)
-#        for obj in self.postupdate:
-#            header(buf, _indent() + "  |- Post Update objects\n")
-#            buf.write(_repr(obj) + "\n")
+        _dump_childtasks(self)
         for element in self.todelete_elements:
             for task in element.childtasks:
                 header(buf, _indent() + "  |- Delete subelements of UOWTaskElement(%s)\n" % id(element))
                 task._dump(buf, indent + 1)
-
-        for rec in self.todelete_elements:
-            if rec.listonly:
-                continue
-            header(buf, _indent() + "  |- Delete elements\n")
-            buf.write(_indent() + "  |- " + _repr_task_element(rec) + "\n")
+        _dump_deleteelements(self)
 
         if self.is_empty():   
             buf.write(_indent() + "  |- (empty task)\n")
