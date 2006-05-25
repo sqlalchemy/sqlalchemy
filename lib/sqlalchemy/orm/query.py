@@ -267,7 +267,13 @@ class Query(object):
         params = {}
         for primary_key in self.mapper.pks_by_table[self.table]:
             params["pk_"+primary_key.key] = ident[i]
-            i += 1
+            # if there are not enough elements in the given identifier, then 
+            # use the previous identifier repeatedly.  this is a workaround for the issue 
+            # in [ticket:185], where a mapper that uses joined table inheritance needs to specify
+            # all primary keys of the joined relationship, which includes even if the join is joining
+            # two primary key (and therefore synonymous) columns together, the usual case for joined table inheritance.
+            if len(ident) > i + 1:
+                i += 1
         try:
             statement = self._compile(self._get_clause)
             return self._select_statement(statement, params=params, populate_existing=reload)[0]
