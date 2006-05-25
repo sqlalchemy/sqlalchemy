@@ -1,5 +1,6 @@
 from sqlalchemy import *
 import testbase
+from sqlalchemy.ext.sessioncontext import SessionContext
 
 class Jack(object):
     def __repr__(self):
@@ -23,8 +24,10 @@ class Port(object):
 
 class O2OTest(testbase.AssertMixin):
     def setUpAll(self):
-        global jack, port
-        jack = Table('jack', testbase.db, 
+        global jack, port, metadata, ctx
+        metadata = BoundMetaData(testbase.db)
+        ctx = SessionContext(create_session)
+        jack = Table('jack', metadata, 
             Column('id', Integer, primary_key=True),
             #Column('room_id', Integer, ForeignKey("room.id")),
             Column('number', String(50)),
@@ -33,54 +36,54 @@ class O2OTest(testbase.AssertMixin):
         )
 
 
-        port = Table('port', testbase.db, 
+        port = Table('port', metadata, 
             Column('id', Integer, primary_key=True),
             #Column('device_id', Integer, ForeignKey("device.id")),
             Column('name', String(30)),
             Column('description', String(100)),
             Column('jack_id', Integer, ForeignKey("jack.id")),
         )
-        jack.create()
-        port.create()
+        metadata.create_all()
     def setUp(self):
-        objectstore.clear()
+        pass
     def tearDown(self):
         clear_mappers()
     def tearDownAll(self):
-        port.drop()
-        jack.drop()
+        metadata.drop_all()
             
     def test1(self):
-        assign_mapper(Port, port)
-        assign_mapper(Jack, jack, order_by=[jack.c.number],properties = {
-            'port': relation(Port.mapper, backref='jack', uselist=False, lazy=True),
-        }) 
+        mapper(Port, port, extension=ctx.mapper_extension)
+        mapper(Jack, jack, order_by=[jack.c.number],properties = {
+            'port': relation(Port, backref='jack', uselist=False, lazy=True),
+        }, extension=ctx.mapper_extension) 
 
         j=Jack(number='101')
         p=Port(name='fa0/1')
         j.port=p
-        objectstore.commit()
+        ctx.current.flush()
         jid = j.id
         pid = p.id
 
-        j=Jack.get(jid)
-        p=Port.get(pid)
+        j=ctx.current.query(Jack).get(jid)
+        p=ctx.current.query(Port).get(pid)
         print p.jack
-        print j.port
+        assert p.jack is not None
+        assert p.jack is  j
+        assert j.port is not None
         p.jack=None
         assert j.port is None #works
 
-        objectstore.clear()
+        ctx.current.clear()
 
-        j=Jack.get(jid)
-        p=Port.get(pid)
+        j=ctx.current.query(Jack).get(jid)
+        p=ctx.current.query(Port).get(pid)
 
         j.port=None
         self.assert_(p.jack is None)
-        objectstore.commit() 
+        ctx.current.flush()
 
-	j.delete()
-	objectstore.commit()
+        ctx.current.delete(j)
+        ctx.current.flush()
 
 if __name__ == "__main__":    
     testbase.main()

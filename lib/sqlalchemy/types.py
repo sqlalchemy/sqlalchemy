@@ -26,46 +26,61 @@ class AbstractType(object):
             self._impl_dict = {}
             return self._impl_dict
     impl_dict = property(_get_impl_dict)
+
             
 class TypeEngine(AbstractType):
     def __init__(self, *args, **params):
         pass
     def engine_impl(self, engine):
+        """deprecated; call dialect_impl with a dialect directly."""
+        return self.dialect_impl(engine.dialect)
+    def dialect_impl(self, dialect):
         try:
-            return self.impl_dict[engine]
-        except KeyError:
-            return self.impl_dict.setdefault(engine, engine.type_descriptor(self))
+            return self.impl_dict[dialect]
+        except:
+            return self.impl_dict.setdefault(dialect, dialect.type_descriptor(self))
+    def _get_impl(self):
+        if hasattr(self, '_impl'):
+            return self._impl
+        else:
+            return NULLTYPE
+    def _set_impl(self, impl):
+        self._impl = impl
+    impl = property(_get_impl, _set_impl)
     def get_col_spec(self):
         raise NotImplementedError()
-    def convert_bind_param(self, value, engine):
+    def convert_bind_param(self, value, dialect):
         return value
-    def convert_result_value(self, value, engine):
+    def convert_result_value(self, value, dialect):
         return value
     def adapt(self, cls):
         return cls()
 
-AbstractType.impl = TypeEngine
 
 class TypeDecorator(AbstractType):
     def __init__(self, *args, **kwargs):
+        if not hasattr(self.__class__, 'impl'):
+            raise exceptions.AssertionError("TypeDecorator implementations require a class-level variable 'impl' which refers to the class of type being decorated")
         self.impl = self.__class__.impl(*args, **kwargs)
     def engine_impl(self, engine):
+        return self.dialect_impl(engine.dialect)
+    def dialect_impl(self, dialect):
         try:
-            return self.impl_dict[engine]
+            return self.impl_dict[dialect]
         except:
-            typedesc = engine.type_descriptor(self.impl)
+            typedesc = dialect.type_descriptor(self.impl)
             tt = self.copy()
             if not isinstance(tt, self.__class__):
                 raise exceptions.AssertionError("Type object %s does not properly implement the copy() method, it must return an object of type %s" % (self, self.__class__))
             tt.impl = typedesc
-            self.impl_dict[engine] = tt
+            self.impl_dict[dialect] = tt
             return tt
     def get_col_spec(self):
         return self.impl.get_col_spec()
-    def convert_bind_param(self, value, engine):
-        return self.impl.convert_bind_param(value, engine)
-    def convert_result_value(self, value, engine):
-        return self.impl.convert_result_value(value, engine)
+    def convert_bind_param(self, value, dialect):
+        return self.impl.convert_bind_param(value, dialect)
+    def convert_result_value(self, value, dialect):
+        return self.impl.convert_result_value(value, dialect)
     def copy(self):
         instance = self.__class__.__new__(self.__class__)
         instance.__dict__.update(self.__dict__)
@@ -95,9 +110,9 @@ def adapt_type(typeobj, colspecs):
 class NullTypeEngine(TypeEngine):
     def get_col_spec(self):
         raise NotImplementedError()
-    def convert_bind_param(self, value, engine):
+    def convert_bind_param(self, value, dialect):
         return value
-    def convert_result_value(self, value, engine):
+    def convert_result_value(self, value, dialect):
         return value
 
     
@@ -111,27 +126,27 @@ class String(TypeEngine):
         self.length = length
     def adapt(self, impltype):
         return impltype(length=self.length)
-    def convert_bind_param(self, value, engine):
-        if not engine.convert_unicode or value is None or not isinstance(value, unicode):
+    def convert_bind_param(self, value, dialect):
+        if not dialect.convert_unicode or value is None or not isinstance(value, unicode):
             return value
         else:
-            return value.encode(engine.encoding)
-    def convert_result_value(self, value, engine):
-        if not engine.convert_unicode or value is None or isinstance(value, unicode):
+            return value.encode(dialect.encoding)
+    def convert_result_value(self, value, dialect):
+        if not dialect.convert_unicode or value is None or isinstance(value, unicode):
             return value
         else:
-            return value.decode(engine.encoding)
+            return value.decode(dialect.encoding)
             
 class Unicode(TypeDecorator):
     impl = String
-    def convert_bind_param(self, value, engine):
+    def convert_bind_param(self, value, dialect):
          if value is not None and isinstance(value, unicode):
-              return value.encode(engine.encoding)
+              return value.encode(dialect.encoding)
          else:
               return value
-    def convert_result_value(self, value, engine):
+    def convert_result_value(self, value, dialect):
          if value is not None and not isinstance(value, unicode):
-             return value.decode(engine.encoding)
+             return value.decode(dialect.encoding)
          else:
              return value
         
@@ -172,11 +187,14 @@ class Time(TypeEngine):
 class Binary(TypeEngine):
     def __init__(self, length=None):
         self.length = length
-    def convert_bind_param(self, value, engine):
-        return engine.dbapi().Binary(value)
-    def convert_result_value(self, value, engine):
+    def convert_bind_param(self, value, dialect):
+        if value is not None:
+            return dialect.dbapi().Binary(value)
+        else:
+            return None
+    def convert_result_value(self, value, dialect):
         return value
-    def adap(self, impltype):
+    def adapt(self, impltype):
         return impltype(length=self.length)
 
 class PickleType(TypeDecorator):
@@ -185,15 +203,15 @@ class PickleType(TypeDecorator):
        """allows the pickle protocol to be specified"""
        self.protocol = protocol
        super(PickleType, self).__init__()
-    def convert_result_value(self, value, engine):
+    def convert_result_value(self, value, dialect):
       if value is None:
           return None
-      buf = self.impl.convert_result_value(value, engine)
+      buf = self.impl.convert_result_value(value, dialect)
       return pickle.loads(str(buf))
-    def convert_bind_param(self, value, engine):
+    def convert_bind_param(self, value, dialect):
       if value is None:
           return None
-      return self.impl.convert_bind_param(pickle.dumps(value, self.protocol), engine)
+      return self.impl.convert_bind_param(pickle.dumps(value, self.protocol), dialect)
 
 class Boolean(TypeEngine):
     pass

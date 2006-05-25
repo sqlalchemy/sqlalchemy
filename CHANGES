@@ -1,34 +1,54 @@
-next
-- anonymous indexes (via Column(unique=True) etc) use column._label for naming
-to avoid collisions
-0.1.7
-- some fixes to topological sort algorithm
-- added DISTINCT ON support to Postgres (just supply distinct=[col1,col2..])
-- added __mod__ (% operator) to sql expressions
-- "order_by" mapper property inherited from inheriting mapper
-- fix to column type used when mapper UPDATES/DELETEs
-- with convert_unicode=True, reflection was failing, has been fixed
-- types types types!  still werent working....have to use TypeDecorator again :(
-- mysql binary type converts array output to buffer, fixes PickleType
-- fixed the attributes.py memory leak once and for all
-- unittests are qualified based on the databases that support each one
-- fixed bug where column defaults would clobber VALUES clause of insert objects
-- fixed bug where table def w/ schema name would force engine connection
-- fix for parenthesis to work correctly with subqueries in INSERT/UPDATE
-- HistoryArraySet gets extend() method
-- fixed lazyload support for other comparison operators besides =
-- lazyload fix where two comparisons in the join condition point to the 
-samem column
-- added "construct_new" flag to mapper, will use __new__ to create instances
-instead of __init__ (standard in 0.2)
-- added selectresults.py to SVN, missed it last time
-- tweak to allow a many-to-many relationship from a table to itself via
-an association table
-- small fix to "translate_row" function used by polymorphic example
-- create_engine uses cgi.parse_qsl to read query string (out the window in 0.2)
-- tweaks to CAST operator
-- fixed function names LOCAL_TIME/LOCAL_TIMESTAMP -> LOCALTIME/LOCALTIMESTAMP
-- fixed order of ORDER BY/HAVING in compile
+0.2
+- overhaul to Engine system so that what was formerly the SQLEngine
+is now a ComposedSQLEngine which consists of a variety of components,
+including a Dialect, ConnectionProvider, etc. This impacted all the
+db modules as well as Session and Mapper.
+- create_engine now takes only RFC-1738-style strings:
+driver://user:password@host:port/database
+- total rewrite of connection-scoping methodology, Connection objects
+can now execute clause elements directly, added explicit "close" as
+well as support throughout Engine/ORM to handle closing properly,
+no longer relying upon __del__ internally to return connections 
+to the pool [ticket:152].
+- overhaul to Session interface and scoping.  uses hibernate-style
+methods, including query(class), save(), save_or_update(), etc.
+no threadlocal scope is installed by default.  Provides a binding
+interface to specific Engines and/or Connections so that underlying
+Schema objects do not need to be bound to an Engine.  Added a basic
+SessionTransaction object that can simplistically aggregate transactions 
+across multiple engines.
+- overhaul to mapper's dependency and "cascade" behavior; dependency logic
+factored out of properties.py into a separate module "dependency.py".
+"cascade" behavior is now explicitly controllable, proper implementation 
+of "delete", "delete-orphan", etc.  dependency system can now determine at 
+flush time if a child object has a parent or not so that it makes better 
+decisions on how that child should be updated in the DB with regards to deletes.
+- overhaul to Schema to build upon MetaData object instead of an Engine.
+Entire SQL/Schema system can be used with no Engines whatsoever, executed
+solely by an explicit Connection object.  the "bound" methodlogy exists via the 
+BoundMetaData for schema objects.  ProxyEngine is generally not needed
+anymore and is replaced by DynamicMetaData.
+- true polymorphic behavior implemented, fixes [ticket:167]
+- "oid" system has been totally moved into compile-time behavior; 
+if they are used in an order_by where they are not available, the order_by
+doesnt get compiled, fixes [ticket:147]
+- overhaul to packaging; "mapping" is now "orm", "objectstore" is now
+"session", the old "objectstore" namespace gets loaded in via the
+"threadlocal" mod if used
+- mods now called in via "import <modname>".  extensions favored over
+mods as mods are globally-monkeypatching
+- fix to add_property so that it propigates properties to inheriting 
+mappers [ticket:154]
+- backrefs create themselves against primary mapper of its originating
+property, priamry/secondary join arguments can be specified to override.
+helps their usage with polymorphic mappers
+- "table exists" function has been implemented [ticket:31]
+- "create_all/drop_all" added to MetaData object [ticket:98]
+- improvements and fixes to topological sort algorithm, as well as more
+unit tests
+- tutorial page added to docs which also can be run with a custom doctest
+runner to insure its properly working.  docs generally overhauled to 
+deal with new code patterns
 
 0.1.6
 - support for MS-SQL added courtesy Rick Morrison, Runar Petursson

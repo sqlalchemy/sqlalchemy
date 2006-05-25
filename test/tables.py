@@ -9,22 +9,22 @@ __all__ = ['db', 'users', 'addresses', 'orders', 'orderitems', 'keywords', 'item
 
 ECHO = testbase.echo
 db = testbase.db
+metadata = BoundMetaData(db)
 
-
-users = Table('users', db,
+users = Table('users', metadata,
     Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key = True),
     Column('user_name', String(40)),
     mysql_engine='innodb'
 )
 
-addresses = Table('email_addresses', db,
+addresses = Table('email_addresses', metadata,
     Column('address_id', Integer, Sequence('address_id_seq', optional=True), primary_key = True),
     Column('user_id', Integer, ForeignKey(users.c.user_id)),
     Column('email_address', String(40)),
     
 )
 
-orders = Table('orders', db,
+orders = Table('orders', metadata,
     Column('order_id', Integer, Sequence('order_id_seq', optional=True), primary_key = True),
     Column('user_id', Integer, ForeignKey(users.c.user_id)),
     Column('description', String(50)),
@@ -32,51 +32,32 @@ orders = Table('orders', db,
     
 )
 
-orderitems = Table('items', db,
+orderitems = Table('items', metadata,
     Column('item_id', INT, Sequence('items_id_seq', optional=True), primary_key = True),
     Column('order_id', INT, ForeignKey("orders")),
     Column('item_name', VARCHAR(50)),
     
 )
 
-keywords = Table('keywords', db,
+keywords = Table('keywords', metadata,
     Column('keyword_id', Integer, Sequence('keyword_id_seq', optional=True), primary_key = True),
     Column('name', VARCHAR(50)),
     
 )
 
-itemkeywords = Table('itemkeywords', db,
+itemkeywords = Table('itemkeywords', metadata,
     Column('item_id', INT, ForeignKey("items")),
     Column('keyword_id', INT, ForeignKey("keywords")),
     
 )
 
 def create():
-    users.create()
-    addresses.create()
-    orders.create()
-    orderitems.create()
-    keywords.create()
-    itemkeywords.create()
-    
+    metadata.create_all()
 def drop():
-    itemkeywords.drop()
-    keywords.drop()
-    orderitems.drop()
-    orders.drop()
-    addresses.drop()
-    users.drop()
-    db.commit()
-    
+    metadata.drop_all()
 def delete():
-    itemkeywords.delete().execute()
-    keywords.delete().execute()
-    orderitems.delete().execute()
-    orders.delete().execute()
-    addresses.delete().execute()
-    users.delete().execute()
-    db.commit()
-    
+    for t in metadata.table_iterator(reverse=True):
+        t.delete().execute()
 def user_data():
     users.insert().execute(
         dict(user_id = 7, user_name = 'jack'),
@@ -85,7 +66,6 @@ def user_data():
     )
 def delete_user_data():
     users.delete().execute()
-    db.commit()
         
 def data():
     delete()
@@ -144,8 +124,6 @@ def data():
         dict(keyword_id=7, item_id=2),
         dict(keyword_id=6, item_id=3)
     )
-
-    db.commit()
     
 class User(object):
     def __init__(self):

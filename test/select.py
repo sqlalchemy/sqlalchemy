@@ -1,14 +1,6 @@
 
 from sqlalchemy import *
-import sqlalchemy.ansisql as ansisql
-import sqlalchemy.databases.postgres as postgres
-import sqlalchemy.databases.oracle as oracle
-import sqlalchemy.databases.sqlite as sqlite
-import sqlalchemy.databases.mysql as mysql
-
-db = ansisql.engine()
-#db = create_engine('mssql')
-
+from sqlalchemy.databases import sqlite, postgres, mysql, oracle
 from testbase import PersistTest
 import unittest, re
 
@@ -34,8 +26,9 @@ table3 = table(
     column('otherstuff'),
 )
 
+metadata = MetaData()
 table4 = Table(
-    'remotetable', db,
+    'remotetable', metadata,
     Column('rem_id', Integer, primary_key=True),
     Column('datatype_id', Integer),
     Column('value', String(20)),
@@ -58,8 +51,8 @@ addresses = table('addresses',
 )
 
 class SQLTest(PersistTest):
-    def runtest(self, clause, result, engine = None, params = None, checkparams = None):
-        c = clause.compile(parameters=params, engine=engine)
+    def runtest(self, clause, result, dialect = None, params = None, checkparams = None):
+        c = clause.compile(parameters=params, dialect=dialect)
         self.echo("\nSQL String:\n" + str(c) + repr(c.get_params()))
         cc = re.sub(r'\n', '', str(c))
         self.assert_(cc == result, str(c) + "\n does not match \n" + result)
@@ -80,7 +73,6 @@ myothertable.othername FROM mytable, myothertable")
         """tests placing select statements in the column clause of another select, for the
         purposes of selecting from the exported columns of that select."""
         s = select([table1], table1.c.name == 'jack')
-        #print [key for key in s.c.keys()]
         self.runtest(
             select(
                 [s],
@@ -151,7 +143,6 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         self.runtest(
             select([users, s.c.street], from_obj=[s]),
             """SELECT users.user_id, users.user_name, users.password, s.street FROM users, (SELECT addresses.street AS street FROM addresses WHERE addresses.user_id = users.user_id) AS s""")
-
         
     def testcolumnsubquery(self):
         s = select([table1.c.myid], scalar=True, correlate=False)
@@ -213,7 +204,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         )
         
         self.runtest(
-            literal("a") + literal("b") * literal("c"), ":literal + (:liter_1 * :liter_2)", db
+            literal("a") + literal("b") * literal("c"), ":literal + (:liter_1 * :liter_2)"
         )
 
     def testmultiparam(self):
@@ -234,9 +225,9 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         )
 
     def testoraclelimit(self):
-        e = create_engine('oracle')
-        users = Table('users', e, Column('name', String(10), key='username'))
-        self.runtest(select([users.c.username], limit=5), "SELECT name FROM (SELECT users.name AS name, ROW_NUMBER() OVER (ORDER BY users.rowid ASC) AS ora_rn FROM users) WHERE ora_rn<=5", engine=e)
+        metadata = MetaData()
+        users = Table('users', metadata, Column('name', String(10), key='username'))
+        self.runtest(select([users.c.username], limit=5), "SELECT name FROM (SELECT users.name AS name, ROW_NUMBER() OVER (ORDER BY users.rowid) AS ora_rn FROM users) WHERE ora_rn<=5", dialect=oracle.dialect())
 
     def testgroupby_and_orderby(self):
         self.runtest(
@@ -276,15 +267,13 @@ WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid =
     def testtext(self):
         self.runtest(
             text("select * from foo where lala = bar") ,
-            "select * from foo where lala = bar",
-            engine = db
+            "select * from foo where lala = bar"
         )
 
         self.runtest(select(
             ["foobar(a)", "pk_foo_bar(syslaal)"],
             "a = 12",
-            from_obj = ["foobar left outer join lala on foobar.foo = lala.foo"],
-            engine = db
+            from_obj = ["foobar left outer join lala on foobar.foo = lala.foo"]
         ), 
         "SELECT foobar(a), pk_foo_bar(syslaal) FROM foobar left outer join lala on foobar.foo = lala.foo WHERE a = 12")
 
@@ -296,33 +285,32 @@ WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid =
         s.append_whereclause("column2=19")
         s.order_by("column1")
         s.append_from("table1")
-        self.runtest(s, "SELECT column1, column2 FROM table1 WHERE column1=12 AND column2=19 ORDER BY column1", db)
+        self.runtest(s, "SELECT column1, column2 FROM table1 WHERE column1=12 AND column2=19 ORDER BY column1")
 
     def testtextbinds(self):
         self.runtest(
-            db.text("select * from foo where lala=:bar and hoho=:whee"), 
+            text("select * from foo where lala=:bar and hoho=:whee"), 
                 "select * from foo where lala=:bar and hoho=:whee", 
                 checkparams={'bar':4, 'whee': 7},
                 params={'bar':4, 'whee': 7, 'hoho':10},
-                engine=db
         )
         
-        engine = postgres.engine({})
+        dialect = postgres.dialect()
         self.runtest(
-            engine.text("select * from foo where lala=:bar and hoho=:whee"), 
+            text("select * from foo where lala=:bar and hoho=:whee"), 
                 "select * from foo where lala=%(bar)s and hoho=%(whee)s", 
                 checkparams={'bar':4, 'whee': 7},
                 params={'bar':4, 'whee': 7, 'hoho':10},
-                engine=engine
+                dialect=dialect
         )
 
-        engine = sqlite.engine({})
+        dialect = sqlite.dialect()
         self.runtest(
-            engine.text("select * from foo where lala=:bar and hoho=:whee"), 
+            text("select * from foo where lala=:bar and hoho=:whee"), 
                 "select * from foo where lala=? and hoho=?", 
                 checkparams=[4, 7],
                 params={'bar':4, 'whee': 7, 'hoho':10},
-                engine=engine
+                dialect=dialect
         )
         
     def testtextmix(self):
@@ -393,7 +381,7 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
             "SELECT foo.bar.lala(:lala)")
 
         # test a dotted func off the engine itself
-        self.runtest(db.func.lala.hoho(7), "lala.hoho(:hoho)")
+        self.runtest(func.lala.hoho(7), "lala.hoho(:hoho)")
         
     def testjoin(self):
         self.runtest(
@@ -461,6 +449,13 @@ FROM mytable WHERE mytable.myid = :mytable_my_1 ORDER BY mytable.myid")
 FROM mytable UNION SELECT myothertable.otherid, myothertable.othername \
 FROM myothertable UNION SELECT thirdtable.userid, thirdtable.otherstuff FROM thirdtable")
             
+            u = union(
+                select([table1]),
+                select([table2]),
+                select([table3])
+            )
+            assert u.corresponding_column(table2.c.otherid) is u.c.otherid
+            
             
     def testouterjoin(self):
         # test an outer join.  the oracle module should take the ON clause of the join and
@@ -485,19 +480,19 @@ FROM mytable LEFT OUTER JOIN myothertable ON mytable.myid = myothertable.otherid
 WHERE mytable.name = %(mytable_name)s AND mytable.myid = %(mytable_myid)s AND \
 myothertable.othername != %(myothertable_othername)s AND \
 EXISTS (select yay from foo where boo = lar)",
-            engine = postgres.engine({}))
-
+            dialect=postgres.dialect()
+            )
 
         self.runtest(query, 
             "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername \
 FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid(+) AND \
 mytable.name = :mytable_name AND mytable.myid = :mytable_myid AND \
 myothertable.othername != :myothertable_othername AND EXISTS (select yay from foo where boo = lar)",
-            engine = oracle.engine({}, use_ansi = False))
+            dialect=oracle.OracleDialect(use_ansi = False))
 
         query = table1.outerjoin(table2, table1.c.myid==table2.c.otherid).outerjoin(table3, table3.c.userid==table2.c.otherid)
         self.runtest(query.select(), "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable LEFT OUTER JOIN myothertable ON mytable.myid = myothertable.otherid LEFT OUTER JOIN thirdtable ON thirdtable.userid = myothertable.otherid")
-        self.runtest(query.select(), "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable, myothertable, thirdtable WHERE mytable.myid = myothertable.otherid(+) AND thirdtable.userid(+) = myothertable.otherid", engine=oracle.engine({}, use_ansi=False))    
+        self.runtest(query.select(), "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable, myothertable, thirdtable WHERE mytable.myid = myothertable.otherid(+) AND thirdtable.userid(+) = myothertable.otherid", dialect=oracle.dialect(use_ansi=False))    
 
     def testbindparam(self):
         self.runtest(select(
@@ -513,7 +508,7 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
         # check that the bind params sent along with a compile() call
         # get preserved when the params are retreived later
         s = select([table1], table1.c.myid == bindparam('test'))
-        c = s.compile(parameters = {'test' : 7}, engine=db)
+        c = s.compile(parameters = {'test' : 7})
         self.assert_(c.get_params() == {'test' : 7})
 
 
@@ -542,28 +537,26 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
                     Column('ts', TIMESTAMP),
                     )
         
-        def check_results(engine, expected_results, literal):
+        def check_results(dialect, expected_results, literal):
             self.assertEqual(len(expected_results), 5, 'Incorrect number of expected results')
-            self.assertEqual(str(cast(tbl.c.v1, Numeric, engine=engine)), 'CAST(casttest.v1 AS %s)' %expected_results[0])
-            self.assertEqual(str(cast(tbl.c.v1, Numeric(12, 9), engine=engine)), 'CAST(casttest.v1 AS %s)' %expected_results[1])
-            self.assertEqual(str(cast(tbl.c.ts, Date, engine=engine)), 'CAST(casttest.ts AS %s)' %expected_results[2])
-            self.assertEqual(str(cast(1234, TEXT, engine=engine)), 'CAST(%s AS %s)' %(literal, expected_results[3]))
-            self.assertEqual(str(cast('test', String(20), engine=engine)), 'CAST(%s AS %s)' %(literal, expected_results[4]))
-            
-            sel = select([tbl, cast(tbl.c.v1, Numeric)], engine=engine)
-            self.assertEqual(str(sel), "SELECT casttest.id, casttest.v1, casttest.v2, casttest.ts, CAST(casttest.v1 AS NUMERIC(10, 2)) \nFROM casttest")
-            
+            self.assertEqual(str(cast(tbl.c.v1, Numeric).compile(dialect=dialect)), 'CAST(casttest.v1 AS %s)' %expected_results[0])
+            self.assertEqual(str(cast(tbl.c.v1, Numeric(12, 9)).compile(dialect=dialect)), 'CAST(casttest.v1 AS %s)' %expected_results[1])
+            self.assertEqual(str(cast(tbl.c.ts, Date).compile(dialect=dialect)), 'CAST(casttest.ts AS %s)' %expected_results[2])
+            self.assertEqual(str(cast(1234, TEXT).compile(dialect=dialect)), 'CAST(%s AS %s)' %(literal, expected_results[3]))
+            self.assertEqual(str(cast('test', String(20)).compile(dialect=dialect)), 'CAST(%s AS %s)' %(literal, expected_results[4]))
+            sel = select([tbl, cast(tbl.c.v1, Numeric)]).compile(dialect=dialect) 
+            self.assertEqual(str(sel), "SELECT casttest.id, casttest.v1, casttest.v2, casttest.ts, CAST(casttest.v1 AS NUMERIC(10, 2)) \nFROM casttest")            
         # first test with Postgres engine
-        check_results(postgres.engine({}), ['NUMERIC(10, 2)', 'NUMERIC(12, 9)', 'DATE', 'TEXT', 'VARCHAR(20)'], '%(literal)s')
+        check_results(postgres.dialect(), ['NUMERIC(10, 2)', 'NUMERIC(12, 9)', 'DATE', 'TEXT', 'VARCHAR(20)'], '%(literal)s')
 
         # then the Oracle engine
-        check_results(oracle.engine({}, use_ansi = False), ['NUMERIC(10, 2)', 'NUMERIC(12, 9)', 'DATE', 'CLOB', 'VARCHAR(20)'], ':literal')
+#        check_results(oracle.OracleDialect(), ['NUMERIC(10, 2)', 'NUMERIC(12, 9)', 'DATE', 'CLOB', 'VARCHAR(20)'], ':literal')
 
         # then the sqlite engine
-        check_results(sqlite.engine({}), ['NUMERIC(10, 2)', 'NUMERIC(12, 9)', 'DATE', 'TEXT', 'VARCHAR(20)'], '?')
+        check_results(sqlite.dialect(), ['NUMERIC(10, 2)', 'NUMERIC(12, 9)', 'DATE', 'TEXT', 'VARCHAR(20)'], '?')
 
         # and the MySQL engine
-        check_results(mysql.engine({}), ['NUMERIC(10, 2)', 'NUMERIC(12, 9)', 'DATE', 'TEXT', 'VARCHAR(20)'], '%s')
+        check_results(mysql.dialect(), ['NUMERIC(10, 2)', 'NUMERIC(12, 9)', 'DATE', 'TEXT', 'VARCHAR(20)'], '%s')
 
 class CRUDTest(SQLTest):
     def testinsert(self):
@@ -601,8 +594,7 @@ class CRUDTest(SQLTest):
         self.runtest(update(table1, table1.c.myid == 12, values = {table1.c.name : table1.c.myid}), "UPDATE mytable SET name=mytable.myid, description=:description WHERE mytable.myid = :mytable_myid", params = {'description':'test'})
         self.runtest(update(table1, table1.c.myid == 12, values = {table1.c.myid : 9}), "UPDATE mytable SET myid=:myid, description=:description WHERE mytable.myid = :mytable_myid", params = {'mytable_myid': 12, 'myid': 9, 'description': 'test'})
         s = table1.update(table1.c.myid == 12, values = {table1.c.name : 'lala'})
-        c = s.compile(parameters = {'mytable_id':9,'name':'h0h0'}, engine=db)
-        print str(c)
+        c = s.compile(parameters = {'mytable_id':9,'name':'h0h0'})
         self.assert_(str(s) == str(c))
         
     def testupdateexpression(self):
@@ -623,7 +615,7 @@ class CRUDTest(SQLTest):
         s = select([table2], table2.c.otherid == table1.c.myid)
         u = update(table1, table1.c.name == 'jack', values = {table1.c.name : s})
         self.runtest(u, "UPDATE mytable SET name=(SELECT myothertable.otherid, myothertable.othername FROM myothertable WHERE myothertable.otherid = mytable.myid) WHERE mytable.name = :mytable_name")
-        
+
         # test a correlated WHERE clause
         s = select([table2.c.othername], table2.c.otherid == 7)
         u = update(table1, table1.c.name==s)

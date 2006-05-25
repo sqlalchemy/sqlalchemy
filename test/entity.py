@@ -2,6 +2,7 @@ from testbase import PersistTest, AssertMixin
 import unittest
 from sqlalchemy import *
 import testbase
+from sqlalchemy.ext.sessioncontext import SessionContext
 
 from tables import *
 import tables
@@ -10,38 +11,35 @@ class EntityTest(AssertMixin):
     """tests mappers that are constructed based on "entity names", which allows the same class
     to have multiple primary mappers """
     def setUpAll(self):
-        global user1, user2, address1, address2
-        db = testbase.db
-        user1 = Table('user1', db, 
+        global user1, user2, address1, address2, metadata, ctx
+        metadata = BoundMetaData(testbase.db)
+        ctx = SessionContext(create_session)
+        
+        user1 = Table('user1', metadata, 
             Column('user_id', Integer, Sequence('user1_id_seq'), primary_key=True),
             Column('name', String(60), nullable=False)
-            ).create()
-        user2 = Table('user2', db, 
+            )
+        user2 = Table('user2', metadata, 
             Column('user_id', Integer, Sequence('user2_id_seq'), primary_key=True),
             Column('name', String(60), nullable=False)
-            ).create()
-        address1 = Table('address1', db,
+            )
+        address1 = Table('address1', metadata,
             Column('address_id', Integer, Sequence('address1_id_seq'), primary_key=True),
             Column('user_id', Integer, ForeignKey(user1.c.user_id), nullable=False),
             Column('email', String(100), nullable=False)
-            ).create()
-        address2 = Table('address2', db,
+            )
+        address2 = Table('address2', metadata,
             Column('address_id', Integer, Sequence('address2_id_seq'), primary_key=True),
             Column('user_id', Integer, ForeignKey(user2.c.user_id), nullable=False),
             Column('email', String(100), nullable=False)
-            ).create()
+            )
+        metadata.create_all()
     def tearDownAll(self):
-        address1.drop()
-        address2.drop()
-        user1.drop()
-        user2.drop()
+        metadata.drop_all()
     def tearDown(self):
-        address1.delete().execute()
-        address2.delete().execute()
-        user1.delete().execute()
-        user2.delete().execute()
-        objectstore.clear()
         clear_mappers()
+        for t in metadata.table_iterator(reverse=True):
+            t.delete().execute()
 
     def testbasic(self):
         """tests a pair of one-to-many mapper structures, establishing that both
@@ -50,14 +48,14 @@ class EntityTest(AssertMixin):
         class User(object):pass
         class Address(object):pass
             
-        a1mapper = mapper(Address, address1, entity_name='address1')
-        a2mapper = mapper(Address, address2, entity_name='address2')    
+        a1mapper = mapper(Address, address1, entity_name='address1', extension=ctx.mapper_extension)
+        a2mapper = mapper(Address, address2, entity_name='address2', extension=ctx.mapper_extension)    
         u1mapper = mapper(User, user1, entity_name='user1', properties ={
             'addresses':relation(a1mapper)
-        })
+        }, extension=ctx.mapper_extension)
         u2mapper =mapper(User, user2, entity_name='user2', properties={
             'addresses':relation(a2mapper)
-        })
+        }, extension=ctx.mapper_extension)
         
         u1 = User(_sa_entity_name='user1')
         u1.name = 'this is user 1'
@@ -71,15 +69,15 @@ class EntityTest(AssertMixin):
         a2.email='a2@foo.com'
         u2.addresses.append(a2)
         
-        objectstore.commit()
+        ctx.current.flush()
         assert user1.select().execute().fetchall() == [(u1.user_id, u1.name)]
         assert user2.select().execute().fetchall() == [(u2.user_id, u2.name)]
         assert address1.select().execute().fetchall() == [(u1.user_id, a1.user_id, 'a1@foo.com')]
         assert address2.select().execute().fetchall() == [(u2.user_id, a2.user_id, 'a2@foo.com')]
 
-        objectstore.clear()
-        u1list = u1mapper.select()
-        u2list = u2mapper.select()
+        ctx.current.clear()
+        u1list = ctx.current.query(User, entity_name='user1').select()
+        u2list = ctx.current.query(User, entity_name='user2').select()
         assert len(u1list) == len(u2list) == 1
         assert u1list[0] is not u2list[0]
         assert len(u1list[0].addresses) == len(u2list[0].addresses) == 1
@@ -90,14 +88,14 @@ class EntityTest(AssertMixin):
         class Address1(object):pass
         class Address2(object):pass
             
-        a1mapper = mapper(Address1, address1)
-        a2mapper = mapper(Address2, address2)    
+        a1mapper = mapper(Address1, address1, extension=ctx.mapper_extension)
+        a2mapper = mapper(Address2, address2, extension=ctx.mapper_extension)    
         u1mapper = mapper(User, user1, entity_name='user1', properties ={
             'addresses':relation(a1mapper)
-        })
+        }, extension=ctx.mapper_extension)
         u2mapper =mapper(User, user2, entity_name='user2', properties={
             'addresses':relation(a2mapper)
-        })
+        }, extension=ctx.mapper_extension)
 
         u1 = User(_sa_entity_name='user1')
         u1.name = 'this is user 1'
@@ -111,15 +109,15 @@ class EntityTest(AssertMixin):
         a2.email='a2@foo.com'
         u2.addresses.append(a2)
 
-        objectstore.commit()
+        ctx.current.flush()
         assert user1.select().execute().fetchall() == [(u1.user_id, u1.name)]
         assert user2.select().execute().fetchall() == [(u2.user_id, u2.name)]
         assert address1.select().execute().fetchall() == [(u1.user_id, a1.user_id, 'a1@foo.com')]
         assert address2.select().execute().fetchall() == [(u2.user_id, a2.user_id, 'a2@foo.com')]
 
-        objectstore.clear()
-        u1list = u1mapper.select()
-        u2list = u2mapper.select()
+        ctx.current.clear()
+        u1list = ctx.current.query(User, entity_name='user1').select()
+        u2list = ctx.current.query(User, entity_name='user2').select()
         assert len(u1list) == len(u2list) == 1
         assert u1list[0] is not u2list[0]
         assert len(u1list[0].addresses) == len(u2list[0].addresses) == 1

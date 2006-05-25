@@ -16,3 +16,10 @@ function togglePopbox(id, show, hide) {
 	}
 }
 
+function alphaApi() {
+    window.open("alphaapi.html", "_blank", "width=600,height=400, scrollbars=yes,resizable=yes,toolbar=no");
+}
+
+function alphaImplementation() {
+    window.open("alphaimplementation.html", "_blank", "width=600,height=400, scrollbars=yes,resizable=yes,toolbar=no");
+}

@@ -15,6 +15,7 @@ table = Table('table1', db,
     Column('col1', Integer, primary_key=True),
     Column('col2', String(20)),
     Column('col3', Integer),
+    Column('colx', Integer),
     redefine=True
 )
 
@@ -22,15 +23,9 @@ table2 = Table('table2', db,
     Column('col1', Integer, primary_key=True),
     Column('col2', Integer, ForeignKey('table1.col1')),
     Column('col3', String(20)),
+    Column('coly', Integer),
     redefine=True
 )
-
-table3 = Table('table3', db, 
-    Column('col1', Integer, ForeignKey('table1.col1'), primary_key=True),
-    Column('col2', Integer),
-    Column('col3', String(20)),
-    redefine=True
-    )
 
 class SelectableTest(testbase.AssertMixin):
     def testtablealias(self):
@@ -43,16 +38,51 @@ class SelectableTest(testbase.AssertMixin):
         print str(j)
         self.assert_(criterion.compare(j.onclause))
 
-    def testjoinpks(self):
-        a = join(table, table3)
-        b = join(table, table3, table.c.col1==table3.c.col2)
-        c = join(table, table3, table.c.col2==table3.c.col2)
-        d = join(table, table3, table.c.col2==table3.c.col1)
-        
-        self.assert_(a.primary_key==[table.c.col1])
-        self.assert_(b.primary_key==[table.c.col1, table3.c.col1])
-        self.assert_(c.primary_key==[table.c.col1, table3.c.col1])
-        self.assert_(d.primary_key==[table.c.col1, table3.c.col1])
+    def testunion(self):
+        # tests that we can correspond a column in a Select statement with a certain Table, against
+        # a column in a Union where one of its underlying Selects matches to that same Table
+        u = select([table.c.col1, table.c.col2, table.c.col3, table.c.colx, null().label('coly')]).union(
+                select([table2.c.col1, table2.c.col2, table2.c.col3, null().label('colx'), table2.c.coly])
+            )
+        s1 = table.select(use_labels=True)
+        s2 = table2.select(use_labels=True)
+        print ["%d %s" % (id(c),c.key) for c in u.c]
+        c = u.corresponding_column(s1.c.table1_col2)
+        print "%d %s" % (id(c), c.key)
+        assert u.corresponding_column(s1.c.table1_col2) is u.c.col2
+        assert u.corresponding_column(s2.c.table2_col2) is u.c.col2
+
+    def testaliasunion(self):
+        # same as testunion, except its an alias of the union
+        u = select([table.c.col1, table.c.col2, table.c.col3, table.c.colx, null().label('coly')]).union(
+                select([table2.c.col1, table2.c.col2, table2.c.col3, null().label('colx'), table2.c.coly])
+            ).alias('analias')
+        s1 = table.select(use_labels=True)
+        s2 = table2.select(use_labels=True)
+        assert u.corresponding_column(s1.c.table1_col2) is u.c.col2
+        assert u.corresponding_column(s2.c.table2_col2) is u.c.col2
+        assert u.corresponding_column(s2.c.table2_coly) is u.c.coly
+        assert s2.corresponding_column(u.c.coly) is s2.c.table2_coly
+
+    def testselectunion(self):
+        # like testaliasunion, but off a Select off the union.
+        u = select([table.c.col1, table.c.col2, table.c.col3, table.c.colx, null().label('coly')]).union(
+                select([table2.c.col1, table2.c.col2, table2.c.col3, null().label('colx'), table2.c.coly])
+            ).alias('analias')
+        s = select([u])
+        s1 = table.select(use_labels=True)
+        s2 = table2.select(use_labels=True)
+        assert s.corresponding_column(s1.c.table1_col2) is s.c.col2
+        assert s.corresponding_column(s2.c.table2_col2) is s.c.col2
+
+    def testunionagainstjoin(self):
+        # same as testunion, except its an alias of the union
+        u = select([table.c.col1, table.c.col2, table.c.col3, table.c.colx, null().label('coly')]).union(
+                select([table2.c.col1, table2.c.col2, table2.c.col3, null().label('colx'), table2.c.coly])
+            ).alias('analias')
+        j1 = table.join(table2)
+        assert u.corresponding_column(j1.c.table1_colx) is u.c.colx
+        assert j1.corresponding_column(u.c.colx) is j1.c.table1_colx
         
     def testjoin(self):
         a = join(table, table2)

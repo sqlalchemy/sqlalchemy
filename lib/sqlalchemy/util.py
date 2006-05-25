@@ -255,46 +255,57 @@ class HistoryArraySet(UserList.UserList):
         """sets the data for this HistoryArraySet to be that of the given data.
         duplicates in the incoming list will be removed."""
         # first mark everything current as "deleted"
-        for i in self.data:
-            self.records[i] = False
+        for item in self.data:
+            self.records[item] = False
+            self.do_value_deleted(item)
             
         # switch array
         self.data = data
 
         # TODO: fix this up, remove items from array while iterating
         for i in range(0, len(self.data)):
-            if not self._setrecord(self.data[i]):
-               del self.data[i]
-               i -= 1
+            if not self.__setrecord(self.data[i], False):
+                del self.data[i]
+                i -= 1
+        for item in self.data:
+            self.do_value_appended(item)
     def history_contains(self, obj):
         """returns true if the given object exists within the history
         for this HistoryArrayList."""
         return self.records.has_key(obj)
     def __hash__(self):
         return id(self)
-    def _setrecord(self, item):
-        if self.readonly:
-            raise InvalidRequestError("This list is read only")
+    def do_value_appended(self, value):
+        pass
+    def do_value_deleted(self, value):
+        pass
+    def __setrecord(self, item, dochanged=True):
         try:
             val = self.records[item]
             if val is True or val is None:
                 return False
             else:
                 self.records[item] = None
+                if dochanged:
+                    self.do_value_appended(item)
                 return True
         except KeyError:
             self.records[item] = True
+            if dochanged:
+                self.do_value_appended(item)
             return True
-    def _delrecord(self, item):
-        if self.readonly:
-            raise InvalidRequestError("This list is read only")
+    def __delrecord(self, item, dochanged=True):
         try:
             val = self.records[item]
             if val is None:
                 self.records[item] = False
+                if dochanged:
+                    self.do_value_deleted(item)
                 return True
             elif val is True:
                 del self.records[item]
+                if dochanged:
+                    self.do_value_deleted(item)
                 return True
             return False
         except KeyError:
@@ -350,12 +361,13 @@ class HistoryArraySet(UserList.UserList):
     def has_item(self, item):
         return self.records.has_key(item) and self.records[item] is not False
     def __setitem__(self, i, item): 
-        if self._setrecord(item):
+        if self.__setrecord(item):
             self.data[i] = item
     def __delitem__(self, i):
-        self._delrecord(self.data[i])
+        self.__delrecord(self.data[i])
         del self.data[i]
     def __setslice__(self, i, j, other):
+        print "HAS SETSLICE"
         i = max(i, 0); j = max(j, 0)
         if isinstance(other, UserList.UserList):
             l = other.data
@@ -363,25 +375,26 @@ class HistoryArraySet(UserList.UserList):
             l = other
         else:
             l = list(other)
-        g = [a for a in l if self._setrecord(a)]
+        [self.__delrecord(x) for x in self.data[i:]]
+        g = [a for a in l if self.__setrecord(a)]
         self.data[i:] = g
     def __delslice__(self, i, j):
         i = max(i, 0); j = max(j, 0)
         for a in self.data[i:j]:
-            self._delrecord(a)
+            self.__delrecord(a)
         del self.data[i:j]
     def append(self, item): 
-        if self._setrecord(item):
+        if self.__setrecord(item):
             self.data.append(item)
     def insert(self, i, item): 
-        if self._setrecord(item):
+        if self.__setrecord(item):
             self.data.insert(i, item)
     def pop(self, i=-1):
         item = self.data[i]
-        if self._delrecord(item):
+        if self.__delrecord(item):
             return self.data.pop(i)
     def remove(self, item): 
-        if self._delrecord(item):
+        if self.__delrecord(item):
             self.data.remove(item)
     def extend(self, item_list):
         for item in item_list:

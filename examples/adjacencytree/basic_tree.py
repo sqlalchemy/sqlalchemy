@@ -4,47 +4,35 @@ import string, sys
 
 """a basic Adjacency List model tree."""
 
-engine = create_engine('sqlite://', echo = True)
-#engine = sqlalchemy.engine.create_engine('mysql', {'db':'test', 'host':'127.0.0.1', 'user':'scott'}, echo=True)
-#engine = sqlalchemy.engine.create_engine('postgres', {'database':'test', 'host':'127.0.0.1', 'user':'scott', 'password':'tiger'}, echo=True)
-#engine = sqlalchemy.engine.create_engine('oracle', {'dsn':os.environ['DSN'], 'user':os.environ['USER'], 'password':os.environ['PASSWORD']}, echo=True)
+metadata = BoundMetaData('sqlite:///', echo=True)
 
-
-"""create the treenodes table.  This is ia basic adjacency list model table."""
-
-trees = Table('treenodes', engine,
+trees = Table('treenodes', metadata,
     Column('node_id', Integer, Sequence('treenode_id_seq',optional=False), primary_key=True),
     Column('parent_node_id', Integer, ForeignKey('treenodes.node_id'), nullable=True),
     Column('node_name', String(50), nullable=False),
     )
 
-
 class NodeList(util.OrderedDict):
-    """extends an Ordered Dictionary, which is just a dictionary that returns its keys and values
-    in order upon iteration.  Adds functionality to automatically associate 
-    the parent of a TreeNode with itself, upon append to the parent's list of child nodes."""
-    def __init__(self, parent):
-        util.OrderedDict.__init__(self)
-        self.parent = parent
+    """subclasses OrderedDict to allow usage as a list-based property."""
     def append(self, node):
-        node.parent = self.parent
         self[node.name] = node
     def __iter__(self):
         return iter(self.values())
 
 class TreeNode(object):
     """a rich Tree class which includes path-based operations"""
-    def __init__(self, name=None):
-        self.children = NodeList(self)
+    children = NodeList
+    def __init__(self, name):
+        self.children = NodeList()
         self.name = name
         self.parent = None
         self.id = None
         self.parent_id = None
     def append(self, node):
         if isinstance(node, str):
-            self.children.append(TreeNode(node))
-        else:
-            self.children.append(node)
+            node = TreeNode(node)
+        node.parent = self
+        self.children.append(node)
     def __repr__(self):
         return self._getstring(0, False)
     def __str__(self):
@@ -57,14 +45,11 @@ class TreeNode(object):
     def print_nodes(self):
         return self._getstring(0, True)
         
-# define the mapper.  we will make "convenient" property
-# names vs. the more verbose names in the table definition
-
-assign_mapper(TreeNode, trees, properties=dict(
+mapper(TreeNode, trees, properties=dict(
     id=trees.c.node_id,
     name=trees.c.node_name,
     parent_id=trees.c.parent_node_id,
-    children=relation(TreeNode, private=True),
+    children=relation(TreeNode, private=True, backref=backref("parent", foreignkey=trees.c.node_id)),
 ))
 
 print "\n\n\n----------------------------"
@@ -88,10 +73,12 @@ print "----------------------------"
 print node.print_nodes()
 
 print "\n\n\n----------------------------"
-print "Committing:"
+print "Flushing:"
 print "----------------------------"
 
-objectstore.commit()
+session = create_session()
+session.save(node)
+session.flush()
 
 print "\n\n\n----------------------------"
 print "Tree After Save:"
@@ -114,9 +101,9 @@ print "----------------------------"
 print node.print_nodes()
 
 print "\n\n\n----------------------------"
-print "Committing:"
+print "Flushing:"
 print "----------------------------"
-objectstore.commit()
+session.flush()
 
 print "\n\n\n----------------------------"
 print "Tree After Save:"
@@ -127,12 +114,12 @@ print node.print_nodes()
 nodeid = node.id
 
 print "\n\n\n----------------------------"
-print "Clearing objectstore, selecting "
+print "Clearing session, selecting "
 print "tree new where node_id=%d:" % nodeid
 print "----------------------------"
 
-objectstore.clear()
-t = TreeNode.mapper.select(TreeNode.c.node_id==nodeid)[0]
+session.clear()
+t = session.query(TreeNode).select(TreeNode.c.id==nodeid)[0]
 
 print "\n\n\n----------------------------"
 print "Full Tree:"
@@ -141,7 +128,7 @@ print t.print_nodes()
 
 print "\n\n\n----------------------------"
 print "Marking root node as deleted"
-print "and committing:"
+print "and flushing:"
 print "----------------------------"
-objectstore.delete(t)
-objectstore.commit()
+session.delete(t)
+session.flush()

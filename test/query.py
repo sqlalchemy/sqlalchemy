@@ -6,7 +6,6 @@ import sqlalchemy.databases.sqlite as sqllite
 
 import tables
 db = testbase.db
-#db.echo='debug'
 from sqlalchemy import *
 from sqlalchemy.engine import ResultProxy, RowProxy
 
@@ -103,8 +102,6 @@ class QueryTest(PersistTest):
 
         
     def testdelete(self):
-        c = db.connection()
-
         self.users.insert().execute(user_id = 7, user_name = 'jack')
         self.users.insert().execute(user_id = 8, user_name = 'fred')
         print repr(self.users.select().execute().fetchall())
@@ -113,14 +110,6 @@ class QueryTest(PersistTest):
         
         print repr(self.users.select().execute().fetchall())
         
-    def testtransaction(self):
-        def dostuff():
-            self.users.insert().execute(user_id = 7, user_name = 'john')
-            self.users.insert().execute(user_id = 8, user_name = 'jack')
-        
-        db.transaction(dostuff)
-        print repr(self.users.select().execute().fetchall())    
-
     def testselectlimit(self):
         self.users.insert().execute(user_id=1, user_name='john')
         self.users.insert().execute(user_id=2, user_name='jack')
@@ -158,10 +147,13 @@ class QueryTest(PersistTest):
         self.users.insert().execute(user_id=1, user_name='foo')
         r = self.users.select().execute().fetchone()
         self.assertEqual(len(r), 2)
+        r.close()
         r = db.execute('select user_name, user_id from query_users', {}).fetchone()
         self.assertEqual(len(r), 2)
+        r.close()
         r = db.execute('select user_name from query_users', {}).fetchone()
         self.assertEqual(len(r), 1)
+        r.close()
         
     def test_column_order_with_simple_query(self):
         # should return values in column definition order
@@ -180,11 +172,9 @@ class QueryTest(PersistTest):
         self.assertEqual(r[1], 1)
         self.assertEqual(r.keys(), ['user_name', 'user_id'])
         self.assertEqual(r.values(), ['foo', 1])
-        
+       
+    @testbase.unsupported('oracle') 
     def test_column_accessor_shadow(self):
-        if db.engine.__module__.endswith('oracle'):
-            return
-
         shadowed = Table('test_shadowed', db,
                          Column('shadow_id', INT, primary_key = True),
                          Column('shadow_name', VARCHAR(20)),
@@ -209,6 +199,7 @@ class QueryTest(PersistTest):
                 self.fail('Should not allow access to private attributes')
             except AttributeError:
                 pass # expected
+            r.close()
         finally:
             shadowed.drop()
         

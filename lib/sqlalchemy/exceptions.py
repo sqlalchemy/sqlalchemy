@@ -25,8 +25,8 @@ class ArgumentError(SQLAlchemyError):
     objects.  This error generally corresponds to construction time state errors."""
     pass
     
-class CommitError(SQLAlchemyError):
-    """raised when an invalid condition is detected upon a commit()"""
+class FlushError(SQLAlchemyError):
+    """raised when an invalid condition is detected upon a flush()"""
     pass
     
 class InvalidRequestError(SQLAlchemyError):

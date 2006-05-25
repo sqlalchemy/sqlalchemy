@@ -1,5 +1,5 @@
-from sqlalchemy import *
 import testbase
+from sqlalchemy import *
 import string
 import sqlalchemy.attributes as attr
 
@@ -28,21 +28,22 @@ class Transition(object):
         
 class M2MTest(testbase.AssertMixin):
     def setUpAll(self):
-        db = testbase.db
+        self.install_threadlocal()
+        metadata = testbase.metadata
         global place
-        place = Table('place', db,
+        place = Table('place', metadata,
             Column('place_id', Integer, Sequence('pid_seq', optional=True), primary_key=True),
             Column('name', String(30), nullable=False),
             )
 
         global transition
-        transition = Table('transition', db,
+        transition = Table('transition', metadata,
             Column('transition_id', Integer, Sequence('tid_seq', optional=True), primary_key=True),
             Column('name', String(30), nullable=False),
             )
 
         global place_thingy
-        place_thingy = Table('place_thingy', db,
+        place_thingy = Table('place_thingy', metadata,
             Column('thingy_id', Integer, Sequence('thid_seq', optional=True), primary_key=True),
             Column('place_id', Integer, ForeignKey('place.place_id'), nullable=False),
             Column('name', String(30), nullable=False)
@@ -50,20 +51,20 @@ class M2MTest(testbase.AssertMixin):
             
         # association table #1
         global place_input
-        place_input = Table('place_input', db,
+        place_input = Table('place_input', metadata,
             Column('place_id', Integer, ForeignKey('place.place_id')),
             Column('transition_id', Integer, ForeignKey('transition.transition_id')),
             )
 
         # association table #2
         global place_output
-        place_output = Table('place_output', db,
+        place_output = Table('place_output', metadata,
             Column('place_id', Integer, ForeignKey('place.place_id')),
             Column('transition_id', Integer, ForeignKey('transition.transition_id')),
             )
 
         global place_place
-        place_place = Table('place_place', db,
+        place_place = Table('place_place', metadata,
             Column('pl1_id', Integer, ForeignKey('place.place_id')),
             Column('pl2_id', Integer, ForeignKey('place.place_id')),
             )
@@ -83,7 +84,8 @@ class M2MTest(testbase.AssertMixin):
         place.drop()
         transition.drop()
         #testbase.db.tables.clear()
-
+        self.uninstall_threadlocal()
+        
     def setUp(self):
         objectstore.clear()
         clear_mappers()
@@ -140,7 +142,7 @@ class M2MTest(testbase.AssertMixin):
             pp = p.places
             self.echo("Place " + str(p) +" places " + repr(pp))
 
-        objectstore.delete(p1,p2,p3,p4,p5,p6,p7)
+        [objectstore.delete(p) for p in p1,p2,p3,p4,p5,p6,p7]
         objectstore.flush()
 
     def testdouble(self):
@@ -152,8 +154,8 @@ class M2MTest(testbase.AssertMixin):
         })
         
         Transition.mapper = mapper(Transition, transition, properties = dict(
-            inputs = relation(Place.mapper, place_output, lazy=False, selectalias='op_alias'),
-            outputs = relation(Place.mapper, place_input, lazy=False, selectalias='ip_alias'),
+            inputs = relation(Place.mapper, place_output, lazy=False),
+            outputs = relation(Place.mapper, place_input, lazy=False),
             )
         )
 
@@ -161,7 +163,7 @@ class M2MTest(testbase.AssertMixin):
         tran.inputs.append(Place('place1'))
         tran.outputs.append(Place('place2'))
         tran.outputs.append(Place('place3'))
-        objectstore.commit()
+        objectstore.flush()
 
         objectstore.clear()
         r = Transition.mapper.select()
@@ -201,20 +203,21 @@ class M2MTest(testbase.AssertMixin):
         p3.inputs.append(t2)
         p1.outputs.append(t1)
         
-        objectstore.commit()
+        objectstore.flush()
         
         self.assert_result([t1], Transition, {'outputs': (Place, [{'name':'place3'}, {'name':'place1'}])})
         self.assert_result([p2], Place, {'inputs': (Transition, [{'name':'transition1'},{'name':'transition2'}])})
 
 class M2MTest2(testbase.AssertMixin):        
     def setUpAll(self):
-        db = testbase.db
+        self.install_threadlocal()
+        metadata = testbase.metadata
         global studentTbl
-        studentTbl = Table('student', db, Column('name', String(20), primary_key=True))
+        studentTbl = Table('student', metadata, Column('name', String(20), primary_key=True))
         global courseTbl
-        courseTbl = Table('course', db, Column('name', String(20), primary_key=True))
+        courseTbl = Table('course', metadata, Column('name', String(20), primary_key=True))
         global enrolTbl
-        enrolTbl = Table('enrol', db,
+        enrolTbl = Table('enrol', metadata,
             Column('student_id', String(20), ForeignKey('student.name'),primary_key=True),
             Column('course_id', String(20), ForeignKey('course.name'), primary_key=True))
 
@@ -227,7 +230,8 @@ class M2MTest2(testbase.AssertMixin):
         studentTbl.drop()
         courseTbl.drop()
         #testbase.db.tables.clear()
-
+        self.uninstall_threadlocal()
+        
     def setUp(self):
         objectstore.clear()
         clear_mappers()
@@ -258,7 +262,7 @@ class M2MTest2(testbase.AssertMixin):
         c3.students.append(s1)
         self.assert_(len(s1.courses) == 3)
         self.assert_(len(c1.students) == 1)
-        objectstore.commit()
+        objectstore.flush()
         objectstore.clear()
         s = Student.mapper.get_by(name='Student1')
         c = Course.mapper.get_by(name='Course3')
@@ -267,65 +271,66 @@ class M2MTest2(testbase.AssertMixin):
         self.assert_(len(s.courses) == 2)
         
 class M2MTest3(testbase.AssertMixin):    
-	def setUpAll(self):
-		e = testbase.db
-		global c, c2a1, c2a2, b, a
-		c = Table('c', e, 
-			Column('c1', Integer, primary_key = True),
-			Column('c2', String(20)),
-		).create()
+    def setUpAll(self):
+        self.install_threadlocal()
+        metadata = testbase.metadata
+        global c, c2a1, c2a2, b, a
+        c = Table('c', metadata, 
+            Column('c1', Integer, primary_key = True),
+            Column('c2', String(20)),
+        ).create()
 
-		a = Table('a', e, 
-			Column('a1', Integer, primary_key=True),
-			Column('a2', String(20)),
-			Column('c1', Integer, ForeignKey('c.c1'))
-			).create()
+        a = Table('a', metadata, 
+            Column('a1', Integer, primary_key=True),
+            Column('a2', String(20)),
+            Column('c1', Integer, ForeignKey('c.c1'))
+            ).create()
 
-		c2a1 = Table('ctoaone', e, 
-			Column('c1', Integer, ForeignKey('c.c1')),
-			Column('a1', Integer, ForeignKey('a.a1'))
-		).create()
-		c2a2 = Table('ctoatwo', e, 
-			Column('c1', Integer, ForeignKey('c.c1')),
-			Column('a1', Integer, ForeignKey('a.a1'))
-		).create()
+        c2a1 = Table('ctoaone', metadata, 
+            Column('c1', Integer, ForeignKey('c.c1')),
+            Column('a1', Integer, ForeignKey('a.a1'))
+        ).create()
+        c2a2 = Table('ctoatwo', metadata, 
+            Column('c1', Integer, ForeignKey('c.c1')),
+            Column('a1', Integer, ForeignKey('a.a1'))
+        ).create()
 
-		b = Table('b', e, 
-			Column('b1', Integer, primary_key=True),
-			Column('a1', Integer, ForeignKey('a.a1')),
-			Column('b2', Boolean)
-		).create()
+        b = Table('b', metadata, 
+            Column('b1', Integer, primary_key=True),
+            Column('a1', Integer, ForeignKey('a.a1')),
+            Column('b2', Boolean)
+        ).create()
 
-	def tearDownAll(self):
-		b.drop()
-		c2a2.drop()
-		c2a1.drop()
-		a.drop()
-		c.drop()
+    def tearDownAll(self):
+        b.drop()
+        c2a2.drop()
+        c2a1.drop()
+        a.drop()
+        c.drop()
         #testbase.db.tables.clear()
+        self.uninstall_threadlocal()
+        
+    def testbasic(self):
+        class C(object):pass
+        class A(object):pass
+        class B(object):pass
 
-	def testbasic(self):
-		class C(object):pass
-		class A(object):pass
-		class B(object):pass
+        assign_mapper(B, b)
 
-		assign_mapper(B, b)
+        assign_mapper(A, a, 
+            properties = {
+                'tbs' : relation(B, primaryjoin=and_(b.c.a1==a.c.a1, b.c.b2 == True), lazy=False),
+            }
+        )
 
-		assign_mapper(A, a, 
-			properties = {
-				'tbs' : relation(B, primaryjoin=and_(b.c.a1==a.c.a1, b.c.b2 == True), lazy=False),
-			}
-		)
+        assign_mapper(C, c, 
+            properties = {
+                'a1s' : relation(A, secondary=c2a1, lazy=False),
+                'a2s' : relation(A, secondary=c2a2, lazy=False)
+            }
+        )
 
-		assign_mapper(C, c, 
-			properties = {
-				'a1s' : relation(A, secondary=c2a1, lazy=False),
-				'a2s' : relation(A, secondary=c2a2, lazy=False)
-			}
-		)
-
-		o1 = C.get(1)
-
+        o1 = C.get(1)
 
 
 if __name__ == "__main__":    

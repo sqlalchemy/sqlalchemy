@@ -2,19 +2,19 @@ from sqlalchemy import *
 import sqlalchemy.util as util
 import string, sys, time
 
-"""a more advanced example of basic_tree.py.  illustrates MapperExtension objects which
-add application-specific functionality to a Mapper object."""
+"""a more advanced example of basic_tree.py.  treenodes can now reference their "root" node, and
+introduces a new selection method which selects an entire tree of nodes at once, taking 
+advantage of a custom MapperExtension to assemble incoming nodes into their correct structure."""
 
-engine = create_engine('sqlite://', echo = True)
-#engine = sqlalchemy.engine.create_engine('mysql', {'db':'test', 'host':'127.0.0.1', 'user':'scott'}, echo=True)
-#engine = sqlalchemy.engine.create_engine('postgres', {'database':'test', 'host':'127.0.0.1', 'user':'scott', 'password':'tiger'}, echo=True)
-#engine = sqlalchemy.engine.create_engine('oracle', {'dsn':os.environ['DSN'], 'user':os.environ['USER'], 'password':os.environ['PASSWORD']}, echo=True)
+engine = create_engine('sqlite:///:memory:', echo=True)
+
+metadata = BoundMetaData(engine)
 
 """create the treenodes table.  This is ia basic adjacency list model table.
 One additional column, "root_node_id", references a "root node" row and is used
 in the 'byroot_tree' example."""
 
-trees = Table('treenodes', engine,
+trees = Table('treenodes', metadata,
     Column('node_id', Integer, Sequence('treenode_id_seq',optional=False), primary_key=True),
     Column('parent_node_id', Integer, ForeignKey('treenodes.node_id'), nullable=True),
     Column('root_node_id', Integer, ForeignKey('treenodes.node_id'), nullable=True),
@@ -23,24 +23,15 @@ trees = Table('treenodes', engine,
     )
 
 treedata = Table(
-    "treedata", engine, 
+    "treedata", metadata, 
     Column('data_id', Integer, primary_key=True),
     Column('value', String(100), nullable=False)
 )
-    
 
 
 class NodeList(util.OrderedDict):
-    """extends an Ordered Dictionary, which is just a dictionary that iterates its keys and values
-    in the order they were inserted.  Adds an "append" method, which appends a node to the 
-    dictionary as though it were a list, and also within append automatically associates 
-    the parent of a TreeNode with itself."""
-    def __init__(self, parent):
-        util.OrderedDict.__init__(self)
-        self.parent = parent
+    """subclasses OrderedDict to allow usage as a list-based property."""
     def append(self, node):
-        node.parent = self.parent
-        node._set_root(self.parent.root)
         self[node.name] = node
     def __iter__(self):
         return iter(self.values())
@@ -55,12 +46,13 @@ class TreeNode(object):
     identifiable root.  Any node can return its root node and therefore the "tree" that it 
     belongs to, and entire trees can be selected from the database in one query, by 
     identifying their common root ID."""
+    children = NodeList
     
     def __init__(self, name):
         """for data integrity, a TreeNode requires its name to be passed as a parameter
         to its constructor, so there is no chance of a TreeNode that doesnt have a name."""
         self.name = name
-        self.children = NodeList(self)
+        self.children = NodeList()
         self.root = self
         self.parent = None
         self.id = None
@@ -73,9 +65,10 @@ class TreeNode(object):
             c._set_root(root)
     def append(self, node):
         if isinstance(node, str):
-            self.children.append(TreeNode(node))
-        else:
-            self.children.append(node)
+            node = TreeNode(node)
+        node.parent = self
+        node._set_root(self.root)
+        self.children.append(node)
     def __repr__(self):
         return self._getstring(0, False)
     def __str__(self):
@@ -90,19 +83,15 @@ class TreeNode(object):
         
 class TreeLoader(MapperExtension):
     """an extension that will plug-in additional functionality to the Mapper."""
-    def create_instance(self, mapper, row, imap, class_):
-        """creates an instance of a TreeNode.  since the TreeNode constructor requires
-        the 'name' argument, this method pulls the data from the database row directly."""
-        return TreeNode(row[mapper.c.name], _mapper_nohistory=True)
-    def after_insert(self, mapper, instance):
+    def after_insert(self, mapper, connection, instance):
         """runs after the insert of a new TreeNode row.  The primary key of the row is not determined
         until the insert is complete, since most DB's use autoincrementing columns.  If this node is
         the root node, we will take the new primary key and update it as the value of the node's 
         "root ID" as well, since its root node is itself."""
         if instance.root is instance:
-            mapper.primarytable.update(TreeNode.c.id==instance.id, values=dict(root_node_id=instance.id)).execute()
+            connection.execute(mapper.mapped_table.update(TreeNode.c.id==instance.id, values=dict(root_node_id=instance.id)))
             instance.root_id = instance.id
-    def append_result(self, mapper, row, imap, result, instance, isnew, populate_existing=False):
+    def append_result(self, mapper, session, row, imap, result, instance, isnew, populate_existing=False):
         """runs as results from a SELECT statement are processed, and newly created or already-existing
         instances that correspond to each row are appended to result lists.  This method will only
         append root nodes to the result list, and will attach child nodes to their appropriate parent
@@ -128,22 +117,22 @@ print "\n\n\n----------------------------"
 print "Creating Tree Table:"
 print "----------------------------"
 
-treedata.create()    
-trees.create()
+metadata.create_all()
 
-
-assign_mapper(TreeNode, trees, properties=dict(
+# the mapper is created with properties that specify "lazy=None" - this is because we are going 
+# to handle our own "eager load" of nodes based on root id
+mapper(TreeNode, trees, properties=dict(
     id=trees.c.node_id,
     name=trees.c.node_name,
     parent_id=trees.c.parent_node_id,
     root_id=trees.c.root_node_id,
     root=relation(TreeNode, primaryjoin=trees.c.root_node_id==trees.c.node_id, foreignkey=trees.c.node_id, lazy=None, uselist=False),
-    children=relation(TreeNode, primaryjoin=trees.c.parent_node_id==trees.c.node_id, lazy=None, uselist=True, private=True),
-    data=relation(mapper(TreeData, treedata, properties=dict(id=treedata.c.data_id)), private=True, lazy=False)
+    children=relation(TreeNode, primaryjoin=trees.c.parent_node_id==trees.c.node_id, lazy=None, uselist=True, cascade="delete,delete-orphan,save-update"),
+    data=relation(mapper(TreeData, treedata, properties=dict(id=treedata.c.data_id)), cascade="delete,delete-orphan,save-update", lazy=False)
     
 ), extension = TreeLoader())
-TreeNode.mapper
 
+session = create_session()
 
 node2 = TreeNode('node2')
 node2.append('subnode1')
@@ -162,10 +151,11 @@ print "----------------------------"
 print node.print_nodes()
 
 print "\n\n\n----------------------------"
-print "Committing:"
+print "flushing:"
 print "----------------------------"
 
-objectstore.commit()
+session.save(node)
+session.flush()
 #sys.exit()
 print "\n\n\n----------------------------"
 print "Tree After Save:"
@@ -190,7 +180,7 @@ print node.print_nodes()
 print "\n\n\n----------------------------"
 print "Committing:"
 print "----------------------------"
-objectstore.commit()
+session.flush()
 
 print "\n\n\n----------------------------"
 print "Tree After Save:"
@@ -205,8 +195,11 @@ print "Clearing objectstore, selecting "
 print "tree new where root_id=%d:" % nodeid
 print "----------------------------"
 
-objectstore.clear()
-t = TreeNode.mapper.select(TreeNode.c.root_id==nodeid, order_by=[TreeNode.c.id])[0]
+session.clear()
+
+# load some nodes.  we do this based on "root id" which will load an entire sub-tree in one pass.
+# the MapperExtension will assemble the incoming nodes into a tree structure.
+t = session.query(TreeNode).select(TreeNode.c.root_id==nodeid, order_by=[TreeNode.c.id])[0]
 
 print "\n\n\n----------------------------"
 print "Full Tree:"
@@ -217,8 +210,8 @@ print "\n\n\n----------------------------"
 print "Marking root node as deleted"
 print "and committing:"
 print "----------------------------"
-objectstore.delete(t)
-objectstore.commit()
+session.delete(t)
+session.flush()
 
 
 

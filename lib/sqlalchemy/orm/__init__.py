@@ -8,50 +8,44 @@
 the mapper package provides object-relational functionality, building upon the schema and sql
 packages and tying operations to class properties and constructors.
 """
-import sqlalchemy.sql as sql
-import sqlalchemy.schema as schema
-import sqlalchemy.engine as engine
-import sqlalchemy.util as util
-import objectstore
-from exceptions import *
-import types as types
+from sqlalchemy import sql, schema, engine, util, exceptions
 from mapper import *
-from properties import *
-import mapper as mapperlib
+from mapper import mapper_registry
+from query import Query
+from util import polymorphic_union
+import properties
+from session import Session as create_session
 
 __all__ = ['relation', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer',
-        'mapper', 'clear_mappers', 'objectstore', 'sql', 'extension', 'class_mapper', 'object_mapper', 'MapperExtension',
-        'assign_mapper', 'cascade_mappers'
+        'mapper', 'clear_mappers', 'sql', 'extension', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query', 
+        'cascade_mappers', 'polymorphic_union', 'create_session',  
         ]
 
 def relation(*args, **kwargs):
     """provides a relationship of a primary Mapper to a secondary Mapper, which corresponds
     to a parent-child or associative table relationship."""
     if len(args) > 1 and isinstance(args[0], type):
-        raise ArgumentError("relation(class, table, **kwargs) is deprecated.  Please use relation(class, **kwargs) or relation(mapper, **kwargs).")
+        raise exceptions.ArgumentError("relation(class, table, **kwargs) is deprecated.  Please use relation(class, **kwargs) or relation(mapper, **kwargs).")
     return _relation_loader(*args, **kwargs)
 
 def _relation_loader(mapper, secondary=None, primaryjoin=None, secondaryjoin=None, lazy=True, **kwargs):
     if lazy:
-        return LazyLoader(mapper, secondary, primaryjoin, secondaryjoin, **kwargs)
+        return properties.LazyLoader(mapper, secondary, primaryjoin, secondaryjoin, **kwargs)
     elif lazy is None:
-        return PropertyLoader(mapper, secondary, primaryjoin, secondaryjoin, **kwargs)
+        return properties.PropertyLoader(mapper, secondary, primaryjoin, secondaryjoin, **kwargs)
     else:
-        return EagerLoader(mapper, secondary, primaryjoin, secondaryjoin, **kwargs)
+        return properties.EagerLoader(mapper, secondary, primaryjoin, secondaryjoin, **kwargs)
 
 def backref(name, **kwargs):
-    return BackRef(name, **kwargs)
+    return properties.BackRef(name, **kwargs)
     
 def deferred(*columns, **kwargs):
     """returns a DeferredColumnProperty, which indicates this object attributes should only be loaded 
     from its corresponding table column when first accessed."""
-    return DeferredColumnProperty(*columns, **kwargs)
+    return properties.DeferredColumnProperty(*columns, **kwargs)
     
 def mapper(class_, table=None, *args, **params):
-    """returns a new or already cached Mapper object."""
-    if table is None:
-        return class_mapper(class_)
-
+    """returns a newMapper object."""
     return Mapper(class_, table, *args, **params)
 
 def clear_mappers():
@@ -72,58 +66,29 @@ def extension(ext):
 def eagerload(name, **kwargs):
     """returns a MapperOption that will convert the property of the given name
     into an eager load.  Used with mapper.options()"""
-    return EagerLazyOption(name, toeager=True, **kwargs)
+    return properties.EagerLazyOption(name, toeager=True, **kwargs)
 
 def lazyload(name, **kwargs):
     """returns a MapperOption that will convert the property of the given name
     into a lazy load.  Used with mapper.options()"""
-    return EagerLazyOption(name, toeager=False, **kwargs)
+    return properties.EagerLazyOption(name, toeager=False, **kwargs)
 
 def noload(name, **kwargs):
     """returns a MapperOption that will convert the property of the given name
     into a non-load.  Used with mapper.options()"""
-    return EagerLazyOption(name, toeager=None, **kwargs)
+    return properties.EagerLazyOption(name, toeager=None, **kwargs)
 
 def defer(name, **kwargs):
     """returns a MapperOption that will convert the column property of the given 
     name into a deferred load.  Used with mapper.options()"""
-    return DeferredOption(name, defer=True)
+    return properties.DeferredOption(name, defer=True)
 def undefer(name, **kwargs):
     """returns a MapperOption that will convert the column property of the given
     name into a non-deferred (regular column) load.  Used with mapper.options."""
-    return DeferredOption(name, defer=False)
+    return properties.DeferredOption(name, defer=False)
     
 
 
-def assign_mapper(class_, *args, **params):
-    params.setdefault("is_primary", True)
-    if not isinstance(getattr(class_, '__init__'), types.MethodType):
-        def __init__(self, **kwargs):
-             for key, value in kwargs.items():
-                 setattr(self, key, value)
-        class_.__init__ = __init__
-    m = mapper(class_, *args, **params)
-    class_.mapper = m
-    class_.get = m.get
-    class_.select = m.select
-    class_.select_by = m.select_by
-    class_.selectone = m.selectone
-    class_.get_by = m.get_by
-    def commit(self):
-        objectstore.commit(self)
-    def delete(self):
-        objectstore.delete(self)
-    def expire(self):
-        objectstore.expire(self)
-    def refresh(self):
-        objectstore.refresh(self)
-    def expunge(self):
-        objectstore.expunge(self)
-    class_.commit = commit
-    class_.delete = delete
-    class_.expire = expire
-    class_.refresh = refresh
-    class_.expunge = expunge
     
 def cascade_mappers(*classes_or_mappers):
     """given a list of classes and/or mappers, identifies the foreign key relationships

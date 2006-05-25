@@ -1,30 +1,37 @@
-Data Mapping
+[alpha_api]: javascript:alphaApi()
+[alpha_implementation]: javascript:alphaImplementation()
+
+Data Mapping {@name=datamapping}
 ============
 
 ### Basic Data Mapping {@name=datamapping}
 
 Data mapping describes the process of defining *Mapper* objects, which associate table metadata with user-defined classes.  
 
-The Mapper's role is to perform SQL operations upon the database, associating individual table rows with instances of those classes, and individual database columns with properties upon those instances, to transparently associate in-memory objects with a persistent database representation. 
+The `Mapper`'s role is to perform SQL operations upon the database, associating individual table rows with instances of those classes, and individual database columns with properties upon those instances, to transparently associate in-memory objects with a persistent database representation. 
 
-When a Mapper is created to associate a Table object with a class, all of the columns defined in the Table object are associated with the class via property accessors, which add overriding functionality to the normal process of setting and getting object attributes.  These property accessors keep track of changes to object attributes; these changes will be stored to the database when the application "commits" the current transactional context (known as a *Unit of Work*).  The `__init__()` method of the object is also decorated to communicate changes when new instances of the object are created.
+When a `Mapper` is created to associate a `Table` object with a class, all of the columns defined in the `Table` object are associated with the class via property accessors, which add overriding functionality to the normal process of setting and getting object attributes.  These property accessors keep track of changes to object attributes; these changes will be stored to the database when the application "flushes" the current state of objects (known as a *Unit of Work*).
 
-The Mapper also provides the interface by which instances of the object are loaded from the database.  The primary method for this is its `select()` method, which has similar arguments to a `sqlalchemy.sql.Select` object.  But this select method executes automatically and returns results, instead of awaiting an execute() call.  Instead of returning a cursor-like object, it returns an array of objects.
+Two objects provide the primary interface for interacting with Mappers and the "unit of work" in SA 0.2, which are the `Query` object and the `Session` object.  `Query` deals with selecting objects from the database, whereas `Session` provides a context for loaded objects and the ability to communicate changes on those objects back to the database.
 
-The three elements to be defined, i.e. the Table metadata, the user-defined class, and the Mapper, are typically defined as module-level variables, and may be defined in any fashion suitable to the application, with the only requirement being that the class and table metadata are described before the mapper.  For the sake of example, we will be defining these elements close together, but this should not be construed as a requirement; since SQLAlchemy is not a framework, those decisions are left to the developer or an external framework.
+The primary method on `Query` for loading objects is its `select()` method, which has similar arguments to a `sqlalchemy.sql.Select` object.  But this select method executes automatically and returns results, instead of awaiting an execute() call.  Instead of returning a cursor-like object, it returns an array of objects.
+
+The three configurational elements to be defined, i.e. the `Table` metadata, the user-defined class, and the `Mapper`, are typically defined as module-level variables, and may be defined in any fashion suitable to the application, with the only requirement being that the class and table metadata are described before the mapper.  For the sake of example, we will be defining these elements close together, but this should not be construed as a requirement; since SQLAlchemy is not a framework, those decisions are left to the developer or an external framework.
+
+Also, keep in mind that the examples in this section deal with explicit `Session` objects mapped directly to `Engine` objects, which represents the most explicit style of using the ORM.  Options exist for how this is configured, including binding `Table` objects directly to `Engines` (described in [metadata_tables_binding](rel:metadata_tables_binding)), as well as using the "Threadlocal" plugin which provides various code shortcuts by using an implicit Session associated to the current thread (described in [plugins_threadlocal](rel:plugins_threadlocal)).
 
 ### Synopsis {@name=synopsis}
 
-This is the simplest form of a full "round trip" of creating table meta data, creating a class, mapping the class to the table, getting some results, and saving changes.  For each concept, the following sections will dig in deeper to the available capabilities.
+First, the metadata/mapper configuration code:
 
     {python}
     from sqlalchemy import *
     
-    # engine
-    engine = create_engine("sqlite://mydb.db")
-    
-    # table metadata
-    users = Table('users', engine, 
+    # metadata
+    meta = MetaData()
+
+    # table object
+    users_table = Table('users', meta, 
         Column('user_id', Integer, primary_key=True),
         Column('user_name', String(16)),
         Column('password', String(20))
@@ -34,11 +41,21 @@ This is the simplest form of a full "round trip" of creating table meta data, cr
     class User(object):
         pass
         
-    # create a mapper
-    usermapper = mapper(User, users)
+    # create a mapper and associate it with the User class.
+    # technically we dont really need the 'usermapper' variable.
+    usermapper = mapper(User, users_table)
+
+Note that no database definitions are required.  Next we will define an `Engine` and connect a `Session` to it, and perform a simple select:
+
+    {python}
+    # engine
+    engine = create_engine("sqlite://mydb.db")
+    
+    # session
+    session = create_session(bind_to=engine)
     
     # select
-    {sql}user = usermapper.select_by(user_name='fred')[0]  
+    {sql}user = session.query(User).select_by(user_name='fred')[0]  
     SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
     users.password AS users_password 
     FROM users 
@@ -48,151 +65,108 @@ This is the simplest form of a full "round trip" of creating table meta data, cr
     # modify
     user.user_name = 'fred jones'
     
-    # commit - saves everything that changed
-    {sql}objectstore.commit() 
+    # flush - saves everything that changed
+    {sql}session.flush()
     UPDATE users SET user_name=:user_name 
      WHERE users.user_id = :user_id
     [{'user_name': 'fred jones', 'user_id': 1}]        
-    
-    
-#### Attaching Mappers to their Class {@name=attaching}
 
-For convenience's sake, the Mapper can be attached as an attribute on the class itself as well:
+### The Query Object {@name=query}
 
-    {python}
-    User.mapper = mapper(User, users)
-    
-    userlist = User.mapper.select_by(user_id=12)
-        
-There is also a full-blown "monkeypatch" function that creates a primary mapper, attaches the above mapper class property, and also the  methods `get, get_by, select, select_by, selectone, selectfirst, commit, expire, refresh, expunge` and `delete`:
+The method `session.query(class_or_mapper)` returns a `Query` object.  Below is a synopsis of things you can do with `Query`:
 
     {python}
-    # "assign" a mapper to the User class/users table
-    assign_mapper(User, users)
+    # get a query from a Session based on class:
+    query = session.query(User)
     
-    # methods are attached to the class for selecting
-    userlist = User.select_by(user_id=12)
+    # get a query from a Session given a Mapper:
+    query = session.query(usermapper)
     
-    myuser = User.get(1)
-    
-    # mark an object as deleted for the next commit
-    myuser.delete()
-    
-    # commit the changes on a specific object
-    myotheruser.commit()
-    
-Other methods of associating mappers and finder methods with their corresponding classes, such as via common base classes or mixins, can be devised as well.  SQLAlchemy does not aim to dictate application architecture and will always allow the broadest variety of architectural patterns, but may include more helper objects and suggested architectures in the future.
-    
-#### Overriding Properties {@name=overriding}
+    # select_by, which takes keyword arguments.  the
+    # keyword arguments represent property names and the values
+    # represent values which will be compared via the = operator.
+    # the comparisons are joined together via "AND".
+    result = query.select_by(name='john', street='123 green street')
 
-A common request is the ability to create custom class properties that override the behavior of setting/getting an attribute.  Currently, the easiest way to do this in SQLAlchemy is how it would be done in any Python program; define your attribute with a different name, such as "_attribute", and use a property to get/set its value.  The mapper just needs to be told of the special name:
-
-    {python}
-    class MyClass(object):
-        def _set_email(self, email):
-            self._email = email
-        def _get_email(self, email):
-            return self._email
-        email = property(_get_email, _set_email)
-        
-    m = mapper(MyClass, mytable, properties = {
-            # map the '_email' attribute to the "email" column
-            # on the table
-            '_email': mytable.c.email
-    })
-    
-In a later release, SQLAlchemy will also allow _get_email and _set_email to be attached directly to the "email" property created by the mapper, and will also allow this association to occur via decorators.
-
-### Selecting from a Mapper {@name=selecting}
-
-There are a variety of ways to select from a mapper.  These range from minimalist to explicit.  Below is a synopsis of the these methods:
-
-    {python}
-    # select_by, using property names or column names as keys
-    # the keys are grouped together by an AND operator
-    result = mapper.select_by(name='john', street='123 green street')
-
-    # select_by can also combine SQL criterion with key/value properties
-    result = mapper.select_by(users.c.user_name=='john', 
-            addresses.c.zip_code=='12345', street='123 green street')
+    # select_by can also combine ClauseElements with key/value properties.
+    # all ClauseElements and keyword-based criterion are combined together
+    # via "AND". 
+    result = query.select_by(users_table.c.user_name=='john', 
+            addresses_table.c.zip_code=='12345', street='123 green street')
     
     # get_by, which takes the same arguments as select_by
     # returns a single scalar result or None if no results
-    user = mapper.get_by(id=12)
+    user = query.get_by(id=12)
     
     # "dynamic" versions of select_by and get_by - everything past the 
     # "select_by_" or "get_by_" is used as the key, and the function argument
     # as the value
-    result = mapper.select_by_name('fred')
-    u = mapper.get_by_name('fred')
+    result = query.select_by_name('fred')
+    u = query.get_by_name('fred')
     
     # get an object directly from its primary key.  this will bypass the SQL
     # call if the object has already been loaded
-    u = mapper.get(15)
+    u = query.get(15)
     
     # get an object that has a composite primary key of three columns.
     # the order of the arguments matches that of the table meta data.
-    myobj = mapper.get(27, 3, 'receipts')
+    myobj = query.get((27, 3, 'receipts'))
     
     # using a WHERE criterion
-    result = mapper.select(or_(users.c.user_name == 'john', users.c.user_name=='fred'))
+    result = query.select(or_(users_table.c.user_name == 'john', users_table.c.user_name=='fred'))
     
     # using a WHERE criterion to get a scalar
-    u = mapper.selectfirst(users.c.user_name=='john')
-
+    u = query.selectfirst(users_table.c.user_name=='john')
+    
     # selectone() is a stricter version of selectfirst() which
     # will raise an exception if there is not exactly one row
-    u = mapper.selectone(users.c.user_name=='john')
+    u = query.selectone(users_table.c.user_name=='john')
     
     # using a full select object
-    result = mapper.select(users.select(users.c.user_name=='john'))
-    
-    # using straight text  
-    result = mapper.select_text("select * from users where user_name='fred'")
+    result = query.select(users_table.select(users_table.c.user_name=='john'))
 
-    # or using a "text" object
-    result = mapper.select(text("select * from users where user_name='fred'", engine=engine))
-            
 Some of the above examples above illustrate the usage of the mapper's Table object to provide the columns for a WHERE Clause.  These columns are also accessible off of the mapped class directly.  When a mapper is assigned to a class, it also attaches a special property accessor `c` to the class itself, which can be used just like the table metadata to access the columns of the table:
 
     {python}
-    User.mapper = mapper(User, users)
-    
-    userlist = User.mapper.select(User.c.user_id==12)
-            
+    userlist = session.query(User).select(User.c.user_id==12)
 
 ### Saving Objects {@name=saving}
 
-When objects corresponding to mapped classes are created or manipulated, all changes are logged by a package called `sqlalchemy.mapping.objectstore`.   The changes are then written to the database when an application calls `objectstore.commit()`.  This pattern is known as a *Unit of Work*, and has many advantages over saving individual objects or attributes on those objects with individual method invocations.  Domain models can be built with far greater complexity with no concern over the order of saves and deletes, excessive database round-trips and write operations, or deadlocking issues.  The commit() operation uses a transaction as well, and will also perform "concurrency checking" to insure the proper number of rows were in fact affected (not supported with the current MySQL drivers). Transactional resources are used effectively in all cases; the unit of work handles all the details.
+When objects corresponding to mapped classes are created or manipulated, all changes are logged by the `Session` object.  The changes are then written to the database when an application calls `flush()`.  This pattern is known as a *Unit of Work*, and has many advantages over saving individual objects or attributes on those objects with individual method invocations.  Domain models can be built with far greater complexity with no concern over the order of saves and deletes, excessive database round-trips and write operations, or deadlocking issues.  The `flush()` operation batches its SQL statements into a transaction, and can also perform optimistic concurrency checks (using a version id column) to insure the proper number of rows were in fact affected (not supported with the current MySQL drivers). 
 
-The Unit of Work is a powerful tool, and has some important concepts that must be understood in order to use it effectively.  While this section illustrates rudimentary Unit of Work usage, it is strongly encouraged to consult the [unitofwork](rel:unitofwork) section for a full description on all its operations, including session control, deletion, and developmental guidelines.    
+The Unit of Work is a powerful tool, and has some important concepts that should be understood in order to use it effectively.  See the [unitofwork](rel:unitofwork) section for a full description on all its operations.
 
-When a mapper is created, the target class has its mapped properties decorated by specialized property accessors that track changes, and its `__init__()` method is also decorated to mark new objects as "new".
+When a mapper is created, the target class has its mapped properties decorated by specialized property accessors that track changes.  New objects by default must be explicitly added to the `Session`, however this can be made automatic by using [plugins_threadlocal](rel:plugins_threadlocal) or [plugins_sessioncontext](rel:plugins_sessioncontext).
 
     {python}
-    User.mapper = mapper(User, users)
-
+    mapper(User, users_table)
+    
     # create a new User
     myuser = User()
     myuser.user_name = 'jane'
     myuser.password = 'hello123'
-
+    
     # create another new User      
     myuser2 = User()
     myuser2.user_name = 'ed'
     myuser2.password = 'lalalala'
-
+    
+    # create a Session and save them
+    sess = create_session()
+    sess.save(myuser)
+    sess.save(myuser2)
+    
     # load a third User from the database            
-    {sql}myuser3 = User.mapper.select(User.c.user_name=='fred')[0]  
+    {sql}myuser3 = sess.query(User).select(User.c.user_name=='fred')[0]  
     SELECT users.user_id AS users_user_id, 
     users.user_name AS users_user_name, users.password AS users_password
     FROM users WHERE users.user_name = :users_user_name
     {'users_user_name': 'fred'}
-
+    
     myuser3.user_name = 'fredjones'
-
+    
     # save all changes            
-    {sql}objectstore.commit()   
+    {sql}session.flush()   
     UPDATE users SET user_name=:user_name
     WHERE users.user_id =:users_user_id
     [{'users_user_id': 1, 'user_name': 'fredjones'}]
@@ -201,11 +175,11 @@ When a mapper is created, the target class has its mapped properties decorated b
     INSERT INTO users (user_name, password) VALUES (:user_name, :password)
     {'password': 'lalalala', 'user_name': 'ed'}
         
-In the examples above, we defined a User class with basically no properties or methods.  Theres no particular reason it has to be this way, the class can explicitly set up whatever properties it wants, whether or not they will be managed by the mapper.  It can also specify a constructor, with the restriction that the constructor is able to function with no arguments being passed to it (this restriction can be lifted with some extra parameters to the mapper; more on that later):
+The mapped class can also specify whatever methods and/or constructor it wants:
 
     {python}
     class User(object):
-        def __init__(self, user_name = None, password = None):
+        def __init__(self, user_name, password):
             self.user_id = None
             self.user_name = user_name
             self.password = password
@@ -214,35 +188,42 @@ In the examples above, we defined a User class with basically no properties or m
         def __repr__(self):
             return "User id %s name %s password %s" % (repr(self.user_id), 
                 repr(self.user_name), repr(self.password))
-    User.mapper = mapper(User, users)
+    mapper(User, users_table)
 
+    sess = create_session()
     u = User('john', 'foo')
-    {sql}objectstore.commit()  
+    sess.save(u)
+    {sql}session.flush()  
     INSERT INTO users (user_name, password) VALUES (:user_name, :password)
     {'password': 'foo', 'user_name': 'john'}
 
     >>> u
     User id 1 name 'john' password 'foo'
 
-Recent versions of SQLAlchemy will only put modified object attributes columns into the UPDATE statements generated upon commit.  This is to conserve database traffic and also to successfully interact with a "deferred" attribute, which is a mapped object attribute against the mapper's primary table that isnt loaded until referenced by the application.
+SQLAlchemy will only put modified object attributes columns into the UPDATE statements generated upon flush.  This is to conserve database traffic and also to successfully interact with a "deferred" attribute, which is a mapped object attribute against the mapper's primary table that isnt loaded until referenced by the application.
 
 ### Defining and Using Relationships {@name=relations}
 
-So that covers how to map the columns in a table to an object, how to load objects, create new ones, and save changes.  The next step is how to define an object's relationships to other database-persisted objects.  This is done via the `relation` function provided by the mapper module.  So with our User class, lets also define the User has having one or more mailing addresses.  First, the table metadata:
+So that covers how to map the columns in a table to an object, how to load objects, create new ones, and save changes.  The next step is how to define an object's relationships to other database-persisted objects.  This is done via the `relation` function provided by the `orm` module.  
+
+#### One to Many {@name=onetomany}
+
+So with our User class, lets also define the User has having one or more mailing addresses.  First, the table metadata:
 
     {python}
     from sqlalchemy import *
-    engine = create_engine('sqlite://filename=mydb')
+
+    metadata = MetaData()
     
     # define user table
-    users = Table('users', engine, 
+    users_table = Table('users', metadata, 
         Column('user_id', Integer, primary_key=True),
         Column('user_name', String(16)),
         Column('password', String(20))
     )
     
     # define user address table
-    addresses = Table('addresses', engine,
+    addresses_table = Table('addresses', metadata,
         Column('address_id', Integer, primary_key=True),
         Column('user_id', Integer, ForeignKey("users.user_id")),
         Column('street', String(100)),
@@ -251,39 +232,46 @@ So that covers how to map the columns in a table to an object, how to load objec
         Column('zip', String(10))
     )
         
-Of importance here is the addresses table's definition of a *foreign key* relationship to the users table, relating the user_id column into a parent-child relationship.  When a Mapper wants to indicate a relation of one object to another, this ForeignKey object is the default method by which the relationship is determined (although if you didn't define ForeignKeys, or you want to specify explicit relationship columns, that is available as well).   
+Of importance here is the addresses table's definition of a *foreign key* relationship to the users table, relating the user_id column into a parent-child relationship.  When a `Mapper` wants to indicate a relation of one object to another, the `ForeignKey` relationships are the default method by which the relationship is determined (options also exist to describe the relationships explicitly).   
 
-So then lets define two classes, the familiar User class, as well as an Address class:
+So then lets define two classes, the familiar `User` class, as well as an `Address` class:
 
     {python}
     class User(object):
-        def __init__(self, user_name = None, password = None):
+        def __init__(self, user_name, password):
             self.user_name = user_name
             self.password = password
         
     class Address(object):
-        def __init__(self, street=None, city=None, state=None, zip=None):
+        def __init__(self, street, city, state, zip):
             self.street = street
             self.city = city
             self.state = state
             self.zip = zip
         
-And then a Mapper that will define a relationship of the User and the Address classes to each other as well as their table metadata.  We will add an additional mapper keyword argument `properties` which is a dictionary relating the name of an object property to a database relationship, in this case a `relation` object against a newly defined  mapper for the Address class:
+And then a `Mapper` that will define a relationship of the `User` and the `Address` classes to each other as well as their table metadata.  We will add an additional mapper keyword argument `properties` which is a dictionary relating the names of class attributes to database relationships, in this case a `relation` object against a newly defined mapper for the Address class:
 
     {python}
-    User.mapper = mapper(User, users, properties = {
-                        'addresses' : relation(mapper(Address, addresses))
-                    }
-                  )
+    mapper(Address, addresses_table)
+    mapper(User, users_table, properties = {
+            'addresses' : relation(Address)
+        }
+      )
         
 Lets do some operations with these classes and see what happens:
 
     {python}
+    engine = create_engine('sqlite:///mydb.db')
+    metadata.create_all(engine)
+    
+    session = create_session(bind_to=engine)
+    
     u = User('jane', 'hihilala')
     u.addresses.append(Address('123 anywhere street', 'big city', 'UT', '76543'))
     u.addresses.append(Address('1 Park Place', 'some other city', 'OK', '83923'))
 
-    objectstore.commit()   
+    session.save(u)
+    session.flush()
     {opensql}INSERT INTO users (user_name, password) VALUES (:user_name, :password)
     {'password': 'hihilala', 'user_name': 'jane'}
     INSERT INTO addresses (user_id, street, city, state, zip) VALUES (:user_id, :street, :city, :state, :zip)
@@ -291,15 +279,15 @@ Lets do some operations with these classes and see what happens:
     INSERT INTO addresses (user_id, street, city, state, zip) VALUES (:user_id, :street, :city, :state, :zip)
     {'city': 'some other city', 'state': 'OK', 'street': '1 Park Place', 'user_id':1, 'zip': '83923'}
         
-A lot just happened there!  The Mapper object figured out how to relate rows in the addresses table to the users table, and also upon commit had to determine the proper order in which to insert rows.  After the insert, all the User and Address objects have all their new primary and foreign keys populated.
+A lot just happened there!  The `Mapper` figured out how to relate rows in the addresses table to the users table, and also upon flush had to determine the proper order in which to insert rows.  After the insert, all the `User` and `Address` objects have their new primary and foreign key attributes populated.
 
-Also notice that when we created a Mapper on the User class which defined an 'addresses' relation, the newly created User instance magically had an "addresses" attribute which behaved like a list.   This list is in reality a property accessor function, which returns an instance of `sqlalchemy.util.HistoryArraySet`, which fulfills the full set of Python list accessors, but maintains a *unique* set of objects (based on their in-memory identity), and also tracks additions and deletions to the list:
+Also notice that when we created a `Mapper` on the `User` class which defined an `addresses` relation, the newly created `User` instance magically had an "addresses" attribute which behaved like a list.   This list is in reality a property function which returns an instance of `sqlalchemy.util.HistoryArraySet`.  This object fulfills the full set of Python list accessors, but maintains a *unique* set of objects (based on their in-memory identity), and also tracks additions and deletions to the list:
 
     {python}
     del u.addresses[1]
     u.addresses.append(Address('27 New Place', 'Houston', 'TX', '34839'))
     
-    objectstore.commit()    
+    session.flush()
     
     {opensql}UPDATE addresses SET user_id=:user_id
      WHERE addresses.address_id = :addresses_address_id
@@ -307,36 +295,43 @@ Also notice that when we created a Mapper on the User class which defined an 'ad
     INSERT INTO addresses (user_id, street, city, state, zip) 
     VALUES (:user_id, :street, :city, :state, :zip)
     {'city': 'Houston', 'state': 'TX', 'street': '27 New Place', 'user_id': 1, 'zip': '34839'}
-        
-#### Useful Feature: Private Relations {@name=private}
 
-So our one address that was removed from the list, was updated to have a user_id of `None`, and a new address object was inserted to correspond to the new Address added to the User.  But now, theres a mailing address with no user_id floating around in the database of no use to anyone.  How can we avoid this ?  This is acheived by using the `private=True` parameter of `relation`:
+Note that when creating a relation with the `relation()` function, the target can either be a class, in which case the primary mapper for that class is used as the target, or a `Mapper` instance itself, as returned by the `mapper()` function.
+
+#### Lifecycle Relations {@name=lifecycle}
+
+In the previous example, a single address was removed from the `addresses` attribute of a `User` object, resulting in the corresponding database row being updated to have a user_id of `None`.  But now, theres a mailing address with no user_id floating around in the database of no use to anyone.  How can we avoid this ?  This is acheived by using the `cascade` parameter of `relation`:
 
     {python}
-    User.mapper = mapper(User, users, properties = {
-                        'addresses' : relation(mapper(Address, addresses), private=True)
-                    }
-                  )
+    clear_mappers()  # clear mappers from the previous example
+    mapper(Address, addresses_table)
+    mapper(User, users_table, properties = {
+            'addresses' : relation(Address, cascade="all, delete-orphan")
+        }
+      )
+
     del u.addresses[1]
     u.addresses.append(Address('27 New Place', 'Houston', 'TX', '34839'))
 
-    objectstore.commit()    
+    session.flush()
     {opensql}INSERT INTO addresses (user_id, street, city, state, zip) 
     VALUES (:user_id, :street, :city, :state, :zip)
     {'city': 'Houston', 'state': 'TX', 'street': '27 New Place', 'user_id': 1, 'zip': '34839'}
     DELETE FROM addresses WHERE addresses.address_id = :address_id
     [{'address_id': 2}]
 
-In this case, with the private flag set, the element that was removed from the addresses list was also removed from the database.  By specifying the `private` flag on a relation, it is indicated to the Mapper that these related objects exist only as children of the parent object, otherwise should be deleted.
+In this case, with the `delete-orphan` **cascade rule** set, the element that was removed from the addresses list was also removed from the database.  Specifying `cascade="all, delete-orphan"` means that every persistence operation performed on the parent object will be *cascaded* to the child object or objects handled by the relation, and additionally that each child object cannot exist without being attached to a parent.  Such a relationship indicates that the **lifecycle** of the `Address` objects are bounded by that of their parent `User` object.
 
-#### Useful Feature: Backreferences {@name=backreferences}
+Cascading is described fully in [unitofwork_cascade](rel:unitofwork_cascade).
 
-By creating relations with the `backref` keyword, a bi-directional relationship can be created which will keep both ends of the relationship updated automatically, even without any database queries being executed.  Below, the User mapper is created with an "addresses" property, and the corresponding Address mapper receives a "backreference" to the User object via the property name "user":
+#### Backreferences {@name=backreferences}
+
+By creating relations with the `backref` keyword, a bi-directional relationship can be created which will keep both ends of the relationship updated automatically, independently of database operations.  Below, the `User` mapper is created with an `addresses` property, and the corresponding `Address` mapper receives a "backreference" to the `User` object via the property name `user`:
 
     {python}
-    Address.mapper = mapper(Address, addresses)
-    User.mapper = mapper(User, users, properties = {
-                    'addresses' : relation(Address.mapper, backref='user')
+    Address = mapper(Address, addresses_table)
+    User = mapper(User, users_table, properties = {
+                    'addresses' : relation(Address, backref='user')
                 }
               )
 
@@ -356,51 +351,37 @@ By creating relations with the `backref` keyword, a bi-directional relationship 
     >>> a1.user is user and a2.user is user
     True
 
-The backreference feature also works with many-to-many relationships, which are described later.  When creating a backreference, a corresponding property is placed on the child mapper.  The default arguments to this property can be overridden using the `backref()` function:
+The backreference feature also works with many-to-many relationships, which are described later.  When creating a backreference, a corresponding property (i.e. a second `relation()`) is placed on the child mapper.  The default arguments to this property can be overridden using the `backref()` function:
 
     {python}
-    Address.mapper = mapper(Address, addresses)
+    mapper(User, users_table)
+    mapper(Address, addresses_table, properties={
+        'user':relation(User, backref=backref('addresses', cascade="all, delete-orphan"))
+    })
 
-    User.mapper = mapper(User, users, properties = {
-                    'addresses' : relation(Address.mapper, 
-                        backref=backref('user', lazy=False, private=True))
-                }
-              )
 
-#### Creating Relationships Automatically with cascade_mappers {@name=cascade}
-
-The mapper package has a helper function `cascade_mappers()` which can simplify the task of linking several mappers together.  Given a list of classes and/or mappers, it identifies the foreign key relationships between the given mappers or corresponding class mappers, and creates relation() objects representing those relationships, including a backreference.  Attempts to find the "secondary" table in a many-to-many relationship as well.  The names of the relations are a lowercase version of the related class.  In the case of one-to-many or many-to-many, the name is "pluralized", which currently is based on the English language (i.e. an 's' or 'es' added to it):
+The `backref()` function is often used to set up a bi-directional one-to-one relationship.  This is because the `relation()` function by default creates a "one-to-many" relationship when presented with a primary key/foreign key relationship, but the `backref()` function can redefine the `uselist` property to make it a scalar:
 
     {python}
-    # create two mappers.  the 'users' and 'addresses' tables have a foreign key
-    # relationship
-    mapper1 = mapper(User, users)
-    mapper2 = mapper(Address, addresses)
+    mapper(User, users_table)
+    mapper(Address, addresses_table, properties={
+        'user' : relation(User, backref=backref('address', uselist=False))
+    })
 
-    # cascade the two mappers together (can also specify User, Address as the arguments)
-    cascade_mappers(mapper1, mapper2)
 
-    # two new object instances
-    u = User('user1')
-    a = Address('test')
+### Selecting from Relationships {@name=selectrelations}
 
-    # "addresses" and "user" property are automatically added
-    u.addresses.append(a)
-    print a.user
-
-#### Selecting from Relationships: Lazy Load {@name=lazyload}
-
-We've seen how the `relation` specifier affects the saving of an object and its child items, how does it affect selecting them?  By default, the relation keyword indicates that the related property should be attached a *Lazy Loader* when instances of the parent object are loaded from the database; this is just a callable function that when accessed will invoke a second SQL query to load the child objects of the parent.
+We've seen how the `relation` specifier affects the saving of an object and its child items, how does it affect selecting them?  By default, the relation keyword indicates that the related property should be attached a *lazy loader* when instances of the parent object are loaded from the database; this is just a callable function that when accessed will invoke a second SQL query to load the child objects of the parent.
     
     {python}
     # define a mapper
-    User.mapper = mapper(User, users, properties = {
-                  'addresses' : relation(mapper(Address, addresses), private=True)
-                })
+    mapper(User, users_table, properties = {
+          'addresses' : relation(mapper(Address, addresses_table))
+        })
     
     # select users where username is 'jane', get the first element of the list
     # this will incur a load operation for the parent table
-    {sql}user = User.mapper.select(user_name='jane')[0]   
+    {sql}user = session.query(User).select(User.c.user_name=='jane')[0]   
     SELECT users.user_id AS users_user_id, 
     users.user_name AS users_user_name, users.password AS users_password
     FROM users WHERE users.user_name = :users_user_name ORDER BY users.oid
@@ -414,15 +395,16 @@ We've seen how the `relation` specifier affects the saving of an object and its 
     addresses.city AS addresses_city, addresses.state AS addresses_state, 
     addresses.zip AS addresses_zip FROM addresses
     WHERE addresses.user_id = :users_user_id ORDER BY addresses.oid
-    {'users_user_id': 1}            
-            print repr(a)
+    {'users_user_id': 1}
+        
+        print repr(a)
             
-##### Useful Feature: Creating Joins via select_by {@name=relselectby}
+#### Creating Joins Across Relations {@name=relselectby}
     
-In mappers that have relationships, the `select_by` method and its cousins include special functionality that can be used to create joins.  Just specify a key in the argument list which is not present in the primary mapper's list of properties or columns, but *is* present in the property list of one of its relationships:
+For mappers that have relationships, the `select_by` method of the `Query` object can create queries that include automatically created joins.  Just specify a key in the argument list which is not present in the primary mapper's list of properties or columns, but *is* present in the property list of one of its relationships:
 
     {python}
-    {sql}l = User.mapper.select_by(street='123 Green Street')
+    {sql}l = session.query(User).select_by(street='123 Green Street')
     SELECT users.user_id AS users_user_id, 
     users.user_name AS users_user_name, users.password AS users_password
     FROM users, addresses 
@@ -434,208 +416,248 @@ In mappers that have relationships, the `select_by` method and its cousins inclu
 The above example is shorthand for:
 
     {python}
-    l = User.mapper.select(and_(
+    l = session.query(User).select(and_(
              Address.c.user_id==User.c.user_id, 
              Address.c.street=='123 Green Street')
        )
-                
-##### How to Refresh the List? {@name=refreshing}
 
-Once the child list of Address objects is loaded, it is done loading for the lifetime of the object instance.  Changes to the list will not be interfered with by subsequent loads, and upon commit those changes will be saved.  Similarly, if a new User object is created and child Address objects added, a subsequent select operation which happens to touch upon that User instance, will also not affect the child list, since it is already loaded.
-        
-The issue of when the mapper actually gets brand new objects from the database versus when it assumes the in-memory version is fine the way it is, is a subject of *transactional scope*.  Described in more detail in the Unit of Work section, for now it should be noted that the total storage of all newly created and selected objects, *within the scope of the current thread*, can be reset via releasing or otherwise disregarding all current object instances, and calling:
+All keyword arguments sent to `select_by` are used to create query criterion.  This means that familiar `select` keyword options like `order_by` and `limit` are not directly available.  To enable these options with `select_by`, you can try the [plugins_selectresults](rel:plugins_selectresults) extension which offers methods off the result of a `select` or `select_by` such as `order_by()` and array slicing functions that generate new queries.  
 
-    {python}
-    objectstore.clear()
-        
-This operation will clear out all currently mapped object instances, and subsequent select statements will load fresh copies from the databse.
-        
-To operate upon a single object, just use the `remove` function:
+Also, `select_by` will *not* create joins derived from `Column`-based expressions (i.e. `ClauseElement` objects); the reason is that a `Column`-based expression may include many columns, and `select_by` has no way to know which columns in the expression correspond to properties and which don't (it also prefers not to dig into column expressions which may be very complex).  The next section describes some ways to combine `Column` expressions with `select_by`'s auto-joining capabilities.
+
+#### More Granular Join Control Using join\_to, join\_via {@name=jointo}
+
+Feature Status: [Alpha API][alpha_api] 
+
+The `join_to` method of `Query` is a component of the `select_by` operation, and is given a keyname in order to return a "join path" from the Query's mapper to the mapper which is referenced by a `relation()` of the given name:
 
     {python}
-    # (this function coming soon)
-    objectstore.remove(myobject)
+    >>> q = session.query(User)
+    >>> j = q.join_to('addresses')
+    >>> print j
+    users.user_id=addresses.user_id
 
-
-#### Selecting from Relationships: Eager Load {@name=eagerload}
-
-With just a single parameter "lazy=False" specified to the relation object, the parent and child SQL queries can be joined together.
+`join_to` can also be given the name of a column-based property, in which case it will locate a path to the nearest mapper which has that property as a column:
 
     {python}
-    Address.mapper = mapper(Address, addresses)
-    User.mapper = mapper(User, users, properties = {
-                    'addresses' : relation(Address.mapper, lazy=False)
-                }
-              )
+    >>> q = session.query(User)
+    >>> j = q.join_to('street')
+    >>> print j
+    users.user_id=addresses.user_id
+
+Also available is the `join_via` function, which is similar to `join_to`, except instead of traversing through all properties to find a path to the given key, its given an explicit path to the target property:
+
+    {python}
+    >>> q = session.query(User)
+    >>> j = q.join_via(['orders', 'items'])
+    >>> print j
+    users.c.user_id==orders.c.user_id AND orders.c.item_id==items.c.item_id
+
+Expressions produced by `join_to` and `join_via` can be used with `select` to create more complicated query criterion across multiple relations:
+
+    {python}
+    >>> l = q.select(
+        (addresses_table.c.street=='some address') &
+        (items_table.c.item_name=='item #4') &
+        q.join_to('addresses') &
+        q.join_via(['orders', 'items'])
+        )
+
+
+#### Eager Loading {@name=eagerload}
+
+With just a single parameter `lazy=False` specified to the relation object, the parent and child SQL queries can be joined together.
+
+    {python}
+    mapper(Address, addresses_table)
+    mapper(User, users_table, properties = {
+            'addresses' : relation(Address, lazy=False)
+        }
+      )
     
-    {sql}user = User.mapper.get_by(user_name='jane')
-    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
-    users.password AS users_password, 
-    addresses.address_id AS addresses_address_id, addresses.user_id AS addresses_user_id, 
-    addresses.street AS addresses_street, addresses.city AS addresses_city, 
-    addresses.state AS addresses_state, addresses.zip AS addresses_zip
-    FROM users LEFT OUTER JOIN addresses ON users.user_id = addresses.user_id
-    WHERE users.user_name = :users_user_name ORDER BY users.oid, addresses.oid
+    {sql}users = session.query(User).select(User.c.user_name=='Jane')
+    SELECT users.user_name AS users_user_name, users.password AS users_password, 
+    users.user_id AS users_user_id, addresses_4fb8.city AS addresses_4fb8_city, 
+    addresses_4fb8.address_id AS addresses_4fb8_address_id, addresses_4fb8.user_id AS addresses_4fb8_user_id, 
+    addresses_4fb8.zip AS addresses_4fb8_zip, addresses_4fb8.state AS addresses_4fb8_state, 
+    addresses_4fb8.street AS addresses_4fb8_street 
+    FROM users LEFT OUTER JOIN addresses AS addresses_4fb8 ON users.user_id = addresses_4fb8.user_id 
+    WHERE users.user_name = :users_user_name ORDER BY users.oid, addresses_4fb8.oid
     {'users_user_name': 'jane'}
     
-    for a in user.addresses:  
-        print repr(a)
-    
+    for u in users:
+        print repr(u)
+        for a in u.addresses:
+            print repr(a)
 
 Above, a pretty ambitious query is generated just by specifying that the User should be loaded with its child Addresses in one query.  When the mapper processes the results, it uses an *Identity Map* to keep track of objects that were already loaded, based on their primary key identity.  Through this method, the redundant rows produced by the join are organized into the distinct object instances they represent.
         
 The generation of this query is also immune to the effects of additional joins being specified in the original query.  To use our select_by example above, joining against the "addresses" table to locate users with a certain street results in this behavior:
 
     {python}
-    {sql}users = User.mapper.select_by(street='123 Green Street')
-    SELECT users.user_id AS users_user_id, 
-    users.user_name AS users_user_name, users.password AS users_password, 
-    addresses.address_id AS addresses_address_id, 
-    addresses.user_id AS addresses_user_id, addresses.street AS addresses_street, 
-    addresses.city AS addresses_city, addresses.state AS addresses_state, 
-    addresses.zip AS addresses_zip
-    FROM addresses AS addresses_417c, 
-    users LEFT OUTER JOIN addresses ON users.user_id = addresses.user_id
-    WHERE addresses_417c.street = :addresses_street 
-    AND users.user_id = addresses_417c.user_id 
-    ORDER BY users.oid, addresses.oid
+    {sql}users = session.query(User).select_by(street='123 Green Street')
+    
+    SELECT users.user_name AS users_user_name, 
+    users.password AS users_password, users.user_id AS users_user_id, 
+    addresses_6ca7.city AS addresses_6ca7_city, 
+    addresses_6ca7.address_id AS addresses_6ca7_address_id, 
+    addresses_6ca7.user_id AS addresses_6ca7_user_id, 
+    addresses_6ca7.zip AS addresses_6ca7_zip, addresses_6ca7.state AS addresses_6ca7_state, 
+    addresses_6ca7.street AS addresses_6ca7_street 
+    FROM addresses, users LEFT OUTER JOIN addresses AS addresses_6ca7 ON users.user_id = addresses_6ca7.user_id 
+    WHERE addresses.street = :addresses_street AND users.user_id = addresses.user_id ORDER BY users.oid, addresses_6ca7.oid
     {'addresses_street': '123 Green Street'}
                     
-The join implied by passing the "street" parameter is converted into an "aliasized" clause by the eager loader, so that it does not conflict with the join used to eager load the child address objects.
+The join implied by passing the "street" parameter is stated as an *additional* join between the `addresses` and `users` tables.  Also, since the eager join is "aliasized", no name conflict occurs.
     
-#### Switching Lazy/Eager, No Load {@name=options}
+#### Using Options to Change the Loading Strategy {@name=options}
 
-The `options` method of mapper provides an easy way to get alternate forms of a mapper from an original one.  The most common use of this feature is to change the "eager/lazy" loading behavior of a particular mapper, via the functions `eagerload()`, `lazyload()` and `noload()`:
+The `options` method on the `Query` object provides an easy way to get alternate forms of a mapper query from an original one.  The most common use of this feature is to change the "eager/lazy" loading behavior of a particular mapper, via the functions `eagerload()`, `lazyload()` and `noload()`:
     
     {python}
     # user mapper with lazy addresses
-    User.mapper = mapper(User, users, properties = {
-                 'addresses' : relation(mapper(Address, addresses))
+    mapper(User, users_table, properties = {
+                 'addresses' : relation(mapper(Address, addresses_table))
              }
     )
     
-    # make an eager loader                    
-    eagermapper = User.mapper.options(eagerload('addresses'))
-    u = eagermapper.select()
+    # query object
+    query = session.query(User)
     
-    # make another mapper that wont load the addresses at all
-    plainmapper = User.mapper.options(noload('addresses'))
+    # make an eager loading query
+    eagerquery = query.options(eagerload('addresses'))
+    u = eagerquery.select()
+    
+    # make another query that wont load the addresses at all
+    plainquery = query.options(noload('addresses'))
     
     # multiple options can be specified
-    mymapper = oldmapper.options(lazyload('tracker'), noload('streets'), eagerload('members'))
+    myquery = oldquery.options(lazyload('tracker'), noload('streets'), eagerload('members'))
     
     # to specify a relation on a relation, separate the property names by a "."
-    mymapper = oldmapper.options(eagerload('orders.items'))
+    myquery = oldquery.options(eagerload('orders.items'))
 
 ### One to One/Many to One {@name=onetoone}
 
 The above examples focused on the "one-to-many" relationship.  To do other forms of relationship is easy, as the `relation` function can usually figure out what you want:
 
     {python}
+    metadata = MetaData()
+    
     # a table to store a user's preferences for a site
-    prefs = Table('user_prefs', engine,
+    prefs_table = Table('user_prefs', metadata,
         Column('pref_id', Integer, primary_key = True),
         Column('stylename', String(20)),
         Column('save_password', Boolean, nullable = False),
         Column('timezone', CHAR(3), nullable = False)
     )
     
-    # user table gets 'preference_id' column added
-    users = Table('users', engine, 
+    # user table with a 'preference_id' column
+    users_table = Table('users', metadata, 
         Column('user_id', Integer, primary_key = True),
         Column('user_name', String(16), nullable = False),
         Column('password', String(20), nullable = False),
-        Column('preference_id', Integer, ForeignKey("prefs.pref_id"))
+        Column('preference_id', Integer, ForeignKey("user_prefs.pref_id"))
     )
     
-    # class definition for preferences
+    # engine and some test data
+    engine = create_engine('sqlite:///', echo=True)
+    metadata.create_all(engine)
+    engine.execute(prefs_table.insert(), dict(pref_id=1, stylename='green', save_password=1, timezone='EST'))
+    engine.execute(users_table.insert(), dict(user_name = 'fred', password='45nfss', preference_id=1))
+    
+    # classes
+    class User(object):
+        def __init__(self, user_name, password):
+            self.user_name = user_name
+            self.password = password
+    
     class UserPrefs(object):
         pass
-    UserPrefs.mapper = mapper(UserPrefs, prefs)
+        
+    mapper(UserPrefs, prefs_table)
     
-    # address mapper
-    Address.mapper = mapper(Address, addresses)
-    
-    # make a new mapper referencing everything.
-    m = mapper(User, users, properties = dict(
-        addresses = relation(Address.mapper, lazy=True, private=True),
-        preferences = relation(UserPrefs.mapper, lazy=False, private=True),
+    mapper(User, users_table, properties = dict(
+        preferences = relation(UserPrefs, lazy=False, cascade="all, delete-orphan"),
     ))
     
     # select
-    {sql}user = m.get_by(user_name='fred')
-    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
-    users.password AS users_password, users.preference_id AS users_preference_id, 
-    user_prefs.pref_id AS user_prefs_pref_id, user_prefs.stylename AS user_prefs_stylename, 
-    user_prefs.save_password AS user_prefs_save_password, user_prefs.timezone AS user_prefs_timezone 
-    FROM users LEFT OUTER JOIN user_prefs ON user_prefs.pref_id = users.preference_id 
-    WHERE users.user_name = :users_user_name ORDER BY users.oid, user_prefs.oid
+    session = create_session(bind_to=engine)
+    {sql}user = session.query(User).get_by(user_name='fred')
+    SELECT users.preference_id AS users_preference_id, users.user_name AS users_user_name, 
+    users.password AS users_password, users.user_id AS users_user_id, 
+    user_prefs_4eb2.timezone AS user_prefs_4eb2_timezone, user_prefs_4eb2.stylename AS user_prefs_4eb2_stylename, 
+    user_prefs_4eb2.save_password AS user_prefs_4eb2_save_password, user_prefs_4eb2.pref_id AS user_prefs_4eb2_pref_id 
+    FROM (SELECT users.user_id AS users_user_id FROM users WHERE users.user_name = :users_user_name ORDER BY users.oid 
+    LIMIT 1 OFFSET 0) AS rowcount, 
+    users LEFT OUTER JOIN user_prefs AS user_prefs_4eb2 ON user_prefs_4eb2.pref_id = users.preference_id 
+    WHERE rowcount.users_user_id = users.user_id ORDER BY users.oid, user_prefs_4eb2.oid
     {'users_user_name': 'fred'}
-        
+    
     save_password = user.preferences.save_password
-        
+    
     # modify
     user.preferences.stylename = 'bluesteel'
-    {sql}user.addresses.append(Address('freddy@hi.org')) 
-    SELECT email_addresses.address_id AS email_addresses_address_id, 
-    email_addresses.user_id AS email_addresses_user_id, 
-    email_addresses.email_address AS email_addresses_email_address 
-    FROM email_addresses 
-    WHERE email_addresses.user_id = :users_user_id 
-    ORDER BY email_addresses.oid, email_addresses.oid
-    {'users_user_id': 1}
-        
-    # commit
-    {sql}objectstore.commit() 
+    
+    # flush
+    {sql}session.flush()
     UPDATE user_prefs SET stylename=:stylename
     WHERE user_prefs.pref_id = :pref_id
     [{'stylename': 'bluesteel', 'pref_id': 1}]
-    INSERT INTO email_addresses (address_id, user_id, email_address) 
-    VALUES (:address_id, :user_id, :email_address)
-    {'email_address': 'freddy@hi.org', 'address_id': None, 'user_id': 1}
 
 ### Many to Many {@name=manytomany}
 
 The `relation` function handles a basic many-to-many relationship when you specify the association table:
 
     {python}
-    articles = Table('articles', engine,
+    metadata = MetaData()
+    
+    articles_table = Table('articles', metadata,
         Column('article_id', Integer, primary_key = True),
         Column('headline', String(150), key='headline'),
         Column('body', TEXT, key='body'),
     )
     
-    keywords = Table('keywords', engine,
+    keywords_table = Table('keywords', metadata,
         Column('keyword_id', Integer, primary_key = True),
         Column('keyword_name', String(50))
     )
     
-    itemkeywords = Table('article_keywords', engine,
+    itemkeywords_table = Table('article_keywords', metadata,
         Column('article_id', Integer, ForeignKey("articles.article_id")),
         Column('keyword_id', Integer, ForeignKey("keywords.keyword_id"))
     )
     
+    engine = create_engine('sqlite:///')
+    metadata.create_all(engine)
+    
     # class definitions
     class Keyword(object):
-        def __init__(self, name = None):
+        def __init__(self, name):
             self.keyword_name = name
             
     class Article(object):
         pass
+    
+    mapper(Keyword, keywords_table)
         
     # define a mapper that does many-to-many on the 'itemkeywords' association 
     # table
-    Article.mapper = mapper(Article, articles, properties = dict(
-        keywords = relation(mapper(Keyword, keywords), itemkeywords, lazy=False)
+    mapper(Article, articles_table, properties = dict(
+        keywords = relation(Keyword, secondary=itemkeywords_table, lazy=False)
         )
     )
+    
+    session = create_session(bind_to=engine)
     
     article = Article()
     article.headline = 'a headline'
     article.body = 'this is the body'
     article.keywords.append(Keyword('politics'))
     article.keywords.append(Keyword('entertainment'))
-    {sql}objectstore.commit()   
+    session.save(article)
+    
+    {sql}session.flush()
     INSERT INTO keywords (name) VALUES (:name)
     {'name': 'politics'}
     INSERT INTO keywords (name) VALUES (:name)
@@ -646,33 +668,25 @@ The `relation` function handles a basic many-to-many relationship when you speci
     [{'keyword_id': 1, 'article_id': 1}, {'keyword_id': 2, 'article_id': 1}]
     
     # select articles based on a keyword.  select_by will handle the extra joins.
-    {sql}articles = Article.mapper.select_by(keyword_name='politics')
-    SELECT articles.article_id AS articles_article_id, 
-    articles.article_headline AS articles_article_headline, 
-    articles.article_body AS articles_article_body, 
-    keywords.keyword_id AS keywords_keyword_id, 
-    keywords.keyword_name AS keywords_keyword_name 
-    FROM keywords AS keywords_f008, 
-    article_keywords AS article_keywords_dbf0, 
-    articles LEFT OUTER JOIN article_keywords ON 
-    articles.article_id = article_keywords.article_id 
-    LEFT OUTER JOIN keywords ON 
-    keywords.keyword_id = article_keywords.keyword_id 
-    WHERE (keywords_f008.keyword_name = :keywords_keyword_name 
-    AND articles.article_id = article_keywords_dbf0.article_id) 
-    AND keywords_f008.keyword_id = article_keywords_dbf0.keyword_id 
-    ORDER BY articles.oid, article_keywords.oid 
+    {sql}articles = session.query(Article).select_by(keyword_name='politics')
+    SELECT keywords_e2f2.keyword_id AS keywords_e2f2_keyword_id, keywords_e2f2.keyword_name AS keywords_e2f2_keyword_name, 
+    articles.headline AS articles_headline, articles.body AS articles_body, articles.article_id AS articles_article_id 
+    FROM keywords, article_keywords, articles 
+    LEFT OUTER JOIN article_keywords AS article_keyword_3da2 ON articles.article_id = article_keyword_3da2.article_id 
+    LEFT OUTER JOIN keywords AS keywords_e2f2 ON keywords_e2f2.keyword_id = article_keyword_3da2.keyword_id 
+    WHERE (keywords.keyword_name = :keywords_keywords_name AND articles.article_id = article_keywords.article_id) 
+    AND keywords.keyword_id = article_keywords.keyword_id ORDER BY articles.oid, article_keyword_3da2.oid
     {'keywords_keyword_name': 'politics'}
 
-    # modify
     a = articles[0]
-    del a.keywords[:]
+
+    # clear out keywords with a new list
+    a.keywords = []
     a.keywords.append(Keyword('topstories'))
     a.keywords.append(Keyword('government'))
 
-    # commit.  individual INSERT/DELETE operations will take place only for the list
-    # elements that changed.
-    {sql}objectstore.commit()   
+    # flush
+    {sql}session.flush()   
     INSERT INTO keywords (name) VALUES (:name)
     {'name': 'topstories'}
     INSERT INTO keywords (name) VALUES (:name)
@@ -689,62 +703,82 @@ The `relation` function handles a basic many-to-many relationship when you speci
 Many to Many can also be done with an association object, that adds additional information about how two items are related.  This association object is set up in basically the same way as any other mapped object.  However, since an association table typically has no primary key columns, you have to tell the mapper what columns will compose its "primary key", which are the two (or more) columns involved in the association.  Also, the relation function needs an additional hint as to the fact that this mapped object is an association object, via the "association" argument which points to the class or mapper representing the other side of the association.
 
     {python}
+    from sqlalchemy import *
+    metadata = MetaData()
+    
+    users_table = Table('users', metadata, 
+        Column('user_id', Integer, primary_key = True),
+        Column('user_name', String(16), nullable = False),
+    )
+    
+    articles_table = Table('articles', metadata,
+        Column('article_id', Integer, primary_key = True),
+        Column('headline', String(150), key='headline'),
+        Column('body', TEXT, key='body'),
+    )
+    
+    keywords_table = Table('keywords', metadata,
+        Column('keyword_id', Integer, primary_key = True),
+        Column('keyword_name', String(50))
+    )
+    
     # add "attached_by" column which will reference the user who attached this keyword
-    itemkeywords = Table('article_keywords', engine,
+    itemkeywords_table = Table('article_keywords', metadata,
         Column('article_id', Integer, ForeignKey("articles.article_id")),
         Column('keyword_id', Integer, ForeignKey("keywords.keyword_id")),
         Column('attached_by', Integer, ForeignKey("users.user_id"))
     )
     
-    # define an association class
+    engine = create_engine('sqlite:///', echo=True)
+    metadata.create_all(engine)
+    
+    # class definitions
+    class User(object):
+        pass
+    class Keyword(object):
+        def __init__(self, name):
+            self.keyword_name = name
+    class Article(object):
+        pass
     class KeywordAssociation(object):
         pass
         
+    mapper(User, users_table)
+    mapper(Keyword, keywords_table)
+    
     # mapper for KeywordAssociation
     # specify "primary key" columns manually
-    KeywordAssociation.mapper = mapper(KeywordAssociation, itemkeywords,
-        primary_key = [itemkeywords.c.article_id, itemkeywords.c.keyword_id],
+    mapper(KeywordAssociation, itemkeywords_table,
+        primary_key = [itemkeywords_table.c.article_id, itemkeywords_table.c.keyword_id],
         properties={
-            'keyword' : relation(Keyword, lazy = False), # uses primary Keyword mapper
-            'user' : relation(User, lazy = True) # uses primary User mapper
+            'keyword' : relation(Keyword, lazy = False), 
+            'user' : relation(User, lazy = False) 
         }
     )
     
-    # mappers for Users, Keywords
-    User.mapper = mapper(User, users)
-    Keyword.mapper = mapper(Keyword, keywords)
-    
-    # define the mapper. 
-    m = mapper(Article, articles, properties={
-        'keywords':relation(KeywordAssociation.mapper, lazy=False, association=Keyword)
+    # Article mapper, relates to Keyword via KeywordAssociation
+    mapper(Article, articles_table, properties={
+        'keywords':relation(KeywordAssociation, lazy=False, association=Keyword)
         }
     )
     
-    # bonus step - well, we do want to load the users in one shot, 
-    # so modify the mapper via an option.
-    # this returns a new mapper with the option switched on.
-    m2 = mapper.options(eagerload('keywords.user'))
-    
-    # select by keyword again
-    {sql}alist = m2.select_by(keyword_name='jacks_stories')
-    SELECT articles.article_id AS articles_article_id, 
-    articles.article_headline AS articles_article_headline, 
-    articles.article_body AS articles_article_body, 
-    article_keywords.article_id AS article_keywords_article_id, 
-    article_keywords.keyword_id AS article_keywords_keyword_id, 
-    article_keywords.attached_by AS article_keywords_attached_by, 
-    users.user_id AS users_user_id, users.user_name AS users_user_name, 
-    users.password AS users_password, users.preference_id AS users_preference_id, 
-    keywords.keyword_id AS keywords_keyword_id, keywords.name AS keywords_name 
-    FROM article_keywords article_keywords_3a64, keywords keywords_11b7, 
-    articles LEFT OUTER JOIN article_keywords ON articles.article_id = article_keywords.article_id 
-    LEFT OUTER JOIN users ON users.user_id = article_keywords.attached_by 
-    LEFT OUTER JOIN keywords ON keywords.keyword_id = article_keywords.keyword_id 
-    WHERE keywords_11b7.keyword_id = article_keywords_3a64.keyword_id 
-    AND article_keywords_3a64.article_id = articles.article_id 
-    AND keywords_11b7.name = :keywords_name 
-    ORDER BY articles.oid, article_keywords.oid, users.oid, keywords.oid
-    {'keywords_name': 'jacks_stories'}
+    session = create_session(bind_to=engine)
+    # select by keyword
+    {sql}alist = session.query(Article).select_by(keyword_name='jacks_stories')
+    SELECT article_keyword_f9af.keyword_id AS article_keyword_f9af_key_b3e1, 
+    article_keyword_f9af.attached_by AS article_keyword_f9af_att_95d4, 
+    article_keyword_f9af.article_id AS article_keyword_f9af_art_fd49, 
+    users_9c30.user_name AS users_9c30_user_name, users_9c30.user_id AS users_9c30_user_id, 
+    keywords_dc54.keyword_id AS keywords_dc54_keyword_id, keywords_dc54.keyword_name AS keywords_dc54_keyword_name, 
+    articles.headline AS articles_headline, articles.body AS articles_body, articles.article_id AS articles_article_id 
+    FROM keywords, article_keywords, articles 
+    LEFT OUTER JOIN article_keywords AS article_keyword_f9af ON articles.article_id = article_keyword_f9af.article_id 
+    LEFT OUTER JOIN users AS users_9c30 ON users_9c30.user_id = article_keyword_f9af.attached_by 
+    LEFT OUTER JOIN keywords AS keywords_dc54 ON keywords_dc54.keyword_id = article_keyword_f9af.keyword_id 
+    WHERE (keywords.keyword_name = :keywords_keywords_name AND keywords.keyword_id = article_keywords.keyword_id) 
+    AND articles.article_id = article_keywords.article_id 
+    ORDER BY articles.oid, article_keyword_f9af.oid, users_9c30.oid, keywords_dc54.oid
+    {'keywords_keywords_name': 'jacks_stories'}
     
     # user is available
     for a in alist:

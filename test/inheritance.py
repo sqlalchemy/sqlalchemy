@@ -1,11 +1,13 @@
-from sqlalchemy import *
 import testbase
+from sqlalchemy import *
 import string
 import sqlalchemy.attributes as attr
 import sys
 
 class Principal( object ):
-    pass
+    def __init__(self, **kwargs):
+        for key, value in kwargs.iteritems():
+            setattr(self, key, value)
 
 class User( Principal ):
     pass
@@ -20,16 +22,18 @@ class InheritTest(testbase.AssertMixin):
         global users
         global groups
         global user_group_map
+        global metadata
+        metadata = BoundMetaData(testbase.db)
         principals = Table(
             'principals',
-            testbase.db,
+            metadata,
             Column('principal_id', Integer, Sequence('principal_id_seq', optional=False), primary_key=True),
             Column('name', String(50), nullable=False),    
             )
 
         users = Table(
             'prin_users',
-            testbase.db,
+            metadata, 
             Column('principal_id', Integer, ForeignKey('principals.principal_id'), primary_key=True),
             Column('password', String(50), nullable=False),
             Column('email', String(50), nullable=False),
@@ -39,14 +43,14 @@ class InheritTest(testbase.AssertMixin):
 
         groups = Table(
             'prin_groups',
-            testbase.db,
+            metadata,
             Column( 'principal_id', Integer, ForeignKey('principals.principal_id'), primary_key=True),
 
             )
 
         user_group_map = Table(
             'prin_user_group_map',
-            testbase.db,
+            metadata,
             Column('user_id', Integer, ForeignKey( "prin_users.principal_id"), primary_key=True ),
             Column('group_id', Integer, ForeignKey( "prin_groups.principal_id"), primary_key=True ),
             #Column('user_id', Integer, ForeignKey( "prin_users.principal_id"),  ),
@@ -54,65 +58,57 @@ class InheritTest(testbase.AssertMixin):
 
             )
 
-        principals.create()
-        users.create()
-        groups.create()
-        user_group_map.create()
+        metadata.create_all()
+        
     def tearDownAll(self):
-        user_group_map.drop()
-        groups.drop()
-        users.drop()
-        principals.drop()
-        testbase.db.tables.clear()
+        metadata.drop_all()
+
     def setUp(self):
-        objectstore.clear()
         clear_mappers()
         
     def testbasic(self):
-        assign_mapper( Principal, principals )
-        assign_mapper( 
+        mapper( Principal, principals )
+        mapper( 
             User, 
             users,
-            inherits=Principal.mapper
+            inherits=Principal
             )
 
-        assign_mapper( 
+        mapper( 
             Group,
             groups,
-            inherits=Principal.mapper,
-            properties=dict( users = relation(User.mapper, user_group_map, lazy=True, backref="groups") )
+            inherits=Principal,
+            properties=dict( users = relation(User, secondary=user_group_map, lazy=True, backref="groups") )
             )
 
         g = Group(name="group1")
         g.users.append(User(name="user1", password="pw", email="foo@bar.com", login_id="lg1"))
-        
-        objectstore.commit()
+        sess = create_session()
+        sess.save(g)
+        sess.flush()
         # TODO: put an assertion
         
 class InheritTest2(testbase.AssertMixin):
     """deals with inheritance and many-to-many relationships"""
     def setUpAll(self):
-        engine = testbase.db
-        global foo, bar, foo_bar
-        foo = Table('foo', engine,
+        global foo, bar, foo_bar, metadata
+        metadata = BoundMetaData(testbase.db)
+        foo = Table('foo', metadata,
             Column('id', Integer, Sequence('foo_id_seq'), primary_key=True),
             Column('data', String(20)),
             ).create()
 
-        bar = Table('bar', engine,
+        bar = Table('bar', metadata,
             Column('bid', Integer, ForeignKey('foo.id'), primary_key=True),
             #Column('fid', Integer, ForeignKey('foo.id'), )
             ).create()
 
-        foo_bar = Table('foo_bar', engine,
+        foo_bar = Table('foo_bar', metadata,
             Column('foo_id', Integer, ForeignKey('foo.id')),
             Column('bar_id', Integer, ForeignKey('bar.bid'))).create()
-
+        metadata.create_all()
     def tearDownAll(self):
-        foo_bar.drop()
-        bar.drop()
-        foo.drop()
-        testbase.db.tables.clear()
+        metadata.drop_all()
 
     def testbasic(self):
         class Foo(object): 
@@ -123,33 +119,28 @@ class InheritTest2(testbase.AssertMixin):
             def __repr__(self):
                 return str(self)
 
-        Foo.mapper = mapper(Foo, foo)
+        mapper(Foo, foo)
         class Bar(Foo):
             def __str__(self):
                 return "Bar(%s)" % self.data
 
-        Bar.mapper = mapper(Bar, bar, inherits=Foo.mapper, properties = {
-                # the old way, you needed to explicitly set up a compound
-                # column like this.  but now the mapper uses SyncRules to match up
-                # the parent/child inherited columns
-                #'id':[bar.c.bid, foo.c.id]
-            })
-
-        #Bar.mapper.add_property('foos', relation(Foo.mapper, foo_bar, primaryjoin=bar.c.bid==foo_bar.c.bar_id, secondaryjoin=foo_bar.c.foo_id==foo.c.id, lazy=False))
-        Bar.mapper.add_property('foos', relation(Foo.mapper, foo_bar, lazy=False))
-
-        b = Bar('barfoo')
-        objectstore.commit()
+        mapper(Bar, bar, inherits=Foo, properties={
+            'foos': relation(Foo, secondary=foo_bar, lazy=False)
+        })
+        
+        sess = create_session()
+        b = Bar('barfoo', _sa_session=sess)
+        sess.flush()
 
         f1 = Foo('subfoo1')
         f2 = Foo('subfoo2')
         b.foos.append(f1)
         b.foos.append(f2)
 
-        objectstore.commit()
-        objectstore.clear()
+        sess.flush()
+        sess.clear()
 
-        l =b.mapper.select()
+        l = sess.query(Bar).select()
         print l[0]
         print l[0].foos
         self.assert_result(l, Bar,
@@ -160,44 +151,38 @@ class InheritTest2(testbase.AssertMixin):
 class InheritTest3(testbase.AssertMixin):
     """deals with inheritance and many-to-many relationships"""
     def setUpAll(self):
-        engine = testbase.db
-        global foo, bar, blub, bar_foo, blub_bar, blub_foo,tables
-        engine.engine.echo = 'debug'
+        global foo, bar, blub, bar_foo, blub_bar, blub_foo,metadata
+        metadata = BoundMetaData(testbase.db)
         # the 'data' columns are to appease SQLite which cant handle a blank INSERT
-        foo = Table('foo', engine,
+        foo = Table('foo', metadata,
             Column('id', Integer, Sequence('foo_seq'), primary_key=True),
             Column('data', String(20)))
 
-        bar = Table('bar', engine,
+        bar = Table('bar', metadata,
             Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
             Column('data', String(20)))
 
-        blub = Table('blub', engine,
+        blub = Table('blub', metadata,
             Column('id', Integer, ForeignKey('bar.id'), primary_key=True),
             Column('data', String(20)))
 
-        bar_foo = Table('bar_foo', engine, 
+        bar_foo = Table('bar_foo', metadata, 
             Column('bar_id', Integer, ForeignKey('bar.id')),
             Column('foo_id', Integer, ForeignKey('foo.id')))
             
-        blub_bar = Table('bar_blub', engine,
+        blub_bar = Table('bar_blub', metadata,
             Column('blub_id', Integer, ForeignKey('blub.id')),
             Column('bar_id', Integer, ForeignKey('bar.id')))
 
-        blub_foo = Table('blub_foo', engine,
+        blub_foo = Table('blub_foo', metadata,
             Column('blub_id', Integer, ForeignKey('blub.id')),
             Column('foo_id', Integer, ForeignKey('foo.id')))
-
-        tables = [foo, bar, blub, bar_foo, blub_bar, blub_foo]
-        for table in tables:
-            table.create()
+        metadata.create_all()
     def tearDownAll(self):
-        for table in reversed(tables):
-            table.drop()
-        testbase.db.tables.clear()
+        metadata.drop_all()
 
     def tearDown(self):
-        for table in reversed(tables):
+        for table in metadata.table_iterator():
             table.delete().execute()
             
     def testbasic(self):
@@ -206,24 +191,24 @@ class InheritTest3(testbase.AssertMixin):
                 self.data = data
             def __repr__(self):
                 return "Foo id %d, data %s" % (self.id, self.data)
-        Foo.mapper = mapper(Foo, foo)
+        mapper(Foo, foo)
 
         class Bar(Foo):
             def __repr__(self):
                 return "Bar id %d, data %s" % (self.id, self.data)
                 
-        Bar.mapper = mapper(Bar, bar, inherits=Foo.mapper, properties={
-        #'foos' :relation(Foo.mapper, bar_foo, primaryjoin=bar.c.id==bar_foo.c.bar_id, lazy=False)
-        'foos' :relation(Foo.mapper, bar_foo, lazy=True)
+        mapper(Bar, bar, inherits=Foo, properties={
+            'foos' :relation(Foo, secondary=bar_foo, lazy=True)
         })
 
-        b = Bar('bar #1')
+        sess = create_session()
+        b = Bar('bar #1', _sa_session=sess)
         b.foos.append(Foo("foo #1"))
         b.foos.append(Foo("foo #2"))
-        objectstore.commit()
+        sess.flush()
         compare = repr(b) + repr(b.foos)
-        objectstore.clear()
-        l = Bar.mapper.select()
+        sess.clear()
+        l = sess.query(Bar).select()
         self.echo(repr(l[0]) + repr(l[0].foos))
         self.assert_(repr(l[0]) + repr(l[0].foos) == compare)
     
@@ -233,83 +218,66 @@ class InheritTest3(testbase.AssertMixin):
                 self.data = data
             def __repr__(self):
                 return "Foo id %d, data %s" % (self.id, self.data)
-        Foo.mapper = mapper(Foo, foo)
+        mapper(Foo, foo)
 
         class Bar(Foo):
             def __repr__(self):
                 return "Bar id %d, data %s" % (self.id, self.data)
-        Bar.mapper = mapper(Bar, bar, inherits=Foo.mapper)
+        mapper(Bar, bar, inherits=Foo)
 
         class Blub(Bar):
             def __repr__(self):
                 return "Blub id %d, data %s, bars %s, foos %s" % (self.id, self.data, repr([b for b in self.bars]), repr([f for f in self.foos]))
             
-        Blub.mapper = mapper(Blub, blub, inherits=Bar.mapper, properties={
-#            'bars':relation(Bar.mapper, blub_bar, primaryjoin=blub.c.id==blub_bar.c.blub_id, lazy=False),
-#            'foos':relation(Foo.mapper, blub_foo, primaryjoin=blub.c.id==blub_foo.c.blub_id, lazy=False),
-            'bars':relation(Bar.mapper, blub_bar, lazy=False),
-            'foos':relation(Foo.mapper, blub_foo, lazy=False),
+        mapper(Blub, blub, inherits=Bar, properties={
+            'bars':relation(Bar, secondary=blub_bar, lazy=False),
+            'foos':relation(Foo, secondary=blub_foo, lazy=False),
         })
 
-        useobjects = True
-        if (useobjects):
-            f1 = Foo("foo #1")
-            b1 = Bar("bar #1")
-            b2 = Bar("bar #2")
-            bl1 = Blub("blub #1")
-            bl1.foos.append(f1)
-            bl1.bars.append(b2)
-            objectstore.commit()
-            compare = repr(bl1)
-            blubid = bl1.id
-            objectstore.clear()
-        else:
-            foo.insert().execute(data='foo #1')
-            foo.insert().execute(data='foo #2')
-            bar.insert().execute(id=1, data="bar #1")
-            bar.insert().execute(id=2, data="bar #2")
-            blub.insert().execute(id=1, data="blub #1")
-            blub_bar.insert().execute(blub_id=1, bar_id=2)
-            blub_foo.insert().execute(blub_id=1, foo_id=2)
+        sess = create_session()
+        f1 = Foo("foo #1", _sa_session=sess)
+        b1 = Bar("bar #1", _sa_session=sess)
+        b2 = Bar("bar #2", _sa_session=sess)
+        bl1 = Blub("blub #1", _sa_session=sess)
+        bl1.foos.append(f1)
+        bl1.bars.append(b2)
+        sess.flush()
+        compare = repr(bl1)
+        blubid = bl1.id
+        sess.clear()
 
-        l = Blub.mapper.select()
+        l = sess.query(Blub).select()
         self.echo(l)
         self.assert_(repr(l[0]) == compare)
-        objectstore.clear()
-        x = Blub.mapper.get_by(id=blubid) #traceback 2
+        sess.clear()
+        x = sess.query(Blub).get_by(id=blubid)
         self.echo(x)
         self.assert_(repr(x) == compare)
         
 class InheritTest4(testbase.AssertMixin):
     """deals with inheritance and one-to-many relationships"""
     def setUpAll(self):
-        engine = testbase.db
-        global foo, bar, blub, tables
-        engine.engine.echo = 'debug'
+        global foo, bar, blub, metadata
+        metadata = BoundMetaData(testbase.db)
         # the 'data' columns are to appease SQLite which cant handle a blank INSERT
-        foo = Table('foo', engine,
+        foo = Table('foo', metadata,
             Column('id', Integer, Sequence('foo_seq'), primary_key=True),
             Column('data', String(20)))
 
-        bar = Table('bar', engine,
+        bar = Table('bar', metadata,
             Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
             Column('data', String(20)))
 
-        blub = Table('blub', engine,
+        blub = Table('blub', metadata,
             Column('id', Integer, ForeignKey('bar.id'), primary_key=True),
             Column('foo_id', Integer, ForeignKey('foo.id'), nullable=False),
             Column('data', String(20)))
-
-        tables = [foo, bar, blub]
-        for table in tables:
-            table.create()
+        metadata.create_all()
     def tearDownAll(self):
-        for table in reversed(tables):
-            table.drop()
-        testbase.db.tables.clear()
+        metadata.drop_all()
 
     def tearDown(self):
-        for table in reversed(tables):
+        for table in metadata.table_iterator():
             table.delete().execute()
 
     def testbasic(self):
@@ -318,56 +286,55 @@ class InheritTest4(testbase.AssertMixin):
                 self.data = data
             def __repr__(self):
                 return "Foo id %d, data %s" % (self.id, self.data)
-        Foo.mapper = mapper(Foo, foo)
+        mapper(Foo, foo)
 
         class Bar(Foo):
             def __repr__(self):
                 return "Bar id %d, data %s" % (self.id, self.data)
 
-        Bar.mapper = mapper(Bar, bar, inherits=Foo.mapper)
+        mapper(Bar, bar, inherits=Foo)
         
         class Blub(Bar):
             def __repr__(self):
                 return "Blub id %d, data %s" % (self.id, self.data)
 
-        Blub.mapper = mapper(Blub, blub, inherits=Bar.mapper, properties={
-            # bug was raised specifically based on the order of cols in the join....
-#            'parent_foo':relation(Foo.mapper, primaryjoin=blub.c.foo_id==foo.c.id)
-#            'parent_foo':relation(Foo.mapper, primaryjoin=foo.c.id==blub.c.foo_id)
-            'parent_foo':relation(Foo.mapper)
+        mapper(Blub, blub, inherits=Bar, properties={
+            'parent_foo':relation(Foo)
         })
 
-        b1 = Blub("blub #1")
-        b2 = Blub("blub #2")
-        f = Foo("foo #1")
+        sess = create_session()
+        b1 = Blub("blub #1", _sa_session=sess)
+        b2 = Blub("blub #2", _sa_session=sess)
+        f = Foo("foo #1", _sa_session=sess)
         b1.parent_foo = f
         b2.parent_foo = f
-        objectstore.commit()
+        sess.flush()
         compare = repr(b1) + repr(b2) + repr(b1.parent_foo) + repr(b2.parent_foo)
-        objectstore.clear()
-        l = Blub.mapper.select()
+        sess.clear()
+        l = sess.query(Blub).select()
         result = repr(l[0]) + repr(l[1]) + repr(l[0].parent_foo) + repr(l[1].parent_foo)
         self.echo(result)
         self.assert_(compare == result)
         self.assert_(l[0].parent_foo.data == 'foo #1' and l[1].parent_foo.data == 'foo #1')
 
-class InheritTest5(testbase.AssertMixin): 
+class InheritTest5(testbase.AssertMixin):
+    """testing that construction of inheriting mappers works regardless of when extra properties
+    are added to the superclass mapper"""
     def setUpAll(self):
-        engine = testbase.db
-        global content_type, content, product
-        content_type = Table('content_type', engine, 
+        global content_type, content, product, metadata
+        metadata = BoundMetaData(testbase.db)
+        content_type = Table('content_type', metadata, 
             Column('id', Integer, primary_key=True)
             )
-        content = Table('content', engine,
+        content = Table('content', metadata,
             Column('id', Integer, primary_key=True),
             Column('content_type_id', Integer, ForeignKey('content_type.id'))
             )
-        product = Table('product', engine, 
+        product = Table('product', metadata, 
             Column('id', Integer, ForeignKey('content.id'), primary_key=True)
         )
     def tearDownAll(self):
-        testbase.db.tables.clear()
-
+        pass
     def tearDown(self):
         pass
 
@@ -384,14 +351,12 @@ class InheritTest5(testbase.AssertMixin):
         # shouldnt throw exception
         products = mapper(Product, product, inherits=contents)
     
-    
     def testbackref(self):
-        """this test is currently known to fail in the 0.1 series of SQLAlchemy, pending the resolution of [ticket:154]"""
+        """tests adding a property to the superclass mapper"""
         class ContentType(object): pass
         class Content(object): pass
         class Product(Content): pass
 
-        # this test fails currently
         contents = mapper(Content, content)
         products = mapper(Product, product, inherits=contents)
         content_types = mapper(ContentType, content_type, properties={
@@ -400,25 +365,24 @@ class InheritTest5(testbase.AssertMixin):
         p = Product()
         p.contenttype = ContentType()
         
-            
 class InheritTest6(testbase.AssertMixin):
     """tests eager load/lazy load of child items off inheritance mappers, tests that
     LazyLoader constructs the right query condition."""
     def setUpAll(self):
-        global foo, bar, bar_foo
-        foo = Table('foo', testbase.db, Column('id', Integer, Sequence('foo_seq'), primary_key=True),
-        Column('data', String(30))).create()
-        bar = Table('bar', testbase.db, Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
-     Column('data', String(30))).create()
+        global foo, bar, bar_foo, metadata
+        metadata=BoundMetaData(testbase.db)
+        foo = Table('foo', metadata, Column('id', Integer, Sequence('foo_seq'), primary_key=True),
+        Column('data', String(30)))
+        bar = Table('bar', metadata, Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
+     Column('data', String(30)))
 
-        bar_foo = Table('bar_foo', testbase.db,
+        bar_foo = Table('bar_foo', metadata,
         Column('bar_id', Integer, ForeignKey('bar.id')),
         Column('foo_id', Integer, ForeignKey('foo.id'))
-        ).create()
+        )
+        metadata.create_all()
     def tearDownAll(self):
-        bar_foo.drop()
-        bar.drop()
-        foo.drop()
+        metadata.drop_all()
         
     def testbasic(self):
         class Foo(object): pass
@@ -427,6 +391,7 @@ class InheritTest6(testbase.AssertMixin):
         foos = mapper(Foo, foo)
         bars = mapper(Bar, bar, inherits=foos)
         bars.add_property('lazy', relation(foos, bar_foo, lazy=True))
+        print bars.props['lazy'].primaryjoin, bars.props['lazy'].secondaryjoin
         bars.add_property('eager', relation(foos, bar_foo, lazy=False))
 
         foo.insert().execute(data='foo1')
@@ -440,9 +405,11 @@ class InheritTest6(testbase.AssertMixin):
 
         bar_foo.insert().execute(bar_id=1, foo_id=3)
         bar_foo.insert().execute(bar_id=2, foo_id=4)
-
-        self.assert_(len(bars.selectfirst().lazy) == 1)
-        self.assert_(len(bars.selectfirst().eager) == 1)
+        
+        sess = create_session()
+        q = sess.query(Bar)
+        self.assert_(len(q.selectfirst().lazy) == 1)
+        self.assert_(len(q.selectfirst().eager) == 1)
     
 if __name__ == "__main__":    
     testbase.main()

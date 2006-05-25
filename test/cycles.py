@@ -22,26 +22,22 @@ class Tester(object):
 class SelfReferentialTest(AssertMixin):
     """tests a self-referential mapper, with an additional list of child objects."""
     def setUpAll(self):
-        testbase.db.tables.clear()
-        global t1
-        global t2
-        t1 = Table('t1', testbase.db, 
+        global t1, t2, metadata
+        metadata = BoundMetaData(testbase.db)
+        t1 = Table('t1', metadata, 
             Column('c1', Integer, primary_key=True),
             Column('parent_c1', Integer, ForeignKey('t1.c1')),
             Column('data', String(20))
         )
-        t2 = Table('t2', testbase.db,
+        t2 = Table('t2', metadata,
             Column('c1', Integer, primary_key=True),
             Column('c1id', Integer, ForeignKey('t1.c1')),
             Column('data', String(20))
         )
-        t1.create()
-        t2.create()
+        metadata.create_all()
     def tearDownAll(self):
-        t2.drop()
-        t1.drop()
+        metadata.drop_all()
     def setUp(self):
-        objectstore.clear()
         clear_mappers()
     
     def testsingle(self):
@@ -53,9 +49,11 @@ class SelfReferentialTest(AssertMixin):
         })
         a = C1('head c1')
         a.c1s.append(C1('another c1'))
-        objectstore.commit()
-        objectstore.delete(a)
-        objectstore.commit()
+        sess = create_session(echo_uow=False)
+        sess.save(a)
+        sess.flush()
+        sess.delete(a)
+        sess.flush()
         
     def testcycle(self):
         class C1(Tester):
@@ -75,36 +73,34 @@ class SelfReferentialTest(AssertMixin):
         a.c1s[0].c1s.append(C1('subchild2'))
         a.c1s[1].c2s.append(C2('child2 data1'))
         a.c1s[1].c2s.append(C2('child2 data2'))
-        objectstore.commit()
+        sess = create_session(echo_uow=False)
+        sess.save(a)
+        sess.flush()
         
-        objectstore.delete(a)
-        objectstore.commit()
+        sess.delete(a)
+        sess.flush()
         
 class BiDirectionalOneToManyTest(AssertMixin):
     """tests two mappers with a one-to-many relation to each other."""
     def setUpAll(self):
-        testbase.db.tables.clear()
-        global t1
-        global t2
-        t1 = Table('t1', testbase.db, 
+        global t1, t2, metadata
+        metadata = BoundMetaData(testbase.db)
+        t1 = Table('t1', metadata, 
             Column('c1', Integer, primary_key=True),
             Column('c2', Integer, ForeignKey('t2.c1'))
         )
-        t2 = Table('t2', testbase.db,
+        t2 = Table('t2', metadata,
             Column('c1', Integer, primary_key=True),
             Column('c2', Integer)
         )
-        t2.create()
-        t1.create()
+        metadata.create_all()
         t2.c.c2.append_item(ForeignKey('t1.c1'))
     def tearDownAll(self):
-        t1.drop()    
+        t1.drop()
         t2.drop()
-    def setUp(self):
-        objectstore.clear()
-        #objectstore.LOG = True
+        #metadata.drop_all()
+    def tearDown(self):
         clear_mappers()
-    
     def testcycle(self):
         class C1(object):pass
         class C2(object):pass
@@ -123,35 +119,33 @@ class BiDirectionalOneToManyTest(AssertMixin):
         a.c2s.append(b)
         d.c1s.append(c)
         b.c1s.append(c)
-        objectstore.commit()
+        sess = create_session()
+        [sess.save(x) for x in [a,b,c,d,e,f]]
+        sess.flush()
 
 class BiDirectionalOneToManyTest2(AssertMixin):
     """tests two mappers with a one-to-many relation to each other, with a second one-to-many on one of the mappers"""
     def setUpAll(self):
-        testbase.db.tables.clear()
-        global t1
-        global t2
-        global t3
-        t1 = Table('t1', testbase.db, 
+        global t1, t2, t3, metadata
+        metadata = BoundMetaData(testbase.db)
+        t1 = Table('t1', metadata, 
             Column('c1', Integer, primary_key=True),
             Column('c2', Integer, ForeignKey('t2.c1')),
         )
-        t2 = Table('t2', testbase.db,
+        t2 = Table('t2', metadata,
             Column('c1', Integer, primary_key=True),
             Column('c2', Integer),
         )
         t2.create()
         t1.create()
         t2.c.c2.append_item(ForeignKey('t1.c1'))
-        t3 = Table('t1_data', testbase.db, 
+        t3 = Table('t1_data', metadata, 
             Column('c1', Integer, primary_key=True),
             Column('t1id', Integer, ForeignKey('t1.c1')),
             Column('data', String(20)))
         t3.create()
         
-    def setUp(self):
-        objectstore.clear()
-        #objectstore.LOG = True
+    def tearDown(self):
         clear_mappers()
 
     def tearDownAll(self):
@@ -185,25 +179,28 @@ class BiDirectionalOneToManyTest2(AssertMixin):
         a.data.append(C1Data('c1data1'))
         a.data.append(C1Data('c1data2'))
         c.data.append(C1Data('c1data3'))
-        objectstore.commit()
+        sess = create_session()
+        [sess.save(x) for x in [a,b,c,d,e,f]]
+        sess.flush()
 
-        objectstore.delete(d)
-        objectstore.delete(c)
-        objectstore.commit()
+        sess.delete(d)
+        sess.delete(c)
+        sess.flush()
 
 class OneToManyManyToOneTest(AssertMixin):
     """tests two mappers, one has a one-to-many on the other mapper, the other has a separate many-to-one relationship to the first.
     two tests will have a row for each item that is dependent on the other.  without the "post_update" flag, such relationships
     raise an exception when dependencies are sorted."""
     def setUpAll(self):
-        testbase.db.tables.clear()
+        global metadata
+        metadata = BoundMetaData(testbase.db)
         global person    
         global ball
-        ball = Table('ball', db,
+        ball = Table('ball', metadata,
          Column('id', Integer, Sequence('ball_id_seq', optional=True), primary_key=True),
          Column('person_id', Integer),
          )
-        person = Table('person', db,
+        person = Table('person', metadata,
          Column('id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
          Column('favoriteBall_id', Integer, ForeignKey('ball.id')),
 #         Column('favoriteBall_id', Integer),
@@ -223,9 +220,7 @@ class OneToManyManyToOneTest(AssertMixin):
         person.drop()
         ball.drop()
         
-    def setUp(self):
-        objectstore.clear()
-        #objectstore.LOG = True
+    def tearDown(self):
         clear_mappers()
 
     def testcycle(self):
@@ -249,7 +244,10 @@ class OneToManyManyToOneTest(AssertMixin):
         b = Ball()
         p = Person()
         p.balls.append(b)
-        objectstore.commit()
+        sess = create_session()
+        sess.save(b)
+        sess.save(b)
+        sess.flush()
 
     def testpostupdate_m2o(self):
         """tests a cycle between two rows, with a post_update on the many-to-one"""
@@ -275,76 +273,79 @@ class OneToManyManyToOneTest(AssertMixin):
         p.balls.append(Ball())
         p.balls.append(Ball())
         p.favorateBall = b
-
-        self.assert_sql(db, lambda: objectstore.uow().commit(), [
+        sess = create_session()
+        sess.save(b)
+        sess.save(p)
+        
+        self.assert_sql(db, lambda: sess.flush(), [
             (
                 "INSERT INTO person (favoriteBall_id) VALUES (:favoriteBall_id)",
                 {'favoriteBall_id': None}
             ),
             (
                 "INSERT INTO ball (person_id) VALUES (:person_id)",
-                lambda:{'person_id':p.id}
+                lambda ctx:{'person_id':p.id}
             ),
             (
                 "INSERT INTO ball (person_id) VALUES (:person_id)",
-                lambda:{'person_id':p.id}
+                lambda ctx:{'person_id':p.id}
             ),
             (
                 "INSERT INTO ball (person_id) VALUES (:person_id)",
-                lambda:{'person_id':p.id}
+                lambda ctx:{'person_id':p.id}
             ),
             (
                 "INSERT INTO ball (person_id) VALUES (:person_id)",
-                lambda:{'person_id':p.id}
+                lambda ctx:{'person_id':p.id}
             ),
             (
                 "UPDATE person SET favoriteBall_id=:favoriteBall_id WHERE person.id = :person_id",
-                lambda:[{'favoriteBall_id':p.favorateBall.id,'person_id':p.id}]
+                lambda ctx:{'favoriteBall_id':p.favorateBall.id,'person_id':p.id}
             )
         ], 
         with_sequences= [
                 (
                     "INSERT INTO person (id, favoriteBall_id) VALUES (:id, :favoriteBall_id)",
-                    lambda:{'id':db.last_inserted_ids()[0], 'favoriteBall_id': None}
+                    lambda ctx:{'id':ctx.last_inserted_ids()[0], 'favoriteBall_id': None}
                 ),
                 (
                     "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
-                    lambda:{'id':db.last_inserted_ids()[0],'person_id':p.id}
+                    lambda ctx:{'id':ctx.last_inserted_ids()[0],'person_id':p.id}
                 ),
                 (
                     "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
-                    lambda:{'id':db.last_inserted_ids()[0],'person_id':p.id}
+                    lambda ctx:{'id':ctx.last_inserted_ids()[0],'person_id':p.id}
                 ),
                 (
                     "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
-                    lambda:{'id':db.last_inserted_ids()[0],'person_id':p.id}
+                    lambda ctx:{'id':ctx.last_inserted_ids()[0],'person_id':p.id}
                 ),
                 (
                     "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
-                    lambda:{'id':db.last_inserted_ids()[0],'person_id':p.id}
+                    lambda ctx:{'id':ctx.last_inserted_ids()[0],'person_id':p.id}
                 ),
                 # heres the post update 
                 (
                     "UPDATE person SET favoriteBall_id=:favoriteBall_id WHERE person.id = :person_id",
-                    lambda:[{'favoriteBall_id':p.favorateBall.id,'person_id':p.id}]
+                    lambda ctx:{'favoriteBall_id':p.favorateBall.id,'person_id':p.id}
                 )
             ])
-        objectstore.delete(p)
-        self.assert_sql(db, lambda: objectstore.uow().commit(), [
+        sess.delete(p)
+        self.assert_sql(db, lambda: sess.flush(), [
             # heres the post update (which is a pre-update with deletes)
             (
                 "UPDATE person SET favoriteBall_id=:favoriteBall_id WHERE person.id = :person_id",
-                lambda:[{'person_id': p.id, 'favoriteBall_id': None}]
+                lambda ctx:{'person_id': p.id, 'favoriteBall_id': None}
             ),
             (
                 "DELETE FROM ball WHERE ball.id = :id",
                 None
                 # order cant be predicted, but something like:
-                #lambda:[{'id': 1L}, {'id': 4L}, {'id': 3L}, {'id': 2L}]
+                #lambda ctx:[{'id': 1L}, {'id': 4L}, {'id': 3L}, {'id': 2L}]
             ),
             (
                 "DELETE FROM person WHERE person.id = :id",
-                lambda:[{'id': p.id}]
+                lambda ctx:[{'id': p.id}]
             )
 
 
@@ -377,8 +378,10 @@ class OneToManyManyToOneTest(AssertMixin):
         b4 = Ball()
         p.balls.append(b4)
         p.favorateBall = b
-#        objectstore.commit()
-        self.assert_sql(db, lambda: objectstore.uow().commit(), [
+        sess = create_session()
+        [sess.save(x) for x in [b,p,b2,b3,b4]]
+
+        self.assert_sql(db, lambda: sess.flush(), [
                 (
                     "INSERT INTO ball (person_id) VALUES (:person_id)",
                     {'person_id':None}
@@ -397,92 +400,92 @@ class OneToManyManyToOneTest(AssertMixin):
                 ),
                 (
                     "INSERT INTO person (favoriteBall_id) VALUES (:favoriteBall_id)",
-                    lambda:{'favoriteBall_id':b.id}
+                    lambda ctx:{'favoriteBall_id':b.id}
                 ),
                 # heres the post update on each one-to-many item
                 (
                     "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
-                    lambda:[{'person_id':p.id,'ball_id':b.id}]
+                    lambda ctx:{'person_id':p.id,'ball_id':b.id}
                 ),
                 (
                     "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
-                    lambda:[{'person_id':p.id,'ball_id':b2.id}]
+                    lambda ctx:{'person_id':p.id,'ball_id':b2.id}
                 ),
                 (
                     "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
-                    lambda:[{'person_id':p.id,'ball_id':b3.id}]
+                    lambda ctx:{'person_id':p.id,'ball_id':b3.id}
                 ),
                 (
                     "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
-                    lambda:[{'person_id':p.id,'ball_id':b4.id}]
+                    lambda ctx:{'person_id':p.id,'ball_id':b4.id}
                 ),
         ],
         with_sequences=[
             (
                 "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
-                lambda:{'id':db.last_inserted_ids()[0], 'person_id':None}
+                lambda ctx:{'id':ctx.last_inserted_ids()[0], 'person_id':None}
             ),
             (
                 "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
-                lambda:{'id':db.last_inserted_ids()[0], 'person_id':None}
+                lambda ctx:{'id':ctx.last_inserted_ids()[0], 'person_id':None}
             ),
             (
                 "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
-                lambda:{'id':db.last_inserted_ids()[0], 'person_id':None}
+                lambda ctx:{'id':ctx.last_inserted_ids()[0], 'person_id':None}
             ),
             (
                 "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
-                lambda:{'id':db.last_inserted_ids()[0], 'person_id':None}
+                lambda ctx:{'id':ctx.last_inserted_ids()[0], 'person_id':None}
             ),
             (
                 "INSERT INTO person (id, favoriteBall_id) VALUES (:id, :favoriteBall_id)",
-                lambda:{'id':db.last_inserted_ids()[0], 'favoriteBall_id':b.id}
+                lambda ctx:{'id':ctx.last_inserted_ids()[0], 'favoriteBall_id':b.id}
             ),
             (
                 "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
-                lambda:[{'person_id':p.id,'ball_id':b.id}]
+                lambda ctx:{'person_id':p.id,'ball_id':b.id}
             ),
             (
                 "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
-                lambda:[{'person_id':p.id,'ball_id':b2.id}]
+                lambda ctx:{'person_id':p.id,'ball_id':b2.id}
             ),
             (
                 "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
-                lambda:[{'person_id':p.id,'ball_id':b3.id}]
+                lambda ctx:{'person_id':p.id,'ball_id':b3.id}
             ),
             (
                 "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
-                lambda:[{'person_id':p.id,'ball_id':b4.id}]
+                lambda ctx:{'person_id':p.id,'ball_id':b4.id}
             ),
         ])
 
-        objectstore.delete(p)
-        self.assert_sql(db, lambda: objectstore.uow().commit(), [
+        sess.delete(p)
+        self.assert_sql(db, lambda: sess.flush(), [
             (
                 "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
-                lambda:[{'person_id': None, 'ball_id': b.id}]
+                lambda ctx:{'person_id': None, 'ball_id': b.id}
             ),
             (
                 "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
-                lambda:[{'person_id': None, 'ball_id': b2.id}]
+                lambda ctx:{'person_id': None, 'ball_id': b2.id}
             ),
             (
                 "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
-                lambda:[{'person_id': None, 'ball_id': b3.id}]
+                lambda ctx:{'person_id': None, 'ball_id': b3.id}
             ),
             (
                 "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
-                lambda:[{'person_id': None, 'ball_id': b4.id}]
+                lambda ctx:{'person_id': None, 'ball_id': b4.id}
             ),
             (
                 "DELETE FROM person WHERE person.id = :id",
-                lambda:[{'id':p.id}]
+                lambda ctx:[{'id':p.id}]
             ),
             (
                 "DELETE FROM ball WHERE ball.id = :id",
                 None
                 # the order of deletion is not predictable, but its roughly:
-                # lambda:[{'id': b.id}, {'id': b2.id}, {'id': b3.id}, {'id': b4.id}]
+                # lambda ctx:[{'id': b.id}, {'id': b2.id}, {'id': b3.id}, {'id': b4.id}]
             )
         ])
         

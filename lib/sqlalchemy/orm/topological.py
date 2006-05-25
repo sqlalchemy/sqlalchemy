@@ -102,7 +102,7 @@ class QueueDependencySorter(object):
                     n.cycles = Set([n])
                     continue
                 else:
-                    raise CommitError("Self-referential dependency detected " + repr(t))
+                    raise FlushError("Self-referential dependency detected " + repr(t))
             childnode = nodes[t[1]]
             parentnode = nodes[t[0]]
             self._add_edge(edges, (parentnode, childnode))
@@ -136,7 +136,7 @@ class QueueDependencySorter(object):
                     continue
                 else:
                     # long cycles not allowed
-                    raise CommitError("Circular dependency detected " + repr(edges) + repr(queue))
+                    raise FlushError("Circular dependency detected " + repr(edges) + repr(queue))
             node = queue.pop()
             if not hasattr(node, '_cyclical'):
                 output.append(node)
@@ -328,7 +328,7 @@ class TreeDependencySorter(object):
             elif parentnode.is_descendant_of(childnode):
                 # check for a line thats backwards with nodes in between, this is a 
                 # circular dependency (although confirmation on this would be helpful)
-                raise CommitError("Circular dependency detected")
+                raise FlushError("Circular dependency detected")
             elif not childnode.is_descendant_of(parentnode):
                 # if relationship doesnt exist, connect nodes together
                 root = childnode.get_sibling_ancestor(parentnode)

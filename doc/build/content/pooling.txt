@@ -1,0 +1,65 @@
+Connection Pooling  {@name=pooling}
+======================
+
+This section describes the connection pool module of SQLAlchemy.  The `Pool` object it provides is normally embedded within an `Engine` instance.  For most cases, explicit access to the pool module is not required.  However, the `Pool` object can be used on its own, without the rest of SA, to manage DBAPI connections; this section describes that usage.  Also, this section will describe in more detail how to customize the pooling strategy used by an `Engine`.
+
+At the base of any database helper library is a system of efficiently acquiring connections to the database.  Since the establishment of a database connection is typically a somewhat expensive operation, an application needs a way to get at database connections repeatedly without incurring the full overhead each time.  Particularly for server-side web applications, a connection pool is the standard way to maintain a "pool" of database connections which are used over and over again among many requests.  Connection pools typically are configured to maintain a certain "size", which represents how many connections can be used simultaneously without resorting to creating more newly-established connections.
+
+### Establishing a Transparent Connection Pool {@name=establishing}
+
+Any DBAPI module can be "proxied" through the connection pool using the following technique (note that the usage of 'psycopg2' is **just an example**; substitute whatever DBAPI module you'd like):
+    
+    {python}
+    import sqlalchemy.pool as pool
+    import psycopg2 as psycopg
+    psycopg = pool.manage(psycopg)
+    
+    # then connect normally
+    connection = psycopg.connect(database='test', username='scott', password='tiger')
+
+This produces a `sqlalchemy.pool.DBProxy` object which supports the same `connect()` function as the original DBAPI module.  Upon connection, a thread-local connection proxy object is returned, which delegates its calls to a real DBAPI connection object.  This connection object is stored persistently within a connection pool (an instance of `sqlalchemy.pool.Pool`) that corresponds to the exact connection arguments sent to the `connect()` function.  The connection proxy also returns a proxied cursor object upon calling `connection.cursor()`.  When all cursors as well as the connection proxy are de-referenced, the connection is automatically made available again by the owning pool object.
+
+Basically, the `connect()` function is used in its usual way, and the pool module transparently returns thread-local pooled connections.  Each distinct set of connect arguments corresponds to a brand new connection pool created; in this way, an application can maintain connections to multiple schemas and/or databases, and each unique connect argument set will be managed by a different pool object.
+
+### Connection Pool Configuration {@name=configuration}
+
+When proxying a DBAPI module through the `pool` module, options exist for how the connections should be pooled:
+
+* echo=False : if set to True, connections being pulled and retrieved from/to the pool will be logged to the standard output, as well as pool sizing information.
+* use\_threadlocal=True : if set to True, repeated calls to connect() within the same application thread will be guaranteed to return the **same** connection object, if one has already been retrieved from the pool and has not been returned yet.  This allows code to retrieve a connection from the pool, and then while still holding on to that connection, to call other functions which also ask the pool for a connection of the same arguments;  those functions will act upon the same connection that the calling method is using.  Note that once the connection is returned to the pool, it then may be used by another thread.  To guarantee a single unique connection per thread that **never** changes, use the option `poolclass=SingletonThreadPool`, in which case the use_threadlocal parameter is automatically set to False.
+* poolclass=QueuePool :  the Pool class used by the pool module to provide pooling.  QueuePool uses the Python `Queue.Queue` class to maintain a list of available connections.  A developer can supply his or her own Pool class to supply a different pooling algorithm.  Also included is the `SingletonThreadPool`, which provides a single distinct connection per thread and is required with SQLite.
+* pool\_size=5 : used by `QueuePool` - the size of the pool to be maintained.  This is the largest number of connections that will be kept persistently in the pool.  Note that the pool begins with no connections; once this number of connections is requested, that number of connections will remain.
+* max\_overflow=10 : used by `QueuePool` - the maximum overflow size of the pool.  When the number of checked-out connections reaches the size set in pool_size, additional connections will be returned up to this limit.  When those additional connections are returned to the pool, they are disconnected and discarded.  It follows then that the total number of simultaneous connections the pool will allow is `pool_size` + `max_overflow`, and the total number of "sleeping" connections the pool will allow is `pool_size`.  `max_overflow` can be set to -1 to indicate no overflow limit; no limit will be placed on the total number of concurrent connections.
+* timeout=30 : used by `QueuePool` - the timeout before giving up on returning a connection, if none are available and the `max_overflow` has been reached.
+
+
+### Custom Pool Construction {@name=custom}
+
+One level below using a DBProxy to make transparent pools is creating the pool yourself.  The pool module comes with two implementations of connection pools: `QueuePool` and `SingletonThreadPool`.  While `QueuePool` uses `Queue.Queue` to provide connections, `SingletonThreadPool` provides a single per-thread connection which SQLite requires.
+
+Constructing your own pool involves passing a callable used to create a connection.  Through this method, custom connection schemes can be made, such as a connection that automatically executes some initialization commands to start.  The options from the previous section can be used as they apply to `QueuePool` or `SingletonThreadPool`.
+
+    {python title="Plain QueuePool"}
+    import sqlalchemy.pool as pool
+    import psycopg2
+    
+    def getconn():
+        c = psycopg2.connect(username='ed', host='127.0.0.1', dbname='test')
+        # execute an initialization function on the connection before returning
+        c.cursor.execute("setup_encodings()")
+        return c
+        
+    p = pool.QueuePool(getconn, max_overflow=10, pool_size=5, use_threadlocal=True)
+    
+Or with SingletonThreadPool:
+
+    {python title="SingletonThreadPool"}
+    import sqlalchemy.pool as pool
+    import sqlite
+    
+    def getconn():
+        return sqlite.connect(filename='myfile.db')
+    
+    # SQLite connections require the SingletonThreadPool    
+    p = pool.SingletonThreadPool(getconn)
+    

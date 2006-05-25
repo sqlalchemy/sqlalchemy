@@ -3,70 +3,56 @@ import testbase
 import unittest, sys, os
 from sqlalchemy import *
 import datetime
-
-db = testbase.db
+from sqlalchemy.ext.sessioncontext import SessionContext
 
 class EagerTest(AssertMixin):
     def setUpAll(self):
-        objectstore.clear()
-        clear_mappers()
-        testbase.db.tables.clear()
-        
-        global companies_table, addresses_table, invoice_table, phones_table, items_table
+        global companies_table, addresses_table, invoice_table, phones_table, items_table, ctx, metadata
 
-        companies_table = Table('companies', db,
+        metadata = BoundMetaData(testbase.db)
+        ctx = SessionContext(create_session)
+        
+        companies_table = Table('companies', metadata,
             Column('company_id', Integer, Sequence('company_id_seq', optional=True), primary_key = True),
             Column('company_name', String(40)),
 
         )
         
-        addresses_table = Table('addresses', db,
+        addresses_table = Table('addresses', metadata,
                                 Column('address_id', Integer, Sequence('address_id_seq', optional=True), primary_key = True),
                                 Column('company_id', Integer, ForeignKey("companies.company_id")),
                                 Column('address', String(40)),
                                 )
 
-        phones_table = Table('phone_numbers', db,
+        phones_table = Table('phone_numbers', metadata,
                                 Column('phone_id', Integer, Sequence('phone_id_seq', optional=True), primary_key = True),
                                 Column('address_id', Integer, ForeignKey('addresses.address_id')),
                                 Column('type', String(20)),
                                 Column('number', String(10)),
                                 )
 
-        invoice_table = Table('invoices', db,
+        invoice_table = Table('invoices', metadata,
                               Column('invoice_id', Integer, Sequence('invoice_id_seq', optional=True), primary_key = True),
                               Column('company_id', Integer, ForeignKey("companies.company_id")),
                               Column('date', DateTime),   
                               )
 
-        items_table = Table('items', db,
+        items_table = Table('items', metadata,
                             Column('item_id', Integer, Sequence('item_id_seq', optional=True), primary_key = True),
                             Column('invoice_id', Integer, ForeignKey('invoices.invoice_id')),
                             Column('code', String(20)),
                             Column('qty', Integer),
                             )
 
-        companies_table.create()
-        addresses_table.create()
-        phones_table.create()
-        invoice_table.create()
-        items_table.create()
+        metadata.create_all()
         
     def tearDownAll(self):
-        items_table.drop()
-        invoice_table.drop()
-        phones_table.drop()
-        addresses_table.drop()
-        companies_table.drop()
+        metadata.drop_all()
 
     def tearDown(self):
-        objectstore.clear()
         clear_mappers()
-        items_table.delete().execute()
-        invoice_table.delete().execute()
-        phones_table.delete().execute()
-        addresses_table.delete().execute()
-        companies_table.delete().execute()
+        for t in metadata.table_iterator(reverse=True):
+            t.delete().execute()
 
     def testone(self):
         """tests eager load of a many-to-one attached to a one-to-many.  this testcase illustrated 
@@ -88,14 +74,14 @@ class EagerTest(AssertMixin):
             def __repr__(self):
                 return "Invoice:" + repr(getattr(self, 'invoice_id', None)) + " " + repr(getattr(self, 'date', None))  + " " + repr(self.company)
 
-        Address.mapper = mapper(Address, addresses_table, properties={
-            })
-        Company.mapper = mapper(Company, companies_table, properties={
-            'addresses' : relation(Address.mapper, lazy=False),
-            })
-        Invoice.mapper = mapper(Invoice, invoice_table, properties={
-            'company': relation(Company.mapper, lazy=False, )
-            })
+        mapper(Address, addresses_table, properties={
+            }, extension=ctx.mapper_extension)
+        mapper(Company, companies_table, properties={
+            'addresses' : relation(Address, lazy=False),
+            }, extension=ctx.mapper_extension)
+        mapper(Invoice, invoice_table, properties={
+            'company': relation(Company, lazy=False, )
+            }, extension=ctx.mapper_extension)
 
         c1 = Company()
         c1.company_name = 'company 1'
@@ -109,19 +95,18 @@ class EagerTest(AssertMixin):
         i1.date = datetime.datetime.now()
         i1.company = c1
 
-        
-        objectstore.commit()
+        ctx.current.flush()
 
         company_id = c1.company_id
         invoice_id = i1.invoice_id
 
-        objectstore.clear()
+        ctx.current.clear()
 
-        c = Company.mapper.get(company_id)
+        c = ctx.current.query(Company).get(company_id)
 
-        objectstore.clear()
+        ctx.current.clear()
 
-        i = Invoice.mapper.get(invoice_id)
+        i = ctx.current.query(Invoice).get(invoice_id)
 
         self.echo(repr(c))
         self.echo(repr(i.company))
@@ -153,24 +138,24 @@ class EagerTest(AssertMixin):
             def __repr__(self):
                 return "Item: " + repr(getattr(self, 'item_id', None)) + " " + repr(getattr(self, 'invoice_id', None)) + " " + repr(self.code) + " " + repr(self.qty)
 
-        Phone.mapper = mapper(Phone, phones_table, is_primary=True)
+        mapper(Phone, phones_table, extension=ctx.mapper_extension)
 
-        Address.mapper = mapper(Address, addresses_table, properties={
-            'phones': relation(Phone.mapper, lazy=False, backref='address')
-            })
+        mapper(Address, addresses_table, properties={
+            'phones': relation(Phone, lazy=False, backref='address')
+            }, extension=ctx.mapper_extension)
 
-        Company.mapper = mapper(Company, companies_table, properties={
-            'addresses' : relation(Address.mapper, lazy=False, backref='company'),
-            })
+        mapper(Company, companies_table, properties={
+            'addresses' : relation(Address, lazy=False, backref='company'),
+            }, extension=ctx.mapper_extension)
 
-        Item.mapper = mapper(Item, items_table, is_primary=True)
+        mapper(Item, items_table, extension=ctx.mapper_extension)
 
-        Invoice.mapper = mapper(Invoice, invoice_table, properties={
-            'items': relation(Item.mapper, lazy=False, backref='invoice'),
-            'company': relation(Company.mapper, lazy=False, backref='invoices')
-            })
+        mapper(Invoice, invoice_table, properties={
+            'items': relation(Item, lazy=False, backref='invoice'),
+            'company': relation(Company, lazy=False, backref='invoices')
+            }, extension=ctx.mapper_extension)
 
-        objectstore.clear()
+        ctx.current.clear()
         c1 = Company()
         c1.company_name = 'company 1'
 
@@ -205,13 +190,13 @@ class EagerTest(AssertMixin):
 
         c1.addresses.append(a2)
 
-        objectstore.commit()
+        ctx.current.flush()
 
         company_id = c1.company_id
         
-        objectstore.clear()
+        ctx.current.clear()
 
-        a = Company.mapper.get(company_id)
+        a = ctx.current.query(Company).get(company_id)
         self.echo(repr(a))
 
         # set up an invoice
@@ -234,18 +219,18 @@ class EagerTest(AssertMixin):
         item3.qty = 3
         item3.invoice = i1
 
-        objectstore.commit()
+        ctx.current.flush()
 
         invoice_id = i1.invoice_id
 
-        objectstore.clear()
+        ctx.current.clear()
 
-        c = Company.mapper.get(company_id)
+        c = ctx.current.query(Company).get(company_id)
         self.echo(repr(c))
 
-        objectstore.clear()
+        ctx.current.clear()
 
-        i = Invoice.mapper.get(invoice_id)
+        i = ctx.current.query(Invoice).get(invoice_id)
         self.echo(repr(i))
 
         self.assert_(repr(i.company) == repr(c))

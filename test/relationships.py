@@ -22,33 +22,34 @@ class RelationTest(testbase.PersistTest):
         global tbl_b
         global tbl_c
         global tbl_d
-        tbl_a = Table("tbl_a", db,
+        metadata = MetaData()
+        tbl_a = Table("tbl_a", metadata,
             Column("id", Integer, primary_key=True),
             Column("name", String),
         )
-        tbl_b = Table("tbl_b", db,
+        tbl_b = Table("tbl_b", metadata,
             Column("id", Integer, primary_key=True),
             Column("name", String),
         )
-        tbl_c = Table("tbl_c", db,
+        tbl_c = Table("tbl_c", metadata,
             Column("id", Integer, primary_key=True),
             Column("tbl_a_id", Integer, ForeignKey("tbl_a.id"), nullable=False),
             Column("name", String),
         )
-        tbl_d = Table("tbl_d", db,
+        tbl_d = Table("tbl_d", metadata,
             Column("id", Integer, primary_key=True),
             Column("tbl_c_id", Integer, ForeignKey("tbl_c.id"), nullable=False),
             Column("tbl_b_id", Integer, ForeignKey("tbl_b.id")),
             Column("name", String),
         )
     def setUp(self):
-        tbl_a.create()
-        tbl_b.create()
-        tbl_c.create()
-        tbl_d.create()
-
-        objectstore.clear()
-        clear_mappers()
+        global session
+        session = create_session(bind_to=testbase.db)
+        conn = session.connect()
+        conn.create(tbl_a)
+        conn.create(tbl_b)
+        conn.create(tbl_c)
+        conn.create(tbl_d)
 
         class A(object):
             pass
@@ -75,30 +76,31 @@ class RelationTest(testbase.PersistTest):
         b = B(); b.name = "b1"
         c = C(); c.name = "c1"; c.a_row = a
         # we must have more than one d row or it won't fail
-        d = D(); d.name = "d1"; d.b_row = b; d.c_row = c
-        d = D(); d.name = "d2"; d.b_row = b; d.c_row = c
-        d = D(); d.name = "d3"; d.b_row = b; d.c_row = c
-
+        d1 = D(); d1.name = "d1"; d1.b_row = b; d1.c_row = c
+        d2 = D(); d2.name = "d2"; d2.b_row = b; d2.c_row = c
+        d3 = D(); d3.name = "d3"; d3.b_row = b; d3.c_row = c
+        session.save_or_update(a)
+        session.save_or_update(b)
+        
     def tearDown(self):
-        tbl_d.drop()
-        tbl_c.drop()
-        tbl_b.drop()
-        tbl_a.drop()
+        conn = session.connect()
+        conn.drop(tbl_d)
+        conn.drop(tbl_c)
+        conn.drop(tbl_b)
+        conn.drop(tbl_a)
 
     def tearDownAll(self):
-        testbase.db.tables.clear()
+        testbase.metadata.tables.clear()
     
     def testDeleteRootTable(self):
-        session = objectstore.get_session()
-        session.commit()
+        session.flush()
         session.delete(a) # works as expected
-        session.commit()
-
+        session.flush()
+        
     def testDeleteMiddleTable(self):
-        session = objectstore.get_session()
-        session.commit()
+        session.flush()
         session.delete(c) # fails
-        session.commit()
+        session.flush()
         
         
 if __name__ == "__main__":

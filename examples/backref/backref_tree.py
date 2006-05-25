@@ -1,7 +1,6 @@
 from sqlalchemy import *
-import sqlalchemy.attributes as attributes
 
-engine = create_engine('sqlite://', echo=True)
+metadata = BoundMetaData('sqlite:///', echo=True)
 
 class Tree(object):
     def __init__(self, name='', father=None):
@@ -12,27 +11,25 @@ class Tree(object):
     def __repr__(self):
         return self.__str__()
         
-table = Table('tree', engine,
+table = Table('tree', metadata,
               Column('id', Integer, primary_key=True),
               Column('name', String(64), nullable=False),
-              Column('father_id', Integer, ForeignKey('tree.id'), nullable=True),)
+              Column('father_id', Integer, ForeignKey('tree.id'), nullable=True))
+table.create()
 
-assign_mapper(Tree, table,
+mapper(Tree, table,
               properties={
-     # set up a backref using a string
-     #'father':relation(Tree, foreignkey=table.c.id,primaryjoin=table.c.father_id==table.c.id,  backref='childs')},
-                
-     # or set up using the backref() function, which allows arguments to be passed
-     'childs':relation(Tree, foreignkey=table.c.father_id, primaryjoin=table.c.father_id==table.c.id,  backref=backref('father', uselist=False, foreignkey=table.c.id))},
+                'childs':relation(Tree, foreignkey=table.c.father_id, primaryjoin=table.c.father_id==table.c.id,  backref=backref('father', uselist=False, foreignkey=table.c.id))},
             )
 
-table.create()
 root = Tree('root')
 child1 = Tree('child1', root)
 child2 = Tree('child2', root)
 child3 = Tree('child3', child1)
 
-objectstore.commit()
+session = create_session()
+session.save(root)
+session.flush()
 
 print root.childs
 print child1.childs

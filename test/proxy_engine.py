@@ -1,9 +1,10 @@
+import os
+
 from sqlalchemy import *
 from sqlalchemy.ext.proxy import ProxyEngine
 
 from testbase import PersistTest
 import testbase
-import os
 
 #
 # Define an engine, table and mapper at the module level, to show that the
@@ -11,20 +12,31 @@ import os
 #
 
 
-module_engine = ProxyEngine(echo=testbase.echo)
-users = Table('users', module_engine, 
-              Column('user_id', Integer, primary_key=True),
-              Column('user_name', String(16)),
-              Column('password', String(20))
-              )
+class ProxyTestBase(PersistTest):
+    def setUpAll(self):
 
-class User(object):
-    pass
+        global users, User, module_engine, module_metadata
 
+        module_engine = ProxyEngine(echo=testbase.echo)
+        module_metadata = MetaData()
 
-class ConstructTest(PersistTest):
+        users = Table('users', module_metadata, 
+                      Column('user_id', Integer, primary_key=True),
+                      Column('user_name', String(16)),
+                      Column('password', String(20))
+                      )
+
+        class User(object):
+            pass
+
+        User.mapper = mapper(User, users)
+    def tearDownAll(self):
+        clear_mappers()
+
+class ConstructTest(ProxyTestBase):
     """tests that we can build SQL constructs without engine-specific parameters, particulary
     oid_column, being needed, as the proxy engine is usually not connected yet."""
+
     def test_join(self):
         engine = ProxyEngine()
         t = Table('table1', engine, 
@@ -33,47 +45,46 @@ class ConstructTest(PersistTest):
             Column('col2', Integer, ForeignKey('table1.col1')))
         j = join(t, t2)
         
-class ProxyEngineTest1(PersistTest):
 
-    def setUp(self):
-        clear_mappers()
-        objectstore.clear()
-        
+class ProxyEngineTest1(ProxyTestBase):
+
     def test_engine_connect(self):
         # connect to a real engine
         module_engine.connect(testbase.db_uri)
-        users.create()
-        assign_mapper(User, users)
+        module_metadata.create_all(module_engine)
+
+        session = create_session(bind_to=module_engine)
         try:
-            trans = objectstore.begin()
 
             user = User()
             user.user_name='fred'
             user.password='*'
-            trans.commit()
+
+            session.save(user)
+            session.flush()
+
+            query = session.query(User)
 
             # select
-            sqluser = User.select_by(user_name='fred')[0]
+            sqluser = query.select_by(user_name='fred')[0]
             assert sqluser.user_name == 'fred'
 
             # modify
             sqluser.user_name = 'fred jones'
 
-            # commit - saves everything that changed
-            objectstore.commit()
+            # flush - saves everything that changed
+            session.flush()
         
-            allusers = [ user.user_name for user in User.select() ]
-            assert allusers == [ 'fred jones' ]
-        finally:
-            users.drop()
+            allusers = [ user.user_name for user in query.select() ]
+            assert allusers == ['fred jones']
 
-class ThreadProxyTest(PersistTest):
-    def setUp(self):
-        assign_mapper(User, users)
-    def tearDown(self):
-        clear_mappers()
+        finally:
+            module_metadata.drop_all(module_engine)
+
+
+class ThreadProxyTest(ProxyTestBase):
+
     def tearDownAll(self):
-        pass            
         os.remove('threadtesta.db')
         os.remove('threadtestb.db')
         
@@ -92,23 +103,26 @@ class ThreadProxyTest(PersistTest):
                 
                 try:
                     module_engine.connect(db_uri)
-                    users.create()
+                    module_metadata.create_all(module_engine)
                     try:
-                        trans  = objectstore.begin()
+                        session = create_session(bind_to=module_engine)
 
-                        all = User.select()[:]
+                        query = session.query(User)
+
+                        all = list(query.select())
                         assert all == []
 
                         u = User()
                         u.user_name = uname
                         u.password = 'whatever'
-                        trans.commit()
 
-                        names = [ us.user_name for us in User.select() ]
-                        assert names == [ uname ]
+                        session.save(u)
+                        session.flush()
+
+                        names = [u.user_name for u in query.select()]
+                        assert names == [uname]
                     finally:
-                        users.drop()
-                        module_engine.dispose()
+                        module_metadata.drop_all(module_engine)
                 except Exception, e:
                     import traceback
                     traceback.print_exc()
@@ -119,8 +133,8 @@ class ThreadProxyTest(PersistTest):
 
         # NOTE: I'm not sure how to give the test runner the option to
         # override these uris, or how to safely clear them after test runs
-        a = Thread(target=run('sqlite://filename=threadtesta.db', 'jim', qa))
-        b = Thread(target=run('sqlite://filename=threadtestb.db', 'joe', qb))
+        a = Thread(target=run('sqlite:///threadtesta.db', 'jim', qa))
+        b = Thread(target=run('sqlite:///threadtestb.db', 'joe', qb))
         
         a.start()
         b.start()
@@ -134,11 +148,8 @@ class ThreadProxyTest(PersistTest):
         if res != False:
             raise res
 
-class ProxyEngineTest2(PersistTest):
 
-    def setUp(self):
-        clear_mappers()
-        objectstore.clear()
+class ProxyEngineTest2(ProxyTestBase):
 
     def test_table_singleton_a(self):
         """set up for table singleton check
@@ -153,8 +164,9 @@ class ProxyEngineTest2(PersistTest):
                      Column('cat_name', String))
 
         engine.connect(testbase.db_uri)
-        cats.create()
-        cats.drop()
+
+        cats.create(engine)
+        cats.drop(engine)
 
         ProxyEngineTest2.cats_table_a = cats
         assert isinstance(cats, Table)
@@ -179,141 +191,8 @@ class ProxyEngineTest2(PersistTest):
         # this will fail because the old reference's local storage will
         # not have the default attributes
         engine.connect(testbase.db_uri)
-        cats.create()
-        cats.drop()
+        cats.create(engine)
+        cats.drop(engine)
 
-    def test_type_engine_caching(self):
-        from sqlalchemy.engine import SQLEngine
-        import sqlalchemy.types as sqltypes
-
-        class EngineA(SQLEngine):
-            def __init__(self):
-                pass
-
-            def hash_key(self):
-                return 'a'
-            
-            def type_descriptor(self, typeobj):
-                if isinstance(typeobj, types.Integer):
-                    return TypeEngineX2()
-                else:
-                    return TypeEngineSTR()
-            
-        class EngineB(SQLEngine):
-            def __init__(self):
-                pass
-
-            def hash_key(self):
-                return 'b'
-            
-            def type_descriptor(self, typeobj):
-                return TypeEngineMonkey()
-
-        class TypeEngineX2(sqltypes.TypeEngine):
-            def convert_bind_param(self, value, engine):
-                return value * 2
-
-        class TypeEngineSTR(sqltypes.TypeEngine):
-            def convert_bind_param(self, value, engine):
-                return repr(str(value))
-
-        class TypeEngineMonkey(sqltypes.TypeEngine):
-            def convert_bind_param(self, value, engine):
-                return 'monkey'
-            
-        engine = ProxyEngine()
-        engine.storage.engine = EngineA()
-
-        a = sqltypes.Integer().engine_impl(engine)
-        assert a.convert_bind_param(12, engine) == 24
-        assert a.convert_bind_param([1,2,3], engine) == [1, 2, 3, 1, 2, 3]
-
-        a2 = sqltypes.String().engine_impl(engine)
-        assert a2.convert_bind_param(12, engine) == "'12'"
-        assert a2.convert_bind_param([1,2,3], engine) == "'[1, 2, 3]'"
-        
-        engine.storage.engine = EngineB()
-        b = sqltypes.Integer().engine_impl(engine)
-        assert b.convert_bind_param(12, engine) == 'monkey'
-        assert b.convert_bind_param([1,2,3], engine) == 'monkey'
-        
-
-    def test_type_engine_autoincrement(self):
-        engine = ProxyEngine()
-        dogs = Table('dogs', engine,
-                     Column('dog_id', Integer, primary_key=True),
-                     Column('breed', String),
-                     Column('name', String))
-        
-        class Dog(object):
-            pass
-        
-        assign_mapper(Dog, dogs)
-
-        engine.connect(testbase.db_uri)
-        dogs.create()
-        try:
-            spot = Dog()
-            spot.breed = 'beagle'
-            spot.name = 'Spot'
-
-            rover = Dog()
-            rover.breed = 'spaniel'
-            rover.name = 'Rover'
-        
-            objectstore.commit()
-        
-            assert spot.dog_id > 0, "Spot did not get an id"
-            assert rover.dog_id != spot.dog_id
-        finally:
-            dogs.drop()
-            
-    def  test_type_proxy_schema_gen(self):
-        from sqlalchemy.databases.postgres import PGSchemaGenerator
-
-        engine = ProxyEngine()
-        lizards = Table('lizards', engine,
-                        Column('id', Integer, primary_key=True),
-                        Column('name', String))
-        
-        # this doesn't really CONNECT to pg, just establishes pg as the
-        # actual engine so that we can determine that it gets the right
-        # answer
-        engine.connect('postgres://database=test&port=5432&host=127.0.0.1&user=scott&password=tiger')
-
-        sg = PGSchemaGenerator(engine)
-        id_spec = sg.get_column_specification(lizards.c.id)
-        assert id_spec == 'id SERIAL NOT NULL PRIMARY KEY'
-        
-        
 if __name__ == "__main__":
     testbase.main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

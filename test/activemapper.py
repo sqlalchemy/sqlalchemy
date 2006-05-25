@@ -1,80 +1,84 @@
-from sqlalchemy.ext.activemapper    import ActiveMapper, column, one_to_many, one_to_one
-from sqlalchemy.ext                 import activemapper
-from sqlalchemy                     import objectstore, global_connect
-from sqlalchemy                     import and_, or_
-from sqlalchemy                     import ForeignKey, String, Integer, DateTime
-from datetime                       import datetime
+from sqlalchemy.ext.activemapper           import ActiveMapper, column, one_to_many, one_to_one, objectstore
+from sqlalchemy             import and_, or_, clear_mappers
+from sqlalchemy             import ForeignKey, String, Integer, DateTime
+from datetime               import datetime
 
 import unittest
+import sqlalchemy.ext.activemapper as activemapper
 
-#
-# application-level model objects
-#
+import testbase
 
-class Person(ActiveMapper):
-    class mapping:
-        id          = column(Integer, primary_key=True)
-        full_name   = column(String)
-        first_name  = column(String)
-        middle_name = column(String)
-        last_name   = column(String)
-        birth_date  = column(DateTime)
-        ssn         = column(String)
-        gender      = column(String)
-        home_phone  = column(String)
-        cell_phone  = column(String)
-        work_phone  = column(String)
-        prefs_id    = column(Integer, foreign_key=ForeignKey('preferences.id'))
-        addresses   = one_to_many('Address', colname='person_id', backref='person')
-        preferences = one_to_one('Preferences', colname='pref_id', backref='person')
-    
-    def __str__(self):
-        s =  '%s\n' % self.full_name
-        s += '  * birthdate: %s\n' % (self.birth_date or 'not provided')
-        s += '  * fave color: %s\n' % (self.preferences.favorite_color or 'Unknown')
-        s += '  * personality: %s\n' % (self.preferences.personality_type or 'Unknown')
+class testcase(testbase.PersistTest):
+    def setUpAll(self):
+        global Person, Preferences, Address
         
-        for address in self.addresses:
-            s += '  * address: %s\n' % address.address_1
-            s += '             %s, %s %s\n' % (address.city, address.state, address.postal_code)
+        class Person(ActiveMapper):
+            class mapping:
+                id          = column(Integer, primary_key=True)
+                full_name   = column(String)
+                first_name  = column(String)
+                middle_name = column(String)
+                last_name   = column(String)
+                birth_date  = column(DateTime)
+                ssn         = column(String)
+                gender      = column(String)
+                home_phone  = column(String)
+                cell_phone  = column(String)
+                work_phone  = column(String)
+                prefs_id    = column(Integer, foreign_key=ForeignKey('preferences.id'))
+                addresses   = one_to_many('Address', colname='person_id', backref='person')
+                preferences = one_to_one('Preferences', colname='pref_id', backref='person')
+
+            def __str__(self):
+                s =  '%s\n' % self.full_name
+                s += '  * birthdate: %s\n' % (self.birth_date or 'not provided')
+                s += '  * fave color: %s\n' % (self.preferences.favorite_color or 'Unknown')
+                s += '  * personality: %s\n' % (self.preferences.personality_type or 'Unknown')
+
+                for address in self.addresses:
+                    s += '  * address: %s\n' % address.address_1
+                    s += '             %s, %s %s\n' % (address.city, address.state, address.postal_code)
+
+                return s
+
+        class Preferences(ActiveMapper):
+            class mapping:
+                __table__        = 'preferences'
+                id               = column(Integer, primary_key=True)
+                favorite_color   = column(String)
+                personality_type = column(String)
+
+        class Address(ActiveMapper):
+            class mapping:
+                id          = column(Integer, primary_key=True)
+                type        = column(String)
+                address_1   = column(String)
+                city        = column(String)
+                state       = column(String)
+                postal_code = column(String)
+                person_id   = column(Integer, foreign_key=ForeignKey('person.id'))
+
+        activemapper.metadata.connect(testbase.db)
+        activemapper.create_tables()
+
+    def tearDownAll(self):
+        clear_mappers()
+        activemapper.drop_tables()
         
-        return s
-
-
-class Preferences(ActiveMapper):
-    class mapping:
-        __table__        = 'preferences'
-        id               = column(Integer, primary_key=True)
-        favorite_color   = column(String)
-        personality_type = column(String)
-
-
-class Address(ActiveMapper):
-    class mapping:
-        id          = column(Integer, primary_key=True)
-        type        = column(String)
-        address_1   = column(String)
-        city        = column(String)
-        state       = column(String)
-        postal_code = column(String)
-        person_id   = column(Integer, foreign_key=ForeignKey('person.id'))
-
-
-
-class testcase(unittest.TestCase):    
-    
     def tearDown(self):
-        people = Person.select()
-        for person in people: person.delete()
+        for t in activemapper.metadata.table_iterator(reverse=True):
+            t.delete().execute()
+        #people = Person.select()
+        #for person in people: person.delete()
         
-        addresses = Address.select()
-        for address in addresses: address.delete()
+        #addresses = Address.select()
+        #for address in addresses: address.delete()
         
-        preferences = Preferences.select()
-        for preference in preferences: preference.delete()
+        #preferences = Preferences.select()
+        #for preference in preferences: preference.delete()
         
-        objectstore.commit()
-        objectstore.clear()
+        #objectstore.flush()
+        #objectstore.clear()
     
     def create_person_one(self):
         # create a person
@@ -130,12 +134,8 @@ class testcase(unittest.TestCase):
     
     
     def test_create(self):
-        global_connect('sqlite:///', echo=False)
-        activemapper.create_tables()
-        
         p1 = self.create_person_one()
-        
-        objectstore.commit()
+        objectstore.flush()
         objectstore.clear()
         
         results = Person.select()
@@ -151,14 +151,14 @@ class testcase(unittest.TestCase):
     def test_delete(self):
         p1 = self.create_person_one()
         
-        objectstore.commit()
+        objectstore.flush()
         objectstore.clear()
         
         results = Person.select()
         self.assertEquals(len(results), 1)
         
         results[0].delete()
-        objectstore.commit()
+        objectstore.flush()
         objectstore.clear()
         
         results = Person.select()
@@ -169,7 +169,7 @@ class testcase(unittest.TestCase):
         p1 = self.create_person_one()
         p2 = self.create_person_two()
         
-        objectstore.commit()
+        objectstore.flush()
         objectstore.clear()
         
         # select and make sure we get back two results
@@ -200,29 +200,38 @@ class testcase(unittest.TestCase):
         # FIXME: I don't know why, but it seems that my backwards relationship
         #        on preferences still ends up being a list even though I pass
         #        in uselist=False...
+        # FIXED: the backref is a new PropertyLoader which needs its own "uselist".
+        # uses a function which I dont think existed when you first wrote ActiveMapper.
         p1 = self.create_person_one()
         self.assertEquals(p1.preferences.person, p1)
         p1.delete()
         
-        objectstore.commit()
+        objectstore.flush()
         objectstore.clear()
     
     
     def test_select_by(self):
         # FIXME: either I don't understand select_by, or it doesn't work.
+        # FIXED (as good as we can for now): yup....everyone thinks it works that way....it only
+        # generates joins for keyword arguments, not ColumnClause args.  would need a new layer of
+        # "MapperClause" objects to use properties in expressions. (MB)
         
         p1 = self.create_person_one()
         p2 = self.create_person_two()
         
-        objectstore.commit()
+        objectstore.flush()
         objectstore.clear()
         
-        results = Person.select_by(
-            Address.c.postal_code.like('30075')
+        results = Person.select(
+            Address.c.postal_code.like('30075') &
+            Person.join_to('addresses')
         )
         self.assertEquals(len(results), 1)
 
 
     
 if __name__ == '__main__':
+    # go ahead and setup the database connection, and create the tables
+    
+    # launch the unit tests
     unittest.main()

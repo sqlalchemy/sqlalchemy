@@ -7,11 +7,14 @@
 
 import sys, StringIO, string
 
+import sqlalchemy.util as util
 import sqlalchemy.sql as sql
+import sqlalchemy.engine as engine
+import sqlalchemy.engine.default as default
 import sqlalchemy.schema as schema
 import sqlalchemy.ansisql as ansisql
-from sqlalchemy import *
 import sqlalchemy.types as sqltypes
+import sqlalchemy.exceptions as exceptions
 
 try:
     import cx_Oracle
@@ -93,8 +96,6 @@ AND ac.r_constraint_name = rem.constraint_name(+)
 -- order multiple primary keys correctly
 ORDER BY ac.constraint_name, loc.position"""
 
-def engine(*args, **params):
-    return OracleSQLEngine(*args, **params)
 
 def descriptor():
     return {'name':'oracle',
@@ -104,45 +105,53 @@ def descriptor():
         ('user', 'Username', None),
         ('password', 'Password', None)
     ]}
+
+class OracleExecutionContext(default.DefaultExecutionContext):
+    pass
     
-class OracleSQLEngine(ansisql.ANSISQLEngine):
-    def __init__(self, opts, use_ansi = True, module = None, threaded=False, **params):
-        self._use_ansi = use_ansi
-        self.opts = self._translate_connect_args((None, 'dsn', 'user', 'password'), opts)
-        self.opts['threaded'] = threaded
+class OracleDialect(ansisql.ANSIDialect):
+    def __init__(self, use_ansi=True, module=None, threaded=True, **kwargs):
+        self.use_ansi = use_ansi
+        self.threaded = threaded
         if module is None:
             self.module = cx_Oracle
         else:
             self.module = module
-        ansisql.ANSISQLEngine.__init__(self, **params)
+        ansisql.ANSIDialect.__init__(self, **kwargs)
 
     def dbapi(self):
         return self.module
 
-    def connect_args(self):
-        return [[], self.opts]
+    def create_connect_args(self, url):
+        opts = url.translate_connect_args([None, 'dsn', 'user', 'password'])
+        opts['threaded'] = self.threaded
+        return ([], opts)
         
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
 
-    def last_inserted_ids(self):
-        return self.context.last_inserted_ids
-
     def oid_column_name(self):
         return "rowid"
 
-    def compiler(self, statement, bindparams, **kwargs):
-        return OracleCompiler(self, statement, bindparams, use_ansi=self._use_ansi, **kwargs)
+    def create_execution_context(self):
+        return OracleExecutionContext(self)
 
-    def schemagenerator(self, **params):
-        return OracleSchemaGenerator(self, **params)
-    def schemadropper(self, **params):
-        return OracleSchemaDropper(self, **params)
-    def defaultrunner(self, proxy):
-        return OracleDefaultRunner(self, proxy)
+    def compiler(self, statement, bindparams, **kwargs):
+        return OracleCompiler(self, statement, bindparams, **kwargs)
+    def schemagenerator(self, *args, **kwargs):
+        return OracleSchemaGenerator(*args, **kwargs)
+    def schemadropper(self, *args, **kwargs):
+        return OracleSchemaDropper(*args, **kwargs)
+    def defaultrunner(self, engine, proxy):
+        return OracleDefaultRunner(engine, proxy)
+
+
+    def has_table(self, connection, table_name):
+        cursor = connection.execute("""select table_name from all_tables where table_name=:name""", {'name':table_name.upper()})
+        return bool( cursor.fetchone() is not None )
         
-    def reflecttable(self, table):
-        c = self.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from ALL_TAB_COLUMNS where TABLE_NAME = :table_name", {'table_name':table.name.upper()})
+    def reflecttable(self, connection, table):
+        c = connection.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from ALL_TAB_COLUMNS where TABLE_NAME = :table_name", {'table_name':table.name.upper()})
         
         while True:
             row = c.fetchone()
@@ -171,14 +180,14 @@ class OracleSQLEngine(ansisql.ANSISQLEngine):
                
             colargs = []
             if default is not None:
-                colargs.append(PassiveDefault(sql.text(default)))
+                colargs.append(schema.PassiveDefault(sql.text(default)))
             
             name = name.lower()
             
             table.append_item (schema.Column(name, coltype, nullable=nullable, *colargs))
 
    
-        c = self.execute(constraintSQL, {'table_name' : table.name.upper()})
+        c = connection.execute(constraintSQL, {'table_name' : table.name.upper()})
         while True:
             row = c.fetchone()
             if row is None:
@@ -189,34 +198,24 @@ class OracleSQLEngine(ansisql.ANSISQLEngine):
                 table.c[local_column]._set_primary_key()
             elif cons_type == 'R':
                 table.c[local_column].append_item(
-                    schema.ForeignKey(Table(remote_table,
-                                            self,
+                    schema.ForeignKey(schema.Table(remote_table,
+                                            table.metadata,
                                             autoload=True).c[remote_column]
                                       )
                     )
 
-    def last_inserted_ids(self):
-        return self.context.last_inserted_ids
-
-    def pre_exec(self, proxy, compiled, parameters, **kwargs):
-        pass
-
-    def _executemany(self, c, statement, parameters):
+    def do_executemany(self, c, statement, parameters, context=None):
         rowcount = 0
         for param in parameters:
             c.execute(statement, param)
             rowcount += c.rowcount
-        self.context.rowcount = rowcount
+        if context is not None:
+            context._rowcount = rowcount
 
 class OracleCompiler(ansisql.ANSICompiler):
     """oracle compiler modifies the lexical structure of Select statements to work under 
     non-ANSI configured Oracle databases, if the use_ansi flag is False."""
     
-    def __init__(self, engine, statement, parameters, use_ansi = True, **kwargs):
-        self._outertable = None
-        self._use_ansi = use_ansi
-        ansisql.ANSICompiler.__init__(self, statement, parameters, engine=engine, **kwargs)
-        
     def default_from(self):
         """called when a SELECT statement has no froms, and no FROM clause is to be appended.  
         gives Oracle a chance to tack on a "FROM DUAL" to the string output. """
@@ -226,7 +225,7 @@ class OracleCompiler(ansisql.ANSICompiler):
         return len(func.clauses) > 0
 
     def visit_join(self, join):
-        if self._use_ansi:
+        if self.dialect.use_ansi:
             return ansisql.ANSICompiler.visit_join(self, join)
         
         self.froms[join] = self.get_from_text(join.left) + ", " + self.get_from_text(join.right)
@@ -251,7 +250,7 @@ class OracleCompiler(ansisql.ANSICompiler):
  
     def visit_column(self, column):
         ansisql.ANSICompiler.visit_column(self, column)
-        if not self._use_ansi and self._outertable is not None and column.table is self._outertable:
+        if not self.dialect.use_ansi and getattr(self, '_outertable', None) is not None and column.table is self._outertable:
             self.strings[column] = self.strings[column] + "(+)"
        
     def visit_insert(self, insert):
@@ -275,12 +274,15 @@ class OracleCompiler(ansisql.ANSICompiler):
                 self.strings[select.order_by_clause] = ""
             ansisql.ANSICompiler.visit_select(self, select)
             return
+
         if select.limit is not None or select.offset is not None:
             select._oracle_visit = True
             # to use ROW_NUMBER(), an ORDER BY is required. 
             orderby = self.strings[select.order_by_clause]
             if not orderby:
                 orderby = select.oid_column
+                orderby.accept_visitor(self)
+                orderby = self.strings[orderby]
             select.append_column(sql.ColumnClause("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn"))
             limitselect = sql.select([c for c in select.c if c.key!='ora_rn'])
             if select.offset is not None:
@@ -330,3 +332,5 @@ class OracleDefaultRunner(ansisql.ANSIDefaultRunner):
     
     def visit_sequence(self, seq):
         return self.proxy("SELECT " + seq.name + ".nextval FROM DUAL").fetchone()[0]
+
+dialect = OracleDialect

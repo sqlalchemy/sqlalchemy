@@ -45,8 +45,7 @@ class AttributesTest(PersistTest):
         manager.register_attribute(MyTest, 'email_address', uselist = False)
         x = MyTest()
         x.user_id=7
-        s = pickle.dumps(x)
-        y = pickle.loads(s)
+        pickle.dumps(x)
 
     def testlist(self):
         class User(object):pass

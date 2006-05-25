@@ -35,7 +35,7 @@ class LoadTest(AssertMixin):
         clear_mappers()
         for x in range(1,NUM/500+1):
             l = []
-            for y in range(x*500-499, x*500 + 1):
+            for y in range(x*500-500, x*500):
                 l.append({'item_id':y, 'value':'this is item #%d' % y})
             items.insert().execute(*l)
             
@@ -47,7 +47,7 @@ class LoadTest(AssertMixin):
         for x in range (1,NUM/100):
             # this is not needed with cpython which clears non-circular refs immediately
             #gc.collect()
-            l = m.select(items.c.item_id.between(x*100 - 99, x*100 ))
+            l = m.select(items.c.item_id.between(x*100 - 100, x*100 - 1))
             assert len(l) == 100
             print "loaded ", len(l), " items "
             # modifying each object will insure that the objects get placed in the "dirty" list
@@ -56,10 +56,10 @@ class LoadTest(AssertMixin):
                 a.value = 'changed...'
             assert len(objectstore.get_session().dirty) == len(l)
             assert len(objectstore.get_session().identity_map) == len(l)
-            #assert len(attributes.managed_attributes) == len(l)
+            assert len(attributes.managed_attributes) == len(l)
             print len(objectstore.get_session().dirty)
             print len(objectstore.get_session().identity_map)
-            objectstore.expunge(*l)
+            #objectstore.expunge(*l)
 
 if __name__ == "__main__":
     testbase.main()        

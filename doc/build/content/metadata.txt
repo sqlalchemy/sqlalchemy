@@ -1,34 +1,48 @@
 Database Meta Data {@name=metadata}
 ==================
 
-### Describing Tables with MetaData {@name=tables}    
+### Describing Databases with MetaData {@name=tables}    
 
-The core of SQLAlchemy's query and object mapping operations is table metadata, which are Python objects that describe tables.  Metadata objects can be created by explicitly naming the table and all its properties, using the Table, Column, ForeignKey, and Sequence objects imported from `sqlalchemy.schema`, and a database engine constructed as described in the previous section, or they can be automatically pulled from an existing database schema.  First, the explicit version: 
+The core of SQLAlchemy's query and object mapping operations is database metadata, which are Python objects that describe tables and other schema-level objects.  Metadata objects can be created by explicitly naming the various components and their properties, using the Table, Column, ForeignKey, Index, and Sequence objects imported from `sqlalchemy.schema`.  There is also support for *reflection*, which means you only specify the *name* of the entities and they are recreated from the database automatically.
+
+A collection of metadata entities is stored in an object aptly named `MetaData`.  This object takes an optional `name` parameter:
 
     {python}
     from sqlalchemy import *
-    engine = create_engine('sqlite', {'filename':':memory:'}, **opts)
     
-    users = Table('users', engine, 
+    metadata = MetaData(name='my metadata')
+
+Then to construct a Table, use the `Table` class:
+
+    {python}
+    users = Table('users', metadata, 
         Column('user_id', Integer, primary_key = True),
         Column('user_name', String(16), nullable = False),
         Column('email_address', String(60), key='email'),
         Column('password', String(20), nullable = False)
     )
     
-    user_prefs = Table('user_prefs', engine, 
+    user_prefs = Table('user_prefs', metadata, 
         Column('pref_id', Integer, primary_key=True),
         Column('user_id', Integer, ForeignKey("users.user_id"), nullable=False),
         Column('pref_name', String(40), nullable=False),
         Column('pref_value', String(100))
     )
+
+The specific datatypes for each Column, such as Integer, String, etc. are described in [types](rel:types), and exist within the module `sqlalchemy.types` as well as the global `sqlalchemy` namespace.
+
+The `MetaData` object supports some handy methods, such as getting a list of Tables in the order (or reverse) of their dependency:
+
+    {python}
+    >>> for t in metadata.table_iterator(reverse=False):
+    ...    print t.name
+    users
+    user_prefs
         
-The specific datatypes, such as Integer, String, etc. are defined in [types](rel:types) and are automatically pulled in when you import * from `sqlalchemy`.  Note that for Column objects, an altername name can be specified via the "key" parameter; if this parameter is given, then all programmatic references to this Column object will be based on its key, instead of its actual column name.
-        
-Once constructed, the Table object provides a clean interface to the table's properties as well as that of its columns:
+And `Table` provides an interface to the table's properties as well as that of its columns:
         
     {python}
-    employees = Table('employees', engine, 
+    employees = Table('employees', metadata, 
         Column('employee_id', Integer, primary_key=True),
         Column('employee_name', String(60), nullable=False, key='name'),
         Column('employee_dept', Integer, ForeignKey("departments.department_id"))
@@ -55,7 +69,10 @@ Once constructed, the Table object provides a clean interface to the table's pro
     for fkey in employees.foreign_keys:
         # ...
         
-    # access the table's SQLEngine object:
+    # access the table's MetaData:
+    employees.metadata
+    
+    # access the table's Engine, if its MetaData is bound:
     employees.engine
     
     # access a column's name, type, nullable, primary key, foreign key
@@ -75,45 +92,101 @@ Once constructed, the Table object provides a clean interface to the table's pro
     
     # get the table related by a foreign key
     fcolumn = employees.c.employee_dept.foreign_key.column.table
-        
-Metadata objects can also be <b>reflected</b> from tables that already exist in the database.  Reflection means based on a table name, the names, datatypes, and attributes of all columns, including foreign keys, will be loaded automatically.  This feature is supported by all database engines:
+
+#### Binding MetaData to an Engine {@name=binding}
+
+A MetaData object can be associated with one or more Engine instances.  This allows the MetaData and the elements within it to perform operations automatically, using the connection resources of that Engine.  This includes being able to "reflect" the columns of tables, as well as to perform create and drop operations without needing to pass an `Engine` or `Connection` around.  It also allows SQL constructs to be created which know how to execute themselves (called "implicit execution").
+
+To bind `MetaData` to a single `Engine`, use `BoundMetaData`:
 
     {python}
-    >>> messages = Table('messages', engine, autoload = True)
+    engine = create_engine('sqlite://', **kwargs)
+    
+    # create BoundMetaData from an Engine
+    meta = BoundMetaData(engine)
+    
+    # create the Engine and MetaData in one step
+    meta = BoundMetaData('postgres://db/', **kwargs)
+    
+Another form of `MetaData` exists which allows connecting to any number of engines, within the context of the current thread.  This is `DynamicMetaData`:
+
+    {python}
+    meta = DynamicMetaData()
+    
+    meta.connect(engine)    # connect to an existing Engine
+    
+    meta.connect('mysql://user@host/dsn')   # create a new Engine and connect
+
+`DynamicMetaData` is ideal for applications that need to use the same set of `Tables` for many different database connections in the same process, such as a CherryPy web application which handles multiple application instances in one process.
+
+#### Reflecting Tables
+
+Once you have a `BoundMetaData` or a connected `DynamicMetaData`, you can create `Table` objects without specifying their columns, just their names, using `autoload=True`:
+
+    {python}
+    >>> messages = Table('messages', meta, autoload = True)
     >>> [c.name for c in messages.columns]
     ['message_id', 'message_name', 'date']
-        
+
+At the moment the Table is constructed, it will query the database for the columns and constraints of the `messages` table.
+
 Note that if a reflected table has a foreign key referencing another table, then the metadata for the related table will be loaded as well, even if it has not been defined by the application:              
         
     {python}
-    >>> shopping_cart_items = Table('shopping_cart_items', engine, autoload = True)
+    >>> shopping_cart_items = Table('shopping_cart_items', meta, autoload = True)
     >>> print shopping_cart_items.c.cart_id.table.name
     shopping_carts
         
 To get direct access to 'shopping_carts', simply instantiate it via the Table constructor.  You'll get the same instance of the shopping cart Table as the one that is attached to shopping_cart_items:
 
     {python}
-    >>> shopping_carts = Table('shopping_carts', engine)
+    >>> shopping_carts = Table('shopping_carts', meta)
     >>> shopping_carts is shopping_cart_items.c.cart_id.table.name
     True
         
-This works because when the Table constructor is called for a particular name and database engine, if the table has already been created then the instance returned will be the same as the original.  This is a <b>singleton</b> constructor:
+This works because when the Table constructor is called for a particular name and `MetaData` object, if the table has already been created then the instance returned will be the same as the original.  This is a <b>singleton</b> constructor:
 
     {python}
-    >>> news_articles = Table('news', engine, 
+    >>> news_articles = Table('news', meta, 
     ... Column('article_id', Integer, primary_key = True),
     ... Column('url', String(250), nullable = False)
     ... )
-    >>> othertable = Table('news', engine)
+    >>> othertable = Table('news', meta)
     >>> othertable is news_articles
     True
-        
-### Creating and Dropping Database Tables {@name=creating}    
 
-Creating and dropping is easy, just use the `create()` and `drop()` methods:
+#### Specifying the Schema Name {@name=schema}
+
+Some databases support the concept of multiple schemas.  A `Table` can reference this by specifying the `schema` keyword argument:
 
     {python}
-    employees = Table('employees', engine, 
+    financial_info = Table('financial_info', meta,
+        Column('id', Integer, primary_key=True),
+        Column('value', String(100), nullable=False),
+        schema='remote_banks'
+    )
+
+Within the `MetaData` collection, this table will be identified by the combination of `financial_info` and `remote_banks`.  If another table called `financial_info` is referenced without the `remote_banks` schema, it will refer to a different `Table`.  `ForeignKey` objects can reference columns in this table using the form `remote_banks.financial_info.id`.
+
+#### Other Options {@name=options}
+
+`Tables` may support database-specific options, such as MySQL's `engine` option that can specify "MyISAM", "InnoDB", and other backends for the table:
+
+    {python}
+    addresses = Table('engine_email_addresses', meta,
+        Column('address_id', Integer, primary_key = True),
+        Column('remote_user_id', Integer, ForeignKey(users.c.user_id)),
+        Column('email_address', String(20)),
+        mysql_engine='InnoDB'
+    )
+    
+### Creating and Dropping Database Tables {@name=creating}    
+
+Creating and dropping individual tables can be done via the `create()` and `drop()` methods of `Table`; these methods take an optional `engine` parameter which references an `Engine` or a `Connection`.  If not supplied, the `Engine` bound to the `MetaData` will be used, else an error is raised:
+
+    {python}
+    meta = BoundMetaData('sqlite:///:memory:')
+    employees = Table('employees', meta, 
         Column('employee_id', Integer, primary_key=True),
         Column('employee_name', String(60), nullable=False, key='name'),
         Column('employee_dept', Integer, ForeignKey("departments.department_id"))
@@ -125,11 +198,51 @@ Creating and dropping is easy, just use the `create()` and `drop()` methods:
     employee_dept INTEGER REFERENCES departments(department_id)
     )
     {}            
+
+`drop()` method:
     
-    {sql}employees.drop()
+    {python}
+    {sql}employees.drop(engine=e)
     DROP TABLE employees
     {}            
+
+Entire groups of Tables can be created and dropped directly from the `MetaData` object with `create_all()` and `drop_all()`, each of which take an optional `engine` keyword argument which can reference an `Engine` or a `Connection`, else the underlying bound `Engine` is used:
+
+    {python}
+    engine = create_engine('sqlite:///:memory:')
     
+    metadata = MetaData()
+    
+    users = Table('users', metadata, 
+        Column('user_id', Integer, primary_key = True),
+        Column('user_name', String(16), nullable = False),
+        Column('email_address', String(60), key='email'),
+        Column('password', String(20), nullable = False)
+    )
+    
+    user_prefs = Table('user_prefs', metadata, 
+        Column('pref_id', Integer, primary_key=True),
+        Column('user_id', Integer, ForeignKey("users.user_id"), nullable=False),
+        Column('pref_name', String(40), nullable=False),
+        Column('pref_value', String(100))
+    )
+    
+    {sql}metadata.create_all(engine=engine)
+    PRAGMA table_info(users){}
+    CREATE TABLE users(
+            user_id INTEGER NOT NULL PRIMARY KEY, 
+            user_name VARCHAR(16) NOT NULL, 
+            email_address VARCHAR(60), 
+            password VARCHAR(20) NOT NULL
+    )
+    PRAGMA table_info(user_prefs){}
+    CREATE TABLE user_prefs(
+            pref_id INTEGER NOT NULL PRIMARY KEY, 
+            user_id INTEGER NOT NULL REFERENCES users(user_id), 
+            pref_name VARCHAR(40) NOT NULL, 
+            pref_value VARCHAR(100)
+    )
+
 ### Column Defaults and OnUpdates {@name=defaults}    
 
 SQLAlchemy includes flexible constructs in which to create default values for columns upon the insertion of rows, as well as upon update.  These defaults can take several forms: a constant, a Python callable to be pre-executed before the SQL is executed, a SQL expression or function to be pre-executed before the SQL is executed, a pre-executed Sequence (for databases that support sequences), or a "passive" default, which is a default function triggered by the database itself upon insert, the value of which can then be post-fetched by the engine, provided the row provides a primary key in which to call upon.
@@ -146,7 +259,7 @@ A basic default is most easily specified by the "default" keyword argument to Co
         i += 1
         return i
 
-    t = Table("mytable", db, 
+    t = Table("mytable", meta, 
         # function-based default
         Column('id', Integer, primary_key=True, default=mydefault),
     
@@ -157,7 +270,7 @@ A basic default is most easily specified by the "default" keyword argument to Co
 The "default" keyword can also take SQL expressions, including select statements or direct function calls:
 
     {python}
-    t = Table("mytable", db, 
+    t = Table("mytable", meta, 
         Column('id', Integer, primary_key=True),
     
         # define 'create_date' to default to now()
@@ -177,7 +290,7 @@ The "default" keyword argument is shorthand for using a ColumnDefault object in 
 Similar to an on-insert default is an on-update default, which is most easily specified by the "onupdate" keyword to Column, which also can be a constant, plain Python function or SQL expression:
 
     {python}
-    t = Table("mytable", db, 
+    t = Table("mytable", meta, 
         Column('id', Integer, primary_key=True),
         
         # define 'last_updated' to be populated with current_timestamp (the ANSI-SQL version of now())
@@ -195,7 +308,7 @@ To use an explicit ColumnDefault object to specify an on-update, use the "for_up
 A PassiveDefault indicates a column default or on-update value that is executed automatically by the database.  This construct is used to specify a SQL function that will be specified as "DEFAULT" when creating tables, and also to indicate the presence of new data that is available to be "post-fetched" after an insert or update execution.
 
     {python}
-    t = Table('test', e, 
+    t = Table('test', meta, 
         Column('mycolumn', DateTime, PassiveDefault("sysdate"))
     )
         
@@ -206,7 +319,7 @@ A create call for the above table will produce:
         mycolumn datetime default sysdate
     )
         
-PassiveDefaults also send a message to the SQLEngine that data is available after update or insert.  The object-relational mapper system uses this information to post-fetch rows after insert or update, so that instances can be refreshed with the new data.  Below is a simplified version:
+PassiveDefaults also send a message to the `Engine` that data is available after update or insert.  The object-relational mapper system uses this information to post-fetch rows after insert or update, so that instances can be refreshed with the new data.  Below is a simplified version:
 
     {python}
     # table with passive defaults
@@ -220,36 +333,35 @@ PassiveDefaults also send a message to the SQLEngine that data is available afte
         Column('data2', Integer, PassiveDefault("d2_func", for_update=True))
     )
     # insert a row
-    mytable.insert().execute(name='fred')
+    r = mytable.insert().execute(name='fred')
 
-    # ask the engine: were there defaults fired off on that row ?
-    if table.engine.lastrow_has_defaults():
+    # check the result: were there defaults fired off on that row ?
+    if r.lastrow_has_defaults():
         # postfetch the row based on primary key.
         # this only works for a table with primary key columns defined
-        primary_key = table.engine.last_inserted_ids()
+        primary_key = r.last_inserted_ids()
         row = table.select(table.c.id == primary_key[0])
         
-When Tables are reflected from the database using <code>autoload=True</code>, any DEFAULT values set on the columns will be reflected in the Table object as PassiveDefault instances.
+When Tables are reflected from the database using `autoload=True`, any DEFAULT values set on the columns will be reflected in the Table object as PassiveDefault instances.
 
 ##### The Catch: Postgres Primary Key Defaults always Pre-Execute {@name=postgres}
 
 Current Postgres support does not rely upon OID's to determine the identity of a row.  This is because the usage of OIDs has been deprecated with Postgres and they are disabled by default for table creates as of PG version 8.  Pyscopg2's "cursor.lastrowid" function only returns OIDs.  Therefore, when inserting a new row which has passive defaults set on the primary key columns, the default function is <b>still pre-executed</b> since SQLAlchemy would otherwise have no way of retrieving the row just inserted.
-        
-        
+
 #### Defining Sequences {@name=sequences}    
 
 A table with a sequence looks like:
 
     {python}
-    table = Table("cartitems", db, 
+    table = Table("cartitems", meta, 
         Column("cart_id", Integer, Sequence('cart_id_seq'), primary_key=True),
         Column("description", String(40)),
         Column("createdate", DateTime())
     )
         
-The Sequence is used with Postgres or Oracle to indicate the name of a Sequence that will be used to create default values for a column.  When a table with a Sequence on a column is created by SQLAlchemy, the Sequence object is also created.   Similarly, the Sequence is dropped when the table is dropped.  Sequences are typically used with primary key columns.  When using Postgres, if an integer primary key column defines no explicit Sequence or other default method, SQLAlchemy will create the column with the SERIAL keyword, and will pre-execute a sequence named "tablename_columnname_seq" in order to retrieve new primary key values.   Oracle, which has no "auto-increment" keyword, requires that a Sequence be created for a table if automatic primary key generation is desired.  Note that for all databases, primary key values can always be explicitly stated within the bind parameters for any insert statement as well, removing the need for any kind of default generation function.
+The Sequence is used with Postgres or Oracle to indicate the name of a database sequence that will be used to create default values for a column.  When a table with a Sequence on a column is created in the database by SQLAlchemy, the database sequence object is also created.   Similarly, the database sequence is dropped when the table is dropped.  Sequences are typically used with primary key columns.  When using Postgres, if an integer primary key column defines no explicit Sequence or other default method, SQLAlchemy will create the column with the SERIAL keyword, and will pre-execute a sequence named "tablename_columnname_seq" in order to retrieve new primary key values, if they were not otherwise explicitly stated.   Oracle, which has no "auto-increment" keyword, requires that a Sequence be created for a table if automatic primary key generation is desired.  
     
-A Sequence object can be defined on a Table that is then used for a non-sequence-supporting database.  In that case, the Sequence object is simply ignored.  Note that a Sequence object is <b>entirely optional for all databases except Oracle</b>, as other databases offer options for auto-creating primary key values, such as AUTOINCREMENT, SERIAL, etc.  SQLAlchemy will use these default methods for creating primary key values if no Sequence is present on the table metadata.
+A Sequence object can be defined on a Table that is then used for a non-sequence-supporting database.  In that case, the Sequence object is simply ignored.  Note that a Sequence object is **entirely optional for all databases except Oracle**, as other databases offer options for auto-creating primary key values, such as AUTOINCREMENT, SERIAL, etc.  SQLAlchemy will use these default methods for creating primary key values if no Sequence is present on the table metadata.
     
 A sequence can also be specified with `optional=True` which indicates the Sequence should only be used on a database that requires an explicit sequence, and not those that supply some other method of providing integer values.  At the moment, it essentially means "use this sequence only with Oracle and not Postgres".
     
@@ -258,7 +370,8 @@ A sequence can also be specified with `optional=True` which indicates the Sequen
 Indexes can be defined on table columns, including named indexes, non-unique or unique, multiple column.  Indexes are included along with table create and drop statements.  They are not used for any kind of run-time constraint checking; SQLAlchemy leaves that job to the expert on constraint checking, the database itself.
 
     {python}
-    mytable = Table('mytable', engine, 
+    boundmeta = BoundMetaData('postgres:///scott:tiger@localhost/test')
+    mytable = Table('mytable', boundmeta, 
         # define a unique index 
         Column('col1', Integer, unique=True),
         
@@ -287,50 +400,19 @@ Indexes can be defined on table columns, including named indexes, non-unique or 
     # which can then be created separately (will also get created with table creates)
     i.create()
     
-### Adapting Tables to Alternate Engines {@name=adapting}
+### Adapting Tables to Alternate Metadata {@name=adapting}
 
-A Table object created against a specific engine can be re-created against a new engine using the `toengine` method:
+A `Table` object created against a specific `MetaData` object can be re-created against a new MetaData using the `tometadata` method:
 
     {python}
-    # create two engines
-    sqlite_engine = create_engine('sqlite', {'filename':'querytest.db'})
-    postgres_engine = create_engine('postgres', 
-                        {'database':'test', 
-                        'host':'127.0.0.1', 'user':'scott', 'password':'tiger'})
+    # create two metadata
+    meta1 = BoundMetaData('sqlite:///querytest.db')
+    meta2 = MetaData()
                         
     # load 'users' from the sqlite engine
-    users = Table('users', sqlite_engine, autoload=True)
+    users_table = Table('users', meta1, autoload=True)
     
-    # create the same Table object for the other engine
-    pg_users = users.toengine(postgres_engine)
+    # create the same Table object for the plain metadata
+    users_table_2 = users_table.tometadata(meta2)
     
-Also available is the "database neutral" ansisql engine:
-
-    {python}
-    import sqlalchemy.ansisql as ansisql
-    generic_engine = ansisql.engine()
-    
-    users = Table('users', generic_engine, 
-        Column('user_id', Integer),
-        Column('user_name', String(50))
-    )
-                
-Flexible "multi-engined" tables can also be achieved via the proxy engine, described in the section [dbengine_proxy](rel:dbengine_proxy).
-
-#### Non-engine primitives: TableClause/ColumnClause {@name=primitives}   
-
-TableClause and ColumnClause are "primitive" versions of the Table and Column objects which dont use engines at all; applications that just want to generate SQL strings but not directly communicate with a database can use TableClause and ColumnClause objects (accessed via 'table' and 'column'), which are non-singleton and serve as the "lexical" base class of Table and Column:
-
-    {python}
-    tab1 = table('table1',
-        column('id'),
-        column('name'))
-
-    tab2 = table('table2',
-        column('id'),
-        column('email'))
-    
-    tab1.select(tab1.c.name == 'foo')
-        
-TableClause and ColumnClause are strictly lexical.  This means they are fully supported within the full range of SQL statement generation, but they don't support schema concepts like creates, drops, primary keys, defaults, nullable status, indexes, or foreign keys.
     

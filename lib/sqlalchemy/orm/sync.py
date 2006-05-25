@@ -10,7 +10,7 @@ import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
 from sqlalchemy.exceptions import *
 
-"""contains the ClauseSynchronizer class which is used to map attributes between two objects
+"""contains the ClauseSynchronizer class, which is used to map attributes between two objects
 in a manner corresponding to a SQL clause that compares column values."""
 
 ONETOMANY = 0

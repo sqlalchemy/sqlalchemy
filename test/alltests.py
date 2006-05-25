@@ -1,20 +1,16 @@
 import testbase
 import unittest
 
-testbase.echo = False
-
-#test
-
 def suite():
     modules_to_test = (
         # core utilities
-        'historyarray', 
+        'historyarray',
         'attributes', 
         'dependency',
-        
+
         # connectivity, execution
         'pool', 
-        'engine',
+        'transaction',
         
         # schema/tables
         'reflection', 
@@ -40,7 +36,9 @@ def suite():
         'eagertest2',
         
         # ORM persistence
+        'sessioncontext', 
         'objectstore',
+        'cascade',
         'relationships',
         
         # cyclical ORM persistence
@@ -51,9 +49,11 @@ def suite():
         'manytomany',
         'onetoone',
         'inheritance',
+	'polymorph',
         
         # extensions
         'proxy_engine',
+        'activemapper'
         #'wsgi_test',
         
         )
@@ -62,8 +62,6 @@ def suite():
         alltests.addTest(unittest.findTestCases(module, suiteClass=None))
     return alltests
 
-import sys
-sys.stdout = sys.stderr
 
 if __name__ == '__main__':
     testbase.runTests(suite())

@@ -455,7 +455,7 @@ class MSSQLCompiler(ansisql.ANSICompiler):
         super(MSSQLCompiler, self).visit_column(column)
         if column.table is not None and self.tablealiases.has_key(column.table):
             self.strings[column] = \
-                self.strings[self.tablealiases[column.table]._get_col_by_original(column.original)]
+                self.strings[self.tablealiases[column.table].corresponding_column(column.original)]
 
         
 class MSSQLSchemaGenerator(ansisql.ANSISchemaGenerator):

@@ -2,7 +2,8 @@ from sqlalchemy import *
 import string,datetime, re, sys
 from testbase import PersistTest, AssertMixin
 import testbase
-    
+import sqlalchemy.engine.url as url
+
 db = testbase.db
 
 class MyType(types.TypeEngine):
@@ -34,15 +35,15 @@ class MyUnicodeType(types.Unicode):
 
 class AdaptTest(PersistTest):
     def testadapt(self):
-        e1 = create_engine('postgres://')
-        e2 = create_engine('sqlite://')
-        e3 = create_engine('mysql://')
+        e1 = url.URL('postgres').get_module().dialect()
+        e2 = url.URL('mysql').get_module().dialect()
+        e3 = url.URL('sqlite').get_module().dialect()
         
         type = String(40)
         
-        t1 = type.engine_impl(e1)
-        t2 = type.engine_impl(e2)
-        t3 = type.engine_impl(e3)
+        t1 = type.dialect_impl(e1)
+        t2 = type.dialect_impl(e2)
+        t3 = type.dialect_impl(e3)
         assert t1 != t2
         assert t2 != t3
         assert t3 != t1
@@ -116,7 +117,7 @@ class ColumnsTest(AssertMixin):
         )
 
         for aCol in testTable.c:
-            self.assertEquals(expectedResults[aCol.name], db.schemagenerator().get_column_specification(aCol))
+            self.assertEquals(expectedResults[aCol.name], db.dialect.schemagenerator(db, None).get_column_specification(aCol))
         
 class UnicodeTest(AssertMixin):
     """tests the Unicode type.  also tests the TypeDecorator with instances in the types package."""
@@ -130,13 +131,6 @@ class UnicodeTest(AssertMixin):
         unicode_table.create()
     def tearDownAll(self):
         unicode_table.drop()
-    def testwhereclause(self):
-        l = unicode_table.select(unicode_table.c.unicode_data==u'this is also unicode').execute()
-    def testmapperwhere(self):
-        class Foo(object):pass
-        m = mapper(Foo, unicode_table)
-        l = m.get_by(unicode_data=unicode('this is also unicode'))
-        l = m.get_by(plain_data=unicode('this is also unicode'))
     def testbasic(self):
         rawdata = 'Alors vous imaginez ma surprise, au lever du jour, quand une dr\xc3\xb4le de petit voix m\xe2\x80\x99a r\xc3\xa9veill\xc3\xa9. Elle disait: \xc2\xab S\xe2\x80\x99il vous pla\xc3\xaet\xe2\x80\xa6 dessine-moi un mouton! \xc2\xbb\n'
         unicodedata = rawdata.decode('utf-8')
@@ -147,15 +141,15 @@ class UnicodeTest(AssertMixin):
         self.assert_(isinstance(x['unicode_data'], unicode) and x['unicode_data'] == unicodedata)
         if isinstance(x['plain_data'], unicode):
             # SQLLite returns even non-unicode data as unicode
-            self.assert_(sys.modules[db.engine.__module__].descriptor()['name'] == 'sqlite')
+            self.assert_(db.name == 'sqlite')
             self.echo("its sqlite !")
         else:
             self.assert_(not isinstance(x['plain_data'], unicode) and x['plain_data'] == rawdata)
     def testengineparam(self):
         """tests engine-wide unicode conversion"""
-        prev_unicode = db.engine.convert_unicode
+        prev_unicode = db.engine.dialect.convert_unicode
         try:
-            db.engine.convert_unicode = True
+            db.engine.dialect.convert_unicode = True
             rawdata = 'Alors vous imaginez ma surprise, au lever du jour, quand une dr\xc3\xb4le de petit voix m\xe2\x80\x99a r\xc3\xa9veill\xc3\xa9. Elle disait: \xc2\xab S\xe2\x80\x99il vous pla\xc3\xaet\xe2\x80\xa6 dessine-moi un mouton! \xc2\xbb\n'
             unicodedata = rawdata.decode('utf-8')
             unicode_table.insert().execute(unicode_data=unicodedata, plain_data=rawdata)
@@ -165,8 +159,7 @@ class UnicodeTest(AssertMixin):
             self.assert_(isinstance(x['unicode_data'], unicode) and x['unicode_data'] == unicodedata)
             self.assert_(isinstance(x['plain_data'], unicode) and x['plain_data'] == unicodedata)
         finally:
-            db.engine.convert_unicode = prev_unicode
-
+            db.engine.dialect.convert_unicode = prev_unicode
 
 class Foo(object):
     def __init__(self, moredata):
@@ -175,7 +168,7 @@ class Foo(object):
         self.moredata = moredata
     def __eq__(self, other):
         return other.data == self.data and other.stuff == self.stuff and other.moredata==self.moredata
-    
+
 class BinaryTest(AssertMixin):
     def setUpAll(self):
         global binary_table
@@ -184,21 +177,20 @@ class BinaryTest(AssertMixin):
         Column('data', Binary),
         Column('data_slice', Binary(100)),
         Column('misc', String(30)),
-        Column('pickled', PickleType))
+        Column('pickled', PickleType)
+        )
         binary_table.create()
     def tearDownAll(self):
         binary_table.drop()
     def testbinary(self):
         testobj1 = Foo('im foo 1')
         testobj2 = Foo('im foo 2')
-        
+
         stream1 =self.get_module_stream('sqlalchemy.sql')
-        stream2 =self.get_module_stream('sqlalchemy.engine')
+        stream2 =self.get_module_stream('sqlalchemy.schema')
         binary_table.insert().execute(primary_id=1, misc='sql.pyc',    data=stream1, data_slice=stream1[0:100], pickled=testobj1)
-        binary_table.insert().execute(primary_id=2, misc='engine.pyc', data=stream2, data_slice=stream2[0:99], pickled=testobj2)
+        binary_table.insert().execute(primary_id=2, misc='schema.pyc', data=stream2, data_slice=stream2[0:99], pickled=testobj2)
         l = binary_table.select().execute().fetchall()
-        print type(l[0]['data'])
-        return
         print len(stream1), len(l[0]['data']), len(l[0]['data_slice'])
         self.assert_(list(stream1) == list(l[0]['data']))
         self.assert_(list(stream1[0:100]) == list(l[0]['data_slice']))
@@ -231,7 +223,7 @@ class DateTest(AssertMixin):
         collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime),
                    Column('user_date', Date), Column('user_time', Time)]
         
-        if db.engine.__module__.endswith('mysql') or db.engine.__module__.endswith('mssql'):
+        if db.engine.name == 'mysql' or db.engine.name == 'mssql':
             # strip microseconds -- not supported by this engine (should be an easier way to detect this)
             for d in insert_data:
                 if d[2] is not None:

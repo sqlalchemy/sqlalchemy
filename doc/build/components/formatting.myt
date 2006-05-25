@@ -261,6 +261,7 @@
     title = None
     syntaxtype = 'python'
     html_escape = False
+    use_sliders = False
 </%args>
 
 <%init>
@@ -289,7 +290,7 @@
         return "<pre>" + highlight.highlight(fix_indent(match.group(1)), html_escape = html_escape, syntaxtype = syntaxtype) + "</pre>"
     content = p.sub(hlight, "<pre>" + m.content() + "</pre>")
 </%init>
-<div class="code">
+<div class="<% use_sliders and "sliding_code" or "code" %>">
 % if title is not None:
     <div class="codetitle"><% title %></div>
 %

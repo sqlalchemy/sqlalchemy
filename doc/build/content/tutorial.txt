@@ -1,7 +1,8 @@
 Tutorial
 ========
-This tutorial provides a relatively simple walking tour through the basic concepts of SQLAlchemy.  You may wish to skip it and dive into the [main manual][manual] which is more reference-oriented.
+This tutorial provides a relatively simple walking tour through the basic concepts of SQLAlchemy.  You may wish to skip it and dive into the [main manual][manual] which is more reference-oriented.  The examples in this tutorial comprise a fully working interactive Python session, and are guaranteed to be functioning courtesy of [doctest][].
 
+[doctest]: http://www.python.org/doc/lib/module-doctest.html
 [manual]: rel:howtoread
 
 Installation
@@ -18,6 +19,10 @@ This command will download the latest version of SQLAlchemy from the [Python Che
 [setuptools]: http://peak.telecommunity.com/DevCenter/setuptools
 [install setuptools]: http://peak.telecommunity.com/DevCenter/EasyInstall#installation-instructions
 [cheese]: http://cheeseshop.python.org/pypi
+
+Otherwise, you can install from the distribution using the `setup.py` script:
+
+    $ python setup.py install
 
 ### Installing a Database API {@name=dbms}
 
@@ -40,109 +45,448 @@ Note that the SQLite library download is not required with Windows, as the Windo
 Getting Started {@name=gettingstarted}
 --------------------------
 
+### Imports
+
+SQLAlchemy provides the entire namespace of everything you'll need under the module name `sqlalchemy`.  For the purposes of this tutorial, we will import its full list of symbols into our own local namespace.  
+
+    {python}
+    >>> from sqlalchemy import *
+
 ### Connecting to the Database
 
-The first thing needed is a handle to the desired database, represented by a `SQLEngine` object.  This object handles the business of managing connections and dealing with the specifics of a particular database.  Below, we will make a SQLite connection to a file-based database called "tutorial.db".
+After our imports, the next thing we need is a handle to the desired database, represented by an `Engine` object.  This object handles the business of managing connections and dealing with the specifics of a particular database.  Below, we will make a SQLite connection to a file-based database called "tutorial.db".
 
-    >>> from sqlalchemy import *
-    >>> db = create_engine('sqlite://filename=tutorial.db')
+    {python}
+    >>> db = create_engine('sqlite:///tutorial.db')
+    
 
 For full information on creating database engines, including those for SQLite and others, see [dbengine](rel:dbengine).
 
+Working with Database Objects {@name=schemasql}
+-----------------------------------------------
+
+A core philosophy of SQLAlchemy is that tables and domain classes are different beasts.  For this reason, SQLAlchemy provides constructs that represent tables by themselves (known as *table metadata*).  So we will begin by constructing table metadata objects and performing SQL operations with them directly.  Later, we will look into SQLAlchemy's Object Relational Mapper (ORM), which provides an additional layer of abstraction onto table metadata, allowing us to load and save objects of any arbitrary Python class.
+
+### Defining Metadata, Binding to Engines {@name=metadata}
+
+Firstly, your Tables have to belong to a collection called `MetaData`.  We will create a handy form of `MetaData` that automatically connects to our `Engine` (connecting a schema object to an Engine is called *binding*):
+
+    {python}
+    >>> metadata = BoundMetaData(db)
+
+An equivalent operation is to create the `BoundMetaData` object directly with an Engine URL, which calls the `create_engine` call for us:
+
+    {python}
+    >>> metadata = BoundMetaData('sqlite:///tutorial.db')
+
+Now, when we tell "metadata" about the tables in our database, we can issue CREATE statements for those tables, as well as create and execute SQL statements derived from them, without needing to open or close any connections; that will be all done automatically.  Note that this feature is **entirely optional**.  SQLAlchemy includes full support for explicit Connections used with schema and SQL constructs that are entirely unbound to any Engine.
+
+For the purposes of this tutorial, we will stick with "bound" objects, as it makes the code simpler and easier to read.  
+
 ### Creating a Table {@name=table}
 
-A core philosophy of SQLAlchemy is that tables and domain classes are different beasts.  For this reason, SQLAlchemy provides constructs that represent tables by themselves (known as *table metadata*).  So we will begin by constructing table metadata objects and performing SQL operations with them directly, keeping in mind that there is also an Object Relational Mapper (ORM) which does the same thing except via domain models.  Let's construct an object that represents a table:
+With `metadata` as our established home for tables, lets make a Table for it:
 
-    >>> users = Table('users', db,
-    ...     Column('user_id', Integer, primary_key = True),
+    {python}
+    >>> users_table = Table('users', metadata,
+    ...     Column('user_id', Integer, primary_key=True),
     ...     Column('user_name', String(40)),
-    ...     Column('password', String(80))
+    ...     Column('password', String(10))
     ... )
 
-As you might have guessed, we have just defined a table named `users` which has three columns: `user_id` (which is a primary key column), `user_name` and `password`. Currently it is just an object that may not correspond to an existing table in your database.  To actually create the table, we use the `create()` method.  To make it interesting we will have SQLAlchemy to echo the SQL statements it sends to the database:
+As you might have guessed, we have just defined a table named `users` which has three columns: `user_id` (which is a primary key column), `user_name` and `password`. Currently it is just an object that doesn't necessarily correspond to an existing table in our database.  To actually create the table, we use the `create()` method.  To make it interesting, we will have SQLAlchemy echo the SQL statements it sends to the database, by setting the `echo` flag on the `Engine` associated with our `BoundMetaData`:
 
-    >>> db.echo = True
-    >>> users.create() # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
+    {python}
+    >>> metadata.engine.echo = True
+    >>> users_table.create() # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
     CREATE TABLE users(
         user_id INTEGER NOT NULL PRIMARY KEY,
         user_name VARCHAR(40),
-        password VARCHAR(80)
+        password VARCHAR(10)
     )
     ...
-    >>> db.echo = False # you can skip this if you want to keep logging SQL statements
 
 Alternatively, the `users` table might already exist (such as, if you're running examples from this tutorial for the second time), in which case you can just skip the `create()` method call. You can even skip defining the individual columns in the `users` table and ask SQLAlchemy to load its definition from the database:
 
-    >>> users = Table('users', db, autoload = True)
-    >>> list(users.columns)[0].name
+    {python}
+    >>> users_table = Table('users', metadata, autoload=True)
+    >>> list(users_table.columns)[0].name
     'user_id'
 
 Documentation on table metadata is available in [metadata](rel:metadata).
 
 ### Inserting Rows
 
-Inserting is achieved via the `insert()` method, which defines a *clause object* representing an INSERT statement:
+Inserting is achieved via the `insert()` method, which defines a *clause object* (known as a `ClauseElement`) representing an INSERT statement:
 
-    >>> i = users.insert()
+    {python}
+    >>> i = users_table.insert()
     >>> i # doctest:+ELLIPSIS
     <sqlalchemy.sql.Insert object at 0x...>
     >>> print i
     INSERT INTO users (user_id, user_name, password) VALUES (?, ?, ?)
 
-The `execute()` method of the clause object executes the statement at the database level:
+Since we created this insert statement object from the `users` table which is bound to our `Engine`, the statement itself is also bound to the `Engine`, and supports executing itself.  The `execute()` method of the clause object will *compile* the object into a string according to the underlying *dialect* of the Engine to which the statement is bound, and will then execute the resulting statement.  
 
-    >>> for name in ['Tom', 'Dick', 'Harry']: # doctest:+ELLIPSIS
-    ...     i.execute(user_name = name)
-    <sqlalchemy.engine.ResultProxy instance at 0x...>
-    ...
-    >>> i.execute(user_name = 'Mary', password = 'secure') # doctest:+ELLIPSIS
-    <sqlalchemy.engine.ResultProxy instance at 0x...>
+    {python}
+    >>> i.execute(user_name='Mary', password='secure') # doctest:+ELLIPSIS
+    INSERT INTO users (user_name, password) VALUES (?, ?)
+    ['Mary', 'secure']
+    COMMIT
+    <sqlalchemy.engine.base.ResultProxy instance at 0x...>
 
-When constructing clause objects, SQLAlchemy will bind all literal values into bind parameters, according to the paramstyle of the underlying DBAPI. This allows for better performance, as the database may cache a compiled representation of the statement and reuse it for new executions, substituting the new values. Also, when using bound values, you need not worry about [SQL injection][] attacks.
+    >>> i.execute({'user_name':'Tom'}, {'user_name':'Fred'}, {'user_name':'Harry'}) # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
+    INSERT INTO users (user_name) VALUES (?)
+    [['Tom'], ['Fred'], ['Harry']]
+    COMMIT
+    <sqlalchemy.engine.base.ResultProxy instance at 0x...>
 
-[SQL injection]: http://en.wikipedia.org/wiki/SQL_injection
+
+Note that the `VALUES` clause of each `INSERT` statement was automatically adjusted to correspond to the parameters sent to the `execute()` method.  This is because the compilation step of a `ClauseElement` takes into account not just the constructed SQL object and the specifics of the type of database being used, but the execution parameters sent along as well.  
+
+When constructing clause objects, SQLAlchemy will bind all literal values into bind parameters.  On the construction side, bind parameters are always treated as named parameters.  At compilation time, SQLAlchemy will convert them into their proper format, based on the paramstyle of the underlying DBAPI.  This works equally well for all named and positional bind parameter formats described in the DBAPI specification.
 
 Documentation on inserting: [sql_insert](rel:sql_insert).
 
-### Constructing Queries
+### Selecting
 
 Let's check that the data we have put into `users` table is actually there. The procedure is analogous to the insert example above, except you now call the `select()` method off the `users` table:
 
-    >>> s = users.select()
+    {python}
+    >>> s = users_table.select()
     >>> print s
     SELECT users.user_id, users.user_name, users.password 
     FROM users
     >>> r = s.execute()
+    SELECT users.user_id, users.user_name, users.password 
+    FROM users
+    []
+    
+This time, we won't ignore the return value of `execute()`.  Its an instance of `ResultProxy`, which is a result-holding object that behaves very similarly to the `cursor` object one deals with directly with a database API:
 
-This time, we won't ignore the return value of `execute()`:
-
+    {python}
     >>> r # doctest:+ELLIPSIS
-    <sqlalchemy.engine.ResultProxy instance at 0x...>
-    >>> r.keys
-    ['user_id', 'user_name', 'password']
-    >>> row = r.fetchone()
-    >>> row['user_name']
-    u'Tom'
+    <sqlalchemy.engine.base.ResultProxy instance at 0x...>
+    >>> r.fetchone()
+    (1, u'Mary', u'secure')
     >>> r.fetchall()
-    [(2, u'Dick', None), (3, u'Harry', None), (4, u'Mary', u'secure')]
+    [(2, u'Tom', None), (3, u'Fred', None), (4, u'Harry', None)]
 
-Documentation on selecting: [sql_select](rel:sql_select).
+Query criterion for the select is specified using Python expressions, using the `Column` objects in the `Table` as a base.  All expressions constructed from `Column` objects are themselves instances of `ClauseElements`, just like the `Select`, `Insert`, and `Table` objects themselves.
 
-### Related Table
+    {python}
+    >>> r = users_table.select(users_table.c.user_name=='Harry').execute()
+    SELECT users.user_id, users.user_name, users.password 
+    FROM users 
+    WHERE users.user_name = ?
+    ['Harry']
+    >>> row = r.fetchone()
+    >>> print row
+    (4, u'Harry', None)
+    
+Pretty much the full range of standard SQL operations are supported as constructed Python expressions, including joins, ordering, grouping, functions, correlated subqueries, unions, etc. Documentation on selecting: [sql_select](rel:sql_select).
 
-Main documentation: [sql](rel:sql).
+### Working with Rows
 
-### Fancier Querying {@name=fancyquery}
+You can see that when we print out the rows returned by an execution result, it prints the rows as tuples.  These rows in fact support both the list and dictionary interfaces.  The dictionary interface allows the addressing of columns by string column name, or even the original `Column` object:
 
-Main documentation: [sql](rel:sql).
+    {python}
+    >>> row.keys()
+    ['user_id', 'user_name', 'password']
+    >>> row['user_id'], row[1], row[users_table.c.password] 
+    (4, u'Harry', None)
 
-### Data Mapping {@name=mapping}
+Addressing the columns in a row based on the original `Column` object is especially handy, as it eliminates the need to work with literal column names altogether.
 
-Main documentation: [datamapping](rel:datamapping), [adv_datamapping](rel:adv_datamapping).
+Result sets also support iteration.  We'll show this with a slightly different form of `select` that allows you to specify the specific columns to be selected:
+
+    {python}
+    >>> for row in select([users_table.c.user_id, users_table.c.user_name]).execute(): # doctest:+NORMALIZE_WHITESPACE
+    ...     print row
+    SELECT users.user_id, users.user_name
+    FROM users
+    []
+    (1, u'Mary')
+    (2, u'Tom')
+    (3, u'Fred')
+    (4, u'Harry')
+
+### Table Relationships
+
+Lets create a second table, `email_addresses`, which references the `users` table.  To define the relationship between the two tables, we will use the `ForeignKey` construct.  We will also issue the `CREATE` statement for the table in one step:
+
+    {python}
+    >>> email_addresses_table = Table('email_addresses', metadata,
+    ...     Column('address_id', Integer, primary_key=True),
+    ...     Column('email_address', String(100), nullable=False),
+    ...     Column('user_id', Integer, ForeignKey('users.user_id'))).create() # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
+    CREATE TABLE email_addresses(
+        address_id INTEGER NOT NULL PRIMARY KEY,
+        email_address VARCHAR(100) NOT NULL,
+        user_id INTEGER REFERENCES users(user_id)
+    )
+    ...
+
+Above, the `email_addresses` table is related to the `users` table via the `ForeignKey('users.user_id')`.  The `ForeignKey` constructor can take a `Column` object or a string representing the table and column name.  When using the string argument, the referenced table must exist within the same `MetaData` object; thats where it looks for the other table!
+
+Next, lets put a few rows in:
+
+    {python}
+    >>> email_addresses_table.insert().execute(
+    ...     {'email_address':'tom@tom.com', 'user_id':2},
+    ...     {'email_address':'mary@mary.com', 'user_id':1}) #doctest:+ELLIPSIS
+    INSERT INTO email_addresses (email_address, user_id) VALUES (?, ?)
+    [['tom@tom.com', 2], ['mary@mary.com', 1]]
+    COMMIT
+    <sqlalchemy.engine.base.ResultProxy instance at 0x...>
+
+With two related tables, we can now construct a join amongst them using the `join` method:
+
+    {python}
+    >>> r = users_table.join(email_addresses_table).select().execute()
+    SELECT users.user_id, users.user_name, users.password, email_addresses.address_id, email_addresses.email_address, email_addresses.user_id 
+    FROM users JOIN email_addresses ON users.user_id = email_addresses.user_id
+    []
+    >>> print [row for row in r]
+    [(1, u'Mary', u'secure', 2, u'mary@mary.com', 1), (2, u'Tom', None, 1, u'tom@tom.com', 2)]
+    
+The `join` method is also a standalone function in the `sqlalchemy` namespace.  The join condition is figured out from the foreign keys of the Table objects given.  The condition (also called the "ON clause") can be specified explicitly, such as in this example where we locate all users that used their email address as their password:
+
+    {python}
+    >>> print join(users_table, email_addresses_table, 
+    ...     and_(users_table.c.user_id==email_addresses_table.c.user_id, 
+    ...     users_table.c.password==email_addresses_table.c.email_address)
+    ...     )
+    users JOIN email_addresses ON users.user_id = email_addresses.user_id AND users.password = email_addresses.email_address
+
+Working with Object Mappers {@name=orm}
+-----------------------------------------------
+
+Now that we have a little bit of Table and SQL operations covered, lets look into SQLAlchemy's ORM (object relational mapper).  With the ORM, you associate Tables (and other *Selectable* units, like queries and table aliases) with Python classes, into units called *Mappers*.  Then you can execute queries that return lists of object instances, instead of result sets.  The object instances themselves are associated with an object called a *Session*, which automatically tracks changes on each object and supports a "save all at once" operation called a *flush*.
+
+### Creating a Mapper {@name=mapper}
+
+A Mapper is usually created once per Python class, and at its core primarily means to say, "objects of this class are to be stored as rows in this table".  Lets create a class called `User`, which will represent a user object that is stored in our `users` table:
+
+    {python}
+    >>> class User(object):
+    ...     def __repr__(self):
+    ...         return "(User %s,password:%s)" % (self.user_name, self.password)
+
+The class is a new style class (i.e. it extends `object`) and does not require a constructor (although one may be provided if desired).  We just have one `__repr__` method on it which will display basic information about the User.  Note that the `__repr__` method references the instance variables `user_name` and `password` which otherwise aren't defined.  While we are free to explicitly define these attributes and treat them normally, this is optional; as SQLAlchemy's `Mapper` construct will manage them for us, since their names correspond to the names of columns in the `users` table.  Lets create a mapper, and observe that these attributes are now defined:
+
+    {python}
+    >>> usermapper = mapper(User, users_table)
+    >>> u1 = User()
+    >>> print u1.user_name
+    None
+    >>> print u1.password
+    None
+    
+The `mapper` function returns a new instance of `Mapper`.  As it is the first Mapper we have created for the `User` class, it is known as the classes' *primary mapper*.  We generally don't need to hold onto the `usermapper` instance variable; SA's ORM can automatically locate this Mapper when it deals with the class, or instances of that class.  
+
+### Obtaining a Session {@name=session}
+
+After you create a Mapper, all operations with that Mapper require the usage of an important object called a `Session`.  All objects loaded or saved by the Mapper must be *attached* to a `Session` object, which represents a kind of "workspace" of objects that are loaded into memory.  A particular object instance can only be attached to one `Session` at a time.
+
+By default, you have to create a `Session` object explicitly before you can load or save objects.  Theres several ways to manage sessions, but the most straightforward is to just create one, which we will do by saying, `create_session()`:
+
+    {python}
+    >>> session = create_session()
+    >>> session # doctest:+ELLIPSIS
+    <sqlalchemy.orm.session.Session object at 0x...>
+
+### The Query Object {@name=query}
+    
+The Session has all kinds of methods on it to retrieve and store objects, and also to view their current status.  The Session also provides an easy interface which can be used to query the database, by giving you an instance to a `Query` object corresponding to a particular Python class:
+
+    {python}
+    >>> query = session.query(User)
+    >>> print query.select_by(user_name='Harry')
+    SELECT users.user_name AS users_user_name, users.password AS users_password, users.user_id AS users_user_id 
+    FROM users 
+    WHERE users.user_name = ? ORDER BY users.oid
+    ['Harry']
+    [(User Harry,password:None)]
+    
+All querying for objects is performed via an instance of `Query`.  The various `select` methods on an instance of `Mapper` also use an underlying `Query` object to perform the operation.  A `Query` is always bound to a specific `Session`.  
+
+Lets turn off the database echoing for a moment, and try out a few methods on `Query`.  Methods that end with the suffix `_by` primarily take keyword arguments which correspond to properties on the object.  Other methods take `ClauseElement` objects, which are constructed by using `Column` objects inside of Python expressions, in the same way as we did with our SQL select example in the previous section of this tutorial.  Using `ClauseElement` structures to query objects is more verbose but more flexible:
+
+    {python}
+    >>> metadata.engine.echo = False
+    >>> print query.select(User.c.user_id==3)
+    [(User Fred,password:None)]
+    >>> print query.get(2)
+    (User Tom,password:None)
+    >>> print query.get_by(user_name='Mary')
+    (User Mary,password:secure)
+    >>> print query.selectfirst(User.c.password==None)
+    (User Tom,password:None)
+    >>> print query.count()
+    4
+
+Notice that our `User` class has a special attribute `c` attached to it.  This 'c' represents the columns on the User's mapper's Table object.  Saying `User.c.user_name` is synonymous with saying `users_table.c.user_name`, recalling that `User` is the Python class and `users` is our `Table` object.
+
+### Making Changes {@name=changes}
+
+With a little experience in loading objects, lets see what its like to make changes.  First, lets create a new user "Ed".  We do this by just constructing the new object.  Then, we just add it to the session:
+
+    {python}
+    >>> ed = User()
+    >>> ed.user_name = 'Ed'
+    >>> ed.password = 'edspassword'
+    >>> session.save(ed)
+    >>> ed in session
+    True
+
+Lets also make a few changes on some of the objects in the database.  We will load them with our `Query` object, and then change some things.
+
+    {python}
+    >>> mary = query.get_by(user_name='Mary')
+    >>> harry = query.get_by(user_name='Harry')
+    >>> mary.password = 'marysnewpassword'
+    >>> harry.password = 'harrysnewpassword'
+    
+At the moment, nothing has been saved to the database; all of our changes are in memory only.  What happens if some other part of the application also tries to load 'Mary' from the database and make some changes before we had a chance to save it ?  Assuming that the same `Session` is used, loading 'Mary' from the database a second time will issue a second query in order locate the primary key of 'Mary', but will *return the same object instance as the one already loaded*.  This behavior is due to an important property of the `Session` known as the **identity map**:
+
+    {python}
+    >>> mary2 = query.get_by(user_name='Mary')
+    >>> mary is mary2
+    True
+    
+With the identity map, a single `Session` can be relied upon to keep all loaded instances straight.
+
+As far as the issue of the same object being modified in two different Sessions, that's an issue of concurrency detection; SQLAlchemy does some basic concurrency checks when saving objects, with the option for a stronger check using version ids.  See [adv_datamapping](rel:adv_datamapping) for more details.
+
+### Saving {@name=saving}
+
+With a new user "ed" and some changes made on "Mary" and "Harry", lets also mark "Fred" as deleted:
+
+    {python}
+    >>> fred = query.get_by(user_name='Fred')
+    >>> session.delete(fred)
+    
+Then to send all of our changes to the database, we `flush()` the Session.  Lets turn echo back on to see this happen!:
+
+    {python}
+    >>> metadata.engine.echo = True
+    >>> session.flush()
+    BEGIN
+    UPDATE users SET password=? WHERE users.user_id = ?
+    ['marysnewpassword', 1]
+    UPDATE users SET password=? WHERE users.user_id = ?
+    ['harrysnewpassword', 4]
+    INSERT INTO users (user_name, password) VALUES (?, ?)
+    ['Ed', 'edspassword']
+    DELETE FROM users WHERE users.user_id = ?
+    [3]
+    COMMIT
+
+### Relationships
+
+When our User object contains relationships to other kinds of information, such as a list of email addresses, we can indicate this by using a function when creating the `Mapper` called `relation()`.  While there is a lot you can do with relations, we'll cover a simple one here.  First, recall that our `users` table has a foreign key relationship to another table called `email_addresses`.   A single row in `email_addresses` has a column `user_id` that references a row in the `users` table; since many rows in the `email_addresses` table can reference a single row in `users`, this is called a *one to many* relationship.
+
+First, deal with the `email_addresses` table by itself.  We will create a new class `Address` which represents a single row in the `email_addresses` table, and a corresponding `Mapper` which will associate the `Address` class with the `email_addresses` table:
+
+    {python}
+    >>> class Address(object):
+    ...     def __init__(self, email_address):
+    ...         self.email_address = email_address
+    ...     def __repr__(self):
+    ...         return "(Address %s)" % (self.email_address)
+    >>> mapper(Address, email_addresses_table) # doctest: +ELLIPSIS
+    <sqlalchemy.orm.mapper.Mapper object at 0x...>
+    
+Next, we associate the `User` and `Address` classes together by creating a relation using `relation()`, and then adding that relation to the `User` mapper, using the `add_property` function:
+
+    {python}
+    >>> usermapper.add_property('addresses', relation(Address))
+
+The `relation()` function takes either a class or a Mapper as its first argument, and has many options to further control its behavior.  The 'User' mapper has now placed additional property on each `User` instance called `addresses`.  SQLAlchemy will automatically determine that this relationship is a one-to-many relationship, and will subsequently create `addresses` as a list.  When a new `User` is created, this list will begin as empty.
+
+Lets see what we get for the email addresses already in the database.  Since we have made a change to the mapper's configuration, its best that we clear out our `Session`, which is currently holding onto every `User` object we have already loaded:
+
+    {python}
+    >>> session.clear()
+
+We can then treat the `addresses` attribute on each `User` object like a regular list:
+
+    {python}
+    >>> mary = query.get_by(user_name='Mary') # doctest: +NORMALIZE_WHITESPACE
+    SELECT users.user_name AS users_user_name, users.password AS users_password, users.user_id AS users_user_id 
+    FROM users 
+    WHERE users.user_name = ? ORDER BY users.oid 
+    LIMIT 1 OFFSET 0
+    ['Mary']
+    >>> print [a for a in mary.addresses]
+    SELECT email_addresses.user_id AS email_addresses_user_id, email_addresses.address_id AS email_addresses_address_id, email_addresses.email_address AS email_addresses_email_address 
+    FROM email_addresses 
+    WHERE ? = email_addresses.user_id ORDER BY email_addresses.oid
+    [1]
+    [(Address mary@mary.com)]
+
+Adding to the list is just as easy.  New `Address` objects will be detected and saved when we `flush` the Session:
+
+    {python}
+    >>> mary.addresses.append(Address('mary2@gmail.com'))
+    >>> session.flush() # doctest: +NORMALIZE_WHITESPACE
+    BEGIN
+    INSERT INTO email_addresses (email_address, user_id) VALUES (?, ?)
+    ['mary2@gmail.com', 1]
+    COMMIT
+
+Main documentation for using mappers:  [datamapping](rel:datamapping)
 
 ### Transactions
 
-Main documentation:  [unitofwork](rel:unitofwork), [dbengine_transactions](rel:dbengine_transactions).
+You may have noticed from the example above that when we say `session.flush()`, SQLAlchemy indicates the names `BEGIN` and `COMMIT` to indicate a transaction with the database.  The `flush()` method, since it may execute many statements in a row, will automatically use a transaction in order to execute these instructions.  But what if we want to use `flush()` inside of a larger transaction?  This is performed via the `SessionTransaction` object, which we can establish using `session.create_transaction()`.  Below, we will perform a more complicated `SELECT` statement, make several changes to our collection of users and email addresess, and then create a new user with two email addresses, within the context of a transaction.  We will perform a `flush()` in the middle of it to write the changes we have so far, and then allow the remaining changes to be written when we finally `commit()` the transaction.  We enclose our operations within a `try/except` block to insure that resources are properly freed:
 
-Conclusion
+    {python}
+    >>> transaction = session.create_transaction()
+    >>> try: # doctest: +NORMALIZE_WHITESPACE
+    ...     (ed, harry, mary) = session.query(User).select(
+    ...         User.c.user_name.in_('Ed', 'Harry', 'Mary'), order_by=User.c.user_name
+    ...     )
+    ...     del mary.addresses[1]
+    ...     harry.addresses.append(Address('harry2@gmail.com'))
+    ...     session.flush()
+    ...     print "***flushed the session***"
+    ...     fred = User()
+    ...     fred.user_name = 'fred_again'
+    ...     fred.addresses.append(Address('fred@fred.com'))
+    ...     fred.addresses.append(Address('fredsnewemail@fred.com'))
+    ...     session.save(fred)
+    ...     transaction.commit()
+    ... except:
+    ...     transaction.rollback()
+    ...     raise
+    BEGIN
+    SELECT users.user_name AS users_user_name, users.password AS users_password, users.user_id AS users_user_id 
+    FROM users 
+    WHERE users.user_name IN (?, ?, ?) ORDER BY users.user_name
+    ['Ed', 'Harry', 'Mary']
+    SELECT email_addresses.user_id AS email_addresses_user_id, email_addresses.address_id AS email_addresses_address_id, email_addresses.email_address AS email_addresses_email_address 
+    FROM email_addresses 
+    WHERE ? = email_addresses.user_id ORDER BY email_addresses.oid
+    [4]
+    UPDATE email_addresses SET user_id=? WHERE email_addresses.address_id = ?
+    [None, 3]
+    INSERT INTO email_addresses (email_address, user_id) VALUES (?, ?)
+    ['harry2@gmail.com', 4]
+    ***flushed the session***    
+    INSERT INTO users (user_name, password) VALUES (?, ?)
+    ['fred_again', None]
+    INSERT INTO email_addresses (email_address, user_id) VALUES (?, ?)
+    ['fred@fred.com', 6]
+    INSERT INTO email_addresses (email_address, user_id) VALUES (?, ?)
+    ['fredsnewemail@fred.com', 6]
+    COMMIT
+
+Main documentation:  [unitofwork](rel:unitofwork)
+
+Next Steps
 ----------
+
+That covers a quick tour through the basic idea of SQLAlchemy, in its simplest form.  Beyond that, one should familiarize oneself with the basics of Sessions, the various patterns that can be used to define different kinds of Mappers and relations among them, the rudimentary SQL types that are available when constructing Tables, and the basics of Engines, SQL statements, and database Connections. 
+

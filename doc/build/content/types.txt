@@ -23,7 +23,7 @@ The standard set of generic types are:
     class Float(Numeric):
         def __init__(self, precision=10)
     
-    # DateTime, Date, and Time work with Python datetime objects
+    # DateTime, Date and Time types deal with datetime objects from the Python datetime module
     class DateTime(TypeEngine)
     
     class Date(TypeEngine)
@@ -39,11 +39,13 @@ The standard set of generic types are:
     # as bind params, raw bytes to unicode as 
     # rowset values, using the unicode encoding 
     # setting on the engine (defaults to 'utf-8')
-    class Unicode(TypeDecorator)
+    class Unicode(TypeDecorator):
+        impl = String
     
     # uses the pickle protocol to serialize data
     # in/out of Binary columns
-    class PickleType(TypeDecorator)
+    class PickleType(TypeDecorator):
+        impl = Binary
 
 More specific subclasses of these types are available, which various database engines may choose to implement specifically, allowing finer grained control over types:
 
@@ -79,7 +81,7 @@ Type objects are specified to table meta data using either the class itself, or 
 
 User-defined types can be created, to support either database-specific types, or customized pre-processing of query parameters as well as post-processing of result set data.  You can make your own classes to perform these operations.  To augment the behavior of a `TypeEngine` type, such as `String`, the `TypeDecorator` class is used:
 
-    {python title="Basic Example"}
+    {python}
     import sqlalchemy.types as types
 
     class MyType(types.TypeDecorator):

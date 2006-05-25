@@ -1,0 +1,802 @@
+[alpha_api]: javascript:alphaApi()
+[alpha_implementation]: javascript:alphaImplementation()
+
+Advanced Data Mapping {@name=advdatamapping}
+======================
+
+This section details all the options available to Mappers, as well as advanced patterns.
+
+To start, heres the tables we will work with again:
+
+    {python}
+    from sqlalchemy import *
+
+    metadata = MetaData()
+
+    # a table to store users
+    users_table = Table('users', metadata,
+        Column('user_id', Integer, primary_key = True),
+        Column('user_name', String(40)),
+        Column('password', String(80))
+    )
+
+    # a table that stores mailing addresses associated with a specific user
+    addresses_table = Table('addresses', metadata,
+        Column('address_id', Integer, primary_key = True),
+        Column('user_id', Integer, ForeignKey("users.user_id")),
+        Column('street', String(100)),
+        Column('city', String(80)),
+        Column('state', String(2)),
+        Column('zip', String(10))
+    )
+
+    # a table that stores keywords
+    keywords_table = Table('keywords', metadata,
+        Column('keyword_id', Integer, primary_key = True),
+        Column('name', VARCHAR(50))
+    )
+
+    # a table that associates keywords with users
+    userkeywords_table = Table('userkeywords', metadata,
+        Column('user_id', INT, ForeignKey("users")),
+        Column('keyword_id', INT, ForeignKey("keywords"))
+    )
+
+
+### More On Mapper Properties {@name=properties}
+
+#### Overriding Column Names {@name=colname}
+
+When mappers are constructed, by default the column names in the Table metadata are used as the names of attributes on the mapped class.  This can be customzed within the properties by stating the key/column combinations explicitly:
+
+    {python}
+    user_mapper = mapper(User, users_table, properties={
+        'id' : users_table.c.user_id,
+        'name' : users_table.c.user_name,
+    })
+
+In the situation when column names overlap in a mapper against multiple tables, columns may be referenced together with a list:
+
+    {python}
+    # join users and addresses
+    usersaddresses = sql.join(users_table, addresses_table, users_table.c.user_id == addresses_table.c.user_id)
+    m = mapper(User, usersaddresses,   
+        properties = {
+            'id' : [users_table.c.user_id, addresses_table.c.user_id],
+        }
+        )
+
+#### Overriding Properties {@name=overriding}
+
+A common request is the ability to create custom class properties that override the behavior of setting/getting an attribute.  Currently, the easiest way to do this in SQLAlchemy is how it would be done in any Python program; define your attribute with a different name, such as "_attribute", and use a property to get/set its value.  The mapper just needs to be told of the special name:
+
+    {python}
+    class MyClass(object):
+        def _set_email(self, email):
+           self._email = email
+        def _get_email(self, email):
+           return self._email
+        email = property(_get_email, _set_email)
+    
+    mapper(MyClass, mytable, properties = {
+       # map the '_email' attribute to the "email" column
+       # on the table
+       '_email': mytable.c.email
+    })
+
+In a later release, SQLAlchemy will also allow `_get_email` and `_set_email` to be attached directly to the "email" property created by the mapper, and 
+will also allow this association to occur via decorators.
+
+
+#### Custom List Classes {@name=customlist}
+
+Feature Status: [Alpha API][alpha_api] 
+
+A one-to-many or many-to-many relationship results in a list-holding element being attached to all instances of a class.  Currently, this list is an instance of `sqlalchemy.util.HistoryArraySet`, is a `UserDict` instance that *decorates* an underlying list object.  The implementation of this list can be controlled, and can in fact be any object that implements a `list`-style `append` and `__iter__` method.  A common need is for a list-based relationship to actually be a dictionary.  This can be achieved by subclassing `dict` to have `list`-like behavior.
+
+In this example, a class `MyClass` is defined, which is associated with a parent object `MyParent`.  The collection of `MyClass` objects on each `MyParent` object will be a dictionary, storing each `MyClass` instance keyed to its `name` attribute.
+
+    {python}
+    # a class to be stored in the list
+    class MyClass(object):
+        def __init__(self, name):
+            self.name = name
+            
+    # create a dictionary that will act like a list, and store
+    # instances of MyClass
+    class MyDict(dict):
+        def append(self, item):
+            self[item.name] = item
+        def __iter__(self):
+            return self.values()
+
+    # parent class
+    class MyParent(object):
+        # this class-level attribute provides the class to be
+        # used by the 'myclasses' attribute
+        myclasses = MyDict
+    
+    # mappers, constructed normally
+    mapper(MyClass, myclass_table)
+    mapper(MyParent, myparent_table, properties={
+        'myclasses' : relation(MyClass)
+    })
+    
+    # elements on 'myclasses' can be accessed via string keyname
+    myparent = MyParent()
+    myparent.myclasses.append(MyClass('this is myclass'))
+    myclass = myparent.myclasses['this is myclass']
+
+
+#### Custom Join Conditions {@name=customjoin}
+        
+When creating relations on a mapper, most examples so far have illustrated the mapper and relationship joining up based on the foreign keys of the tables they represent.  in fact, this "automatic" inspection can be completely circumvented using the `primaryjoin` and `secondaryjoin` arguments to `relation`, as in this example which creates a User object which has a relationship to all of its Addresses which are in Boston:
+
+    {python}
+    class User(object):
+        pass
+    class Address(object):
+        pass
+    
+    mapper(Address, addresses_table)
+    mapper(User, users_table, properties={
+        'boston_addreses' : relation(Address, primaryjoin=
+                    and_(users_table.c.user_id==Address.c.user_id, 
+                    Addresses.c.city=='Boston'))
+    })
+        
+Many to many relationships can be customized by one or both of `primaryjoin` and `secondaryjoin`, shown below with just the default many-to-many relationship explicitly set:
+
+    {python}
+    class User(object):
+        pass
+    class Keyword(object):
+        pass
+    mapper(Keyword, keywords_table)
+    mapper(User, users_table, properties={
+        'keywords':relation(Keyword, secondary=userkeywords_table
+            primaryjoin=users_table.c.user_id==userkeywords_table.c.user_id,
+            secondaryjoin=userkeywords_table.c.keyword_id==keywords_table.c.keyword_id
+            )
+    })
+
+#### Lazy/Eager Joins Multiple Times to One Table {@name=multiplejoin}
+
+The previous example leads in to the idea of joining against the same table multiple times.  Below is a User object that has lists of its Boston and New York addresses:
+
+    {python}
+    mapper(User, users_table, properties={
+        'boston_addreses' : relation(Address, primaryjoin=
+                    and_(users_table.c.user_id==Address.c.user_id, 
+                    Addresses.c.city=='Boston')),
+        'newyork_addresses' : relation(Address, primaryjoin=
+                    and_(users_table.c.user_id==Address.c.user_id, 
+                    Addresses.c.city=='New York')),
+    })
+
+Both lazy and eager loading support multiple joins equally well.
+
+#### Deferred Column Loading {@name=deferred}
+
+This feature allows particular columns of a table to not be loaded by default, instead being loaded later on when first referenced.  It is essentailly "column-level lazy loading".   This feature is useful when one wants to avoid loading a large text or binary field into memory when its not needed.  Individual columns can be lazy loaded by themselves or placed into groups that lazy-load together.
+
+    {python}
+    book_excerpts = Table('books', db, 
+        Column('book_id', Integer, primary_key=True),
+        Column('title', String(200), nullable=False),
+        Column('summary', String(2000)),
+        Column('excerpt', String),
+        Column('photo', Binary)
+    )
+
+    class Book(object):
+        pass
+
+    # define a mapper that will load each of 'excerpt' and 'photo' in 
+    # separate, individual-row SELECT statements when each attribute
+    # is first referenced on the individual object instance
+    mapper(Book, book_excerpts, properties = {
+        'excerpt' : deferred(book_excerpts.c.excerpt),
+        'photo' : deferred(book_excerpts.c.photo)
+    })
+
+Deferred columns can be placed into groups so that they load together:
+
+    {python}
+    book_excerpts = Table('books', db, 
+        Column('book_id', Integer, primary_key=True),
+        Column('title', String(200), nullable=False),
+        Column('summary', String(2000)),
+        Column('excerpt', String),
+        Column('photo1', Binary),
+        Column('photo2', Binary),
+        Column('photo3', Binary)
+    )
+
+    class Book(object):
+        pass
+
+    # define a mapper with a 'photos' deferred group.  when one photo is referenced,
+    # all three photos will be loaded in one SELECT statement.  The 'excerpt' will 
+    # be loaded separately when it is first referenced.
+    mapper(Book, book_excerpts, properties = {
+        'excerpt' : deferred(book_excerpts.c.excerpt),
+        'photo1' : deferred(book_excerpts.c.photo1, group='photos'),
+        'photo2' : deferred(book_excerpts.c.photo2, group='photos'),
+        'photo3' : deferred(book_excerpts.c.photo3, group='photos')
+    })
+
+#### Relation Options {@name=relationoptions}
+
+Keyword options to the `relation` function include:
+
+* lazy=(True|False|None) - specifies how the related items should be loaded.  a value of True indicates they should be loaded when the property is first accessed.  A value of False indicates they should be loaded by joining against the parent object query, so parent and child are loaded in one round trip.  A value of None indicates the related items are not loaded by the mapper in any case; the application will manually insert items into the list in some other way.  A relationship with lazy=None is still important; items added to the list or removed will cause the appropriate updates and deletes upon flush().  Future capabilities for lazy might also include "lazy='extra'", which would allow lazy loading of child elements one at a time, for very large collections.
+* cascade - a string list of **cascade rules** which determines how persistence operations should be "cascaded" from parent to child.  For a description of cascade rules, see [datamapping_relations_cycle](rel:datamapping_relations_lifecycle) and [unitofwork_cascade](rel:unitofwork_cascade).
+* secondary - for a many-to-many relationship, specifies the intermediary table.
+* primaryjoin - a ClauseElement that will be used as the primary join of this child object against the parent object, or in a many-to-many relationship the join of the primary object to the association table.  By default, this value is computed based on the foreign key relationships of the parent and child tables (or association table).
+* secondaryjoin - a ClauseElement that will be used as the join of an association table to the child object.  By default, this value is computed based on the foreign key relationships of the association and child tables.
+* foreignkey - specifies which column in this relationship is "foreign", i.e. which column refers to the parent object.  This value is automatically determined in most cases based on the primary and secondary join conditions, except in the case of a self-referential mapper, where it is needed to indicate the child object's reference back to it's parent, or in the case where the join conditions do not represent any primary key columns to properly represent the direction of the relationship.
+* uselist - a boolean that indicates if this property should be loaded as a list or a scalar.  In most cases, this value is determined based on the type and direction of the relationship - one to many forms a list, many to one forms a scalar, many to many is a list.  If a scalar is desired where normally a list would be present, such as a bi-directional one-to-one relationship, set uselist to False.
+* private - setting `private=True` is the equivalent of setting `cascade="all, delete-orphan"`, and indicates the lifecycle of child objects should be contained within that of the parent.   See the example in [datamapping_relations_cycle](rel:datamapping_relations_lifecycle).
+* backref - indicates the name of a property to be placed on the related mapper's class that will handle this relationship in the other direction, including synchronizing the object attributes on both sides of the relation.  Can also point to a `backref()` construct for more configurability.  See [datamapping_relations_backreferences](rel:datamapping_relations_backreferences).
+* order_by - indicates the ordering that should be applied when loading these items.  See the section [advdatamapping_orderby](rel:advdatamapping_orderby) for details.
+* association - When specifying a many to many relationship with an association object, this keyword should reference the mapper or class of the target object of the association.  See the example in [datamapping_association](rel:datamapping_association).
+* post_update - this indicates that the relationship should be handled by a second UPDATE statement after an INSERT, or before a DELETE.  using this flag essentially means the relationship will not incur any "dependency" between parent and child item, as the particular foreign key relationship between them is handled by a second statement.  use this flag when a particular mapping arrangement will incur two rows that are dependent on each other, such as a table that has a one-to-many relationship to a set of child rows, and also has a column that references a single child row within that list (i.e. both tables contain a foreign key to each other).  If a flush() operation returns an error that a "cyclical dependency" was detected, this is a cue that you might want to use post_update.
+
+### Controlling Ordering {@name=orderby}
+
+By default, mappers will attempt to ORDER BY the "oid" column of a table, or the primary key column, when selecting rows.  This can be modified in several ways.
+
+The "order_by" parameter can be sent to a mapper, overriding the per-engine ordering if any.  A value of None means that the mapper should not use any ordering.  A non-None value, which can be a column, an `asc` or `desc` clause, or an array of either one, indicates the ORDER BY clause that should be added to all select queries:
+
+    {python}
+    # disable all ordering
+    mapper = mapper(User, users_table, order_by=None)
+
+    # order by a column
+    mapper = mapper(User, users_table, order_by=users_tableusers_table.c.user_id)
+    
+    # order by multiple items
+    mapper = mapper(User, users_table, order_by=[users_table.c.user_id, desc(users_table.c.user_name)])
+
+"order_by" can also be specified to an individual `select` method, overriding all other per-engine/per-mapper orderings:
+
+    {python}
+    # order by a column
+    l = mapper.select(users_table.c.user_name=='fred', order_by=users_table.c.user_id)
+    
+    # order by multiple criterion
+    l = mapper.select(users_table.c.user_name=='fred', order_by=[users_table.c.user_id, desc(users_table.c.user_name)])
+
+For relations, the "order_by" property can also be specified to all forms of relation:
+
+    {python}
+    # order address objects by address id
+    mapper = mapper(User, users_table, properties = {
+        'addresses' : relation(mapper(Address, addresses_table), order_by=addresses_table.c.address_id)
+    })
+    
+    # eager load with ordering - the ORDER BY clauses of parent/child will be organized properly
+    mapper = mapper(User, users_table, properties = {
+        'addresses' : relation(mapper(Address, addresses_table), order_by=desc(addresses_table.c.email_address), eager=True)
+    }, order_by=users_table.c.user_id)
+    
+### Limiting Rows {@name=limits}
+
+You can limit rows in a regular SQL query by specifying `limit` and `offset`.  A Mapper can handle the same concepts:
+
+    {python}
+    class User(object):
+        pass
+    
+    mapper(User, users_table)
+    {sql}r = session.query(User).select(limit=20, offset=10)
+    SELECT users.user_id AS users_user_id, 
+    users.user_name AS users_user_name, users.password AS users_password 
+    FROM users ORDER BY users.oid 
+    LIMIT 20 OFFSET 10
+    {}
+
+However, things get tricky when dealing with eager relationships, since a straight LIMIT of rows does not represent the count of items when joining against other tables to load related items as well.  So here is what SQLAlchemy will do when you use limit or offset with an eager relationship:
+
+    {python}
+    class User(object):
+        pass
+    class Address(object):
+        pass
+        mapper(User, users_table, properties={
+        'addresses' : relation(mapper(Address, addresses_table), lazy=False)
+    })
+    r = session.query(User).select(User.c.user_name.like('F%'), limit=20, offset=10)
+    {opensql}SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
+    users.password AS users_password, addresses.address_id AS addresses_address_id, 
+    addresses.user_id AS addresses_user_id, addresses.street AS addresses_street, 
+    addresses.city AS addresses_city, addresses.state AS addresses_state, 
+    addresses.zip AS addresses_zip 
+    FROM 
+    (SELECT users.user_id FROM users WHERE users.user_name LIKE %(users_user_name)s
+    ORDER BY users.oid LIMIT 20 OFFSET 10) AS rowcount, 
+     users LEFT OUTER JOIN addresses ON users.user_id = addresses.user_id 
+    WHERE rowcount.user_id = users.user_id ORDER BY users.oid, addresses.oid
+    {'users_user_name': 'F%'}
+    
+The main WHERE clause as well as the limiting clauses are coerced into a subquery; this subquery represents the desired result of objects.  A containing query, which handles the eager relationships, is joined against the subquery to produce the result.
+
+### More on Mapper Options {@name=options}
+
+The `options` method on the `Query` object, first introduced in [datamapping_relations_options](rel:datamapping_relations_options), produces a new `Query` object by creating a copy of the underlying `Mapper` and placing modified properties on it.  The `options` method is also directly available off the `Mapper` object itself, so that the newly copied `Mapper` can be dealt with directly.  The `options` method takes a variable number of `MapperOption` objects which know how to change specific things about the mapper.  The five available options are `eagerload`, `lazyload`, `noload`, `deferred` and `extension`.
+
+An example of a mapper with a lazy load relationship, upgraded to an eager load relationship:
+
+    {python}
+    class User(object):
+        pass
+    class Address(object):
+        pass
+    
+    # a 'lazy' relationship
+    mapper(User, users_table, properties = {
+        'addreses':relation(mapper(Address, addresses_table), lazy=True)
+    })
+
+    # copy the mapper and convert 'addresses' to be eager
+    eagermapper = class_mapper(User).options(eagerload('addresses'))
+
+The `defer` and `undefer` options can control the deferred loading of attributes:
+
+    {python}
+    # set the 'excerpt' deferred attribute to load normally
+    m = book_mapper.options(undefer('excerpt'))
+
+    # set the referenced mapper 'photos' to defer its loading of the column 'imagedata'
+    m = book_mapper.options(defer('photos.imagedata'))
+    
+### Mapping a Class with Table Inheritance {@name=inheritance}
+
+Feature Status: [Alpha Implementation][alpha_implementation] 
+
+Inheritance in databases comes in three forms:  *single table inheritance*, where several types of classes are stored in one table, *concrete table inheritance*, where each type of class is stored in its own table, and *multiple table inheritance*, where the parent/child classes are stored in their own tables that are joined together in a select.
+
+There is also a concept of `polymorphic` loading, which indicates if multiple kinds of classes can be loaded in one pass.
+
+SQLAlchemy supports all three kinds of inheritance.  Additionally, true `polymorphic` loading is supported in a straightfoward way for single table inheritance, and has some more manually-configured features that can make it happen for concrete and multiple table inheritance.
+
+Working examples of polymorphic inheritance come with the distribution in the directory `examples/polymorphic`.
+
+Here are the classes we will use to represent an inheritance relationship:
+
+    {python}
+    class Employee(object):
+        def __init__(self, name):
+            self.name = name
+        def __repr__(self):
+            return self.__class__.__name__ + " " + self.name
+
+    class Manager(Employee):
+        def __init__(self, name, manager_data):
+            self.name = name
+            self.manager_data = manager_data
+        def __repr__(self):
+            return self.__class__.__name__ + " " + self.name + " " +  self.manager_data
+
+    class Engineer(Employee):
+        def __init__(self, name, engineer_info):
+            self.name = name
+            self.engineer_info = engineer_info
+        def __repr__(self):
+            return self.__class__.__name__ + " " + self.name + " " +  self.engineer_info
+
+Each class supports a common `name` attribute, while the `Manager` class has its own attribute `manager_data` and the `Engineer` class has its own attribute `engineer_info`.
+        
+#### Single Table Inheritance
+
+This will support polymorphic loading via the `Employee` mapper.
+
+    {python}
+    employees_table = Table('employees', metadata, 
+        Column('employee_id', Integer, primary_key=True),
+        Column('name', String(50)),
+        Column('manager_data', String(50)),
+        Column('engineer_info', String(50)),
+        Column('type', String(20))
+    )
+    
+    employee_mapper = mapper(Employee, employees_table, polymorphic_on=employees_table.c.type)
+    manager_mapper = mapper(Manager, inherits=employee_mapper, polymorphic_identity='manager')
+    engineer_mapper = mapper(Engineer, inherits=employee_mapper, polymorphic_identity='engineer')
+
+#### Concrete Table Inheritance
+
+Without polymorphic loading, you just define a separate mapper for each class.
+
+    {python title="Concrete Inheritance, Non-polymorphic"}
+    managers_table = Table('managers', metadata, 
+        Column('employee_id', Integer, primary_key=True),
+        Column('name', String(50)),
+        Column('manager_data', String(50)),
+    )
+
+    engineers_table = Table('engineers', metadata, 
+        Column('employee_id', Integer, primary_key=True),
+        Column('name', String(50)),
+        Column('engineer_info', String(50)),
+    )
+
+    manager_mapper = mapper(Manager, managers_table)
+    engineer_mapper = mapper(Engineer, engineers_table)
+    
+With polymorphic loading, the SQL query to do the actual polymorphic load must be constructed, usually as a UNION.  There is a helper function to create these UNIONS called `polymorphic_union`.
+
+    {python title="Concrete Inheritance, Polymorphic"}
+    pjoin = polymorphic_union({
+        'manager':managers_table,
+        'engineer':engineers_table
+    }, 'type', 'pjoin')
+
+    employee_mapper = mapper(Employee, pjoin, polymorphic_on=pjoin.c.type)
+    manager_mapper = mapper(Manager, managers_table, inherits=employee_mapper, concrete=True, polymorphic_identity='manager')
+    engineer_mapper = mapper(Engineer, engineers_table, inherits=employee_mapper, concrete=True, polymorphic_identity='engineer')
+
+A future release of SQLALchemy might better merge the generated UNION into the mapper construction phase.    
+
+#### Multiple Table Inheritance
+
+Like concrete table inheritance, this can be done non-polymorphically, or with a little more complexity, polymorphically:
+
+    {python title="Multiple Table Inheritance, Non-polymorphic"}
+    people = Table('people', metadata, 
+       Column('person_id', Integer, primary_key=True),
+       Column('name', String(50)),
+       Column('type', String(30)))
+
+    engineers = Table('engineers', metadata, 
+       Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
+       Column('engineer_info', String(50)),
+      )
+
+    managers = Table('managers', metadata, 
+       Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
+       Column('manager_data', String(50)),
+       )
+
+    person_mapper = mapper(Person, people)
+    mapper(Engineer, engineers, inherits=person_mapper)
+    mapper(Manager, managers, inherits=person_mapper)
+
+Polymorphic:
+
+    {python title="Multiple Table Inheritance, Polymorphic"}
+    person_join = polymorphic_union(
+        {
+            'engineer':people.join(engineers),
+            'manager':people.join(managers),
+            'person':people.select(people.c.type=='person'),
+        }, None, 'pjoin')
+
+    person_mapper = mapper(Person, people, select_table=person_join, polymorphic_on=person_join.c.type, polymorphic_identity='person')
+    mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
+    mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
+
+The join condition in a multiple table inheritance relationship can be specified explicitly, using `inherit_condition`:
+
+    {python}
+    AddressUser.mapper = mapper(
+            AddressUser,
+            addresses_table, inherits=User.mapper, 
+            inherit_condition=users_table.c.user_id==addresses_table.c.user_id
+        )
+
+### Mapping a Class against Multiple Tables {@name=joins}
+
+Mappers can be constructed against arbitrary relational units (called `Selectables`) as well as plain `Tables`.  For example, The `join` keyword from the SQL package creates a neat selectable unit comprised of multiple tables, complete with its own composite primary key, which can be passed in to a mapper as the table.
+
+    {python}
+    # a class
+    class AddressUser(object):
+        pass
+
+    # define a Join
+    j = join(users_table, addresses_table)
+    
+    # map to it - the identity of an AddressUser object will be 
+    # based on (user_id, address_id) since those are the primary keys involved
+    m = mapper(AddressUser, j)
+
+    A second example:        
+    {python}
+    # many-to-many join on an association table
+    j = join(users_table, userkeywords, 
+            users_table.c.user_id==userkeywords.c.user_id).join(keywords, 
+               userkeywords.c.keyword_id==keywords.c.keyword_id)
+     
+    # a class 
+    class KeywordUser(object):
+        pass
+
+    # map to it - the identity of a KeywordUser object will be
+    # (user_id, keyword_id) since those are the primary keys involved
+    m = mapper(KeywordUser, j)
+
+### Mapping a Class against Arbitary Selects {@name=selects}
+
+Similar to mapping against a join, a plain select() object can be used with a mapper as well.  Below, an example select which contains two aggregate functions and a group_by is mapped to a class:
+
+    {python}
+    s = select([customers, 
+                func.count(orders).label('order_count'), 
+                func.max(orders.price).label('highest_order')],
+                customers.c.customer_id==orders.c.customer_id,
+                group_by=[c for c in customers.c]
+                )
+    class Customer(object):
+        pass
+    
+    m = mapper(Customer, s)
+    
+Above, the "customers" table is joined against the "orders" table to produce a full row for each customer row, the total count of related rows in the "orders" table, and the highest price in the "orders" table, grouped against the full set of columns in the "customers" table.  That query is then mapped against the Customer class.  New instances of Customer will contain attributes for each column in the "customers" table as well as an "order_count" and "highest_order" attribute.  Updates to the Customer object will only be reflected in the "customers" table and not the "orders" table.  This is because the primary keys of the "orders" table are not represented in this mapper and therefore the table is not affected by save or delete operations.
+
+### Multiple Mappers for One Class {@name=multiple}
+
+The first mapper created for a certain class is known as that class's "primary mapper."  Other mappers can be created as well, these come in two varieties.
+
+* **secondary mapper** - this is a mapper that must be constructed with the keyword argument `non_primary=True`, and represents a load-only mapper.  Objects that are loaded with a secondary mapper will have their save operation processed by the primary mapper.  It is also invalid to add new `relation()`s to a non-primary mapper. To use this mapper with the Session, specify it to the `query` method:
+
+example:
+
+    {python}
+    # primary mapper
+    mapper(User, users_table)
+    
+    # make a secondary mapper to load User against a join
+    othermapper = mapper(User, users_table.join(someothertable), non_primary=True)
+    
+    # select
+    result = session.query(othermapper).select()
+
+* **entity name mapper** - this is a mapper that is a fully functioning primary mapper for a class, which is distinguished from the regular primary mapper by an `entity_name` parameter.  Instances loaded with this mapper will be totally managed by this new mapper and have no connection to the original one.  Most methods on `Session` include an optional `entity_name` parameter in order to specify this condition.
+
+example:
+
+    {python}
+    # primary mapper
+    mapper(User, users_table)
+    
+    # make an entity name mapper that stores User objects in another table
+    mapper(User, alternate_users_table, entity_name='alt')
+    
+    # make two User objects
+    user1 = User()
+    user2 = User()
+    
+    # save one in in the "users" table
+    session.save(user1)
+    
+    # save the other in the "alternate_users_table"
+    session.save(user2, entity_name='alt')
+    
+    session.flush()
+    
+    # select from the alternate mapper
+    session.query(User, entity_name='alt').select()
+
+### Circular Mapping {@name=circular}
+
+Oftentimes it is necessary for two mappers to be related to each other.  With a datamodel that consists of Users that store Addresses, you might have an Address object and want to access the "user" attribute on it, or have a User object and want to get the list of Address objects.  The easiest way to do this is via the `backref` keyword described in [datamapping_relations_backreferences](rel:datamapping_relations_backreferences).  Although even when backreferences are used, it is sometimes necessary to explicitly specify the relations on both mappers pointing to each other.
+To achieve this involves creating the first mapper by itself, then creating the second mapper referencing the first, then adding references to the first mapper to reference the second:
+
+    {python}
+    usermapper = mapper(User, users)
+    mapper(Address, addresses_table, properties={
+        'user':relation(User)
+    })
+
+    usermapper.add_property('addresses', relation(Address))
+
+Note that with a circular relationship as above, you cannot declare both relationships as "eager" relationships, since that produces a circular query situation which will generate a recursion exception.  So what if you want to load an Address and its User eagerly?  Just use eager options:
+
+    {python}
+    eagerquery = session.query(Address).options(eagerload('user'))
+    s = eagerquery.select(Address.c.address_id==12)
+
+### Self Referential Mappers {@name=recursive}
+
+A self-referential mapper is a mapper that is designed to operate with an <b>adjacency list</b> table.  This is a table that contains one or more foreign keys back to itself, and is usually used to create hierarchical tree structures.  SQLAlchemy's default model of saving items based on table dependencies is not sufficient in this case, as an adjacency list table introduces dependencies between individual rows.  Fortunately, SQLAlchemy will automatically detect a self-referential mapper and do the extra lifting to make it work.  
+
+    {python}
+    # define a self-referential table
+    trees = Table('treenodes', engine,
+        Column('node_id', Integer, primary_key=True),
+        Column('parent_node_id', Integer, ForeignKey('treenodes.node_id'), nullable=True),
+        Column('node_name', String(50), nullable=False),
+        )
+
+    # treenode class
+    class TreeNode(object):
+        pass
+
+    # mapper defines "children" property, pointing back to TreeNode class,
+    # with the mapper unspecified.  it will point back to the primary 
+    # mapper on the TreeNode class.
+    TreeNode.mapper = mapper(TreeNode, trees, properties={
+            'children' : relation(
+                            TreeNode, 
+                            cascade="all, delete-orphan"
+                         ),
+            }
+        )
+        
+    # or, specify the circular relationship after establishing the original mapper:
+    mymapper = mapper(TreeNode, trees)
+    
+    mymapper.add_property('children', relation(
+                            mymapper, 
+                            cascade="all, delete-orphan"
+                         ))
+        
+This kind of mapper goes through a lot of extra effort when saving and deleting items, to determine the correct dependency graph of nodes within the tree.
+    
+A self-referential mapper where there is more than one relationship on the table requires that all join conditions be explicitly spelled out.  Below is a self-referring table that contains a "parent_node_id" column to reference parent/child relationships, and a "root_node_id" column which points child nodes back to the ultimate root node:
+
+    {python}
+    # define a self-referential table with several relations
+    trees = Table('treenodes', engine,
+        Column('node_id', Integer, primary_key=True),
+        Column('parent_node_id', Integer, ForeignKey('treenodes.node_id'), nullable=True),
+        Column('root_node_id', Integer, ForeignKey('treenodes.node_id'), nullable=True),
+        Column('node_name', String(50), nullable=False),
+        )
+
+    # treenode class
+    class TreeNode(object):
+        pass
+
+    # define the "children" property as well as the "root" property
+    TreeNode.mapper = mapper(TreeNode, trees, properties={
+            'children' : relation(
+                            TreeNode, 
+                            primaryjoin=trees.c.parent_node_id==trees.c.node_id
+                            cascade="all, delete-orphan"
+                         ),
+            'root' : relation(
+                    TreeNode,
+                    primaryjoin=trees.c.root_node_id=trees.c.node_id, 
+                    foreignkey=trees.c.node_id,
+                    uselist=False
+                )
+            }
+        )
+        
+The "root" property on a TreeNode is a many-to-one relationship.  By default, a self-referential mapper declares relationships as one-to-many, so the extra parameter `foreignkey`, pointing to the remote side of a relationship, is needed to indicate a "many-to-one" self-referring relationship.
+Both TreeNode examples above are available in functional form in the `examples/adjacencytree` directory of the distribution.    
+
+### Result-Set Mapping {@name=resultset}
+
+Take any result set and feed it into a mapper to produce objects.  Multiple mappers can be combined to retrieve unrelated objects from the same row in one step.  The `instances` method on mapper takes a ResultProxy object, which is the result type generated from SQLEngine, and delivers object instances.
+
+    {python}
+    class User(object):
+        pass
+
+    User.mapper = mapper(User, users_table)
+    
+    # select users
+    c = users_table.select().execute()
+
+    # get objects
+    userlist = User.mapper.instances(c)
+    
+    {python}
+    # define a second class/mapper
+    class Address(object):
+        pass
+        
+    Address.mapper = mapper(Address, addresses_table)
+
+    # select users and addresses in one query
+    s = select([users_table, addresses_table], users_table.c.user_id==addresses_table.c.user_id)
+
+    # execute it, and process the results with the User mapper, chained to the Address mapper
+    r = User.mapper.instances(s.execute(), Address.mapper)
+    
+    # result rows are an array of objects, one for each mapper used
+    for entry in r:
+        user = r[0]
+        address = r[1]
+
+### Mapper Arguments {@name=arguments}
+
+Other arguments not covered above include:
+
+* select\_table=None - often used with polymorphic mappers, this is a `Selectable` which will take the place of the `Mapper`'s main table argument when performing queries.
+* version\_id\_col=None - an integer-holding Column object that will be assigned an incrementing
+counter, which is added to the WHERE clause used by UPDATE and DELETE statements.  The matching row
+count returned by the database is compared to the expected row count, and an exception is raised if they dont match.  This is a basic "optimistic concurrency" check.  Without the version id column, SQLAlchemy still compares the updated rowcount.
+* always\_refresh=False - this option will cause the mapper to refresh all the attributes of all objects loaded by select/get statements, regardless of if they already exist in the current session.  this includes all lazy- and eager-loaded relationship attributes, and will also overwrite any changes made to attributes on the column. 
+
+### Extending Mapper {@name=extending}
+
+Mappers can have functionality augmented or replaced at many points in its execution via the usage of the MapperExtension class.  This class is just a series of "hooks" where various functionality takes place.  An application can make its own MapperExtension objects, overriding only the methods it needs.  Methods that are not overridden return the special value `sqlalchemy.orm.mapper.EXT_PASS`, which indicates the operation should proceed as normally.
+
+    {python}
+    class MapperExtension(object):
+        def select_by(self, query, *args, **kwargs):
+            """overrides the select_by method of the Query object"""
+        def select(self, query, *args, **kwargs):
+            """overrides the select method of the Query object"""
+        def create_instance(self, mapper, session, row, imap, class_):
+            """called when a new object instance is about to be created from a row.  
+            the method can choose to create the instance itself, or it can return 
+            None to indicate normal object creation should take place.
+
+            mapper - the mapper doing the operation
+
+            row - the result row from the database
+
+            imap - a dictionary that is storing the running set of objects collected from the
+            current result set
+
+            class_ - the class we are mapping.
+            """
+        def append_result(self, mapper, session, row, imap, result, instance, isnew, populate_existing=False):
+            """called when an object instance is being appended to a result list.
+
+            If this method returns True, it is assumed that the mapper should do the appending, else
+            if this method returns False, it is assumed that the append was handled by this method.
+
+            mapper - the mapper doing the operation
+
+            row - the result row from the database
+
+            imap - a dictionary that is storing the running set of objects collected from the
+            current result set
+
+            result - an instance of util.HistoryArraySet(), which may be an attribute on an
+            object if this is a related object load (lazy or eager).  use result.append_nohistory(value)
+            to append objects to this list.
+
+            instance - the object instance to be appended to the result
+
+            isnew - indicates if this is the first time we have seen this object instance in the current result
+            set.  if you are selecting from a join, such as an eager load, you might see the same object instance
+            many times in the same result set.
+
+            populate_existing - usually False, indicates if object instances that were already in the main 
+            identity map, i.e. were loaded by a previous select(), get their attributes overwritten
+            """
+        def populate_instance(self, mapper, session, instance, row, identitykey, imap, isnew):
+            """called right before the mapper, after creating an instance from a row, passes the row
+            to its MapperProperty objects which are responsible for populating the object's attributes.
+            If this method returns True, it is assumed that the mapper should do the appending, else
+            if this method returns False, it is assumed that the append was handled by this method.
+
+            Essentially, this method is used to have a different mapper populate the object:
+
+                def populate_instance(self, mapper, session, instance, row, identitykey, imap, isnew):
+                    othermapper.populate_instance(session, instance, row, identitykey, imap, isnew, frommapper=mapper)
+                    return True
+            """
+        def before_insert(self, mapper, connection, instance):
+            """called before an object instance is INSERTed into its table.
+
+            this is a good place to set up primary key values and such that arent handled otherwise."""
+        def before_update(self, mapper, connection, instance):
+            """called before an object instnace is UPDATED"""
+        def after_update(self, mapper, connection, instance):
+            """called after an object instnace is UPDATED"""
+        def after_insert(self, mapper, connection, instance):
+            """called after an object instance has been INSERTed"""
+        def before_delete(self, mapper, connection, instance):
+            """called before an object instance is DELETEed"""
+        def after_delete(self, mapper, connection, instance):
+            """called after an object instance is DELETEed"""
+        
+To use MapperExtension, make your own subclass of it and just send it off to a mapper:
+
+    {python}
+    m = mapper(User, users_table, extension=MyExtension())
+
+Multiple extensions will be chained together and processed in order; they are specified as a list:
+
+    {python}
+    m = mapper(User, users_table, extension=[ext1, ext2, ext3])
+    

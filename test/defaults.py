@@ -7,7 +7,7 @@ from sqlalchemy import *
 import sqlalchemy
 
 db = testbase.db
-testbase.echo=False
+
 class DefaultTest(PersistTest):
 
     def setUpAll(self):
@@ -20,15 +20,17 @@ class DefaultTest(PersistTest):
         use_function_defaults = db.engine.name == 'postgres' or db.engine.name == 'oracle'
         is_oracle = db.engine.name == 'oracle'
  
-        # select "count(1)" from the DB which returns different results
-        # on different DBs
-        currenttime = db.func.current_date(type=Date);
+        # select "count(1)" returns different results on different DBs
+        # also correct for "current_date" compatible as column default, value differences
+        currenttime = func.current_date(type=Date, engine=db);
         if is_oracle:
-            ts = db.func.sysdate().scalar()
+            ts = db.func.trunc(func.sysdate(), column("'DAY'")).scalar()
             f = select([func.count(1) + 5], engine=db).scalar()
             f2 = select([func.count(1) + 14], engine=db).scalar()
+            # TODO: engine propigation across nested functions not working
+            currenttime = func.trunc(currenttime, column("'DAY'"), engine=db)
             def1 = currenttime
-            def2 = text("sysdate")
+            def2 = func.trunc(text("sysdate"), column("'DAY'"))
             deftype = Date
         elif use_function_defaults:
             f = select([func.count(1) + 5], engine=db).scalar()
@@ -72,9 +74,10 @@ class DefaultTest(PersistTest):
         t.delete().execute()
         
     def teststandalone(self):
-        x = t.c.col1.default.execute()
+        c = db.engine.contextual_connect()
+        x = c.execute(t.c.col1.default)
         y = t.c.col2.default.execute()
-        z = t.c.col3.default.execute()
+        z = c.execute(t.c.col3.default)
         self.assert_(50 <= x <= 57)
         self.assert_(y == 'imthedefault')
         self.assert_(z == f)
@@ -82,8 +85,8 @@ class DefaultTest(PersistTest):
         self.assert_(5 <= z <= 6)
         
     def testinsert(self):
-        t.insert().execute()
-        self.assert_(t.engine.lastrow_has_defaults())
+        r = t.insert().execute()
+        self.assert_(r.lastrow_has_defaults())
         t.insert().execute()
         t.insert().execute()
 
@@ -99,8 +102,8 @@ class DefaultTest(PersistTest):
         
         
     def testupdate(self):
-        t.insert().execute()
-        pk = t.engine.last_inserted_ids()[0]
+        r = t.insert().execute()
+        pk = r.last_inserted_ids()[0]
         t.update(t.c.col1==pk).execute(col4=None, col5=None)
         ctexec = currenttime.scalar()
         self.echo("Currenttime "+ repr(ctexec))
@@ -111,8 +114,8 @@ class DefaultTest(PersistTest):
         self.assert_(14 <= f2 <= 15)
 
     def testupdatevalues(self):
-        t.insert().execute()
-        pk = t.engine.last_inserted_ids()[0]
+        r = t.insert().execute()
+        pk = r.last_inserted_ids()[0]
         t.update(t.c.col1==pk, values={'col3': 55}).execute()
         l = t.select(t.c.col1==pk).execute()
         l = l.fetchone()
@@ -143,10 +146,10 @@ class SequenceTest(PersistTest):
    
     @testbase.supported('postgres', 'oracle')
     def teststandalone(self):
-        s = Sequence("my_sequence", engine=db)
+        s = Sequence("my_sequence", metadata=testbase.db)
         s.create()
         try:
-            x =s.execute()
+            x = s.execute()
             self.assert_(x == 1)
         finally:
             s.drop()

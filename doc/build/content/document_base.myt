@@ -3,9 +3,7 @@
 <%python scope="global">
 
     files = [
-        #'tutorial',
-        'trailmap',
-        'pooling',
+        'tutorial',
         'dbengine',
         'metadata',
         'sqlconstruction',
@@ -13,6 +11,8 @@
         'unitofwork',
         'adv_datamapping',
         'types',
+        'pooling',
+        'plugins',
         'docstrings',
         ]
 
@@ -23,8 +23,8 @@
     wrapper='section_wrapper.myt'
     onepage='documentation'
     index='index'
-    title='SQLAlchemy 0.1 Documentation'
-    version = '0.1.7'
+    title='SQLAlchemy 0.2 Documentation'
+    version = '0.2.0'
 </%attr>
 
 <%method title>
@@ -35,7 +35,6 @@
     <% self.owner.attr['title'] %>
 %
 </%method>
-
 
 
 
