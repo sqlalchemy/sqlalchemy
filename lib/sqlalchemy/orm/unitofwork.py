@@ -506,12 +506,12 @@ class UOWDependencyProcessor(object):
             return elem.obj
             
         ret = False
-        elements = [getobj(elem) for elem in self.targettask.tosave_elements if elem.obj is not None and not elem.is_preprocessed(self)]
+        elements = [getobj(elem) for elem in self.targettask.polymorphic_tosave_elements if elem.obj is not None and not elem.is_preprocessed(self)]
         if len(elements):
             ret = True
             self.processor.preprocess_dependencies(self.targettask, elements, trans, delete=False)
 
-        elements = [getobj(elem) for elem in self.targettask.todelete_elements if elem.obj is not None and not elem.is_preprocessed(self)]
+        elements = [getobj(elem) for elem in self.targettask.polymorphic_todelete_elements if elem.obj is not None and not elem.is_preprocessed(self)]
         if len(elements):
             ret = True
             self.processor.preprocess_dependencies(self.targettask, elements, trans, delete=True)
@@ -519,9 +519,9 @@ class UOWDependencyProcessor(object):
         
     def execute(self, trans, delete):
         if not delete:
-            self.processor.process_dependencies(self.targettask, [elem.obj for elem in self.targettask.tosave_elements if elem.obj is not None], trans, delete=False)
+            self.processor.process_dependencies(self.targettask, [elem.obj for elem in self.targettask.polymorphic_tosave_elements if elem.obj is not None], trans, delete=False)
         else:            
-            self.processor.process_dependencies(self.targettask, [elem.obj for elem in self.targettask.todelete_elements if elem.obj is not None], trans, delete=True)
+            self.processor.process_dependencies(self.targettask, [elem.obj for elem in self.targettask.polymorphic_todelete_elements if elem.obj is not None], trans, delete=True)
 
     def get_object_dependencies(self, obj, trans, passive):
         return self.processor.get_object_dependencies(obj, trans, passive=passive)
@@ -533,6 +533,7 @@ class UOWDependencyProcessor(object):
         return UOWDependencyProcessor(self.processor, task)
 
 class UOWTask(object):
+    """represents the full list of objects that are to be saved/deleted by a specific Mapper."""
     def __init__(self, uowtransaction, mapper):
         if uowtransaction is not None:
             uowtransaction.tasks[mapper] = self
@@ -603,6 +604,22 @@ class UOWTask(object):
             child.execute(trans)
         for task in self.inheriting_tasks:
             task._execute_childtasks(trans)
+    def _execute_cyclical_dependencies(self, trans, isdelete):
+        for dep in self.cyclical_dependencies:
+            dep.execute(trans, isdelete)
+        for task in self.inheriting_tasks:
+            task._execute_cyclical_dependencies(trans, isdelete)
+    def _execute_per_element_childtasks(self, trans, isdelete):
+        if isdelete:
+            for element in self.todelete_elements:
+                for task in element.childtasks:
+                    task.execute(trans)
+        else:
+            for element in self.tosave_elements:
+                for task in element.childtasks:
+                    task.execute(trans)
+        for task in self.inheriting_tasks:
+            task._execute_per_element_childtasks(trans, isdelete)
             
     def execute(self, trans):
         """executes this UOWTask.  saves objects to be saved, processes all dependencies
@@ -615,25 +632,28 @@ class UOWTask(object):
             self.circular.execute(trans)
             return
 
-        # TODO: apply the same recursive inheritance logic to the cyclical tasks/dependencies
         # TODO: add a visitation system to the UOW classes and have this execution called
         # from a separate executor object ? (would also handle dumping)
         
         self._save_objects(trans)
-        for dep in self.cyclical_dependencies:
-            dep.execute(trans, False)
-        for element in self.tosave_elements:
-            for task in element.childtasks:
-                task.execute(trans)
+        self._execute_cyclical_dependencies(trans, False)
+        self._execute_per_element_childtasks(trans, False)
         self._execute_dependencies(trans)
-        for dep in self.cyclical_dependencies:
-            dep.execute(trans, True)
+        self._execute_cyclical_dependencies(trans, True)
         self._execute_childtasks(trans)
-        for element in self.todelete_elements:
-            for task in element.childtasks:
-                task.execute(trans)
+        self._execute_per_element_childtasks(trans, True)
         self._delete_objects(trans)
 
+    def _polymorphic_elements(self):
+        for rec in self.objects.values():
+            yield rec
+            for task in self.inheriting_tasks:
+                for rec in task._polymorphic_elements():
+                    yield rec
+    
+    polymorphic_tosave_elements = property(lambda self: [rec for rec in self._polymorphic_elements() if not rec.isdelete])
+    polymorphic_todelete_elements = property(lambda self: [rec for rec in self._polymorphic_elements() if rec.isdelete])
+    
     tosave_elements = property(lambda self: [rec for rec in self.objects.values() if not rec.isdelete])
     todelete_elements = property(lambda self:[rec for rec in self.objects.values() if rec.isdelete])
     tosave_objects = property(lambda self:[rec.obj for rec in self.objects.values() if rec.obj is not None and not rec.listonly and rec.isdelete is False])
@@ -808,9 +828,9 @@ class UOWTask(object):
             
         def _dump_processor(proc, deletes):
             if deletes:
-                val = [t for t in proc.targettask.objects.values() if t.isdelete]
+                val = proc.targettask.polymorphic_todelete_elements
             else:
-                val = [t for t in proc.targettask.objects.values() if not t.isdelete]
+                val = proc.targettask.polymorphic_tosave_elements
 
             buf.write(_indent() + "  |- %s attribute on %s (UOWDependencyProcessor(%d) processing %s)\n" % (
                 repr(proc.processor.key), 

@@ -822,7 +822,8 @@ class Mapper(object):
         newrow = util.DictDecorator(row)
         for c in tomapper.mapped_table.c:
             c2 = self.mapped_table.corresponding_column(c, keys_ok=True, raiseerr=True)
-            newrow[c] = row[c2]
+            if row.has_key(c2):
+                newrow[c] = row[c2]
         return newrow
         
     def populate_instance(self, session, instance, row, identitykey, imap, isnew, frommapper=None):

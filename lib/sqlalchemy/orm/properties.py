@@ -581,6 +581,8 @@ class EagerLoader(LazyLoader):
         class DecoratorDict(object):
             def __init__(self, row):
                 self.row = row
+            def has_key(self, key):
+                return map.has_key(key) or self.row.has_key(key)
             def __getitem__(self, key):
                 if map.has_key(key):
                     key = map[key]

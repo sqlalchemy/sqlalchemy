@@ -350,7 +350,8 @@ class InheritTest5(testbase.AssertMixin):
         #contents.add_property('content_type', relation(content_types)) #adding this makes the inheritance stop working
         # shouldnt throw exception
         products = mapper(Product, product, inherits=contents)
-    
+        # TODO: assertion ??
+
     def testbackref(self):
         """tests adding a property to the superclass mapper"""
         class ContentType(object): pass
@@ -364,6 +365,7 @@ class InheritTest5(testbase.AssertMixin):
         })
         p = Product()
         p.contenttype = ContentType()
+        # TODO: assertion ??
         
 class InheritTest6(testbase.AssertMixin):
     """tests eager load/lazy load of child items off inheritance mappers, tests that

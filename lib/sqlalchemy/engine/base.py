@@ -506,6 +506,7 @@ class ResultProxy:
         self.closed = False
         self.executioncontext = executioncontext
         self.echo = engine.echo=="debug"
+        self.__key_cache = {}
         if executioncontext:
             self.rowcount = executioncontext.get_rowcount(cursor)
         else:
@@ -534,19 +535,36 @@ class ResultProxy:
             self.closed = True
             if self.connection.should_close_with_result and self.dialect.supports_autoclose_results:
                 self.connection.close()
-    def _get_col(self, row, key):
-        if isinstance(key, sql.ColumnElement):
-            try:
-                rec = self.props[key._label.lower()]
-            except KeyError:
+    
+    def _convert_key(self, key):
+        """given a key, which could be a ColumnElement, string, etc., matches it to the 
+        appropriate key we got from the result set's metadata; then cache it locally for quick re-access."""
+        try:
+            return self.__key_cache[key]
+        except KeyError:
+            if isinstance(key, sql.ColumnElement):
                 try:
-                    rec = self.props[key.key.lower()]
+                    rec = self.props[key._label.lower()]
                 except KeyError:
-                    rec = self.props[key.name.lower()]
-        elif isinstance(key, str):
-            rec = self.props[key.lower()]
-        else:
-            rec = self.props[key]
+                    try:
+                        rec = self.props[key.key.lower()]
+                    except KeyError:
+                        rec = self.props[key.name.lower()]
+            elif isinstance(key, str):
+                rec = self.props[key.lower()]
+            else:
+                rec = self.props[key]
+            self.__key_cache[key] = rec
+            return rec
+    def _has_key(self, row, key):
+        try:
+            self._convert_key(key)
+            return True
+        except KeyError:
+            return False
+        
+    def _get_col(self, row, key):
+        rec = self._convert_key(key)
         return rec[0].dialect_impl(self.dialect).convert_result_value(row[rec[1]], self.dialect)
     
     def __iter__(self):
@@ -605,6 +623,8 @@ class RowProxy:
         return (other is self) or (other == tuple([self.__parent._get_col(self.__row, key) for key in range(0, len(self.__row))]))
     def __repr__(self):
         return repr(tuple([self.__parent._get_col(self.__row, key) for key in range(0, len(self.__row))]))
+    def has_key(self, key):
+        return self.__parent._has_key(self.__row, key)
     def __getitem__(self, key):
         return self.__parent._get_col(self.__row, key)
     def __getattr__(self, name):

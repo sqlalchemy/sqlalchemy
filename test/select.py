@@ -3,6 +3,7 @@ from sqlalchemy import *
 from sqlalchemy.databases import sqlite, postgres, mysql, oracle
 from testbase import PersistTest
 import unittest, re
+import testbase
 
 # the select test now tests almost completely with TableClause/ColumnClause objects,
 # which are free-roaming table/column objects not attached to any database.  
@@ -645,4 +646,4 @@ class SchemaTest(SQLTest):
         self.runtest(table4.insert(values=(2, 5, 'test')), "INSERT INTO remote_owner.remotetable (rem_id, datatype_id, value) VALUES (:rem_id, :datatype_id, :value)")
         
 if __name__ == "__main__":
-    unittest.main()        
+    testbase.main()
