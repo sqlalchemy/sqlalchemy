@@ -932,6 +932,7 @@ class MapperProperty(object):
         """called when the MapperProperty is first attached to a new parent Mapper."""
         self.key = key
         self.parent = parent
+        self.localparent = parent
         self.do_init(key, parent)
     def adapt(self, newparent):
         """adapts this MapperProperty to a new parent, assuming the new parent is an inheriting
@@ -939,7 +940,8 @@ class MapperProperty(object):
         False if this MapperProperty cannot be adapted to the new parent (the case for this is,
         the parent mapper has a polymorphic select, and this property represents a column that is not
         represented in the new mapper's mapped table)"""
-        self.parent = newparent
+        #self.parent = newparent
+        self.localparent = newparent
         return True
     def do_init(self, key, parent):
         """template method for subclasses"""

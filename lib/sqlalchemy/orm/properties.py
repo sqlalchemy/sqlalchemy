@@ -38,8 +38,6 @@ class ColumnProperty(mapper.MapperProperty):
             else:
                 statement.append_column(c)
     def do_init(self, key, parent):
-        self.key = key
-        self.parent = parent
         # establish a SmartProperty property manager on the object for this key
         if parent._is_primary_mapper():
             #print "regiser col on class %s key %s" % (parent.class_.__name__, key)
@@ -60,14 +58,12 @@ class DeferredColumnProperty(ColumnProperty):
     def copy(self):
         return DeferredColumnProperty(*self.columns)
     def do_init(self, key, parent):
-        self.key = key
-        self.parent = parent
         # establish a SmartProperty property manager on the object for this key, 
         # containing a callable to load in the attribute
         if self.is_primary():
             sessionlib.global_attributes.register_attribute(parent.class_, key, uselist=False, callable_=lambda i:self.setup_loader(i))
     def setup_loader(self, instance):
-        if not self.parent.is_assigned(instance):
+        if not self.localparent.is_assigned(instance):
             return mapper.object_mapper(instance).props[self.key].setup_loader(instance)
         def lazyload():
             session = sessionlib.object_session(instance)
@@ -85,7 +81,7 @@ class DeferredColumnProperty(ColumnProperty):
             
             try:
                 if self.group is not None:
-                    groupcols = [p for p in self.parent.props.values() if isinstance(p, DeferredColumnProperty) and p.group==self.group]
+                    groupcols = [p for p in self.localparent.props.values() if isinstance(p, DeferredColumnProperty) and p.group==self.group]
                     row = connection.execute(sql.select([g.columns[0] for g in groupcols], clause, use_labels=True), None).fetchone()
                     for prop in groupcols:
                         if prop is self:
@@ -193,8 +189,6 @@ class PropertyLoader(mapper.MapperProperty):
                 self.association = mapper.class_mapper(self.association)
         
         self.target = self.mapper.mapped_table
-        self.key = key
-        self.parent = parent
 
         if self.secondaryjoin is not None and self.secondary is None:
             raise exceptions.ArgumentError("Property '" + self.key + "' specified with secondary join condition but no secondary argument")
@@ -253,7 +247,6 @@ class PropertyLoader(mapper.MapperProperty):
         
     def _get_direction(self):
         """determines our 'direction', i.e. do we represent one to many, many to many, etc."""
-        #print self.key, repr(self.parent.mapped_table.name), repr(self.parent.primarytable.name), repr(self.foreignkey.table.name), repr(self.target), repr(self.foreigntable.name)
         
         if self.secondaryjoin is not None:
             return sync.MANYTOMANY
@@ -323,7 +316,6 @@ class PropertyLoader(mapper.MapperProperty):
 
         self.syncrules = sync.ClauseSynchronizer(self.parent, self.mapper, self.direction)
         if self.direction == sync.MANYTOMANY:
-            #print "COMPILING p/c", self.parent, self.mapper
             self.syncrules.compile(self.primaryjoin, parent_tables, [self.secondary], False)
             self.syncrules.compile(self.secondaryjoin, target_tables, [self.secondary], True)
         else:
@@ -342,7 +334,7 @@ class LazyLoader(PropertyLoader):
         sessionlib.global_attributes.register_attribute(class_, key, uselist = self.uselist, callable_=lambda i: self.setup_loader(i), extension=self.attributeext, cascade=self.cascade, trackparent=True)
 
     def setup_loader(self, instance):
-        if not self.parent.is_assigned(instance):
+        if not self.localparent.is_assigned(instance):
             return mapper.object_mapper(instance).props[self.key].setup_loader(instance)
         def lazyload():
             params = {}
@@ -476,7 +468,7 @@ class EagerLoader(LazyLoader):
             if isinstance(prop, EagerLoader):
                 eagerprops.append(prop)
         if len(eagerprops):
-            recursion_stack[self.parent.mapped_table] = True
+            recursion_stack[self.localparent.mapped_table] = True
             self.mapper = self.mapper.copy()
             try:
                 for prop in eagerprops:
@@ -495,7 +487,7 @@ class EagerLoader(LazyLoader):
                     p.eagerprimary.accept_visitor(self.aliasizer)
                     #print "new eagertqarget", p.eagertarget.name, (p.secondary and p.secondary.name or "none"), p.parent.mapped_table.name
             finally:
-                del recursion_stack[self.parent.mapped_table]
+                del recursion_stack[self.localparent.mapped_table]
 
         self._row_decorator = self._create_decorator_row()
         
@@ -522,7 +514,7 @@ class EagerLoader(LazyLoader):
         if hasattr(statement, '_outerjoin'):
             towrap = statement._outerjoin
         else:
-            towrap = self.parent.mapped_table
+            towrap = self.localparent.mapped_table
 
  #       print "hello, towrap", str(towrap)
         if self.secondaryjoin is not None:
