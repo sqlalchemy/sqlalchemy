@@ -2,7 +2,7 @@
 """dumps out a string representation of a UOWTask structure"""
 
 class UOWDumper(object):
-    def __init__(self, task, buf, verbose=True):
+    def __init__(self, task, buf, verbose=False):
         self.verbose = verbose
         self.indent = 0
         self.task = task
