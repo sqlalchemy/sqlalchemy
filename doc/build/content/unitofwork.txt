@@ -216,7 +216,7 @@ It also can be called with a list of objects; in this form, the flush operation 
     {python}
     # saves only user1 and address2.  all other modified
     # objects remain present in the session.
-    session.flush(user1, address2)
+    session.flush([user1, address2])
     
 This second form of flush should be used carefully as it will not necessarily locate other dependent objects within the session, whose database representation may have foreign constraint relationships with the objects being operated upon.
 

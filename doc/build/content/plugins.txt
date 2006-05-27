@@ -84,7 +84,7 @@ The `objectstore` is an instance of `SessionContext`, available in the `sqlalche
 
 #### Attaching Mappers to their Class {@name=attaching}
 
-With `get_session()` handling the details of providing a `Session` in all cases, the `assign_mapper` function provides some of the functionality of `Query` and `Session` directly off the mapped instances themselves.  This is a "monkeypatch" function that creates a primary mapper, attaches the mapper to the class, and also the  methods `get, get_by, select, select_by, selectone, selectfirst, commit, expire, refresh, expunge` and `delete`:
+With `get_session()` handling the details of providing a `Session` in all cases, the `assign_mapper` function provides some of the functionality of `Query` and `Session` directly off the mapped instances themselves.  This is a "monkeypatch" function that creates a primary mapper, attaches the mapper to the class, and also the  methods `get`, `select`, `select_by`, `selectone`, `get_by`, `join_to`, `join_via`, `flush`, `delete`, `expire`, `refresh`, `expunge`, `merge`, `update`, `save`, and `save_or_update`:
 
     {python}
     # "assign" a mapper to the User class/users table
@@ -100,6 +100,8 @@ With `get_session()` handling the details of providing a `Session` in all cases,
     
     # flush the changes on a specific object
     myotheruser.flush()
+
+A more generic version of `assign_mapper` that works with any `SessionContext` is available in the [plugins_assignmapper](rel:plugins_assignmapper) plugin.
 
 #### Engine Strategy Set to threadlocal By Default {@name=engine}
 
@@ -181,7 +183,24 @@ The construction of each `Session` instance can be customized by providing a "cr
     # get the session corresponding to "scope2", bound to engine "someengine":
     session = ctx.current
     
+### assignmapper
 
+**Author:** Mike Bayer
+
+This is a generic version of the `assign_mapper` function present in the [plugins_threadlocal](rel:plugins_threadlocal) mod.  It requires an explicit [plugins_sessioncontext](rel:plugins_sessioncontext).
+
+    {python}
+    import sqlalchemy
+    from sqlalchemy.ext.sessioncontext import SessionContext
+    from sqlalchemy.ext.assignmapper import assign_mapper
+    
+    # session context
+    ctx = SessionContext(sqlalchemy.create_session)
+    
+    # assign mapper to class MyClass using table 'sometable', getting
+    # Sessions from 'ctx'.
+    assign_mapper(ctx, MyClass, sometable)
+    
 ### ActiveMapper
 
 **Author:** Jonathan LaCour
@@ -243,11 +262,11 @@ More discussion on ActiveMapper can be found at [Jonathan LaCour's Blog](http://
 
 **Author:** Jonathan Ellis
 
-SqlSoup creates mapped classes on the fly from tables.  It is essentially a nicer version of the "row data gateway" pattern.
+SqlSoup creates mapped classes on the fly from tables, which are automatically reflected from the database based on name.  It is essentially a nicer version of the "row data gateway" pattern.
 
     {python}
     >>> from sqlalchemy.ext.sqlsoup import SqlSoup
-    >>> soup = SqlSoup('sqlite://filename=:memory:')
+    >>> soup = SqlSoup('sqlite:///')
 
     >>> users = soup.users.select()
     >>> users.sort()
