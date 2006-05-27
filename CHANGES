@@ -49,6 +49,9 @@ unit tests
 - tutorial page added to docs which also can be run with a custom doctest
 runner to insure its properly working.  docs generally overhauled to 
 deal with new code patterns
+- many more fixes, refactorings.
+- migration guide is available on the Wiki at 
+http://www.sqlalchemy.org/trac/wiki/02Migration
 
 0.1.7
 - some fixes to topological sort algorithm
