@@ -9,7 +9,7 @@
 together to allow processing of scalar- and list-based dependencies at flush time."""
 
 from sync import ONETOMANY,MANYTOONE,MANYTOMANY
-from sqlalchemy import sql
+from sqlalchemy import sql, util
 
 def create_dependency_processor(key, syncrules, cascade, secondary=None, association=None, is_backref=False, post_update=False):
     types = {
@@ -309,41 +309,53 @@ class AssociationDP(OneToManyDP):
         uowcommit.register_processor(stub, self, self.parent)
     def process_dependencies(self, task, deplist, uowcommit, delete = False):
         #print self.mapper.table.name + " " + self.key + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
-        # manage association objects.
         for obj in deplist:
             childlist = self.get_object_dependencies(obj, uowcommit, passive=True)
             if childlist is None: continue
 
-            #print "DIRECTION", self.direction
-            d = {}
-            for child in childlist:
-                self._synchronize(obj, child, None, False)
-                key = self.mapper.instance_key(child)
-                #print "SYNCHRONIZED", child, "INSTANCE KEY", key
-                d[key] = child
-                uowcommit.unregister_object(child)
-
-            for child in childlist.added_items():
-                uowcommit.register_object(child)
-                key = self.mapper.instance_key(child)
-                #print "ADDED, INSTANCE KEY", key
-                d[key] = child
-
-            for child in childlist.unchanged_items():
-                key = self.mapper.instance_key(child)
-                o = d[key]
-                o._instance_key= key
-
-            for child in childlist.deleted_items():
-                key = self.mapper.instance_key(child)
-                #print "DELETED, INSTANCE KEY", key
-                if d.has_key(key):
-                    o = d[key]
-                    o._instance_key = key
+            # for the association mapper, the list of association objects is organized into a unique list based on the
+            # "primary key".  newly added association items which correspond to existing association items are "merged"
+            # into the existing one by moving the "_instance_key" over to the added item, so instead of insert/delete you
+            # just get an update operation.
+            if not delete:
+                tosave = util.OrderedDict()
+                for child in childlist:
+                    self._synchronize(obj, child, None, False)
+                    key = self.mapper.instance_key(child)
+                    tosave[key] = child
                     uowcommit.unregister_object(child)
-                else:
-                    #print "DELETE ASSOC OBJ", repr(child)
-                    uowcommit.register_object(child, isdelete=True)
+
+                todelete = {}
+                for child in childlist.deleted_items():
+                    self._synchronize(obj, child, None, False)
+                    key = self.mapper.instance_key(child)
+                    if not tosave.has_key(key):
+                        todelete[key] = child
+                    else:
+                        tosave[key]._instance_key = key
+                    uowcommit.unregister_object(child)
+                
+                for child in childlist.unchanged_items():
+                    key = self.mapper.instance_key(child)
+                    tosave[key]._instance_key = key
+                    
+                #print "OK for the save", [(o, getattr(o, '_instance_key', None)) for o in tosave.values()]
+                #print "OK for the delete", [(o, getattr(o, '_instance_key', None)) for o in todelete.values()]
+                
+                for obj in tosave.values():
+                    uowcommit.register_object(obj)
+                for obj in todelete.values():
+                    uowcommit.register_object(obj, isdelete=True)
+            else:
+                todelete = {}
+                for child in childlist.unchanged_items() + childlist.deleted_items():
+                    self._synchronize(obj, child, None, False)
+                    key = self.mapper.instance_key(child)
+                    todelete[key] = child
+                for obj in todelete.values():
+                    uowcommit.register_object(obj, isdelete=True)
+                    
+                
     def preprocess_dependencies(self, task, deplist, uowcommit, delete = False):
         # TODO: clean up the association step in process_dependencies and move the
         # appropriate sections of it to here

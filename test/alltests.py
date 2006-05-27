@@ -40,6 +40,7 @@ def suite():
         'objectstore',
         'cascade',
         'relationships',
+        'association',
         
         # cyclical ORM persistence
         'cycles',
@@ -49,7 +50,7 @@ def suite():
         'manytomany',
         'onetoone',
         'inheritance',
-	'polymorph',
+        'polymorph',
         
         # extensions
         'proxy_engine',

@@ -681,6 +681,7 @@ class Mapper(object):
         """called by a UnitOfWork object to delete objects, which involves a
         DELETE statement for each table used by this mapper, for each object in the list."""
         connection = uow.transaction.connection(self)
+        #print "DELETE_OBJ MAPPER", self.class_.__name__, objects
         
         for table in util.reversed(self.tables):
             if not self._has_pks(table):

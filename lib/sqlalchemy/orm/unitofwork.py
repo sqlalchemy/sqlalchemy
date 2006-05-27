@@ -305,6 +305,7 @@ class UOWTransaction(object):
         if mod: self._mark_modified()
 
     def unregister_object(self, obj):
+        #print "UNREGISTER", obj
         mapper = object_mapper(obj)
         task = self.get_task_by_mapper(mapper)
         if obj in task.objects:

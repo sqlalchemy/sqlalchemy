@@ -1,5 +1,3 @@
-"""Test complex relationships"""
-
 import testbase
 import unittest, sys, datetime
 
