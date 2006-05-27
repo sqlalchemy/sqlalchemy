@@ -1,4 +1,4 @@
-0.2
+0.2.0
 - overhaul to Engine system so that what was formerly the SQLEngine
 is now a ComposedSQLEngine which consists of a variety of components,
 including a Dialect, ConnectionProvider, etc. This impacted all the
