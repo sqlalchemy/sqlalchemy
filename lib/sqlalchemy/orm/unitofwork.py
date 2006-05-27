@@ -316,7 +316,7 @@ class UOWTransaction(object):
         #    raise "test assertion failed"
         self.__modified = True
         
-    def get_task_by_mapper(self, mapper):
+    def get_task_by_mapper(self, mapper, dontcreate=False):
         """every individual mapper involved in the transaction has a single
         corresponding UOWTask object, which stores all the operations involved
         with that mapper as well as operations dependent on those operations.
@@ -325,6 +325,8 @@ class UOWTransaction(object):
         try:
             return self.tasks[mapper]
         except KeyError:
+            if dontcreate:
+                return None
             task = UOWTask(self, mapper)
             task.mapper.register_dependencies(self)
             return task
@@ -675,20 +677,29 @@ class UOWTask(object):
         self._execute_per_element_childtasks(trans, True)
         self._delete_objects(trans)
 
-    def _polymorphic_elements(self):
+    def contains_object(self, obj, polymorphic=False):
+        if obj in self.objects:
+            return True
+        if polymorphic:
+            for task in self.inheriting_tasks:
+                if task.contains_object(obj, True):
+                    return True
+        return False
+        
+    def get_elements(self, polymorphic=False):
         for rec in self.objects.values():
             yield rec
-            for task in self.inheriting_tasks:
-                for rec in task._polymorphic_elements():
-                    yield rec
+            if polymorphic:
+                for task in self.inheriting_tasks:
+                    for rec in task.get_elements(polymorphic=True):
+                        yield rec
     
-    polymorphic_tosave_elements = property(lambda self: [rec for rec in self._polymorphic_elements() if not rec.isdelete])
-    polymorphic_todelete_elements = property(lambda self: [rec for rec in self._polymorphic_elements() if rec.isdelete])
-    
-    tosave_elements = property(lambda self: [rec for rec in self.objects.values() if not rec.isdelete])
-    todelete_elements = property(lambda self:[rec for rec in self.objects.values() if rec.isdelete])
-    tosave_objects = property(lambda self:[rec.obj for rec in self.objects.values() if rec.obj is not None and not rec.listonly and rec.isdelete is False])
-    todelete_objects = property(lambda self:[rec.obj for rec in self.objects.values() if rec.obj is not None and not rec.listonly and rec.isdelete is True])
+    polymorphic_tosave_elements = property(lambda self: [rec for rec in self.get_elements(polymorphic=True) if not rec.isdelete])
+    polymorphic_todelete_elements = property(lambda self: [rec for rec in self.get_elements(polymorphic=True) if rec.isdelete])
+    tosave_elements = property(lambda self: [rec for rec in self.get_elements(polymorphic=False) if not rec.isdelete])
+    todelete_elements = property(lambda self:[rec for rec in self.get_elements(polymorphic=False) if rec.isdelete])
+    tosave_objects = property(lambda self:[rec.obj for rec in self.get_elements(polymorphic=False) if rec.obj is not None and not rec.listonly and rec.isdelete is False])
+    todelete_objects = property(lambda self:[rec.obj for rec in self.get_elements(polymorphic=False) if rec.obj is not None and not rec.listonly and rec.isdelete is True])
         
     def _sort_circular_dependencies(self, trans, cycles):
         """for a single task, creates a hierarchical tree of "subtasks" which associate
@@ -700,7 +711,7 @@ class UOWTask(object):
         a hierarchical tree is being represented."""
         allobjects = []
         for task in cycles:
-            allobjects += task.objects.keys()
+            allobjects += [e.obj for e in task.get_elements(polymorphic=True)]
         tuples = []
         
         cycles = sets.Set(cycles)
@@ -732,25 +743,28 @@ class UOWTask(object):
                 dp[depprocessor] = l
             return l
 
+        def dependency_in_cycles(dep):
+            proctask = trans.get_task_by_mapper(dep.processor.mapper, True)
+            return dep.targettask in cycles and (proctask is not None and proctask in cycles)
+            
         # organize all original UOWDependencyProcessors by their target task
         deps_by_targettask = {}
         for task in cycles:
             for dep in task.dependencies:
-                if dep.targettask not in cycles or trans.get_task_by_mapper(dep.processor.mapper) not in cycles:
+                if not dependency_in_cycles(dep):
                     extradeplist.append(dep)
                 l = deps_by_targettask.setdefault(dep.targettask, [])
                 l.append(dep)
 
         for task in cycles:
-            for taskelement in task.objects.values():
+            for taskelement in task.get_elements(polymorphic=True):
                 obj = taskelement.obj
                 object_to_original_task[obj] = task
                 #print "OBJ", repr(obj), "TASK", repr(task)
                 
                 for dep in deps_by_targettask.get(task, []):
                     # is this dependency involved in one of the cycles ?
-                    cyclicaldep = dep.targettask in cycles and trans.get_task_by_mapper(dep.processor.mapper) in cycles
-                    if not cyclicaldep:
+                    if not dependency_in_cycles(dep):
                         continue
                         
                     (processor, targettask) = (dep.processor, dep.targettask)
@@ -758,13 +772,14 @@ class UOWTask(object):
                     
                     # list of dependent objects from this object
                     childlist = dep.get_object_dependencies(obj, trans, passive = True)
-                    # the task corresponding to the processor's objects
+                    
+                    # the task corresponding to saving/deleting of those dependent objects
                     childtask = trans.get_task_by_mapper(processor.mapper)
                     
                     childlist = childlist.added_items() + childlist.unchanged_items() + childlist.deleted_items()
                         
                     for o in childlist:
-                        if o is None or o not in childtask.objects:
+                        if o is None or not childtask.contains_object(o, polymorphic=True):
                             continue
                         whosdep = dep.whose_dependent_on_who(obj, o)
                         if whosdep is not None:
@@ -802,7 +817,7 @@ class UOWTask(object):
                     
             can_add_to_parent = t.mapper is parenttask.mapper
             original_task = object_to_original_task[node.item]
-            if original_task.objects.has_key(node.item):
+            if original_task.contains_object(node.item, polymorphic=False):
                 if can_add_to_parent:
                     parenttask.append(node.item, original_task.objects[node.item].listonly, isdelete=original_task.objects[node.item].isdelete, childtask=t)
                 else:
