@@ -169,7 +169,10 @@ class Query(object):
         ret = self.select_whereclause(self.join_by(*args, **params), limit=2)
         if len(ret) == 1:
             return ret[0]
-        raise exceptions.InvalidRequestError('Multiple rows returned for selectone_by')
+        elif len(ret) == 0:
+            raise exceptions.InvalidRequestError('No rows returned for selectone_by')
+        else:
+            raise exceptions.InvalidRequestError('Multiple rows returned for selectone_by')
 
     def count_by(self, *args, **params):
         """returns the count of instances based on the given clauses and key/value criterion.
@@ -191,7 +194,10 @@ class Query(object):
         ret = list(self.select(*args, **params)[0:2])
         if len(ret) == 1:
             return ret[0]
-        raise exceptions.InvalidRequestError('Multiple rows returned for selectone')
+        elif len(ret) == 0:
+            raise exceptions.InvalidRequestError('No rows returned for selectone_by')
+        else:
+            raise exceptions.InvalidRequestError('Multiple rows returned for selectone')
 
     def select(self, arg=None, **kwargs):
         """selects instances of the object from the database.  

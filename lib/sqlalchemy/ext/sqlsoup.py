@@ -1,5 +1,3 @@
-from sqlalchemy import *
-
 """
 SqlSoup provides a convenient way to access database tables without having
 to declare table or mapper classes ahead of time.
@@ -9,16 +7,16 @@ Suppose we have a database with users, books, and loans tables
 For testing purposes, we can create this db as follows:
 
 >>> from sqlalchemy import create_engine
->>> e = create_engine('sqlite://filename=:memory:')
->>> for sql in _testsql: e.execute(sql)
-... 
+>>> e = create_engine('sqlite:///:memory:')
+>>> for sql in _testsql: e.execute(sql) #doctest: +ELLIPSIS
+<...
 
 Creating a SqlSoup gateway is just like creating an SqlAlchemy engine:
 >>> from sqlalchemy.ext.sqlsoup import SqlSoup
->>> soup = SqlSoup('sqlite://filename=:memory:')
+>>> soup = SqlSoup('sqlite:///:memory:')
 
-or, you can re-use an existing engine:
->>> soup = SqlSoup(e)
+or, you can re-use an existing metadata:
+>>> soup = SqlSoup(BoundMetaData(e))
 
 Loading objects is as easy as this:
 >>> users = soup.users.select()
@@ -28,8 +26,7 @@ Loading objects is as easy as this:
 
 Of course, letting the database do the sort is better (".c" is short for ".columns"):
 >>> soup.users.select(order_by=[soup.users.c.name])
-[Class_Users(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1), 
- Class_Users(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0)]
+[Class_Users(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1), Class_Users(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0)]
 
 Field access is intuitive:
 >>> users[0].email
@@ -47,21 +44,27 @@ http://www.sqlalchemy.org/docs/sqlconstruction.myt
 Modifying objects is intuitive:
 >>> user = _
 >>> user.email = 'basepair+nospam@example.edu'
->>> soup.commit()
+>>> soup.flush()
 
 (SqlSoup leverages the sophisticated SqlAlchemy unit-of-work code, so
 multiple updates to a single object will be turned into a single UPDATE
-statement when you commit.)
+statement when you flush.)
 
 Finally, insert and delete.  Let's insert a new loan, then delete it:
->>> soup.loans.insert(book_id=soup.books.selectfirst().id, user_name=user.name)
-Class_Loans(book_id=1,user_name='Bhargan Basepair',loan_date=None)
->>> soup.commit()
+>>> soup.loans.insert(book_id=soup.books.selectfirst(soup.books.c.title=='Regional Variation in Moss').id, user_name=user.name)
+Class_Loans(book_id=2,user_name='Bhargan Basepair',loan_date=None)
+>>> soup.flush()
 
->>> loan = soup.loans.selectone_by(book_id=1, user_name='Bhargan Basepair')
+>>> loan = soup.loans.selectone_by(book_id=2, user_name='Bhargan Basepair')
 >>> soup.delete(loan)
->>> soup.commit()
+>>> soup.flush()
 """
+
+from sqlalchemy import *
+from sqlalchemy.ext.sessioncontext import SessionContext
+from sqlalchemy.ext.assignmapper import assign_mapper
+from sqlalchemy.exceptions import *
+
 
 _testsql = """
 CREATE TABLE books (
@@ -83,7 +86,7 @@ CREATE TABLE loans (
     book_id              int PRIMARY KEY REFERENCES books(id),
     user_name            varchar(32) references users(name) 
         ON DELETE SET NULL ON UPDATE CASCADE,
-    loan_date            date NOT NULL DEFAULT current_timestamp
+    loan_date            date DEFAULT current_timestamp
 );
 
 insert into users(name, email, password, admin)
@@ -104,6 +107,17 @@ values (
 """.split(';')
 
 __all__ = ['NoSuchTableError', 'SqlSoup']
+
+#
+# thread local SessionContext
+#
+class Objectstore(SessionContext):
+    def __getattr__(self, key):
+        return getattr(self.current, key)
+    def get_session(self):
+        return self.current
+
+objectstore = Objectstore(create_session)
 
 class NoSuchTableError(SQLAlchemyError): pass
 
@@ -133,7 +147,7 @@ def class_for_table(table):
             L.append("%s=%r" % (k, value))
         return '%s(%s)' % (self.__class__.__name__, ','.join(L))
     klass.__repr__ = __repr__
-    klass._mapper = mapper(klass, table)
+    klass._mapper = mapper(klass, table, extension=objectstore.mapper_extension)
     return klass
 
 class SqlSoup:
@@ -142,21 +156,21 @@ class SqlSoup:
         args may either be an SQLEngine or a set of arguments suitable
         for passing to create_engine
         """
-        from sqlalchemy.engine import SQLEngine
+        from sqlalchemy import MetaData
         # meh, sometimes having method overloading instead of kwargs would be easier
-        if isinstance(args[0], SQLEngine):
+        if isinstance(args[0], MetaData):
             args = list(args)
-            engine = args.pop(0)
+            metadata = args.pop(0)
             if args or kwargs:
-                raise ArgumentError('Extra arguments not allowed when engine is given')
+                raise ArgumentError('Extra arguments not allowed when metadata is given')
         else:
-            engine = create_engine(*args, **kwargs)
-        self._engine = engine
+            metadata = BoundMetaData(*args, **kwargs)
+        self._metadata = metadata
         self._cache = {}
     def delete(self, *args, **kwargs):
         objectstore.delete(*args, **kwargs)
-    def commit(self):
-        objectstore.get_session().commit()
+    def flush(self):
+        objectstore.get_session().flush()
     def rollback(self):
         objectstore.clear()
     def _reset(self):
@@ -167,7 +181,7 @@ class SqlSoup:
         try:
             t = self._cache[attr]
         except KeyError:
-            table = Table(attr, self._engine, autoload=True)
+            table = Table(attr, self._metadata, autoload=True)
             if table.columns:
                 t = class_for_table(table)
             else:
