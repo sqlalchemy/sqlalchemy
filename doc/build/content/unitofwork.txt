@@ -444,25 +444,15 @@ The `flush()` operation will then dump to the standard output displays like the 
 
     {code}
     Task dump:
-     UOWTask(6034768) 'User/users/6015696'
+    
+     UOWTask(6034768, 'User/users/None')
       |
-      |- Save elements
-      |- Save: UOWTaskElement(6034800): User(6016624) (save)
+      |- Save User(6016624)
+      |       |-Process User(6016624).addresses
       |
-      |- Save dependencies
-      |- UOWDependencyProcessor(6035024) 'addresses' attribute on saved User's (UOWTask(6034768) 'User/users/6015696')
-      |       |-UOWTaskElement(6034800): User(6016624) (save)
-      |
-      |- Delete dependencies
-      |- UOWDependencyProcessor(6035056) 'addresses' attribute on User's to be deleted (UOWTask(6034768) 'User/users/6015696')
-      |       |-(no objects)
-      |
-      |- Child tasks
-      |- UOWTask(6034832) 'Address/email_addresses/6015344'
-      |   |
-      |   |- Save elements
-      |   |- Save: UOWTaskElement(6034864): Address(6034384) (save)
-      |   |- Save: UOWTaskElement(6034896): Address(6034256) (save)
+      |- UOWTask(6034832, 'Address/email_addresses/None')
+      |   |- Save Address(6034384)
+      |   |- Save Address(6034256)
       |   |----
       | 
       |----
@@ -471,5 +461,4 @@ The above graph can be read straight downwards to determine the order of operati
 
 Of course, one can also get a good idea of the order of operations just by logging the actual SQL statements executed.
 
-The format of the above display is definitely a work in progress and amazingly, is far simpler to read than it was in earlier releases.  It will hopefully be further refined in future releases to be more intuitive (while not losing any information).
     
