@@ -647,7 +647,7 @@ class Mapper(object):
                     if primary_key is not None:
                         i = 0
                         for col in self.pks_by_table[table]:
-                            if self._getattrbycolumn(obj, col) is None:
+                            if self._getattrbycolumn(obj, col) is None and len(primary_key) > i:
                                 self._setattrbycolumn(obj, col, primary_key[i])
                             i+=1
                     self._postfetch(connection, table, obj, c, c.last_inserted_params())
