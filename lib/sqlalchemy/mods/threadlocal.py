@@ -20,6 +20,8 @@ Note: this mod creates a global, thread-local session context named sqlalchemy.o
 while this mod is installed will reference this global context when creating new mapped object instances.
 """
 
+__all__ = ['Objectstore', 'assign_mapper']
+
 class Objectstore(SessionContext):
     def __getattr__(self, key):
         return getattr(self.current, key)

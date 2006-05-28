@@ -292,7 +292,7 @@ The `ProxyEngine` is used to "wrap" an `Engine`, and via subclassing `ProxyEngin
 
 **Author:** Jonas Borgström
 
-SelectResults gives generator-like behavior to the results returned from the `select` and `select_by` method of `Query`.  It supports three modes of operation; per-query, per-mapper, and per-application.
+SelectResults gives transformative behavior to the results returned from the `select` and `select_by` method of `Query`.  It supports three modes of operation; per-query, per-mapper, and per-application.
 
     {python title="SelectResults with a Query Object"}
     from sqlalchemy.ext.selectresults import SelectResults
@@ -326,3 +326,4 @@ Or across an application via the `selectresults` mod:
     mapper(MyClass, mytable)
     session.query(MyClass).select(mytable.c.column=="something").order_by([mytable.c.column])[2:7]
     
+For a full listing of methods, see the [generated documentation](rel:docstrings_sqlalchemy.ext.selectresults).

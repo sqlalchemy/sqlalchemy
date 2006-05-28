@@ -15,6 +15,7 @@ import sqlalchemy.exceptions as exceptions
 import sqlalchemy.ext.proxy as proxy
 import sqlalchemy.ext.sessioncontext as sessioncontext
 import sqlalchemy.mods.threadlocal as threadlocal
+import sqlalchemy.ext.selectresults as selectresults
 
 objects = []
 def make_doc(obj, classes=None, functions=None):
@@ -22,15 +23,16 @@ def make_doc(obj, classes=None, functions=None):
     
 make_doc(obj=sql, classes=[sql.Engine, sql.AbstractDialect, sql.ClauseParameters, sql.Compiled, sql.ClauseElement, sql.TableClause, sql.ColumnClause])
 make_doc(obj=schema)
-make_doc(obj=engine, classes=[engine.ComposedSQLEngine, engine.Connection, engine.Transaction, engine.Dialect, engine.ConnectionProvider, engine.ExecutionContext, engine.ResultProxy, engine.RowProxy])
+make_doc(obj=engine, classes=[engine.Connectable, engine.ComposedSQLEngine, engine.Connection, engine.Transaction, engine.Dialect, engine.ConnectionProvider, engine.ExecutionContext, engine.ResultProxy, engine.RowProxy])
 make_doc(obj=strategies)
 make_doc(obj=orm, classes=[orm.Mapper, orm.MapperExtension])
 make_doc(obj=orm.query, classes=[orm.query.Query])
 make_doc(obj=orm.session, classes=[orm.session.Session, orm.session.SessionTransaction])
+make_doc(obj=pool, classes=[pool.DBProxy, pool.Pool, pool.QueuePool, pool.SingletonThreadPool])
 make_doc(obj=sessioncontext)
 make_doc(obj=threadlocal)
+make_doc(obj=selectresults)
 make_doc(obj=exceptions)
-make_doc(obj=pool, classes=[pool.DBProxy, pool.Pool, pool.QueuePool, pool.SingletonThreadPool])
 make_doc(obj=proxy)
 
 
