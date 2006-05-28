@@ -102,8 +102,28 @@ class TLTransactionTest(testbase.PersistTest):
         tlengine.execute(users.insert(), user_id=3, user_name='user3')
         tlengine.rollback()
 
-        result = tlengine.execute("select * from query_users")
-        assert len(result.fetchall()) == 0
+        external_connection = tlengine.connect()
+        result = external_connection.execute("select * from query_users")
+        try:
+            assert len(result.fetchall()) == 0
+        finally:
+            external_connection.close()
+
+    @testbase.unsupported('mysql')
+    def testcommit(self):
+        """test a basic commit"""
+        tlengine.begin()
+        tlengine.execute(users.insert(), user_id=1, user_name='user1')
+        tlengine.execute(users.insert(), user_id=2, user_name='user2')
+        tlengine.execute(users.insert(), user_id=3, user_name='user3')
+        tlengine.commit()
+
+        external_connection = tlengine.connect()
+        result = external_connection.execute("select * from query_users")
+        try:
+            assert len(result.fetchall()) == 3
+        finally:
+            external_connection.close()
 
     @testbase.unsupported('mysql', 'sqlite')
     def testnesting(self):
@@ -119,8 +139,10 @@ class TLTransactionTest(testbase.PersistTest):
         tlengine.execute(users.insert(), user_id=5, user_name='user5')
         tlengine.commit()
         tlengine.rollback()
-        self.assert_(external_connection.scalar("select count(1) from query_users") == 0)
-        external_connection.close()
+        try:
+            self.assert_(external_connection.scalar("select count(1) from query_users") == 0)
+        finally:
+            external_connection.close()
         
 if __name__ == "__main__":
     testbase.main()        

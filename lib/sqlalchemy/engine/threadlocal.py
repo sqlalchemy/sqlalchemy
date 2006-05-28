@@ -31,10 +31,10 @@ class TLSession(object):
     def commit(self):
         if self.__tcount == 1:
             try:
-                self._trans.commit()
+                self.__trans.commit()
             finally:
                 del self.__transaction
-                del self._trans
+                del self.__trans
                 self.__tcount = 0
         elif self.__tcount > 1:
             self.__tcount -= 1
