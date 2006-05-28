@@ -1,5 +1,6 @@
 import re
 import cgi
+import sqlalchemy.exceptions as exceptions
 
 class URL(object):
     def __init__(self, drivername, username=None, password=None, host=None, port=None, database=None):
@@ -68,7 +69,7 @@ def _parse_rfc1738_args(name):
         opts = {'username':username,'password':password,'host':host,'port':port,'database':database}
         return URL(name, **opts)
     else:
-        return None
+        raise exceptions.ArgumentError("Could not parse rfc1738 URL from string '%s'" % name)
 
 def _parse_keyvalue_args(name):
     m = re.match( r'(\w+)://(.*)', name)
