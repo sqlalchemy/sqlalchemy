@@ -167,7 +167,7 @@ class Connectable(object):
     def _not_impl(self):
         raise NotImplementedError()
     engine = property(_not_impl, doc="returns the Engine which this Connectable is associated with.")
-            
+
 class Connection(Connectable):
     """represents a single DBAPI connection returned from the underlying connection pool.  Provides
     execution support for string-based SQL statements as well as ClauseElement, Compiled and DefaultGenerator objects.
@@ -214,6 +214,9 @@ class Connection(Connectable):
         # extra step
         if not self.in_transaction() and re.match(r'UPDATE|INSERT|CREATE|DELETE|DROP', statement.lstrip().upper()):
             self._commit_impl()
+    def _autorollback(self):
+        if not self.in_transaction():
+            self._rollback_impl()
     def close(self):
         if self.__connection is not None:
             self.__connection.close()
@@ -315,7 +318,8 @@ class Connection(Connectable):
         try:
             self.__engine.dialect.do_execute(c, statement, parameters, context=context)
         except Exception, e:
-            self._rollback_impl()
+            self._autorollback()
+            #self._rollback_impl()
             if self.__close_with_result:
                 self.close()
             raise exceptions.SQLError(statement, parameters, e)

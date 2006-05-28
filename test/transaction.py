@@ -144,21 +144,52 @@ class TLTransactionTest(testbase.PersistTest):
         finally:
             external_connection.close()
 
-    def testexplicitnesting(self):
-        """tests nesting of tranacstions"""
+    def testmixednesting(self):
+        """tests nesting of transactions off the TLEngine directly inside of 
+        tranasctions off the connection from the TLEngine"""
         external_connection = tlengine.connect()
         self.assert_(external_connection.connection is not tlengine.contextual_connect().connection)
         conn = tlengine.contextual_connect()
         trans = conn.begin()
+        trans2 = conn.begin()
         tlengine.execute(users.insert(), user_id=1, user_name='user1')
         tlengine.execute(users.insert(), user_id=2, user_name='user2')
         tlengine.execute(users.insert(), user_id=3, user_name='user3')
         tlengine.begin()
         tlengine.execute(users.insert(), user_id=4, user_name='user4')
+        tlengine.begin()
         tlengine.execute(users.insert(), user_id=5, user_name='user5')
+        tlengine.execute(users.insert(), user_id=6, user_name='user6')
+        tlengine.execute(users.insert(), user_id=7, user_name='user7')
         tlengine.commit()
+        tlengine.execute(users.insert(), user_id=8, user_name='user8')
+        tlengine.commit()
+        trans2.commit()
         trans.rollback()
         conn.close()
+        try:
+            self.assert_(external_connection.scalar("select count(1) from query_users") == 0)
+        finally:
+            external_connection.close()
+
+    def testmoremixednesting(self):
+        """tests nesting of transactions off the connection from the TLEngine
+        inside of tranasctions off thbe TLEngine directly."""
+        external_connection = tlengine.connect()
+        self.assert_(external_connection.connection is not tlengine.contextual_connect().connection)
+        tlengine.begin()
+        connection = tlengine.contextual_connect()
+        connection.execute(users.insert(), user_id=1, user_name='user1')
+        tlengine.begin()
+        connection.execute(users.insert(), user_id=2, user_name='user2')
+        connection.execute(users.insert(), user_id=3, user_name='user3')
+        trans = connection.begin()
+        connection.execute(users.insert(), user_id=4, user_name='user4')
+        connection.execute(users.insert(), user_id=5, user_name='user5')
+        trans.commit()
+        tlengine.commit()
+        tlengine.rollback()
+        connection.close()
         try:
             self.assert_(external_connection.scalar("select count(1) from query_users") == 0)
         finally:

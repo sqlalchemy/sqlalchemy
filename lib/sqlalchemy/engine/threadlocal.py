@@ -67,10 +67,8 @@ class TLConnection(base.Connection):
 
 class TLTransaction(base.Transaction):
     def commit(self):
-        print "TL COMMIT"
         base.Transaction.commit(self)
         if not self.is_active:
-            print "RESET"
             self.connection.session.reset()
     def rollback(self):
         base.Transaction.rollback(self)
