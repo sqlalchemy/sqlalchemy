@@ -20,27 +20,32 @@ class TLSession(object):
             self.__transaction = tlconnection
             self.__trans = trans
         self.__tcount += 1
+    def reset(self):
+        try:
+            del self.__transaction
+            del self.__trans
+        except AttributeError:
+            pass
+        self.__tcount = 0
+        
     def begin(self):
         if self.__tcount == 0:
             self.__transaction = self.get_connection()
-            self.__trans = self.__transaction.begin()
+            self.__trans = self.__transaction._begin()
         self.__tcount += 1
+        return self.__trans
     def rollback(self):
         if self.__tcount > 0:
             try:
                 self.__trans.rollback()
             finally:
-                del self.__transaction
-                del self.__trans
-                self.__tcount = 0
+                self.reset()
     def commit(self):
         if self.__tcount == 1:
             try:
                 self.__trans.commit()
             finally:
-                del self.__transaction
-                del self.__trans
-                self.__tcount = 0
+                self.reset()
         elif self.__tcount > 1:
             self.__tcount -= 1
     def is_begun(self):
@@ -50,8 +55,28 @@ class TLConnection(base.Connection):
     def __init__(self, session, close_with_result):
         base.Connection.__init__(self, session.engine, close_with_result=close_with_result)
         self.__session = session
-    # TODO: get begin() to communicate with the Session to maintain the same transactional state
-       
+    session = property(lambda s:s.__session)
+    def _create_transaction(self, parent):
+        return TLTransaction(self, parent)
+    def _begin(self):
+        return base.Connection.begin(self)
+    def begin(self):
+        trans = base.Connection.begin(self)
+        self.__session.set_transaction(self, trans)
+        return trans
+
+class TLTransaction(base.Transaction):
+    def commit(self):
+        print "TL COMMIT"
+        base.Transaction.commit(self)
+        if not self.is_active:
+            print "RESET"
+            self.connection.session.reset()
+    def rollback(self):
+        base.Transaction.rollback(self)
+        if not self.is_active:
+            self.connection.session.reset()
+            
 class TLEngine(base.ComposedSQLEngine):
     """a ComposedSQLEngine that includes support for thread-local managed transactions.  This engine
     is better suited to be used with threadlocal Pool object."""

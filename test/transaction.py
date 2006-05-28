@@ -143,6 +143,26 @@ class TLTransactionTest(testbase.PersistTest):
             self.assert_(external_connection.scalar("select count(1) from query_users") == 0)
         finally:
             external_connection.close()
+
+    def testexplicitnesting(self):
+        """tests nesting of tranacstions"""
+        external_connection = tlengine.connect()
+        self.assert_(external_connection.connection is not tlengine.contextual_connect().connection)
+        conn = tlengine.contextual_connect()
+        trans = conn.begin()
+        tlengine.execute(users.insert(), user_id=1, user_name='user1')
+        tlengine.execute(users.insert(), user_id=2, user_name='user2')
+        tlengine.execute(users.insert(), user_id=3, user_name='user3')
+        tlengine.begin()
+        tlengine.execute(users.insert(), user_id=4, user_name='user4')
+        tlengine.execute(users.insert(), user_id=5, user_name='user5')
+        tlengine.commit()
+        trans.rollback()
+        conn.close()
+        try:
+            self.assert_(external_connection.scalar("select count(1) from query_users") == 0)
+        finally:
+            external_connection.close()
     
     def testconnections(self):
         """tests that contextual_connect is threadlocal"""

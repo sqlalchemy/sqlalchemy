@@ -345,6 +345,7 @@ class Transaction(object):
         if self.__parent is self:
             self.__connection._begin_impl()
     connection = property(lambda s:s.__connection, doc="The Connection object referenced by this Transaction")
+    is_active = property(lambda s:s.__is_active)
     def rollback(self):
         if not self.__parent.__is_active:
             raise exceptions.InvalidRequestError("This transaction is inactive")
