@@ -6,39 +6,42 @@ import base, default
 will return the same connection for the same thread. also provides begin/commit methods on the engine itself
 which correspond to a thread-local transaction."""
 
-class TLTransaction(base.Transaction):
-    def rollback(self):
+class TLSession(object):
+    def __init__(self, engine):
+        self.engine = engine
+        self.__tcount = 0
+    def get_connection(self, close_with_result=False):
         try:
-            base.Transaction.rollback(self)
-        finally:
-            try:
-                del self.connection.engine.context.transaction
-            except AttributeError:
-                pass
-    def commit(self):
-        try:
-            base.Transaction.commit(self)
-            stack = self.connection.engine.context.transaction
-            stack.pop()
-            if len(stack) == 0:
-                del self.connection.engine.context.transaction
-        except:
-            try:
-                del self.connection.engine.context.transaction
-            except AttributeError:
-                pass
-            raise
-            
-class TLConnection(base.Connection):
-    def _create_transaction(self, parent):
-        return TLTransaction(self, parent)
+            return self.__transaction
+        except AttributeError:
+            return base.Connection(self.engine, close_with_result=close_with_result)
     def begin(self):
-        t = base.Connection.begin(self)
-        if not hasattr(self.engine.context, 'transaction'):
-            self.engine.context.transaction = []
-        self.engine.context.transaction.append(t)
-        return t
-        
+        if self.__tcount == 0:
+            self.__transaction = self.get_connection()
+            self.__trans = self.__transaction.begin()
+        self.__tcount += 1
+    def rollback(self):
+        if self.__tcount > 0:
+            try:
+                self.__trans.rollback()
+            finally:
+                del self.__transaction
+                del self.__trans
+                self.__tcount = 0
+    def commit(self):
+        if self.__tcount == 1:
+            try:
+                self._trans.commit()
+            finally:
+                del self.__transaction
+                del self._trans
+                self.__tcount = 0
+        elif self.__tcount > 1:
+            self.__tcount -= 1
+    def is_begun(self):
+        return self.__tcount > 0
+
+    
 class TLEngine(base.ComposedSQLEngine):
     """a ComposedSQLEngine that includes support for thread-local managed transactions.  This engine
     is better suited to be used with threadlocal Pool object."""
@@ -55,29 +58,23 @@ class TLEngine(base.ComposedSQLEngine):
         """returns a Connection that is not thread-locally scoped.  this is the equilvalent to calling
         "connect()" on a ComposedSQLEngine."""
         return base.Connection(self, self.connection_provider.unique_connection())
+
+    def _session(self):
+        if not hasattr(self.context, 'session'):
+            self.context.session = TLSession(self)
+        return self.context.session
+    session = property(_session, doc="returns the current thread's TLSession")
+
     def contextual_connect(self, **kwargs):
         """returns a TLConnection which is thread-locally scoped."""
-        return TLConnection(self, **kwargs)
+        return self.session.get_connection(**kwargs)
+        
     def begin(self):
-        return self.connect().begin()
+        return self.session.begin()
     def commit(self):
-        if hasattr(self.context, 'transaction'):
-            self.context.transaction[-1].commit()
+        self.session.commit()
     def rollback(self):
-        if hasattr(self.context, 'transaction'):
-            self.context.transaction[-1].rollback()
-    def transaction(self, func, *args, **kwargs):
-           """executes the given function within a transaction boundary.  this is a shortcut for
-           explicitly calling begin() and commit() and optionally rollback() when execptions are raised.
-           The given *args and **kwargs will be passed to the function as well, which could be handy
-           in constructing decorators."""
-           trans = self.begin()
-           try:
-               func(*args, **kwargs)
-           except:
-               trans.rollback()
-               raise
-           trans.commit()
+        self.session.rollback()
 
 class TLocalConnectionProvider(default.PoolConnectionProvider):
     def unique_connection(self):

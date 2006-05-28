@@ -54,7 +54,7 @@ class ThreadLocalEngineStrategy(EngineStrategy):
         dialect = module.dialect(**kwargs)
 
         poolargs = {}
-        for key in (('echo', 'echo_pool'), ('pool_size', 'pool_size'), ('max_overflow', 'max_overflow'), ('poolclass', 'poolclass'), ('pool_timeout','timeout')):
+        for key in (('echo', 'echo_pool'), ('pool_size', 'pool_size'), ('max_overflow', 'max_overflow'), ('poolclass', 'poolclass'), ('pool_timeout','timeout'), ('pool', 'pool')):
             if kwargs.has_key(key[0]):
                 poolargs[key[1]] = kwargs[key[0]]
         poolclass = getattr(module, 'poolclass', None)

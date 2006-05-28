@@ -194,6 +194,8 @@ class Connection(Connectable):
             return self.__transaction
         else:
             return self._create_transaction(self.__transaction)
+    def in_transaction(self):
+        return self.__transaction is not None
     def _begin_impl(self):
         if self.__engine.echo:
             self.__engine.log("BEGIN")
@@ -210,13 +212,13 @@ class Connection(Connectable):
         """when no Transaction is present, this is called after executions to provide "autocommit" behavior."""
         # TODO: have the dialect determine if autocommit can be set on the connection directly without this 
         # extra step
-        if self.__transaction is None and re.match(r'UPDATE|INSERT|CREATE|DELETE|DROP', statement.lstrip().upper()):
+        if not self.in_transaction() and re.match(r'UPDATE|INSERT|CREATE|DELETE|DROP', statement.lstrip().upper()):
             self._commit_impl()
     def close(self):
         if self.__connection is not None:
             self.__connection.close()
             self.__connection = None
-    def scalar(self, object, parameters, **kwargs):
+    def scalar(self, object, parameters=None, **kwargs):
         row = self.execute(object, parameters, **kwargs).fetchone()
         if row is not None:
             return row[0]
@@ -406,6 +408,10 @@ class ComposedSQLEngine(sql.Engine, Connectable):
                 conn.close()
     
     def transaction(self, callable_, connection=None, *args, **kwargs):
+        """executes the given function within a transaction boundary.  this is a shortcut for
+        explicitly calling begin() and commit() and optionally rollback() when execptions are raised.
+        The given *args and **kwargs will be passed to the function, as well as the Connection used 
+        in the transaction."""
         if connection is None:
             conn = self.contextual_connect()
         else:
