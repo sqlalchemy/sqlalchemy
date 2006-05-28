@@ -37,7 +37,7 @@ class URL(object):
             sname = attribute_names.pop(0)
             if n is None:
                 continue
-            if getattr(self, sname, None) is not None:
+            if getattr(self, sname, None):
                 a[n] = getattr(self, sname)
         return a
     

@@ -22,7 +22,7 @@ class ParseConnectTest(PersistTest):
         ):
             u = url.make_url(text)
             print u, text
-            print u.username, u.password,  u.database
+            print "username=", u.username, "password=", u.password,  "database=", u.database, "host=", u.host
             assert str(u) == text
 
             
