@@ -14,7 +14,12 @@ class TLSession(object):
         try:
             return self.__transaction
         except AttributeError:
-            return base.Connection(self.engine, close_with_result=close_with_result)
+            return TLConnection(self, close_with_result=close_with_result)
+    def set_transaction(self, tlconnection, trans):
+        if self.__tcount == 0:
+            self.__transaction = tlconnection
+            self.__trans = trans
+        self.__tcount += 1
     def begin(self):
         if self.__tcount == 0:
             self.__transaction = self.get_connection()
@@ -41,7 +46,12 @@ class TLSession(object):
     def is_begun(self):
         return self.__tcount > 0
 
-    
+class TLConnection(base.Connection):
+    def __init__(self, session, close_with_result):
+        base.Connection.__init__(self, session.engine, close_with_result=close_with_result)
+        self.__session = session
+    # TODO: get begin() to communicate with the Session to maintain the same transactional state
+       
 class TLEngine(base.ComposedSQLEngine):
     """a ComposedSQLEngine that includes support for thread-local managed transactions.  This engine
     is better suited to be used with threadlocal Pool object."""

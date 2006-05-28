@@ -17,10 +17,12 @@ class ParseConnectTest(PersistTest):
             'dbtype:///:memory:',
             'dbtype:///foo/bar/im/a/file',
             'dbtype:///E:/work/src/LEM/db/hello.db',
-            'dbtype://'
+            'dbtype://',
+            'dbtype://username:password@/db'
         ):
             u = url.make_url(text)
             print u, text
+            print u.username, u.password,  u.database
             assert str(u) == text
 
             

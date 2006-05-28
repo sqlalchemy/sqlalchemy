@@ -157,8 +157,6 @@ class MockPool(pool.Pool):
         raise "Invalid"
 
     def do_get(self):
-        if getattr(self, 'breakpoint', False):
-            raise "breakpoint"
         assert self.connection is not None
         c = self.connection
         self.connection = None
