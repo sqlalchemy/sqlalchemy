@@ -127,10 +127,12 @@ The object returned by `execute()` is a `sqlalchemy.engine.ResultProxy` object, 
     # or get the underlying DBAPI cursor object
     cursor = result.cursor
     
-    # close the result.  If the statement was implicitly executed (i.e. without an explicit Connection), this will
-    # return the underlying connection resources back to the connection pool.  de-referencing the result
-    # will also have the same effect.
-    # if an explicit Connection was used, then close() does nothing.
+    # close the result.  If the statement was implicitly executed 
+    # (i.e. without an explicit Connection), this will
+    # return the underlying connection resources back to 
+    # the connection pool.  de-referencing the result
+    # will also have the same effect.  if an explicit Connection was 
+    # used, then close() does nothing.
     result.close()
 
 #### Using Column Labels {@name=labels}
@@ -178,7 +180,8 @@ Labels are also generated in such a way as to never go beyond 30 characters.  Mo
 You can also specify custom labels on a per-column basis using the `label()` function:
 
     {python title="label() Function on Column"}
-    {sql}c = select([users.c.user_id.label('id'), users.c.user_name.label('name')]).execute()  
+    {sql}c = select([users.c.user_id.label('id'), 
+               users.c.user_name.label('name')]).execute()  
     SELECT users.user_id AS id, users.user_name AS name
     FROM users
     {}
@@ -319,7 +322,8 @@ Supported column operators so far are all the numerical comparison operators, i.
     users.select(users.c.user_id.in_(1,2,3))
     
     # and_, endswith, equality operators
-    users.select(and_(addresses.c.street.endswith('green street'), addresses.c.zip=='11234'))
+    users.select(and_(addresses.c.street.endswith('green street'),
+                    addresses.c.zip=='11234'))
     
     # & operator subsituting for 'and_'
     users.select(addresses.c.street.endswith('green street') & (addresses.c.zip=='11234'))
@@ -471,7 +475,8 @@ Notice that this is the first example where the FROM criterion of the select sta
 A join can be created on its own using the `join` or `outerjoin` functions, or can be created off of an existing Table or other selectable unit via the `join` or `outerjoin` methods:
         
     {python}
-    {sql}outerjoin(users, addresses, users.c.user_id==addresses.c.address_id).select().execute()
+    {sql}outerjoin(users, addresses, 
+               users.c.user_id==addresses.c.address_id).select().execute()
     SELECT users.user_id, users.user_name, users.password, addresses.address_id, 
     addresses.user_id, addresses.street, addresses.city, addresses.state, addresses.zip
     FROM users LEFT OUTER JOIN addresses ON users.user_id = addresses.address_id
@@ -581,7 +586,8 @@ The sql package supports embedding select statements into other select statement
 Subqueries can be used in the column clause of a select statement by specifying the `scalar=True` flag:
 
     {python}
-    {sql}select([table2.c.col1, table2.c.col2, select([table1.c.col1], table1.c.col2==7, scalar=True)])
+    {sql}select([table2.c.col1, table2.c.col2, 
+                    select([table1.c.col1], table1.c.col2==7, scalar=True)])
     SELECT table2.col1, table2.col2, 
     (SELECT table1.col1 AS col1 FROM table1 WHERE col2=:table1_col2) 
     FROM table2
@@ -909,13 +915,13 @@ A correlated update lets you update a table using selection from another table, 
 
     {python}s = select([addresses.c.city], addresses.c.user_id==users.c.user_id)
     {sql}users.update(
-        and_(users.c.user_id>10, users.c.user_id&lt;20), 
+        and_(users.c.user_id>10, users.c.user_id<20), 
         values={users.c.user_name:s}
     ).execute() 
     UPDATE users SET user_name=(SELECT addresses.city 
     FROM addresses 
     WHERE addresses.user_id = users.user_id) 
-    WHERE users.user_id > :users_user_id AND users.user_id &lt; :users_user_id_1
+    WHERE users.user_id > :users_user_id AND users.user_id < :users_user_id_1
     {'users_user_id_1': 20, 'users_user_id': 10}
 
 ### Deletes {@name=delete}
