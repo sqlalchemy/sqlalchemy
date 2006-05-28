@@ -127,7 +127,7 @@ class TLTransactionTest(testbase.PersistTest):
 
     @testbase.unsupported('mysql', 'sqlite')
     def testnesting(self):
-        """test a basic rollback"""
+        """tests nesting of tranacstions"""
         external_connection = tlengine.connect()
         self.assert_(external_connection.connection is not tlengine.contextual_connect().connection)
         tlengine.begin()

@@ -179,6 +179,8 @@ class SingletonThreadPool(Pool):
         self._conns = {}
         self._creator = creator
 
+    def dispose(self):
+        pass
     def status(self):
         return "SingletonThreadPool id:%d thread:%d size: %d" % (id(self), thread.get_ident(), len(self._conns))
 
