@@ -126,7 +126,9 @@ class PoolTest(PersistTest):
                 c2.close()
             else:
                 c2 = None
-                
+        
+            c3 = None
+            
             if useclose:
                 c1 = p.connect()
                 c2 = p.connect()
@@ -134,7 +136,23 @@ class PoolTest(PersistTest):
                 c3.close()
                 c2.close()
                 self.assert_(c1.connection is not None)
-
+                c1.close()
+            else:
+                c1 = c2 = c3 = None
+            
+            # extra tests with QueuePool to insure connections get __del__()ed when dereferenced
+            if isinstance(p, pool.QueuePool):
+                self.assert_(p.checkedout() == 0)
+                c1 = p.connect()
+                c2 = p.connect()
+                if useclose:
+                    c2.close()
+                    c1.close()
+                else:
+                    c2 = None
+                    c1 = None
+                self.assert_(p.checkedout() == 0)
+            
     def tearDown(self):
        pool.clear_managers()
        for file in ('foo.db', 'bar.db'):
