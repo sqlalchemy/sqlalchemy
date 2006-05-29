@@ -231,7 +231,7 @@ class Mapper(object):
             if self.columntoproperty.has_key(column):
                 continue
             if not self.columns.has_key(column.key):
-                self.columns[column.key] = column
+                self.columns[column.key] = self.select_table.corresponding_column(column, keys_ok=True, raiseerr=True)
 
             prop = self.props.get(column.key, None)
             if prop is None:
@@ -291,7 +291,11 @@ class Mapper(object):
             return self.inherits.base_mapper()
         else:
             return self
-            
+    
+    def _inherits(self, mapper):
+        """returns True if the given mapper and this mapper are in the same inheritance hierarchy"""
+        return self.base_mapper() is mapper.base_mapper()
+        
     def add_polymorphic_mapping(self, key, class_or_mapper, entity_name=None):
         if isinstance(class_or_mapper, type):
             class_or_mapper = class_mapper(class_or_mapper, entity_name=entity_name)
@@ -338,7 +342,7 @@ class Mapper(object):
         self.props[key] = prop
 
         if isinstance(prop, ColumnProperty):
-            self.columns[key] = prop.columns[0]
+            self.columns[key] = self.select_table.corresponding_column(prop.columns[0], keys_ok=True, raiseerr=True)
             for col in prop.columns:
                 proplist = self.columntoproperty.setdefault(col, [])
                 proplist.append(prop)

@@ -150,12 +150,9 @@ class PropertyLoader(mapper.MapperProperty):
 
     private = property(lambda s:s.cascade.delete_orphan)
     
-    def cascade_iterator(self, type, object, recursive=None):
+    def cascade_iterator(self, type, object, recursive):
         if not type in self.cascade:
             return
-        if recursive is None:
-            recursive = sets.Set()
-            
         childlist = sessionlib.global_attributes.get_history(object, self.key, passive=True)
             
         for c in childlist.added_items() + childlist.deleted_items() + childlist.unchanged_items():
@@ -163,7 +160,7 @@ class PropertyLoader(mapper.MapperProperty):
                 if c not in recursive:
                     recursive.add(c)
                     yield c
-                    for c2 in self.mapper.cascade_iterator(type, c, recursive):
+                    for c2 in self.mapper.primary_mapper().cascade_iterator(type, c, recursive):
                         yield c2
 
     def copy(self):
@@ -247,10 +244,9 @@ class PropertyLoader(mapper.MapperProperty):
         
     def _get_direction(self):
         """determines our 'direction', i.e. do we represent one to many, many to many, etc."""
-        
         if self.secondaryjoin is not None:
             return sync.MANYTOMANY
-        elif self.parent.mapped_table is self.target:
+        elif self.parent.mapped_table is self.target or self.parent.select_table is self.target:
             if self.foreignkey.primary_key:
                 return sync.MANYTOONE
             else:

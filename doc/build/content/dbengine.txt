@@ -192,7 +192,7 @@ To get at the actual `Connection` object which is used by implicit executions, c
     conn1 = db.contextual_connection()
     conn2 = db.contextual_connection()
 
-    >>> assert conn1 is conn2
+    >>> assert conn1.connection is conn2.connection
     True
 
 When the `plain` strategy is used, the `contextual_connection()` method is synonymous with the `connect()` method; both return a distinct connection from the pool.

@@ -761,8 +761,9 @@ class UOWTask(object):
                 for dep in task.dependencies:
                     if not dependency_in_cycles(dep):
                         extradeplist.append(dep)
-                    l = deps_by_targettask.setdefault(dep.targettask, [])
-                    l.append(dep)
+                    for t in dep.targettask.polymorphic_tasks():
+                        l = deps_by_targettask.setdefault(t, [])
+                        l.append(dep)
 
         for t in cycles:
             for task in t.polymorphic_tasks():
@@ -771,8 +772,10 @@ class UOWTask(object):
                     object_to_original_task[obj] = task
                     #print "OBJ", repr(obj), "TASK", repr(task)
                 
+                    
                     for dep in deps_by_targettask.get(task, []):
                         # is this dependency involved in one of the cycles ?
+                        #print "DEP iterate", dep.processor.key    
                         if not dependency_in_cycles(dep):
                             continue
                         #print "DEP", dep.processor.key    
@@ -790,8 +793,9 @@ class UOWTask(object):
                         for o in childlist:
                             if o is None or not childtask.contains_object(o, polymorphic=True):
                                 continue
-                            #print "CHILD", o
+                            #print "parent/child", obj, o
                             whosdep = dep.whose_dependent_on_who(obj, o)
+                            #print "WHOSEDEP", dep.processor.key, dep.processor.direction, whosdep
                             if whosdep is not None:
                                 tuples.append(whosdep)
                                 # create a UOWDependencyProcessor representing this pair of objects.
@@ -820,13 +824,17 @@ class UOWTask(object):
 
         def make_task_tree(node, parenttask):
             """takes a dependency-sorted tree of objects and creates a tree of UOWTasks"""
-            #print "MAKETASKTREE", node.item
+            #print "MAKETASKTREE", node.item, parenttask
 
             t = get_object_task(node.item)
             for n in node.children:
                 t2 = make_task_tree(n, t)
-                    
-            can_add_to_parent = t.mapper is parenttask.mapper
+            
+            # this flag is attempting to coalesce non-dependent operations into lists, instead of
+            # individual tasks, to produce more of a "batching" effect.  great when it works,
+            # but easily breakable...so its at False for now
+            can_add_to_parent = False #parenttask.mapper._inherits(t.mapper)
+            
             original_task = object_to_original_task[node.item]
             #print "ORIG TASK", original_task
             if original_task.contains_object(node.item, polymorphic=False):
