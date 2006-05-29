@@ -378,7 +378,7 @@ class MapperStub(object):
         pass
     def delete_obj(self, *args, **kwargs):
         pass
-    def _primary_mapper(self):
+    def primary_mapper(self):
         return self
     def base_mapper(self):
         return self

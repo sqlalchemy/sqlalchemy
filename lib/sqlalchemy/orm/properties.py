@@ -174,7 +174,7 @@ class PropertyLoader(mapper.MapperProperty):
     def do_init_subclass(self, key, parent):
         """template method for subclasses of PropertyLoader"""
         pass
-        
+    
     def do_init(self, key, parent):
         import sqlalchemy.orm
         if isinstance(self.argument, type):
@@ -274,18 +274,18 @@ class PropertyLoader(mapper.MapperProperty):
                 return
             if binary.left.primary_key:
                 if dependent[0] is binary.left.table:
-                    raise exceptions.ArgumentError("Could not determine the parent/child relationship for property '%s', based on join condition '%s' (table '%s' appears on both sides of the relationship, or in an otherwise ambiguous manner). please specify the 'foreignkey' keyword parameter to the relation() function indicating a column on the remote side of the relationship" % (self.key, str(self.primaryjoin), str(binary.left.table)))
+                    raise exceptions.ArgumentError("Could not determine the parent/child relationship for property '%s', based on join condition '%s' (table '%s' appears on both sides of the relationship, or in an otherwise ambiguous manner). please specify the 'foreignkey' keyword parameter to the relation() function indicating a column on the remote side of the relationship" % (self.key, str(self.primaryjoin), binary.left.table.name))
                 dependent[0] = binary.right.table
                 self.foreignkey= binary.right
             elif binary.right.primary_key:
                 if dependent[0] is binary.right.table:
-                    raise exceptions.ArgumentError("Could not determine the parent/child relationship for property '%s', based on join condition '%s' (table '%s' appears on both sides of the relationship, or in an otherwise ambiguous manner). please specify the 'foreignkey' keyword parameter to the relation() function indicating a column on the remote side of the relationship" % (self.key, str(self.primaryjoin), str(binary.right.table)))
+                    raise exceptions.ArgumentError("Could not determine the parent/child relationship for property '%s', based on join condition '%s' (table '%s' appears on both sides of the relationship, or in an otherwise ambiguous manner). please specify the 'foreignkey' keyword parameter to the relation() function indicating a column on the remote side of the relationship" % (self.key, str(self.primaryjoin), binary.right.table.name))
                 dependent[0] = binary.left.table
                 self.foreignkey = binary.left
         visitor = BinaryVisitor(foo)
         self.primaryjoin.accept_visitor(visitor)
         if dependent[0] is None:
-            raise exceptions.ArgumentError("Could not determine the parent/child relationship for property '%s', based on join condition '%s' (no relationships joining tables '%s' and '%s' could be located). please specify the 'foreignkey' keyword parameter to the relation() function indicating a column on the remote side of the relationship" % (self.key, str(self.primaryjoin), str(binary.left.table), str(binary.right.table)))
+            raise exceptions.ArgumentError("Could not determine the parent/child relationship for property '%s', based on join condition '%s' (no relationships joining tables '%s' and '%s' could be located). please specify the 'foreignkey' keyword parameter to the relation() function indicating a column on the remote side of the relationship" % (self.key, str(self.primaryjoin), str(binary.left.table), binary.right.table.name))
         else:
             self.foreigntable = dependent[0]
 
@@ -637,7 +637,7 @@ class BackRef(object):
         PropertyLoader's mapper."""
         # try to set a LazyLoader on our mapper referencing the parent mapper
         mapper = prop.mapper.primary_mapper()
-        if not prop.mapper.props.has_key(self.key):
+        if not mapper.props.has_key(self.key):
             pj = self.kwargs.pop('primaryjoin', None)
             sj = self.kwargs.pop('secondaryjoin', None)
             # TODO: we are going to have the newly backref'd property create its 

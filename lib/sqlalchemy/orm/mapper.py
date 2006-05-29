@@ -111,7 +111,7 @@ class Mapper(object):
         # tables - a collection of underlying Table objects pulled from mapped_table
         
         for table in (local_table, select_table):
-            if table is not None and isinstance(local_table, sql.SelectBaseMixin):
+            if table is not None and isinstance(table, sql.SelectBaseMixin):
                 # some db's, noteably postgres, dont want to select from a select
                 # without an alias.  also if we make our own alias internally, then
                 # the configured properties on the mapper are not matched against the alias 
@@ -174,6 +174,7 @@ class Mapper(object):
         else:
             self.select_table = self.mapped_table
         self.unjoined_table = self.local_table
+
             
         # locate all tables contained within the "table" passed in, which
         # may be a join or other construct
@@ -265,11 +266,6 @@ class Mapper(object):
             if isinstance(self.polymorphic_map[key], type):
                 self.polymorphic_map[key] = class_mapper(self.polymorphic_map[key])
 
-        l = [(key, prop) for key, prop in self.props.iteritems()]
-        for key, prop in l:
-            if getattr(prop, 'key', None) is None:
-                prop.init(key, self)
-
         # select_table specified...set up a surrogate mapper that will be used for selects
         # select_table has to encompass all the columns of the mapped_table either directly
         # or through proxying relationships
@@ -279,9 +275,15 @@ class Mapper(object):
                 for key, prop in properties.iteritems():
                     if sql.is_column(prop):
                         props[key] = self.select_table.corresponding_column(prop)
-                    elif (isinstance(column, list) and sql.is_column(column[0])):
+                    elif (isinstance(prop, list) and sql.is_column(prop[0])):
                         props[key] = [self.select_table.corresponding_column(c) for c in prop]
             self.__surrogate_mapper = Mapper(self.class_, self.select_table, non_primary=True, properties=props, polymorphic_map=self.polymorphic_map, polymorphic_on=self.polymorphic_on)
+
+        l = [(key, prop) for key, prop in self.props.iteritems()]
+        for key, prop in l:
+            if getattr(prop, 'key', None) is None:
+                prop.init(key, self)
+
     
     def base_mapper(self):
         """returns the ultimate base mapper in an inheritance chain"""
@@ -356,7 +358,7 @@ class Mapper(object):
         """returns True if this mapper is the primary mapper for its class key (class + entity_name)"""
         return mapper_registry.get(self.class_key, None) is self
 
-    def _primary_mapper(self):
+    def primary_mapper(self):
         """returns the primary mapper corresponding to this mapper's class key (class + entity_name)"""
         return mapper_registry[self.class_key]
 
@@ -514,8 +516,6 @@ class Mapper(object):
     def _setattrbycolumn(self, obj, column, value):
         self.columntoproperty[column][0].setattr(obj, value)
     
-    def primary_mapper(self):
-        return mapper_registry[self.class_key]
             
     def save_obj(self, objects, uow, postupdate=False):
         """called by a UnitOfWork object to save objects, which involves either an INSERT or
@@ -1103,6 +1103,8 @@ class TranslatingDict(dict):
         self.selectable = selectable
     def __translate_col(self, col):
         ourcol = self.selectable.corresponding_column(col, keys_ok=False, raiseerr=False)
+        #if col is not ourcol:
+        #    print "TD TRANSLATING ", col, "TO", ourcol
         if ourcol is None:
             return col
         else:
