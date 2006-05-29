@@ -22,6 +22,7 @@ class TLSession(object):
         self.__tcount += 1
     def reset(self):
         try:
+            self.__transaction.close()
             del self.__transaction
             del self.__trans
         except AttributeError:

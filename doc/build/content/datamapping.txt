@@ -785,3 +785,26 @@ Many to Many can also be done with an association object, that adds additional i
         for k in a.keywords:
             if k.keyword.name == 'jacks_stories':
                 print k.user.user_name
+
+Keep in mind that the association object works a little differently from a plain many-to-many relationship.  Members have to be added to the list via instances of the association object, which in turn point to the associated object:
+
+    {python}
+    user = User()
+    user.user_name = 'some user'
+    
+    article = Article()
+    
+    assoc = KeywordAssociation()
+    assoc.keyword = Keyword('blue')
+    assoc.user = user
+    
+    assoc2 = KeywordAssociation()
+    assoc2.keyword = Keyword('green')
+    assoc2.user = user
+    
+    article.keywords.append(assoc)
+    article.keywords.append(assoc2)
+    
+    session.flush()
+    
+    
