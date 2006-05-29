@@ -1,3 +1,27 @@
+0.2.1
+- "pool" argument to create_engine() properly propigates
+- fixes to URL, raises exception if not parsed, does not pass blank
+fields along to the DB connect string (a string such as 
+user:host@/db was breaking on postgres)
+- small fixes to Mapper when it inserts and tries to get
+new primary key values back
+- rewrote half of TLEngine, the ComposedSQLEngine used with 
+'strategy="threadlocal"'.  it now properly implements engine.begin()/
+engine.commit(), which nest fully with connection.begin()/trans.commit().
+added about six unittests.
+- major "duh" in pool.Pool, forgot to put back the WeakValueDictionary.
+unittest which was supposed to check for this was also silently missing
+it.  fixed unittest to insure that ConnectionFairy properly falls out
+of scope.
+- placeholder dispose() method added to SingletonThreadPool, doesnt 
+do anything yet
+- rollback() is automatically called when an exception is raised,
+but only if theres no transaction in process (i.e. works more like
+autocommit).
+- fixed exception raise in sqlite if no sqlite module present
+- added extra example detail for association object doc
+- Connection adds checks for already being closed
+
 0.2.0
 - overhaul to Engine system so that what was formerly the SQLEngine
 is now a ComposedSQLEngine which consists of a variety of components,
