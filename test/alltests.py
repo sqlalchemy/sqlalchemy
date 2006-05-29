@@ -44,6 +44,7 @@ def suite():
         
         # cyclical ORM persistence
         'cycles',
+        'poly_linked_list',
         
         # more select/persistence, backrefs
         'entity',

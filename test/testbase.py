@@ -39,6 +39,7 @@ def parse_argv():
     parser.add_option("--db", action="store", dest="db", default="sqlite", help="prefab database uri (sqlite, sqlite_file, postgres, mysql, oracle, oracle8, mssql)")
     parser.add_option("--mockpool", action="store_true", dest="mockpool", help="use mock pool")
     parser.add_option("--verbose", action="store_true", dest="verbose", help="full debug echoing")
+    parser.add_option("--noecho", action="store_true", dest="noecho", help="Disable SQL statement echoing")
     parser.add_option("--quiet", action="store_true", dest="quiet", help="be totally quiet")
     parser.add_option("--nothreadlocal", action="store_true", dest="nothreadlocal", help="dont use thread-local mod")
     parser.add_option("--enginestrategy", action="store", default=None, dest="enginestrategy", help="engine strategy (plain or threadlocal, defaults to SA default)")
@@ -86,9 +87,9 @@ def parse_argv():
     if options.enginestrategy is not None:
         opts['strategy'] = options.enginestrategy    
     if options.mockpool:
-        db = engine.create_engine(db_uri, echo=True, default_ordering=True, poolclass=MockPool, **opts)
+        db = engine.create_engine(db_uri, echo=(not options.noecho), default_ordering=True, poolclass=MockPool, **opts)
     else:
-        db = engine.create_engine(db_uri, echo=True, default_ordering=True, **opts)
+        db = engine.create_engine(db_uri, echo=(not options.noecho), default_ordering=True, **opts)
     db = EngineAssert(db)
     metadata = sqlalchemy.BoundMetaData(db)
     
