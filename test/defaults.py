@@ -165,4 +165,4 @@ class SequenceTest(PersistTest):
         cartitems.drop()
 
 if __name__ == "__main__":
-    unittest.main()
+    testbase.main()

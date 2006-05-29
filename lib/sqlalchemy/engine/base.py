@@ -177,8 +177,13 @@ class Connection(Connectable):
         self.__connection = connection or engine.raw_connection()
         self.__transaction = None
         self.__close_with_result = close_with_result
+    def _get_connection(self):
+        try:
+            return self.__connection
+        except AttributeError:
+            raise exceptions.InvalidRequestError("This Connection is closed")
     engine = property(lambda s:s.__engine, doc="The Engine with which this Connection is associated (read only)")
-    connection = property(lambda s:s.__connection, doc="The underlying DBAPI connection managed by this Connection.")
+    connection = property(_get_connection, doc="The underlying DBAPI connection managed by this Connection.")
     should_close_with_result = property(lambda s:s.__close_with_result, doc="Indicates if this Connection should be closed when a corresponding ResultProxy is closed; this is essentially an auto-release mode.")
     def _create_transaction(self, parent):
         return Transaction(self, parent)
@@ -199,15 +204,15 @@ class Connection(Connectable):
     def _begin_impl(self):
         if self.__engine.echo:
             self.__engine.log("BEGIN")
-        self.__engine.dialect.do_begin(self.__connection)
+        self.__engine.dialect.do_begin(self.connection)
     def _rollback_impl(self):
         if self.__engine.echo:
             self.__engine.log("ROLLBACK")
-        self.__engine.dialect.do_rollback(self.__connection)
+        self.__engine.dialect.do_rollback(self.connection)
     def _commit_impl(self):
         if self.__engine.echo:
             self.__engine.log("COMMIT")
-        self.__engine.dialect.do_commit(self.__connection)
+        self.__engine.dialect.do_commit(self.connection)
     def _autocommit(self, statement):
         """when no Transaction is present, this is called after executions to provide "autocommit" behavior."""
         # TODO: have the dialect determine if autocommit can be set on the connection directly without this 
@@ -218,9 +223,13 @@ class Connection(Connectable):
         if not self.in_transaction():
             self._rollback_impl()
     def close(self):
-        if self.__connection is not None:
-            self.__connection.close()
-            self.__connection = None
+        try:
+            c = self.__connection
+        except AttributeError:
+            return
+        self.__connection.close()
+        self.__connection = None
+        del self.__connection
     def scalar(self, object, parameters=None, **kwargs):
         row = self.execute(object, parameters, **kwargs).fetchone()
         if row is not None:
@@ -255,7 +264,7 @@ class Connection(Connectable):
         return self.execute_compiled(elem.compile(engine=self.__engine, parameters=param), *multiparams, **params)
     def execute_compiled(self, compiled, *multiparams, **params):
         """executes a sql.Compiled object."""
-        cursor = self.__connection.cursor()
+        cursor = self.connection.cursor()
         parameters = [compiled.get_params(**m) for m in self._params_to_listofdicts(*multiparams, **params)]
         if len(parameters) == 1:
             parameters = parameters[0]
@@ -295,7 +304,7 @@ class Connection(Connectable):
         callable_(self)
     def _execute_raw(self, statement, parameters=None, cursor=None, echo=None, context=None, **kwargs):
         if cursor is None:
-            cursor = self.__connection.cursor()
+            cursor = self.connection.cursor()
         try:
             if echo is True or self.__engine.echo is not False:
                 self.__engine.log(statement)

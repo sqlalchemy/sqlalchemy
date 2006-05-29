@@ -27,7 +27,8 @@ class TableCollection(object):
             seq.append( node.item )
             for child in node.children:
                 to_sequence( child )
-        to_sequence( head )
+        if head is not None:
+            to_sequence( head )
         if reverse:
             sequence.reverse()
         return sequence

@@ -35,6 +35,7 @@ class TransactionTest(testbase.PersistTest):
         assert len(result.fetchall()) == 0
         connection.close()
 
+    @testbase.unsupported('mysql')
     def testnesting(self):
         connection = testbase.db.connect()
         transaction = connection.begin()
@@ -59,7 +60,8 @@ class AutoRollbackTest(testbase.PersistTest):
     
     def tearDownAll(self):
         metadata.drop_all(testbase.db)
-
+        
+    @testbase.unsupported('sqlite')
     def testrollback_deadlock(self):
         """test that returning connections to the pool clears any object locks."""
         conn1 = testbase.db.connect()
@@ -144,6 +146,7 @@ class TLTransactionTest(testbase.PersistTest):
         finally:
             external_connection.close()
 
+    @testbase.unsupported('mysql')
     def testmixednesting(self):
         """tests nesting of transactions off the TLEngine directly inside of 
         tranasctions off the connection from the TLEngine"""
@@ -172,6 +175,7 @@ class TLTransactionTest(testbase.PersistTest):
         finally:
             external_connection.close()
 
+    @testbase.unsupported('mysql')
     def testmoremixednesting(self):
         """tests nesting of transactions off the connection from the TLEngine
         inside of tranasctions off thbe TLEngine directly."""
