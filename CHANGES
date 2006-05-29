@@ -1,3 +1,11 @@
+0.2.2
+- big improvements to polymorphic inheritance behavior, enabling it
+to work with adjacency list table structures [ticket:190]
+- fixed "echo_pool" flag on create_engine()
+- fix to docs, removed incorrect info that close() is unsafe to use
+with threadlocal strategy (its totally safe !)
+- create_engine() can take URLs as string or unicode [ticket:188]
+
 0.2.1
 - "pool" argument to create_engine() properly propigates
 - fixes to URL, raises exception if not parsed, does not pass blank

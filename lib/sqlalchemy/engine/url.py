@@ -43,7 +43,7 @@ class URL(object):
     
 
 def make_url(name_or_url):
-    if isinstance(name_or_url, str):
+    if isinstance(name_or_url, str) or isinstance(name_or_url, unicode):
         return _parse_rfc1738_args(name_or_url)
     else:
         return name_or_url
