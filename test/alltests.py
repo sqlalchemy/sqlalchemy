@@ -50,6 +50,7 @@ def suite():
         'manytomany',
         'onetoone',
         'inheritance',
+        'inheritance2',
         'polymorph',
         
         # extensions
