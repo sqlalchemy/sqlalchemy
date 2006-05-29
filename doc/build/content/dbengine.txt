@@ -181,8 +181,6 @@ The `threadlocal` strategy is better suited to a programming style which relies 
     # are returned to the pool.
     r2 = None
 
-While the `close()` method is still available with the "threadlocal" strategy, it should be used carefully.  Above, if we issued a `close()` call on `r1`, and then tried to further work with results from `r2`, `r2` would be in an invalid state since its connection was already returned to the pool.  By relying on `__del__()` to automatically clean up resources, this condition will never occur.
-
 Advantages to `threadlocal` include that resources can be left to clean up after themselves, application code can be more minimal, its guaranteed that only one connection is used per thread, and there is no chance of a "connection pool block", which is when an execution hangs because the current thread has already checked out all remaining resources.
 
 To get at the actual `Connection` object which is used by implicit executions, call the `contextual_connection()` method on `Engine`:
