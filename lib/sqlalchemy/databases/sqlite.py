@@ -148,12 +148,9 @@ class SQLiteDialect(ansisql.ANSIDialect):
 
     def dbapi(self):
         if sqlite is None:
-            raise ArgumentError("Couldn't import sqlite or pysqlite2")
+            raise exceptions.ArgumentError("Couldn't import sqlite or pysqlite2")
         return sqlite
         
-    def push_session(self):
-        raise InvalidRequestError("SQLite doesn't support nested sessions")
-
     def has_table(self, connection, table_name):
         cursor = connection.execute("PRAGMA table_info(" + table_name + ")", {})
         row = cursor.fetchone()
