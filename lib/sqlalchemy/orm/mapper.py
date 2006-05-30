@@ -154,12 +154,11 @@ class Mapper(object):
             if polymorphic_identity is not None:
                 inherits.add_polymorphic_mapping(polymorphic_identity, self)
             self.polymorphic_identity = polymorphic_identity
-            if self.polymorphic_on is None:
-                self.effective_polymorphic_on = inherits.effective_polymorphic_on
-            else:
-                self.effective_polymorphic_on = self.polymorphic_on
+            if self.polymorphic_on is None and inherits.polymorphic_on is not None:
+                self.polymorphic_on = self.mapped_table.corresponding_column(inherits.polymorphic_on, keys_ok=True, raiseerr=False)
             if self.order_by is False:
                 self.order_by = inherits.order_by
+            self.polymorphic_map = inherits.polymorphic_map
         else:
             self._synchronizer = None
             self.inherits = None
@@ -167,7 +166,6 @@ class Mapper(object):
             if polymorphic_identity is not None:
                 self.add_polymorphic_mapping(polymorphic_identity, self)
             self.polymorphic_identity = polymorphic_identity
-            self.effective_polymorphic_on = self.polymorphic_on
 
         if select_table is not None:
             self.select_table = select_table
@@ -218,12 +216,20 @@ class Mapper(object):
                 self.add_property(key, prop, False)
 
         if inherits is not None:
+            # transfer properties from the inherited mapper to here.
+            # this includes column properties as well as relations.
+            # the column properties will attempt to be translated from the selectable unit
+            # of the parent mapper to this mapper's selectable unit.
             inherits._inheriting_mappers.add(self)
             for key, prop in inherits.props.iteritems():
                 if not self.props.has_key(key):
                     p = prop.copy()
                     if p.adapt(self):
-                        self.add_property(key, p, init=False)
+                        # if we are "concrete", then its OK to skip columns from the parent 
+                        # not represented in our table (TODO: this should be refined to only skip the "polymorphic" column
+                        # in the parent), otherwise we must be able to represent every column from the parent in our own
+                        # selectable unit
+                        self.add_property(key, p, init=False, skipmissing=concrete)
 
         # load properties from the main table object,
         # not overriding those set up in the 'properties' argument
@@ -277,7 +283,7 @@ class Mapper(object):
                         props[key] = self.select_table.corresponding_column(prop)
                     elif (isinstance(prop, list) and sql.is_column(prop[0])):
                         props[key] = [self.select_table.corresponding_column(c) for c in prop]
-            self.__surrogate_mapper = Mapper(self.class_, self.select_table, non_primary=True, properties=props, polymorphic_map=self.polymorphic_map, polymorphic_on=self.polymorphic_on)
+            self.__surrogate_mapper = Mapper(self.class_, self.select_table, non_primary=True, properties=props, polymorphic_map=self.polymorphic_map, polymorphic_on=self.select_table.corresponding_column(self.polymorphic_on))
 
         l = [(key, prop) for key, prop in self.props.iteritems()]
         for key, prop in l:
@@ -342,7 +348,10 @@ class Mapper(object):
         self.props[key] = prop
 
         if isinstance(prop, ColumnProperty):
-            self.columns[key] = self.select_table.corresponding_column(prop.columns[0], keys_ok=True, raiseerr=True)
+            col = self.select_table.corresponding_column(prop.columns[0], keys_ok=True, raiseerr=not skipmissing)
+            if col is None:
+                return
+            self.columns[key] = col
             for col in prop.columns:
                 proplist = self.columntoproperty.setdefault(col, [])
                 proplist.append(prop)
@@ -585,7 +594,7 @@ class Mapper(object):
                             value = self._getattrbycolumn(obj, col)
                             if value is not None:
                                 params[col.key] = value
-                    elif self.effective_polymorphic_on is not None and self.effective_polymorphic_on.shares_lineage(col):
+                    elif self.polymorphic_on is not None and self.polymorphic_on.shares_lineage(col):
                         if isinsert:
                             value = self.polymorphic_identity
                             if col.default is None or value is not None:
