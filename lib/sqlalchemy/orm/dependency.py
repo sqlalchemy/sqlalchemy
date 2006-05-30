@@ -91,7 +91,7 @@ class OneToManyDP(DependencyProcessor):
             uowcommit.register_dependency(self.parent, self.mapper)
             uowcommit.register_processor(self.parent, self, self.parent)
     def process_dependencies(self, task, deplist, uowcommit, delete = False):
-        #print self.mapper.table.name + " " + self.key + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
+        #print self.mapper.mapped_table.name + " " + self.key + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
         if delete:
             # head object is being deleted, and we manage its list of child objects
             # the child objects have to have their foreign key to the parent set to NULL
@@ -121,7 +121,7 @@ class OneToManyDP(DependencyProcessor):
                         self._synchronize(obj, child, None, True)
 
     def preprocess_dependencies(self, task, deplist, uowcommit, delete = False):
-        #print self.mapper.table.name + " " + self.key + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
+        #print self.mapper.mapped_table.name + " " + self.key + " " + repr(len(deplist)) + " preprocess_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
 
         if delete:
             # head object is being deleted, and we manage its list of child objects

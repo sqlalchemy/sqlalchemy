@@ -227,6 +227,57 @@ class InheritTest(testbase.AssertMixin):
         print orig
         print new
         assert orig == new  == '<Assembly a1> specification=[<SpecLine 1.0 <Detail d1>>] documents=[<Document doc1>, <RasterDocument doc2>]'
+
+    def testfour(self):
+        """this tests the RasterDocument being attached to the Assembly, but *not* the Document.  this means only
+        a "sub-class" task, i.e. corresponding to an inheriting mapper but not the base mapper, is created. """
+        product_mapper = mapper(Product, products_table,
+            polymorphic_on=products_table.c.product_type,
+            polymorphic_identity='product')
+        detail_mapper = mapper(Detail, inherits=product_mapper,
+            polymorphic_identity='detail')
+        assembly_mapper = mapper(Assembly, inherits=product_mapper,
+            polymorphic_identity='assembly')
+
+        document_mapper = mapper(Document, documents_table,
+            polymorphic_on=documents_table.c.document_type,
+            polymorphic_identity='document',
+            properties=dict(
+                name=documents_table.c.name,
+                data=deferred(documents_table.c.data),
+                product=relation(Product, lazy=True, backref='documents'),
+                ),
+            )
+        raster_document_mapper = mapper(RasterDocument, inherits=document_mapper,
+            polymorphic_identity='raster_document')
+
+        product_mapper.add_property('documents',
+            relation(Document, lazy=True,
+                backref='product', cascade='all, delete-orphan'),
+            )
+
+        session = create_session(echo_uow=False)
+
+        a1 = Assembly(name='a1')
+        a1.documents.append(RasterDocument('doc2'))
+        session.save(a1)
+        orig = repr(a1)
+        session.flush()
+        session.clear()
+
+        a1 = session.query(Product).get_by(name='a1')
+        new = repr(a1)
+        print orig
+        print new
+        assert orig == new  == '<Assembly a1> specification=None documents=[<RasterDocument doc2>]'
+
+        del a1.documents[0]
+        session.save(a1)
+        session.flush()
+        session.clear()
+
+        a1 = session.query(Product).get_by(name='a1')
+        assert len(session.query(Document).select()) == 0
         
 if __name__ == "__main__":    
     testbase.main()
