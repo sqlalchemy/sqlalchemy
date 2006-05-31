@@ -225,11 +225,7 @@ class Mapper(object):
                 if not self.props.has_key(key):
                     p = prop.copy()
                     if p.adapt(self):
-                        # if we are "concrete", then its OK to skip columns from the parent 
-                        # not represented in our table (TODO: this should be refined to only skip the "polymorphic" column
-                        # in the parent), otherwise we must be able to represent every column from the parent in our own
-                        # selectable unit
-                        self.add_property(key, p, init=False, skipmissing=concrete)
+                        self.add_property(key, p, init=False)
 
         # load properties from the main table object,
         # not overriding those set up in the 'properties' argument
@@ -348,9 +344,9 @@ class Mapper(object):
         self.props[key] = prop
 
         if isinstance(prop, ColumnProperty):
-            col = self.select_table.corresponding_column(prop.columns[0], keys_ok=True, raiseerr=not skipmissing)
+            col = self.select_table.corresponding_column(prop.columns[0], keys_ok=True, raiseerr=False)
             if col is None:
-                return
+                col = prop.columns[0]
             self.columns[key] = col
             for col in prop.columns:
                 proplist = self.columntoproperty.setdefault(col, [])

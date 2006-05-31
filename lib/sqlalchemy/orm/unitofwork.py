@@ -338,6 +338,9 @@ class UOWTransaction(object):
         """called by mapper.PropertyLoader to register the objects handled by
         one mapper being dependent on the objects handled by another."""
         # correct for primary mapper (the mapper offcially associated with the class)
+        # also convert to the "base mapper", the parentmost task at the top of an inheritance chain
+        # dependency sorting is done via non-inheriting mappers only, dependencies between mappers
+        # in the same inheritance chain is done at the per-object level
         mapper = mapper.primary_mapper().base_mapper()
         dependency = dependency.primary_mapper().base_mapper()
         
@@ -758,8 +761,6 @@ class UOWTask(object):
         # dependency processors that arent part of the cyclical thing
         # get put here
         extradeplist = []
-
-        object_to_original_task = {}
         
         # organizes a set of new UOWTasks that will be assembled into
         # the final tree, for the purposes of holding new UOWDependencyProcessors
@@ -769,8 +770,7 @@ class UOWTask(object):
             try:
                 dp = dependencies[obj]
             except KeyError:
-                dp = {}
-                dependencies[obj] = dp
+                dp = dependencies.setdefault(obj, {})
             try:
                 l = dp[depprocessor]
             except KeyError:
@@ -779,6 +779,7 @@ class UOWTask(object):
             return l
 
         def dependency_in_cycles(dep):
+            # TODO: make a simpler way to get at the "root inheritance" mapper
             proctask = trans.get_task_by_mapper(dep.processor.mapper.primary_mapper().base_mapper(), True)
             targettask = trans.get_task_by_mapper(dep.targettask.mapper.base_mapper(), True)
             return targettask in cycles and (proctask is not None and proctask in cycles)
@@ -794,13 +795,14 @@ class UOWTask(object):
                         l = deps_by_targettask.setdefault(t, [])
                         l.append(dep)
 
+        object_to_original_task = {}
+        
         for t in cycles:
             for task in t.polymorphic_tasks():
                 for taskelement in task.get_elements(polymorphic=False):
                     obj = taskelement.obj
                     object_to_original_task[obj] = task
                     #print "OBJ", repr(obj), "TASK", repr(task)
-                
                     
                     for dep in deps_by_targettask.get(task, []):
                         # is this dependency involved in one of the cycles ?
@@ -844,41 +846,24 @@ class UOWTask(object):
 
         #print str(head)
 
-        hierarchical_tasks = {}
-        def get_object_task(obj):
-            try:
-                return hierarchical_tasks[obj]
-            except KeyError:
-                originating_task = object_to_original_task[obj]
-                return hierarchical_tasks.setdefault(obj, UOWTask(self.uowtransaction, originating_task.mapper, circular_parent=self))
-
-        def make_task_tree(node, parenttask):
-            """takes a dependency-sorted tree of objects and creates a tree of UOWTasks"""
+        # create a tree of UOWTasks corresponding to the tree of object instances
+        # created by the DependencySorter
+        def make_task_tree(node, parenttask, nexttasks):
             #print "MAKETASKTREE", node.item, parenttask
-
-            t = get_object_task(node.item)
-            for n in node.children:
-                t2 = make_task_tree(n, t)
-            
-            # this flag is attempting to coalesce non-dependent operations into lists, instead of
-            # individual tasks, to produce more of a "batching" effect.  great when it works,
-            # but easily breakable...so its at False for now
-            can_add_to_parent = False #parenttask.mapper._inherits(t.mapper)
-            
-            original_task = object_to_original_task[node.item]
-            #print "ORIG TASK", original_task
-            if original_task.contains_object(node.item, polymorphic=False):
-                if can_add_to_parent:
-                    parenttask.append(node.item, original_task.objects[node.item].listonly, isdelete=original_task.objects[node.item].isdelete, childtask=t)
-                else:
-                    t.append(node.item, original_task.objects[node.item].listonly, isdelete=original_task.objects[node.item].isdelete)
-                    parenttask.append(None, listonly=False, isdelete=original_task.objects[node.item].isdelete, childtask=t)
+            originating_task = object_to_original_task[node.item]
+            t = nexttasks.get(originating_task, None)
+            if t is None:
+                t = UOWTask(self.uowtransaction, originating_task.mapper, circular_parent=self)
+                nexttasks[originating_task] = t
+                parenttask.append(None, listonly=False, isdelete=originating_task.objects[node.item].isdelete, childtask=t)
+            t.append(node.item, originating_task.objects[node.item].listonly, isdelete=originating_task.objects[node.item].isdelete)
+                
             if dependencies.has_key(node.item):
                 for depprocessor, deptask in dependencies[node.item].iteritems():
-                    if can_add_to_parent:
-                        parenttask.cyclical_dependencies.add(depprocessor.branch(deptask))
-                    else:
-                        t.cyclical_dependencies.add(depprocessor.branch(deptask))
+                    t.cyclical_dependencies.add(depprocessor.branch(deptask))
+            nd = {}
+            for n in node.children:
+                t2 = make_task_tree(n, t, nd)
             return t
 
         # this is the new "circular" UOWTask which will execute in place of "self"
@@ -888,7 +873,7 @@ class UOWTask(object):
         # circular UOWTask
         [t.dependencies.add(d) for d in extradeplist]
         t.childtasks = self.childtasks
-        make_task_tree(head, t)
+        make_task_tree(head, t, {})
         #print t.dump()
         return t
 
