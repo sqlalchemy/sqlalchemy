@@ -1,6 +1,8 @@
 0.2.2
 - big improvements to polymorphic inheritance behavior, enabling it
 to work with adjacency list table structures [ticket:190]
+- major fixes and refactorings to inheritance relationships overall,
+more unit tests
 - fixed "echo_pool" flag on create_engine()
 - fix to docs, removed incorrect info that close() is unsafe to use
 with threadlocal strategy (its totally safe !)

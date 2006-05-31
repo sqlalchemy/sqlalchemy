@@ -660,8 +660,16 @@ class Mapper(object):
                                 self._setattrbycolumn(obj, col, primary_key[i])
                             i+=1
                     self._postfetch(connection, table, obj, c, c.last_inserted_params())
-                    if self._synchronizer is not None:
-                        self._synchronizer.execute(obj, obj)
+                    
+                    # synchronize newly inserted ids from one table to the next
+                    def sync(mapper):
+                        inherit = mapper.inherits
+                        if inherit is not None:
+                            sync(inherit)
+                        if mapper._synchronizer is not None:
+                            mapper._synchronizer.execute(obj, obj)
+                    sync(self)
+                    
                     self.extension.after_insert(self, connection, obj)
 
     def _postfetch(self, connection, table, obj, resultproxy, params):
