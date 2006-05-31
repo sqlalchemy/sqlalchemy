@@ -87,15 +87,10 @@ class SelectableTest(testbase.AssertMixin):
     def testjoin(self):
         a = join(table, table2)
         print str(a.select(use_labels=True))
-        # TODO - figure out what we're trying to do here
-        return
         b = table2.alias('b')
         j = join(a, b)
         print str(j)
-        return
-        criterion = a.c.col1 == b.c.col2
-        print
-        print str(j)
+        criterion = a.c.table1_col1 == b.c.col2
         self.assert_(criterion.compare(j.onclause))
 
     def testselectalias(self):
