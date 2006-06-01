@@ -7,8 +7,13 @@ more unit tests
 - fix to docs, removed incorrect info that close() is unsafe to use
 with threadlocal strategy (its totally safe !)
 - create_engine() can take URLs as string or unicode [ticket:188]
-- firebird support !  thanks to James Ralston and Brad Clements for their
-efforts.
+- firebird support partially completed; 
+thanks to James Ralston and Brad Clements for their efforts.
+- Oracle url translation was broken, fixed
+- fix to using unicode criterion for query.get()/query.load()
+- count() function on selectables now uses table primary key or 
+first column instead of "1" for criterion, also uses label "rowcount"
+instead of "count".  
 
 0.2.1
 - "pool" argument to create_engine() properly propigates
