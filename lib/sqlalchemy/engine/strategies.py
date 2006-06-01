@@ -29,7 +29,9 @@ class PlainEngineStrategy(EngineStrategy):
         u = url.make_url(name_or_url)
         module = u.get_module()
 
-        dialect = module.dialect(**kwargs)
+        args = u.query.copy()
+        args.update(kwargs)
+        dialect = module.dialect(**args)
 
         poolargs = {}
         for key in (('echo_pool', 'echo'), ('pool_size', 'pool_size'), ('max_overflow', 'max_overflow'), ('poolclass', 'poolclass'), ('pool_timeout','timeout'), ('pool', 'pool')):
@@ -41,7 +43,7 @@ class PlainEngineStrategy(EngineStrategy):
         poolargs['use_threadlocal'] = False
         provider = default.PoolConnectionProvider(dialect, u, **poolargs)
 
-        return base.ComposedSQLEngine(provider, dialect, **kwargs)
+        return base.ComposedSQLEngine(provider, dialect, **args)
 PlainEngineStrategy()
 
 class ThreadLocalEngineStrategy(EngineStrategy):
@@ -51,7 +53,9 @@ class ThreadLocalEngineStrategy(EngineStrategy):
         u = url.make_url(name_or_url)
         module = u.get_module()
 
-        dialect = module.dialect(**kwargs)
+        args = u.query.copy()
+        args.update(kwargs)
+        dialect = module.dialect(**args)
 
         poolargs = {}
         for key in (('echo_pool', 'echo'), ('pool_size', 'pool_size'), ('max_overflow', 'max_overflow'), ('poolclass', 'poolclass'), ('pool_timeout','timeout'), ('pool', 'pool')):
@@ -63,7 +67,7 @@ class ThreadLocalEngineStrategy(EngineStrategy):
         poolargs['use_threadlocal'] = True
         provider = threadlocal.TLocalConnectionProvider(dialect, u, **poolargs)
 
-        return threadlocal.TLEngine(provider, dialect, **kwargs)
+        return threadlocal.TLEngine(provider, dialect, **args)
 ThreadLocalEngineStrategy()
 
 

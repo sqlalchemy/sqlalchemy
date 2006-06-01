@@ -3,13 +3,14 @@ import cgi
 import sqlalchemy.exceptions as exceptions
 
 class URL(object):
-    def __init__(self, drivername, username=None, password=None, host=None, port=None, database=None):
+    def __init__(self, drivername, username=None, password=None, host=None, port=None, database=None, query=None):
         self.drivername = drivername
         self.username = username
         self.password = password
         self.host = host
         self.port = port
         self.database= database
+        self.query = query or {}
     def __str__(self):
         s = self.drivername + "://"
         if self.username is not None:
@@ -23,6 +24,10 @@ class URL(object):
             s += ':' + self.port
         if self.database is not None:
             s += '/' + self.database
+        if len(self.query):
+            keys = self.query.keys()
+            keys.sort()
+            s += '?' + "&".join("%s=%s" % (k, self.query[k]) for k in keys)
         return s
     def get_module(self):
         return getattr(__import__('sqlalchemy.databases.%s' % self.drivername).databases, self.drivername)
@@ -66,7 +71,13 @@ def _parse_rfc1738_args(name):
     m = pattern.match(name)
     if m is not None:
         (name, username, password, host, port, database) = m.group(1, 2, 3, 4, 5, 6)
-        opts = {'username':username,'password':password,'host':host,'port':port,'database':database}
+        if database is not None:
+            tokens = database.split(r"?", 2)
+            database = tokens[0]
+            query = (len(tokens) > 1 and dict( cgi.parse_qsl(tokens[1]) ) or None)
+        else:
+            query = None
+        opts = {'username':username,'password':password,'host':host,'port':port,'database':database, 'query':query}
         return URL(name, **opts)
     else:
         raise exceptions.ArgumentError("Could not parse rfc1738 URL from string '%s'" % name)

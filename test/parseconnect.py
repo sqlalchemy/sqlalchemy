@@ -13,10 +13,12 @@ class ParseConnectTest(PersistTest):
             'dbtype://username:password@127.0.0.1:1521',
             'dbtype://hostspec/database',
             'dbtype://hostspec',
+            'dbtype://hostspec/?arg1=val1&arg2=val2',
             'dbtype:///database',
             'dbtype:///:memory:',
             'dbtype:///foo/bar/im/a/file',
             'dbtype:///E:/work/src/LEM/db/hello.db',
+            'dbtype:///E:/work/src/LEM/db/hello.db?foo=bar&hoho=lala',
             'dbtype://',
             'dbtype://username:password@/db'
         ):

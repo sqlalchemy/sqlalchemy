@@ -7,6 +7,8 @@ more unit tests
 - fix to docs, removed incorrect info that close() is unsafe to use
 with threadlocal strategy (its totally safe !)
 - create_engine() can take URLs as string or unicode [ticket:188]
+- firebird support !  thanks to James Ralston and Brad Clements for their
+efforts.
 
 0.2.1
 - "pool" argument to create_engine() properly propigates
