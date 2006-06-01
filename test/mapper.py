@@ -84,6 +84,22 @@ class MapperTest(MapperSuperTest):
         u2 = s.get(User, 7)
         self.assert_(u is not u2)
 
+    def testunicodeget(self):
+        """tests that Query.get properly sets up the type for the bind parameter.  using unicode would normally fail 
+        on postgres, mysql and oracle unless it is converted to an encoded string"""
+        table = Table('foo', db, 
+            Column('id', Unicode(10), primary_key=True),
+            Column('data', Unicode(40)))
+        try:
+            table.create()
+            class LocalFoo(object):pass
+            mapper(LocalFoo, table)
+            crit = 'petit voix m\xe2\x80\x99a '.decode('utf-8')
+            print repr(crit)
+            create_session().query(LocalFoo).get(crit)
+        finally:
+            table.drop()
+
     def testrefresh(self):
         mapper(User, users, properties={'addresses':relation(mapper(Address, addresses))})
         s = create_session()

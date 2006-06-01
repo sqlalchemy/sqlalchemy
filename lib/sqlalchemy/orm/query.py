@@ -24,7 +24,7 @@ class Query(object):
         if not hasattr(mapper, '_get_clause'):
             _get_clause = sql.and_()
             for primary_key in self.mapper.pks_by_table[self.table]:
-                _get_clause.clauses.append(primary_key == sql.bindparam("pk_"+primary_key._label))
+                _get_clause.clauses.append(primary_key == sql.bindparam("pk_"+primary_key._label, type=primary_key.type))
             self.mapper._get_clause = _get_clause
         self._get_clause = self.mapper._get_clause
     def _get_session(self):
