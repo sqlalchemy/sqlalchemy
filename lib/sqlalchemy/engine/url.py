@@ -27,7 +27,7 @@ class URL(object):
         if len(self.query):
             keys = self.query.keys()
             keys.sort()
-            s += '?' + "&".join("%s=%s" % (k, self.query[k]) for k in keys)
+            s += '?' + "&".join(["%s=%s" % (k, self.query[k]) for k in keys])
         return s
     def get_module(self):
         return getattr(__import__('sqlalchemy.databases.%s' % self.drivername).databases, self.drivername)
