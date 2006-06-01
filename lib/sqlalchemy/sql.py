@@ -669,7 +669,11 @@ class FromClause(Selectable):
     def accept_visitor(self, visitor): 
         visitor.visit_fromclause(self)
     def count(self, whereclause=None, **params):
-        return select([func.count(1).label('count')], whereclause, from_obj=[self], **params)
+        if len(self.primary_key):
+            col = self.primary_key[0]
+        else:
+            col = list(self.columns)[0]
+        return select([func.count(col).label('rowcount')], whereclause, from_obj=[self], **params)
     def join(self, right, *args, **kwargs):
         return Join(self, right, *args, **kwargs)
     def outerjoin(self, right, *args, **kwargs):
@@ -1248,7 +1252,11 @@ class TableClause(FromClause):
         if asfrom:
             data[self] = self
     def count(self, whereclause=None, **params):
-        return select([func.count(1).label('count')], whereclause, from_obj=[self], **params)
+        if len(self.primary_key):
+            col = self.primary_key[0]
+        else:
+            col = list(self.columns)[0]
+        return select([func.count(col).label('rowcount')], whereclause, from_obj=[self], **params)
     def join(self, right, *args, **kwargs):
         return Join(self, right, *args, **kwargs)
     def outerjoin(self, right, *args, **kwargs):
