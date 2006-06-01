@@ -53,7 +53,7 @@ class IndexTest(testbase.AssertMixin):
 
         # Check that the table is useable. This is mostly for pg,
         # which can be somewhat sticky with mixed-case identifiers
-        employees.insert().execute(firstName='Joe', lastName='Smith')
+        employees.insert().execute(firstName='Joe', lastName='Smith', id=0)
         ss = employees.select().execute().fetchall()
         assert ss[0].firstName == 'Joe'
         assert ss[0].lastName == 'Smith'
