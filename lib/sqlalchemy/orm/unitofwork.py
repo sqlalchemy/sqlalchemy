@@ -689,10 +689,19 @@ class UOWTask(object):
         self._delete_objects(trans)
 
     def _inheriting_tasks(self):
-        """returns an iterator of UOWTasks whos mappers inherit from this UOWTask's mapper.  Only
-        goes one level deep; i.e. for each UOWTask returned, you would call _inheriting_tasks on those
-        to get their inheriting tasks.  For a multilevel-inheritance chain, i.e. A->B->C, and there are
-        UOWTasks for A and C but not B, C will be returned when this method is called on A, otherwise B."""
+        """returns a collection of UOWTasks whos mappers are immediate descendants of this UOWTask's mapper,
+        *or* are descendants of this UOWTask's mapper where the intervening anscestor mappers do not have
+        corresponding UOWTasks in the current UOWTransaction.
+        
+        Consider mapper A, which has descendant mappers B1 and B2.  B1 has descendant mapper C1, B2 has descendant 
+        mapper C2.  UOWTasks are present for mappers A, B1, C1 and C2.
+        
+            A->
+                B1->C1
+                (B2)->C2
+                
+        calling inheriting_tasks for A's UOWTask yields B1, C2.  calling inheriting_tasks for B1's UOWTask yields C1.        
+        """
         if self.circular_parent is not None:
             return
         def _tasks_by_mapper(mapper):
@@ -700,8 +709,6 @@ class UOWTask(object):
                 inherit_task = self.uowtransaction.tasks.get(m, None)
                 if inherit_task is not None:
                     yield inherit_task
-                    #for t in inherit_task._inheriting_tasks():
-                    #    yield t
                 else:
                     for t in _tasks_by_mapper(m):
                         yield t
@@ -710,6 +717,7 @@ class UOWTask(object):
     inheriting_tasks = property(_inheriting_tasks)
     
     def polymorphic_tasks(self):
+        """returns a collection of all UOWTasks whos mappers are descendants of this UOWTask's mapper."""
         yield self
         for task in self.inheriting_tasks:
             for t in task.polymorphic_tasks():
@@ -720,7 +728,7 @@ class UOWTask(object):
             return True
         if polymorphic:
             for task in self.inheriting_tasks:
-                if task.contains_object(obj, True):
+                if task.contains_object(obj, polymorphic=True):
                     return True
         return False
         
