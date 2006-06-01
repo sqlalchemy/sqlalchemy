@@ -173,7 +173,7 @@ class QueryTest(PersistTest):
         self.assertEqual(r.keys(), ['user_name', 'user_id'])
         self.assertEqual(r.values(), ['foo', 1])
        
-    @testbase.unsupported('oracle') 
+    @testbase.unsupported('oracle', 'firebird') 
     def test_column_accessor_shadow(self):
         shadowed = Table('test_shadowed', db,
                          Column('shadow_id', INT, primary_key = True),

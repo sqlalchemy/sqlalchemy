@@ -7,17 +7,22 @@
 
 import sys, StringIO, string
 
-import sqlalchemy.sql as sql
+import sqlalchemy.engine.default as default
+# import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
 import sqlalchemy.ansisql as ansisql
-from sqlalchemy import *
+# from sqlalchemy import *
 import sqlalchemy.types as sqltypes
-
+import sqlalchemy.exceptions as exceptions
 try:
     import kinterbasdb
 except:
     kinterbasdb = None
         
+dbmodule = kinterbasdb
+        
+kinterbasdb.init(200)    # fix this, init args should be passable via db_uri
+
 class FBNumeric(sqltypes.Numeric):
     def get_col_spec(self):
         return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
@@ -73,36 +78,12 @@ def descriptor():
         ('password', 'Password', None)
     ]}
     
-class FBSQLEngine(ansisql.ANSISQLEngine):
-    def __init__(self, opts, use_ansi = True, module = None, **params):
-        self._use_ansi = use_ansi
-        self.opts = opts or {}
-        if module is None:
-            self.module = kinterbasdb
-        else:
-            self.module = module
-        ansisql.ANSISQLEngine.__init__(self, **params)
-
-    def do_commit(self, connection):
-        connection.commit(True)
-
-    def do_rollback(self, connection):
-        connection.rollback(True)
-
-    def dbapi(self):
-        return self.module
-
-    def connect_args(self):
-        return [[], self.opts]
-        
-    def type_descriptor(self, typeobj):
-        return sqltypes.adapt_type(typeobj, colspecs)
-
-    def last_inserted_ids(self):
-        return self.context.last_inserted_ids
-
+class FireBirdExecutionContext(default.DefaultExecutionContext):
+    def supports_sane_rowcount(self):
+        return True
+    
     def compiler(self, statement, bindparams, **kwargs):
-        return FBCompiler(statement, bindparams, engine=self, use_ansi=self._use_ansi, **kwargs)
+        return FBCompiler(statement, bindparams, **kwargs)
 
     def schemagenerator(self, **params):
         return FBSchemaGenerator(self, **params)
@@ -113,22 +94,76 @@ class FBSQLEngine(ansisql.ANSISQLEngine):
     def defaultrunner(self, proxy):
         return FBDefaultRunner(self, proxy)
         
-    def reflecttable(self, table):
+class FireBirdDialect(ansisql.ANSIDialect):
+    def __init__(self, module = None, **params):
+        self.module = module or dbmodule
+        self.opts = {}
+        ansisql.ANSIDialect.__init__(self, **params)
+
+    def create_connect_args(self, url):
+#        self.opts = url.translate_connect_args(['host', 'database', 'user', 'password'])
+        opts = url.translate_connect_args(['host', 'database', 'user', 'password', 'port'])
+        if opts.get('port'):
+            opts['host'] = "%s/%s" % (opts['host'], opts['port'])
+            del opts['port']
+        self.opts = opts
+        
+        print "opts %r" % self.opts
+        return ([], self.opts)
+
+    def connect_args(self):
+        return make_connect_string(self.opts)
+
+    def create_execution_context(self):
+        return FireBirdExecutionContext(self)
+
+    def type_descriptor(self, typeobj):
+        return sqltypes.adapt_type(typeobj, colspecs)
+
+    def supports_sane_rowcount(self):
+        return True
+
+    def compiler(self, statement, bindparams, **kwargs):
+        return FBCompiler(self, statement, bindparams, **kwargs)
+
+    def schemagenerator(self, *args, **kwargs):
+        return FBSchemaGenerator(*args, **kwargs)
+
+    def schemadropper(self, *args, **kwargs):
+        return FBSchemaDropper(*args, **kwargs)
+
+    def defaultrunner(self, engine, proxy):
+        return FBDefaultRunner(engine, proxy)
+
+    def has_table(self, connection, table_name):
+        tblqry = """\
+        SELECT count(*)
+             FROM RDB$RELATION_FIELDS R 
+        WHERE R.RDB$RELATION_NAME=?;"""
+    
+        c = connection.execute(tblqry, [table_name.upper()])
+        row = c.fetchone()
+        if row[0] > 0:
+            return True
+        else:
+            return False
+
+    def reflecttable(self, connection, table):
         #TODO: map these better
         column_func = {
-            14 : lambda r: String(r['FLEN']), # TEXT
-            7  : lambda r: Integer(), # SHORT
-            8  : lambda r: Integer(), # LONG
-            9  : lambda r: Float(), # QUAD
-            10 : lambda r: Float(), # FLOAT
-            27 : lambda r: Double(), # DOUBLE
-            35 : lambda r: DateTime(), # TIMESTAMP
-            37 : lambda r: String(r['FLEN']), # VARYING
-            261: lambda r: TEXT(), # BLOB
-            40 : lambda r: Char(r['FLEN']), # CSTRING
-            12 : lambda r: Date(), # DATE
-            13 : lambda r: Time(), # TIME
-            16 : lambda r: Numeric(precision=r['FPREC'], length=r['FSCALE'] * -1)  #INT64
+            14 : lambda r: sqltypes.String(r['FLEN']), # TEXT
+            7  : lambda r: sqltypes.Integer(), # SHORT
+            8  : lambda r: sqltypes.Integer(), # LONG
+            9  : lambda r: sqltypes.Float(), # QUAD
+            10 : lambda r: sqltypes.Float(), # FLOAT
+            27 : lambda r: sqltypes.Double(), # DOUBLE
+            35 : lambda r: sqltypes.DateTime(), # TIMESTAMP
+            37 : lambda r: sqltypes.String(r['FLEN']), # VARYING
+            261: lambda r: sqltypes.TEXT(), # BLOB
+            40 : lambda r: sqltypes.Char(r['FLEN']), # CSTRING
+            12 : lambda r: sqltypes.Date(), # DATE
+            13 : lambda r: sqltypes.Time(), # TIME
+            16 : lambda r: sqltypes.Numeric(precision=r['FPREC'], length=r['FSCALE'] * -1)  #INT64
             }
         tblqry = """\
         SELECT DISTINCT R.RDB$FIELD_NAME AS FNAME,
@@ -156,7 +191,7 @@ class FBSQLEngine(ansisql.ANSISQLEngine):
     
         #import pdb;pdb.set_trace()
         # get all of the fields for this table
-        c = self.execute(tblqry, [table.name.upper()])
+        c = connection.execute(tblqry, [table.name.upper()])
         while True:
             row = c.fetchone()
             if not row: break
@@ -168,40 +203,45 @@ class FBSQLEngine(ansisql.ANSISQLEngine):
             # is it a foreign key (and what is it linked to)
 
             # is it a primary key?
-
-            table.append_item(Column(*args, **kw))
+            table.append_item(schema.Column(*args, **kw))
             # does the field have indexes
 
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
+            
 
-    def pre_exec(self, proxy, compiled, parameters, **kwargs):
-        pass
-        
-    def _executemany(self, c, statement, parameters):
-        rowcount = 0
-        for param in parameters:
-            c.execute(statement, param)
-            rowcount += c.rowcount
-        self.context.rowcount = rowcount
+    def do_execute(self, cursor, statement, parameters, **kwargs):
+        cursor.execute(statement, parameters or [])
+
+    def do_rollback(self, connection):
+        connection.rollback(True)
+
+    def do_commit(self, connection):
+        connection.commit(True)
+
+    def connection(self):
+        """returns a managed DBAPI connection from this SQLEngine's connection pool."""
+        c = self._pool.connect()
+        c.supportsTransactions = 0
+        return c
+
+          
+    def dbapi(self):
+        return self.module
+
 
 class FBCompiler(ansisql.ANSICompiler):
     """firebird compiler modifies the lexical structure of Select statements to work under 
     non-ANSI configured Firebird databases, if the use_ansi flag is False."""
     
-    def __init__(self, engine, statement, parameters, use_ansi = True, **kwargs):
+    def __init__(self, dialect, statement, parameters, **kwargs):
         self._outertable = None
-        self._use_ansi = use_ansi
-        ansisql.ANSICompiler.__init__(self, engine, statement, parameters, **kwargs)
+        super(FBCompiler, self).__init__(dialect, statement, parameters, **kwargs)
+        
       
     def visit_column(self, column):
-        if self._use_ansi:
-            return ansisql.ANSICompiler.visit_column(self, column)
+        return ansisql.ANSICompiler.visit_column(self, column)
             
-        if column.table is self._outertable:
-            self.strings[column] = "%s.%s(+)" % (column.table.name, column.name)
-        else:
-            self.strings[column] = "%s.%s" % (column.table.name, column.name)
        
     def visit_function(self, func):
         if len(func.clauses):
@@ -223,10 +263,11 @@ class FBCompiler(ansisql.ANSICompiler):
         """ called when building a SELECT statment, position is just before column list 
         Firebird puts the limit and offset right after the select...thanks for adding the
         visit_select_precolumns!!!"""
-        if select.offset:
-            result +=" FIRST " + select.offset
+        result = ""
         if select.limit:
-            result += " SKIP " + select.limit
+            result += " FIRST %d "  % select.limit
+        if select.offset:
+            result +=" SKIP %d "  %  select.offset
         if select.distinct:
             result += " DISTINCT "
         return result
@@ -269,3 +310,4 @@ class FBDefaultRunner(ansisql.ANSIDefaultRunner):
         return self.proxy("SELECT gen_id(" + seq.name + ", 1) FROM rdb$database").fetchone()[0]
 
 
+dialect = FireBirdDialect

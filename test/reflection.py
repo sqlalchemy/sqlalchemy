@@ -97,7 +97,7 @@ class ReflectionTest(PersistTest):
             Column('multi_id', Integer, primary_key=True),
             Column('multi_rev', Integer, primary_key=True),
             Column('name', String(50), nullable=False),
-            Column('value', String(100))
+            Column('val', String(100))
         )
         table.create()
         # clear out table registry
@@ -114,9 +114,9 @@ class ReflectionTest(PersistTest):
             ]
         )
         table.create()
-        table.insert().execute({'multi_id':1,'multi_rev':1,'name':'row1', 'value':'value1'})
-        table.insert().execute({'multi_id':2,'multi_rev':18,'name':'row2', 'value':'value2'})
-        table.insert().execute({'multi_id':3,'multi_rev':3,'name':'row3', 'value':'value3'})
+        table.insert().execute({'multi_id':1,'multi_rev':1,'name':'row1', 'val':'value1'})
+        table.insert().execute({'multi_id':2,'multi_rev':18,'name':'row2', 'val':'value2'})
+        table.insert().execute({'multi_id':3,'multi_rev':3,'name':'row3', 'val':'value3'})
         table.select().execute().fetchall()
         table.drop()
     

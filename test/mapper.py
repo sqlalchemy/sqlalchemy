@@ -245,6 +245,7 @@ class MapperTest(MapperSuperTest):
 #        l = create_session().query(User).select(order_by=None)
         
         
+    @testbase.unsupported('firebird') 
     def testfunction(self):
         """tests mapping to a SELECT statement that has functions in it."""
         s = select([users, (users.c.user_id * 2).label('concat'), func.count(addresses.c.address_id).label('count')],
@@ -257,6 +258,7 @@ class MapperTest(MapperSuperTest):
         assert l[0].concat == l[0].user_id * 2 == 14
         assert l[1].concat == l[1].user_id * 2 == 16
         
+    @testbase.unsupported('firebird') 
     def testcount(self):
         mapper(User, users)
         q = create_session().query(User)
