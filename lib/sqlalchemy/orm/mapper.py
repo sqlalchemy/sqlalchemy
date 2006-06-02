@@ -193,11 +193,12 @@ class Mapper(object):
                     l = self.pks_by_table[t]
                 except KeyError:
                     l = self.pks_by_table.setdefault(t, util.HashSet(ordered=True))
-                if not len(t.primary_key):
-                    raise exceptions.ArgumentError("Table " + t.name + " has no primary key columns. Specify primary_key argument to mapper.")
                 for k in t.primary_key:
                     l.append(k)
-
+                    
+        if len(self.pks_by_table[self.mapped_table]) == 0:
+            raise exceptions.ArgumentError("Could not assemble any primary key columsn from given tables for table '%s'" % (self.mapped_table.name))
+            
         # make table columns addressable via the mapper
         self.columns = util.OrderedProperties()
         self.c = self.columns
@@ -532,7 +533,7 @@ class Mapper(object):
         list."""
         #print "SAVE_OBJ MAPPER", self.class_.__name__, objects
         connection = uow.transaction.connection(self)
-        for table in self.tables:
+        for table in self.tables.sort(reverse=False):
             #print "SAVE_OBJ table ", self.class_.__name__, table.name
             # looping through our set of tables, which are all "real" tables, as opposed
             # to our main table which might be a select statement or something non-writeable
@@ -700,7 +701,7 @@ class Mapper(object):
         connection = uow.transaction.connection(self)
         #print "DELETE_OBJ MAPPER", self.class_.__name__, objects
         
-        for table in util.reversed(self.tables):
+        for table in self.tables.sort(reverse=True):
             if not self._has_pks(table):
                 continue
             delete = []

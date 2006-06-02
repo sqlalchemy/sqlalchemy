@@ -509,8 +509,6 @@ class SaveTest(SessionTest):
         """tests a save of an object where each instance spans two tables. also tests
         redefinition of the keynames for the column properties."""
         usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
-        print usersaddresses.corresponding_column(users.c.user_id)
-        print repr(usersaddresses._orig_cols)
         m = mapper(User, usersaddresses, 
             properties = dict(
                 email = addresses.c.email_address, 
@@ -523,7 +521,14 @@ class SaveTest(SessionTest):
         u.email = 'multi@test.org'
 
         ctx.current.flush()
+        id = m.identity(u)
+        print id
 
+        ctx.current.clear()
+        
+        u = m.get(id)
+        assert u.user_name == 'multitester'
+        
         usertable = users.select(users.c.user_id.in_(u.foo_id)).execute().fetchall()
         self.assertEqual(usertable[0].values(), [u.foo_id, 'multitester'])
         addresstable = addresses.select(addresses.c.address_id.in_(u.address_id)).execute().fetchall()
@@ -538,9 +543,40 @@ class SaveTest(SessionTest):
         addresstable = addresses.select(addresses.c.address_id.in_(u.address_id)).execute().fetchall()
         self.assertEqual(addresstable[0].values(), [u.address_id, u.foo_id, 'lala@hey.com'])
 
-        u = m.select(users.c.user_id==u.foo_id)[0]
-        self.echo( repr(u.__dict__))
+        ctx.current.clear()
+        u = m.get(id)
+        assert u.user_name == 'imnew'
+        
+    def testm2mmultitable(self):
+        # many-to-many join on an association table
+        j = join(users, userkeywords, 
+                users.c.user_id==userkeywords.c.user_id).join(keywords, 
+                   userkeywords.c.keyword_id==keywords.c.keyword_id)
 
+        # a class 
+        class KeywordUser(object):
+            pass
+
+        # map to it - the identity of a KeywordUser object will be
+        # (user_id, keyword_id) since those are the primary keys involved
+        m = mapper(KeywordUser, j, properties={
+            'user_id':[users.c.user_id, userkeywords.c.user_id],
+            'keyword_id':[userkeywords.c.keyword_id, keywords.c.keyword_id],
+            'keyword_name':keywords.c.name
+            
+        })
+        
+        k = KeywordUser()
+        k.user_name = 'keyworduser'
+        k.keyword_name = 'a keyword'
+        ctx.current.flush()
+        print m.instance_key(k)
+        id = (k.user_id, k.keyword_id)
+        ctx.current.clear()
+        k = ctx.current.query(KeywordUser).get(id)
+        assert k.user_name == 'keyworduser'
+        assert k.keyword_name == 'a keyword'
+        
     def testonetoone(self):
         m = mapper(User, users, properties = dict(
             address = relation(mapper(Address, addresses), lazy = True, uselist = False)

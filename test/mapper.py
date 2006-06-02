@@ -87,7 +87,8 @@ class MapperTest(MapperSuperTest):
     def testunicodeget(self):
         """tests that Query.get properly sets up the type for the bind parameter.  using unicode would normally fail 
         on postgres, mysql and oracle unless it is converted to an encoded string"""
-        table = Table('foo', db, 
+        metadata = BoundMetaData(db)
+        table = Table('foo', metadata, 
             Column('id', Unicode(10), primary_key=True),
             Column('data', Unicode(40)))
         try:

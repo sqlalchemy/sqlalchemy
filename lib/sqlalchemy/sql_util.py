@@ -9,7 +9,22 @@ class TableCollection(object):
         self.tables = []
     def add(self, table):
         self.tables.append(table)
-    def sort(self, reverse=False ):
+        if hasattr(self, '_sorted'):
+            del self._sorted
+    def sort(self, reverse=False):
+        try:
+            sorted = self._sorted
+        except AttributeError, e:
+            self._sorted = self._do_sort()
+            return self.sort(reverse=reverse)
+        if reverse:
+            x = sorted[:]
+            x.reverse()
+            return x
+        else:
+            return sorted
+            
+    def _do_sort(self):
         import sqlalchemy.orm.topological
         tuples = []
         class TVisitor(schema.SchemaVisitor):
@@ -29,8 +44,6 @@ class TableCollection(object):
                 to_sequence( child )
         if head is not None:
             to_sequence( head )
-        if reverse:
-            sequence.reverse()
         return sequence
         
 

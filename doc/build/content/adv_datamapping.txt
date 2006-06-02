@@ -500,9 +500,12 @@ Mappers can be constructed against arbitrary relational units (called `Selectabl
     
     # map to it - the identity of an AddressUser object will be 
     # based on (user_id, address_id) since those are the primary keys involved
-    m = mapper(AddressUser, j)
+    m = mapper(AddressUser, j, properties={
+        'user_id':[users_table.c.user_id, addresses_table.c.user_id]
+    })
 
-    A second example:        
+A second example:
+
     {python}
     # many-to-many join on an association table
     j = join(users_table, userkeywords, 
@@ -515,7 +518,12 @@ Mappers can be constructed against arbitrary relational units (called `Selectabl
 
     # map to it - the identity of a KeywordUser object will be
     # (user_id, keyword_id) since those are the primary keys involved
-    m = mapper(KeywordUser, j)
+    m = mapper(KeywordUser, j, properties={
+        'user_id':[users_table.c.user_id, userkeywords.c.user_id],
+        'keyword_id':[userkeywords.c.keyword_id, keywords.c.keyword_id]
+    })
+
+In both examples above, "composite" columns were added as properties to the mappers; these are aggregations of multiple columns into one mapper property, which instructs the mapper to keep both of those columns set at the same value.
 
 ### Mapping a Class against Arbitary Selects {@name=selects}
 

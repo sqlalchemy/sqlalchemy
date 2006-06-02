@@ -3,7 +3,7 @@ from sqlalchemy import *
 import os
 import testbase
 
-__all__ = ['db', 'users', 'addresses', 'orders', 'orderitems', 'keywords', 'itemkeywords',
+__all__ = ['db', 'users', 'addresses', 'orders', 'orderitems', 'keywords', 'itemkeywords', 'userkeywords',
             'User', 'Address', 'Order', 'Item', 'Keyword'
         ]
 
@@ -43,6 +43,11 @@ keywords = Table('keywords', metadata,
     Column('keyword_id', Integer, Sequence('keyword_id_seq', optional=True), primary_key = True),
     Column('name', VARCHAR(50)),
     
+)
+
+userkeywords = Table('userkeywords', metadata, 
+    Column('user_id', INT, ForeignKey("users")),
+    Column('keyword_id', INT, ForeignKey("keywords")),
 )
 
 itemkeywords = Table('itemkeywords', metadata,
