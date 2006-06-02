@@ -123,8 +123,23 @@ class OracleDialect(ansisql.ANSIDialect):
         return self.module
 
     def create_connect_args(self, url):
-        opts = url.translate_connect_args(['dsn', None, 'user', 'password'])
-        opts['threaded'] = self.threaded
+        if url.database:
+            # if we have a database, then we have a remote host
+            port = url.port
+            if port:
+                port = int(port)
+            else:
+                port = 1521
+            dsn = self.module.makedsn(url.host,port,url.database)
+        else:
+            # we have a local tnsname
+           dsn = url.host
+        opts = dict(
+            user=url.username,
+            password=url.password,
+            dsn = dsn,
+            threaded = self.threaded
+            )
         return ([], opts)
         
     def type_descriptor(self, typeobj):
