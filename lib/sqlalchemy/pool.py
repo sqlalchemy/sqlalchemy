@@ -70,7 +70,7 @@ def clear_managers():
 
     
 class Pool(object):
-    def __init__(self, echo = False, use_threadlocal = True, logger=None, **kwargs):
+    def __init__(self, echo = False, use_threadlocal = True, logger=None):
         self._threadconns = weakref.WeakValueDictionary()
         self._use_threadlocal = use_threadlocal
         self.echo = echo
