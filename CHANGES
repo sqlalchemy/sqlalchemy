@@ -9,7 +9,9 @@ with threadlocal strategy (its totally safe !)
 - create_engine() can take URLs as string or unicode [ticket:188]
 - firebird support partially completed; 
 thanks to James Ralston and Brad Clements for their efforts.
-- Oracle url translation was broken, fixed
+- Oracle url translation was broken, fixed, will feed host/port/sid
+into cx_oracle makedsn() if 'database' field is present, else uses 
+straight TNS name from the 'host' field
 - fix to using unicode criterion for query.get()/query.load()
 - count() function on selectables now uses table primary key or 
 first column instead of "1" for criterion, also uses label "rowcount"

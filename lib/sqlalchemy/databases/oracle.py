@@ -133,7 +133,7 @@ class OracleDialect(ansisql.ANSIDialect):
             dsn = self.module.makedsn(url.host,port,url.database)
         else:
             # we have a local tnsname
-           dsn = url.host
+            dsn = url.host
         opts = dict(
             user=url.username,
             password=url.password,

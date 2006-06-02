@@ -34,7 +34,12 @@ Available drivernames are `sqlite`, `mysql`, `postgres`, `oracle`, `mssql`, and 
     pg_db = create_engine('postgres://scott:tiger@localhost:5432/mydatabase')
     sqlite_db = create_engine('sqlite:///mydb.txt')
     mysql_db = create_engine('mysql://localhost/foo')
+
+    # oracle via TNS name
     oracle_db = create_engine('oracle://scott:tiger@dsn')
+
+    # oracle will feed host/port/SID into cx_oracle.makedsn
+    oracle_db = create_engine('oracle://scott:tiger@127.0.0.1:1521/sidname')
 
 The `Engine` will create its first connection to the database when a SQL statement is executed.  As concurrent statements are executed, the underlying connection pool will grow to a default size of five connections, and will allow a default "overflow" of ten.   Since the `Engine` is essentially "home base" for the connection pool, it follows that you should keep a single `Engine` per database established within an application, rather than creating a new one for each connection.
 
