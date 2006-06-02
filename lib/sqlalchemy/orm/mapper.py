@@ -197,7 +197,7 @@ class Mapper(object):
                     l.append(k)
                     
         if len(self.pks_by_table[self.mapped_table]) == 0:
-            raise exceptions.ArgumentError("Could not assemble any primary key columsn from given tables for table '%s'" % (self.mapped_table.name))
+            raise exceptions.ArgumentError("Could not assemble any primary key columns for mapped table '%s'" % (self.mapped_table.name))
             
         # make table columns addressable via the mapper
         self.columns = util.OrderedProperties()

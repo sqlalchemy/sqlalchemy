@@ -16,7 +16,7 @@ class TableCollection(object):
             sorted = self._sorted
         except AttributeError, e:
             self._sorted = self._do_sort()
-            return self.sort(reverse=reverse)
+            sorted = self._sorted
         if reverse:
             x = sorted[:]
             x.reverse()
