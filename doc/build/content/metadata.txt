@@ -119,6 +119,28 @@ Another form of `MetaData` exists which allows connecting to any number of engin
 
 `DynamicMetaData` is ideal for applications that need to use the same set of `Tables` for many different database connections in the same process, such as a CherryPy web application which handles multiple application instances in one process.
 
+#### Using the global Metadata object
+
+Some users prefer to create `Table` objects without specifying a `MetaData` object, having Tables scoped on an application-wide basis.  For them the `default_metadata` object and the `global_connect()` function is supplied.  `default_metadata` is simply an instance of `DynamicMetaData` that exists within the `sqlalchemy` namespace, and `global_connect()` is a synonym for `default_metadata.connect()`.  Defining a `Table` that has no `MetaData` argument will automatically use this default metadata as follows:
+
+    {python}
+    from sqlalchemy import *
+
+    # a Table with just a name and its Columns
+    mytable = Table('mytable', 
+        Column('col1', Integer, primary_key=True),
+        Column('col2', String(40))
+        )
+
+    # connect all the "anonymous" tables to a postgres uri in the current thread    
+    global_connect('postgres://foo:bar@lala/test')
+
+    # create all tables in the default metadata
+    default_metadata.create_all()
+
+    # the table is bound
+    mytable.insert().execute(col1=5, col2='some value')
+    
 #### Reflecting Tables
 
 Once you have a `BoundMetaData` or a connected `DynamicMetaData`, you can create `Table` objects without specifying their columns, just their names, using `autoload=True`:

@@ -57,6 +57,15 @@ class TableSingleton(type):
                 if not hasattr(engine, '_legacy_metadata'):
                     engine._legacy_metadata = BoundMetaData(engine)
                 metadata = engine._legacy_metadata
+            elif metadata is not None and not isinstance(metadata, MetaData):
+                # they left MetaData out, so assume its another SchemaItem, add it to *args
+                args = list(args)
+                args.insert(0, metadata)
+                metadata = None
+                
+            if metadata is None:
+                metadata = default_metadata
+                
             name = str(name)    # in case of incoming unicode
             schema = kwargs.get('schema', None)
             autoload = kwargs.pop('autoload', False)

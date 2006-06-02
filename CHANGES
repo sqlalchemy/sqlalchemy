@@ -16,7 +16,9 @@ first column instead of "1" for criterion, also uses label "rowcount"
 instead of "count".  
 - got rudimental "mapping to multiple tables" functionality cleaned up, 
 more correctly documented
-
+- restored global_connect() function, attaches to a DynamicMetaData
+instance called "default_metadata".  leaving MetaData arg to Table
+out will use the default metadata.
 0.2.1
 - "pool" argument to create_engine() properly propigates
 - fixes to URL, raises exception if not parsed, does not pass blank
