@@ -34,6 +34,9 @@ class FBSmallInteger(sqltypes.Smallinteger):
         return "SMALLINT"
 class FBDateTime(sqltypes.DateTime):
     def get_col_spec(self):
+        return "TIMESTAMP"
+class FBDate(sqltypes.DateTime):
+    def get_col_spec(self):
         return "DATE"
 class FBText(sqltypes.TEXT):
     def get_col_spec(self):
@@ -57,7 +60,7 @@ colspecs = {
     sqltypes.Numeric : FBNumeric,
     sqltypes.Float : FBNumeric,
     sqltypes.DateTime : FBDateTime,
-    sqltypes.Date : FBDateTime,
+    sqltypes.Date : FBDate,
     sqltypes.String : FBString,
     sqltypes.Binary : FBBinary,
     sqltypes.Boolean : FBBoolean,
