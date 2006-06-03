@@ -30,7 +30,6 @@ except:
     except:
         psycopg = None
 
-
 class PGNumeric(sqltypes.Numeric):
     def get_col_spec(self):
         return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
@@ -215,7 +214,10 @@ class PGDialect(ansisql.ANSIDialect):
         except:
             self.version = 1
         ansisql.ANSIDialect.__init__(self, **params)
-
+        # produce consistent paramstyle even if psycopg2 module not present
+        if self.module is None:
+            self.paramstyle = 'pyformat'
+        
     def create_connect_args(self, url):
         opts = url.translate_connect_args(['host', 'database', 'user', 'password', 'port'])
         if opts.has_key('port'):

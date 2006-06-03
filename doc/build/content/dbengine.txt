@@ -20,7 +20,7 @@ Underneath the public-facing API of `ComposedSQLEngine`, several components are 
 
 ### Supported Databases {@name=supported}
 
-Engines exist for SQLite, Postgres, MySQL, and Oracle, using the Pysqlite, Psycopg (1 or 2), MySQLDB, and cx_Oracle modules.  There is also preliminary support for MS-SQL using adodbapi or pymssql, as well as Firebird.   For each engine, a distinct Python module exists in the `sqlalchemy.databases` package, which provides implementations of some of the objects mentioned in the previous section.
+Engines exist for SQLite, Postgres, MySQL, and Oracle, using the Pysqlite, Psycopg2 (Psycopg1 will work to some degree but its typing model is not supported...install Psycopg2!), MySQLDB, and cx_Oracle modules.  There is also preliminary support for MS-SQL using adodbapi or pymssql, as well as Firebird.   For each engine, a distinct Python module exists in the `sqlalchemy.databases` package, which provides implementations of some of the objects mentioned in the previous section.
 
 ### Establishing a Database Engine {@name=establishing}
 
