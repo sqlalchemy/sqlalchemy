@@ -279,6 +279,7 @@ class Session(object):
             if c is object:
                 self._save_impl(c, entity_name=entity_name)
             else:
+                # TODO: this is running the cascade rules twice
                 self.save_or_update(c, entity_name=entity_name)
 
     def update(self, object, entity_name=None):
@@ -397,7 +398,7 @@ class Session(object):
     def __contains__(self, obj):
         return self._is_attached(obj) and (obj in self.uow.new or self.uow.has_key(obj._instance_key))
     def __iter__(self):
-        return iter(self.uow.identity_map.values())
+        return iter(self.uow.new + self.uow.identity_map.values())
     def _get(self, key):
         return self.uow._get(key)
     def has_key(self, key):

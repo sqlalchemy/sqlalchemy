@@ -271,6 +271,7 @@ class UOWTransaction(object):
         self.__modified = False
         self.__is_executing = False
         
+    # TODO: shouldnt be able to register stuff here that is not in the enclosing Session
     def register_object(self, obj, isdelete = False, listonly = False, postupdate=False, **kwargs):
         """adds an object to this UOWTransaction to be updated in the database.
 

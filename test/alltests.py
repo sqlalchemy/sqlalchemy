@@ -52,6 +52,7 @@ def suite():
         'onetoone',
         'inheritance',
         'inheritance2',
+	'inheritance3',
         'polymorph',
         
         # extensions

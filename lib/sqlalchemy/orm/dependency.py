@@ -64,6 +64,7 @@ class DependencyProcessor(object):
         insert/update/delete order (topological sort)."""
         raise NotImplementedError()
 
+    # TODO: all of these preproc rules need to take dependencies into account
     def preprocess_dependencies(self, task, deplist, uowcommit, delete = False):
         """used before the flushes' topological sort to traverse through related objects and insure every 
         instance which will require save/update/delete is properly added to the UOWTransaction."""
