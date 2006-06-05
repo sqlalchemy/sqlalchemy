@@ -4,6 +4,14 @@ from testbase import PersistTest, AssertMixin
 import testbase
 import sqlalchemy.engine.url as url
 
+import sqlalchemy.types
+
+# TODO: cant get cPickle to pickle the "Foo" class from this module,
+# now that its moved
+import pickle
+sqlalchemy.types.pickle = pickle
+
+
 db = testbase.db
 
 class MyType(types.TypeEngine):

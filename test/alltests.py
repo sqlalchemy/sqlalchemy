@@ -1,71 +1,16 @@
 import testbase
 import unittest
 
+import orm.alltests as orm
+import base.alltests as base
+import sql.alltests as sql
+import engine.alltests as engine
+import ext.alltests as ext
+
 def suite():
-    modules_to_test = (
-        # core utilities
-        'historyarray',
-        'attributes', 
-        'dependency',
-
-        # connectivity, execution
-        'pool', 
-        'transaction',
-        
-        # schema/tables
-        'reflection', 
-        'testtypes',
-        'indexes',
-
-        # SQL syntax
-        'select',
-        'selectable',
-        'case_statement', 
-        
-        # assorted round-trip tests
-        'query',
-        
-        # defaults, sequences (postgres/oracle)
-        'defaults',
-        
-        # ORM selecting
-        'mapper',
-        'selectresults',
-        'lazytest1',
-        'eagertest1',
-        'eagertest2',
-        
-        # ORM persistence
-        'sessioncontext', 
-        'objectstore',
-        'cascade',
-        'relationships',
-        'association',
-        
-        # cyclical ORM persistence
-        'cycles',
-        'poly_linked_list',
-        
-        # more select/persistence, backrefs
-        'entity',
-        'manytomany',
-        'onetoone',
-        'inheritance',
-        'inheritance2',
-	'inheritance3',
-        'polymorph',
-        
-        # extensions
-        'proxy_engine',
-        'activemapper',
-        'sqlsoup'
-        
-        #'wsgi_test',
-        
-        )
     alltests = unittest.TestSuite()
-    for module in map(__import__, modules_to_test):
-        alltests.addTest(unittest.findTestCases(module, suiteClass=None))
+    for suite in (base, engine, sql, orm, ext):
+        alltests.addTest(suite.suite())
     return alltests
 
 

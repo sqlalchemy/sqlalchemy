@@ -1,0 +1,42 @@
+To run unit tests (assuming unix-style commandline, adjust as needed for windows):
+
+cd into the SQLAlchemy distribution directory.
+
+Set up the PYTHONPATH:
+
+    export PYTHONPATH=./lib/:./test/
+
+To run all tests:
+
+    python test/alltests.py
+
+Help is available via:
+
+    python test/alltests.py --help
+
+    usage: alltests.py [options] files...
+    
+    options:
+      -h, --help            show this help message and exit
+      --dburi=DBURI         database uri (overrides --db)
+      --db=DB               prefab database uri (sqlite, sqlite_file, postgres,
+    			mysql, oracle, oracle8, mssql)
+      --mockpool            use mock pool
+      --verbose             full debug echoing
+      --noecho              Disable SQL statement echoing
+      --quiet               be totally quiet
+      --nothreadlocal       dont use thread-local mod
+      --enginestrategy=ENGINESTRATEGY
+    			engine strategy (plain or threadlocal, defaults to SA
+    			default)
+    
+
+Any unittest module can be run directly from the module file (same commandline options):
+
+    python test/orm/mapper.py
+
+Additionally, to run a speciic test within the module, specify it as ClassName.methodname:
+
+    python test/orm/mapper.py MapperTest.testget
+
+
