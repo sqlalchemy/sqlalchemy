@@ -4,10 +4,15 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import thread, threading, weakref, UserList, time, string, inspect, sys
+import thread, threading, weakref, UserList, time, string, inspect, sys, sets
 from exceptions import *
 import __builtin__
 
+try:
+    Set = set
+except:
+    Set = sets.Set
+    
 def to_list(x):
     if x is None:
         return None
@@ -18,9 +23,9 @@ def to_list(x):
 
 def to_set(x):
     if x is None:
-        return HashSet()
-    if not isinstance(x, HashSet):
-        return HashSet(to_list(x))
+        return Set()
+    if not isinstance(x, Set):
+        return Set(to_list(x))
     else:
         return x
 
@@ -189,43 +194,13 @@ class DictDecorator(dict):
             return self.decorate[key]
     def __repr__(self):
         return dict.__repr__(self) + repr(self.decorate)
-        
-class HashSet(object):
-    """implements a Set, including ordering capability"""
-    def __init__(self, iter=None, ordered=False):
-        if ordered:
-            self.map = OrderedDict()
-        else:
-            self.map  = {}
-        if iter is not None:
-            for i in iter:
-                self.append(i)
-    def __iter__(self):
-        return iter(self.map.values())
-    def contains(self, item):
-        return self.map.has_key(item)
-    def __contains__(self, item):
-        return self.map.has_key(item)
-    def clear(self):
-        self.map.clear()
-    def intersection(self, l):
-        return HashSet([x for x in l if self.contains(x)])
-    def empty(self):
-        return len(self.map) == 0
-    def append(self, item):
-        self.map[item] = item
-    def remove(self, item):
-        del self.map[item]
-    def __add__(self, other):
-        return HashSet(self.map.values() + [i for i in other])
-    def __len__(self):
-        return len(self.map)
-    def __delitem__(self, key):
-        del self.map[key]
-    def __getitem__(self, key):
-        return self.map[key]
-    def __repr__(self):
-        return repr(self.map.values())
+
+class OrderedSet(sets.Set):
+    def __init__(self, iterable=None):
+        """Construct a set from an optional iterable."""
+        self._data = OrderedDict()
+        if iterable is not None: 
+          self._update(iterable)
         
 class HistoryArraySet(UserList.UserList):
     """extends a UserList to provide unique-set functionality as well as history-aware 

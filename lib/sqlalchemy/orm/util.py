@@ -4,13 +4,13 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import sets
+import sqlalchemy.util as util
 import sqlalchemy.sql as sql
 
 class CascadeOptions(object):
     """keeps track of the options sent to relation().cascade"""
     def __init__(self, arg=""):
-        values = sets.Set([c.strip() for c in arg.split(',')])
+        values = util.Set([c.strip() for c in arg.split(',')])
         self.delete_orphan = "delete-orphan" in values
         self.delete = "delete" in values or self.delete_orphan or "all" in values
         self.save_update = "save-update" in values or "all" in values
@@ -22,7 +22,7 @@ class CascadeOptions(object):
     
 
 def polymorphic_union(table_map, typecolname, aliasname='p_union'):
-    colnames = sets.Set()
+    colnames = util.Set()
     colnamemaps = {}
     
     for key in table_map.keys():

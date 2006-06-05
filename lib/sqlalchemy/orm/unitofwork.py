@@ -104,10 +104,10 @@ class UnitOfWork(object):
             self.identity_map = weakref.WeakValueDictionary()
             
         self.attributes = global_attributes
-        self.new = util.HashSet(ordered = True)
-        self.dirty = util.HashSet()
+        self.new = util.OrderedSet()
+        self.dirty = util.Set()
         
-        self.deleted = util.HashSet()
+        self.deleted = util.Set()
 
     def get(self, class_, *id):
         """given a class and a list of primary key values in their table-order, locates the mapper 
@@ -149,15 +149,15 @@ class UnitOfWork(object):
         if hasattr(obj, "_instance_key"):
             del self.identity_map[obj._instance_key]
         try:            
-            del self.deleted[obj]
+            self.deleted.remove(obj)
         except KeyError:
             pass
         try:
-            del self.dirty[obj]
+            self.dirty.remove(obj)
         except KeyError:
             pass
         try:
-            del self.new[obj]
+            self.new.remove(obj)
         except KeyError:
             pass
         #self.attributes.commit(obj)
@@ -183,11 +183,11 @@ class UnitOfWork(object):
     
     def register_clean(self, obj):
         try:
-            del self.dirty[obj]
+            self.dirty.remove(obj)
         except KeyError:
             pass
         try:
-            del self.new[obj]
+            self.new.remove(obj)
         except KeyError:
             pass
         if not hasattr(obj, '_instance_key'):
@@ -199,26 +199,26 @@ class UnitOfWork(object):
     def register_new(self, obj):
         if hasattr(obj, '_instance_key'):
             raise InvalidRequestError("Object '%s' already has an identity - it cant be registered as new" % repr(obj))
-        if not self.new.contains(obj):
-            self.new.append(obj)
+        if obj not in self.new:
+            self.new.add(obj)
         self.unregister_deleted(obj)
         
     def register_dirty(self, obj):
-        if not self.dirty.contains(obj):
+        if obj not in self.dirty:
             self._validate_obj(obj)
-            self.dirty.append(obj)
+            self.dirty.add(obj)
         self.unregister_deleted(obj)
         
     def is_dirty(self, obj):
-        if not self.dirty.contains(obj):
+        if obj not in self.dirty:
             return False
         else:
             return True
         
     def register_deleted(self, obj):
-        if not self.deleted.contains(obj):
+        if obj not in self.deleted:
             self._validate_obj(obj)
-            self.deleted.append(obj)  
+            self.deleted.add(obj)  
 
     def unregister_deleted(self, obj):
         try:
@@ -230,14 +230,14 @@ class UnitOfWork(object):
         flush_context = UOWTransaction(self, session)
 
         if objects is not None:
-            objset = sets.Set(objects)
+            objset = util.Set(objects)
         else:
             objset = None
 
         for obj in [n for n in self.new] + [d for d in self.dirty]:
             if objset is not None and not obj in objset:
                 continue
-            if self.deleted.contains(obj):
+            if obj in self.deleted:
                 continue
             flush_context.register_object(obj)
             
@@ -262,11 +262,11 @@ class UnitOfWork(object):
         """'rolls back' the attributes that have been changed on an object instance."""
         self.attributes.rollback(obj)
         try:
-            del self.dirty[obj]
+            self.dirty.remove(obj)
         except KeyError:
             pass
         try:
-            del self.deleted[obj]
+            self.deleted.remove(obj)
         except KeyError:
             pass
             
@@ -277,7 +277,7 @@ class UOWTransaction(object):
         self.uow = uow
         self.session = session
         #  unique list of all the mappers we come across
-        self.mappers = sets.Set()
+        self.mappers = util.Set()
         self.dependencies = {}
         self.tasks = {}
         self.__modified = False
@@ -463,7 +463,7 @@ class UOWTransaction(object):
     def _get_noninheriting_mappers(self):
         """returns a list of UOWTasks whose mappers are not inheriting from the mapper of another UOWTask.
         i.e., this returns the root UOWTasks for all the inheritance hierarchies represented in this UOWTransaction."""
-        mappers = sets.Set()
+        mappers = util.Set()
         for task in self.tasks.values():
             base = task.mapper.base_mapper()
             mappers.add(base)
@@ -580,7 +580,7 @@ class UOWTask(object):
         
         # a list of UOWDependencyProcessors which are executed after saves and
         # before deletes, to synchronize data to dependent objects
-        self.dependencies = sets.Set()
+        self.dependencies = util.Set()
 
         # a list of UOWTasks that are dependent on this UOWTask, which 
         # are to be executed after this UOWTask performs saves and post-save
@@ -589,7 +589,7 @@ class UOWTask(object):
         
         # a list of UOWTasks that correspond to Mappers which are inheriting
         # mappers of this UOWTask's Mapper
-        #self.inheriting_tasks = sets.Set()
+        #self.inheriting_tasks = util.Set()
 
         # whether this UOWTask is circular, meaning it holds a second
         # UOWTask that contains a special row-based dependency structure.
@@ -603,7 +603,7 @@ class UOWTask(object):
         # set of dependencies, referencing sub-UOWTasks attached to this
         # one which represent portions of the total list of objects.
         # this is used for the row-based "circular sort"
-        self.cyclical_dependencies = sets.Set()
+        self.cyclical_dependencies = util.Set()
         
     def is_empty(self):
         return len(self.objects) == 0 and len(self.dependencies) == 0 and len(self.childtasks) == 0
@@ -773,7 +773,7 @@ class UOWTask(object):
             allobjects += [e.obj for e in task.get_elements(polymorphic=True)]
         tuples = []
         
-        cycles = sets.Set(cycles)
+        cycles = util.Set(cycles)
         
         #print "BEGIN CIRC SORT-------"
         #print "PRE-CIRC:"

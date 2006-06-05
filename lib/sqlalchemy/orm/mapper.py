@@ -56,16 +56,16 @@ class Mapper(object):
         # uber-pendantic style of making mapper chain, as various testbase/
         # threadlocal/assignmapper combinations keep putting dupes etc. in the list
         # TODO: do something that isnt 21 lines....
-        extlist = util.HashSet()
+        extlist = util.Set()
         for ext_class in global_extensions:
             if isinstance(ext_class, MapperExtension):
-                extlist.append(ext_class)
+                extlist.add(ext_class)
             else:
-                extlist.append(ext_class())
+                extlist.add(ext_class())
 
         if extension is not None:
             for ext_obj in util.to_list(extension):
-                extlist.append(ext_obj)
+                extlist.add(ext_obj)
         
         self.extension = None
         previous = None
@@ -87,7 +87,7 @@ class Mapper(object):
         self._options = {}
         self.always_refresh = always_refresh
         self.version_id_col = version_id_col
-        self._inheriting_mappers = sets.Set()
+        self._inheriting_mappers = util.Set()
         self.polymorphic_on = polymorphic_on
         if polymorphic_map is None:
             self.polymorphic_map = {}
@@ -146,7 +146,7 @@ class Mapper(object):
                     # stricter set of tables to create "sync rules" by,based on the immediate
                     # inherited table, rather than all inherited tables
                     self._synchronizer = sync.ClauseSynchronizer(self, self, sync.ONETOMANY)
-                    self._synchronizer.compile(self.mapped_table.onclause, util.HashSet([inherits.local_table]), sqlutil.TableFinder(self.local_table))
+                    self._synchronizer.compile(self.mapped_table.onclause, util.Set([inherits.local_table]), sqlutil.TableFinder(self.local_table))
             else:
                 self._synchronizer = None
                 self.mapped_table = self.local_table
@@ -182,19 +182,19 @@ class Mapper(object):
         self.pks_by_table = {}
         if primary_key is not None:
             for k in primary_key:
-                self.pks_by_table.setdefault(k.table, util.HashSet(ordered=True)).append(k)
+                self.pks_by_table.setdefault(k.table, util.OrderedSet()).add(k)
                 if k.table != self.mapped_table:
                     # associate pk cols from subtables to the "main" table
-                    self.pks_by_table.setdefault(self.mapped_table, util.HashSet(ordered=True)).append(k)
+                    self.pks_by_table.setdefault(self.mapped_table, util.OrderedSet()).add(k)
                 # TODO: need local_table properly accounted for when custom primary key is sent
         else:
             for t in self.tables + [self.mapped_table]:
                 try:
                     l = self.pks_by_table[t]
                 except KeyError:
-                    l = self.pks_by_table.setdefault(t, util.HashSet(ordered=True))
+                    l = self.pks_by_table.setdefault(t, util.OrderedSet())
                 for k in t.primary_key:
-                    l.append(k)
+                    l.add(k)
                     
         if len(self.pks_by_table[self.mapped_table]) == 0:
             raise exceptions.ArgumentError("Could not assemble any primary key columns for mapped table '%s'" % (self.mapped_table.name))
@@ -582,7 +582,7 @@ class Mapper(object):
                             params[col.key] = params[col._label] + 1
                         else:
                             params[col.key] = 1
-                    elif self.pks_by_table[table].contains(col):
+                    elif col in self.pks_by_table[table]:
                         # column is a primary key ?
                         if not isinsert:
                             # doing an UPDATE?  put primary key values as "WHERE" parameters
@@ -756,14 +756,14 @@ class Mapper(object):
     
     def cascade_iterator(self, type, object, callable_=None, recursive=None):
         if recursive is None:
-            recursive=sets.Set()
+            recursive=util.Set()
         for prop in self.props.values():
             for c in prop.cascade_iterator(type, object, recursive):
                 yield c
 
     def cascade_callable(self, type, object, callable_, recursive=None):
         if recursive is None:
-            recursive=sets.Set()
+            recursive=util.Set()
         for prop in self.props.values():
             prop.cascade_callable(type, object, callable_, recursive)
             

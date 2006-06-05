@@ -1,3 +1,9 @@
+0.2.3
+- py2.4 "set" construct used internally, falls back to sets.Set when
+"set" not available/ordering is needed.
+- "foreignkey" argument to relation() can also be a list.  fixed
+auto-foreignkey detection [ticket:151]
+
 0.2.2
 - big improvements to polymorphic inheritance behavior, enabling it
 to work with adjacency list table structures [ticket:190]

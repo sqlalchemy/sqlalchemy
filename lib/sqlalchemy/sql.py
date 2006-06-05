@@ -624,7 +624,7 @@ class ColumnElement(Selectable, CompareMixin):
         try:
             return self.__orig_set
         except AttributeError:
-            self.__orig_set = sets.Set([self])
+            self.__orig_set = util.Set([self])
             return self.__orig_set
     def _set_orig_set(self, s):
         if len(s) == 0:
@@ -1334,7 +1334,7 @@ class CompoundSelect(SelectBaseMixin, FromClause):
         try:
             colset = self._col_map[col.name]
         except KeyError:
-            colset = sets.Set()
+            colset = util.Set()
             self._col_map[col.name] = colset
         [colset.add(c) for c in col.orig_set]
         col.orig_set = colset

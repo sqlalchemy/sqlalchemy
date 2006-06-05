@@ -9,9 +9,9 @@ in the sql module."""
 
 from sqlalchemy import schema, sql, engine, util
 import sqlalchemy.engine.default as default
-import string, re
+import string, re, sets
 
-ANSI_FUNCS = util.HashSet([
+ANSI_FUNCS = sets.ImmutableSet([
 'CURRENT_TIME',
 'CURRENT_TIMESTAMP',
 'CURRENT_DATE',

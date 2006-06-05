@@ -271,7 +271,7 @@ class PropertyLoader(mapper.MapperProperty):
         """searches through the primary join condition to determine which side
         has the foreign key - from this we return 
         the "foreign key" for this property which helps determine one-to-many/many-to-one."""
-        foreignkeys = sets.Set()
+        foreignkeys = util.Set()
         def foo(binary):
             if binary.operator != '=' or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
                 return
@@ -305,8 +305,8 @@ class PropertyLoader(mapper.MapperProperty):
         
         The list of rules is used within commits by the _synchronize() method when dependent 
         objects are processed."""
-        parent_tables = util.HashSet(self.parent.tables + [self.parent.mapped_table])
-        target_tables = util.HashSet(self.mapper.tables + [self.mapper.mapped_table])
+        parent_tables = util.Set(self.parent.tables + [self.parent.mapped_table])
+        target_tables = util.Set(self.mapper.tables + [self.mapper.mapped_table])
 
         self.syncrules = sync.ClauseSynchronizer(self.parent, self.mapper, self.direction)
         if self.direction == sync.MANYTOMANY:

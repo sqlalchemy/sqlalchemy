@@ -1,4 +1,4 @@
-from sqlalchemy             import create_session, relation, mapper, join, DynamicMetaData, class_mapper
+from sqlalchemy             import create_session, relation, mapper, join, DynamicMetaData, class_mapper, util
 from sqlalchemy             import and_, or_
 from sqlalchemy             import Table, Column, ForeignKey
 from sqlalchemy.ext.sessioncontext import SessionContext
@@ -108,7 +108,7 @@ def process_relationships(klass, was_deferred=False):
 
 class ActiveMapperMeta(type):
     classes = {}
-    metadatas = sets.Set()
+    metadatas = util.Set()
     def __init__(cls, clsname, bases, dict):
         table_name = clsname.lower()
         columns    = []
