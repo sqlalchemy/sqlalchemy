@@ -23,6 +23,7 @@ instance called "default_metadata".  leaving MetaData arg to Table
 out will use the default metadata.
 - fixes to session cascade behavior, entity_name propigation
 - reorganized unittests into subdirectories
+- more fixes to threadlocal connection nesting patterns
 
 0.2.1
 - "pool" argument to create_engine() properly propigates

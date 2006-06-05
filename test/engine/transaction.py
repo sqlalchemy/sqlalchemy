@@ -198,13 +198,34 @@ class TLTransactionTest(testbase.PersistTest):
             self.assert_(external_connection.scalar("select count(1) from query_users") == 0)
         finally:
             external_connection.close()
-    
+
+    def testsessionnesting(self):
+        class User(object):
+            pass
+        try:
+            mapper(User, users)
+
+            sess = create_session(bind_to=tlengine)
+            print "STEP1"
+            tlengine.begin()
+            print "STEP2"
+            u = User()
+            sess.save(u)
+            print "STEP3"
+            sess.flush()
+            print "STEP4"
+            tlengine.commit()
+            print "STEP5"
+        finally:
+            clear_mappers()
+
     def testconnections(self):
         """tests that contextual_connect is threadlocal"""
         c1 = tlengine.contextual_connect()
         c2 = tlengine.contextual_connect()
         assert c1.connection is c2.connection
-        c1.close()
+        c2.close()
+        assert c1.connection.connection is not None
         
 if __name__ == "__main__":
     testbase.main()        
