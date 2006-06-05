@@ -199,19 +199,19 @@ class Binary(TypeEngine):
 
 class PickleType(TypeDecorator):
     impl = Binary
-    def __init__(self, protocol=pickle.HIGHEST_PROTOCOL):
-       """allows the pickle protocol to be specified"""
+    def __init__(self, protocol=pickle.HIGHEST_PROTOCOL, pickler=None):
        self.protocol = protocol
+       self.pickler = pickler or pickle
        super(PickleType, self).__init__()
     def convert_result_value(self, value, dialect):
       if value is None:
           return None
       buf = self.impl.convert_result_value(value, dialect)
-      return pickle.loads(str(buf))
+      return self.pickler.loads(str(buf))
     def convert_bind_param(self, value, dialect):
       if value is None:
           return None
-      return self.impl.convert_bind_param(pickle.dumps(value, self.protocol), dialect)
+      return self.impl.convert_bind_param(self.pickler.dumps(value, self.protocol), dialect)
 
 class Boolean(TypeEngine):
     pass

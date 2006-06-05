@@ -15,11 +15,6 @@ class TLSession(object):
             return self.__transaction._increment_connect()
         except AttributeError:
             return TLConnection(self, close_with_result=close_with_result)
-    def set_transaction(self, tlconnection, trans):
-        if self.__tcount == 0:
-            self.__transaction = tlconnection
-            self.__trans = trans
-        self.__tcount += 1
     def reset(self):
         try:
             self.__transaction._force_close()

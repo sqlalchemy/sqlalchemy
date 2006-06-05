@@ -6,11 +6,6 @@ import sqlalchemy.engine.url as url
 
 import sqlalchemy.types
 
-# TODO: cant get cPickle to pickle the "Foo" class from this module,
-# now that its moved
-import pickle
-sqlalchemy.types.pickle = pickle
-
 
 db = testbase.db
 
@@ -177,6 +172,8 @@ class Foo(object):
     def __eq__(self, other):
         return other.data == self.data and other.stuff == self.stuff and other.moredata==self.moredata
 
+import pickle
+
 class BinaryTest(AssertMixin):
     def setUpAll(self):
         global binary_table
@@ -185,7 +182,10 @@ class BinaryTest(AssertMixin):
         Column('data', Binary),
         Column('data_slice', Binary(100)),
         Column('misc', String(30)),
-        Column('pickled', PickleType)
+        # construct PickleType with non-native pickle module, since cPickle uses relative module
+        # loading and confuses this test's parent package 'sql' with the 'sqlalchemy.sql' package relative
+	# to the 'types' module
+        Column('pickled', PickleType(pickler=pickle))
         )
         binary_table.create()
     def tearDownAll(self):
