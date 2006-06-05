@@ -288,7 +288,9 @@ class PrivateAttrTest(SessionTest):
         ctx.current.flush([a])
     
         ctx.current.delete(a)
+        print ctx.current.deleted
         ctx.current.flush([a])
+#        ctx.current.flush()
         
         assert b_table.count().scalar() == 0
 

@@ -275,12 +275,8 @@ class Session(object):
         The 'entity_name' keyword argument will further qualify the specific Mapper used to handle this
         instance.
         """
-        for c in object_mapper(object, entity_name=entity_name).cascade_iterator('save-update', object):
-            if c is object:
-                self._save_impl(c, entity_name=entity_name)
-            else:
-                # TODO: this is running the cascade rules twice
-                self.save_or_update(c, entity_name=entity_name)
+        self._save_impl(object, entity_name=entity_name)
+        object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e))
 
     def update(self, object, entity_name=None):
         """Brings the given detached (saved) instance into this Session.
@@ -288,30 +284,31 @@ class Session(object):
         Session), an exception is thrown. 
         This operation cascades the "save_or_update" method to associated instances if the relation is mapped 
         with cascade="save-update"."""
-        for c in object_mapper(object, entity_name=entity_name).cascade_iterator('save-update', object):
-            if c is object:
-                self._update_impl(c, entity_name=entity_name)
-            else:
-                self.save_or_update(c, entity_name=entity_name)
+        self._update_impl(object, entity_name=entity_name)
+        object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e))
 
     def save_or_update(self, object, entity_name=None):
-        for c in object_mapper(object, entity_name=entity_name).cascade_iterator('save-update', object):
-            key = getattr(object, '_instance_key', None)
-            if key is None:
-                self._save_impl(c, entity_name=entity_name)
-            else:
-                self._update_impl(c, entity_name=entity_name)
-
+        self._save_or_update_impl(object, entity_name=entity_name)
+        object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e))
+    
+    def _save_or_update_impl(self, object, entity_name=None):
+        key = getattr(object, '_instance_key', None)
+        if key is None:
+            self._save_impl(object, entity_name=entity_name)
+        else:
+            self._update_impl(object, entity_name=entity_name)
+        
     def delete(self, object, entity_name=None):
-        for c in object_mapper(object, entity_name=entity_name).cascade_iterator('delete', object):
+        #self.uow.register_deleted(object)
+        for c in [object] + list(object_mapper(object).cascade_iterator('delete', object)):
             self.uow.register_deleted(c)
 
     def merge(self, object, entity_name=None):
         instance = None
-        for obj in object_mapper(object, entity_name=entity_name).cascade_iterator('merge', object):
+        for obj in [object] + list(object_mapper(object).cascade_iterator('merge', object)):
             key = getattr(obj, '_instance_key', None)
             if key is None:
-                mapper = object_mapper(object, entity_name=entity_name)
+                mapper = object_mapper(object)
                 ident = mapper.identity(object)
                 for k in ident:
                     if k is None:
@@ -333,10 +330,8 @@ class Session(object):
             if not self.uow.has_key(object._instance_key):
                 raise exceptions.InvalidRequestError("Instance '%s' is already persistent in a different Session" % repr(object))
         else:
-            entity_name = kwargs.get('entity_name', None)
-            if entity_name is not None:
-                m = class_mapper(object.__class__, entity_name=entity_name)
-                m._assign_entity_name(object)
+            m = class_mapper(object.__class__, entity_name=kwargs.get('entity_name', None))
+            m._assign_entity_name(object)
             self._register_new(object)
 
     def _update_impl(self, object, **kwargs):
@@ -422,8 +417,8 @@ def get_id_key(ident, class_, entity_name=None):
 def get_row_key(row, class_, primary_key, entity_name=None):
     return Session.get_row_key(row, class_, primary_key, entity_name)
 
-def object_mapper(obj, **kwargs):
-    return sqlalchemy.orm.object_mapper(obj, **kwargs)
+def object_mapper(obj):
+    return sqlalchemy.orm.object_mapper(obj)
 
 def class_mapper(class_, **kwargs):
     return sqlalchemy.orm.class_mapper(class_, **kwargs)

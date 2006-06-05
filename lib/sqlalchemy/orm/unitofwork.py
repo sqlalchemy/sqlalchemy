@@ -49,7 +49,13 @@ class UOWListElement(attributes.ListAttribute):
             if self.cascade is not None:
                 if not isdelete:
                     if self.cascade.save_update:
-                        sess.save_or_update(item)
+                        # cascade the save_update operation onto the child object,
+                        # relative to the mapper handling the parent object
+                        # TODO: easier way to do this ?
+                        mapper = object_mapper(obj)
+                        prop = mapper.props[self.key]
+                        ename = prop.mapper.entity_name
+                        sess.save_or_update(item, entity_name=ename)
     def append(self, item, _mapper_nohistory = False):
         if _mapper_nohistory:
             self.append_nohistory(item)
@@ -67,13 +73,19 @@ class UOWScalarElement(attributes.ScalarAttribute):
             sess._register_changed(obj)
             if newvalue is not None and self.cascade is not None:
                 if self.cascade.save_update:
-                    sess.save_or_update(newvalue)
+                    # cascade the save_update operation onto the child object,
+                    # relative to the mapper handling the parent object
+                    # TODO: easier way to do this ?
+                    mapper = object_mapper(obj)
+                    prop = mapper.props[self.key]
+                    ename = prop.mapper.entity_name
+                    sess.save_or_update(newvalue, entity_name=ename)
             
 class UOWAttributeManager(attributes.AttributeManager):
     """overrides AttributeManager to provide unit-of-work "dirty" hooks when scalar attribues are modified, plus factory methods for UOWProperrty/UOWListElement."""
     def __init__(self):
         attributes.AttributeManager.__init__(self)
-        
+
     def create_prop(self, class_, key, uselist, callable_, **kwargs):
         return UOWProperty(class_, self, key, uselist, callable_, **kwargs)
 

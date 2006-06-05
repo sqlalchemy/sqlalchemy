@@ -154,14 +154,25 @@ class PropertyLoader(mapper.MapperProperty):
         if not type in self.cascade:
             return
         childlist = sessionlib.global_attributes.get_history(object, self.key, passive=True)
-            
+        
+        mapper = self.mapper.primary_mapper()
         for c in childlist.added_items() + childlist.deleted_items() + childlist.unchanged_items():
-            if c is not None:
-                if c not in recursive:
-                    recursive.add(c)
-                    yield c
-                    for c2 in self.mapper.primary_mapper().cascade_iterator(type, c, recursive):
-                        yield c2
+            if c is not None and c not in recursive:
+                recursive.add(c)
+                yield c
+                for c2 in mapper.cascade_iterator(type, c, recursive):
+                    yield c2
+
+    def cascade_callable(self, type, object, callable_, recursive):
+        if not type in self.cascade:
+            return
+        childlist = sessionlib.global_attributes.get_history(object, self.key, passive=True)
+        mapper = self.mapper.primary_mapper()
+        for c in childlist.added_items() + childlist.deleted_items() + childlist.unchanged_items():
+            if c is not None and c not in recursive:
+                recursive.add(c)
+                callable_(c, mapper.entity_name)
+                mapper.cascade_callable(type, c, callable_, recursive)
 
     def copy(self):
         x = self.__class__.__new__(self.__class__)
@@ -237,10 +248,16 @@ class PropertyLoader(mapper.MapperProperty):
             raise exceptions.ArgumentError("Attempting to assign a new relation '%s' to a non-primary mapper on class '%s'.  New relations can only be added to the primary mapper, i.e. the very first mapper created for class '%s' " % (key, parent.class_.__name__, parent.class_.__name__))
 
         self.do_init_subclass(key, parent)
+
+    def _register_attribute(self, class_, callable_=None):
+        sessionlib.global_attributes.register_attribute(class_, self.key, uselist = self.uselist, extension=self.attributeext, cascade=self.cascade,  trackparent=True, callable_=callable_)
+
+    def _create_history(self, instance, callable_=None):
+        return sessionlib.global_attributes.create_history(instance, self.key, self.uselist, cascade=self.cascade,  trackparent=True, callable_=callable_)
         
     def _set_class_attribute(self, class_, key):
         """sets attribute behavior on our target class."""
-        sessionlib.global_attributes.register_attribute(class_, key, uselist = self.uselist, extension=self.attributeext, cascade=self.cascade, trackparent=True)
+        self._register_attribute(class_)
         
     def _get_direction(self):
         """determines our 'direction', i.e. do we represent one to many, many to many, etc."""
@@ -295,7 +312,7 @@ class PropertyLoader(mapper.MapperProperty):
         if self.is_primary():
             return
         #print "PLAIN PROPLOADER EXEC NON-PRIAMRY", repr(id(self)), repr(self.mapper.class_), self.key
-        sessionlib.global_attributes.create_history(instance, self.key, self.uselist, cascade=self.cascade, trackparent=True)
+        self._create_history(instance)
 
     def register_dependencies(self, uowcommit):
         self._dependency_processor.register_dependencies(uowcommit)
@@ -327,11 +344,17 @@ class LazyLoader(PropertyLoader):
     def _set_class_attribute(self, class_, key):
         # establish a class-level lazy loader on our class
         #print "SETCLASSATTR LAZY", repr(class_), key
-        sessionlib.global_attributes.register_attribute(class_, key, uselist = self.uselist, callable_=lambda i: self.setup_loader(i), extension=self.attributeext, cascade=self.cascade, trackparent=True)
+        self._register_attribute(class_, callable_=lambda i: self.setup_loader(i))
 
     def setup_loader(self, instance):
+        # make sure our parent mapper is the one thats assigned to this instance, else call that one
         if not self.localparent.is_assigned(instance):
-            return mapper.object_mapper(instance).props[self.key].setup_loader(instance)
+            # if no mapper association with this instance (i.e. not in a session, not loaded by a mapper),
+            # then we cant set up a lazy loader
+            if not mapper.has_mapper(instance):
+                return None
+            else:
+                return mapper.object_mapper(instance).props[self.key].setup_loader(instance)
         def lazyload():
             params = {}
             allparams = True
@@ -379,7 +402,7 @@ class LazyLoader(PropertyLoader):
                 #print "EXEC NON-PRIAMRY", repr(self.mapper.class_), self.key
                 # we are not the primary manager for this attribute on this class - set up a per-instance lazyloader,
                 # which will override the class-level behavior
-                sessionlib.global_attributes.create_history(instance, self.key, self.uselist, callable_=self.setup_loader(instance), cascade=self.cascade, trackparent=True)
+                self._create_history(instance, callable_=self.setup_loader(instance))
             else:
                 #print "EXEC PRIMARY", repr(self.mapper.class_), self.key
                 # we are the primary manager for this attribute on this class - reset its per-instance attribute state, 
@@ -548,7 +571,7 @@ class EagerLoader(LazyLoader):
         if isnew:
             # new row loaded from the database.  initialize a blank container on the instance.
             # this will override any per-class lazyloading type of stuff.
-            h = sessionlib.global_attributes.create_history(instance, self.key, self.uselist, cascade=self.cascade, trackparent=True)
+            h = self._create_history(instance)
             
         if not self.uselist:
             if isnew:

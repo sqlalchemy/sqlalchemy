@@ -387,25 +387,31 @@ class Mapper(object):
         and assocites this Mapper with its class via the mapper_registry."""
         oldinit = self.class_.__init__
         def init(self, *args, **kwargs):
-            self._entity_name = kwargs.pop('_sa_entity_name', None)
 
             # this gets the AttributeManager to do some pre-initialization,
             # in order to save on KeyErrors later on
             sessionlib.global_attributes.init_attr(self)
             
+            entity_name = kwargs.pop('_sa_entity_name', None)
             if kwargs.has_key('_sa_session'):
                 session = kwargs.pop('_sa_session')
             else:
                 # works for whatever mapper the class is associated with
-                mapper = mapper_registry.get(ClassKey(self.__class__, self._entity_name))
+                mapper = mapper_registry.get(ClassKey(self.__class__, entity_name))
                 if mapper is not None:
                     session = mapper.extension.get_session()
                     if session is EXT_PASS:
                         session = None
                 else:
                     session = None
+            # if a session was found, either via _sa_session or via mapper extension,
+            # save() this instance to the session, and give it an associated entity_name.
+            # otherwise, this instance will not have a session or mapper association until it is
+            # save()d to some session.
             if session is not None:
+                self._entity_name = entity_name
                 session._register_new(self)
+
             if oldinit is not None:
                 oldinit(self, *args, **kwargs)
         # override oldinit, insuring that its not already a Mapper-decorated init method
@@ -748,16 +754,19 @@ class Mapper(object):
         for prop in self.props.values():
             prop.register_dependencies(uowcommit, *args, **kwargs)
     
-    def cascade_iterator(self, type, object, recursive=None):
+    def cascade_iterator(self, type, object, callable_=None, recursive=None):
         if recursive is None:
             recursive=sets.Set()
-        if object not in recursive:
-            recursive.add(object)
-            yield object
         for prop in self.props.values():
             for c in prop.cascade_iterator(type, object, recursive):
                 yield c
 
+    def cascade_callable(self, type, object, callable_, recursive=None):
+        if recursive is None:
+            recursive=sets.Set()
+        for prop in self.props.values():
+            prop.cascade_callable(type, object, callable_, recursive)
+            
     def _row_identity_key(self, row):
         return sessionlib.get_row_key(row, self.class_, self.pks_by_table[self.mapped_table], self.entity_name)
 
@@ -928,6 +937,8 @@ class MapperProperty(object):
         corresponding to the row. """
         raise NotImplementedError()
     def cascade_iterator(self, type, object, recursive=None):
+        return []
+    def cascade_callable(self, type, object, callable_, recursive=None):
         return []
     def copy(self):
         raise NotImplementedError()
@@ -1157,13 +1168,16 @@ def hash_key(obj):
         return obj.hash_key()
     else:
         return repr(obj)
+
+def has_mapper(object):
+    """returns True if the given object has a mapper association"""
+    return hasattr(object, '_entity_name')
         
-def object_mapper(object, raiseerror=True, entity_name=None):
-    """given an object, returns the primary Mapper associated with the object
-    or the object's class."""
+def object_mapper(object, raiseerror=True):
+    """given an object, returns the primary Mapper associated with the object instance"""
     try:
-        return mapper_registry[ClassKey(object.__class__, getattr(object, '_entity_name', entity_name))]
-    except KeyError:
+        return mapper_registry[ClassKey(object.__class__, getattr(object, '_entity_name'))]
+    except (KeyError, AttributeError):
         if raiseerror:
             raise exceptions.InvalidRequestError("Class '%s' entity name '%s' has no mapper associated with it" % (object.__class__.__name__, getattr(object, '_entity_name', None)))
         else:

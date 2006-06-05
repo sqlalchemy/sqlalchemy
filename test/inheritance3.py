@@ -14,7 +14,7 @@ class Issue(BaseObject):
 
 class Location(BaseObject):
     def __repr__(self):
-        return "%s(%s, %s)" % (self.__class__.__name__, repr(self.issue_id), repr(str(self._name.name)))
+        return "%s(%s, %s)" % (self.__class__.__name__, str(self.issue_id), repr(str(self._name.name)))
 
     def _get_name(self):
         return self._name

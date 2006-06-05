@@ -82,6 +82,48 @@ class EntityTest(AssertMixin):
         assert u1list[0] is not u2list[0]
         assert len(u1list[0].addresses) == len(u2list[0].addresses) == 1
 
+    def testcascade(self):
+        """same as testbasic but relies on session cascading"""
+        class User(object):pass
+        class Address(object):pass
+
+        a1mapper = mapper(Address, address1, entity_name='address1')
+        a2mapper = mapper(Address, address2, entity_name='address2')    
+        u1mapper = mapper(User, user1, entity_name='user1', properties ={
+            'addresses':relation(a1mapper)
+        })
+        u2mapper =mapper(User, user2, entity_name='user2', properties={
+            'addresses':relation(a2mapper)
+        })
+
+        sess = create_session()
+        u1 = User()
+        u1.name = 'this is user 1'
+        sess.save(u1, entity_name='user1')
+        a1 = Address()
+        a1.email='a1@foo.com'
+        u1.addresses.append(a1)
+
+        u2 = User()
+        u2.name='this is user 2'
+        a2 = Address()
+        a2.email='a2@foo.com'
+        u2.addresses.append(a2)
+        sess.save(u2, entity_name='user2')
+        
+        sess.flush()
+        assert user1.select().execute().fetchall() == [(u1.user_id, u1.name)]
+        assert user2.select().execute().fetchall() == [(u2.user_id, u2.name)]
+        assert address1.select().execute().fetchall() == [(u1.user_id, a1.user_id, 'a1@foo.com')]
+        assert address2.select().execute().fetchall() == [(u2.user_id, a2.user_id, 'a2@foo.com')]
+
+        sess.clear()
+        u1list = sess.query(User, entity_name='user1').select()
+        u2list = sess.query(User, entity_name='user2').select()
+        assert len(u1list) == len(u2list) == 1
+        assert u1list[0] is not u2list[0]
+        assert len(u1list[0].addresses) == len(u2list[0].addresses) == 1
+
     def testpolymorphic(self):
         """tests that entity_name can be used to have two kinds of relations on the same class."""
         class User(object):pass

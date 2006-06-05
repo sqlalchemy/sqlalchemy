@@ -80,6 +80,7 @@ c.employees.append(Person(name='joesmith', status='HHH'))
 c.employees.append(Engineer(name='wally', status='CGG', engineer_name='engineer2', primary_language='python'))
 c.employees.append(Manager(name='jsmith', status='ABA', manager_name='manager2'))
 session.save(c)
+
 print session.new
 session.flush()
 #sys.exit()
