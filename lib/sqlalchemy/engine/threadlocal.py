@@ -22,7 +22,7 @@ class TLSession(object):
         self.__tcount += 1
     def reset(self):
         try:
-            self.__transaction.close()
+            self.__transaction._force_close()
             del self.__transaction
             del self.__trans
         except AttributeError:
@@ -71,7 +71,10 @@ class TLConnection(base.Connection):
         if self.__opencount == 1:
             base.Connection.close(self)
         self.__opencount -= 1
-        
+    def _force_close(self):
+        self.__opencount = 0
+        base.Connection.close(self)
+            
 class TLTransaction(base.Transaction):
     def _commit_impl(self):
         base.Transaction.commit(self)
