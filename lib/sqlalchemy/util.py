@@ -204,6 +204,8 @@ class HashSet(object):
         return iter(self.map.values())
     def contains(self, item):
         return self.map.has_key(item)
+    def __contains__(self, item):
+        return self.map.has_key(item)
     def clear(self):
         self.map.clear()
     def intersection(self, l):

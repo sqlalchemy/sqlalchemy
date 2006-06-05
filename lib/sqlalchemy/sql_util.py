@@ -70,4 +70,3 @@ class TableFinder(TableCollection, sql.ClauseVisitor):
         if self.check_columns:
             column.table.accept_visitor(self)
 
-    

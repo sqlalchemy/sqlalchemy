@@ -245,6 +245,49 @@ class PKTest(SessionTest):
         e.data = 'some more data'
         ctx.current.flush()
 
+class ForeignPKTest(SessionTest):
+    """tests mapper detection of the relationship direction when parent/child tables are joined on their
+    primary keys"""
+    def setUpAll(self):
+        SessionTest.setUpAll(self)
+        global metadata, people, peoplesites
+        metadata = BoundMetaData(testbase.db)
+        people = Table("people", metadata,
+           Column('person', String(10), primary_key=True),
+           Column('firstname', String(10)),
+           Column('lastname', String(10)),
+        )
+        
+        peoplesites = Table("peoplesites", metadata,
+            Column('person', String(10), ForeignKey("people.person"),  
+        primary_key=True),
+            Column('site', String(10)),
+        )
+        metadata.create_all()
+    def tearDownAll(self):
+        metadata.drop_all()
+        SessionTest.tearDownAll(self)
+    def testbasic(self):
+        class PersonSite(object):pass
+        class Person(object):pass
+        m1 = mapper(PersonSite, peoplesites)
+
+        m2 = mapper(Person, people,
+              properties = {
+                      'sites' : relation(PersonSite), 
+              },
+            )
+
+        assert list(m2.props['sites'].foreignkey) == [peoplesites.c.person]
+        p = Person()
+        p.person = 'im the key'
+        p.firstname = 'asdf'
+        ps = PersonSite()
+        ps.site = 'asdf'
+        p.sites.append(ps)
+        ctx.current.flush()
+        assert people.count(people.c.person=='im the key').scalar() == peoplesites.count(peoplesites.c.person=='im the key').scalar() == 1
+        
 class PrivateAttrTest(SessionTest):
     """tests various things to do with private=True mappers"""
     def setUpAll(self):

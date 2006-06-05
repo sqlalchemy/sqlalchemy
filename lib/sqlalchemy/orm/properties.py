@@ -121,16 +121,8 @@ class PropertyLoader(mapper.MapperProperty):
         self.post_update = post_update
         self.direction = None
         
-        # would like to have foreignkey be a list.
-        # however, have to figure out how to do 
-        # <column> in <list>, since column overrides the == operator 
-        # and it doesnt work
-        self.foreignkey = foreignkey  #util.to_set(foreignkey)
-        if foreignkey:
-            self.foreigntable = foreignkey.table
-        else:
-            self.foreigntable = None
-        
+        self.foreignkey = util.to_set(foreignkey)
+            
         if cascade is not None:
             self.cascade = mapperutil.CascadeOptions(cascade)
         else:
@@ -213,7 +205,7 @@ class PropertyLoader(mapper.MapperProperty):
         # if the foreign key wasnt specified and theres no assocaition table, try to figure
         # out who is dependent on who. we dont need all the foreign keys represented in the join,
         # just one of them.  
-        if self.foreignkey is None and self.secondaryjoin is None:
+        if not len(self.foreignkey) and self.secondaryjoin is None:
             # else we usually will have a one-to-many where the secondary depends on the primary
             # but its possible that its reversed
             self._find_dependent()
@@ -264,44 +256,33 @@ class PropertyLoader(mapper.MapperProperty):
         if self.secondaryjoin is not None:
             return sync.MANYTOMANY
         elif self.parent.mapped_table is self.target or self.parent.select_table is self.target:
-            if self.foreignkey.primary_key:
+            if list(self.foreignkey)[0].primary_key:
                 return sync.MANYTOONE
             else:
                 return sync.ONETOMANY
-        elif self.foreigntable == self.mapper.unjoined_table:
+        elif len([c for c in self.foreignkey if self.mapper.unjoined_table.corresponding_column(c, False) is not None]):
             return sync.ONETOMANY
-        elif self.foreigntable == self.parent.unjoined_table:
+        elif len([c for c in self.foreignkey if self.parent.unjoined_table.corresponding_column(c, False) is not None]):
             return sync.MANYTOONE
         else:
-            raise exceptions.ArgumentError("Cant determine relation direction")
+            raise exceptions.ArgumentError("Cant determine relation direction " + repr(self.foreignkey))
             
     def _find_dependent(self):
         """searches through the primary join condition to determine which side
-        has the primary key and which has the foreign key - from this we return 
+        has the foreign key - from this we return 
         the "foreign key" for this property which helps determine one-to-many/many-to-one."""
-        
-        # set as a reference to allow assignment from inside a first-class function
-        dependent = [None]
+        foreignkeys = sets.Set()
         def foo(binary):
             if binary.operator != '=' or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
                 return
-            if binary.left.primary_key:
-                if dependent[0] is binary.left.table:
-                    raise exceptions.ArgumentError("Could not determine the parent/child relationship for property '%s', based on join condition '%s' (table '%s' appears on both sides of the relationship, or in an otherwise ambiguous manner). please specify the 'foreignkey' keyword parameter to the relation() function indicating a column on the remote side of the relationship" % (self.key, str(self.primaryjoin), binary.left.table.name))
-                dependent[0] = binary.right.table
-                self.foreignkey= binary.right
-            elif binary.right.primary_key:
-                if dependent[0] is binary.right.table:
-                    raise exceptions.ArgumentError("Could not determine the parent/child relationship for property '%s', based on join condition '%s' (table '%s' appears on both sides of the relationship, or in an otherwise ambiguous manner). please specify the 'foreignkey' keyword parameter to the relation() function indicating a column on the remote side of the relationship" % (self.key, str(self.primaryjoin), binary.right.table.name))
-                dependent[0] = binary.left.table
-                self.foreignkey = binary.left
+            if binary.left.foreign_key is not None and binary.left.foreign_key.references(binary.right.table):
+                foreignkeys.add(binary.left)
+            elif binary.right.foreign_key is not None and binary.right.foreign_key.references(binary.left.table):
+                foreignkeys.add(binary.right)
         visitor = BinaryVisitor(foo)
         self.primaryjoin.accept_visitor(visitor)
-        if dependent[0] is None:
-            raise exceptions.ArgumentError("Could not determine the parent/child relationship for property '%s', based on join condition '%s' (no relationships joining tables '%s' and '%s' could be located). please specify the 'foreignkey' keyword parameter to the relation() function indicating a column on the remote side of the relationship" % (self.key, str(self.primaryjoin), str(binary.left.table), binary.right.table.name))
-        else:
-            self.foreigntable = dependent[0]
-
+        self.foreignkey = foreignkeys
+        
     def get_join(self):
         if self.secondaryjoin is not None:
             return self.primaryjoin & self.secondaryjoin
@@ -419,13 +400,13 @@ def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     
     def visit_binary(binary):
         circular = isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column) and binary.left.table is binary.right.table
-        if isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column) and ((not circular and binary.left.table is table) or (circular and binary.right is foreignkey)):
+        if isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column) and ((not circular and binary.left.table is table) or (circular and binary.right in foreignkey)):
             col = binary.left
             binary.left = binds.setdefault(binary.left,
                     sql.BindParamClause(bind_label(), None, shortname = binary.left.name))
             reverse[binary.right] = binds[col]
 
-        if isinstance(binary.right, schema.Column) and isinstance(binary.left, schema.Column) and ((not circular and binary.right.table is table) or (circular and binary.left is foreignkey)):
+        if isinstance(binary.right, schema.Column) and isinstance(binary.left, schema.Column) and ((not circular and binary.right.table is table) or (circular and binary.left in foreignkey)):
             col = binary.right
             binary.right = binds.setdefault(binary.right,
                     sql.BindParamClause(bind_label(), None, shortname = binary.right.name))
