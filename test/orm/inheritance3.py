@@ -56,11 +56,11 @@ class Magazine(BaseObject):
 
 class Page(BaseObject):
     def __repr__(self):
-        return "%s(%s)" % (self.__class__.__name__, repr(self.page_no))
+        return "%s(%s)" % (self.__class__.__name__, str(self.page_no))
 
 class MagazinePage(Page):
     def __repr__(self):
-        return "%s(%s, %s)" % (self.__class__.__name__, repr(self.page_no), repr(self.magazine))
+        return "%s(%s, %s)" % (self.__class__.__name__, str(self.page_no), repr(self.magazine))
 
 class ClassifiedPage(MagazinePage):
     pass
@@ -163,6 +163,10 @@ class InheritTest(testbase.AssertMixin):
         })
 
         classified_page_mapper = mapper(ClassifiedPage, classified_page_table, inherits=magazine_page_mapper, polymorphic_identity='c')
+
+    def tearDown(self):
+        for t in metadata.table_iterator(reverse=True):
+            t.delete().execute()
 
     def tearDownAll(self):
         metadata.drop_all()
