@@ -62,7 +62,9 @@ class one_to_many(relationship):
 
 class one_to_one(relationship):
     def __init__(self, classname, colname=None, backref=None, private=False, lazy=True):
-        relationship.__init__(self, classname, colname, create_backref(backref, uselist=False), private, lazy, uselist=False)
+        if backref is not None:
+            backref = create_backref(backref, uselist=False)
+        relationship.__init__(self, classname, colname, backref, private, lazy, uselist=False)
 
 class many_to_many(relationship):
     def __init__(self, classname, secondary, backref=None, lazy=True):
