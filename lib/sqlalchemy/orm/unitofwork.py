@@ -587,10 +587,6 @@ class UOWTask(object):
         # dependency processing, and before pre-delete processing and deletes
         self.childtasks = []
         
-        # a list of UOWTasks that correspond to Mappers which are inheriting
-        # mappers of this UOWTask's Mapper
-        #self.inheriting_tasks = util.Set()
-
         # whether this UOWTask is circular, meaning it holds a second
         # UOWTask that contains a special row-based dependency structure.
         self.circular = None
@@ -642,41 +638,38 @@ class UOWTask(object):
             pass
 
     def _save_objects(self, trans):
-        self.mapper.save_obj(self.tosave_objects, trans)
-        for task in self.inheriting_tasks:
-            task._save_objects(trans)
+        for task in self.polymorphic_tasks():
+            task.mapper.save_obj(task.tosave_objects, trans)
     def _delete_objects(self, trans):
-        self.mapper.delete_obj(self.todelete_objects, trans)
-        for task in self.inheriting_tasks:
-            task._delete_objects(trans)
+        for task in self.polymorphic_tasks():
+            task.mapper.delete_obj(task.todelete_objects, trans)
     def _execute_dependencies(self, trans):
-        for dep in self.dependencies:
-            dep.execute(trans, False)
-        for task in self.inheriting_tasks:
-            task._execute_dependencies(trans)
-        for dep in self.dependencies:
-            dep.execute(trans, True)
+        alltasks = list(self.polymorphic_tasks())
+        for task in alltasks:
+            for dep in task.dependencies:
+                dep.execute(trans, False)
+        alltasks.reverse()
+        for task in alltasks:
+            for dep in task.dependencies:
+                dep.execute(trans, True)
     def _execute_childtasks(self, trans):
-        for child in self.childtasks:
-            child.execute(trans)
-        for task in self.inheriting_tasks:
-            task._execute_childtasks(trans)
+        for task in self.polymorphic_tasks():
+            for child in task.childtasks:
+                child.execute(trans)
     def _execute_cyclical_dependencies(self, trans, isdelete):
-        for dep in self.cyclical_dependencies:
-            dep.execute(trans, isdelete)
-        for task in self.inheriting_tasks:
-            task._execute_cyclical_dependencies(trans, isdelete)
+        for task in self.polymorphic_tasks():
+            for dep in task.cyclical_dependencies:
+                dep.execute(trans, isdelete)
     def _execute_per_element_childtasks(self, trans, isdelete):
-        if isdelete:
-            for element in self.todelete_elements:
-                for task in element.childtasks:
-                    task.execute(trans)
-        else:
-            for element in self.tosave_elements:
-                for task in element.childtasks:
-                    task.execute(trans)
-        for task in self.inheriting_tasks:
-            task._execute_per_element_childtasks(trans, isdelete)
+        for ptask in self.polymorphic_tasks():
+            if isdelete:
+                for element in ptask.todelete_elements:
+                    for task in element.childtasks:
+                        task.execute(trans)
+            else:
+                for element in ptask.tosave_elements:
+                    for task in element.childtasks:
+                        task.execute(trans)
             
     def execute(self, trans):
         """executes this UOWTask.  saves objects to be saved, processes all dependencies
@@ -701,22 +694,20 @@ class UOWTask(object):
         self._execute_per_element_childtasks(trans, True)
         self._delete_objects(trans)
 
-    def _inheriting_tasks(self):
-        """returns a collection of UOWTasks whos mappers are immediate descendants of this UOWTask's mapper,
-        *or* are descendants of this UOWTask's mapper where the intervening anscestor mappers do not have
-        corresponding UOWTasks in the current UOWTransaction.
+    def polymorphic_tasks(self):
+        """returns an iteration consisting of this UOWTask, and all UOWTasks whose 
+        mappers are inheriting descendants of this UOWTask's mapper.  UOWTasks are returned in order
+        of their hierarchy to each other, meaning if UOWTask B's mapper inherits from UOWTask A's 
+        mapper, then UOWTask B will appear after UOWTask A in the iteration."""
         
-        Consider mapper A, which has descendant mappers B1 and B2.  B1 has descendant mapper C1, B2 has descendant 
-        mapper C2.  UOWTasks are present for mappers A, B1, C1 and C2.
+        # first us
+        yield self
         
-            A->
-                B1->C1
-                (B2)->C2
-                
-        calling inheriting_tasks for A's UOWTask yields B1, C2.  calling inheriting_tasks for B1's UOWTask yields C1.        
-        """
+        # "circular dependency" tasks aren't polymorphic
         if self.circular_parent is not None:
             return
+
+        # closure to locate the "next level" of inherited mapper UOWTasks
         def _tasks_by_mapper(mapper):
             for m in mapper._inheriting_mappers:
                 inherit_task = self.uowtransaction.tasks.get(m, None)
@@ -725,33 +716,30 @@ class UOWTask(object):
                 else:
                     for t in _tasks_by_mapper(m):
                         yield t
-        for t in _tasks_by_mapper(self.mapper):
-            yield t
-    inheriting_tasks = property(_inheriting_tasks)
-    
-    def polymorphic_tasks(self):
-        """returns a collection of all UOWTasks whos mappers are descendants of this UOWTask's mapper."""
-        yield self
-        for task in self.inheriting_tasks:
+        
+        # main yield loop
+        for task in _tasks_by_mapper(self.mapper):
             for t in task.polymorphic_tasks():
                 yield t
                 
     def contains_object(self, obj, polymorphic=False):
-        if obj in self.objects:
-            return True
         if polymorphic:
-            for task in self.inheriting_tasks:
-                if task.contains_object(obj, polymorphic=True):
+            for task in self.polymorphic_tasks():
+                if obj in task.objects:
                     return True
+        else:
+            if obj in self.objects:
+                return True
         return False
         
     def get_elements(self, polymorphic=False):
-        for rec in self.objects.values():
-            yield rec
         if polymorphic:
-            for task in self.inheriting_tasks:
-                for rec in task.get_elements(polymorphic=True):
+            for task in self.polymorphic_tasks():
+                for rec in task.objects.values():
                     yield rec
+        else:
+            for rec in self.objects.values():
+                yield rec
     
     polymorphic_tosave_elements = property(lambda self: [rec for rec in self.get_elements(polymorphic=True) if not rec.isdelete])
     polymorphic_todelete_elements = property(lambda self: [rec for rec in self.get_elements(polymorphic=True) if rec.isdelete])

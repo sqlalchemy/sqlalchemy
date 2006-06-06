@@ -102,44 +102,43 @@ class UOWDumper(object):
                 return ""
 
         def _dump_saveelements(task):
-            for rec in task.tosave_elements:
-                if rec.listonly:
-                    continue
-                if self.verbose:
-                    header(self.buf, self._indent() + "  |- Save elements"+ _inheritance_tag(task) + "\n")
-                self.buf.write(self._indent() + "  |- " + self._repr_task_element(rec)  + "\n")
-            for t in task.inheriting_tasks:
-                _dump_saveelements(t)
+            for ptask in task.polymorphic_tasks():
+                for rec in ptask.tosave_elements:
+                    if rec.listonly:
+                        continue
+                    if self.verbose:
+                        header(self.buf, self._indent() + "  |- Save elements"+ _inheritance_tag(task) + "\n")
+                    self.buf.write(self._indent() + "  |- " + self._repr_task_element(rec)  + "\n")
 
         def _dump_deleteelements(task):
-            for rec in task.todelete_elements:
-                if rec.listonly:
-                    continue
-                if self.verbose:
-                    header(self.buf, self._indent() + "  |- Delete elements"+ _inheritance_tag(task) + "\n")
-                self.buf.write(self._indent() + "  |- " + self._repr_task_element(rec) + "\n")
-            for t in task.inheriting_tasks:
-                _dump_deleteelements(t)
+            for ptask in task.polymorphic_tasks():
+                for rec in ptask.todelete_elements:
+                    if rec.listonly:
+                        continue
+                    if self.verbose:
+                        header(self.buf, self._indent() + "  |- Delete elements"+ _inheritance_tag(ptask) + "\n")
+                    self.buf.write(self._indent() + "  |- " + self._repr_task_element(rec) + "\n")
 
         def _dump_dependencies(task):
-            for dep in task.dependencies:
-                if self.verbose:
-                    header(self.buf, self._indent() + "  |- Save dependencies" + _inheritance_tag(task) + "\n")
-                self._dump_processor(dep, False)
-            for t in task.inheriting_tasks:
-                _dump_dependencies(t)
-            for dep in task.dependencies:
-                if self.verbose:
-                    header(self.buf, self._indent() + "  |- Delete dependencies" + _inheritance_tag(task) + "\n")
-                self._dump_processor(dep, True)
+            alltasks = list(task.polymorphic_tasks())
+            for task in alltasks:
+                for dep in task.dependencies:
+                    if self.verbose:
+                        header(self.buf, self._indent() + "  |- Save dependencies" + _inheritance_tag(task) + "\n")
+                    self._dump_processor(dep, False)
+            alltasks.reverse()
+            for task in alltasks:
+                for dep in task.dependencies:
+                    if self.verbose:
+                        header(self.buf, self._indent() + "  |- Delete dependencies" + _inheritance_tag(task) + "\n")
+                    self._dump_processor(dep, True)
     
         def _dump_childtasks(task):
-            for child in task.childtasks:
-                if self.verbose:
-                    header(self.buf, self._indent() + "  |- Child tasks" + _inheritance_tag(task) + "\n")
-                self._dump(child, indent = self.indent + 1)
-            for t in task.inheriting_tasks:
-                _dump_childtasks(t)
+            for ptask in task.polymorphic_tasks():
+                for child in ptask.childtasks:
+                    if self.verbose:
+                        header(self.buf, self._indent() + "  |- Child tasks" + _inheritance_tag(task) + "\n")
+                    self._dump(child, indent = self.indent + 1)
         
         if starttask.circular is not None:
             self._dump(starttask.circular, indent=self.indent, circularparent=starttask)
