@@ -156,10 +156,7 @@ class Table(SchemaItem, sql.TableClause):
        , ',\n')
     
     def __str__(self):
-        if self.schema is None:
-            return self.name
-        else:
-            return self.schema + "." + self.name
+        return _get_table_key(self.name, self.schema)
         
     def reload_values(self, *args):
         """clears out the columns and other properties of this Table, and reloads them from the 
@@ -184,7 +181,7 @@ class Table(SchemaItem, sql.TableClause):
         self.indexes[index.name] = index
         
     def _set_parent(self, metadata):
-        metadata.tables[self.name] = self
+        metadata.tables[_get_table_key(self.name, self.schema)] = self
         self._metadata = metadata
     def accept_schema_visitor(self, visitor): 
         """traverses the given visitor across the Column objects inside this Table,

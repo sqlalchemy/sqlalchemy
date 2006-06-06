@@ -56,15 +56,15 @@ pg_key_constraints = schema.Table("key_column_usage", ischema,
     Column("constraint_name", String),
     schema="information_schema")
 
-mysql_key_constraints = schema.Table("key_column_usage", ischema,
-    Column("table_schema", String),
-    Column("table_name", String),
-    Column("column_name", String),
-    Column("constraint_name", String),
-    Column("referenced_table_schema", String),
-    Column("referenced_table_name", String),
-    Column("referenced_column_name", String),
-    schema="information_schema")
+#mysql_key_constraints = schema.Table("key_column_usage", ischema,
+#    Column("table_schema", String),
+#    Column("table_name", String),
+#    Column("column_name", String),
+#    Column("constraint_name", String),
+#    Column("referenced_table_schema", String),
+#    Column("referenced_table_name", String),
+#    Column("referenced_column_name", String),
+#    schema="information_schema")
 
 key_constraints = pg_key_constraints
 

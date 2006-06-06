@@ -3,6 +3,8 @@
 "set" not available/ordering is needed.
 - "foreignkey" argument to relation() can also be a list.  fixed
 auto-foreignkey detection [ticket:151]
+- fixed bug where tables with schema names werent getting indexed in
+the MetaData object properly
 
 0.2.2
 - big improvements to polymorphic inheritance behavior, enabling it

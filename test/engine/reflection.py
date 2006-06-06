@@ -1,13 +1,12 @@
 
 import sqlalchemy.ansisql as ansisql
-import sqlalchemy.databases.postgres as postgres
 
 from sqlalchemy import *
-from sqlalchemy.exceptions import *
+from sqlalchemy.exceptions import NoSuchTableError
 
 from testbase import PersistTest
 import testbase
-import unittest, re
+import unittest, re, StringIO
 
 class ReflectionTest(PersistTest):
     def testbasic(self):
@@ -221,8 +220,32 @@ class CreateDropTest(PersistTest):
         metadata.drop_all(engine=testbase.db)
         self.assertEqual( testbase.db.has_table('items'), False )                
 
-
-            
+class SchemaTest(PersistTest):
+    # this test should really be in the sql tests somewhere, not engine
+    def testiteration(self):
+        metadata = MetaData()
+        table1 = Table('table1', metadata, 
+            Column('col1', Integer, primary_key=True),
+            schema='someschema')
+        table2 = Table('table2', metadata, 
+            Column('col1', Integer, primary_key=True),
+            Column('col2', Integer, ForeignKey('someschema.table1.col1')),
+            schema='someschema')
+        # insure this doesnt crash
+        print [t for t in metadata.table_iterator()]
+        buf = StringIO.StringIO()
+        def foo(s, p):
+            buf.write(s)
+        gen = testbase.db.dialect.schemagenerator(testbase.db.engine, foo)
+        table1.accept_schema_visitor(gen)
+        table2.accept_schema_visitor(gen)
+        buf = buf.getvalue()
+        assert buf.index("CREATE TABLE someschema.table1") > -1
+        assert buf.index("CREATE TABLE someschema.table2") > -1
+         
+        
+        
+        
 if __name__ == "__main__":
     testbase.main()        
         
