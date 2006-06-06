@@ -3,6 +3,7 @@ import sqlalchemy.ansisql as ansisql
 import sqlalchemy.databases.postgres as postgres
 
 from sqlalchemy import *
+from sqlalchemy.exceptions import *
 
 from testbase import PersistTest
 import testbase
@@ -140,6 +141,11 @@ class ReflectionTest(PersistTest):
         assert table2.c.id.nullable 
         assert not table2.c.name.nullable 
         assert table2.c.description.nullable 
+        
+    def test_nonexistent(self):
+        self.assertRaises(NoSuchTableError, Table,
+                          'fake_table',
+                          testbase.db, autoload=True)
         
     def testoverride(self):
         table = Table(

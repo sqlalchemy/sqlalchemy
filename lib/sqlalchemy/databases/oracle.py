@@ -168,10 +168,12 @@ class OracleDialect(ansisql.ANSIDialect):
     def reflecttable(self, connection, table):
         c = connection.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from ALL_TAB_COLUMNS where TABLE_NAME = :table_name", {'table_name':table.name.upper()})
         
+        found_table = False
         while True:
             row = c.fetchone()
             if row is None:
                 break
+            found_table = True
 
             #print "ROW:" , row
             (name, coltype, length, precision, scale, nullable, default) = (row[0], row[1], row[2], row[3], row[4], row[5]=='Y', row[6])
@@ -201,7 +203,9 @@ class OracleDialect(ansisql.ANSIDialect):
             
             table.append_item (schema.Column(name, coltype, nullable=nullable, *colargs))
 
-   
+        if not found_table:
+            raise exceptions.NoSuchTableError(table.name)
+        
         c = connection.execute(constraintSQL, {'table_name' : table.name.upper()})
         while True:
             row = c.fetchone()

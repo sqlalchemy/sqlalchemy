@@ -158,11 +158,13 @@ class SQLiteDialect(ansisql.ANSIDialect):
 
     def reflecttable(self, connection, table):
         c = connection.execute("PRAGMA table_info(" + table.name + ")", {})
+        found_table = False
         while True:
             row = c.fetchone()
             if row is None:
                 break
             #print "row! " + repr(row)
+            found_table = True
             (name, type, nullable, primary_key) = (row[1], row[2].upper(), not row[3], row[5])
             
             match = re.match(r'(\w+)(\(.*?\))?', type)
@@ -176,6 +178,10 @@ class SQLiteDialect(ansisql.ANSIDialect):
                 #print "args! " +repr(args)
                 coltype = coltype(*[int(a) for a in args])
             table.append_item(schema.Column(name, coltype, primary_key = primary_key, nullable = nullable))
+        
+        if not found_table:
+            raise exceptions.NoSuchTableError(table.name)
+        
         c = connection.execute("PRAGMA foreign_key_list(" + table.name + ")", {})
         while True:
             row = c.fetchone()

@@ -34,6 +34,11 @@ class InvalidRequestError(SQLAlchemyError):
     This error generally corresponds to runtime state errors."""
     pass
 
+class NoSuchTableError(InvalidRequestError):
+    """sqlalchemy was asked to load a table's definition from the database,
+    but the table doesn't exist."""
+    pass
+
 class AssertionError(SQLAlchemyError):
     """corresponds to internal state being detected in an invalid state"""
     pass

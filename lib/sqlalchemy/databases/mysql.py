@@ -182,15 +182,18 @@ class MySQLDialect(ansisql.ANSIDialect):
         # to use information_schema:
         #ischema.reflecttable(self, table, ischema_names, use_mysql=True)
         
-        tabletype, foreignkeyD = self.moretableinfo(connection, table=table)
-        table.kwargs['mysql_engine'] = tabletype
-        
         c = connection.execute("describe " + table.name, {})
+        found_table = False
         while True:
             row = c.fetchone()
             if row is None:
                 break
             #print "row! " + repr(row)
+            if not found_table:
+                tabletype, foreignkeyD = self.moretableinfo(connection, table=table)
+                table.kwargs['mysql_engine'] = tabletype
+                found_table = True
+
             (name, type, nullable, primary_key, default) = (row[0], row[1], row[2] == 'YES', row[3] == 'PRI', row[4])
             
             match = re.match(r'(\w+)(\(.*?\))?', type)
@@ -214,6 +217,8 @@ class MySQLDialect(ansisql.ANSIDialect):
                                                    nullable=nullable,
                                                    default=default
                                                    )))
+        if not found_table:
+            raise exceptions.NoSuchTableError(table.name)
     
     def moretableinfo(self, connection, table):
         """Return (tabletype, {colname:foreignkey,...})

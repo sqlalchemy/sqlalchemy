@@ -345,11 +345,12 @@ class MSSQLDialect(ansisql.ANSIDialect):
                    order_by=[columns.c.ordinal_position])
         
         c = connection.execute(s)
+        found_table = False
         while True:
             row = c.fetchone()
             if row is None:
                 break
-
+            found_table = True
             (name, type, nullable, charlen, numericprec, numericscale, default) = (
                 row[columns.c.column_name], 
                 row[columns.c.data_type], 
@@ -371,8 +372,10 @@ class MSSQLDialect(ansisql.ANSIDialect):
                 colargs.append(PassiveDefault(sql.text(default)))
                 
             table.append_item(schema.Column(name, coltype, nullable=nullable, *colargs))
-
-
+        
+        if not found_table:
+            raise exceptions.NoSuchTableError(table.name)
+        
         # We also run an sp_columns to check for identity columns:
         # FIXME: note that this only fetches the existence of an identity column, not it's properties like (seed, increment)
         #        also, add a check to make sure we specify the schema name of the table

@@ -195,9 +195,11 @@ class FireBirdDialect(ansisql.ANSIDialect):
         #import pdb;pdb.set_trace()
         # get all of the fields for this table
         c = connection.execute(tblqry, [table.name.upper()])
+        found_table = False
         while True:
             row = c.fetchone()
             if not row: break
+            found_table = True
             args = [row['FNAME']]
             kw = {}
             # get the data types and lengths
@@ -208,6 +210,9 @@ class FireBirdDialect(ansisql.ANSIDialect):
             # is it a primary key?
             table.append_item(schema.Column(*args, **kw))
             # does the field have indexes
+        
+        if not found_table:
+            raise exceptions.NoSuchTableError(table.name)
 
     def last_inserted_ids(self):
         return self.context.last_inserted_ids

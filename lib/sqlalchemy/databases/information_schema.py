@@ -3,7 +3,7 @@ import sqlalchemy.engine as engine
 import sqlalchemy.schema as schema
 import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
-from sqlalchemy.exceptions import *
+import sqlalchemy.exceptions as exceptions
 from sqlalchemy import *
 from sqlalchemy.ansisql import *
 
@@ -119,12 +119,14 @@ def reflecttable(connection, table, ischema_names, use_mysql=False):
         order_by=[columns.c.ordinal_position])
         
     c = connection.execute(s)
+    found_table = False
     while True:
         row = c.fetchone()
         if row is None:
             break
         #print "row! " + repr(row)
  #       continue
+        found_table = True
         (name, type, nullable, charlen, numericprec, numericscale, default) = (
             row[columns.c.column_name], 
             row[columns.c.data_type], 
@@ -146,6 +148,9 @@ def reflecttable(connection, table, ischema_names, use_mysql=False):
         if default is not None:
             colargs.append(PassiveDefault(sql.text(default)))
         table.append_item(schema.Column(name, coltype, nullable=nullable, *colargs))
+    
+    if not found_table:
+        raise exceptions.NoSuchTableError(table.name)
 
     s = select([constraints.c.constraint_name, constraints.c.constraint_type, constraints.c.table_name, key_constraints], use_labels=True, from_obj=[constraints.join(column_constraints, column_constraints.c.constraint_name==constraints.c.constraint_name).join(key_constraints, key_constraints.c.constraint_name==column_constraints.c.constraint_name)])
     if not use_mysql:
