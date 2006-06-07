@@ -105,7 +105,7 @@ def cascade_mappers(*classes_or_mappers):
         else:
             klass = item
             m = class_mapper(klass)
-        table_to_mapper[m.table] = m
+        table_to_mapper[m.mapped_table] = m
     def pluralize(name):
         # oh crap, do we need locale stuff now
         if name[-1] == 's':
