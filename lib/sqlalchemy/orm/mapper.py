@@ -12,7 +12,7 @@ import query as querylib
 import session as sessionlib
 import sys, weakref, sets
 
-__all__ = ['Mapper', 'MapperExtension', 'class_mapper', 'object_mapper']
+__all__ = ['Mapper', 'MapperExtension', 'class_mapper', 'object_mapper', 'EXT_PASS']
 
 # a dictionary mapping classes to their primary mappers
 mapper_registry = weakref.WeakKeyDictionary()

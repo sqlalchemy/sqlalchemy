@@ -1,7 +1,6 @@
 import sqlalchemy.sql as sql
 import sqlalchemy.orm as orm
 
-
 class SelectResultsExt(orm.MapperExtension):
     """a MapperExtension that provides SelectResults functionality for the 
     results of query.select_by() and query.select()"""

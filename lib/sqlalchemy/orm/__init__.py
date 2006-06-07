@@ -18,7 +18,7 @@ from session import Session as create_session
 
 __all__ = ['relation', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer',
         'mapper', 'clear_mappers', 'sql', 'extension', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query', 
-        'cascade_mappers', 'polymorphic_union', 'create_session',  
+        'cascade_mappers', 'polymorphic_union', 'create_session', 'EXT_PASS' 
         ]
 
 def relation(*args, **kwargs):
