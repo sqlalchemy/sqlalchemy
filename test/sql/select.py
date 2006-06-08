@@ -566,6 +566,8 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
             Column('date', Date))
         self.runtest(table.select(table.c.date.between(datetime.date(2006,6,1), datetime.date(2006,6,5))), "SELECT dt.date FROM dt WHERE dt.date BETWEEN :dt_date AND :dt_da_1", checkparams={'dt_date':datetime.date(2006,6,1), 'dt_da_1':datetime.date(2006,6,5)})
 
+        self.runtest(table.select(sql.between(table.c.date, datetime.date(2006,6,1), datetime.date(2006,6,5))), "SELECT dt.date FROM dt WHERE dt.date BETWEEN :literal AND :liter_1", checkparams={'literal':datetime.date(2006,6,1), 'liter_1':datetime.date(2006,6,5)})
+
 class CRUDTest(SQLTest):
     def testinsert(self):
         # generic insert, will create bind params for all columns

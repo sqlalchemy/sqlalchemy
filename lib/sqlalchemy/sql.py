@@ -125,10 +125,15 @@ def not_(clause):
     clause.parens=True
     return BooleanExpression(TextClause("NOT"), clause, None)
 
-def between_(ctest, cleft, cright):
-    """ returns BETWEEN predicate clause (clausetest BETWEEN clauseleft AND clauseright) """
-    return BooleanExpression(ctest, and_(cleft, cright), 'BETWEEN')
-between = between_
+def between(ctest, cleft, cright):
+    """ returns BETWEEN predicate clause (clausetest BETWEEN clauseleft AND clauseright).
+    
+    this is better called off a ColumnElement directly, i.e.
+    
+    column.between(value1, value2). 
+    """
+    return BooleanExpression(ctest, and_(_check_literal(cleft, ctest.type), _check_literal(cright, ctest.type)), 'BETWEEN')
+between_ = between
 
 def case(whens, value=None, else_=None):
     """ SQL CASE statement -- whens are a sequence of pairs to be translated into "when / then" clauses;
@@ -167,6 +172,12 @@ def union_all(*selects, **params):
 
 def alias(*args, **params):
     return Alias(*args, **params)
+
+def _check_literal(value, type):
+    if _is_literal(value):
+        return literal(value, type)
+    else:
+        return value
 
 def literal(value, type=None):
     """returns a literal clause, bound to a bind parameter.  
@@ -551,7 +562,7 @@ class CompareMixin(object):
     def distinct(self):
         return CompoundClause(None,"DISTINCT", self)
     def between(self, cleft, cright):
-        return between_(self, self._check_literal(cleft), self._check_literal(cright))
+        return BooleanExpression(self, and_(self._check_literal(cleft), self._check_literal(cright)), 'BETWEEN')
     def op(self, operator):
         return lambda other: self._compare(operator, other)
     # and here come the math operators:
