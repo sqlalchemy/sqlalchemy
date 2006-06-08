@@ -559,6 +559,13 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
         # and the MySQL engine
         check_results(mysql.dialect(), ['NUMERIC(10, 2)', 'NUMERIC(12, 9)', 'DATE', 'TEXT', 'VARCHAR(20)'], '%s')
 
+
+    def testdatebetween(self):
+        import datetime
+        table = Table('dt', metadata, 
+            Column('date', Date))
+        self.runtest(table.select(table.c.date.between(datetime.date(2006,6,1), datetime.date(2006,6,5))), "SELECT dt.date FROM dt WHERE dt.date BETWEEN :dt_date AND :dt_da_1", checkparams={'dt_date':datetime.date(2006,6,1), 'dt_da_1':datetime.date(2006,6,5)})
+
 class CRUDTest(SQLTest):
     def testinsert(self):
         # generic insert, will create bind params for all columns
@@ -584,6 +591,7 @@ class CRUDTest(SQLTest):
             checkparams = {'myid':3, 'name':'jack', 'description':'mydescription'}
         )
     
+        
     def testinsertexpression(self):
         self.runtest(insert(table1), "INSERT INTO mytable (myid) VALUES (lala())", params=dict(myid=func.lala()))
         

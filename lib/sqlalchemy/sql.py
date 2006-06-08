@@ -551,7 +551,7 @@ class CompareMixin(object):
     def distinct(self):
         return CompoundClause(None,"DISTINCT", self)
     def between(self, cleft, cright):
-        return between_(self, cleft, cright)
+        return between_(self, self._check_literal(cleft), self._check_literal(cright))
     def op(self, operator):
         return lambda other: self._compare(operator, other)
     # and here come the math operators:
@@ -569,6 +569,11 @@ class CompareMixin(object):
         return self._operate('/', other)
     def _bind_param(self, obj):
         return BindParamClause('literal', obj, shortname=None, type=self.type)
+    def _check_literal(self, other):
+        if _is_literal(other):
+            return self._bind_param(other)
+        else:
+            return other
     def _compare(self, operator, obj):
         if obj is None or isinstance(obj, Null):
             if operator == '=':
@@ -577,8 +582,8 @@ class CompareMixin(object):
                 return BooleanExpression(self._compare_self(), null(), 'IS NOT')
             else:
                 raise exceptions.ArgumentError("Only '='/'!=' operators can be used with NULL")
-        elif _is_literal(obj):
-            obj = self._bind_param(obj)
+        else:
+            obj = self._check_literal(obj)
 
         return BooleanExpression(self._compare_self(), obj, operator, type=self._compare_type(obj))
     def _operate(self, operator, obj):
