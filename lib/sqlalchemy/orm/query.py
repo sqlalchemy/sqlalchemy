@@ -8,11 +8,12 @@ import session as sessionlib
 from sqlalchemy import sql, util, exceptions
 import mapper
 
+
 class Query(object):
     """encapsulates the object-fetching operations provided by Mappers."""
     def __init__(self, class_or_mapper, session=None, entity_name=None, **kwargs):
         if isinstance(class_or_mapper, type):
-            self.mapper = class_mapper(class_or_mapper, entity_name=entity_name)
+            self.mapper = mapper.class_mapper(class_or_mapper, entity_name=entity_name)
         else:
             self.mapper = class_or_mapper.compile()
         self.mapper = self.mapper.get_select_mapper()
