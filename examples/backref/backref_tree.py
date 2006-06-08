@@ -19,13 +19,16 @@ table.create()
 
 mapper(Tree, table,
               properties={
-                'childs':relation(Tree, foreignkey=table.c.father_id, primaryjoin=table.c.father_id==table.c.id,  backref=backref('father', uselist=False, foreignkey=table.c.id))},
+                'childs':relation(Tree, foreignkey=table.c.father_id, primaryjoin=table.c.father_id==table.c.id,  backref=backref('father', foreignkey=table.c.id))},
             )
 
 root = Tree('root')
 child1 = Tree('child1', root)
 child2 = Tree('child2', root)
 child3 = Tree('child3', child1)
+
+child4 = Tree('child4')
+child1.childs.append(child4)
 
 session = create_session()
 session.save(root)

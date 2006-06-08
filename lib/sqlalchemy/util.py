@@ -41,6 +41,17 @@ def reversed(seq):
             raise StopIteration()
         return rev()
 
+class ArgSingleton(type):
+    instances = {}
+    def __call__(self, *args):
+        hashkey = (self, args)
+        try:
+            return ArgSingleton.instances[hashkey]
+        except KeyError:
+            instance = type.__call__(self, *args)
+            ArgSingleton.instances[hashkey] = instance
+            return instance
+        
 class SimpleProperty(object):
     """a "default" property accessor."""
     def __init__(self, key):
@@ -92,34 +103,30 @@ class OrderedProperties(object):
     no append or extend.)
     """
     def __init__(self):
-        self.__dict__['_list'] = []
+        self.__dict__['_OrderedProperties__data'] = OrderedDict()
     def __len__(self):
-        return len(self._list)
-    def keys(self):
-        return list(self._list)
-    def get(self, key, default):
-        return getattr(self, key, default)
-    def has_key(self, key):
-        return hasattr(self, key)
+        return len(self.__data)
     def __iter__(self):
-        return iter([self[x] for x in self._list])
+        return self.__data.itervalues()
     def __setitem__(self, key, object):
-        setattr(self, key, object)
+        self.__data[key] = object
     def __getitem__(self, key):
-        try:
-          return getattr(self, key)
-        except AttributeError:
-          raise KeyError(key)
+        return self.__data[key]
     def __delitem__(self, key):
-        delattr(self, key)
-        del self._list[self._list.index(key)]
+        del self.__data[key]
     def __setattr__(self, key, object):
-        if not hasattr(self, key):
-            self._list.append(key)
-        self.__dict__[key] = object
+        self.__data[key] = object
+    def __getattr__(self, key):
+        try:
+            return self.__data[key]
+        except KeyError:
+            raise AttributeError(key)
+    def keys(self):
+        return self.__data.keys()
+    def has_key(self, key):
+        return self.__data.has_key(key)
     def clear(self):
-        self.__dict__.clear()
-        self.__dict__['_list'] = []
+        self.__data.clear()
         
 class OrderedDict(dict):
     """A Dictionary that keeps its own internal ordering"""

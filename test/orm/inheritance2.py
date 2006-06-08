@@ -177,7 +177,7 @@ class InheritTest(testbase.AssertMixin):
                 master=relation(Assembly, lazy=False, uselist=False,
                     foreignkey=specification_table.c.master_id,
                     primaryjoin=specification_table.c.master_id==products_table.c.product_id,
-                    backref=backref('specification', primaryjoin=specification_table.c.master_id==products_table.c.product_id),
+                    backref=backref('specification', primaryjoin=specification_table.c.master_id==products_table.c.product_id, cascade="all, delete-orphan"),
                     ),
                 slave=relation(Product, lazy=False,  uselist=False,
                     foreignkey=specification_table.c.slave_id,
@@ -193,23 +193,11 @@ class InheritTest(testbase.AssertMixin):
             properties=dict(
                 name=documents_table.c.name,
                 data=deferred(documents_table.c.data),
-                product=relation(Product, lazy=True, backref='documents'),
+                product=relation(Product, lazy=True, backref=backref('documents', cascade="all, delete-orphan")),
                 ),
             )
         raster_document_mapper = mapper(RasterDocument, inherits=document_mapper,
             polymorphic_identity='raster_document')
-
-        assembly_mapper.add_property('specification',
-            relation(SpecLine, lazy=True,
-                primaryjoin=specification_table.c.master_id==products_table.c.product_id,
-                backref='master', cascade='all, delete-orphan',
-                )
-            )
-
-        product_mapper.add_property('documents',
-            relation(Document, lazy=True,
-                backref='product', cascade='all, delete-orphan'),
-            )
 
         session = create_session()
 
@@ -245,16 +233,11 @@ class InheritTest(testbase.AssertMixin):
             properties=dict(
                 name=documents_table.c.name,
                 data=deferred(documents_table.c.data),
-                product=relation(Product, lazy=True, backref='documents'),
+                product=relation(Product, lazy=True, backref=backref('documents', cascade="all, delete-orphan")),
                 ),
             )
         raster_document_mapper = mapper(RasterDocument, inherits=document_mapper,
             polymorphic_identity='raster_document')
-
-        product_mapper.add_property('documents',
-            relation(Document, lazy=True,
-                backref='product', cascade='all, delete-orphan'),
-            )
 
         session = create_session(echo_uow=False)
 
@@ -278,6 +261,67 @@ class InheritTest(testbase.AssertMixin):
 
         a1 = session.query(Product).get_by(name='a1')
         assert len(session.query(Document).select()) == 0
-        
+
+    def testfive(self):
+        """tests the late compilation of mappers"""
+
+        specification_mapper = mapper(SpecLine, specification_table,
+            properties=dict(
+                master=relation(Assembly, lazy=False, uselist=False,
+                    foreignkey=specification_table.c.master_id,
+                    primaryjoin=specification_table.c.master_id==products_table.c.product_id,
+                    backref=backref('specification', primaryjoin=specification_table.c.master_id==products_table.c.product_id),
+                    ),
+                slave=relation(Product, lazy=False,  uselist=False,
+                    foreignkey=specification_table.c.slave_id,
+                    primaryjoin=specification_table.c.slave_id==products_table.c.product_id,
+                    ),
+                quantity=specification_table.c.quantity,
+                )
+            )
+
+        detail_mapper = mapper(Detail, inherits=Product,
+            polymorphic_identity='detail')
+
+        raster_document_mapper = mapper(RasterDocument, inherits=Document,
+            polymorphic_identity='raster_document')
+
+        product_mapper = mapper(Product, products_table,
+            polymorphic_on=products_table.c.product_type,
+            polymorphic_identity='product', properties={
+            'documents' : relation(Document, lazy=True,
+                    backref='product', cascade='all, delete-orphan'),
+            })
+
+        assembly_mapper = mapper(Assembly, inherits=Product,
+            polymorphic_identity='assembly')
+
+        document_mapper = mapper(Document, documents_table,
+            polymorphic_on=documents_table.c.document_type,
+            polymorphic_identity='document',
+            properties=dict(
+                name=documents_table.c.name,
+                data=deferred(documents_table.c.data),
+                product=relation(Product, lazy=True, backref='documents'),
+                ),
+            )
+
+        session = create_session()
+
+        a1 = Assembly(name='a1')
+        a1.specification.append(SpecLine(slave=Detail(name='d1')))
+        a1.documents.append(Document('doc1'))
+        a1.documents.append(RasterDocument('doc2'))
+        session.save(a1)
+        orig = repr(a1)
+        session.flush()
+        session.clear()
+
+        a1 = session.query(Product).get_by(name='a1')
+        new = repr(a1)
+        print orig
+        print new
+        assert orig == new  == '<Assembly a1> specification=[<SpecLine 1.0 <Detail d1>>] documents=[<Document doc1>, <RasterDocument doc2>]'
+    
 if __name__ == "__main__":    
     testbase.main()

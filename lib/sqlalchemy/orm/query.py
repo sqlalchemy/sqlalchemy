@@ -14,9 +14,9 @@ class Query(object):
         if isinstance(class_or_mapper, type):
             self.mapper = class_mapper(class_or_mapper, entity_name=entity_name)
         else:
-            self.mapper = class_or_mapper
+            self.mapper = class_or_mapper.compile()
         self.mapper = self.mapper.get_select_mapper()
-            
+
         self.always_refresh = kwargs.pop('always_refresh', self.mapper.always_refresh)
         self.order_by = kwargs.pop('order_by', self.mapper.order_by)
         self.extension = kwargs.pop('extension', self.mapper.extension)
@@ -219,7 +219,7 @@ class Query(object):
             return self.select_whereclause(whereclause=arg, **kwargs)
 
     def select_whereclause(self, whereclause=None, params=None, **kwargs):
-        statement = self._compile(whereclause, **kwargs)
+        statement = self.compile(whereclause, **kwargs)
         return self._select_statement(statement, params=params)
 
     def count(self, whereclause=None, params=None, **kwargs):
@@ -281,7 +281,7 @@ class Query(object):
             if len(ident) > i + 1:
                 i += 1
         try:
-            statement = self._compile(self._get_clause)
+            statement = self.compile(self._get_clause)
             return self._select_statement(statement, params=params, populate_existing=reload)[0]
         except IndexError:
             return None
@@ -301,7 +301,7 @@ class Query(object):
             and (kwargs.has_key('limit') or kwargs.has_key('offset') or kwargs.get('distinct', False))
         )
 
-    def _compile(self, whereclause = None, **kwargs):
+    def compile(self, whereclause = None, **kwargs):
         order_by = kwargs.pop('order_by', False)
         from_obj = kwargs.pop('from_obj', [])
         if order_by is False:

@@ -86,7 +86,34 @@ class HistoryTest(SessionTest):
         u = s.query(m).select()[0]
         print u.addresses[0].user
 
-
+class CustomAttrTest(SessionTest):
+    def setUpAll(self):
+        SessionTest.setUpAll(self)
+        global sometable, metadata, someothertable
+        metadata = BoundMetaData(testbase.db)
+        sometable = Table('sometable', metadata,
+            Column('col1',Integer, primary_key=True))
+        someothertable = Table('someothertable', metadata, 
+            Column('col1', Integer, primary_key=True),
+            Column('scol1', Integer, ForeignKey(sometable.c.col1)),
+            Column('data', String(20))
+        )
+    def testbasic(self):
+        class MyList(list):
+            pass
+        class Foo(object):
+            bars = MyList
+        class Bar(object):
+            pass
+        mapper(Foo, sometable, properties={
+            'bars':relation(Bar)
+        })
+        mapper(Bar, someothertable)
+        f = Foo()
+        assert isinstance(f.bars.data, MyList)
+    def tearDownAll(self):
+        SessionTest.tearDownAll(self)
+            
 class VersioningTest(SessionTest):
     def setUpAll(self):
         SessionTest.setUpAll(self)

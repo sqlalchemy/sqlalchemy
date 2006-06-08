@@ -1,5 +1,6 @@
 from sqlalchemy import *
 import datetime
+import sys
 
 """this example illustrates a "vertical table".  an object is stored with individual attributes 
 represented in distinct database rows.  This allows objects to be created with dynamically changing

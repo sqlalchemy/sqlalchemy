@@ -183,6 +183,11 @@ class M2MTest(testbase.AssertMixin):
             )
         )
 
+        Place.mapper.options()
+        print Place.mapper.props['inputs']
+        print Transition.mapper.props['inputs']
+        return
+        
         Place.eagermapper = Place.mapper.options(
             eagerload('inputs', selectalias='ip_alias'), 
             eagerload('outputs', selectalias='op_alias')

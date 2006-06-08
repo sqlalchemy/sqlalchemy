@@ -218,7 +218,7 @@ class MapperTest(MapperSuperTest):
         """tests the various attributes of the properties attached to classes"""
         m = mapper(User, users, properties = {
             'addresses' : relation(mapper(Address, addresses))
-        })
+        }).compile()
         self.assert_(User.addresses.property is m.props['addresses'])
         
     def testload(self):
@@ -295,7 +295,7 @@ class MapperTest(MapperSuperTest):
         try:
             m = mapper(User, users, properties = {
                     'user_name' : relation(mapper(Address, addresses)),
-                })
+                }).compile()
             self.assert_(False, "should have raised ArgumentError")
         except exceptions.ArgumentError, e:
             self.assert_(True)
@@ -330,7 +330,7 @@ class MapperTest(MapperSuperTest):
         sess = create_session()
         usermapper = mapper(User, users, properties = dict(
             addresses = relation(mapper(Address, addresses), lazy = False)
-        ))
+        )).compile()
 
         # first test straight eager load, 1 statement
         def go():
@@ -355,6 +355,20 @@ class MapperTest(MapperSuperTest):
         l = sess.query(User).options(lazyload('addresses')).select()
         def go():
             self.assert_result(l, User, *user_address_result)
+        self.assert_sql_count(db, go, 3)
+
+    def testlatecompile(self):
+        """tests mappers compiling late in the game"""
+        
+        mapper(User, users, properties = {'orders': relation(Order)})
+        mapper(Item, orderitems, properties={'keywords':relation(Keyword, secondary=itemkeywords)})
+        mapper(Keyword, keywords)
+        mapper(Order, orders, properties={'items':relation(Item)})
+        
+        sess = create_session()
+        u = sess.query(User).select()
+        def go():
+            print u[0].orders[1].items[0].keywords[1]
         self.assert_sql_count(db, go, 3)
 
     def testdeepoptions(self):
@@ -441,7 +455,7 @@ class DeferredTest(MapperSuperTest):
         
         o = Order()
         self.assert_(o.description is None)
-        
+
         q = create_session().query(m)
         def go():
             l = q.select()
@@ -777,7 +791,7 @@ class EagerTest(MapperSuperTest):
     def testbackwardsonetoone(self):
         m = mapper(Address, addresses, properties = dict(
             user = relation(mapper(User, users), lazy = False)
-        ))
+        )).compile()
         self.echo(repr(m.props['user'].uselist))
         q = create_session().query(m)
         l = q.select(addresses.c.address_id == 1)
@@ -807,7 +821,7 @@ class EagerTest(MapperSuperTest):
         m = mapper(User, users, properties = dict(
             addresses = relation(mapper(Address, addresses), lazy = False)
         ))
-        s = m.compile(and_(addresses.c.email_address == bindparam('emailad'), addresses.c.user_id==users.c.user_id))
+        s = session.query(m).compile(and_(addresses.c.email_address == bindparam('emailad'), addresses.c.user_id==users.c.user_id))
         c = s.compile()
         self.echo("\n" + str(c) + repr(c.get_params()))
         
