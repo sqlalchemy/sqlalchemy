@@ -166,6 +166,31 @@ class AttributesTest(PersistTest):
         assert y.element == 'this is the bar attr'
         assert x.element2 == 'this is the shared attr'
         assert y.element2 == 'this is the shared attr'
+
+    def testparenttrack(self):    
+        class Foo(object):pass
+        class Bar(object):pass
+
+        manager = attributes.AttributeManager()
+
+        manager.register_attribute(Foo, 'element', uselist=False, trackparent=True)
+        manager.register_attribute(Bar, 'element', uselist=False, trackparent=True)
+
+        f1 = Foo()
+        f2 = Foo()
+        b1 = Bar()
+        b2 = Bar()
+
+        f1.element = b1
+        b2.element = f2
+
+        assert manager.get_history(f1, 'element').hasparent(b1)
+        assert not manager.get_history(f1, 'element').hasparent(b2)
+        assert not manager.get_history(f1, 'element').hasparent(f2)
+        assert manager.get_history(b2, 'element').hasparent(f2)
+
+        b2.element = None
+        assert not manager.get_history(b2, 'element').hasparent(f2)
         
 if __name__ == "__main__":
     unittest.main()
