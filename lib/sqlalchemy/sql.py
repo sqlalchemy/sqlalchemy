@@ -825,7 +825,7 @@ class TextClause(ClauseElement):
         if bindparams is not None:
             for b in bindparams:
                 self.bindparams[b.key] = b
-            
+    columns = property(lambda s:[])        
     def accept_visitor(self, visitor): 
         for item in self.bindparams.values():
             item.accept_visitor(visitor)
@@ -1489,7 +1489,7 @@ class Select(SelectBaseMixin, FromClause):
         
     def append_from(self, fromclause):
         if type(fromclause) == str:
-            fromclause = FromClause(from_name = fromclause)
+            fromclause = TextClause(fromclause)
         fromclause.accept_visitor(self._correlator)
         fromclause._process_from_dict(self._froms, True)
     def _locate_oid_column(self):
