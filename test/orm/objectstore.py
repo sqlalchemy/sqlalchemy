@@ -1027,6 +1027,42 @@ class SaveTest(SessionTest):
         
         ctx.current.delete(objects[3])
         ctx.current.flush()
+
+
+    def testmanytomanyupdate(self):
+        class Keyword(object):
+            def __init__(self, name):
+                self.name = name
+            def __eq__(self, other):
+                return other.name == self.name
+            def __repr__(self):
+                return "Keyword(%s, %s)" % (getattr(self, 'keyword_id', 'None'), self.name)
+                
+        mapper(Keyword, keywords)
+        mapper(Item, orderitems, properties = dict(
+                keywords = relation(Keyword, secondary=itemkeywords, lazy=False),
+            ))
+
+        (k1, k2, k3) = (Keyword('keyword 1'), Keyword('keyword 2'), Keyword('keyword 3'))
+        item = Item()
+        item.item_name = 'item 1'
+        item.keywords.append(k1)
+        item.keywords.append(k2)
+        item.keywords.append(k3)
+        ctx.current.flush()
+        
+        item.keywords = []
+        item.keywords.append(k1)
+        item.keywords.append(k2)
+        print item.keywords.unchanged_items()
+        print item.keywords.added_items()
+        print item.keywords.deleted_items()
+        ctx.current.flush()
+        
+        ctx.current.clear()
+        item = ctx.current.query(Item).get(item.item_id)
+        print [k1, k2]
+        assert item.keywords == [k1, k2]
         
     def testassociation(self):
         class IKAssociation(object):

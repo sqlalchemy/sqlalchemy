@@ -124,6 +124,11 @@ sq.mytable_description AS sq_mytable_description, sq.myothertable_otherid AS sq_
 sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") AS sq) AS sq2")
 
     def testwheresubquery(self):
+        # TODO: this tests that you dont get a "SELECT column" without a FROM but its not working yet.
+        #self.runtest(
+        #    table1.select(table1.c.myid == select([table1.c.myid], table1.c.name=='jack')), ""
+        #)
+        
         self.runtest(
             table1.select(table1.c.myid == select([table2.c.otherid], table1.c.name == table2.c.othername)),
             "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = (SELECT myothertable.otherid AS otherid FROM myothertable WHERE mytable.name = myothertable.othername)"
