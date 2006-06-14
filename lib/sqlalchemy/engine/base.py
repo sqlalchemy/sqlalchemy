@@ -361,7 +361,7 @@ class Transaction(object):
     is_active = property(lambda s:s.__is_active)
     def rollback(self):
         if not self.__parent.__is_active:
-            raise exceptions.InvalidRequestError("This transaction is inactive")
+            return
         if self.__parent is self:
             self.__connection._rollback_impl()
             self.__is_active = False

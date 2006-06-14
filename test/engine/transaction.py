@@ -36,6 +36,36 @@ class TransactionTest(testbase.PersistTest):
         connection.close()
 
     @testbase.unsupported('mysql')
+    def testnestedrollback(self):
+        connection = testbase.db.connect()
+        
+        try:
+            transaction = connection.begin()
+            try:
+                connection.execute(users.insert(), user_id=1, user_name='user1')
+                connection.execute(users.insert(), user_id=2, user_name='user2')
+                connection.execute(users.insert(), user_id=3, user_name='user3')
+                trans2 = connection.begin()
+                try:
+                    connection.execute(users.insert(), user_id=4, user_name='user4')
+                    connection.execute(users.insert(), user_id=5, user_name='user5')
+                    raise Exception("uh oh")
+                    trans2.commit()
+                except:
+                    trans2.rollback()
+                    raise
+                transaction.rollback()
+            except Exception, e:
+                transaction.rollback()
+                raise
+        except Exception, e:
+            try:
+                assert str(e) == 'uh oh'  # and not "This transaction is inactive"
+            finally:
+                connection.close()
+            
+
+    @testbase.unsupported('mysql')
     def testnesting(self):
         connection = testbase.db.connect()
         transaction = connection.begin()
@@ -206,19 +236,15 @@ class TLTransactionTest(testbase.PersistTest):
             mapper(User, users)
 
             sess = create_session(bind_to=tlengine)
-            print "STEP1"
             tlengine.begin()
-            print "STEP2"
             u = User()
             sess.save(u)
-            print "STEP3"
             sess.flush()
-            print "STEP4"
             tlengine.commit()
-            print "STEP5"
         finally:
             clear_mappers()
 
+            
     def testconnections(self):
         """tests that contextual_connect is threadlocal"""
         c1 = tlengine.contextual_connect()
