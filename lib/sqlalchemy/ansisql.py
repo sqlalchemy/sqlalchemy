@@ -168,7 +168,7 @@ class ANSICompiler(sql.Compiled):
         if len(self.select_stack):
             # if we are within a visit to a Select, set up the "typemap"
             # for this column which is used to translate result set values
-            self.typemap.setdefault(column.key.lower(), column.type)
+            self.typemap.setdefault(column.name.lower(), column.type)
         if column.table is None or not column.table.named_with_column():
             self.strings[column] = column.name
         else:

@@ -5,6 +5,8 @@
 auto-foreignkey detection [ticket:151]
 - fixed bug where tables with schema names werent getting indexed in
 the MetaData object properly
+- fixed bug where Column with redefined "key" property wasnt getting
+type conversion happening in the ResultProxy [ticket:207]
 
 0.2.2
 - big improvements to polymorphic inheritance behavior, enabling it
