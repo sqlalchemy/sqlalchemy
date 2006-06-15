@@ -45,7 +45,9 @@ class AttributesTest(PersistTest):
         manager.register_attribute(MyTest, 'email_address', uselist = False)
         x = MyTest()
         x.user_id=7
-        pickle.dumps(x)
+        s = pickle.dumps(x)
+        x2 = pickle.loads(s)
+        assert s == pickle.dumps(x2)
 
     def testlist(self):
         class User(object):pass
@@ -86,7 +88,7 @@ class AttributesTest(PersistTest):
         print repr(u.__dict__)
         print repr(u.addresses[0].__dict__)
         self.assert_(u.user_id == 7 and u.user_name == 'john' and u.addresses[0].email_address == 'lala@123.com')
-        self.assert_(len(u.addresses.unchanged_items()) == 1)
+        self.assert_(len(manager.get_history(u, 'addresses').unchanged_items()) == 1)
 
     def testbackref(self):
         class Student(object):pass
@@ -98,6 +100,8 @@ class AttributesTest(PersistTest):
         s = Student()
         c = Course()
         s.courses.append(c)
+        print c.students
+        print [s]
         self.assert_(c.students == [s])
         s.courses.remove(c)
         self.assert_(c.students == [])
@@ -106,6 +110,11 @@ class AttributesTest(PersistTest):
         c.students = [s1, s2, s3]
         self.assert_(s2.courses == [c])
         self.assert_(s1.courses == [c])
+        print "--------------------------------"
+        print s1
+        print s1.courses
+        print c
+        print c.students
         s1.courses.remove(c)
         self.assert_(c.students == [s2,s3])
         
@@ -129,6 +138,10 @@ class AttributesTest(PersistTest):
         p4.blog = b
         self.assert_(b.posts == [p1, p2, p4])
         
+        p4.blog = b
+        p4.blog = b
+        self.assert_(b.posts == [p1, p2, p4])
+
 
         class Port(object):pass
         class Jack(object):pass
@@ -151,10 +164,13 @@ class AttributesTest(PersistTest):
         manager = attributes.AttributeManager()
         
         def func1():
+            print "func1"
             return "this is the foo attr"
         def func2():
+            print "func2"
             return "this is the bar attr"
         def func3():
+            print "func3"
             return "this is the shared attr"
         manager.register_attribute(Foo, 'element', uselist=False, callable_=lambda o:func1)
         manager.register_attribute(Foo, 'element2', uselist=False, callable_=lambda o:func3)
@@ -167,28 +183,56 @@ class AttributesTest(PersistTest):
         assert x.element2 == 'this is the shared attr'
         assert y.element2 == 'this is the shared attr'
 
+    def testlazyhistory(self):
+        """tests that history functions work with lazy-loading attributes"""
+        class Foo(object):pass
+        class Bar(object):
+            def __init__(self, id):
+                self.id = id
+            def __repr__(self):
+                return "Bar: id %d" % self.id
+                
+        manager = attributes.AttributeManager()
+
+        def func1():
+            return "this is func 1"
+        def func2():
+            return [Bar(1), Bar(2), Bar(3)]
+
+        manager.register_attribute(Foo, 'col1', uselist=False, callable_=lambda o:func1)
+        manager.register_attribute(Foo, 'col2', uselist=True, callable_=lambda o:func2)
+        manager.register_attribute(Bar, 'id', uselist=False)
+
+        x = Foo()
+        manager.commit(x)
+        x.col2.append(Bar(4))
+        h = manager.get_history(x, 'col2')
+        print h.added_items()
+        print h.unchanged_items()
+
+        
     def testparenttrack(self):    
         class Foo(object):pass
         class Bar(object):pass
-
+        
         manager = attributes.AttributeManager()
-
+        
         manager.register_attribute(Foo, 'element', uselist=False, trackparent=True)
         manager.register_attribute(Bar, 'element', uselist=False, trackparent=True)
-
+        
         f1 = Foo()
         f2 = Foo()
         b1 = Bar()
         b2 = Bar()
-
+        
         f1.element = b1
         b2.element = f2
-
+        
         assert manager.get_history(f1, 'element').hasparent(b1)
         assert not manager.get_history(f1, 'element').hasparent(b2)
         assert not manager.get_history(f1, 'element').hasparent(f2)
         assert manager.get_history(b2, 'element').hasparent(f2)
-
+        
         b2.element = None
         assert not manager.get_history(b2, 'element').hasparent(f2)
         

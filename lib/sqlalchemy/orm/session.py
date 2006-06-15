@@ -339,7 +339,7 @@ class Session(object):
             return
         if not hasattr(object, '_instance_key'):
             raise exceptions.InvalidRequestError("Instance '%s' is not persisted" % repr(object))
-        if global_attributes.is_modified(object):
+        if attribute_manager.is_modified(object):
             self._register_dirty(object)
         else:
             self._register_clean(object)
@@ -425,7 +425,7 @@ def class_mapper(class_, **kwargs):
 
 # this is the AttributeManager instance used to provide attribute behavior on objects.
 # to all the "global variable police" out there:  its a stateless object.
-global_attributes = unitofwork.global_attributes
+attribute_manager = unitofwork.attribute_manager
 
 # this dictionary maps the hash key of a Session to the Session itself, and 
 # acts as a Registry with which to locate Sessions.  this is to enable

@@ -14,7 +14,7 @@ class Issue(BaseObject):
 
 class Location(BaseObject):
     def __repr__(self):
-        return "%s(%s, %s)" % (self.__class__.__name__, str(self.issue_id), repr(str(self._name.name)))
+        return "%s(%s, %s)" % (self.__class__.__name__, str(getattr(self, 'issue_id', None)), repr(str(self._name.name)))
 
     def _get_name(self):
         return self._name
@@ -187,7 +187,6 @@ class InheritTest(testbase.AssertMixin):
         page2 = MagazinePage(magazine=magazine,page_no=2)
         page3 = ClassifiedPage(magazine=magazine,page_no=3)
         session.save(pub)
-        print [x for x in session]
         
         session.flush()
         print [x for x in session]

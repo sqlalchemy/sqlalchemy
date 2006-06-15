@@ -165,7 +165,7 @@ class MapperTest(MapperSuperTest):
         users.update(users.c.user_id==7, values=dict(user_name='jack')).execute()
         s.expire(u)
         # object isnt refreshed yet, using dict to bypass trigger
-        self.assert_(u.__dict__['user_name'] != 'jack')
+        self.assert_(u.__dict__.get('user_name') != 'jack')
         # do a select
         s.query(User).select()
         # test that it refreshed
@@ -662,7 +662,7 @@ class LazyTest(MapperSuperTest):
         openorders = alias(orders, 'openorders')
         closedorders = alias(orders, 'closedorders')
         m = mapper(User, users, properties = dict(
-            addresses = relation(mapper(Address, addresses), lazy = False),
+            addresses = relation(mapper(Address, addresses), lazy = True),
             open_orders = relation(mapper(Order, openorders, entity_name='open'), primaryjoin = and_(openorders.c.isopen == 1, users.c.user_id==openorders.c.user_id), lazy = True),
             closed_orders = relation(mapper(Order, closedorders,entity_name='closed'), primaryjoin = and_(closedorders.c.isopen == 0, users.c.user_id==closedorders.c.user_id), lazy = True)
         ))
@@ -708,6 +708,7 @@ class LazyTest(MapperSuperTest):
 
 class EagerTest(MapperSuperTest):
     def testbasic(self):
+        testbase.db.echo="debug"
         """tests a basic one-to-many eager load"""
         m = mapper(Address, addresses)
         

@@ -28,7 +28,7 @@ class ColumnProperty(mapper.MapperProperty):
     def setattr(self, object, value):
         setattr(object, self.key, value)
     def get_history(self, obj, passive=False):
-        return sessionlib.global_attributes.get_history(obj, self.key, passive=passive)
+        return sessionlib.attribute_manager.get_history(obj, self.key, passive=passive)
     def copy(self):
         return ColumnProperty(*self.columns)
     def setup(self, key, statement, eagertable=None, **options):
@@ -41,10 +41,12 @@ class ColumnProperty(mapper.MapperProperty):
         # establish a SmartProperty property manager on the object for this key
         if parent._is_primary_mapper():
             #print "regiser col on class %s key %s" % (parent.class_.__name__, key)
-            sessionlib.global_attributes.register_attribute(parent.class_, key, uselist = False)
+            sessionlib.attribute_manager.register_attribute(parent.class_, key, uselist = False)
     def execute(self, session, instance, row, identitykey, imap, isnew):
         if isnew:
             #print "POPULATING OBJ", instance.__class__.__name__, "COL", self.columns[0]._label, "WITH DATA", row[self.columns[0]], "ROW IS A", row.__class__.__name__, "COL ID", id(self.columns[0])
+            # set a scalar object instance directly on the object, 
+            # bypassing SmartProperty event handlers.
             instance.__dict__[self.key] = row[self.columns[0]]
     def __repr__(self):
         return "ColumnProperty(%s)" % repr([str(c) for c in self.columns])
@@ -61,7 +63,7 @@ class DeferredColumnProperty(ColumnProperty):
         # establish a SmartProperty property manager on the object for this key, 
         # containing a callable to load in the attribute
         if self.is_primary():
-            sessionlib.global_attributes.register_attribute(parent.class_, key, uselist=False, callable_=lambda i:self.setup_loader(i))
+            sessionlib.attribute_manager.register_attribute(parent.class_, key, uselist=False, callable_=lambda i:self.setup_loader(i))
     def setup_loader(self, instance):
         if not self.localparent.is_assigned(instance):
             return mapper.object_mapper(instance).props[self.key].setup_loader(instance)
@@ -88,8 +90,10 @@ class DeferredColumnProperty(ColumnProperty):
                     for prop in groupcols:
                         if prop is self:
                             continue
+                        # set a scalar object instance directly on the object, 
+                        # bypassing SmartProperty event handlers.
                         instance.__dict__[prop.key] = row[prop.columns[0]]
-                        sessionlib.global_attributes.create_history(instance, prop.key, uselist=False)
+                        sessionlib.attribute_manager.init_instance_attribute(instance, prop.key, uselist=False)
                     return row[self.columns[0]]    
                 else:
                     return connection.scalar(sql.select([self.columns[0]], clause, use_labels=True),None)
@@ -101,9 +105,9 @@ class DeferredColumnProperty(ColumnProperty):
     def execute(self, session, instance, row, identitykey, imap, isnew):
         if isnew:
             if not self.is_primary():
-                sessionlib.global_attributes.create_history(instance, self.key, False, callable_=self.setup_loader(instance))
+                sessionlib.attribute_manager.init_instance_attribute(instance, self.key, False, callable_=self.setup_loader(instance))
             else:
-                sessionlib.global_attributes.reset_history(instance, self.key)
+                sessionlib.attribute_manager.reset_instance_attribute(instance, self.key)
 
 mapper.ColumnProperty = ColumnProperty
 
@@ -150,7 +154,7 @@ class PropertyLoader(mapper.MapperProperty):
     def cascade_iterator(self, type, object, recursive):
         if not type in self.cascade:
             return
-        childlist = sessionlib.global_attributes.get_history(object, self.key, passive=True)
+        childlist = sessionlib.attribute_manager.get_history(object, self.key, passive=True)
         
         mapper = self.mapper.primary_mapper()
         for c in childlist.added_items() + childlist.deleted_items() + childlist.unchanged_items():
@@ -163,9 +167,9 @@ class PropertyLoader(mapper.MapperProperty):
     def cascade_callable(self, type, object, callable_, recursive):
         if not type in self.cascade:
             return
-        childlist = sessionlib.global_attributes.get_history(object, self.key, passive=True)
+        
         mapper = self.mapper.primary_mapper()
-        for c in childlist.added_items() + childlist.deleted_items() + childlist.unchanged_items():
+        for c in sessionlib.attribute_manager.get_as_list(object, self.key, passive=True):
             if c is not None and c not in recursive:
                 recursive.add(c)
                 callable_(c, mapper.entity_name)
@@ -241,16 +245,16 @@ class PropertyLoader(mapper.MapperProperty):
 
             if self.backref is not None:
                 self.backref.compile(self)
-        elif not sessionlib.global_attributes.is_class_managed(parent.class_, key):
+        elif not sessionlib.attribute_manager.is_class_managed(parent.class_, key):
             raise exceptions.ArgumentError("Attempting to assign a new relation '%s' to a non-primary mapper on class '%s'.  New relations can only be added to the primary mapper, i.e. the very first mapper created for class '%s' " % (key, parent.class_.__name__, parent.class_.__name__))
 
         self.do_init_subclass(key, parent)
 
     def _register_attribute(self, class_, callable_=None):
-        sessionlib.global_attributes.register_attribute(class_, self.key, uselist = self.uselist, extension=self.attributeext, cascade=self.cascade,  trackparent=True, callable_=callable_)
+        sessionlib.attribute_manager.register_attribute(class_, self.key, uselist = self.uselist, extension=self.attributeext, cascade=self.cascade,  trackparent=True, callable_=callable_)
 
-    def _create_history(self, instance, callable_=None):
-        return sessionlib.global_attributes.create_history(instance, self.key, self.uselist, cascade=self.cascade,  trackparent=True, callable_=callable_)
+    def _init_instance_attribute(self, instance, callable_=None):
+        return sessionlib.attribute_manager.init_instance_attribute(instance, self.key, self.uselist, cascade=self.cascade,  trackparent=True, callable_=callable_)
         
     def _set_class_attribute(self, class_, key):
         """sets attribute behavior on our target class."""
@@ -298,7 +302,7 @@ class PropertyLoader(mapper.MapperProperty):
         if self.is_primary():
             return
         #print "PLAIN PROPLOADER EXEC NON-PRIAMRY", repr(id(self)), repr(self.mapper.class_), self.key
-        self._create_history(instance)
+        self._init_instance_attribute(instance)
 
     def register_dependencies(self, uowcommit):
         self._dependency_processor.register_dependencies(uowcommit)
@@ -388,15 +392,15 @@ class LazyLoader(PropertyLoader):
             if not self.is_primary():
                 #print "EXEC NON-PRIAMRY", repr(self.mapper.class_), self.key
                 # we are not the primary manager for this attribute on this class - set up a per-instance lazyloader,
-                # which will override the class-level behavior
-                self._create_history(instance, callable_=self.setup_loader(instance))
+                # which will override the clareset_instance_attributess-level behavior
+                self._init_instance_attribute(instance, callable_=self.setup_loader(instance))
             else:
                 #print "EXEC PRIMARY", repr(self.mapper.class_), self.key
                 # we are the primary manager for this attribute on this class - reset its per-instance attribute state, 
                 # so that the class-level lazy loader is executed when next referenced on this instance.
                 # this usually is not needed unless the constructor of the object referenced the attribute before we got 
                 # to load data into it.
-                sessionlib.global_attributes.reset_history(instance, self.key)
+                sessionlib.attribute_manager.reset_instance_attribute(instance, self.key)
  
 def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     binds = {}
@@ -559,24 +563,29 @@ class EagerLoader(LazyLoader):
             LazyLoader.execute(self, session, instance, row, identitykey, imap, isnew)
             return
                 
-        if isnew:
-            # new row loaded from the database.  initialize a blank container on the instance.
-            # this will override any per-class lazyloading type of stuff.
-            h = self._create_history(instance)
             
         if not self.uselist:
             if isnew:
-                h.setattr_clean(self.mapper._instance(session, decorated_row, imap, None))
+                # set a scalar object instance directly on the parent object, 
+                # bypassing SmartProperty event handlers.
+                instance.__dict__[self.key] = self.mapper._instance(session, decorated_row, imap, None)
             else:
                 # call _instance on the row, even though the object has been created,
                 # so that we further descend into properties
                 self.mapper._instance(session, decorated_row, imap, None)
                 
             return
-        elif isnew:
-            result_list = h
         else:
-            result_list = getattr(instance, self.key)
+            if isnew:
+                # call the SmartProperty's initialize() method to create a new, blank list
+                l = getattr(instance.__class__, self.key).initialize(instance)
+                
+                # create an appender object which will add set-like semantics to the list
+                appender = util.UniqueAppender(l.data)
+                
+                # store it in the "scratch" area, which is local to this load operation.
+                imap['_scratch'][(instance, self.key)] = appender
+            result_list = imap['_scratch'][(instance, self.key)]
         self.mapper._instance(session, decorated_row, imap, result_list)
 
     def _create_decorator_row(self):

@@ -263,7 +263,6 @@ class M2MTest2(testbase.AssertMixin):
         c3 = Course('Course3')
         s1.courses.append(c1)
         s1.courses.append(c2)
-        c1.students.append(s1)
         c3.students.append(s1)
         self.assert_(len(s1.courses) == 3)
         self.assert_(len(c1.students) == 1)

@@ -436,7 +436,7 @@ class Mapper(object):
         if not self.non_primary and (mapper_registry.has_key(self.class_key) and not self.is_primary):
              raise exceptions.ArgumentError("Class '%s' already has a primary mapper defined.  Use is_primary=True to assign a new primary mapper to the class, or use non_primary=True to create a non primary Mapper" % self.class_)
 
-        sessionlib.global_attributes.reset_class_managed(self.class_)
+        sessionlib.attribute_manager.reset_class_managed(self.class_)
     
         oldinit = self.class_.__init__
         def init(self, *args, **kwargs):
@@ -447,7 +447,7 @@ class Mapper(object):
 
                 # this gets the AttributeManager to do some pre-initialization,
                 # in order to save on KeyErrors later on
-                sessionlib.global_attributes.init_attr(self)
+                sessionlib.attribute_manager.init_attr(self)
 
             if kwargs.has_key('_sa_session'):
                 session = kwargs.pop('_sa_session')
@@ -595,13 +595,15 @@ class Mapper(object):
         offset = kwargs.get('offset', None)
         populate_existing = kwargs.get('populate_existing', False)
         
-        result = util.HistoryArraySet()
+        result = util.UniqueAppender([])
         if mappers:
             otherresults = []
             for m in mappers:
-                otherresults.append(util.HistoryArraySet())
+                otherresults.append(util.UniqueAppender([]))
                 
         imap = {}
+        scratch = {}
+        imap['_scratch'] = scratch
         while True:
             row = cursor.fetchone()
             if row is None:
@@ -614,11 +616,14 @@ class Mapper(object):
                 
         # store new stuff in the identity map
         for value in imap.values():
+            if value is scratch:
+                continue
             session._register_clean(value)
-
+            
         if mappers:
-            result = [result] + otherresults
-        return result
+            return [result.data] + [o.data for o in otherresults]
+        else:
+            return result.data
         
     def identity_key(self, primary_key):
         """returns the instance key for the given identity value.  this is a global tracking object used by the Session, and is usually available off a mapped object as instance._instance_key."""
@@ -952,7 +957,7 @@ class Mapper(object):
                     prop.execute(session, instance, row, identitykey, imap, True)
             if self.extension.append_result(self, session, row, imap, result, instance, isnew, populate_existing=populate_existing) is EXT_PASS:
                 if result is not None:
-                    result.append_nohistory(instance)
+                    result.append(instance)
             return instance
                     
         # look in result-local identitymap for it.
@@ -981,7 +986,7 @@ class Mapper(object):
             self.populate_instance(session, instance, row, identitykey, imap, isnew)
         if self.extension.append_result(self, session, row, imap, result, instance, isnew, populate_existing=populate_existing) is EXT_PASS:
             if result is not None:
-                result.append_nohistory(instance)
+                result.append(instance)
         return instance
 
     def _create_instance(self, session):
@@ -990,7 +995,7 @@ class Mapper(object):
         
         # this gets the AttributeManager to do some pre-initialization,
         # in order to save on KeyErrors later on
-        sessionlib.global_attributes.init_attr(obj)
+        sessionlib.attribute_manager.init_attr(obj)
 
         return obj
 
@@ -1207,8 +1212,7 @@ class MapperExtension(object):
         current result set
         
         result - an instance of util.HistoryArraySet(), which may be an attribute on an
-        object if this is a related object load (lazy or eager).  use result.append_nohistory(value)
-        to append objects to this list.
+        object if this is a related object load (lazy or eager).  
         
         instance - the object instance to be appended to the result
         

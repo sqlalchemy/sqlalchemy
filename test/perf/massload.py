@@ -43,22 +43,23 @@ class LoadTest(AssertMixin):
         class Item(object):pass
             
         m = mapper(Item, items)
-        
+        sess = create_session()
+        query = sess.query(Item)
         for x in range (1,NUM/100):
             # this is not needed with cpython which clears non-circular refs immediately
             #gc.collect()
-            l = m.select(items.c.item_id.between(x*100 - 100, x*100 - 1))
+            l = query.select(items.c.item_id.between(x*100 - 100, x*100 - 1))
             assert len(l) == 100
             print "loaded ", len(l), " items "
             # modifying each object will insure that the objects get placed in the "dirty" list
             # and will hang around until expunged
-            for a in l:
-                a.value = 'changed...'
-            assert len(objectstore.get_session().dirty) == len(l)
-            assert len(objectstore.get_session().identity_map) == len(l)
-            assert len(attributes.managed_attributes) == len(l)
-            print len(objectstore.get_session().dirty)
-            print len(objectstore.get_session().identity_map)
+            #for a in l:
+            #    a.value = 'changed...'
+            #assert len(objectstore.get_session().dirty) == len(l)
+            #assert len(objectstore.get_session().identity_map) == len(l)
+            #assert len(attributes.managed_attributes) == len(l)
+            #print len(objectstore.get_session().dirty)
+            #print len(objectstore.get_session().identity_map)
             #objectstore.expunge(*l)
 
 if __name__ == "__main__":

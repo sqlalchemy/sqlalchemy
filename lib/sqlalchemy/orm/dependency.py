@@ -10,6 +10,7 @@ together to allow processing of scalar- and list-based dependencies at flush tim
 
 from sync import ONETOMANY,MANYTOONE,MANYTOMANY
 from sqlalchemy import sql, util
+import session as sessionlib
 
 def create_dependency_processor(key, syncrules, cascade, secondary=None, association=None, is_backref=False, post_update=False):
     types = {
@@ -78,7 +79,7 @@ class DependencyProcessor(object):
     def get_object_dependencies(self, obj, uowcommit, passive = True):
         """returns the list of objects that are dependent on the given object, as according to the relationship
         this dependency processor represents"""
-        return uowcommit.uow.attributes.get_history(obj, self.key, passive = passive)
+        return sessionlib.attribute_manager.get_history(obj, self.key, passive = passive)
 
 
 class OneToManyDP(DependencyProcessor):

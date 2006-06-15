@@ -58,12 +58,13 @@ class HistoryTest(SessionTest):
 
         self.echo(repr(u.addresses))
         ctx.current.uow.rollback_object(u)
-        data = [User,
-            {'user_name' : None,
-             'addresses' : (Address, [])
-            },
-        ]
-        self.assert_result([u], data[0], *data[1:])
+        
+        # depending on the setting in the get() method of InstrumentedAttribute in attributes.py, 
+        # username is either None or is a non-present attribute.
+        assert u.user_name is None
+        #assert not hasattr(u, 'user_name')
+        
+        assert u.addresses == []
 
     def testbackref(self):
         s = create_session()
@@ -618,7 +619,26 @@ class SaveTest(SessionTest):
         ctx.current.clear()
         u = m.get(id)
         assert u.user_name == 'imnew'
+    
+    def testhistoryget(self):
+        """tests that the history properly lazy-fetches data when it wasnt otherwise loaded"""
+        mapper(User, users, properties={
+            'addresses':relation(Address, cascade="all, delete-orphan")
+        })
+        mapper(Address, addresses)
         
+        u = User()
+        u.addresses.append(Address())
+        u.addresses.append(Address())
+        ctx.current.flush()
+        ctx.current.clear()
+        u = ctx.current.query(User).get(u.user_id)
+        ctx.current.delete(u)
+        ctx.current.flush()
+        assert users.count().scalar() == 0
+        assert addresses.count().scalar() == 0
+        
+            
     def testm2mmultitable(self):
         # many-to-many join on an association table
         j = join(users, userkeywords, 
@@ -821,6 +841,7 @@ class SaveTest(SessionTest):
         u[0].addresses[0].email_address='hi'
         
         # insure that upon commit, the new mapper with the address relation is used
+        ctx.current.echo_uow=True
         self.assert_sql(db, lambda: ctx.current.flush(), 
                 [
                     (

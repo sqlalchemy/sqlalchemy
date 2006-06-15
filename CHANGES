@@ -1,9 +1,15 @@
 0.2.3
 - overhaul to mapper compilation to be deferred.  this allows mappers
 to be constructed in any order, and their relationships to each
-other are compiled when the mappers are first used..
+other are compiled when the mappers are first used.
 - fixed a pretty big speed bottleneck in cascading behavior particularly
 when backrefs were in use
+- the attribute instrumentation module has been completely rewritten; its
+now a large degree simpler and clearer, slightly faster.  the "history"
+of an attribute is no longer micromanaged with each change and is
+instead part of a "CommittedState" object created when the 
+instance is first loaded.  HistoryArraySet is gone, the behavior of
+list attributes is now more open ended (i.e. theyre not sets anymore).
 - py2.4 "set" construct used internally, falls back to sets.Set when
 "set" not available/ordering is needed.
 - "foreignkey" argument to relation() can also be a list.  fixed

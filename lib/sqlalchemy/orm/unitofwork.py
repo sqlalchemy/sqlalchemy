@@ -28,41 +28,28 @@ import sets
 # with the "echo_uow=True" keyword argument.
 LOG = False
 
-class UOWProperty(attributes.SmartProperty):
-    """overrides SmartProperty to provide ORM-specific accessors"""
-    def __init__(self, class_, *args, **kwargs):
-        super(UOWProperty, self).__init__(*args, **kwargs)
+class UOWEventHandler(attributes.AttributeExtension):
+    """an event handler added to all class attributes which handles session operations."""
+    def __init__(self, key, class_, cascade=None):
+        self.key = key
         self.class_ = class_
-    property = property(lambda s:class_mapper(s.class_).props[s.key], doc="returns the MapperProperty object associated with this property")
-
-                
-class UOWListElement(attributes.ListAttribute):
-    """overrides ListElement to provide unit-of-work "dirty" hooks when list attributes are modified,
-    plus specialzed append() method."""
-    def __init__(self, obj, key, data=None, cascade=None, **kwargs):
-        attributes.ListAttribute.__init__(self, obj, key, data=data, **kwargs)
         self.cascade = cascade
-    def do_value_changed(self, obj, key, item, listval, isdelete):
+    def append(self, event, obj, item):
         sess = object_session(obj)
         if sess is not None:
             sess._register_changed(obj)
-            if self.cascade is not None and not isdelete and self.cascade.save_update and item not in sess:
+            if self.cascade is not None and self.cascade.save_update and item not in sess:
                 mapper = object_mapper(obj)
                 prop = mapper.props[self.key]
                 ename = prop.mapper.entity_name
                 sess.save_or_update(item, entity_name=ename)
-    def append(self, item, _mapper_nohistory = False):
-        if _mapper_nohistory:
-            self.append_nohistory(item)
-        else:
-            attributes.ListAttribute.append(self, item)
 
-class UOWScalarElement(attributes.ScalarAttribute):
-    def __init__(self, obj, key, cascade=None, **kwargs):
-        attributes.ScalarAttribute.__init__(self, obj, key, **kwargs)
-        self.cascade=cascade
-    def do_value_changed(self, oldvalue, newvalue):
-        obj = self.obj
+    def delete(self, event, obj, item):
+        sess = object_session(obj)
+        if sess is not None:
+            sess._register_changed(obj)
+
+    def set(self, event, obj, newvalue, oldvalue):
         sess = object_session(obj)
         if sess is not None:
             sess._register_changed(obj)
@@ -71,21 +58,24 @@ class UOWScalarElement(attributes.ScalarAttribute):
                 prop = mapper.props[self.key]
                 ename = prop.mapper.entity_name
                 sess.save_or_update(newvalue, entity_name=ename)
+
+class UOWProperty(attributes.InstrumentedAttribute):
+    """overrides InstrumentedAttribute to provide an extra AttributeExtension to all managed attributes
+    as well as the 'property' property."""
+    def __init__(self, manager, class_, key, uselist, callable_, typecallable, cascade=None, extension=None, **kwargs):
+        extension = util.to_list(extension or [])
+        extension.insert(0, UOWEventHandler(key, class_, cascade=cascade))
+        super(UOWProperty, self).__init__(manager, key, uselist, callable_, typecallable, extension=extension,**kwargs)
+        self.class_ = class_
+        
+    property = property(lambda s:class_mapper(s.class_).props[s.key], doc="returns the MapperProperty object associated with this property")
             
 class UOWAttributeManager(attributes.AttributeManager):
-    """overrides AttributeManager to provide unit-of-work "dirty" hooks when scalar attribues are modified, plus factory methods for UOWProperrty/UOWListElement."""
-    def __init__(self):
-        attributes.AttributeManager.__init__(self)
+    """overrides AttributeManager to provide the UOWProperty instance for all InstrumentedAttributes."""
+    def create_prop(self, class_, key, uselist, callable_, typecallable, **kwargs):
+        return UOWProperty(self, class_, key, uselist, callable_, typecallable, **kwargs)
 
-    def create_prop(self, class_, key, uselist, callable_, **kwargs):
-        return UOWProperty(class_, self, key, uselist, callable_, **kwargs)
 
-    def create_scalar(self, obj, key, **kwargs):
-        return UOWScalarElement(obj, key, **kwargs)
-        
-    def create_list(self, obj, key, list_, **kwargs):
-        return UOWListElement(obj, key, list_, **kwargs)
-        
 class UnitOfWork(object):
     """main UOW object which stores lists of dirty/new/deleted objects.  provides top-level "flush" functionality as well as the transaction boundaries with the SQLEngine(s) involved in a write operation."""
     def __init__(self, identity_map=None):
@@ -94,7 +84,6 @@ class UnitOfWork(object):
         else:
             self.identity_map = weakref.WeakValueDictionary()
             
-        self.attributes = global_attributes
         self.new = util.OrderedSet()
         self.dirty = util.Set()
         
@@ -112,19 +101,17 @@ class UnitOfWork(object):
         self.identity_map[key] = obj
 
     def refresh(self, sess, obj):
-        self.rollback_object(obj)
         sess.query(obj.__class__)._get(obj._instance_key, reload=True)
 
     def expire(self, sess, obj):
-        self.rollback_object(obj)
         def exp():
             sess.query(obj.__class__)._get(obj._instance_key, reload=True)
-        global_attributes.trigger_history(obj, exp)
+        attribute_manager.trigger_history(obj, exp)
     
     def is_expired(self, obj, unexpire=False):
-        ret = global_attributes.has_trigger(obj)
+        ret = attribute_manager.has_trigger(obj)
         if ret and unexpire:
-            global_attributes.untrigger_history(obj)
+            attribute_manager.untrigger_history(obj)
         return ret
             
     def has_key(self, key):
@@ -151,8 +138,6 @@ class UnitOfWork(object):
             self.new.remove(obj)
         except KeyError:
             pass
-        #self.attributes.commit(obj)
-        self.attributes.remove(obj)
 
     def _validate_obj(self, obj):
         """validates that dirty/delete/flush operations can occur upon the given object, by checking
@@ -167,10 +152,10 @@ class UnitOfWork(object):
         self.register_dirty(obj)
         
     def register_attribute(self, class_, key, uselist, **kwargs):
-        self.attributes.register_attribute(class_, key, uselist, **kwargs)
+        attribute_manager.register_attribute(class_, key, uselist, **kwargs)
 
     def register_callable(self, obj, key, func, uselist, **kwargs):
-        self.attributes.set_callable(obj, key, func, uselist, **kwargs)
+        attribute_manager.set_callable(obj, key, func, uselist, **kwargs)
     
     def register_clean(self, obj):
         try:
@@ -185,7 +170,7 @@ class UnitOfWork(object):
             mapper = object_mapper(obj)
             obj._instance_key = mapper.instance_key(obj)
         self._put(obj._instance_key, obj)
-        self.attributes.commit(obj)
+        attribute_manager.commit(obj)
         
     def register_new(self, obj):
         if hasattr(obj, '_instance_key'):
@@ -251,7 +236,7 @@ class UnitOfWork(object):
 
     def rollback_object(self, obj):
         """'rolls back' the attributes that have been changed on an object instance."""
-        self.attributes.rollback(obj)
+        attribute_manager.rollback(obj)
         try:
             self.dirty.remove(obj)
         except KeyError:
@@ -906,5 +891,5 @@ def object_mapper(obj):
 def class_mapper(class_):
     return sqlalchemy.class_mapper(class_)
 
-global_attributes = UOWAttributeManager()
+attribute_manager = UOWAttributeManager()
 
