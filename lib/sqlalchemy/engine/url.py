@@ -8,7 +8,10 @@ class URL(object):
         self.username = username
         self.password = password
         self.host = host
-        self.port = port
+        if port is not None:
+            self.port = int(port)
+        else:
+            self.port = None
         self.database= database
         self.query = query or {}
     def __str__(self):
@@ -21,7 +24,7 @@ class URL(object):
         if self.host is not None:
             s += self.host
         if self.port is not None:
-            s += ':' + self.port
+            s += ':' + str(self.port)
         if self.database is not None:
             s += '/' + self.database
         if len(self.query):

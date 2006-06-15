@@ -62,7 +62,7 @@ def parse_argv():
         elif DBTYPE == 'postgres':
             db_uri = 'postgres://scott:tiger@127.0.0.1:5432/test'
         elif DBTYPE == 'mysql':
-            db_uri = 'mysql://scott:tiger@127.0.0.1/test'
+            db_uri = 'mysql://scott:tiger@127.0.0.1:3306/test'
         elif DBTYPE == 'oracle':
             db_uri = 'oracle://scott:tiger@127.0.0.1:1521'
         elif DBTYPE == 'oracle8':

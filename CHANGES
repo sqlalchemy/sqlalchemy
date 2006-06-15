@@ -18,6 +18,7 @@ auto-foreignkey detection [ticket:151]
 the MetaData object properly
 - fixed bug where Column with redefined "key" property wasnt getting
 type conversion happening in the ResultProxy [ticket:207]
+- fixed 'port' attribute of URL to be an integer if present
 
 0.2.2
 - big improvements to polymorphic inheritance behavior, enabling it
