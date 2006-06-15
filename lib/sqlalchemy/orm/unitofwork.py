@@ -46,16 +46,11 @@ class UOWListElement(attributes.ListAttribute):
         sess = object_session(obj)
         if sess is not None:
             sess._register_changed(obj)
-            if self.cascade is not None:
-                if not isdelete:
-                    if self.cascade.save_update:
-                        # cascade the save_update operation onto the child object,
-                        # relative to the mapper handling the parent object
-                        # TODO: easier way to do this ?
-                        mapper = object_mapper(obj)
-                        prop = mapper.props[self.key]
-                        ename = prop.mapper.entity_name
-                        sess.save_or_update(item, entity_name=ename)
+            if self.cascade is not None and not isdelete and self.cascade.save_update and item not in sess:
+                mapper = object_mapper(obj)
+                prop = mapper.props[self.key]
+                ename = prop.mapper.entity_name
+                sess.save_or_update(item, entity_name=ename)
     def append(self, item, _mapper_nohistory = False):
         if _mapper_nohistory:
             self.append_nohistory(item)
@@ -71,15 +66,11 @@ class UOWScalarElement(attributes.ScalarAttribute):
         sess = object_session(obj)
         if sess is not None:
             sess._register_changed(obj)
-            if newvalue is not None and self.cascade is not None:
-                if self.cascade.save_update:
-                    # cascade the save_update operation onto the child object,
-                    # relative to the mapper handling the parent object
-                    # TODO: easier way to do this ?
-                    mapper = object_mapper(obj)
-                    prop = mapper.props[self.key]
-                    ename = prop.mapper.entity_name
-                    sess.save_or_update(newvalue, entity_name=ename)
+            if newvalue is not None and self.cascade is not None and self.cascade.save_update and newvalue not in sess:
+                mapper = object_mapper(obj)
+                prop = mapper.props[self.key]
+                ename = prop.mapper.entity_name
+                sess.save_or_update(newvalue, entity_name=ename)
             
 class UOWAttributeManager(attributes.AttributeManager):
     """overrides AttributeManager to provide unit-of-work "dirty" hooks when scalar attribues are modified, plus factory methods for UOWProperrty/UOWListElement."""
