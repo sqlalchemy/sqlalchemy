@@ -111,6 +111,8 @@ class InstrumentedAttribute(object):
             return obj.__dict__[self.key]
         except KeyError:
             state = obj._state
+            # if an instance-wide "trigger" was set, call that
+            # and start again
             if state.has_key('trigger'):
                 trig = state['trigger']
                 del state['trigger']
@@ -123,10 +125,15 @@ class InstrumentedAttribute(object):
                     if passive:
                         return None
                     l = InstrumentedList(self, obj, self._adapt_list(callable_()), init=False)
+                    # if a callable was executed, then its part of the "committed state"
+                    # if any, so commit the newly loaded data
                     orig = state.get('original', None)
                     if orig is not None:
                         orig.commit_attribute(self, obj, l)
                 else:
+                    # note that we arent raising AttributeErrors, just creating a new
+                    # blank list and setting it.
+                    # this might be a good thing to be changeable by options.
                     l = InstrumentedList(self, obj, self._blank_list(), init=False)
                 obj.__dict__[self.key] = l
                 return l
@@ -135,21 +142,17 @@ class InstrumentedAttribute(object):
                 if callable_ is not None:
                     if passive:
                         return None
-                    obj.__dict__[self.key] = self._adapt_list(callable_())
+                    obj.__dict__[self.key] = callable_()
+                    # if a callable was executed, then its part of the "committed state"
+                    # if any, so commit the newly loaded data
                     orig = state.get('original', None)
                     if orig is not None:
                         orig.commit_attribute(self, obj)
                     return obj.__dict__[self.key]
                 else:
-                    if raiseerr:
-                        # this is returning None for backwards compatibility.  I am considering
-                        # changing it to raise AttributeError, which would make object instances
-                        # act more like regular python objects, i.e. you dont set the attribute, you get
-                        # AttributeError when you call it.
-                        return None
-                        #raise AttributeError(self.key)
-                    else:
-                        return None
+                    # note that we arent raising AttributeErrors, just returning None.
+                    # this might be a good thing to be changeable by options.
+                    return None
         
     def set(self, event, obj, value):
         """sets a value on the given object. 'event' is the InstrumentedAttribute that
@@ -157,6 +160,7 @@ class InstrumentedAttribute(object):
         operation."""
         if event is not self:
             state = obj._state
+            # if an instance-wide "trigger" was set, call that
             if state.has_key('trigger'):
                 trig = state['trigger']
                 del state['trigger']
@@ -164,7 +168,7 @@ class InstrumentedAttribute(object):
             if self.uselist:
                 value = InstrumentedList(self, obj, value)
             elif self.trackparent or len(self.extensions):
-                old = self.get(obj, raiseerr=False)
+                old = self.get(obj)
             obj.__dict__[self.key] = value
             state['modified'] = True
             if not self.uselist:
@@ -182,16 +186,19 @@ class InstrumentedAttribute(object):
         operation."""
         if event is not self:
             try:
-                old = obj.__dict__[self.key]
+                if not self.uselist and (self.trackparent or len(self.extensions)):
+                    old = self.get(obj)
                 del obj.__dict__[self.key]
             except KeyError:
+                # TODO: raise this?  not consistent with get() ?
                 raise AttributeError(self.key)
             obj._state['modified'] = True
-            if self.trackparent:
-                if old is not None:
-                    self.sethasparent(old, False)
-            for ext in self.extensions:
-                ext.delete(event or self, obj, old)
+            if not self.uselist:
+                if self.trackparent:
+                    if old is not None:
+                        self.sethasparent(old, False)
+                for ext in self.extensions:
+                    ext.delete(event or self, obj, old)
 
     def append(self, event, obj, value):
         """appends an element to a list based element or sets a scalar based element to the given value.
