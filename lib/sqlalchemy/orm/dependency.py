@@ -281,7 +281,7 @@ class ManyToManyDP(DependencyProcessor):
         if len(secondary_delete):
             # TODO: precompile the delete/insert queries and store them as instance variables
             # on the PropertyLoader
-            statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key) for c in self.secondary.c]))
+            statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key) for c in self.secondary.c if c.key in associationrow]))
             connection.execute(statement, secondary_delete)
         if len(secondary_insert):
             statement = self.secondary.insert()

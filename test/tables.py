@@ -53,7 +53,7 @@ userkeywords = Table('userkeywords', metadata,
 itemkeywords = Table('itemkeywords', metadata,
     Column('item_id', INT, ForeignKey("items")),
     Column('keyword_id', INT, ForeignKey("keywords")),
-    
+#    Column('foo', Boolean, default=True)
 )
 
 def create():

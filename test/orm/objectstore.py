@@ -920,53 +920,14 @@ class SaveTest(SessionTest):
         a1.user = None
         ctx.current.flush()
 
-    def _testalias(self):
-        """tests that an alias of a table can be used in a mapper. 
-        the mapper has to locate the original table and columns to keep it all straight."""
-        ualias = Alias(users, 'ualias')
-        m = mapper(User, ualias)
-        u = User()
-        u.user_name = 'testalias'
-        m.save(u)
-        
-        u2 = m.select(ualias.c.user_id == u.user_id)[0]
-        self.assert_(u2 is u)
-
-    def _testremove(self):
-        m = mapper(User, users, properties = dict(
-            addresses = relation(mapper(Address, addresses), lazy = True)
-        ))
-        u = User()
-        u.user_name = 'one2manytester'
-        u.addresses = []
-        a = Address()
-        a.email_address = 'one2many@test.org'
-        u.addresses.append(a)
-        a2 = Address()
-        a2.email_address = 'lala@test.org'
-        u.addresses.append(a2)
-        m.save(u)
-        addresstable = addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id)).execute().fetchall()
-        self.echo( repr(addresstable[0].values()))
-        self.assertEqual(addresstable[0].values(), [a.address_id, u.user_id, 'one2many@test.org'])
-        self.assertEqual(addresstable[1].values(), [a2.address_id, u.user_id, 'lala@test.org'])
-        del u.addresses[1]
-        m.save(u)
-        addresstable = addresses.select(addresses.c.address_id.in_(a.address_id, a2.address_id)).execute().fetchall()
-        self.echo( repr(addresstable))
-        self.assertEqual(addresstable[0].values(), [a.address_id, u.user_id, 'one2many@test.org'])
-        self.assertEqual(addresstable[1].values(), [a2.address_id, None, 'lala@test.org'])
-
     def testmanytomany(self):
         items = orderitems
 
         keywordmapper = mapper(Keyword, keywords)
 
-        items.select().execute()
         m = mapper(Item, items, properties = dict(
                 keywords = relation(keywordmapper, itemkeywords, lazy = False),
             ))
-
 
         data = [Item,
             {'item_name': 'mm_item1', 'keywords' : (Keyword,[{'name': 'big'},{'name': 'green'}, {'name': 'purple'},{'name': 'round'}])},
@@ -1049,8 +1010,30 @@ class SaveTest(SessionTest):
         ctx.current.delete(objects[3])
         ctx.current.flush()
 
+    def testmanytomanyremove(self):
+        """tests that setting a list-based attribute to '[]' properly affects the history and allows
+        the many-to-many rows to be deleted"""
+        keywordmapper = mapper(Keyword, keywords)
+
+        m = mapper(Item, orderitems, properties = dict(
+                keywords = relation(keywordmapper, itemkeywords, lazy = False),
+            ))
+
+        i = Item()
+        k1 = Keyword()
+        k2 = Keyword()
+        i.keywords.append(k1)
+        i.keywords.append(k2)
+        ctx.current.flush()
+        
+        assert itemkeywords.count().scalar() == 2
+        i.keywords = []
+        ctx.current.flush()
+        assert itemkeywords.count().scalar() == 0
+
 
     def testmanytomanyupdate(self):
+        """tests some history operations on a many to many"""
         class Keyword(object):
             def __init__(self, name):
                 self.name = name
@@ -1075,9 +1058,6 @@ class SaveTest(SessionTest):
         item.keywords = []
         item.keywords.append(k1)
         item.keywords.append(k2)
-        print item.keywords.unchanged_items()
-        print item.keywords.added_items()
-        print item.keywords.deleted_items()
         ctx.current.flush()
         
         ctx.current.clear()
@@ -1086,6 +1066,7 @@ class SaveTest(SessionTest):
         assert item.keywords == [k1, k2]
         
     def testassociation(self):
+        """basic test of an association object"""
         class IKAssociation(object):
             def __repr__(self):
                 return "\nIKAssociation " + repr(self.item_id) + " " + repr(self.keyword)
@@ -1282,6 +1263,59 @@ class SaveTest2(SessionTest):
                         )
                         ]
         )
+
+class SaveTest3(SessionTest):
+
+    def setUpAll(self):
+        SessionTest.setUpAll(self)
+        global metadata, t1, t2, t3
+        metadata = testbase.metadata
+        t1 = Table('items', metadata,
+            Column('item_id', INT, Sequence('items_id_seq', optional=True), primary_key = True),
+            Column('item_name', VARCHAR(50)),
+        )
+
+        t3 = Table('keywords', metadata,
+            Column('keyword_id', Integer, Sequence('keyword_id_seq', optional=True), primary_key = True),
+            Column('name', VARCHAR(50)),
+
+        )
+        t2 = Table('assoc', metadata,
+            Column('item_id', INT, ForeignKey("items")),
+            Column('keyword_id', INT, ForeignKey("keywords")),
+            Column('foo', Boolean, default=True)
+        )
+        metadata.create_all()
+    def tearDownAll(self):
+        metadata.drop_all()
+        SessionTest.tearDownAll(self)
+
+    def setUp(self):
+        pass
+    def tearDown(self):
+        pass
+
+    def testmanytomanyxtracolremove(self):
+        """tests that a many-to-many on a table that has an extra column can properly delete rows from the table
+        without referencing the extra column"""
+        mapper(Keyword, t3)
+
+        mapper(Item, t1, properties = dict(
+                keywords = relation(Keyword, secondary=t2, lazy = False),
+            ))
+
+        i = Item()
+        k1 = Keyword()
+        k2 = Keyword()
+        i.keywords.append(k1)
+        i.keywords.append(k2)
+        ctx.current.flush()
+
+        assert t2.count().scalar() == 2
+        i.keywords = []
+        print i.keywords
+        ctx.current.flush()
+        assert t2.count().scalar() == 0
 
 
 if __name__ == "__main__":

@@ -167,8 +167,7 @@ class InstrumentedAttribute(object):
                 trig()
             if self.uselist:
                 value = InstrumentedList(self, obj, value)
-            elif self.trackparent or len(self.extensions):
-                old = self.get(obj)
+            old = self.get(obj)
             obj.__dict__[self.key] = value
             state['modified'] = True
             if not self.uselist:
@@ -179,7 +178,10 @@ class InstrumentedAttribute(object):
                         self.sethasparent(old, False)
                 for ext in self.extensions:
                     ext.set(event or self, obj, value, old)
-            
+            else:
+                # set the deleted event for the old item
+                old[:] = []
+                
     def delete(self, event, obj):
         """deletes a value from the given object. 'event' is the InstrumentedAttribute that
         initiated the delete() operation and is used to control the depth of a circular delete
@@ -499,7 +501,7 @@ class AttributeHistory(object):
                 else:
                     self._deleted_items = []
                 self._unchanged_items = []
-
+        #print "orig", original, "current", current, "added", self._added_items, "unchanged", self._unchanged_items, "deleted", self._deleted_items
     def __iter__(self):
         return iter(self._current)
     def added_items(self):
