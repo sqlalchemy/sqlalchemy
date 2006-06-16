@@ -12,6 +12,9 @@ instance is first loaded.  HistoryArraySet is gone, the behavior of
 list attributes is now more open ended (i.e. theyre not sets anymore).
 - py2.4 "set" construct used internally, falls back to sets.Set when
 "set" not available/ordering is needed.
+- fix to transaction control, so that repeated rollback() calls 
+dont fail (was failing pretty badly when flush() would raise 
+an exception in a larger try/except transaction block)
 - "foreignkey" argument to relation() can also be a list.  fixed
 auto-foreignkey detection [ticket:151]
 - fixed bug where tables with schema names werent getting indexed in
@@ -22,6 +25,20 @@ type conversion happening in the ResultProxy [ticket:207]
 - fixed old bug where if a many-to-many table mapped as "secondary"
 had extra columns, delete operations didnt work
 - bugfixes for mapping against UNION queries
+- fixed incorrect exception class thrown when no DB driver present
+- added NonExistentTable exception thrown when reflecting a table
+that doesnt exist [ticket:138]
+- small fix to ActiveMapper regarding one-to-one backrefs, other
+refactorings
+- overridden constructor in mapped classes gets __name__ and
+__doc__ from the original class
+- fixed small bug in selectresult.py regarding mapper extension
+[ticket:200]
+- small tweak to cascade_mappers, not very strongly supported 
+function at the moment
+- some fixes to between(), column.between() to propigate typing
+information better [ticket:202]
+
 
 0.2.2
 - big improvements to polymorphic inheritance behavior, enabling it
