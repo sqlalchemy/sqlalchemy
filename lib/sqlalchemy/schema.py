@@ -437,15 +437,24 @@ class ForeignKey(SchemaItem):
         # be defined without dependencies
         if self._column is None:
             if isinstance(self._colspec, str):
+                # locate the parent table this foreign key is attached to.  
+                # we use the "original" column which our parent column represents
+                # (its a list of columns/other ColumnElements if the parent table is a UNION)
+                for c in self.parent.orig_set:
+                    if isinstance(c, Column):
+                        parenttable = c.table
+                        break
+                else:
+                    raise exceptions.ArgumentError("Parent column '%s' does not descend from a table-attached Column" % str(self.parent))
                 m = re.match(r"^([\w_-]+)(?:\.([\w_-]+))?(?:\.([\w_-]+))?$", self._colspec)
                 if m is None:
                     raise exceptions.ArgumentError("Invalid foreign key column specification: " + self._colspec)
                 if m.group(3) is None:
                     (tname, colname) = m.group(1, 2)
-                    schema = list(self.parent.orig_set)[0].table.schema
+                    schema = parenttable.schema
                 else:
                     (schema,tname,colname) = m.group(1,2,3)
-                table = Table(tname, list(self.parent.orig_set)[0].metadata, mustexist=True, schema=schema)
+                table = Table(tname, parenttable.metadata, mustexist=True, schema=schema)
                 if colname is None:
                     key = self.parent
                     self._column = table.c[self.parent.key]

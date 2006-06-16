@@ -21,6 +21,7 @@ type conversion happening in the ResultProxy [ticket:207]
 - fixed 'port' attribute of URL to be an integer if present
 - fixed old bug where if a many-to-many table mapped as "secondary"
 had extra columns, delete operations didnt work
+- bugfixes for mapping against UNION queries
 
 0.2.2
 - big improvements to polymorphic inheritance behavior, enabling it
