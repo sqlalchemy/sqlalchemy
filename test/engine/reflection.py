@@ -140,7 +140,11 @@ class ReflectionTest(PersistTest):
         assert table2.c.id.nullable 
         assert not table2.c.name.nullable 
         assert table2.c.description.nullable 
-        
+    
+    # mysql throws its own exception for no such table, resulting in 
+    # a sqlalchemy.SQLError instead of sqlalchemy.NoSuchTableError.
+    # this could probably be fixed at some point.
+    @testbase.unsupported('mysql')    
     def test_nonexistent(self):
         self.assertRaises(NoSuchTableError, Table,
                           'fake_table',
