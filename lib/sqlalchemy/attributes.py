@@ -179,9 +179,9 @@ class InstrumentedAttribute(object):
                 for ext in self.extensions:
                     ext.set(event or self, obj, value, old)
             else:
-                # set the deleted event for the old item
-                old[:] = []
-                
+                # mark all the old elements as detached from the parent
+                old.list_replaced()
+
     def delete(self, event, obj):
         """deletes a value from the given object. 'event' is the InstrumentedAttribute that
         initiated the delete() operation and is used to control the depth of a circular delete
@@ -256,16 +256,39 @@ class InstrumentedList(object):
         self.key = attr.key
         self.data = data or attr._blank_list()
         
-        # adapt to lists or sets automatically
+        # adapt to lists or sets
+        # TODO: make three subclasses of InstrumentedList that come off from a 
+        # metaclass, based on the type of data sent in
         if hasattr(self.data, 'append'):
             self._data_appender = self.data.append
+            self._clear_data = self._clear_list
         elif hasattr(self.data, 'add'):
             self._data_appender = self.data.add
+            self._clear_data = self._clear_set
+        if isinstance(self.data, dict):
+            self._clear_data = self._clear_dict
             
         if init:
             for x in self.data:
                 self.__setrecord(x)
-                
+
+    def list_replaced(self):
+        """fires off delete event handlers for each item in the list but
+        doesnt affect the original data list"""
+        [self.__delrecord(x) for x in self.data]
+
+    def clear(self):
+        """clears all items in this InstrumentedList and fires off delete event handlers for each item"""
+        self._clear_data()
+    def _clear_dict(self):
+        [self.__delrecord(x) for x in self.data.values()]
+        self.data.clear()
+    def _clear_set(self):
+        [self.__delrecord(x) for x in self.data]
+        self.data.clear()
+    def _clear_list(self):
+        self[:] = []
+        
     def __getstate__(self):
         """implemented to allow pickling, since __obj is a weakref."""
         return {'key':self.key, 'obj':self.obj, 'data':self.data, 'attr':self.attr}
@@ -326,11 +349,6 @@ class InstrumentedList(object):
             self.__setrecord(item)
             self._data_appender(item)
         
-    def clear(self):
-        if isinstance(self.data, dict):
-            self.data.clear()
-        else:
-            self.data[:] = self.attr._blank_list()
             
     def __getitem__(self, i):
         return self.data[i]
