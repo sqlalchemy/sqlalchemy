@@ -477,8 +477,12 @@ class Mapper(object):
         # override oldinit, insuring that its not already a Mapper-decorated init method
         if oldinit is None or not hasattr(oldinit, '_sa_mapper_init'):
             init._sa_mapper_init = True
-            init.__name__ = oldinit.__name__
-            init.__doc__ = oldinit.__doc__
+            try:
+                init.__name__ = oldinit.__name__
+                init.__doc__ = oldinit.__doc__
+            except:
+                # cant set __name__ in py 2.3 !
+                pass
             self.class_.__init__ = init
         mapper_registry[self.class_key] = self
         if self.entity_name is None:

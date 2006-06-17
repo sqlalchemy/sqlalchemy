@@ -1,3 +1,7 @@
+0.2.4
+- try/except when the mapper sets init.__name__ on a mapped class,
+supports python 2.3
+
 0.2.3
 - overhaul to mapper compilation to be deferred.  this allows mappers
 to be constructed in any order, and their relationships to each
