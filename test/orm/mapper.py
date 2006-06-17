@@ -135,6 +135,24 @@ class MapperTest(MapperSuperTest):
         self.assert_(u.user_name == 'jack')
         self.assert_(a not in u.addresses)
 
+    def testbadconstructor(self):
+        """tests that if the construction of a mapped class fails, the instnace does not get placed in the session"""
+        class Foo(object):
+            def __init__(self, one, two):
+                pass
+        mapper(Foo, users)
+        sess = create_session()
+        try:
+            Foo('one', _sa_session=sess)
+            assert False
+        except:
+            assert len(list(sess)) == 0
+        try:
+            Foo('one')
+            assert False
+        except TypeError, e:
+            pass
+            
     def testrefresh_lazy(self):
         """tests that when a lazy loader is set as a trigger on an object's attribute (at the attribute level, not the class level), a refresh() operation doesnt fire the lazy loader or create any problems"""
         s = create_session()

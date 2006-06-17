@@ -38,7 +38,8 @@ __doc__ from the original class
 function at the moment
 - some fixes to between(), column.between() to propigate typing
 information better [ticket:202]
-
+- if an object fails to be constructed, is not added to the 
+session [ticket:203]
 
 0.2.2
 - big improvements to polymorphic inheritance behavior, enabling it
