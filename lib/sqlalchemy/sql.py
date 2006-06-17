@@ -153,12 +153,9 @@ def cast(clause, totype, **kwargs):
          or
         cast(table.c.timestamp, DATE)
     """
-    # handle non-column clauses (e.g. cast(1234, TEXT)
-    if not hasattr(clause, 'label'):
-        clause = literal(clause)
-    totype = sqltypes.to_instance(totype)
-    return Function('CAST', CompoundClause("AS", clause, TypeClause(totype)), type=totype, **kwargs)
-        
+    return Cast(clause, totype, **kwargs)
+
+
 def exists(*args, **params):
     params['correlate'] = True
     s = select(*args, **params)
@@ -320,6 +317,7 @@ class ClauseVisitor(object):
     def visit_clauselist(self, list):pass
     def visit_calculatedclause(self, calcclause):pass
     def visit_function(self, func):pass
+    def visit_cast(self, cast):pass
     def visit_label(self, label):pass
     def visit_typeclause(self, typeclause):pass
             
@@ -974,7 +972,20 @@ class Function(CalculatedClause):
             c.accept_visitor(visitor)
         visitor.visit_function(self)
 
-
+class Cast(ColumnElement):
+    def __init__(self, clause, totype, **kwargs):
+        if not hasattr(clause, 'label'):
+            clause = literal(clause)
+        self.type = sqltypes.to_instance(totype)
+        self.clause = clause
+        self.typeclause = TypeClause(self.type)
+    def accept_visitor(self, visitor):
+        self.clause.accept_visitor(visitor)
+        self.typeclause.accept_visitor(visitor)
+        visitor.visit_cast(self)
+    def _get_from_objects(self):
+        return self.clause._get_from_objects()
+        
 class FunctionGenerator(object):
     """generates Function objects based on getattr calls"""
     def __init__(self, engine=None):

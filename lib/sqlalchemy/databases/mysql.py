@@ -9,7 +9,6 @@ import sys, StringIO, string, types, re, datetime
 from sqlalchemy import sql,engine,schema,ansisql
 from sqlalchemy.engine import default
 import sqlalchemy.types as sqltypes
-import sqlalchemy.databases.information_schema as ischema
 import sqlalchemy.exceptions as exceptions
 
 try:
@@ -249,6 +248,15 @@ class MySQLDialect(ansisql.ANSIDialect):
         
 
 class MySQLCompiler(ansisql.ANSICompiler):
+
+    def visit_cast(self, cast):
+        """hey ho MySQL supports almost no types at all for CAST"""
+        if (isinstance(cast.type, sqltypes.Date) or isinstance(cast.type, sqltypes.Time) or isinstance(cast.type, sqltypes.DateTime)):
+            return super(MySQLCompiler, self).visit_cast(cast)
+        else:
+            # so just skip the CAST altogether for now.
+            # TODO: put whatever MySQL does for CAST here.
+            self.strings[cast] = self.strings[cast.clause]
 
     def limit_clause(self, select):
         text = ""

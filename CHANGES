@@ -40,6 +40,11 @@ function at the moment
 information better [ticket:202]
 - if an object fails to be constructed, is not added to the 
 session [ticket:203]
+- CAST function has been made into its own clause object with
+its own compilation function in ansicompiler; allows MySQL
+to silently ignore most CAST calls since MySQL
+seems to only support the standard CAST syntax with Date types.  
+MySQL-compatible CAST support for strings, ints, etc. a TODO
 
 0.2.2
 - big improvements to polymorphic inheritance behavior, enabling it

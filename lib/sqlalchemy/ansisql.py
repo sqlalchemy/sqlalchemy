@@ -231,7 +231,13 @@ class ANSICompiler(sql.Compiled):
             self.strings[list] = "(" + string.join([self.get_str(c) for c in list.clauses], ' ') + ")"
         else:
             self.strings[list] = string.join([self.get_str(c) for c in list.clauses], ' ')
-       
+      
+    def visit_cast(self, cast):
+        if len(self.select_stack):
+            # not sure if we want to set the typemap here...
+            self.typemap.setdefault("CAST", cast.type)
+        self.strings[cast] = "CAST(%s AS %s)" % (self.strings[cast.clause],self.strings[cast.typeclause])
+         
     def visit_function(self, func):
         if len(self.select_stack):
             self.typemap.setdefault(func.name, func.type)

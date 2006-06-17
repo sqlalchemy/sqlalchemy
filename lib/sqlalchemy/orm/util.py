@@ -24,7 +24,7 @@ class CascadeOptions(object):
 def polymorphic_union(table_map, typecolname, aliasname='p_union'):
     colnames = util.Set()
     colnamemaps = {}
-    
+    types = {}
     for key in table_map.keys():
         table = table_map[key]
 
@@ -37,13 +37,14 @@ def polymorphic_union(table_map, typecolname, aliasname='p_union'):
         for c in table.c:
             colnames.add(c.name)
             m[c.name] = c
+            types[c.name] = c.type
         colnamemaps[table] = m
         
     def col(name, table):
         try:
             return colnamemaps[table][name]
         except KeyError:
-            return sql.null().label(name)
+            return sql.cast(sql.null(), types[name]).label(name)
 
     result = []
     for type, table in table_map.iteritems():
