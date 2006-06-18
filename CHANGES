@@ -1,6 +1,13 @@
 0.2.4
 - try/except when the mapper sets init.__name__ on a mapped class,
 supports python 2.3
+- lazy load and deferred load operations require the parent object
+to be in a Session to do the operation; whereas before the operation
+would just return a blank list or None, it now raises an exception.
+- Session.update() is slightly more lenient if the session to which
+the given object was formerly attached to was garbage collected;
+otherwise still requires you explicitly remove the instance from 
+the previous Session.
 
 0.2.3
 - overhaul to mapper compilation to be deferred.  this allows mappers

@@ -363,21 +363,21 @@ class Session(object):
         self.uow.register_deleted(obj)
         
     def _attach(self, obj):
-        """given an object, attaches it to this session.  """
+        """Attach the given object to this Session."""
         if getattr(obj, '_sa_session_id', None) != self.hash_key:
             old = getattr(obj, '_sa_session_id', None)
-            if old is not None:
+            if old is not None and _sessions.has_key(old):
                 raise exceptions.InvalidRequestError("Object '%s' is already attached to session '%s' (this is '%s')" % (repr(obj), old, id(self)))
                 
                 # auto-removal from the old session is disabled.  but if we decide to 
                 # turn it back on, do it as below: gingerly since _sessions is a WeakValueDict
                 # and it might be affected by other threads
-                try:
-                    sess = _sessions[old]
-                except KeyError:
-                    sess = None
-                if sess is not None:
-                    sess.expunge(old)
+                #try:
+                #    sess = _sessions[old]
+                #except KeyError:
+                #    sess = None
+                #if sess is not None:
+                #    sess.expunge(old)
             key = getattr(obj, '_instance_key', None)
             if key is not None:
                 self.identity_map[key] = obj

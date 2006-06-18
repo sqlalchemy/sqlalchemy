@@ -68,20 +68,22 @@ class DeferredColumnProperty(ColumnProperty):
         if not self.localparent.is_assigned(instance):
             return mapper.object_mapper(instance).props[self.key].setup_loader(instance)
         def lazyload():
-            session = sessionlib.object_session(instance)
-            if session is None:
-                return None
-            clause = sql.and_()
-            connection = session.connection(self.parent)
             try:
                 pk = self.parent.pks_by_table[self.columns[0].table]
             except KeyError:
                 pk = self.columns[0].table.primary_key
+
+            clause = sql.and_()
             for primary_key in pk:
                 attr = self.parent._getattrbycolumn(instance, primary_key)
                 if not attr:
                     return None
                 clause.clauses.append(primary_key == attr)
+
+            session = sessionlib.object_session(instance)
+            if session is None:
+                raise exceptions.InvalidRequestError("Parent instance %s is not bound to a Session; deferred load operation of attribute '%s' cannot proceed" % (instance.__class__, self.key))
+            connection = session.connection(self.parent)
             
             try:
                 if self.group is not None:
@@ -348,18 +350,19 @@ class LazyLoader(PropertyLoader):
         def lazyload():
             params = {}
             allparams = True
-            session = sessionlib.object_session(instance)
             #print "setting up loader, lazywhere", str(self.lazywhere), "binds", self.lazybinds
-            if session is not None:
-                for col, bind in self.lazybinds.iteritems():
-                    params[bind.key] = self.parent._getattrbycolumn(instance, col)
-                    if params[bind.key] is None:
-                        allparams = False
-                        break
-            else:
-                allparams = False
+            for col, bind in self.lazybinds.iteritems():
+                params[bind.key] = self.parent._getattrbycolumn(instance, col)
+                if params[bind.key] is None:
+                    allparams = False
+                    break
+                
             if not allparams:
                 return None
+
+            session = sessionlib.object_session(instance)
+            if session is None:
+                raise exceptions.InvalidRequestError("Parent instance %s is not bound to a Session; lazy load operation of attribute '%s' cannot proceed" % (instance.__class__, self.key))
                 
             # if we have a simple straight-primary key load, use mapper.get()
             # to possibly save a DB round trip
