@@ -276,7 +276,7 @@ class PropertyLoader(mapper.MapperProperty):
         elif len([c for c in self.foreignkey if self.parent.unjoined_table.corresponding_column(c, False) is not None]):
             return sync.MANYTOONE
         else:
-            raise exceptions.ArgumentError("Cant determine relation direction " + repr(self.foreignkey))
+            raise exceptions.ArgumentError("Cant determine relation direction '%s', for '%s' in mapper '%s' with primary join\n '%s'" %(repr(self.foreignkey), self.key, str(self.mapper), str(self.primaryjoin)))
             
     def _find_dependent(self):
         """searches through the primary join condition to determine which side
