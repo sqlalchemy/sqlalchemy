@@ -186,6 +186,13 @@ class PropertyLoader(mapper.MapperProperty):
         """template method for subclasses of PropertyLoader"""
         pass
     
+    def _get_target_class(self):
+        """return the target class of the relation, even if the property has not been initialized yet."""
+        if isinstance(self.argument, type):
+            return self.argument
+        else:
+            return self.argument.class_
+        
     def do_init(self, key, parent):
         import sqlalchemy.orm
         if isinstance(self.argument, type):
@@ -687,6 +694,9 @@ class BackRef(object):
             mapper._compile_property(self.key, relation);
         else:
             # else set one of us as the "backreference"
+            parent = prop.parent.primary_mapper()
+            if parent.class_ is not mapper.props[self.key]._get_target_class():
+                raise exceptions.ArgumentError("Backrefs do not match:  backref '%s' expects to connect to %s, but found a backref already connected to %s" % (self.key, str(parent.class_), str(mapper.props[self.key].mapper.class_)))
             if not mapper.props[self.key].is_backref:
                 prop.is_backref=True
                 prop._dependency_processor.is_backref=True

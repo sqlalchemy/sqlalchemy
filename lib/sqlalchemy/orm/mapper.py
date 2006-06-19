@@ -161,13 +161,13 @@ class Mapper(object):
         constructed in an arbitrary order, completing their relationships when they have all been established."""
         if self.__is_compiled:
             return self
-        #print "COMPILING!", self.class_key
+        #print "COMPILING!", self.class_key, "non primary: ", self.non_primary
         self.__is_compiled = True
         self._compile_extensions()
         self._compile_inheritance()
         self._compile_tables()
-        self._compile_selectable()
         self._compile_properties()
+        self._compile_selectable()
         self._initialize_properties()
         
         # compile some other mappers which have backrefs to this mapper

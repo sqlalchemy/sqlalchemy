@@ -19,6 +19,7 @@ def suite():
         'orm.poly_linked_list',
 
 	'orm.entity',
+	'orm.compile',
 	'orm.manytomany',
 	'orm.onetoone',
 	'orm.inheritance',
