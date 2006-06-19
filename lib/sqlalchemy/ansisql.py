@@ -606,7 +606,10 @@ class ANSISchemaGenerator(engine.SchemaIterator):
         raise NotImplementedError()
         
     def visit_table(self, table):
-        self.append("\nCREATE TABLE " + table.fullname + "(")
+        # the single whitespace before the "(" is significant
+        # as its MySQL's method of indicating a table name and not a reserved word.
+        # feel free to localize this logic to the mysql module
+        self.append("\nCREATE TABLE " + table.fullname + " (")
         
         separator = "\n"
         

@@ -10,6 +10,9 @@ otherwise still requires you explicitly remove the instance from
 the previous Session.
 - fixes to mapper compilation, checking for more error conditions
 - small fix to eager loading combined with ordering/limit/offset
+- utterly remarkable:  added a single space between 'CREATE TABLE'
+and '(<the rest of it>' since *thats how MySQL indicates a non-
+reserved word tablename.....* [ticket:206]
 
 0.2.3
 - overhaul to mapper compilation to be deferred.  this allows mappers
