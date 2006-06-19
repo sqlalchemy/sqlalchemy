@@ -795,7 +795,22 @@ class EagerTest(MapperSuperTest):
         l = q.select((Item.c.item_name=='item 2') | (Item.c.item_name=='item 5') | (Item.c.item_name=='item 3'), order_by=[Item.c.item_id], limit=2)        
         self.assert_result(l, Item, *[item_keyword_result[1], item_keyword_result[2]])
         
+    def testmorelimit(self):
+        """tests that the ORDER BY doesnt get clobbered with a nested eager load, when the ORDER BY
+        is an expression.  requires the copying of the order by clause in query.compile()"""
+        ordermapper = mapper(Order, orders, properties = dict(
+                items = relation(mapper(Item, orderitems), lazy = False)
+            ))
+
+        m = mapper(User, users, properties = dict(
+            addresses = relation(mapper(Address, addresses), lazy = False),
+            orders = relation(ordermapper, primaryjoin = users.c.user_id==orders.c.user_id, lazy = False),
+        ))
+        sess = create_session()
+        q = sess.query(m)
         
+        l = q.select(q.join_to('orders'), order_by=desc(orders.c.user_id), limit=2, offset=1)
+        self.assert_result(l, User, *(user_all_result[2], user_all_result[0]))
         
     def testonetoone(self):
         m = mapper(User, users, properties = dict(

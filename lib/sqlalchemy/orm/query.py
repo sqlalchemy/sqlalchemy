@@ -324,6 +324,10 @@ class Query(object):
             statement = sql.select([], sql.and_(*crit), from_obj=[self.table], use_labels=True)
  #           raise "OK statement", str(statement)
             if order_by:
+                # copy the order_by, since eager loaders will modify it, and we want the
+                # "inner" order_by to remain untouched
+                # see test/orm/mapper.py EagerTest.testmorelimit
+                order_by = [o.copy_container() for o in util.to_list(order_by)]
                 statement.order_by(*util.to_list(order_by))
         else:
             from_obj.append(self.table)
