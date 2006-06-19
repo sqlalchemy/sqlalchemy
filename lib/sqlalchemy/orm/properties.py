@@ -8,7 +8,7 @@
 well as relationships.  also defines some MapperOptions that can be used with the
 properties."""
 
-from sqlalchemy import sql, schema, util, attributes, exceptions
+from sqlalchemy import sql, schema, util, attributes, exceptions, sql_util
 import sync
 import mapper
 import session as sessionlib
@@ -450,7 +450,7 @@ class EagerLoader(LazyLoader):
         self.eagertarget = self.target.alias()
         if self.secondary:
             self.eagersecondary = self.secondary.alias()
-            self.aliasizer = Aliasizer(self.target, self.secondary, aliases={
+            self.aliasizer = sql_util.Aliasizer(self.target, self.secondary, aliases={
                     self.target:self.eagertarget,
                     self.secondary:self.eagersecondary
                     })
@@ -461,7 +461,7 @@ class EagerLoader(LazyLoader):
             self.eagerprimary.accept_visitor(self.aliasizer)
             #print "JOINS:", str(self.eagerprimary), "|", str(self.eagersecondaryjoin)
         else:
-            self.aliasizer = Aliasizer(self.target, aliases={self.target:self.eagertarget})
+            self.aliasizer = sql_util.Aliasizer(self.target, aliases={self.target:self.eagertarget})
             self.eagerprimary = self.primaryjoin.copy_container()
             self.eagerprimary.accept_visitor(self.aliasizer)
         
@@ -505,7 +505,7 @@ class EagerLoader(LazyLoader):
                     p.do_init_subclass(prop.key, prop.parent, recursion_stack)
                     p._create_eager_chain(recursion_stack=recursion_stack)
                     p.eagerprimary = p.eagerprimary.copy_container()
-#                    aliasizer = Aliasizer(p.parent.mapped_table, aliases={p.parent.mapped_table:self.eagertarget})
+#                    aliasizer = sql_util.Aliasizer(p.parent.mapped_table, aliases={p.parent.mapped_table:self.eagertarget})
                     p.eagerprimary.accept_visitor(self.aliasizer)
                     #print "new eagertqarget", p.eagertarget.name, (p.secondary and p.secondary.name or "none"), p.parent.mapped_table.name
             finally:
@@ -743,34 +743,6 @@ class DeferredOption(GenericOption):
             prop = ColumnProperty(*oldprop.columns, **self.kwargs)
         mapper._compile_property(key, prop)
         
-class Aliasizer(sql.ClauseVisitor):
-    """converts a table instance within an expression to be an alias of that table."""
-    def __init__(self, *tables, **kwargs):
-        self.tables = {}
-        self.aliases = kwargs.get('aliases', {})
-        for t in tables:
-            self.tables[t] = t
-            if not self.aliases.has_key(t):
-                self.aliases[t] = sql.alias(t)
-            if isinstance(t, sql.Join):
-                for t2 in t.columns:
-                    self.tables[t2.table] = t2
-                    self.aliases[t2.table] = self.aliases[t]
-        self.binary = None
-    def get_alias(self, table):
-        return self.aliases[table]
-    def visit_compound(self, compound):
-        self.visit_clauselist(compound)
-    def visit_clauselist(self, clist):
-        for i in range(0, len(clist.clauses)):
-            if isinstance(clist.clauses[i], schema.Column) and self.tables.has_key(clist.clauses[i].table):
-                orig = clist.clauses[i]
-                clist.clauses[i] = self.get_alias(clist.clauses[i].table).corresponding_column(clist.clauses[i])
-    def visit_binary(self, binary):
-        if isinstance(binary.left, schema.Column) and self.tables.has_key(binary.left.table):
-            binary.left = self.get_alias(binary.left.table).corresponding_column(binary.left)
-        if isinstance(binary.right, schema.Column) and self.tables.has_key(binary.right.table):
-            binary.right = self.get_alias(binary.right.table).corresponding_column(binary.right)
 
 class BinaryVisitor(sql.ClauseVisitor):
     def __init__(self, func):

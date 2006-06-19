@@ -1,5 +1,6 @@
 import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
+import sqlalchemy.util as util
 
 """utility functions that build upon SQL and Schema constructs"""
 
@@ -70,3 +71,39 @@ class TableFinder(TableCollection, sql.ClauseVisitor):
         if self.check_columns:
             column.table.accept_visitor(self)
 
+class ColumnFinder(sql.ClauseVisitor):
+    def __init__(self):
+        self.columns = util.Set()
+    def visit_column(self, c):
+        self.columns.add(c)
+    def __iter__(self):
+        return iter(self.columns)
+            
+class Aliasizer(sql.ClauseVisitor):
+    """converts a table instance within an expression to be an alias of that table."""
+    def __init__(self, *tables, **kwargs):
+        self.tables = {}
+        self.aliases = kwargs.get('aliases', {})
+        for t in tables:
+            self.tables[t] = t
+            if not self.aliases.has_key(t):
+                self.aliases[t] = sql.alias(t)
+            if isinstance(t, sql.Join):
+                for t2 in t.columns:
+                    self.tables[t2.table] = t2
+                    self.aliases[t2.table] = self.aliases[t]
+        self.binary = None
+    def get_alias(self, table):
+        return self.aliases[table]
+    def visit_compound(self, compound):
+        self.visit_clauselist(compound)
+    def visit_clauselist(self, clist):
+        for i in range(0, len(clist.clauses)):
+            if isinstance(clist.clauses[i], schema.Column) and self.tables.has_key(clist.clauses[i].table):
+                orig = clist.clauses[i]
+                clist.clauses[i] = self.get_alias(clist.clauses[i].table).corresponding_column(clist.clauses[i])
+    def visit_binary(self, binary):
+        if isinstance(binary.left, schema.Column) and self.tables.has_key(binary.left.table):
+            binary.left = self.get_alias(binary.left.table).corresponding_column(binary.left)
+        if isinstance(binary.right, schema.Column) and self.tables.has_key(binary.right.table):
+            binary.right = self.get_alias(binary.right.table).corresponding_column(binary.right)

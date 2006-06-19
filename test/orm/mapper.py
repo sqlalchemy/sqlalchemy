@@ -796,8 +796,8 @@ class EagerTest(MapperSuperTest):
         self.assert_result(l, Item, *[item_keyword_result[1], item_keyword_result[2]])
         
     def testmorelimit(self):
-        """tests that the ORDER BY doesnt get clobbered with a nested eager load, when the ORDER BY
-        is an expression.  requires the copying of the order by clause in query.compile()"""
+        """test that the ORDER BY is propigated from the inner select to the outer select, when using the 
+        'wrapped' select statement resulting from the combination of eager loading and limit/offset clauses."""
         ordermapper = mapper(Order, orders, properties = dict(
                 items = relation(mapper(Item, orderitems), lazy = False)
             ))
@@ -811,6 +811,9 @@ class EagerTest(MapperSuperTest):
         
         l = q.select(q.join_to('orders'), order_by=desc(orders.c.user_id), limit=2, offset=1)
         self.assert_result(l, User, *(user_all_result[2], user_all_result[0]))
+        
+        l = q.select(q.join_to('addresses'), order_by=desc(addresses.c.email_address), limit=1, offset=0)
+        self.assert_result(l, User, *(user_all_result[0],))
         
     def testonetoone(self):
         m = mapper(User, users, properties = dict(

@@ -5,7 +5,8 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import session as sessionlib
-from sqlalchemy import sql, util, exceptions
+from sqlalchemy import sql, util, exceptions, sql_util
+
 import mapper
 
 
@@ -313,7 +314,17 @@ class Query(object):
 
         if self._should_nest(**kwargs):
             from_obj.append(self.table)
-            s2 = sql.select(self.table.primary_key, whereclause, use_labels=True, from_obj=from_obj, **kwargs)
+            
+            # if theres an order by, add those columns to the column list
+            # of the "rowcount" query we're going to make
+            if order_by:
+                order_by = util.to_list(order_by) or []
+                cf = sql_util.ColumnFinder()
+                [o.accept_visitor(cf) for o in order_by]
+            else:
+                cf = []
+                
+            s2 = sql.select(self.table.primary_key + list(cf), whereclause, use_labels=True, from_obj=from_obj, **kwargs)
 #            raise "ok first thing", str(s2)
             if not kwargs.get('distinct', False) and order_by:
                 s2.order_by(*util.to_list(order_by))
@@ -323,11 +334,16 @@ class Query(object):
                 crit.append(s3.primary_key[i] == self.table.primary_key[i])
             statement = sql.select([], sql.and_(*crit), from_obj=[self.table], use_labels=True)
  #           raise "OK statement", str(statement)
+ 
+            # now for the order by, convert the columns to their corresponding columns
+            # in the "rowcount" query, and tack that new order by onto the "rowcount" query
             if order_by:
-                # copy the order_by, since eager loaders will modify it, and we want the
-                # "inner" order_by to remain untouched
-                # see test/orm/mapper.py EagerTest.testmorelimit
-                order_by = [o.copy_container() for o in util.to_list(order_by)]
+                class Aliasizer(sql_util.Aliasizer):
+                    def get_alias(self, table):
+                        return s3
+                order_by = [o.copy_container() for o in order_by]
+                aliasizer = Aliasizer(*[t for t in sql_util.TableFinder(s3)])
+                [o.accept_visitor(aliasizer) for  o in order_by]
                 statement.order_by(*util.to_list(order_by))
         else:
             from_obj.append(self.table)
