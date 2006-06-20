@@ -302,7 +302,6 @@ class InheritTest(testbase.AssertMixin):
             properties=dict(
                 name=documents_table.c.name,
                 data=deferred(documents_table.c.data),
-                product=relation(Product, lazy=True, backref='documents'),
                 ),
             )
 

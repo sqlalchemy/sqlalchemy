@@ -52,7 +52,7 @@ def clear_mappers():
     """removes all mappers that have been created thus far.  when new mappers are 
     created, they will be assigned to their classes as their primary mapper."""
     mapper_registry.clear()
-
+    
 def clear_mapper(m):
     """removes the given mapper from the storage of mappers.  when a new mapper is 
     created for the previous mapper's class, it will be used as that classes' 

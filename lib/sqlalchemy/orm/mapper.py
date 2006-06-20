@@ -166,14 +166,18 @@ class Mapper(object):
     dictionary of MapperProperty objects associated with this mapper.")
         
     def compile(self):
-        """compile.  this step assembles the Mapper's constructor arguments into their final internal
-        format, which includes establishing its relationships with other Mappers either via inheritance
-        relationships or via attached properties.  This step is deferred to when the Mapper is first used
-        (i.e. queried, used in a flush(), or its columns or properties are accessed) so that Mappers can be 
-        constructed in an arbitrary order, completing their relationships when they have all been established."""
+        """compile this mapper into its final internal format.
+        
+        this is the 'external' version of the method which is not reentrant."""
         if self.__is_compiled:
             return self
-        c = self._do_compile()
+            
+        self._do_compile()
+        
+        # see if other mappers still need to be compiled.  if so,
+        # locate one which is ready to be compiled, and compile it.
+        # this will keep the chain of compilation going until all
+        # mappers are compiled.
         for key in _compile_triggers.keys():
             if isinstance(key, ClassKey):
                 mapper = mapper_registry.get(key, None)
@@ -181,9 +185,20 @@ class Mapper(object):
                     trigger = _compile_triggers.get(mapper, None)
                     if trigger is None or trigger.can_compile():
                         mapper.compile()
-        return c
+                        break
+        
+        # in most cases, all known mappers should be compiled at this point
+        # _compile_triggers.clear()
+        # assert  len(_compile_triggers) == 0
+        
+        return self
 
     def _do_compile(self):
+        """compile this mapper into its final internal format.  
+        
+        this is the 'internal' version of the method which is assumed to be called within compile()
+        and is reentrant.
+        """
         if self.__is_compiled:
             return self
         #print "COMPILING!", self.class_key, "non primary: ", self.non_primary
@@ -194,6 +209,10 @@ class Mapper(object):
         self._compile_properties()
         self._compile_selectable()
         self._initialize_properties()
+        try:
+            del _compile_triggers[self]
+        except KeyError:
+            pass
         
         # compile some other mappers which have backrefs to this mapper
         triggerset = _compile_triggers.pop(self.class_key, None)
@@ -202,42 +221,38 @@ class Mapper(object):
                 rec.compiled(self.class_key)
                 if rec.can_compile():
                     rec.mapper._do_compile()
-                    try:
-                        del _compile_triggers[rec.mapper]
-                    except KeyError:
-                        pass
                     
         return self
 
     def _add_compile_trigger(self, argument):
-        """given an argument which is either a Class or a Mapper, sets a 
-        "compile trigger" indicating this mapper should be compiled directly
-        after the given mapper (or class's mapper) is compiled."""
+        """Establish the given mapper/classkey as a compilation dependency for this mapper."""
     
         if isinstance(argument, Mapper):
             classkey = argument.class_key
         else:
             classkey = ClassKey(argument, None)
         
+        # CompileTrigger by mapper
         try:
             rec = _compile_triggers[self]
         except KeyError:
-            # a tuple of: (mapper to be compiled, Set of classkeys of mappers to be compiled first)
             rec = CompileTrigger(self)
             _compile_triggers[self] = rec
+            
         if classkey in rec.dependencies:
             return
 
         rec.add_dependency(classkey)
 
+        # CompileTrigger by triggering mapper (its classkey)
+        # when this mapper is compiled, all the CompileTrigger mappers
+        # are compiled (if their dependencies have all been compiled)
         try:
             triggers = _compile_triggers[classkey]
         except KeyError:
-            # list of the above tuples corresponding to a particular class key
             triggers = []
             _compile_triggers[classkey] = triggers
         triggers.append(rec)
-        _compile_triggers[classkey] = triggers
         
     def _compile_extensions(self):
         """goes through the global_extensions list as well as the list of MapperExtensions
@@ -275,7 +290,7 @@ class Mapper(object):
         used in polymorphic loads."""
         if self.inherits is not None:
             if isinstance(self.inherits, type):
-                self.inherits = class_mapper(self.inherits)
+                self.inherits = class_mapper(self.inherits, compile=False)._do_compile()
             else:
                 self.inherits = self.inherits._do_compile()
             if self.class_.__mro__[1] != self.inherits.class_:
@@ -1372,12 +1387,15 @@ def object_mapper(object, raiseerror=True):
             return None
     return mapper.compile()
     
-def class_mapper(class_, entity_name=None):
+def class_mapper(class_, entity_name=None, compile=True):
     """given a ClassKey, returns the primary Mapper associated with the key."""
     try:
         mapper = mapper_registry[ClassKey(class_, entity_name)]
     except (KeyError, AttributeError):
         raise exceptions.InvalidRequestError("Class '%s' entity name '%s' has no mapper associated with it" % (class_.__name__, entity_name))
-    return mapper._do_compile()
+    if compile:
+        return mapper._do_compile()
+    else:
+        return mapper
     
     

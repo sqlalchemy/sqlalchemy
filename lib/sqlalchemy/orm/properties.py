@@ -198,7 +198,7 @@ class PropertyLoader(mapper.MapperProperty):
         if isinstance(self.argument, type):
             self.mapper = mapper.class_mapper(self.argument)
         else:
-            self.mapper = self.argument.compile()
+            self.mapper = self.argument._do_compile()
 
         self.mapper = self.mapper.get_select_mapper()
             
