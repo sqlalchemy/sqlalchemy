@@ -10,9 +10,9 @@ def monkeypatch_query_method(ctx, class_, name):
 def monkeypatch_objectstore_method(ctx, class_, name):
     def do(self, *args, **kwargs):
         session = ctx.current
-	if name == "flush":
-		# flush expects a list of objects
-		self = [self]
+        if name == "flush":
+            # flush expects a list of objects
+            self = [self]
         return getattr(session, name)(self, *args, **kwargs)
     setattr(class_, name, do)
     
