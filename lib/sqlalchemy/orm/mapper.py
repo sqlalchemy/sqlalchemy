@@ -630,6 +630,7 @@ class Mapper(object):
         raises InvalidRequestError if a session cannot be retrieved from the
         extension chain
         """
+        self.compile()
         s = self.extension.get_session()
         if s is EXT_PASS:
             raise exceptions.InvalidRequestError("No contextual Session is established.  Use a MapperExtension that implements get_session or use 'import sqlalchemy.mods.threadlocal' to establish a default thread-local contextual session.")
