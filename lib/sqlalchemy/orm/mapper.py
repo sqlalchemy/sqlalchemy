@@ -45,7 +45,9 @@ class CompileTrigger(object):
         return len(self.dependencies) == 0 or (len(self.dependencies)==1 and list(self.dependencies)[0] == self.mapper.class_key)
     def compiled(self, classkey):
         self.dependencies.remove(classkey)
-        
+    def __str__(self):
+        return "CompileTrigger on mapper " + str(self.mapper)
+            
 class Mapper(object):
     """Persists object instances to and from schema.Table objects via the sql package.
     Instances of this class should be constructed through this package's mapper() or
@@ -218,6 +220,7 @@ class Mapper(object):
         triggerset = _compile_triggers.pop(self.class_key, None)
         if triggerset is not None:
             for rec in triggerset:
+                print "looking at:", rec
                 rec.compiled(self.class_key)
                 if rec.can_compile():
                     rec.mapper._do_compile()
@@ -1395,7 +1398,7 @@ def class_mapper(class_, entity_name=None, compile=True):
     except (KeyError, AttributeError):
         raise exceptions.InvalidRequestError("Class '%s' entity name '%s' has no mapper associated with it" % (class_.__name__, entity_name))
     if compile:
-        return mapper._do_compile()
+        return mapper.compile()
     else:
         return mapper
     

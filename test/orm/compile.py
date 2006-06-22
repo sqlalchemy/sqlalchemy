@@ -117,5 +117,42 @@ class CompileTest(testbase.AssertMixin):
         except exceptions.ArgumentError, e:
             assert str(e).index("Backrefs do not match") > -1
 
+    def testthree(self):
+        metadata = BoundMetaData(testbase.db)
+        node_table = Table("node", metadata, 
+            Column('node_id', Integer, primary_key=True),
+            Column('name_index', Integer, nullable=True),
+            )
+        node_name_table = Table("node_name", metadata, 
+            Column('node_name_id', Integer, primary_key=True),
+            Column('node_id', Integer, ForeignKey('node.node_id')),
+            Column('host_id', Integer, ForeignKey('host.host_id')),
+            Column('name', String(64), nullable=False),
+            )
+        host_table = Table("host", metadata,
+            Column('host_id', Integer, primary_key=True),
+            Column('hostname', String(64), nullable=False,
+        unique=True),
+            )
+        metadata.create_all()
+        try:
+            node_table.insert().execute(node_id=1, node_index=5)
+            class Node(object):pass
+            class NodeName(object):pass
+            class Host(object):pass
+                
+            node_mapper = mapper(Node, node_table)
+            host_mapper = mapper(Host, host_table)
+            node_name_mapper = mapper(NodeName, node_name_table,
+            properties = {
+                'node' : relation(Node, backref=backref('names')),
+                'host' : relation(Host),
+                }
+            )
+            sess = create_session()
+            assert sess.query(Node).get(1).names == []
+        finally:
+            metadata.drop_all()
+
 if __name__ == '__main__':
     testbase.main()

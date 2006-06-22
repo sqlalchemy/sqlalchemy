@@ -18,14 +18,14 @@ def suite():
         'orm.cycles',
         'orm.poly_linked_list',
 
-	'orm.entity',
-	'orm.compile',
-	'orm.manytomany',
-	'orm.onetoone',
-	'orm.inheritance',
-	'orm.inheritance2',
-	'orm.inheritance3',
-	'orm.polymorph'        
+        'orm.entity',
+        'orm.compile',
+        'orm.manytomany',
+        'orm.onetoone',
+        'orm.inheritance',
+        'orm.inheritance2',
+        'orm.inheritance3',
+        'orm.polymorph'        
         )
     alltests = unittest.TestSuite()
     for name in modules_to_test:
