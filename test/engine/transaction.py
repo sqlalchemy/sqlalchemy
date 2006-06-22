@@ -159,8 +159,29 @@ class TLTransactionTest(testbase.PersistTest):
 
     @testbase.unsupported('mysql')
     def testrollback_off_conn(self):
+        # test that a TLTransaction opened off a TLConnection allows that
+        # TLConnection to be aware of the transactional context
         conn = tlengine.contextual_connect()
         trans = conn.begin()
+        conn.execute(users.insert(), user_id=1, user_name='user1')
+        conn.execute(users.insert(), user_id=2, user_name='user2')
+        conn.execute(users.insert(), user_id=3, user_name='user3')
+        trans.rollback()
+
+        external_connection = tlengine.connect()
+        result = external_connection.execute("select * from query_users")
+        try:
+            assert len(result.fetchall()) == 0
+        finally:
+            external_connection.close()
+
+    @testbase.unsupported('mysql')
+    def testmorerollback_off_conn(self):
+        # test that an existing TLConnection automatically takes place in a TLTransaction
+        # opened on a second TLConnection
+        conn = tlengine.contextual_connect()
+        conn2 = tlengine.contextual_connect()
+        trans = conn2.begin()
         conn.execute(users.insert(), user_id=1, user_name='user1')
         conn.execute(users.insert(), user_id=2, user_name='user2')
         conn.execute(users.insert(), user_id=3, user_name='user3')
