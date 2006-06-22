@@ -23,7 +23,7 @@ class Query(object):
         self.order_by = kwargs.pop('order_by', self.mapper.order_by)
         self.extension = kwargs.pop('extension', self.mapper.extension)
         self._session = session
-        if not hasattr(mapper, '_get_clause'):
+        if not hasattr(self.mapper, '_get_clause'):
             _get_clause = sql.and_()
             for primary_key in self.mapper.pks_by_table[self.table]:
                 _get_clause.clauses.append(primary_key == sql.bindparam("pk_"+primary_key._label, type=primary_key.type))

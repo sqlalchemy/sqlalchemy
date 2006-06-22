@@ -196,15 +196,15 @@ class PropertyLoader(mapper.MapperProperty):
     def do_init(self, key, parent):
         import sqlalchemy.orm
         if isinstance(self.argument, type):
-            self.mapper = mapper.class_mapper(self.argument)
+            self.mapper = mapper.class_mapper(self.argument, compile=False)._do_compile()
         else:
             self.mapper = self.argument._do_compile()
 
-        self.mapper = self.mapper.get_select_mapper()
+        self.mapper = self.mapper.get_select_mapper()._do_compile()
             
         if self.association is not None:
             if isinstance(self.association, type):
-                self.association = mapper.class_mapper(self.association)
+                self.association = mapper.class_mapper(self.association, compile=False)
         
         self.target = self.mapper.mapped_table
 

@@ -220,7 +220,6 @@ class Mapper(object):
         triggerset = _compile_triggers.pop(self.class_key, None)
         if triggerset is not None:
             for rec in triggerset:
-                print "looking at:", rec
                 rec.compiled(self.class_key)
                 if rec.can_compile():
                     rec.mapper._do_compile()
@@ -417,7 +416,7 @@ class Mapper(object):
             # the column properties will attempt to be translated from the selectable unit
             # of the parent mapper to this mapper's selectable unit.
             self.inherits._inheriting_mappers.add(self)
-            for key, prop in self.inherits.props.iteritems():
+            for key, prop in self.inherits.__props.iteritems():
                 if not self.__props.has_key(key):
                     p = prop.copy()
                     if p.adapt(self):
@@ -469,7 +468,7 @@ class Mapper(object):
                         props[key] = self.select_table.corresponding_column(prop)
                     elif (isinstance(prop, list) and sql.is_column(prop[0])):
                         props[key] = [self.select_table.corresponding_column(c) for c in prop]
-            self.__surrogate_mapper = Mapper(self.class_, self.select_table, non_primary=True, properties=props, polymorphic_map=self.polymorphic_map, polymorphic_on=self.select_table.corresponding_column(self.polymorphic_on))._do_compile()
+            self.__surrogate_mapper = Mapper(self.class_, self.select_table, non_primary=True, properties=props, polymorphic_map=self.polymorphic_map, polymorphic_on=self.select_table.corresponding_column(self.polymorphic_on))
 
     def _compile_class(self):
         """if this mapper is to be a primary mapper (i.e. the non_primary flag is not set),
