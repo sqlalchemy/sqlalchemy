@@ -63,6 +63,8 @@ class MSText(sqltypes.TEXT):
     def get_col_spec(self):
         return "TEXT"
 class MSString(sqltypes.String):
+    def __init__(self, length=None, *extra):
+        sqltypes.String.__init__(self, length=length)
     def get_col_spec(self):
         return "VARCHAR(%(length)s)" % {'length' : self.length}
 class MSChar(sqltypes.CHAR):
