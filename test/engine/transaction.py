@@ -157,6 +157,38 @@ class TLTransactionTest(testbase.PersistTest):
         finally:
             external_connection.close()
 
+    @testbase.unsupported('mysql')
+    def testrollback_off_conn(self):
+        conn = tlengine.contextual_connect()
+        trans = conn.begin()
+        conn.execute(users.insert(), user_id=1, user_name='user1')
+        conn.execute(users.insert(), user_id=2, user_name='user2')
+        conn.execute(users.insert(), user_id=3, user_name='user3')
+        trans.rollback()
+
+        external_connection = tlengine.connect()
+        result = external_connection.execute("select * from query_users")
+        try:
+            assert len(result.fetchall()) == 0
+        finally:
+            external_connection.close()
+
+    @testbase.unsupported('mysql')
+    def testcommit_off_conn(self):
+        conn = tlengine.contextual_connect()
+        trans = conn.begin()
+        conn.execute(users.insert(), user_id=1, user_name='user1')
+        conn.execute(users.insert(), user_id=2, user_name='user2')
+        conn.execute(users.insert(), user_id=3, user_name='user3')
+        trans.commit()
+
+        external_connection = tlengine.connect()
+        result = external_connection.execute("select * from query_users")
+        try:
+            assert len(result.fetchall()) == 3
+        finally:
+            external_connection.close()
+        
     @testbase.unsupported('mysql', 'sqlite')
     def testnesting(self):
         """tests nesting of tranacstions"""

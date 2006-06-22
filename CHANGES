@@ -1,6 +1,8 @@
 0.2.4
 - try/except when the mapper sets init.__name__ on a mapped class,
 supports python 2.3
+- fixed bug where threadlocal engine would still autocommit
+despite a transaction in progress
 - lazy load and deferred load operations require the parent object
 to be in a Session to do the operation; whereas before the operation
 would just return a blank list or None, it now raises an exception.
