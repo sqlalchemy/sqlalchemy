@@ -1,5 +1,5 @@
-from sqlalchemy             import (create_session, relation, mapper, join, 
-                                    DynamicMetaData, class_mapper, util)
+from sqlalchemy             import create_session, relation, mapper, \
+join, DynamicMetaData, class_mapper, util
 from sqlalchemy             import and_, or_
 from sqlalchemy             import Table, Column, ForeignKey
 from sqlalchemy.ext.sessioncontext import SessionContext
