@@ -15,6 +15,8 @@ the previous Session.
 - utterly remarkable:  added a single space between 'CREATE TABLE'
 and '(<the rest of it>' since *thats how MySQL indicates a non-
 reserved word tablename.....* [ticket:206]
+- more fixes to inheritance, related to many-to-many relations
+properly saving
 
 0.2.3
 - overhaul to mapper compilation to be deferred.  this allows mappers

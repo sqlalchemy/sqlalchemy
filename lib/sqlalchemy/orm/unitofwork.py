@@ -313,8 +313,6 @@ class UOWTransaction(object):
         this method returns or creates the single per-transaction instance of
         UOWTask that exists for that mapper."""
         try:
-            if isinstance(mapper, UOWTask):
-                raise "wha"
             return self.tasks[mapper]
         except KeyError:
             if dontcreate:
@@ -364,6 +362,11 @@ class UOWTransaction(object):
         #        print "TASK OBJ:", obj
         #    for elem in task.get_elements(polymorphic=True):
         #        print "POLYMORPHIC TASK OBJ:", elem.obj
+        
+        # insure that we have a UOWTask for every mapper that will be involved 
+        # in the topological sort
+        [self.get_task_by_mapper(m) for m in self._get_noninheriting_mappers()]
+        
         #print "-----------------------------"
         # pre-execute dependency processors.  this process may 
         # result in new tasks, objects and/or dependency processors being added,

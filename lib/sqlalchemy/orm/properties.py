@@ -315,7 +315,7 @@ class PropertyLoader(mapper.MapperProperty):
 
     def register_dependencies(self, uowcommit):
         self._dependency_processor.register_dependencies(uowcommit)
-
+            
     def _compile_synchronizers(self):
         """assembles a list of 'synchronization rules', which are instructions on how to populate
         the objects on each side of a relationship.  This is done when a PropertyLoader is 

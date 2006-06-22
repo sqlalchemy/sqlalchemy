@@ -85,7 +85,7 @@ class DependencyProcessor(object):
 class OneToManyDP(DependencyProcessor):
     def register_dependencies(self, uowcommit):
         if self.post_update:
-            stub = MapperStub(self.mapper)
+            stub = MapperStub(self.parent, self.mapper, self.key)
             uowcommit.register_dependency(self.mapper, stub)
             uowcommit.register_dependency(self.parent, stub)
             uowcommit.register_processor(stub, self, self.parent)
@@ -179,7 +179,7 @@ class OneToManyDP(DependencyProcessor):
 class ManyToOneDP(DependencyProcessor):
     def register_dependencies(self, uowcommit):
         if self.post_update:
-            stub = MapperStub(self.mapper)
+            stub = MapperStub(self.parent, self.mapper, self.key)
             uowcommit.register_dependency(self.mapper, stub)
             uowcommit.register_dependency(self.parent, stub)
             uowcommit.register_processor(stub, self, self.parent)
@@ -249,7 +249,7 @@ class ManyToManyDP(DependencyProcessor):
             # if we are the "backref" half of a two-way backref 
             # relationship, let the other mapper handle inserting the rows
             return
-        stub = MapperStub(self.mapper)
+        stub = MapperStub(self.parent, self.mapper, self.key)
         uowcommit.register_dependency(self.parent, stub)
         uowcommit.register_dependency(self.mapper, stub)
         uowcommit.register_processor(stub, self, self.parent)
@@ -304,7 +304,7 @@ class AssociationDP(OneToManyDP):
         # association/parent->stub->self, then we process the child
         # elments after the 'stub' save, which is before our own
         # mapper's save.
-        stub = MapperStub(self.association)
+        stub = MapperStub(self.parent, self.association, self.key)
         uowcommit.register_dependency(self.parent, stub)
         uowcommit.register_dependency(self.association, stub)
         uowcommit.register_dependency(stub, self.mapper)
@@ -371,7 +371,8 @@ class MapperStub(object):
     The Task objects in the objectstore module treat it just like
     any other Mapper, but in fact it only serves as a "dependency" placeholder
     for the many-to-many update task."""
-    def __init__(self, mapper):
+    __metaclass__ = util.ArgSingleton
+    def __init__(self, parent, mapper, key):
         self.mapper = mapper
         self._inheriting_mappers = []
     def register_dependencies(self, uowcommit):
