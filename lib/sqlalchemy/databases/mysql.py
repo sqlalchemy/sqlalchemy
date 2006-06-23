@@ -143,6 +143,8 @@ class MySQLDialect(ansisql.ANSIDialect):
     def __init__(self, module = None, **kwargs):
         if module is None:
             self.module = mysql
+        else:
+            self.module = module
         ansisql.ANSIDialect.__init__(self, **kwargs)
 
     def create_connect_args(self, url):
