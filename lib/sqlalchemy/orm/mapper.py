@@ -122,9 +122,10 @@ class Mapper(object):
         class LOrderedProp(util.OrderedProperties):
             """this extends OrderedProperties to trigger a compile() before the
             members of the object are accessed."""
-            def __getattr__(s, key):
+            def _get_data(s):
                 self.compile()
-                return util.OrderedProperties.__getattr__(s, key)
+                return s.__dict__['_OrderedProperties__data']
+            _OrderedProperties__data = property(_get_data)
                 
         self.columns = LOrderedProp()
         self.c = self.columns
