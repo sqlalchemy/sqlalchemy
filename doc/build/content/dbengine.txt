@@ -22,6 +22,15 @@ Underneath the public-facing API of `ComposedSQLEngine`, several components are 
 
 Engines exist for SQLite, Postgres, MySQL, and Oracle, using the Pysqlite, Psycopg2 (Psycopg1 will work to some degree but its typing model is not supported...install Psycopg2!), MySQLDB, and cx_Oracle modules.  There is also preliminary support for MS-SQL using adodbapi or pymssql, as well as Firebird.   For each engine, a distinct Python module exists in the `sqlalchemy.databases` package, which provides implementations of some of the objects mentioned in the previous section.
 
+Downloads for each DBAPI at the time of this writing are as follows:
+
+* Postgres:  [psycopg2](http://www.initd.org/tracker/psycopg)
+* SQLite:  [pysqlite](http://initd.org/tracker/pysqlite)
+* MySQL:   [MySQLDB](http://sourceforge.net/projects/mysql-python)
+* Oracle:  [cx_Oracle](http://www.cxtools.net/default.aspx?nav=home)
+* MS-SQL:  [adodbapi](http://adodbapi.sourceforge.net/)  [pymssql](http://pymssql.sourceforge.net/)
+* Firebird:  [kinterbasdb](http://kinterbasdb.sourceforge.net/)
+
 ### Establishing a Database Engine {@name=establishing}
 
 SQLAlchemy 0.2 indicates the source of an Engine strictly via [RFC-1738](http://rfc.net/rfc1738.html) style URLs, combined with optional keyword arguments to specify options for the Engine.  The form of the URL is:
