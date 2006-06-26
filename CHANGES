@@ -26,6 +26,8 @@ for a mutex.  this is to fix a reported case where a ConnectionFairy's
 __del__() method got called within the Queue's get() method, which 
 then returns its connection to the Queue via the the put() method, 
 causing a reentrant hang unless threading.RLock is used.
+- postgres will not place SERIAL keyword on a primary key column
+if it has a foreign key constraint
 
 0.2.3
 - overhaul to mapper compilation to be deferred.  this allows mappers

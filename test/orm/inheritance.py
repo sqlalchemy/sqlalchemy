@@ -419,7 +419,7 @@ class InheritTest7(testbase.AssertMixin):
     def setUpAll(self):
         global users, roles, user_roles, admins, metadata
         metadata=BoundMetaData(testbase.db)
-        users = Table('user', metadata,
+        users = Table('users', metadata,
             Column('id', Integer, primary_key=True),
             Column('email', String(128)),
             Column('password', String(16)),
@@ -431,13 +431,13 @@ class InheritTest7(testbase.AssertMixin):
         )
 
         user_roles = Table('user_role', metadata,
-            Column('user_id', Integer, ForeignKey('user.id'), primary_key=True),
+            Column('user_id', Integer, ForeignKey('users.id'), primary_key=True),
             Column('role_id', Integer, ForeignKey('role.id'), primary_key=True)
         )
 
         admins = Table('admin', metadata,
             Column('id', Integer, primary_key=True),
-            Column('user_id', Integer, ForeignKey('user.id'))
+            Column('user_id', Integer, ForeignKey('users.id'))
         )
         metadata.create_all()
     def tearDownAll(self):
