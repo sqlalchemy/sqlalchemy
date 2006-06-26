@@ -141,8 +141,8 @@ class ConnectionFairy(object):
         self.connection.rollback()
         self.connection = None
         self.pool.return_invalid()
-    def cursor(self):
-        return CursorFairy(self, self.connection.cursor())
+    def cursor(self, *args, **kwargs):
+        return CursorFairy(self, self.connection.cursor(*args, **kwargs))
     def __getattr__(self, key):
         return getattr(self.connection, key)
     def checkout(self):

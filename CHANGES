@@ -28,6 +28,8 @@ then returns its connection to the Queue via the the put() method,
 causing a reentrant hang unless threading.RLock is used.
 - postgres will not place SERIAL keyword on a primary key column
 if it has a foreign key constraint
+- cursor() method on ConnectionFairy allows db-specific extension
+arguments to be propigated [ticket:221]
 
 0.2.3
 - overhaul to mapper compilation to be deferred.  this allows mappers
