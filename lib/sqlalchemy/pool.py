@@ -11,7 +11,7 @@ be managed automatically, based on module type and connect arguments,
  simply by calling regular DBAPI connect() methods."""
 
 import Queue, weakref, string, cPickle
-import util
+import util, exceptions
 
 try:
     import thread
@@ -225,6 +225,8 @@ class QueuePool(Pool):
         try:
             return self._pool.get(self._max_overflow > -1 and self._overflow >= self._max_overflow, self._timeout)
         except Queue.Empty:
+            if self._overflow >= self._max_overflow:
+                raise exceptions.TimeoutError("QueuePool limit of size %d overflow %d reached, connection timed out" % (self.size(), self.overflow()))
             self._overflow += 1
             return self._creator()
 

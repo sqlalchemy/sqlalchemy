@@ -24,6 +24,10 @@ class ArgumentError(SQLAlchemyError):
     """raised for all those conditions where invalid arguments are sent to constructed
     objects.  This error generally corresponds to construction time state errors."""
     pass
+
+class TimeoutError(SQLAlchemyError):
+    """raised when a connection pool times out on getting a connection"""
+    pass
     
 class FlushError(SQLAlchemyError):
     """raised when an invalid condition is detected upon a flush()"""

@@ -3,7 +3,7 @@ import unittest, sys, os, time
 
 from pysqlite2 import dbapi2 as sqlite
 import sqlalchemy.pool as pool
-
+import sqlalchemy.exceptions as exceptions 
 class PoolTest(PersistTest):
     
     def setUp(self):
@@ -96,8 +96,11 @@ class PoolTest(PersistTest):
         c2 = p.get()
         c3 = p.get()
         now = time.time()
-        c4 = p.get()
-        assert int(time.time() - now) == 2
+        try:
+            c4 = p.get()
+            assert False
+        except exceptions.TimeoutError, e:
+            assert int(time.time() - now) == 2
         
     def testthreadlocal_del(self):
         self._do_testthreadlocal(useclose=False)
