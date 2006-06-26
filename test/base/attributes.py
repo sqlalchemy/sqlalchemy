@@ -183,6 +183,22 @@ class AttributesTest(PersistTest):
         assert x.element2 == 'this is the shared attr'
         assert y.element2 == 'this is the shared attr'
 
+    def testinheritance2(self):
+        """test that the attribute manager can properly traverse the managed attributes of an object,
+        if the object is of a descendant class with managed attributes in the parent class"""
+        class Foo(object):pass
+        class Bar(Foo):pass
+        manager = attributes.AttributeManager()
+        manager.register_attribute(Foo, 'element', uselist=False)
+        x = Bar()
+        x.element = 'this is the element'
+        hist = manager.get_history(x, 'element')
+        assert hist.added_items() == ['this is the element']
+        manager.commit(x)
+        hist = manager.get_history(x, 'element')
+        assert hist.added_items() == []
+        assert hist.unchanged_items() == ['this is the element']
+
     def testlazyhistory(self):
         """tests that history functions work with lazy-loading attributes"""
         class Foo(object):pass

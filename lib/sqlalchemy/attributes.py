@@ -519,7 +519,7 @@ class AttributeHistory(object):
                 else:
                     self._deleted_items = []
                 self._unchanged_items = []
-        #print "orig", original, "current", current, "added", self._added_items, "unchanged", self._unchanged_items, "deleted", self._deleted_items
+        #print "key", attr.key, "orig", original, "current", current, "added", self._added_items, "unchanged", self._unchanged_items, "deleted", self._deleted_items
     def __iter__(self):
         return iter(self._current)
     def added_items(self):
@@ -566,7 +566,8 @@ class AttributeManager(object):
         """returns an iterator of all InstrumentedAttribute objects associated with the given class."""
         if not isinstance(class_, type):
             raise repr(class_) + " is not a type"
-        for value in class_.__dict__.values():
+        for key in dir(class_):
+            value = getattr(class_, key)
             if isinstance(value, InstrumentedAttribute):
                 yield value
                 

@@ -442,8 +442,11 @@ class InheritTest7(testbase.AssertMixin):
         metadata.create_all()
     def tearDownAll(self):
         metadata.drop_all()
-
-    def testbasic(self):
+    def tearDown(self):
+        for t in metadata.table_iterator(reverse=True):
+            t.delete().execute()
+            
+    def testone(self):
         class User(object):pass
         class Role(object):pass
         class Admin(User):pass
@@ -468,6 +471,43 @@ class InheritTest7(testbase.AssertMixin):
         sess.save(a)
         sess.flush()
         
+        assert user_roles.count().scalar() == 1
+
+    def testtwo(self):
+        class User(object):
+            def __init__(self, email=None, password=None):
+                self.email = email
+                self.password = password
+
+        class Role(object):
+            def __init__(self, description=None):
+                self.description = description
+
+        class Admin(User):pass
+
+        role_mapper = mapper(Role, roles)
+        user_mapper = mapper(User, users, properties = {
+                'roles' : relation(Role, secondary=user_roles, lazy=False, private=False)
+            }
+        )
+
+        admin_mapper = mapper(Admin, admins, inherits=user_mapper) 
+
+        # create roles
+        adminrole = Role('admin')
+
+        sess = create_session()
+        sess.save(adminrole)
+        sess.flush()
+
+        # create admin user
+        a = Admin(email='tim', password='admin')
+        a.roles.append(adminrole)
+        sess.save(a)
+        sess.flush()
+
+        a.password = 'sadmin'
+        sess.flush()
         assert user_roles.count().scalar() == 1
         
 if __name__ == "__main__":    
