@@ -15,8 +15,10 @@ import util, exceptions
 
 try:
     import thread
+    import threading
 except:
     import dummythread as thread
+    import dummythreading as threading
 
 proxies = {}
 
@@ -207,6 +209,15 @@ class QueuePool(Pool):
         Pool.__init__(self, **params)
         self._creator = creator
         self._pool = Queue.Queue(pool_size)
+
+        # modify the pool's mutex to be an RLock.  this is because a rare condition can
+        # occur where a ConnectionFairy's __del__ method gets called within the get() method
+        # of the Queue (and then tries to do a put() within the get()), causing a re-entrant hang.
+        # the RLock allows the mutex to be reentrant within that case.
+        self._pool.mutex = threading.RLock()
+        self._pool.not_empty = threading.Condition(self._pool.mutex)
+        self._pool.not_full = threading.Condition(self._pool.mutex)
+        
         self._overflow = 0 - pool_size
         self._max_overflow = max_overflow
         self._timeout = timeout

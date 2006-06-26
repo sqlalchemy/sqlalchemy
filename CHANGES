@@ -20,6 +20,7 @@ properly saving
 - fixed bug when specifying explicit module to mysql dialect
 - when QueuePool times out it raises a TimeoutError instead of
 erroneously making another connection
+- attempting to fix a rare hang that can occur with Queue.Queue
 
 0.2.3
 - overhaul to mapper compilation to be deferred.  this allows mappers
