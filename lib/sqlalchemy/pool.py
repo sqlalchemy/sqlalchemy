@@ -91,20 +91,24 @@ class Pool(object):
             self._threadconns[thread.get_ident()] = agent
             return agent
 
-    def return_conn(self, agent):
+    def _purge_for_threadlocal(self):
         if self._use_threadlocal:
             try:
                 del self._threadconns[thread.get_ident()]
             except KeyError:
                 pass
+
+    def return_conn(self, agent):
+        self._purge_for_threadlocal()
         self.do_return_conn(agent.connection)
+
+    def return_invalid(self):
+        self._purge_for_threadlocal()
+        self.do_return_invalid()
         
     def get(self):
         return self.do_get()
     
-    def return_invalid(self):
-        self.do_return_invalid()
-            
     def do_get(self):
         raise NotImplementedError()
         
@@ -138,7 +142,6 @@ class ConnectionFairy(object):
     def invalidate(self):
         if self.pool.echo:
             self.pool.log("Invalidate connection %s" % repr(self.connection))
-        self.connection.rollback()
         self.connection = None
         self.pool.return_invalid()
     def cursor(self, *args, **kwargs):
@@ -220,8 +223,7 @@ class QueuePool(Pool):
             self._overflow -= 1
 
     def do_return_invalid(self):
-        if self._pool.full():
-            self._overflow -= 1
+        self._overflow -= 1
         
     def do_get(self):
         try:

@@ -34,6 +34,7 @@ arguments to be propigated [ticket:221]
 - new MySQL types: MSEnum, MSTinyText, MSMediumText, MSLongText, etc.
 more support for MS-specific length/precision params in numeric types
 patch courtesy Mike Bernson
+- some fixes to connection pool invalidate() [ticket:224]
 
 0.2.3
 - overhaul to mapper compilation to be deferred.  this allows mappers
