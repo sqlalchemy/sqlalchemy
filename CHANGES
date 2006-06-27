@@ -30,6 +30,7 @@ causing a reentrant hang unless threading.RLock is used.
 if it has a foreign key constraint
 - cursor() method on ConnectionFairy allows db-specific extension
 arguments to be propigated [ticket:221]
+- lazy load bind params properly propigate column type [ticket:225]
 
 0.2.3
 - overhaul to mapper compilation to be deferred.  this allows mappers

@@ -178,15 +178,22 @@ class VersioningTest(SessionTest):
 class UnicodeTest(SessionTest):
     def setUpAll(self):
         SessionTest.setUpAll(self)
-        global uni_table
-        uni_table = Table('uni_test', db,
+        global metadata, uni_table, uni_table2
+        metadata = BoundMetaData(testbase.db)
+        uni_table = Table('uni_test', metadata,
             Column('id',  Integer, primary_key=True),
-            Column('txt', Unicode(50))).create()
-
+            Column('txt', Unicode(50), unique=True))
+        uni_table2 = Table('uni2', metadata,
+            Column('id',  Integer, primary_key=True),
+            Column('txt', Unicode(50), ForeignKey(uni_table.c.txt)))
+        metadata.create_all()
     def tearDownAll(self):
-        uni_table.drop()
+        metadata.drop_all()
         SessionTest.tearDownAll(self)
-
+    def tearDown(self):
+        clear_mappers()
+        for t in metadata.table_iterator(reverse=True):
+            t.delete().execute()
     def testbasic(self):
         class Test(object):
             def __init__(self, id, txt):
@@ -199,8 +206,26 @@ class UnicodeTest(SessionTest):
         self.assert_(t1.txt == txt)
         ctx.current.flush()
         self.assert_(t1.txt == txt)
-
-
+    def testrelation(self):
+        class Test(object):
+            def __init__(self, txt):
+                self.txt = txt
+        class Test2(object):pass
+            
+        mapper(Test, uni_table, properties={
+            't2s':relation(Test2)
+        })
+        mapper(Test2, uni_table2)
+            
+        txt = u"\u0160\u0110\u0106\u010c\u017d"
+        t1 = Test(txt=txt)
+        t1.t2s.append(Test2())
+        t1.t2s.append(Test2())
+        ctx.current.flush()
+        ctx.current.clear()
+        t1 = ctx.current.query(Test).get_by(id=t1.id)
+        assert len(t1.t2s) == 2
+        
 class PKTest(SessionTest):
     def setUpAll(self):
         SessionTest.setUpAll(self)
