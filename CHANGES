@@ -31,6 +31,9 @@ if it has a foreign key constraint
 - cursor() method on ConnectionFairy allows db-specific extension
 arguments to be propigated [ticket:221]
 - lazy load bind params properly propigate column type [ticket:225]
+- new MySQL types: MSEnum, MSTinyText, MSMediumText, MSLongText, etc.
+more support for MS-specific length/precision params in numeric types
+patch courtesy Mike Bernson
 
 0.2.3
 - overhaul to mapper compilation to be deferred.  this allows mappers
