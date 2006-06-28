@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-import sys, StringIO, string
+import sys, StringIO, string, types
 
 import sqlalchemy.engine.default as default
 # import sqlalchemy.sql as sql
@@ -21,7 +21,8 @@ except:
         
 dbmodule = kinterbasdb
         
-kinterbasdb.init(200)    # fix this, init args should be passable via db_uri
+_initialized_kb = False        
+
 
 class FBNumeric(sqltypes.Numeric):
     def get_col_spec(self):
@@ -99,8 +100,21 @@ class FireBirdExecutionContext(default.DefaultExecutionContext):
         
 class FireBirdDialect(ansisql.ANSIDialect):
     def __init__(self, module = None, **params):
+        global _initialized_kb
         self.module = module or dbmodule
         self.opts = {}
+        
+        if not _initialized_kb:
+            _initialized_kb = True
+            type_conv = params.get('type_conv', 200) or 200
+            if isinstance(type_conv, types.StringTypes):
+                type_conv = int(type_conv)
+                
+            concurrency_level = params.get('concurrency_level', 1) or 1
+            if isinstance(concurrency_level, types.StringTypes):
+                concurrency_level = int(concurrency_level)
+            
+            kinterbasdb.init(type_conv=type_conv, concurrency_level=concurrency_level)
         ansisql.ANSIDialect.__init__(self, **params)
 
     def create_connect_args(self, url):
@@ -111,7 +125,6 @@ class FireBirdDialect(ansisql.ANSIDialect):
             del opts['port']
         self.opts = opts
         
-        print "opts %r" % self.opts
         return ([], self.opts)
 
     def connect_args(self):
@@ -195,11 +208,9 @@ class FireBirdDialect(ansisql.ANSIDialect):
         #import pdb;pdb.set_trace()
         # get all of the fields for this table
         c = connection.execute(tblqry, [table.name.upper()])
-        found_table = False
         while True:
             row = c.fetchone()
             if not row: break
-            found_table = True
             args = [row['FNAME']]
             kw = {}
             # get the data types and lengths
@@ -210,9 +221,6 @@ class FireBirdDialect(ansisql.ANSIDialect):
             # is it a primary key?
             table.append_item(schema.Column(*args, **kw))
             # does the field have indexes
-        
-        if not found_table:
-            raise exceptions.NoSuchTableError(table.name)
 
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
