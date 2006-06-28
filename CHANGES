@@ -1,3 +1,7 @@
+0.2.5
+- fixed endless loop bug in select_by(), if the traversal hit
+two mappers that referenced each other
+
 0.2.4
 - try/except when the mapper sets init.__name__ on a mapped class,
 supports python 2.3

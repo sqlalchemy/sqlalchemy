@@ -115,7 +115,11 @@ class Query(object):
     def _locate_prop(self, key):
         import properties
         keys = []
+        seen = util.Set()
         def search_for_prop(mapper):
+            if mapper in seen:
+                return None
+            seen.add(mapper)
             if mapper.props.has_key(key):
                 prop = mapper.props[key]
                 if isinstance(prop, properties.PropertyLoader):

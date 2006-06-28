@@ -247,6 +247,15 @@ class MapperTest(MapperSuperTest):
         l = create_session().query(User).select(users.c.user_name.endswith('ed'))
         self.assert_result(l, User, *user_result[1:3])
 
+    def testrecursiveselectby(self):
+        """test that no endless loop occurs when traversing for select_by"""
+        m = mapper(User, users, properties={
+            'orders':relation(mapper(Order, orders), backref='user'),
+            'addresses':relation(mapper(Address, addresses), backref='user'),
+        })
+        q = create_session().query(m)
+        q.select_by(email_address='foo')
+        
     def testjoinvia(self):
         m = mapper(User, users, properties={
             'orders':relation(mapper(Order, orders, properties={
