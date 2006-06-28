@@ -47,7 +47,7 @@ class column(object):
 #
 class relationship(object):
     def __init__(self, classname, colname=None, backref=None, private=False,
-                 lazy=True, uselist=True, secondary=None):
+                 lazy=True, uselist=True, secondary=None, order_by=False):
         self.classname = classname
         self.colname   = colname
         self.backref   = backref
@@ -55,25 +55,28 @@ class relationship(object):
         self.lazy      = lazy
         self.uselist   = uselist
         self.secondary = secondary
+        self.order_by  = order_by
 
 class one_to_many(relationship):
     def __init__(self, classname, colname=None, backref=None, private=False,
-                 lazy=True):
+                 lazy=True, order_by=False):
         relationship.__init__(self, classname, colname, backref, private, 
-                              lazy, uselist=True)
+                              lazy, uselist=True, order_by=order_by)
 
 class one_to_one(relationship):
     def __init__(self, classname, colname=None, backref=None, private=False,
-                 lazy=True):
+                 lazy=True, order_by=False):
         if backref is not None:
             backref = create_backref(backref, uselist=False)
         relationship.__init__(self, classname, colname, backref, private, 
-                              lazy, uselist=False)
+                              lazy, uselist=False, order_by=order_by)
 
 class many_to_many(relationship):
-    def __init__(self, classname, secondary, backref=None, lazy=True):
+    def __init__(self, classname, secondary, backref=None, lazy=True,
+                 order_by=False):
         relationship.__init__(self, classname, None, backref, False, lazy,
-                              uselist=True, secondary=secondary)
+                              uselist=True, secondary=secondary,
+                              order_by=order_by)
 
 
 # 
@@ -125,12 +128,19 @@ def process_relationships(klass, was_deferred=False):
         relations = {}
         for propname, reldesc in klass.relations.items():
             relclass = ActiveMapperMeta.classes[reldesc.classname]
+            if isinstance(reldesc.order_by, str):
+                reldesc.order_by = [ reldesc.order_by ]
+            if isinstance(reldesc.order_by, list):
+                for itemno in range(len(reldesc.order_by)):
+                    if isinstance(reldesc.order_by[itemno], str):
+                        reldesc.order_by[itemno] = getattr(relclass.c, reldesc.order_by[itemno])
             relations[propname] = relation(relclass.mapper,
                                            secondary=reldesc.secondary,
                                            backref=reldesc.backref, 
                                            private=reldesc.private, 
                                            lazy=reldesc.lazy, 
-                                           uselist=reldesc.uselist)
+                                           uselist=reldesc.uselist,
+                                           order_by=reldesc.order_by)
         
         class_mapper(klass).add_properties(relations)
         if klass in __deferred_classes__: 

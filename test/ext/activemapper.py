@@ -26,7 +26,7 @@ class testcase(testbase.PersistTest):
                 cell_phone  = column(String)
                 work_phone  = column(String)
                 prefs_id    = column(Integer, foreign_key=ForeignKey('preferences.id'))
-                addresses   = one_to_many('Address', colname='person_id', backref='person')
+                addresses   = one_to_many('Address', colname='person_id', backref='person', order_by=['state', 'city', 'postal_code'])
                 preferences = one_to_one('Preferences', colname='pref_id', backref='person')
 
             def __str__(self):
@@ -68,17 +68,6 @@ class testcase(testbase.PersistTest):
     def tearDown(self):
         for t in activemapper.metadata.table_iterator(reverse=True):
             t.delete().execute()
-        #people = Person.select()
-        #for person in people: person.delete()
-        
-        #addresses = Address.select()
-        #for address in addresses: address.delete()
-        
-        #preferences = Preferences.select()
-        #for preference in preferences: preference.delete()
-        
-        #objectstore.flush()
-        #objectstore.clear()
     
     def create_person_one(self):
         # create a person
