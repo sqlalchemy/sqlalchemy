@@ -1,6 +1,8 @@
 0.2.5
 - fixed endless loop bug in select_by(), if the traversal hit
 two mappers that referenced each other
+- upgraded all unittests to insert './lib/' into sys.path, 
+working around new setuptools PYTHONPATH-killing behavior
 
 0.2.4
 - try/except when the mapper sets init.__name__ on a mapped class,

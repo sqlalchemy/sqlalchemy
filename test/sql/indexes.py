@@ -1,6 +1,6 @@
+import testbase
 from sqlalchemy import *
 import sys
-import testbase
 
 class IndexTest(testbase.AssertMixin):
     

@@ -4,7 +4,10 @@ cd into the SQLAlchemy distribution directory.
 
 Set up the PYTHONPATH:
 
-    export PYTHONPATH=./lib/:./test/
+    export PYTHONPATH=./test/
+
+The unittest framework will automatically prepend './lib/' to sys.path.  this forces the local 
+version to run, bypassing any setuptools-installed installations.
 
 To run all tests:
 

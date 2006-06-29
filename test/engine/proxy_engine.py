@@ -1,10 +1,10 @@
+from testbase import PersistTest
+import testbase
 import os
 
 from sqlalchemy import *
 from sqlalchemy.ext.proxy import ProxyEngine
 
-from testbase import PersistTest
-import testbase
 
 #
 # Define an engine, table and mapper at the module level, to show that the

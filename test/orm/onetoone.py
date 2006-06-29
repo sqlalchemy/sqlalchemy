@@ -1,5 +1,5 @@
-from sqlalchemy import *
 import testbase
+from sqlalchemy import *
 from sqlalchemy.ext.sessioncontext import SessionContext
 
 class Jack(object):

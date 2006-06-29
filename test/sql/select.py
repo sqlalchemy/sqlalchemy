@@ -1,9 +1,8 @@
-
+from testbase import PersistTest
+import testbase
 from sqlalchemy import *
 from sqlalchemy.databases import sqlite, postgres, mysql, oracle
-from testbase import PersistTest
 import unittest, re
-import testbase
 
 # the select test now tests almost completely with TableClause/ColumnClause objects,
 # which are free-roaming table/column objects not attached to any database.  

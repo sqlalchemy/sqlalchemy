@@ -1,7 +1,7 @@
-from sqlalchemy import *
-import string,datetime, re, sys
 from testbase import PersistTest, AssertMixin
 import testbase
+from sqlalchemy import *
+import string,datetime, re, sys
 import sqlalchemy.engine.url as url
 
 import sqlalchemy.types

@@ -1,5 +1,5 @@
-from sqlalchemy import *
 import testbase
+from sqlalchemy import *
 
 class PolymorphicCircularTest(testbase.PersistTest):
     def setUpAll(self):

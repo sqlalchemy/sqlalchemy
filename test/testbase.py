@@ -1,10 +1,13 @@
+import sys
+sys.path.insert(0, './lib/')
+
 import unittest
 import StringIO
 import sqlalchemy.engine as engine
 import sqlalchemy.ext.proxy as proxy
 import sqlalchemy.pool as pool
 #import sqlalchemy.schema as schema
-import re, sys
+import re
 import sqlalchemy
 import optparse
 

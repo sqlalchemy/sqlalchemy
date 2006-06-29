@@ -1,8 +1,8 @@
+from testbase import PersistTest
+import testbase
 from sqlalchemy import *
 from sqlalchemy.ext.proxy import AutoConnectEngine
 
-from testbase import PersistTest
-import testbase
 import os
 
 #

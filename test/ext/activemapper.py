@@ -1,12 +1,11 @@
+import testbase
 from sqlalchemy.ext.activemapper           import ActiveMapper, column, one_to_many, one_to_one, objectstore
 from sqlalchemy             import and_, or_, clear_mappers
 from sqlalchemy             import ForeignKey, String, Integer, DateTime
 from datetime               import datetime
 
-import unittest
 import sqlalchemy.ext.activemapper as activemapper
 
-import testbase
 
 class testcase(testbase.PersistTest):
     def setUpAll(self):

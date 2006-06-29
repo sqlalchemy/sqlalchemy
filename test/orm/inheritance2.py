@@ -1,6 +1,6 @@
+import testbase
 from sqlalchemy import *
 from datetime import datetime
-import testbase
 
 class InheritTest(testbase.AssertMixin):
     """tests some various inheritance round trips involving a particular set of polymorphic inheritance relationships"""

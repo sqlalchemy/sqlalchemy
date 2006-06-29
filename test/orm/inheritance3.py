@@ -1,6 +1,5 @@
-from sqlalchemy import *
 import testbase
-
+from sqlalchemy import *
 
 class BaseObject(object):
     def __init__(self, *args, **kwargs):

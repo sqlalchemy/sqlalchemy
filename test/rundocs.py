@@ -1,5 +1,6 @@
 from sqlalchemy import *
 import sys
+sys.path.insert(0, './lib/')
 
 engine = create_engine('sqlite://')
 

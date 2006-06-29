@@ -1,11 +1,11 @@
+from testbase import PersistTest
+import testbase
 
 import sqlalchemy.ansisql as ansisql
 
 from sqlalchemy import *
 from sqlalchemy.exceptions import NoSuchTableError
 
-from testbase import PersistTest
-import testbase
 import unittest, re, StringIO
 
 class ReflectionTest(PersistTest):
