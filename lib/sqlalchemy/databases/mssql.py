@@ -267,8 +267,6 @@ class MSSQLDialect(ansisql.ANSIDialect):
             self.context.rowcount = c.rowcount
             c.DBPROP_COMMITPRESERVE = "Y"
         except Exception, e:
-            # del c.parent  # Close the Parent Connection, delete it from the pool        columns = ischema.columns.toengine(self)
-
             raise exceptions.SQLError(statement, parameters, e)
 
     def do_rollback(self, connection):
@@ -339,7 +337,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
         else:
             current_schema = self.get_default_schema_name()
 
-        columns = ischema.columns.toengine(self)
+        columns = ischema.columns
         s = select([columns],
                    current_schema and sql.and_(columns.c.table_name==table.name, columns.c.table_schema==current_schema) or columns.c.table_name==table.name,
                    order_by=[columns.c.ordinal_position])
@@ -392,10 +390,10 @@ class MSSQLDialect(ansisql.ANSIDialect):
                 ic.sequence = schema.Sequence(ic.name + '_identity')
 
         # Add constraints
-        RR = ischema.ref_constraints.toengine(self)    #information_schema.referential_constraints
-        TC = ischema.constraints.toengine(self)        #information_schema.table_constraints
-        C  = ischema.column_constraints.toengine(self).alias('C') #information_schema.constraint_column_usage: the constrained column 
-        R  = ischema.column_constraints.toengine(self).alias('R') #information_schema.constraint_column_usage: the referenced column
+        RR = ischema.ref_constraints(self)    #information_schema.referential_constraints
+        TC = ischema.constraints        #information_schema.table_constraints
+        C  = ischema.column_constraints.alias('C') #information_schema.constraint_column_usage: the constrained column 
+        R  = ischema.column_constraints.alias('R') #information_schema.constraint_column_usage: the referenced column
 
         fromjoin = TC.join(RR, RR.c.constraint_name == TC.c.constraint_name).join(C, C.c.constraint_name == RR.c.constraint_name)
         fromjoin = fromjoin.join(R, R.c.constraint_name == RR.c.unique_constraint_name)
