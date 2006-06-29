@@ -31,6 +31,8 @@ Downloads for each DBAPI at the time of this writing are as follows:
 * MS-SQL:  [adodbapi](http://adodbapi.sourceforge.net/)  [pymssql](http://pymssql.sourceforge.net/)
 * Firebird:  [kinterbasdb](http://kinterbasdb.sourceforge.net/)
 
+The SQLAlchemy Wiki contains a page of database notes, describing whatever quirks and behaviors have been observed.  Its a good place to check for issues with specific databases.  [Database Notes](http://www.sqlalchemy.org/trac/wiki/DatabaseNotes)
+
 ### Establishing a Database Engine {@name=establishing}
 
 SQLAlchemy 0.2 indicates the source of an Engine strictly via [RFC-1738](http://rfc.net/rfc1738.html) style URLs, combined with optional keyword arguments to specify options for the Engine.  The form of the URL is:
@@ -40,8 +42,15 @@ SQLAlchemy 0.2 indicates the source of an Engine strictly via [RFC-1738](http://
 Available drivernames are `sqlite`, `mysql`, `postgres`, `oracle`, `mssql`, and `firebird`.  For sqlite, the database name is the filename to connect to, or the special name ":memory:" which indicates an in-memory database.  The URL is typically sent as a string to the `create_engine()` function:
 
     {python}
+    # postgres
     pg_db = create_engine('postgres://scott:tiger@localhost:5432/mydatabase')
-    sqlite_db = create_engine('sqlite:///mydb.txt')
+    
+    # sqlite (note the four slashes for an absolute path)
+    sqlite_db = create_engine('sqlite:////absolute/path/to/database.txt')
+    sqlite_db = create_engine('sqlite:///relative/path/to/database.txt')
+    sqlite_db = create_engine('sqlite://')  # in-memory database
+    
+    # mysql
     mysql_db = create_engine('mysql://localhost/foo')
 
     # oracle via TNS name
