@@ -1,5 +1,6 @@
 from sqlalchemy             import create_session, relation, mapper, \
-join, DynamicMetaData, class_mapper, util
+                                   join, DynamicMetaData, class_mapper, \
+                                   util, Integer
 from sqlalchemy             import and_, or_
 from sqlalchemy             import Table, Column, ForeignKey
 from sqlalchemy.ext.sessioncontext import SessionContext
@@ -109,6 +110,11 @@ def process_relationships(klass, was_deferred=False):
     # and make sure that we can find the related tables (they do not 
     # have to be processed yet, just defined), and we defer if we are 
     # not able to find any of the related tables
+    
+    # thanks to deferred mapper compilation, this loop should no longer 
+    # be necessary -- however, I will leave it here commented out until
+    # I get the feeling that its not causing problems for people.
+    '''
     for col in klass.columns:
         if col.foreign_key is not None:
             found = False
@@ -121,6 +127,7 @@ def process_relationships(klass, was_deferred=False):
                 if not was_deferred: __deferred_classes__.add(klass)
                 defer = True
                 break
+    '''
     
     # if we are able to find all related and referred to tables, then
     # we can go ahead and assign the relationships to the class
@@ -133,7 +140,8 @@ def process_relationships(klass, was_deferred=False):
             if isinstance(reldesc.order_by, list):
                 for itemno in range(len(reldesc.order_by)):
                     if isinstance(reldesc.order_by[itemno], str):
-                        reldesc.order_by[itemno] = getattr(relclass.c, reldesc.order_by[itemno])
+                        reldesc.order_by[itemno] = \
+                            getattr(relclass.c, reldesc.order_by[itemno])
             relations[propname] = relation(relclass.mapper,
                                            secondary=reldesc.secondary,
                                            backref=reldesc.backref, 
@@ -172,6 +180,8 @@ class ActiveMapperMeta(type):
                              "__metadata__", metadata)
         
         if 'mapping' in dict:
+            found_pk = False
+            
             members = inspect.getmembers(dict.get('mapping'))
             for name, value in members:
                 if name == '__table__':
@@ -185,6 +195,8 @@ class ActiveMapperMeta(type):
                 if name.startswith('__'): continue
                 
                 if isinstance(value, column):
+                    if value.primary_key == True: found_pk = True
+                        
                     if value.foreign_key:
                         col = Column(value.colname or name, 
                                      value.coltype,
@@ -201,6 +213,11 @@ class ActiveMapperMeta(type):
                 
                 if isinstance(value, relationship):
                     relations[name] = value
+            
+            if not found_pk:
+                col = Column('id', Integer, primary_key=True)
+                cls.mapping.id = col
+                columns.append(col)
             
             assert _metadata is not None, "No MetaData specified"
             

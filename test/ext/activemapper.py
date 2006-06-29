@@ -13,7 +13,6 @@ class testcase(testbase.PersistTest):
         
         class Person(ActiveMapper):
             class mapping:
-                id          = column(Integer, primary_key=True)
                 full_name   = column(String)
                 first_name  = column(String)
                 middle_name = column(String)
@@ -43,12 +42,15 @@ class testcase(testbase.PersistTest):
         class Preferences(ActiveMapper):
             class mapping:
                 __table__        = 'preferences'
-                id               = column(Integer, primary_key=True)
                 favorite_color   = column(String)
                 personality_type = column(String)
 
         class Address(ActiveMapper):
             class mapping:
+                # note that in other objects, the 'id' primary key is 
+                # automatically added -- if you specify a primary key,
+                # then ActiveMapper will not add an integer primary key
+                # for you.
                 id          = column(Integer, primary_key=True)
                 type        = column(String)
                 address_1   = column(String)
@@ -216,10 +218,6 @@ class testcase(testbase.PersistTest):
         )
         self.assertEquals(len(results), 1)
 
-
     
 if __name__ == '__main__':
-    # go ahead and setup the database connection, and create the tables
-    
-    # launch the unit tests
     unittest.main()
