@@ -110,11 +110,6 @@ def process_relationships(klass, was_deferred=False):
     # and make sure that we can find the related tables (they do not 
     # have to be processed yet, just defined), and we defer if we are 
     # not able to find any of the related tables
-    
-    # thanks to deferred mapper compilation, this loop should no longer 
-    # be necessary -- however, I will leave it here commented out until
-    # I get the feeling that its not causing problems for people.
-    '''
     for col in klass.columns:
         if col.foreign_key is not None:
             found = False
@@ -127,7 +122,6 @@ def process_relationships(klass, was_deferred=False):
                 if not was_deferred: __deferred_classes__.add(klass)
                 defer = True
                 break
-    '''
     
     # if we are able to find all related and referred to tables, then
     # we can go ahead and assign the relationships to the class
