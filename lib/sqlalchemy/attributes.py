@@ -10,6 +10,9 @@ import weakref
 class InstrumentedAttribute(object):
     """a property object that instruments attribute access on object instances.  All methods correspond to 
     a single attribute on a particular class."""
+    
+    PASSIVE_NORESULT = object()
+    
     def __init__(self, manager, key, uselist, callable_, typecallable, trackparent=False, extension=None, **kwargs):
         self.manager = manager
         self.key = key
@@ -40,9 +43,16 @@ class InstrumentedAttribute(object):
             item._state[('hasparent', self)] = value
 
     def get_history(self, obj, passive=False):
-        """returns a new AttributeHistory object for the given object for this 
-        InstrumentedAttribute's attribute."""
-        return AttributeHistory(self, obj, passive=passive)
+        """return a new AttributeHistory object for the given object/this attribute's key.
+        
+        if passive is True, then dont execute any callables; if the attribute's value 
+        can only be achieved via executing a callable, then return None."""
+        # get the current state.  this may trigger a lazy load if
+        # passive is False.  
+        current = self.get(obj, passive=passive, raiseerr=False)
+        if current is InstrumentedAttribute.PASSIVE_NORESULT:
+            return None
+        return AttributeHistory(self, obj, current, passive=passive)
 
     def set_callable(self, obj, callable_):
         """sets a callable function on the given object which will be executed when this attribute
@@ -123,7 +133,7 @@ class InstrumentedAttribute(object):
                 callable_ = self._get_callable(obj)
                 if callable_ is not None:
                     if passive:
-                        return None
+                        return InstrumentedAttribute.PASSIVE_NORESULT
                     l = InstrumentedList(self, obj, self._adapt_list(callable_()), init=False)
                     # if a callable was executed, then its part of the "committed state"
                     # if any, so commit the newly loaded data
@@ -141,7 +151,7 @@ class InstrumentedAttribute(object):
                 callable_ = self._get_callable(obj)
                 if callable_ is not None:
                     if passive:
-                        return None
+                        return InstrumentedAttribute.PASSIVE_NORESULT
                     obj.__dict__[self.key] = callable_()
                     # if a callable was executed, then its part of the "committed state"
                     # if any, so commit the newly loaded data
@@ -473,12 +483,9 @@ class CommittedState(object):
 class AttributeHistory(object):
     """calculates the "history" of a particular attribute on a particular instance, based on the CommittedState 
     associated with the instance, if any."""
-    def __init__(self, attr, obj, passive=False):
+    def __init__(self, attr, obj, current, passive=False):
         self.attr = attr
-        # get the current state.  this may trigger a lazy load if
-        # passive is False.  
-        current = attr.get(obj, passive=passive, raiseerr=False)
-
+            
         # get the "original" value.  if a lazy load was fired when we got
         # the 'current' value, this "original" was also populated just 
         # now as well (therefore we have to get it second)
@@ -492,7 +499,6 @@ class AttributeHistory(object):
             self._current = current
         else:
             self._current = [current]
-
         if attr.uselist:
             s = util.Set(original or [])
             self._added_items = []
@@ -592,7 +598,7 @@ class AttributeManager(object):
         """
         attr = getattr(obj.__class__, key)
         x = attr.get(obj, passive=passive)
-        if x is None:
+        if x is InstrumentedAttribute.PASSIVE_NORESULT:
             return []
         elif attr.uselist:
             return x

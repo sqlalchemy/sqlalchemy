@@ -157,7 +157,8 @@ class PropertyLoader(mapper.MapperProperty):
         if not type in self.cascade:
             return
         childlist = sessionlib.attribute_manager.get_history(object, self.key, passive=True)
-        
+        if childlist is None:
+            return
         mapper = self.mapper.primary_mapper()
         for c in childlist.added_items() + childlist.deleted_items() + childlist.unchanged_items():
             if c is not None and c not in recursive:

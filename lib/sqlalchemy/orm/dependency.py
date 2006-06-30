@@ -118,9 +118,9 @@ class OneToManyDP(DependencyProcessor):
                         self._synchronize(obj, child, None, False)
                         if child is not None and self.post_update:
                             uowcommit.register_object(child, postupdate=True)
-                for child in childlist.deleted_items():
-                    if not self.cascade.delete_orphan:
-                        self._synchronize(obj, child, None, True)
+                    for child in childlist.deleted_items():
+                        if not self.cascade.delete_orphan:
+                            self._synchronize(obj, child, None, True)
 
     def preprocess_dependencies(self, task, deplist, uowcommit, delete = False):
         #print self.mapper.mapped_table.name + " " + self.key + " " + repr(len(deplist)) + " preprocess_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
@@ -161,13 +161,13 @@ class OneToManyDP(DependencyProcessor):
                     for child in childlist.added_items():
                         if child is not None:
                             uowcommit.register_object(child)
-                for child in childlist.deleted_items():
-                    if not self.cascade.delete_orphan:
-                        uowcommit.register_object(child, isdelete=False)
-                    elif childlist.hasparent(child) is False:
-                        uowcommit.register_object(child, isdelete=True)
-                        for c in self.mapper.cascade_iterator('delete', child):
-                            uowcommit.register_object(c, isdelete=True)
+                    for child in childlist.deleted_items():
+                        if not self.cascade.delete_orphan:
+                            uowcommit.register_object(child, isdelete=False)
+                        elif childlist.hasparent(child) is False:
+                            uowcommit.register_object(child, isdelete=True)
+                            for c in self.mapper.cascade_iterator('delete', child):
+                                uowcommit.register_object(c, isdelete=True)
             
     def _synchronize(self, obj, child, associationrow, clearkeys):
         source = obj

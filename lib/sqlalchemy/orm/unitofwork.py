@@ -803,8 +803,9 @@ class UOWTask(object):
                         isdelete = taskelement.isdelete
                     
                         # list of dependent objects from this object
-                        childlist = dep.get_object_dependencies(obj, trans, passive = True)
-                    
+                        childlist = dep.get_object_dependencies(obj, trans, passive=True)
+                        if childlist is None:
+                            continue
                         # the task corresponding to saving/deleting of those dependent objects
                         childtask = trans.get_task_by_mapper(processor.mapper.primary_mapper())
                     

@@ -138,6 +138,86 @@ class AssociationTest(testbase.PersistTest):
         sess.flush()
         self.assert_(item_keywords.count().scalar() == 0)
 
+class AssociationTest2(testbase.PersistTest):
+    def setUpAll(self):
+        global table_originals, table_people, table_isauthor, metadata, Originals, People, IsAuthor
+        metadata = BoundMetaData(testbase.db)
+        table_originals = Table('Originals', metadata,
+            Column('ID',        Integer,        primary_key=True),
+            Column('Title',     String(200),    nullable=False),
+            Column('Date',      Date            ),
+            )
+        table_people = Table('People', metadata,
+            Column('ID',        Integer,        primary_key=True),
+            Column('Name',      String(140),    nullable=False),
+            Column('Country',   CHAR(2),        default='es'),
+            )
+        table_isauthor = Table('IsAuthor', metadata,
+            Column('OriginalsID', Integer,      ForeignKey('Originals.ID'), 
+default=None),
+            Column('PeopleID', Integer, ForeignKey('People.ID'), 
+default=None),
+            Column('Kind',      CHAR(1),        default='A'),
+            )
+        metadata.create_all()
+
+        class Base(object):
+            def __init__(self, **kw):
+                for k,v in kw.iteritems():
+                    setattr(self, k, v)
+            def display(self):
+                c = [ "%s=%s" % (col.key, repr(getattr(self, col.key))) for col 
+in self.c ]
+                return "%s(%s)" % (self.__class__.__name__, ', '.join(c))
+            def __repr__(self):
+                return self.display()
+            def __str__(self):
+                return self.display()
+        class Originals(Base):
+            order = [table_originals.c.Title, table_originals.c.Date]
+        class People(Base):
+            order = [table_people.c.Name]
+        class IsAuthor(Base):
+            pass
+
+        mapper(Originals, table_originals, order_by=Originals.order,
+            properties={
+                'people': relation(IsAuthor, association=People),
+                'authors': relation(People, secondary=table_isauthor, backref='written',
+                            primaryjoin=and_(table_originals.c.ID==table_isauthor.c.OriginalsID, 
+                            table_isauthor.c.Kind=='A')),
+                'title': table_originals.c.Title,
+                'date': table_originals.c.Date,
+            })
+        mapper(People, table_people, order_by=People.order, properties=    {
+                'originals':        relation(IsAuthor, association=Originals),
+                'name':             table_people.c.Name,
+                'country':          table_people.c.Country,
+            })
+        mapper(IsAuthor, table_isauthor, 
+            primary_key=[table_isauthor.c.OriginalsID, table_isauthor.c.PeopleID, 
+table_isauthor.c.Kind], 
+            properties={
+               'original':  relation(Originals, lazy=False),
+               'person':    relation(People, lazy=False),
+               'kind':      table_isauthor.c.Kind,
+            })
+
+    def tearDown(self):
+        for t in metadata.table_iterator(reverse=True):
+            t.delete().execute()
+    def tearDownAll(self):
+        clear_mappers()
+        metadata.drop_all()
+
+    def testinsert(self):
+        # this test is sure to get more complex...
+        p = People(name='name', country='es')
+        sess = create_session()
+        sess.save(p)
+        sess.flush()
+
+
         
 if __name__ == "__main__":
     testbase.main()        
