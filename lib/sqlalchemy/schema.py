@@ -710,12 +710,12 @@ class DynamicMetaData(MetaData):
                 self.__engines[engine_or_url] = engine_or_url
             self.context._engine = engine_or_url
     def is_bound(self):
-        return self.context._engine is not None
+        return hasattr(self.context, '_engine') and self.context._engine is not None
     def dispose(self):
         """disposes all Engines to which this DynamicMetaData has been connected."""
         for e in self.__engines.values():
             e.dispose()
-    engine=property(lambda s:s.context._engine)
+    engine=property(lambda s:hasattr(s.context, '_engine') and s.context._engine or None)
             
 class SchemaVisitor(sql.ClauseVisitor):
     """defines the visiting for SchemaItem objects"""

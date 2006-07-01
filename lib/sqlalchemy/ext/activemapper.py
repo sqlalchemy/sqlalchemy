@@ -19,11 +19,13 @@ metadata = DynamicMetaData("activemapper")
 #
 # thread local SessionContext
 #
-class Objectstore(SessionContext):
-    def __getattr__(self, key):
-        return getattr(self.current, key)
-    def get_session(self):
-        return self.current
+class Objectstore(object):
+
+    def __init__(self, *args, **kwargs):
+        self._context = SessionContext(*args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self._context.current, name)
 
 objectstore = Objectstore(create_session)
 
@@ -222,10 +224,10 @@ class ActiveMapperMeta(type):
             # check for inheritence
             if hasattr(bases[0], "mapping"):
                 cls._base_mapper= bases[0].mapper
-                assign_mapper(objectstore, cls, cls.table, 
+                assign_mapper(objectstore._context, cls, cls.table, 
                               inherits=cls._base_mapper)
             else:
-                assign_mapper(objectstore, cls, cls.table)
+                assign_mapper(objectstore._context, cls, cls.table)
             cls.relations = relations
             ActiveMapperMeta.classes[clsname] = cls
             

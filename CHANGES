@@ -4,6 +4,7 @@ two mappers that referenced each other
 - upgraded all unittests to insert './lib/' into sys.path, 
 working around new setuptools PYTHONPATH-killing behavior
 - further fixes with attributes/dependencies/etc....
+- improved error handling for when DynamicMetaData is not connected
 
 0.2.4
 - try/except when the mapper sets init.__name__ on a mapped class,
