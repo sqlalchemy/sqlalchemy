@@ -514,8 +514,10 @@ class ResultProxy:
     class AmbiguousColumn(object):
         def __init__(self, key):
             self.key = key
+        def dialect_impl(self, dialect):
+            return self
         def convert_result_value(self, arg, engine):
-            raise InvalidRequestError("Ambiguous column name '%s' in result set! try 'use_labels' option on select statement." % (self.key))
+            raise exceptions.InvalidRequestError("Ambiguous column name '%s' in result set! try 'use_labels' option on select statement." % (self.key))
     
     def __init__(self, engine, connection, cursor, executioncontext=None, typemap=None):
         """ResultProxy objects are constructed via the execute() method on SQLEngine."""

@@ -5,6 +5,7 @@ two mappers that referenced each other
 working around new setuptools PYTHONPATH-killing behavior
 - further fixes with attributes/dependencies/etc....
 - improved error handling for when DynamicMetaData is not connected
+- MS-SQL support largely working (tested with pymssql)
 
 0.2.4
 - try/except when the mapper sets init.__name__ on a mapped class,

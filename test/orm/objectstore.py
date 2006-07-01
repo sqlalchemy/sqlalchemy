@@ -132,7 +132,7 @@ class VersioningTest(SessionTest):
         version_table.delete().execute()
         SessionTest.tearDown(self)
     
-    @testbase.unsupported('mysql')
+    @testbase.unsupported('mysql', 'mssql')
     def testbasic(self):
         s = create_session()
         class Foo(object):pass
@@ -227,6 +227,7 @@ class UnicodeTest(SessionTest):
         assert len(t1.t2s) == 2
         
 class PKTest(SessionTest):
+    @testbase.unsupported('mssql')
     def setUpAll(self):
         SessionTest.setUpAll(self)
         db.echo = False
@@ -234,19 +235,19 @@ class PKTest(SessionTest):
         global table2
         global table3
         table = Table(
-            'multi', db, 
+            'multipk', db, 
             Column('multi_id', Integer, Sequence("multi_id_seq", optional=True), primary_key=True),
             Column('multi_rev', Integer, primary_key=True),
             Column('name', String(50), nullable=False),
             Column('value', String(100))
         )
         
-        table2 = Table('multi2', db,
+        table2 = Table('multipk2', db,
             Column('pk_col_1', String(30), primary_key=True),
             Column('pk_col_2', String(30), primary_key=True),
             Column('data', String(30), )
             )
-        table3 = Table('multi3', db,
+        table3 = Table('multipk3', db,
             Column('pri_code', String(30), key='primary', primary_key=True),
             Column('sec_code', String(30), key='secondary', primary_key=True),
             Column('date_assigned', Date, key='assigned', primary_key=True),
@@ -256,6 +257,7 @@ class PKTest(SessionTest):
         table2.create()
         table3.create()
         db.echo = testbase.echo
+    @testbase.unsupported('mssql')
     def tearDownAll(self):
         db.echo = False
         table.drop()
@@ -264,7 +266,7 @@ class PKTest(SessionTest):
         db.echo = testbase.echo
         SessionTest.tearDownAll(self)
         
-    @testbase.unsupported('sqlite')
+    @testbase.unsupported('sqlite', 'mssql')
     def testprimarykey(self):
         class Entry(object):
             pass
@@ -277,6 +279,7 @@ class PKTest(SessionTest):
         ctx.current.clear()
         e2 = Entry.mapper.get((e.multi_id, 2))
         self.assert_(e is not e2 and e._instance_key == e2._instance_key)
+    @testbase.unsupported('mssql')
     def testmanualpk(self):
         class Entry(object):
             pass
@@ -286,6 +289,7 @@ class PKTest(SessionTest):
         e.pk_col_2 = 'pk1_related'
         e.data = 'im the data'
         ctx.current.flush()
+    @testbase.unsupported('mssql')
     def testkeypks(self):
         import datetime
         class Entity(object):

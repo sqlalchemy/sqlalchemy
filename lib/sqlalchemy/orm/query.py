@@ -332,7 +332,7 @@ class Query(object):
 #            raise "ok first thing", str(s2)
             if not kwargs.get('distinct', False) and order_by:
                 s2.order_by(*util.to_list(order_by))
-            s3 = s2.alias('rowcount')
+            s3 = s2.alias('tbl_row_count')
             crit = []
             for i in range(0, len(self.table.primary_key)):
                 crit.append(s3.primary_key[i] == self.table.primary_key[i])

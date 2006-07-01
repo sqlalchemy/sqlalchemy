@@ -687,7 +687,7 @@ class FromClause(Selectable):
             col = self.primary_key[0]
         else:
             col = list(self.columns)[0]
-        return select([func.count(col).label('rowcount')], whereclause, from_obj=[self], **params)
+        return select([func.count(col).label('tbl_row_count')], whereclause, from_obj=[self], **params)
     def join(self, right, *args, **kwargs):
         return Join(self, right, *args, **kwargs)
     def outerjoin(self, right, *args, **kwargs):
@@ -1283,7 +1283,7 @@ class TableClause(FromClause):
             col = self.primary_key[0]
         else:
             col = list(self.columns)[0]
-        return select([func.count(col).label('rowcount')], whereclause, from_obj=[self], **params)
+        return select([func.count(col).label('tbl_row_count')], whereclause, from_obj=[self], **params)
     def join(self, right, *args, **kwargs):
         return Join(self, right, *args, **kwargs)
     def outerjoin(self, right, *args, **kwargs):

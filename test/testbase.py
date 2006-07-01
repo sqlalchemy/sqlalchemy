@@ -72,7 +72,7 @@ def parse_argv():
             db_uri = 'oracle://scott:tiger@127.0.0.1:1521'
             opts = {'use_ansi':False}
         elif DBTYPE == 'mssql':
-            db_uri = 'mssql://scott:tiger@/test'
+            db_uri = 'mssql://scott:tiger@SQUAWK\\SQLEXPRESS/test'
 
     if not db_uri:
         raise "Could not create engine.  specify --db <sqlite|sqlite_file|postgres|mysql|oracle|oracle8|mssql> to test runner."
