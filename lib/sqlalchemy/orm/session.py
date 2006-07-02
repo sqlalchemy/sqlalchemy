@@ -266,7 +266,7 @@ class Session(object):
     def expunge(self, object):
         """removes the given object from this Session.  this will free all internal references to the object."""
         self.uow.expunge(object)
-            
+        
     def save(self, object, entity_name=None):
         """
         Adds a transient (unsaved) instance to this Session.  This operation cascades the "save_or_update" 
@@ -328,7 +328,7 @@ class Session(object):
     def _save_impl(self, object, **kwargs):
         if hasattr(object, '_instance_key'):
             if not self.uow.has_key(object._instance_key):
-                raise exceptions.InvalidRequestError("Instance '%s' is already persistent in a different Session" % repr(object))
+                raise exceptions.InvalidRequestError("Instance '%s' is a detached instance or is already persistent in a different Session" % repr(object))
         else:
             m = class_mapper(object.__class__, entity_name=kwargs.get('entity_name', None))
             m._assign_entity_name(object)
