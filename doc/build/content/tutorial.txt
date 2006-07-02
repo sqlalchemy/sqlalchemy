@@ -357,7 +357,7 @@ At the moment, nothing has been saved to the database; all of our changes are in
     
 With the identity map, a single `Session` can be relied upon to keep all loaded instances straight.
 
-As far as the issue of the same object being modified in two different Sessions, that's an issue of concurrency detection; SQLAlchemy does some basic concurrency checks when saving objects, with the option for a stronger check using version ids.  See [adv_datamapping](rel:adv_datamapping) for more details.
+As far as the issue of the same object being modified in two different Sessions, that's an issue of concurrency detection; SQLAlchemy does some basic concurrency checks when saving objects, with the option for a stronger check using version ids.  See [advdatamapping_arguments](rel:advdatamapping_arguments) for more details.
 
 ### Saving {@name=saving}
 
