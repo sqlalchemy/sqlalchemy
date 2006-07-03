@@ -8,7 +8,7 @@
 import sys, StringIO, string, types
 
 import sqlalchemy.engine.default as default
-# import sqlalchemy.sql as sql
+import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
 import sqlalchemy.ansisql as ansisql
 # from sqlalchemy import *

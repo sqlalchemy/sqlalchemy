@@ -923,13 +923,13 @@ class SaveTest(SessionTest):
                         "UPDATE users SET user_name=:user_name WHERE users.user_id = :users_user_id",
                         {'users_user_id': u2.user_id, 'user_name': 'user2modified'}
                     ),
+                    ("UPDATE email_addresses SET user_id=:user_id WHERE email_addresses.address_id = :email_addresses_address_id",
+                        {'user_id': None, 'email_addresses_address_id': a1.address_id}
+                    ),
                     (
                         "UPDATE email_addresses SET user_id=:user_id WHERE email_addresses.address_id = :email_addresses_address_id",
                         {'user_id': u1.user_id, 'email_addresses_address_id': a3.address_id}
                     ),
-                    ("UPDATE email_addresses SET user_id=:user_id WHERE email_addresses.address_id = :email_addresses_address_id",
-                        {'user_id': None, 'email_addresses_address_id': a1.address_id}
-                    )
                 ])
 
     def testbackwardsmanipulations(self):

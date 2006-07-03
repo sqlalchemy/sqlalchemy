@@ -6,6 +6,10 @@ working around new setuptools PYTHONPATH-killing behavior
 - further fixes with attributes/dependencies/etc....
 - improved error handling for when DynamicMetaData is not connected
 - MS-SQL support largely working (tested with pymssql)
+- ordering of UPDATE and DELETE statements within groups is now 
+in order of primary key values, for more deterministic ordering
+- after_insert/delete/update mapper extensions now called per object,
+not per-object-per-table
 
 0.2.4
 - try/except when the mapper sets init.__name__ on a mapped class,
