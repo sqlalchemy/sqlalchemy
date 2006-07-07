@@ -41,13 +41,14 @@ class CompileTrigger(object):
     def add_dependency(self, classkey):
         self.dependencies.add(classkey)
     def can_compile(self):
-        #print "can compile", self.mapper, self.dependencies
         return len(self.dependencies) == 0 or (len(self.dependencies)==1 and list(self.dependencies)[0] == self.mapper.class_key)
     def compiled(self, classkey):
         self.dependencies.remove(classkey)
     def __str__(self):
         return "CompileTrigger on mapper " + str(self.mapper)
-            
+    def __repr__(self):
+        return str(self)
+                
 class Mapper(object):
     """Persists object instances to and from schema.Table objects via the sql package.
     Instances of this class should be constructed through this package's mapper() or
@@ -177,22 +178,22 @@ class Mapper(object):
             
         self._do_compile()
         
-        # see if other mappers still need to be compiled.  if so,
-        # locate one which is ready to be compiled, and compile it.
+        # find other mappers that need to be compiled, and/or
+        # clean out the _compile_triggers dictionary.
         # this will keep the chain of compilation going until all
         # mappers are compiled.
         for key in _compile_triggers.keys():
             if isinstance(key, ClassKey):
                 mapper = mapper_registry.get(key, None)
+                if mapper.__is_compiled:
+                    del _compile_triggers[key]
+                    continue
                 if mapper is not None:
-                    trigger = _compile_triggers.get(mapper, None)
-                    if trigger is None or trigger.can_compile():
-                        mapper.compile()
-                        break
+                    mapper.compile()
+                    break
         
-        # in most cases, all known mappers should be compiled at this point
-        # _compile_triggers.clear()
-        # assert  len(_compile_triggers) == 0
+        # all known mappers should be compiled at this point
+        assert len(_compile_triggers) == 0
         
         return self
 
@@ -224,7 +225,6 @@ class Mapper(object):
                 rec.compiled(self.class_key)
                 if rec.can_compile():
                     rec.mapper._do_compile()
-                    
         return self
 
     def _add_compile_trigger(self, argument):

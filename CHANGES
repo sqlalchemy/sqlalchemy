@@ -10,6 +10,7 @@ working around new setuptools PYTHONPATH-killing behavior
 in order of primary key values, for more deterministic ordering
 - after_insert/delete/update mapper extensions now called per object,
 not per-object-per-table
+- fixed the last few mapper compilation stragglers (hopefully)
 
 0.2.4
 - try/except when the mapper sets init.__name__ on a mapped class,
