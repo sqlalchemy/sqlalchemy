@@ -194,7 +194,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                     self._last_inserted_ids = None
                 else:
                     self._last_inserted_ids = last_inserted_ids
-                print "LAST INSERTED PARAMS", param
+                #print "LAST INSERTED PARAMS", param
                 self._last_inserted_params = param
         elif getattr(compiled, 'isupdate', False):
             if isinstance(parameters, list):
