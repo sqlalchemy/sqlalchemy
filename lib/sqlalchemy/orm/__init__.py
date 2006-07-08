@@ -10,7 +10,7 @@ packages and tying operations to class properties and constructors.
 """
 from sqlalchemy import sql, schema, engine, util, exceptions
 from mapper import *
-from mapper import mapper_registry, _compile_triggers
+from mapper import mapper_registry
 from query import Query
 from util import polymorphic_union
 import properties
@@ -52,7 +52,6 @@ def clear_mappers():
     """removes all mappers that have been created thus far.  when new mappers are 
     created, they will be assigned to their classes as their primary mapper."""
     mapper_registry.clear()
-    _compile_triggers.clear()
     
 def clear_mapper(m):
     """removes the given mapper from the storage of mappers.  when a new mapper is 

@@ -150,9 +150,6 @@ class PropertyLoader(mapper.MapperProperty):
         
     private = property(lambda s:s.cascade.delete_orphan)
 
-    def attach(self, mapper):
-        mapper._add_compile_trigger(self.argument)
-        
     def cascade_iterator(self, type, object, recursive):
         if not type in self.cascade:
             return
