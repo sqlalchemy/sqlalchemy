@@ -161,7 +161,6 @@ def process_relationships(klass, was_deferred=False):
             last_count = len(__deferred_classes__)
             deferred = __deferred_classes__.copy()
             for deferred_class in deferred:
-                if deferred_class == klass: continue
                 process_relationships(deferred_class, was_deferred=True)
 
 
