@@ -1,6 +1,6 @@
 import testbase
 from sqlalchemy.ext.activemapper           import ActiveMapper, column, one_to_many, one_to_one, objectstore
-from sqlalchemy             import and_, or_, clear_mappers
+from sqlalchemy             import and_, or_, clear_mappers, backref
 from sqlalchemy             import ForeignKey, String, Integer, DateTime
 from datetime               import datetime
 
@@ -218,6 +218,38 @@ class testcase(testbase.PersistTest):
         )
         self.assertEquals(len(results), 1)
 
-    
+class testselfreferential(testbase.PersistTest):
+    def setUpAll(self):
+        global TreeNode
+        class TreeNode(activemapper.ActiveMapper):
+            class mapping:
+                id = column(Integer, primary_key=True)
+                name = column(String(30))
+                parent_id = column(Integer, foreign_key=ForeignKey('treenode.id'))
+                children = one_to_many('TreeNode', colname='id', backref='parent')
+                
+        activemapper.metadata.connect(testbase.db)
+        activemapper.create_tables()
+    def tearDownAll(self):
+        clear_mappers()
+        activemapper.drop_tables()
+
+    def testbasic(self):
+        t = TreeNode(name='node1')
+        t.children.append(TreeNode(name='node2'))
+        t.children.append(TreeNode(name='node3'))
+        objectstore.flush()
+        objectstore.clear()
+        
+        t = TreeNode.get_by(name='node1')
+        assert (t.name == 'node1')
+        assert (t.children[0].name == 'node2')
+        assert (t.children[1].name == 'node3')
+        assert (t.children[1].parent is t)
+
+        objectstore.clear()
+        t = TreeNode.get_by(name='node3')
+        assert (t.parent is TreeNode.get_by(name='node1'))
+        
 if __name__ == '__main__':
-    unittest.main()
+    testbase.main()

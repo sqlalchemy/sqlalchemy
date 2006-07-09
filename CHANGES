@@ -1,3 +1,6 @@
+0.2.6
+- tweaks to ActiveMapper, supports self-referential relationships
+
 0.2.5
 - fixed endless loop bug in select_by(), if the traversal hit
 two mappers that referenced each other
