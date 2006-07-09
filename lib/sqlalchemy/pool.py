@@ -124,6 +124,12 @@ class Pool(object):
     def log(self, msg):
         self._logger.write(msg)
 
+    def dispose(self):
+        raise NotImplementedError()
+        
+    def __del__(self):
+        self.dispose()
+        
 class ConnectionFairy(object):
     def __init__(self, pool, connection=None):
         self.pool = pool
@@ -184,7 +190,14 @@ class SingletonThreadPool(Pool):
         self._creator = creator
 
     def dispose(self):
-        pass
+        for key, conn in self._conns.items():
+            try:
+                conn.close()
+            except:
+                # sqlite won't even let you close a conn from a thread that didn't create it
+                pass
+            del self._conns[key]
+            
     def status(self):
         return "SingletonThreadPool id:%d thread:%d size: %d" % (id(self), thread.get_ident(), len(self._conns))
 
@@ -241,8 +254,6 @@ class QueuePool(Pool):
                 conn.close()
             except Queue.Empty:
                 break
-    def __del__(self):
-        self.dispose()
 
     def status(self):
         tup = (self.size(), self.checkedin(), self.overflow(), self.checkedout())

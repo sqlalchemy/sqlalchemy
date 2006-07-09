@@ -123,6 +123,7 @@ class ThreadProxyTest(ProxyTestBase):
                         assert names == [uname]
                     finally:
                         module_metadata.drop_all(module_engine)
+                        module_engine.get_engine().dispose()
                 except Exception, e:
                     import traceback
                     traceback.print_exc()
@@ -131,20 +132,18 @@ class ThreadProxyTest(ProxyTestBase):
                     queue.put(False)
             return test
 
-        # NOTE: I'm not sure how to give the test runner the option to
-        # override these uris, or how to safely clear them after test runs
         a = Thread(target=run('sqlite:///threadtesta.db', 'jim', qa))
         b = Thread(target=run('sqlite:///threadtestb.db', 'joe', qb))
         
         a.start()
         b.start()
-
+        
         # block and wait for the threads to push their results
-        res = qa.get(True)
+        res = qa.get()
         if res != False:
             raise res
 
-        res = qb.get(True)
+        res = qb.get()
         if res != False:
             raise res
 

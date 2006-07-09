@@ -154,6 +154,10 @@ class SQLiteDialect(ansisql.ANSIDialect):
     def has_table(self, connection, table_name):
         cursor = connection.execute("PRAGMA table_info(" + table_name + ")", {})
         row = cursor.fetchone()
+        
+        # consume remaining rows, to work around: http://www.sqlite.org/cvstrac/tktview?tn=1884
+        while cursor.fetchone() is not None:pass
+        
         return (row is not None)
 
     def reflecttable(self, connection, table):
