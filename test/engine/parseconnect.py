@@ -20,11 +20,16 @@ class ParseConnectTest(PersistTest):
             'dbtype:///E:/work/src/LEM/db/hello.db',
             'dbtype:///E:/work/src/LEM/db/hello.db?foo=bar&hoho=lala',
             'dbtype://',
-            'dbtype://username:password@/db'
+            'dbtype://username:password@/db',
+            'dbtype:////usr/local/mailman/lists/_xtest@example.com/members.db'
         ):
             u = url.make_url(text)
             print u, text
             print "username=", u.username, "password=", u.password,  "database=", u.database, "host=", u.host
+            assert u.drivername == 'dbtype'
+            assert u.username == 'username' or u.username is None
+            assert u.password == 'password' or u.password is None
+            assert u.host == 'hostspec' or u.host == '127.0.0.1' or (not u.host)
             assert str(u) == text
 
             
