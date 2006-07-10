@@ -6,6 +6,7 @@ from sqlalchemy             import Table, Column, ForeignKey
 from sqlalchemy.ext.sessioncontext import SessionContext
 from sqlalchemy.ext.assignmapper import assign_mapper
 from sqlalchemy import backref as create_backref
+import sqlalchemy
 
 import inspect
 import sys
@@ -15,18 +16,16 @@ import sys
 #
 metadata = DynamicMetaData("activemapper")
 
-#
-# thread local SessionContext
-#
-class Objectstore(object):
-
-    def __init__(self, *args, **kwargs):
-        self._context = SessionContext(*args, **kwargs)
-
-    def __getattr__(self, name):
-        return getattr(self._context.current, name)
-
-objectstore = Objectstore(create_session)
+try:
+    objectstore = sqlalchemy.objectstore
+except AttributeError:
+    # thread local SessionContext
+    class Objectstore(object):
+        def __init__(self, *args, **kwargs):
+            self.context = SessionContext(*args, **kwargs)
+        def __getattr__(self, name):
+            return getattr(self.context.current, name)
+    objectstore = Objectstore(create_session)
 
 
 #
@@ -237,10 +236,10 @@ class ActiveMapperMeta(type):
             # check for inheritence
             if hasattr(bases[0], "mapping"):
                 cls._base_mapper= bases[0].mapper
-                assign_mapper(objectstore._context, cls, cls.table, 
+                assign_mapper(objectstore.context, cls, cls.table, 
                               inherits=cls._base_mapper)
             else:
-                assign_mapper(objectstore._context, cls, cls.table)
+                assign_mapper(objectstore.context, cls, cls.table)
             cls.relations = relations
             ActiveMapperMeta.classes[clsname] = cls
             

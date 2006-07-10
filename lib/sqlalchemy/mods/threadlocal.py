@@ -22,24 +22,24 @@ while this mod is installed will reference this global context when creating new
 
 __all__ = ['Objectstore', 'assign_mapper']
 
-class Objectstore(SessionContext):
-    def __getattr__(self, key):
-        return getattr(self.current, key)
-    def get_session(self):
-        return self.current
+class Objectstore(object):
+    def __init__(self, *args, **kwargs):
+        self.context = SessionContext(*args, **kwargs)
+    def __getattr__(self, name):
+        return getattr(self.context.current, name)
 
 def assign_mapper(class_, *args, **kwargs):
-    assignmapper.assign_mapper(objectstore, class_, *args, **kwargs)
+    assignmapper.assign_mapper(objectstore.context, class_, *args, **kwargs)
 
 objectstore = Objectstore(Session)
 def install_plugin():
     sqlalchemy.objectstore = objectstore
-    global_extensions.append(objectstore.mapper_extension)
+    global_extensions.append(objectstore.context.mapper_extension)
     engine.default_strategy = 'threadlocal'
     sqlalchemy.assign_mapper = assign_mapper
 
 def uninstall_plugin():
     engine.default_strategy = 'plain'
-    global_extensions.remove(objectstore.mapper_extension)
+    global_extensions.remove(objectstore.context.mapper_extension)
 
 install_plugin()

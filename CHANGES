@@ -1,5 +1,11 @@
 0.2.6
 - tweaks to ActiveMapper, supports self-referential relationships
+- slight rearrangement to objectstore (in activemapper/threadlocal)
+so that the SessionContext is referenced by '.context' instead
+of subclassed directly.
+- activemapper will use threadlocal's objectstore if the mod is
+activated when activemapper is imported
+- small fix to URL regexp to allow filenames with '@' in them
 
 0.2.5
 - fixed endless loop bug in select_by(), if the traversal hit
