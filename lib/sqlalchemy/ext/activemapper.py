@@ -76,6 +76,8 @@ class relationship(object):
                                        uselist=self.uselist,
                                        order_by=self.order_by)
     def create_backref(self, klass):
+        if self.backref is None:
+            return None
         relclass = ActiveMapperMeta.classes[self.classname]
         if klass.__name__ == self.classname:
             br_fkey = getattr(relclass.c, self.colname)
@@ -95,6 +97,8 @@ class one_to_one(relationship):
         relationship.__init__(self, classname, colname, backref, private, 
                               lazy, uselist=False, order_by=order_by)
     def create_backref(self, klass):
+        if self.backref is None:
+            return None
         relclass = ActiveMapperMeta.classes[self.classname]
         if klass.__name__ == self.classname:
             br_fkey = getattr(relclass.c, self.colname)
