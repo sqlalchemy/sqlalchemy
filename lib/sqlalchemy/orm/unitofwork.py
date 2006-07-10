@@ -143,7 +143,7 @@ class UnitOfWork(object):
         """validates that dirty/delete/flush operations can occur upon the given object, by checking
         if it has an instance key and that the instance key is present in the identity map."""
         if hasattr(obj, '_instance_key') and not self.identity_map.has_key(obj._instance_key):
-            raise InvalidRequestError("Detected a mapped object not present in the current thread's Identity Map: '%s'.  Use objectstore.import_instance() to place deserialized instances or instances from other threads" % repr(obj._instance_key))
+            raise InvalidRequestError("Detected a mapped object not present in this Session's identity map: '%s'.  Use session.merge() to place deserialized instances or instances from other threads" % repr(obj._instance_key))
         
     def update(self, obj):
         """called to add an object to this UnitOfWork as though it were loaded from the DB,
