@@ -6,6 +6,7 @@ of subclassed directly.
 - activemapper will use threadlocal's objectstore if the mod is
 activated when activemapper is imported
 - small fix to URL regexp to allow filenames with '@' in them
+- fixes to Session expunge/update/etc.
 
 0.2.5
 - fixed endless loop bug in select_by(), if the traversal hit

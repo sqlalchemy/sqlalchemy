@@ -266,6 +266,7 @@ class Session(object):
     def expunge(self, object):
         """removes the given object from this Session.  this will free all internal references to the object."""
         self.uow.expunge(object)
+        self._unattach(object)
         
     def save(self, object, entity_name=None):
         """
