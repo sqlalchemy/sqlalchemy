@@ -61,7 +61,7 @@ class testcase(testbase.PersistTest):
 
         activemapper.metadata.connect(testbase.db)
         activemapper.create_tables()
-
+    
     def tearDownAll(self):
         clear_mappers()
         activemapper.drop_tables()

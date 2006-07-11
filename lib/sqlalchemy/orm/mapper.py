@@ -201,6 +201,7 @@ class Mapper(object):
         self.extension = None
         previous = None
         for ext in extlist:
+            ext.unchain()
             if self.extension is None:
                 self.extension = ext
             if previous is not None:
@@ -1164,6 +1165,8 @@ class MapperExtension(object):
     def chain(self, ext):
         self.next = ext
         return self
+    def unchain(self):
+        self.next = None
     def get_session(self):
         """called to retrieve a contextual Session instance with which to
         register a new object. Note: this is not called if a session is 

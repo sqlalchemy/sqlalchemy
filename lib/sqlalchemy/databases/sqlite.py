@@ -126,6 +126,9 @@ class SQLiteExecutionContext(default.DefaultExecutionContext):
             self._last_inserted_ids = [proxy().lastrowid]
     
 class SQLiteDialect(ansisql.ANSIDialect):
+    def __init__(self, **kwargs):
+        self.supports_cast = (sqlite.sqlite_version >= "3.2.3")
+        ansisql.ANSIDialect.__init__(self, **kwargs)
     def compiler(self, statement, bindparams, **kwargs):
         return SQLiteCompiler(self, statement, bindparams, **kwargs)
     def schemagenerator(self, *args, **kwargs):
@@ -222,6 +225,14 @@ class SQLiteDialect(ansisql.ANSIDialect):
                 table.columns[col]._set_primary_key()
                     
 class SQLiteCompiler(ansisql.ANSICompiler):
+    def visit_cast(self, cast):
+        if self.dialect.supports_cast:
+            super(SQLiteCompiler, self).visit_cast(cast)
+        else:
+            if len(self.select_stack):
+                # not sure if we want to set the typemap here...
+                self.typemap.setdefault("CAST", cast.type)
+            self.strings[cast] = self.strings[cast.clause]
     def limit_clause(self, select):
         text = ""
         if select.limit is not None:

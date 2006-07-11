@@ -27,7 +27,8 @@ class Objectstore(object):
         self.context = SessionContext(*args, **kwargs)
     def __getattr__(self, name):
         return getattr(self.context.current, name)
-
+    session = property(lambda s:s.context.current)
+    
 def assign_mapper(class_, *args, **kwargs):
     assignmapper.assign_mapper(objectstore.context, class_, *args, **kwargs)
 

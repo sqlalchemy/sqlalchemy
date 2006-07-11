@@ -83,6 +83,8 @@ class M2MTest(testbase.AssertMixin):
         place_thingy.drop()
         place.drop()
         transition.drop()
+        objectstore.clear()
+        clear_mappers()
         #testbase.db.tables.clear()
         self.uninstall_threadlocal()
         
@@ -234,6 +236,8 @@ class M2MTest2(testbase.AssertMixin):
         enrolTbl.drop()
         studentTbl.drop()
         courseTbl.drop()
+        objectstore.clear()
+        clear_mappers()
         #testbase.db.tables.clear()
         self.uninstall_threadlocal()
         
@@ -311,6 +315,8 @@ class M2MTest3(testbase.AssertMixin):
         c2a1.drop()
         a.drop()
         c.drop()
+        objectstore.clear()
+        clear_mappers()
         #testbase.db.tables.clear()
         self.uninstall_threadlocal()
         

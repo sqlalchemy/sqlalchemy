@@ -25,6 +25,7 @@ except AttributeError:
             self.context = SessionContext(*args, **kwargs)
         def __getattr__(self, name):
             return getattr(self.context.current, name)
+        session = property(lambda s:s.context.current)
     objectstore = Objectstore(create_session)
 
 
