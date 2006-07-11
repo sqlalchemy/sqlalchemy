@@ -127,7 +127,9 @@ class SQLiteExecutionContext(default.DefaultExecutionContext):
     
 class SQLiteDialect(ansisql.ANSIDialect):
     def __init__(self, **kwargs):
-        self.supports_cast = (sqlite.sqlite_version >= "3.2.3")
+        def vers(num):
+            return tuple([int(x) for x in num.split('.')])
+        self.supports_cast = (vers(sqlite.sqlite_version) >= vers("3.2.3"))
         ansisql.ANSIDialect.__init__(self, **kwargs)
     def compiler(self, statement, bindparams, **kwargs):
         return SQLiteCompiler(self, statement, bindparams, **kwargs)
