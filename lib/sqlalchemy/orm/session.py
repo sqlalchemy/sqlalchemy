@@ -320,7 +320,7 @@ class Session(object):
                 # TODO: copy the state of the given object into this one.  tricky !
                 inst = u.identity_map[key]
             else:
-                inst = self.get(object.__class__, *key[1])
+                inst = self.get(object.__class__, key[1])
             if obj is object:
                 instance = inst
                 
