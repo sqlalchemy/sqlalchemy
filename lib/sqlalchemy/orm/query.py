@@ -17,7 +17,7 @@ class Query(object):
             self.mapper = mapper.class_mapper(class_or_mapper, entity_name=entity_name)
         else:
             self.mapper = class_or_mapper.compile()
-        self.mapper = self.mapper.get_select_mapper()
+        self.mapper = self.mapper.get_select_mapper().compile()
 
         self.always_refresh = kwargs.pop('always_refresh', self.mapper.always_refresh)
         self.order_by = kwargs.pop('order_by', self.mapper.order_by)

@@ -7,6 +7,7 @@ of subclassed directly.
 activated when activemapper is imported
 - small fix to URL regexp to allow filenames with '@' in them
 - fixes to Session expunge/update/etc.
+- select_table mappers *still* werent always compiling
 
 0.2.5
 - fixed endless loop bug in select_by(), if the traversal hit
