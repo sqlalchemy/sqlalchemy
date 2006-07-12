@@ -177,6 +177,16 @@ This works because when the Table constructor is called for a particular name an
     >>> othertable is news_articles
     True
 
+##### Overriding Reflected Columns {@name=overriding}
+
+Individual columns can be overridden with explicit values when reflecting tables; this is handy for specifying custom datatypes, constraints such as primary keys that may not be configured within the database, etc.
+
+    {python}
+    >>> mytable = Table('mytable', meta,
+    ... Column('id', Integer, primary_key=True),   # override reflected 'id' to have primary key
+    ... Column('mydata', Unicode(50)),    # override reflected 'mydata' to be Unicode
+    ... autoload=True)
+    
 #### Specifying the Schema Name {@name=schema}
 
 Some databases support the concept of multiple schemas.  A `Table` can reference this by specifying the `schema` keyword argument:
@@ -327,7 +337,7 @@ To use an explicit ColumnDefault object to specify an on-update, use the "for_up
         
 #### Inline Default Execution: PassiveDefault {@name=passive}    
 
-A PassiveDefault indicates a column default or on-update value that is executed automatically by the database.  This construct is used to specify a SQL function that will be specified as "DEFAULT" when creating tables, and also to indicate the presence of new data that is available to be "post-fetched" after an insert or update execution.
+A PassiveDefault indicates an column default that is executed upon INSERT by the database.  This construct is used to specify a SQL function that will be specified as "DEFAULT" when creating tables.
 
     {python}
     t = Table('test', meta, 
@@ -341,7 +351,7 @@ A create call for the above table will produce:
         mycolumn datetime default sysdate
     )
         
-PassiveDefaults also send a message to the `Engine` that data is available after update or insert.  The object-relational mapper system uses this information to post-fetch rows after insert or update, so that instances can be refreshed with the new data.  Below is a simplified version:
+PassiveDefault also sends a message to the `Engine` that data is available after an insert.  The object-relational mapper system uses this information to post-fetch rows after the insert, so that instances can be refreshed with the new data.  Below is a simplified version:
 
     {python}
     # table with passive defaults
