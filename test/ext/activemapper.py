@@ -218,6 +218,8 @@ class testcase(testbase.PersistTest):
         )
         self.assertEquals(len(results), 1)
 
+        self.assertEquals(Person.count(), 2)
+        
 class testselfreferential(testbase.PersistTest):
     def setUpAll(self):
         global TreeNode

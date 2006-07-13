@@ -31,7 +31,7 @@ def assign_mapper(ctx, class_, *args, **kwargs):
         extension = ctx.mapper_extension
     m = mapper(class_, extension=extension, *args, **kwargs)
     class_.mapper = m
-    for name in ['get', 'select', 'select_by', 'selectone', 'get_by', 'join_to', 'join_via']:
+    for name in ['get', 'select', 'select_by', 'selectone', 'get_by', 'join_to', 'join_via', 'count', 'count_by']:
         monkeypatch_query_method(ctx, class_, name)
     for name in ['flush', 'delete', 'expire', 'refresh', 'expunge', 'merge', 'save', 'update', 'save_or_update']:
         monkeypatch_objectstore_method(ctx, class_, name)
