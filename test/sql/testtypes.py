@@ -272,6 +272,32 @@ class DateTest(AssertMixin):
         
         #x = db.text("select * from query_users_with_date where user_datetime=:date", bindparams=[bindparam('date', )]).execute(date=datetime.datetime(2005, 11, 10, 11, 52, 35)).fetchall()
         #print repr(x)
+
+class BooleanTest(AssertMixin):
+    def setUpAll(self):
+        global bool_table
+        metadata = BoundMetaData(testbase.db)
+        bool_table = Table('booltest', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('value', Boolean))
+        bool_table.create()
+    def tearDownAll(self):
+        bool_table.drop()
+    def testbasic(self):
+        bool_table.insert().execute(id=1, value=True)
+        bool_table.insert().execute(id=2, value=False)
+        bool_table.insert().execute(id=3, value=True)
+        bool_table.insert().execute(id=4, value=True)
+        bool_table.insert().execute(id=5, value=True)
+        
+        res = bool_table.select(bool_table.c.value==True).execute().fetchall()
+        print res
+        assert(res==[(1, True),(3, True),(4, True),(5, True)])
+        
+        res2 = bool_table.select(bool_table.c.value==False).execute().fetchall()
+        print res2
+        assert(res2==[(2, False)])
+        
         
 if __name__ == "__main__":
     testbase.main()

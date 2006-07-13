@@ -143,6 +143,19 @@ class MSBinary(sqltypes.Binary):
 class MSBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "BIT"
+    def convert_result_value(self, value, dialect):
+        if value is None:
+            return None
+        return value and True or False
+    def convert_bind_param(self, value, dialect):
+        if value is True:
+            return 1
+        elif value is False:
+            return 0
+        elif value is None:
+            return None
+        else:
+            return value and True or False
         
 colspecs = {
     sqltypes.Integer : MSInteger,
