@@ -49,4 +49,6 @@ class AssertionError(SQLAlchemyError):
     
 class DBAPIError(SQLAlchemyError):
     """something weird happened with a particular DBAPI version"""
-    pass
+    def __init__(self, message, orig):
+        SQLAlchemyError.__init__(self, "(%s) (%s) %s"% (message, orig.__class__.__name__, str(orig)))
+        self.orig = orig

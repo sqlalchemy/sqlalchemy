@@ -24,7 +24,12 @@ class PoolConnectionProvider(base.ConnectionProvider):
             dbapi = dialect.dbapi()
             if dbapi is None:
                 raise exceptions.InvalidRequestError("Cant get DBAPI module for dialect '%s'" % dialect)
-            self._pool = poolclass(lambda: dbapi.connect(*cargs, **cparams), **kwargs)
+            def connect():
+                try:
+                    return dbapi.connect(*cargs, **cparams)
+                except Exception, e:
+                    raise exceptions.DBAPIError("Connection failed", e)
+            self._pool = poolclass(connect, **kwargs)
         else:
             if isinstance(pool, sqlalchemy.pool.DBProxy):
                 self._pool = pool.get_pool(*cargs, **cparams)
