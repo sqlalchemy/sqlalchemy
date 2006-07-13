@@ -12,7 +12,7 @@ Installation
 
 Installing SQLAlchemy from scratch is most easily achieved with [setuptools][].  ([setuptools installation][install setuptools]). Just run this from the command-line:
     
-    $ easy_install SQLAlchemy
+    # easy_install SQLAlchemy
 
 This command will download the latest version of SQLAlchemy from the [Python Cheese Shop][cheese] and install it to your system.
 
@@ -22,7 +22,7 @@ This command will download the latest version of SQLAlchemy from the [Python Che
 
 Otherwise, you can install from the distribution using the `setup.py` script:
 
-    $ python setup.py install
+    # python setup.py install
 
 ### Installing a Database API {@name=dbms}
 
