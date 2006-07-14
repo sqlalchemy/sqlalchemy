@@ -23,6 +23,8 @@ this also adds them to activemapper
 database if you supply a __autoload__ = True attribute in your
 mapping inner-class.  Currently this does not support reflecting 
 any relationships.
+- deferred column load could screw up the connection status in 
+a flush() under some circumstances, this was fixed
 
 0.2.5
 - fixed endless loop bug in select_by(), if the traversal hit

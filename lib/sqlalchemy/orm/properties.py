@@ -79,16 +79,15 @@ class DeferredColumnProperty(ColumnProperty):
                 if not attr:
                     return None
                 clause.clauses.append(primary_key == attr)
-
             session = sessionlib.object_session(instance)
             if session is None:
                 raise exceptions.InvalidRequestError("Parent instance %s is not bound to a Session; deferred load operation of attribute '%s' cannot proceed" % (instance.__class__, self.key))
-            connection = session.connection(self.parent)
-            
-            try:
-                if self.group is not None:
-                    groupcols = [p for p in self.localparent.props.values() if isinstance(p, DeferredColumnProperty) and p.group==self.group]
-                    row = connection.execute(sql.select([g.columns[0] for g in groupcols], clause, use_labels=True), None).fetchone()
+
+            if self.group is not None:
+                groupcols = [p for p in self.localparent.props.values() if isinstance(p, DeferredColumnProperty) and p.group==self.group]
+                result = session.execute(self.localparent, sql.select([g.columns[0] for g in groupcols], clause, use_labels=True), None)
+                try:
+                    row = result.fetchone()
                     for prop in groupcols:
                         if prop is self:
                             continue
@@ -97,10 +96,11 @@ class DeferredColumnProperty(ColumnProperty):
                         instance.__dict__[prop.key] = row[prop.columns[0]]
                         sessionlib.attribute_manager.init_instance_attribute(instance, prop.key, uselist=False)
                     return row[self.columns[0]]    
-                else:
-                    return connection.scalar(sql.select([self.columns[0]], clause, use_labels=True),None)
-            finally:
-                connection.close()
+                finally:
+                    result.close()
+            else:
+                return session.scalar(self.localparent, sql.select([self.columns[0]], clause, use_labels=True),None)
+
         return lazyload
     def setup(self, key, statement, **options):
         pass

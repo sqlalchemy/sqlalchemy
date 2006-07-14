@@ -612,6 +612,15 @@ class SaveTest(SessionTest):
         l = AddressUser.mapper.selectone()
         self.assert_(l.user_id == au.user_id and l.address_id == au.address_id)
     
+    def testdeferred(self):
+        """test that a deferred load within a flush() doesnt screw up the connection"""
+        mapper(User, users, properties={
+            'user_name':deferred(users.c.user_name)
+        })
+        u = User()
+        u.user_id=42
+        ctx.current.flush()
+        
     def testmultitable(self):
         """tests a save of an object where each instance spans two tables. also tests
         redefinition of the keynames for the column properties."""
