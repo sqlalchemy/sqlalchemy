@@ -16,7 +16,8 @@ class CascadeOptions(object):
         self.save_update = "save-update" in values or "all" in values
         self.merge = "merge" in values or "all" in values
         self.expunge = "expunge" in values or "all" in values
-        self.refresh_expire = "refresh-expire" in values or "all" in values
+        # refresh_expire not really implemented as of yet
+        #self.refresh_expire = "refresh-expire" in values or "all" in values
     def __contains__(self, item):
         return getattr(self, item.replace("-", "_"), False)
     

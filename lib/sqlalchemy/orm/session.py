@@ -264,9 +264,13 @@ class Session(object):
         self.uow.expire(self, object)
 
     def expunge(self, object):
-        """removes the given object from this Session.  this will free all internal references to the object."""
-        self.uow.expunge(object)
-        self._unattach(object)
+        """remove the given object from this Session.  
+        
+        this will free all internal references to the object.  cascading will be applied according to the
+        'expunge' cascade rule."""
+        for c in [object] + list(object_mapper(object).cascade_iterator('expunge', object)):
+            self.uow.expunge(c)
+            self._unattach(c)
         
     def save(self, object, entity_name=None):
         """

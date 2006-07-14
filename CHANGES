@@ -25,6 +25,8 @@ mapping inner-class.  Currently this does not support reflecting
 any relationships.
 - deferred column load could screw up the connection status in 
 a flush() under some circumstances, this was fixed
+- expunge() was not working with cascade, fixed.
+- potential endless loop in cascading operations fixed.
 
 0.2.5
 - fixed endless loop bug in select_by(), if the traversal hit

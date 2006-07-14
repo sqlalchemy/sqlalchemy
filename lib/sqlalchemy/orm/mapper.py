@@ -918,7 +918,7 @@ class Mapper(object):
         for prop in self.__props.values():
             prop.register_dependencies(uowcommit, *args, **kwargs)
     
-    def cascade_iterator(self, type, object, callable_=None, recursive=None):
+    def cascade_iterator(self, type, object, recursive=None):
         if recursive is None:
             recursive=util.Set()
         for prop in self.__props.values():
