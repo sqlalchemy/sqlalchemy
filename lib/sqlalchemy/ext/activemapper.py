@@ -26,6 +26,7 @@ except AttributeError:
         def __getattr__(self, name):
             return getattr(self.context.current, name)
         session = property(lambda s:s.context.current)
+    
     objectstore = Objectstore(create_session)
 
 
@@ -37,6 +38,7 @@ class column(object):
                  primary_key=False, *args, **kwargs):
         if isinstance(foreign_key, basestring): 
             foreign_key = ForeignKey(foreign_key)
+        
         self.coltype     = coltype
         self.colname     = colname
         self.foreign_key = foreign_key
@@ -58,15 +60,19 @@ class relationship(object):
         self.uselist   = uselist
         self.secondary = secondary
         self.order_by  = order_by
+    
     def process(self, klass, propname, relations):
         relclass = ActiveMapperMeta.classes[self.classname]
+        
         if isinstance(self.order_by, str):
             self.order_by = [ self.order_by ]
+        
         if isinstance(self.order_by, list):
             for itemno in range(len(self.order_by)):
                 if isinstance(self.order_by[itemno], str):
                     self.order_by[itemno] = \
                         getattr(relclass.c, self.order_by[itemno])
+        
         backref = self.create_backref(klass)
         relations[propname] = relation(relclass.mapper,
                                        secondary=self.secondary,
@@ -75,36 +81,47 @@ class relationship(object):
                                        lazy=self.lazy, 
                                        uselist=self.uselist,
                                        order_by=self.order_by)
+    
     def create_backref(self, klass):
         if self.backref is None:
             return None
+        
         relclass = ActiveMapperMeta.classes[self.classname]
+        
         if klass.__name__ == self.classname:
             br_fkey = getattr(relclass.c, self.colname)
         else:
             br_fkey = None
-        return create_backref(self.backref, foreignkey=br_fkey)
         
+        return create_backref(self.backref, foreignkey=br_fkey)
+
+
 class one_to_many(relationship):
     def __init__(self, classname, colname=None, backref=None, private=False,
                  lazy=True, order_by=False):
         relationship.__init__(self, classname, colname, backref, private, 
                               lazy, uselist=True, order_by=order_by)
 
+
 class one_to_one(relationship):
     def __init__(self, classname, colname=None, backref=None, private=False,
                  lazy=True, order_by=False):
         relationship.__init__(self, classname, colname, backref, private, 
                               lazy, uselist=False, order_by=order_by)
+    
     def create_backref(self, klass):
         if self.backref is None:
             return None
+        
         relclass = ActiveMapperMeta.classes[self.classname]
+        
         if klass.__name__ == self.classname:
             br_fkey = getattr(relclass.c, self.colname)
         else:
             br_fkey = None
+        
         return create_backref(self.backref, foreignkey=br_fkey, uselist=False)
+
 
 class many_to_many(relationship):
     def __init__(self, classname, secondary, backref=None, lazy=True,
@@ -112,6 +129,7 @@ class many_to_many(relationship):
         relationship.__init__(self, classname, None, backref, False, lazy,
                               uselist=True, secondary=secondary,
                               order_by=order_by)
+
 
 # 
 # SQLAlchemy metaclass and superclass that can be used to do SQLAlchemy 
@@ -185,6 +203,7 @@ class ActiveMapperMeta(type):
         table_name = clsname.lower()
         columns    = []
         relations  = {}
+        autoload   = False
         _metadata  = getattr(sys.modules[cls.__module__], 
                              "__metadata__", metadata)
         
@@ -199,6 +218,10 @@ class ActiveMapperMeta(type):
                 
                 if '__metadata__' == name:
                     _metadata= value
+                    continue
+                
+                if '__autoload__' == name:
+                    autoload = True
                     continue
                     
                 if name.startswith('__'): continue
@@ -223,7 +246,7 @@ class ActiveMapperMeta(type):
                 if isinstance(value, relationship):
                     relations[name] = value
             
-            if not found_pk:
+            if not found_pk and not autoload:
                 col = Column('id', Integer, primary_key=True)
                 cls.mapping.id = col
                 columns.append(col)
@@ -231,8 +254,13 @@ class ActiveMapperMeta(type):
             assert _metadata is not None, "No MetaData specified"
             
             ActiveMapperMeta.metadatas.add(_metadata)
-            cls.table = Table(table_name, _metadata, *columns)
-            cls.columns = columns
+            
+            if not autoload:
+                cls.table = Table(table_name, _metadata, *columns)
+                cls.columns = columns
+            else:
+                cls.table = Table(table_name, _metadata, autoload=True)
+                cls.columns = cls.table._columns
             
             # check for inheritence
             if hasattr(bases[0], "mapping"):

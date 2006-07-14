@@ -12,6 +12,10 @@ activated when activemapper is imported
 - added count()/count_by() to list of methods proxied by assignmapper;
 this also adds them to activemapper
 - connection exceptions wrapped in DBAPIError
+- ActiveMapper now supports autoloading column definitions from the
+database if you supply a __autoload__ = True attribute in your
+mapping inner-class.  Currently this does not support reflecting 
+any relationships.
 
 0.2.5
 - fixed endless loop bug in select_by(), if the traversal hit
