@@ -293,7 +293,7 @@ class FBCompiler(ansisql.ANSICompiler):
         return ""
 
 class FBSchemaGenerator(ansisql.ANSISchemaGenerator):
-    def get_column_specification(self, column, override_pk=False, **kwargs):
+    def get_column_specification(self, column, **kwargs):
         colspec = column.name 
         colspec += " " + column.type.engine_impl(self.engine).get_col_spec()
         default = self.get_column_default_string(column)
@@ -302,10 +302,6 @@ class FBSchemaGenerator(ansisql.ANSISchemaGenerator):
 
         if not column.nullable:
             colspec += " NOT NULL"
-        if column.primary_key and not override_pk:
-            colspec += " PRIMARY KEY"
-        if column.foreign_key:
-            colspec += " REFERENCES %s(%s)" % (column.foreign_key.column.table.name, column.foreign_key.column.name) 
         return colspec
 
     def visit_sequence(self, sequence):

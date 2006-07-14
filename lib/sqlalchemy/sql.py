@@ -1225,14 +1225,11 @@ class TableClause(FromClause):
         super(TableClause, self).__init__(name)
         self.name = self.fullname = name
         self._columns = util.OrderedProperties()
-        self._indexes = util.OrderedProperties()
         self._foreign_keys = []
         self._primary_key = []
         for c in columns:
             self.append_column(c)
         self._oid_column = ColumnClause('oid', self, hidden=True)
-
-    indexes = property(lambda s:s._indexes)
 
     def named_with_column(self):
         return True
@@ -1250,16 +1247,11 @@ class TableClause(FromClause):
                 for ci in c.orig_set:
                     self._orig_cols[ci] = c
             return self._orig_cols
-    columns = property(lambda s:s._columns)
-    c = property(lambda s:s._columns)
-    primary_key = property(lambda s:s._primary_key)
-    foreign_keys = property(lambda s:s._foreign_keys)
     original_columns = property(_orig_columns)
 
     def _clear(self):
         """clears all attributes on this TableClause so that new items can be added again"""
         self.columns.clear()
-        self.indexes.clear()
         self.foreign_keys[:] = []
         self.primary_key[:] = []
         try:

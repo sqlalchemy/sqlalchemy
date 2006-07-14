@@ -29,8 +29,10 @@ class ReflectionTest(PersistTest):
         else:
             deftype2 = Integer
             defval2 = "15"
-            
-        users = Table('engine_users', testbase.db,
+        
+        meta = BoundMetaData(testbase.db)
+        
+        users = Table('engine_users', meta,
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20), nullable = False),
             Column('test1', CHAR(5), nullable = False),
@@ -49,14 +51,13 @@ class ReflectionTest(PersistTest):
             mysql_engine='InnoDB'
         )
 
-        addresses = Table('engine_email_addresses', testbase.db,
+        addresses = Table('engine_email_addresses', meta,
             Column('address_id', Integer, primary_key = True),
             Column('remote_user_id', Integer, ForeignKey(users.c.user_id)),
             Column('email_address', String(20)),
             mysql_engine='InnoDB'
         )
 
-        
 #        users.c.parent_user_id.set_foreign_key(ForeignKey(users.c.user_id))
 
         users.create()
@@ -119,28 +120,69 @@ class ReflectionTest(PersistTest):
         table.insert().execute({'multi_id':3,'multi_rev':3,'name':'row3', 'val':'value3'})
         table.select().execute().fetchall()
         table.drop()
-    
+
+    def testcompositefk(self):
+        meta = BoundMetaData(testbase.db)
+        table = Table(
+            'multi', meta, 
+            Column('multi_id', Integer, primary_key=True),
+            Column('multi_rev', Integer, primary_key=True),
+            Column('name', String(50), nullable=False),
+            Column('val', String(100)),
+            mysql_engine='InnoDB'
+        )
+        table2 = Table('multi2', meta, 
+            Column('id', Integer, primary_key=True),
+            Column('foo', Integer),
+            Column('bar', Integer),
+            Column('data', String(50)),
+            ForeignKeyConstraint(['foo', 'bar'], ['multi.multi_id', 'multi.multi_rev']),
+            mysql_engine='InnoDB'
+        )
+        meta.create_all()
+        meta.clear()
+        
+        try:
+            table = Table('multi', meta, autoload=True)
+            table2 = Table('multi2', meta, autoload=True)
+            
+            print table
+            print table2
+            j = join(table, table2)
+            print str(j.onclause)
+            self.assert_(and_(table.c.multi_id==table2.c.foo, table.c.multi_rev==table2.c.bar).compare(j.onclause))
+
+        finally:
+            meta.drop_all()
+
     def testtoengine(self):
         meta = MetaData('md1')
         meta2 = MetaData('md2')
         
         table = Table('mytable', meta,
-            Column('myid', Integer, key = 'id'),
-            Column('name', String, key = 'name', nullable=False),
-            Column('description', String, key = 'description'),
+            Column('myid', Integer, primary_key=True),
+            Column('name', String, nullable=False),
+            Column('description', String(30)),
         )
         
-        print repr(table)
+        table2 = Table('othertable', meta,
+            Column('id', Integer, primary_key=True),
+            Column('myid', Integer, ForeignKey('mytable.myid'))
+            )
+            
         
-        table2 = table.tometadata(meta2)
+        table_c = table.tometadata(meta2)
+        table2_c = table2.tometadata(meta2)
+
+        assert table is not table_c
+        assert table_c.c.myid.primary_key
+        assert not table_c.c.name.nullable 
+        assert table_c.c.description.nullable 
+        assert table.primary_key is not table_c.primary_key
+        assert [x.name for x in table.primary_key] == [x.name for x in table_c.primary_key]
+        assert table2_c.c.myid.foreign_key.column is table_c.c.myid
+        assert table2_c.c.myid.foreign_key.column is not table.c.myid
         
-        print repr(table2)
-        
-        assert table is not table2
-        assert table2.c.id.nullable 
-        assert not table2.c.name.nullable 
-        assert table2.c.description.nullable 
-    
     # mysql throws its own exception for no such table, resulting in 
     # a sqlalchemy.SQLError instead of sqlalchemy.NoSuchTableError.
     # this could probably be fixed at some point.

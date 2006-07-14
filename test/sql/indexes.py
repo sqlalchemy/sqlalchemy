@@ -5,16 +5,33 @@ import sys
 class IndexTest(testbase.AssertMixin):
     
     def setUp(self):
-	global metadata
-	metadata = BoundMetaData(testbase.db)
+        global metadata
+        metadata = BoundMetaData(testbase.db)
         self.echo = testbase.db.echo
         self.logger = testbase.db.logger
         
     def tearDown(self):
         testbase.db.echo = self.echo
         testbase.db.logger = testbase.db.engine.logger = self.logger
-	metadata.drop_all()
+        metadata.drop_all()
     
+    def test_constraint(self):
+        employees = Table('employees', metadata, 
+            Column('id', Integer),
+            Column('soc', String(40)),
+            Column('name', String(30)),
+            PrimaryKeyConstraint('id', 'soc')
+            )
+        elements = Table('elements', metadata,
+            Column('id', Integer),
+            Column('stuff', String(30)),
+            Column('emp_id', Integer),
+            Column('emp_soc', String(40)),
+            PrimaryKeyConstraint('id'),
+            ForeignKeyConstraint(['emp_id', 'emp_soc'], ['employees.id', 'employees.soc'])
+            )
+        metadata.create_all()
+        
     def test_index_create(self):
         employees = Table('employees', metadata,
                           Column('id', Integer, primary_key=True),

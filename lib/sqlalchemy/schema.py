@@ -18,23 +18,24 @@ from sqlalchemy import sql, types, exceptions,util
 import sqlalchemy
 import copy, re, string
 
-__all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index',
+__all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index', 'ForeignKeyConstraint',
+            'PrimaryKeyConstraint', 
            'MetaData', 'BoundMetaData', 'DynamicMetaData', 'SchemaVisitor', 'PassiveDefault', 'ColumnDefault']
 
 class SchemaItem(object):
     """base class for items that define a database schema."""
     def _init_items(self, *args):
+        """initialize the list of child items for this SchemaItem"""
         for item in args:
             if item is not None:
                 item._set_parent(self)
     def _set_parent(self, parent):
-        """a child item attaches itself to its parent via this method."""
+        """associate with this SchemaItem's parent object."""
         raise NotImplementedError()
     def __repr__(self):
         return "%s()" % self.__class__.__name__
     def _derived_metadata(self):
-        """subclasses override this method to return a the MetaData
-        to which this item is bound"""
+        """return the the MetaData to which this item is bound"""
         return None
     def _get_engine(self):
         return self._derived_metadata().engine
@@ -77,7 +78,7 @@ class TableSingleton(type):
             table = metadata.tables[key]
             if len(args):
                 if redefine:
-                    table.reload_values(*args)
+                    table._reload_values(*args)
                 elif not useexisting:
                     raise exceptions.ArgumentError("Table '%s.%s' is already defined. specify 'redefine=True' to remap columns, or 'useexisting=True' to use the existing table" % (schema, name))
             return table
@@ -109,7 +110,9 @@ class Table(SchemaItem, sql.TableClause):
     __metaclass__ = TableSingleton
     
     def __init__(self, name, metadata, **kwargs):
-        """Table objects can be constructed directly.  The init method is actually called via 
+        """Construct a Table.
+        
+        Table objects can be constructed directly.  The init method is actually called via 
         the TableSingleton metaclass.  Arguments are:
         
         name : the name of this table, exactly as it appears, or will appear, in the database.
@@ -141,11 +144,23 @@ class Table(SchemaItem, sql.TableClause):
         super(Table, self).__init__(name)
         self._metadata = metadata
         self.schema = kwargs.pop('schema', None)
+        self.indexes = util.OrderedProperties()
+        self.constraints = []
+        self.primary_key = PrimaryKeyConstraint()
+
         if self.schema is not None:
             self.fullname = "%s.%s" % (self.schema, self.name)
         else:
             self.fullname = self.name
         self.kwargs = kwargs
+
+    def _set_primary_key(self, pk):
+        if getattr(self, '_primary_key', None) in self.constraints:
+            self.constraints.remove(self._primary_key)
+        self._primary_key = pk
+        self.constraints.append(pk)
+    primary_key = property(lambda s:s._primary_key, _set_primary_key)
+    
     def _derived_metadata(self):
         return self._metadata
     def __repr__(self):
@@ -158,8 +173,8 @@ class Table(SchemaItem, sql.TableClause):
     def __str__(self):
         return _get_table_key(self.name, self.schema)
         
-    def reload_values(self, *args):
-        """clears out the columns and other properties of this Table, and reloads them from the 
+    def _reload_values(self, *args):
+        """clear out the columns and other properties of this Table, and reload them from the 
         given argument list.  This is used with the "redefine" keyword argument sent to the
         metaclass constructor."""
         self._clear()
@@ -216,8 +231,9 @@ class Table(SchemaItem, sql.TableClause):
         return index
     
     def deregister(self):
-        """removes this table from it's metadata.  this does not
-        issue a SQL DROP statement."""
+        """remove this table from it's owning metadata.  
+        
+        this does not issue a SQL DROP statement."""
         key = _get_table_key(self.name, self.schema)
         del self.metadata.tables[key]
     def create(self, connectable=None):
@@ -232,7 +248,7 @@ class Table(SchemaItem, sql.TableClause):
         else:
             self.engine.drop(self)
     def tometadata(self, metadata, schema=None):
-        """returns a singleton instance of this Table with a different Schema"""
+        """return a copy of this Table associated with a different MetaData."""
         try:
             if schema is None:
                 schema = self.schema
@@ -241,6 +257,8 @@ class Table(SchemaItem, sql.TableClause):
         except KeyError:
             args = []
             for c in self.columns:
+                args.append(c.copy())
+            for c in self.constraints:
                 args.append(c.copy())
             return Table(self.name, metadata, schema=schema, *args)
 
@@ -362,13 +380,9 @@ class Column(SchemaItem, sql.ColumnClause):
         self._init_items(*self.args)
         self.args = None
 
-    def copy(self):
+    def copy(self): 
         """creates a copy of this Column, unitialized"""
-        if self.foreign_key is None:
-            fk = None
-        else:
-            fk = self.foreign_key.copy()
-        return Column(self.name, self.type, fk, self.default, key = self.key, primary_key = self.primary_key, nullable = self.nullable, hidden = self.hidden)
+        return Column(self.name, self.type, self.default, key = self.key, primary_key = self.primary_key, nullable = self.nullable, hidden = self.hidden)
         
     def _make_proxy(self, selectable, name = None):
         """creates a copy of this Column, initialized the way this Column is"""
@@ -401,23 +415,33 @@ class Column(SchemaItem, sql.ColumnClause):
 
 
 class ForeignKey(SchemaItem):
-    """defines a ForeignKey constraint between two columns.  ForeignKey is 
-    specified as an argument to a Column object."""
-    def __init__(self, column):
-        """Constructs a new ForeignKey object.  "column" can be a schema.Column
-        object representing the relationship, or just its string name given as 
-        "tablename.columnname".  schema can be specified as 
-        "schema.tablename.columnname" """
+    """defines a column-level ForeignKey constraint between two columns.  
+    
+    ForeignKey is specified as an argument to a Column object.
+    
+    One or more ForeignKey objects are used within a ForeignKeyConstraint
+    object which represents the table-level constraint definition."""
+    def __init__(self, column, constraint=None):
+        """Construct a new ForeignKey object.  
+        
+        "column" can be a schema.Column object representing the relationship, 
+        or just its string name given as "tablename.columnname".  schema can be 
+        specified as "schema.tablename.columnname" 
+        
+        "constraint" is the owning ForeignKeyConstraint object, if any.  if not given,
+        then a ForeignKeyConstraint will be automatically created and added to the parent table.
+        """
         if isinstance(column, unicode):
             column = str(column)
         self._colspec = column
         self._column = None
-
+        self.constraint = constraint
+        
     def __repr__(self):
         return "ForeignKey(%s)" % repr(self._get_colspec())
         
     def copy(self):
-        """produces a copy of this ForeignKey object."""
+        """produce a copy of this ForeignKey object."""
         return ForeignKey(self._get_colspec())
     
     def _get_colspec(self):
@@ -462,6 +486,7 @@ class ForeignKey(SchemaItem):
                     self._column = table.c[colname]
             else:
                 self._column = self._colspec
+
         return self._column
             
     column = property(lambda s: s._init_column())
@@ -472,8 +497,14 @@ class ForeignKey(SchemaItem):
         
     def _set_parent(self, column):
         self.parent = column
-        # if a foreign key was already set up for this, replace it with 
-        # this one, including removing from the parent
+
+        if self.constraint is None and isinstance(self.parent.table, Table):
+            self.constraint = ForeignKeyConstraint([],[])
+            self.parent.table.append_item(self.constraint)
+            self.constraint._append_fk(self)
+
+        # if a foreign key was already set up for the parent column, replace it with 
+        # this one
         if self.parent.foreign_key is not None:
             self.parent.table.foreign_keys.remove(self.parent.foreign_key)
         self.parent.foreign_key = self
@@ -551,7 +582,81 @@ class Sequence(DefaultGenerator):
         """calls the visit_seauence method on the given visitor."""
         return visitor.visit_sequence(self)
 
-
+class Constraint(SchemaItem):
+    """represents a table-level Constraint such as a composite primary key, foreign key, or unique constraint.
+    
+    Also follows list behavior with regards to the underlying set of columns."""
+    def __init__(self, name=None):
+        self.name = name
+        self.columns = []
+    def __contains__(self, x):
+        return x in self.columns
+    def __add__(self, other):
+        return self.columns + other
+    def __iter__(self):
+        return iter(self.columns)
+    def __len__(self):
+        return len(self.columns)
+    def __getitem__(self, index):
+        return self.columns[index]
+    def copy(self):
+        raise NotImplementedError()
+        
+class ForeignKeyConstraint(Constraint):
+    """table-level foreign key constraint, represents a colleciton of ForeignKey objects."""
+    def __init__(self, columns, refcolumns, name=None, onupdate=None, ondelete=None):
+        super(ForeignKeyConstraint, self).__init__(name)
+        self.__colnames = columns
+        self.__refcolnames = refcolumns
+        self.elements = []
+        self.onupdate = onupdate
+        self.ondelete = ondelete
+    def _set_parent(self, table):
+        self.table = table
+        table.constraints.append(self)
+        for (c, r) in zip(self.__colnames, self.__refcolnames):
+            self.append(c,r)
+    def accept_schema_visitor(self, visitor):
+        visitor.visit_foreign_key_constraint(self)
+    def append(self, col, refcol):
+        fk = ForeignKey(refcol, constraint=self)
+        fk._set_parent(self.table.c[col])
+        self._append_fk(fk)
+    def _append_fk(self, fk):
+        self.columns.append(self.table.c[fk.parent.name])
+        self.elements.append(fk)
+    def copy(self):
+        return ForeignKeyConstraint([x.parent.name for x in self.elements], [x._get_colspec() for x in self.elements], name=self.name, onupdate=self.onupdate, ondelete=self.ondelete)
+                        
+class PrimaryKeyConstraint(Constraint):
+    def __init__(self, *columns, **kwargs):
+        super(PrimaryKeyConstraint, self).__init__(name=kwargs.pop('name', None))
+        self.__colnames = list(columns)
+    def _set_parent(self, table):
+        table.primary_key = self
+        for c in self.__colnames:
+            self.append(table.c[c])
+    def accept_schema_visitor(self, visitor):
+        visitor.visit_primary_key_constraint(self)
+    def append(self, col):
+        self.columns.append(col)
+        col.primary_key=True
+    def copy(self):
+        return PrimaryKeyConstraint(name=self.name, *[c.name for c in self])
+            
+class UniqueConstraint(Constraint):
+    def __init__(self, name=None, *columns):
+        super(Constraint, self).__init__(name)
+        self.__colnames = list(columns)
+    def _set_parent(self, table):
+        table.constraints.append(self)
+        for c in self.__colnames:
+            self.append(table.c[c])
+    def append(self, col):
+        self.columns.append(col)
+    def accept_schema_visitor(self, visitor):
+        visitor.visit_unique_constraint(self)
+        
 class Index(SchemaItem):
     """Represents an index of columns from a database table
     """
@@ -746,7 +851,13 @@ class SchemaVisitor(sql.ClauseVisitor):
     def visit_sequence(self, sequence):
         """visit a Sequence."""
         pass
-
+    def visit_primary_key_constraint(self, constraint):
+        pass
+    def visit_foreign_key_constraint(self, constraint):
+        pass
+    def visit_unique_constraint(self, constraint):
+        pass
+        
 default_metadata = DynamicMetaData('default')
 
             

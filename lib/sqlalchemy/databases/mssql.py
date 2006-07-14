@@ -511,7 +511,7 @@ class MSSQLCompiler(ansisql.ANSICompiler):
 
         
 class MSSQLSchemaGenerator(ansisql.ANSISchemaGenerator):
-    def get_column_specification(self, column, override_pk=False, first_pk=False):
+    def get_column_specification(self, column, **kwargs):
         colspec = column.name + " " + column.type.engine_impl(self.engine).get_col_spec()
 
         # install a IDENTITY Sequence if we have an implicit IDENTITY column
@@ -528,12 +528,6 @@ class MSSQLSchemaGenerator(ansisql.ANSISchemaGenerator):
             default = self.get_column_default_string(column)
             if default is not None:
                 colspec += " DEFAULT " + default
-
-        if column.primary_key:
-            if not override_pk:
-                colspec += " PRIMARY KEY"
-        if column.foreign_key:
-            colspec += " REFERENCES %s(%s)" % (column.foreign_key.column.table.fullname, column.foreign_key.column.name)
         
         return colspec
 

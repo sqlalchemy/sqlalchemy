@@ -230,7 +230,7 @@ class PKTest(SessionTest):
     @testbase.unsupported('mssql')
     def setUpAll(self):
         SessionTest.setUpAll(self)
-        db.echo = False
+        #db.echo = False
         global table
         global table2
         global table3
@@ -266,6 +266,8 @@ class PKTest(SessionTest):
         db.echo = testbase.echo
         SessionTest.tearDownAll(self)
         
+    # not support on sqlite since sqlite's auto-pk generation only works with
+    # single column primary keys    
     @testbase.unsupported('sqlite', 'mssql')
     def testprimarykey(self):
         class Entry(object):
@@ -279,6 +281,8 @@ class PKTest(SessionTest):
         ctx.current.clear()
         e2 = Entry.mapper.get((e.multi_id, 2))
         self.assert_(e is not e2 and e._instance_key == e2._instance_key)
+        
+    # this one works with sqlite since we are manually setting up pk values
     @testbase.unsupported('mssql')
     def testmanualpk(self):
         class Entry(object):
@@ -289,6 +293,7 @@ class PKTest(SessionTest):
         e.pk_col_2 = 'pk1_related'
         e.data = 'im the data'
         ctx.current.flush()
+        
     @testbase.unsupported('mssql')
     def testkeypks(self):
         import datetime

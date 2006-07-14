@@ -329,7 +329,7 @@ class PGCompiler(ansisql.ANSICompiler):
         
 class PGSchemaGenerator(ansisql.ANSISchemaGenerator):
         
-    def get_column_specification(self, column, override_pk=False, **kwargs):
+    def get_column_specification(self, column, **kwargs):
         colspec = column.name
         if column.primary_key and not column.foreign_key and isinstance(column.type, sqltypes.Integer) and (column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional)):
             colspec += " SERIAL"
@@ -341,10 +341,6 @@ class PGSchemaGenerator(ansisql.ANSISchemaGenerator):
 
         if not column.nullable:
             colspec += " NOT NULL"
-        if column.primary_key and not override_pk:
-            colspec += " PRIMARY KEY"
-        if column.foreign_key:
-            colspec += " REFERENCES %s(%s)" % (column.foreign_key.column.table.fullname, column.foreign_key.column.name) 
         return colspec
 
     def visit_sequence(self, sequence):

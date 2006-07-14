@@ -54,6 +54,7 @@ pg_key_constraints = schema.Table("key_column_usage", ischema,
     Column("table_name", String),
     Column("column_name", String),
     Column("constraint_name", String),
+    Column("ordinal_position", Integer),
     schema="information_schema")
 
 #mysql_key_constraints = schema.Table("key_column_usage", ischema,
@@ -100,13 +101,9 @@ class ISchema(object):
         return self.cache[name]
 
 
-def reflecttable(connection, table, ischema_names, use_mysql=False):
+def reflecttable(connection, table, ischema_names):
     
-    if use_mysql:
-        # no idea which INFORMATION_SCHEMA spec is correct, mysql or postgres
-        key_constraints = mysql_key_constraints
-    else:
-        key_constraints = pg_key_constraints
+    key_constraints = pg_key_constraints
         
     if table.schema is not None:
         current_schema = table.schema
@@ -152,39 +149,50 @@ def reflecttable(connection, table, ischema_names, use_mysql=False):
     if not found_table:
         raise exceptions.NoSuchTableError(table.name)
 
-    s = select([constraints.c.constraint_name, constraints.c.constraint_type, constraints.c.table_name, key_constraints], use_labels=True, from_obj=[constraints.join(column_constraints, column_constraints.c.constraint_name==constraints.c.constraint_name).join(key_constraints, key_constraints.c.constraint_name==column_constraints.c.constraint_name)])
-    if not use_mysql:
-        s.append_column(column_constraints)
-        s.append_whereclause(constraints.c.table_name==table.name)
-        s.append_whereclause(constraints.c.table_schema==current_schema)
-        colmap = [constraints.c.constraint_type, key_constraints.c.column_name, column_constraints.c.table_schema, column_constraints.c.table_name, column_constraints.c.column_name]
-    else:
-        # this doesnt seem to pick up any foreign keys with mysql
-        s.append_whereclause(key_constraints.c.table_name==constraints.c.table_name)
-        s.append_whereclause(key_constraints.c.table_schema==constraints.c.table_schema)
-        s.append_whereclause(constraints.c.table_name==table.name)
-        s.append_whereclause(constraints.c.table_schema==current_schema)
-        colmap = [constraints.c.constraint_type, key_constraints.c.column_name, key_constraints.c.referenced_table_schema, key_constraints.c.referenced_table_name, key_constraints.c.referenced_column_name]
+    # we are relying on the natural ordering of the constraint_column_usage table to return the referenced columns
+    # in an order that corresponds to the ordinal_position in the key_constraints table, otherwise composite foreign keys
+    # wont reflect properly.  dont see a way around this based on whats available from information_schema
+    s = select([constraints.c.constraint_name, constraints.c.constraint_type, constraints.c.table_name, key_constraints], use_labels=True, from_obj=[constraints.join(column_constraints, column_constraints.c.constraint_name==constraints.c.constraint_name).join(key_constraints, key_constraints.c.constraint_name==column_constraints.c.constraint_name)], order_by=[key_constraints.c.ordinal_position])
+    s.append_column(column_constraints)
+    s.append_whereclause(constraints.c.table_name==table.name)
+    s.append_whereclause(constraints.c.table_schema==current_schema)
+    colmap = [constraints.c.constraint_type, key_constraints.c.column_name, column_constraints.c.table_schema, column_constraints.c.table_name, column_constraints.c.column_name, constraints.c.constraint_name, key_constraints.c.ordinal_position]
     c = connection.execute(s)
 
+    fks = {}
     while True:
         row = c.fetchone()
         if row is None:
             break
-#        continue
-        (type, constrained_column, referred_schema, referred_table, referred_column) = (
+        (type, constrained_column, referred_schema, referred_table, referred_column, constraint_name, ordinal_position) = (
             row[colmap[0]],
             row[colmap[1]],
             row[colmap[2]],
             row[colmap[3]],
-            row[colmap[4]]
+            row[colmap[4]],
+            row[colmap[5]],
+            row[colmap[6]]
         )
         #print "type %s on column %s to remote %s.%s.%s" % (type, constrained_column, referred_schema, referred_table, referred_column) 
         if type=='PRIMARY KEY':
             table.c[constrained_column]._set_primary_key()
         elif type=='FOREIGN KEY':
+            try:
+                fk = fks[constraint_name]
+            except KeyError:
+                fk = ([],[])
+                fks[constraint_name] = fk
             if current_schema == referred_schema:
                 referred_schema = table.schema
-            remotetable = Table(referred_table, table.metadata, autoload=True, autoload_with=connection, schema=referred_schema)
-            table.c[constrained_column].append_item(schema.ForeignKey(remotetable.c[referred_column]))
+            if referred_schema is not None:
+                refspec = ".".join([referred_schema, referred_table, referred_column])
+            else:
+                refspec = ".".join([referred_table, referred_column])
+            if constrained_column not in fk[0]:
+                fk[0].append(constrained_column)
+            if refspec not in fk[1]:
+                fk[1].append(refspec)
+    
+    for name, value in fks.iteritems():
+        table.append_item(ForeignKeyConstraint(value[0], value[1], name=name))    
             

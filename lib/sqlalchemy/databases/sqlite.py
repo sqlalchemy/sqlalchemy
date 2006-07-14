@@ -257,7 +257,7 @@ class SQLiteCompiler(ansisql.ANSICompiler):
             return ansisql.ANSICompiler.binary_operator_string(self, binary)
 
 class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
-    def get_column_specification(self, column, override_pk=False, **kwargs):
+    def get_column_specification(self, column, **kwargs):
         colspec = column.name + " " + column.type.engine_impl(self.engine).get_col_spec()
         default = self.get_column_default_string(column)
         if default is not None:
@@ -265,34 +265,17 @@ class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
 
         if not column.nullable:
             colspec += " NOT NULL"
-        if column.primary_key and not override_pk:
-            colspec += " PRIMARY KEY"
-        if column.foreign_key:
-            colspec += " REFERENCES %s(%s)" % (column.foreign_key.column.table.name, column.foreign_key.column.name) 
         return colspec
-    def visit_table(self, table):
-        """sqlite is going to create multi-primary keys with just a UNIQUE index."""
-        self.append("\nCREATE TABLE " + table.fullname + "(")
 
-        separator = "\n"
-
-        have_pk = False
-        use_pks = len(table.primary_key) == 1
-        for column in table.columns:
-            self.append(separator)
-            separator = ", \n"
-            self.append("\t" + self.get_column_specification(column, override_pk=not use_pks))
-                
-        if len(table.primary_key) > 1:
-            self.append(", \n")
-            # put all PRIMARY KEYS in a UNIQUE index
-            self.append("\tUNIQUE (%s)" % string.join([c.name for c in table.primary_key],', '))
-
-        self.append("\n)\n\n")
-        self.execute()        
-        if hasattr(table, 'indexes'):
-            for index in table.indexes:
-                self.visit_index(index)
-
+    # this doesnt seem to be needed, although i suspect older versions of sqlite might still
+    # not directly support composite primary keys
+    #def visit_primary_key_constraint(self, constraint):
+    #    if len(constraint) > 1:
+    #        self.append(", \n")
+    #        # put all PRIMARY KEYS in a UNIQUE index
+    #        self.append("\tUNIQUE (%s)" % string.join([c.name for c in constraint],', '))
+    #    else:
+    #        super(SQLiteSchemaGenerator, self).visit_primary_key_constraint(constraint)
+            
 dialect = SQLiteDialect
 poolclass = pool.SingletonThreadPool       
