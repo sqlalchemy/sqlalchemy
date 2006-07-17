@@ -142,8 +142,9 @@ class Session(object):
         Table will use the given bindto."""
         self.binds[table] = bindto
     def get_bind(self, mapper):
-        """given a Mapper, returns the Engine or Connection which is used to execute statements on behalf of this 
-        Mapper.  Calling connect() on the return result will always result in a Connection object.  This method 
+        """return the Engine or Connection which is used to execute statements on behalf of the given Mapper.
+        
+        Calling connect() on the return result will always result in a Connection object.  This method 
         disregards any SessionTransaction that may be in progress.
         
         The order of searching is as follows:
@@ -174,7 +175,7 @@ class Session(object):
                 raise exceptions.InvalidRequestError("Could not locate any Engine bound to mapper '%s'" % str(mapper))
             return e
     def query(self, mapper_or_class, entity_name=None):
-        """given a mapper or Class, returns a new Query object corresponding to this Session and the mapper, or the classes' primary mapper."""
+        """return a new Query object corresponding to this Session and the mapper, or the classes' primary mapper."""
         if isinstance(mapper_or_class, type):
             return query.Query(class_mapper(mapper_or_class, entity_name=entity_name), self)
         else:
@@ -190,8 +191,7 @@ class Session(object):
     
         
     def get_id_key(ident, class_, entity_name=None):
-        """returns an identity-map key for use in storing/retrieving an item from the identity
-        map, given a tuple of the object's primary key values.
+        """return an identity-map key for use in storing/retrieving an item from the identity map.
 
         ident - a tuple of primary key values corresponding to the object to be stored.  these
         values should be in the same order as the primary keys of the table 
@@ -204,8 +204,7 @@ class Session(object):
     get_id_key = staticmethod(get_id_key)
 
     def get_row_key(row, class_, primary_key, entity_name=None):
-        """returns an identity-map key for use in storing/retrieving an item from the identity
-        map, given a result set row.
+        """return an identity-map key for use in storing/retrieving an item from the identity map.
 
         row - a sqlalchemy.dbengine.RowProxy instance or other map corresponding result-set
         column names to their values within a row.
@@ -228,13 +227,16 @@ class Session(object):
         raise exceptions.InvalidRequestError("Session.commit() is deprecated.  use install_mod('legacy_session') to enable the old behavior")    
 
     def flush(self, objects=None):
-        """flushes all the object modifications present in this session to the database.  'objects'
-        is a list or tuple of objects specifically to be flushed."""
+        """flush all the object modifications present in this session to the database.  
+        
+        'objects' is a list or tuple of objects specifically to be flushed; if None, all
+        new and modified objects are flushed."""
         self.uow.flush(self, objects, echo=self.echo_uow)
 
     def get(self, class_, ident, **kwargs):
-        """returns an instance of the object based on the given identifier, or None
-        if not found.  The ident argument is a scalar or tuple of primary key column values in the order of the 
+        """return an instance of the object based on the given identifier, or None if not found.  
+        
+        The ident argument is a scalar or tuple of primary key column values in the order of the 
         table def's primary key columns.
         
         the entity_name keyword argument may also be specified which further qualifies the underlying
@@ -243,8 +245,9 @@ class Session(object):
         return self.query(class_, entity_name=entity_name).get(ident)
         
     def load(self, class_, ident, **kwargs):
-        """returns an instance of the object based on the given identifier. If not found,
-        raises an exception.  The method will *remove all pending changes* to the object
+        """return an instance of the object based on the given identifier. 
+        
+        If not found, raises an exception.  The method will *remove all pending changes* to the object
         already existing in the Session.  The ident argument is a scalar or tuple of
         primary key columns in the order of the table def's primary key columns.
         
@@ -252,16 +255,27 @@ class Session(object):
         Mapper used to perform the query."""
         entity_name = kwargs.get('entity_name', None)
         return self.query(class_, entity_name=entity_name).load(ident)
-                
-    def refresh(self, object):
-        """reloads the attributes for the given object from the database, clears
-        any changes made."""
-        self.uow.refresh(self, object)
 
-    def expire(self, object):
-        """invalidates the data in the given object and sets them to refresh themselves
+    def refresh(self, obj):
+        """reload the attributes for the given object from the database, clear any changes made."""
+        self._validate_persistent(obj)
+        if self.query(obj.__class__)._get(obj._instance_key, reload=True) is None:
+            raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % repr(obj))
+
+    def expire(self, obj):
+        """invalidate the data in the given object and sets them to refresh themselves
         the next time they are requested."""
-        self.uow.expire(self, object)
+        self._validate_persistent(obj)
+        def exp():
+            if self.query(obj.__class__)._get(obj._instance_key, reload=True) is None:
+                raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % repr(obj))
+        attribute_manager.trigger_history(obj, exp)
+
+    def is_expired(self, obj, unexpire=False):
+        ret = attribute_manager.has_trigger(obj)
+        if ret and unexpire:
+            attribute_manager.untrigger_history(obj)
+        return ret
 
     def expunge(self, object):
         """remove the given object from this Session.  
@@ -269,7 +283,7 @@ class Session(object):
         this will free all internal references to the object.  cascading will be applied according to the
         'expunge' cascade rule."""
         for c in [object] + list(object_mapper(object).cascade_iterator('expunge', object)):
-            self.uow.expunge(c)
+            self.uow._remove_deleted(c)
             self._unattach(c)
         
     def save(self, object, entity_name=None):
@@ -332,7 +346,7 @@ class Session(object):
                     
     def _save_impl(self, object, **kwargs):
         if hasattr(object, '_instance_key'):
-            if not self.uow.has_key(object._instance_key):
+            if not self.identity_map.has_key(object._instance_key):
                 raise exceptions.InvalidRequestError("Instance '%s' is a detached instance or is already persistent in a different Session" % repr(object))
         else:
             m = class_mapper(object.__class__, entity_name=kwargs.get('entity_name', None))
@@ -389,28 +403,31 @@ class Session(object):
             obj._sa_session_id = self.hash_key
             
     def _unattach(self, obj):
-        if not self._is_attached(obj): #getattr(obj, '_sa_session_id', None) != self.hash_key:
-            raise exceptions.InvalidRequestError("Object '%s' is not attached to this Session" % repr(obj))
+        self._validate_attached(obj)
         del obj._sa_session_id
-        
+    
+    def _validate_attached(self, obj):
+        """validate that the given object is either pending or persistent within this Session."""
+        if not self._is_attached(obj):
+            raise exceptions.InvalidRequestError("Instance '%s' not attached to this Session" % repr(obj))
+    def _validate_persistent(self, obj):
+        """validate that the given object is persistent within this Session."""
+        self.uow._validate_obj(obj)
     def _is_attached(self, obj):
         return getattr(obj, '_sa_session_id', None) == self.hash_key
     def __contains__(self, obj):
-        return self._is_attached(obj) and (obj in self.uow.new or self.uow.has_key(obj._instance_key))
+        return self._is_attached(obj) and (obj in self.uow.new or self.identity_map.has_key(obj._instance_key))
     def __iter__(self):
         return iter(list(self.uow.new) + self.uow.identity_map.values())
     def _get(self, key):
-        return self.uow._get(key)
+        return self.identity_map[key]
     def has_key(self, key):
-        return self.uow.has_key(key)
-    def is_expired(self, instance, **kwargs):
-        return self.uow.is_expired(instance, **kwargs)
+        return self.identity_map.has_key(key)
         
     dirty = property(lambda s:s.uow.dirty, doc="a Set of all objects marked as 'dirty' within this Session")
     deleted = property(lambda s:s.uow.deleted, doc="a Set of all objects marked as 'deleted' within this Session")
     new = property(lambda s:s.uow.new, doc="a Set of all objects marked as 'new' within this Session.")
     identity_map = property(lambda s:s.uow.identity_map, doc="a WeakValueDictionary consisting of all objects within this Session keyed to their _instance_key value.")
-    
             
     def import_instance(self, *args, **kwargs):
         """deprecated; a synynom for merge()"""

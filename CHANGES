@@ -13,7 +13,7 @@ of subclassed directly.
 - activemapper will use threadlocal's objectstore if the mod is
 activated when activemapper is imported
 - small fix to URL regexp to allow filenames with '@' in them
-- fixes to Session expunge/update/etc.
+- fixes to Session expunge/update/etc...needs more cleanup.
 - select_table mappers *still* werent always compiling
 - fixed up Boolean datatype
 - added count()/count_by() to list of methods proxied by assignmapper;

@@ -89,42 +89,6 @@ class UnitOfWork(object):
         
         self.deleted = util.Set()
 
-    def get(self, class_, *id):
-        """given a class and a list of primary key values in their table-order, locates the mapper 
-        for this class and calls get with the given primary key values."""
-        return object_mapper(class_).get(*id)
-
-    def _get(self, key):
-        return self.identity_map[key]
-        
-    def _put(self, key, obj):
-        self.identity_map[key] = obj
-
-    def refresh(self, sess, obj):
-        self._validate_obj(obj)
-        sess.query(obj.__class__)._get(obj._instance_key, reload=True)
-
-    def expire(self, sess, obj):
-        self._validate_obj(obj)
-        def exp():
-            sess.query(obj.__class__)._get(obj._instance_key, reload=True)
-        attribute_manager.trigger_history(obj, exp)
-    
-    def is_expired(self, obj, unexpire=False):
-        ret = attribute_manager.has_trigger(obj)
-        if ret and unexpire:
-            attribute_manager.untrigger_history(obj)
-        return ret
-            
-    def has_key(self, key):
-        """returns True if the given key is present in this UnitOfWork's identity map."""
-        return self.identity_map.has_key(key)
-    
-    def expunge(self, obj):
-        """removes this object completely from the UnitOfWork, including the identity map,
-        and the "new", "dirty" and "deleted" lists."""
-        self._remove_deleted(obj)
-        
     def _remove_deleted(self, obj):
         if hasattr(obj, "_instance_key"):
             del self.identity_map[obj._instance_key]
@@ -142,15 +106,13 @@ class UnitOfWork(object):
             pass
 
     def _validate_obj(self, obj):
-        """validates that dirty/delete/flush operations can occur upon the given object, by checking
-        if it has an instance key and that the instance key is present in the identity map."""
         if hasattr(obj, '_instance_key') and not self.identity_map.has_key(obj._instance_key):
-            raise InvalidRequestError("Detected a mapped object not present in this Session's identity map: '%s'.  Use session.merge() to place deserialized instances or instances from other threads" % repr(obj._instance_key))
+            raise InvalidRequestError("Instance '%s' is not attached or pending within this session" % repr(obj._instance_key))
         
     def update(self, obj):
         """called to add an object to this UnitOfWork as though it were loaded from the DB,
         but is actually coming from somewhere else, like a web session or similar."""
-        self._put(obj._instance_key, obj)
+        self.identity_map[obj._instance_key] = obj
         self.register_dirty(obj)
         
     def register_attribute(self, class_, key, uselist, **kwargs):
@@ -171,7 +133,7 @@ class UnitOfWork(object):
         if not hasattr(obj, '_instance_key'):
             mapper = object_mapper(obj)
             obj._instance_key = mapper.instance_key(obj)
-        self._put(obj._instance_key, obj)
+        self.identity_map[obj._instance_key] = obj
         attribute_manager.commit(obj)
         
     def register_new(self, obj):
