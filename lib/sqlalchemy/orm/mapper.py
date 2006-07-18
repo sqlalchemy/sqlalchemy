@@ -203,8 +203,6 @@ class Mapper(object):
         for ext in extlist:
             self.extension.elements.append(ext)
         
-        print "EXTENSIONS COMPILED", self.class_, self.extension.elements
-        
     def _compile_inheritance(self):
         """determines if this Mapper inherits from another mapper, and if so calculates the mapped_table
         for this Mapper taking the inherited mapper into account.  for joined table inheritance, creates
