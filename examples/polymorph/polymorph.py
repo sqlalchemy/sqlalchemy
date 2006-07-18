@@ -4,7 +4,7 @@ import sys, sets
 # this example illustrates a polymorphic load of two classes, where each class has a very 
 # different set of properties
 
-metadata = BoundMetaData('sqlite://', echo='debug')
+metadata = BoundMetaData('sqlite://', echo='True')
 
 # a table to store companies
 companies = Table('companies', metadata, 
