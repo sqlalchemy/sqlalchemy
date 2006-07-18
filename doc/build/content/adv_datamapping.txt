@@ -84,9 +84,22 @@ A common request is the ability to create custom class properties that override 
        '_email': mytable.c.email
     })
 
-In a later release, SQLAlchemy will also allow `_get_email` and `_set_email` to be attached directly to the "email" property created by the mapper, and 
-will also allow this association to occur via decorators.
+It is also possible to use the `select_by` and `get_by` functions on `Query` using the original property name, by establishing a `synonym`:
 
+    {python}
+    mapper(MyClass, mytable, proeprties = {
+        # map the '_email' attribute to the "email" column
+        # on the table
+        '_email': mytable.c.email
+
+        # make a synonym 'email'
+        'email' : synonym('_email')
+    })
+    
+    # now you can select_by(email)
+    result = session.query(MyClass).select_by(email='john@smith.com')
+
+The `synonym` keyword is currently an [Alpha Feature][alpha_api].
 
 #### Custom List Classes {@name=customlist}
 

@@ -12,7 +12,7 @@ import query as querylib
 import session as sessionlib
 import weakref
 
-__all__ = ['Mapper', 'MapperExtension', 'class_mapper', 'object_mapper', 'EXT_PASS']
+__all__ = ['Mapper', 'MapperExtension', 'class_mapper', 'object_mapper', 'SynonymProperty', 'EXT_PASS']
 
 # a dictionary mapping classes to their primary mappers
 mapper_registry = weakref.WeakKeyDictionary()
@@ -1129,6 +1129,17 @@ class MapperProperty(object):
         at the class level.  otherwise we have to set attribute behavior on a per-instance level."""
         return self.parent._is_primary_mapper()
 
+class SynonymProperty(MapperProperty):
+    """a marker object used by query.select_by to allow a property name to refer to another.
+    
+    this object may be expanded in the future."""
+    def __init__(self, name):
+        self.name = name
+    def execute(self, session, instance, row, identitykey, imap, isnew):
+        pass
+    def copy(self):
+        return SynonymProperty(self.name)
+        
 class MapperOption(object):
     """describes a modification to a Mapper in the context of making a copy
     of it.  This is used to assist in the prototype pattern used by mapper.options()."""

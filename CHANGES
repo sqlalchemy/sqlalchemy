@@ -29,6 +29,9 @@ any relationships.
 a flush() under some circumstances, this was fixed
 - expunge() was not working with cascade, fixed.
 - potential endless loop in cascading operations fixed.
+- added "synonym()" function, applied to properties to have a 
+propname the same as another, for the purposes of overriding props
+and allowing the original propname to be accessible in select_by().
 
 0.2.5
 - fixed endless loop bug in select_by(), if the traversal hit

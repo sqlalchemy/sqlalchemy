@@ -18,7 +18,7 @@ from session import Session as create_session
 
 __all__ = ['relation', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer',
         'mapper', 'clear_mappers', 'sql', 'extension', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query', 
-        'cascade_mappers', 'polymorphic_union', 'create_session', 'EXT_PASS' 
+        'cascade_mappers', 'polymorphic_union', 'create_session', 'synonym', 'EXT_PASS' 
         ]
 
 def relation(*args, **kwargs):
@@ -48,6 +48,9 @@ def mapper(class_, table=None, *args, **params):
     """returns a newMapper object."""
     return Mapper(class_, table, *args, **params)
 
+def synonym(name):
+    return SynonymProperty(name)
+    
 def clear_mappers():
     """removes all mappers that have been created thus far.  when new mappers are 
     created, they will be assigned to their classes as their primary mapper."""

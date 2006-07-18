@@ -116,17 +116,19 @@ class Query(object):
         import properties
         keys = []
         seen = util.Set()
-        def search_for_prop(mapper):
-            if mapper in seen:
+        def search_for_prop(mapper_):
+            if mapper_ in seen:
                 return None
-            seen.add(mapper)
-            if mapper.props.has_key(key):
-                prop = mapper.props[key]
+            seen.add(mapper_)
+            if mapper_.props.has_key(key):
+                prop = mapper_.props[key]
+                if isinstance(prop, mapper.SynonymProperty):
+                    prop = mapper_.props[prop.name]
                 if isinstance(prop, properties.PropertyLoader):
                     keys.insert(0, prop.key)
                 return prop
             else:
-                for prop in mapper.props.values():
+                for prop in mapper_.props.values():
                     if not isinstance(prop, properties.PropertyLoader):
                         continue
                     x = search_for_prop(prop.mapper)
