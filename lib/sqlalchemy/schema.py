@@ -599,6 +599,8 @@ class Constraint(SchemaItem):
         return len(self.columns)
     def __getitem__(self, index):
         return self.columns[index]
+    def __setitem__(self, index, item):
+        self.columns[index] = item
     def copy(self):
         raise NotImplementedError()
         
