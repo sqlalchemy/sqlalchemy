@@ -660,7 +660,7 @@ class ANSISchemaGenerator(engine.SchemaIterator):
             self.append("CONSTRAINT %s " % constraint.name)
         self.append("FOREIGN KEY(%s) REFERENCES %s (%s)" % (
             string.join([f.parent.name for f in constraint.elements], ', '),
-            list(constraint.elements)[0].column.table.name,
+            list(constraint.elements)[0].column.table.fullname,
             string.join([f.column.name for f in constraint.elements], ', ')
         ))
         if constraint.ondelete is not None:
