@@ -6,6 +6,8 @@ Existing methods of primary/foreign key creation have not been changed
 but use these new objects behind the scenes.  table creation
 and reflection is now more table oriented rather than column oriented.
 [ticket:76]
+- overhaul to MapperExtension calling scheme, wasnt working very well 
+previously
 - tweaks to ActiveMapper, supports self-referential relationships
 - slight rearrangement to objectstore (in activemapper/threadlocal)
 so that the SessionContext is referenced by '.context' instead
