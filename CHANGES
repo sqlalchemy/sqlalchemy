@@ -44,7 +44,8 @@ aware of their "inherited" status if so.
 relationships to an inheriting mapper (which is also self-referential)
 - reduced bind param size in query._get to appease the picky oracle 
 [ticket:244]
-- added 'checkfirst' argument to table.create()/table.drop()
+- added 'checkfirst' argument to table.create()/table.drop(), as 
+well as table.exists() [ticket:234]
 
 0.2.5
 - fixed endless loop bug in select_by(), if the traversal hit

@@ -236,6 +236,16 @@ class Table(SchemaItem, sql.TableClause):
         this does not issue a SQL DROP statement."""
         key = _get_table_key(self.name, self.schema)
         del self.metadata.tables[key]
+        
+    def exists(self, engine=None):
+        if engine is None and self.metadata.is_bound():
+            engine = self.engine
+
+        def do(conn):
+            e = conn.engine
+            return e.dialect.has_table(conn, self.name)
+        return engine.run_callable(do)
+
     def create(self, connectable=None, checkfirst=False):
         if connectable is not None:
             connectable.create(self, checkfirst=checkfirst)

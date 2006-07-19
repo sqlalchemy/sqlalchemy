@@ -162,10 +162,13 @@ class ReflectionTest(PersistTest):
             Column('col1', Integer, primary_key=True),
             Column('col2', String(40)))
         try:
+            assert not table.exists()
             table.create()
+            assert table.exists()
             table.create(checkfirst=True)
             table.drop()
             table.drop(checkfirst=True)
+            assert not table.exists()
             table.create(checkfirst=True)
             table.drop()
         finally:
