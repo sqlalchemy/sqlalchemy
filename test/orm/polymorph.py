@@ -103,7 +103,28 @@ class MultipleTableTest(testbase.PersistTest):
         print session.query(Engineer).select()
 
         print session.query(Person).select()        
+    
+    def testcompile2(self):
+        """this test fails.  mapper compilation completely doesnt work for this right now and likely
+        needs to be rewritten again."""
+        person_join = polymorphic_union( {
+            'engineer':people.join(engineers),
+            'manager':people.join(managers),
+            'person':people.select(people.c.type=='person'),
+            }, None, 'pjoin')
 
+
+        person_mapper = mapper(Person, people, select_table=person_join, polymorphic_on=person_join.c.type,
+                    polymorphic_identity='person', 
+                    properties = dict(managers = relation(Manager, lazy=True))
+                )
+
+        mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
+        mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
+
+        #person_mapper.compile()
+        class_mapper(Manager).compile()
+        
     def do_test(self, include_base=False, lazy_relation=True, redefine_colprop=False):
         """tests the polymorph.py example, with several options:
         
