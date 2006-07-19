@@ -79,7 +79,22 @@ class SelfReferentialTest(AssertMixin):
         
         sess.delete(a)
         sess.flush()
+    def testeagerassertion(self):
+        """test that an eager self-referential relationship raises an error."""
+        class C1(Tester):
+            pass
+        class C2(Tester):
+            pass
         
+        m1 = mapper(C1, t1, properties = {
+            'c1s' : relation(C1, lazy=False),
+        })
+        
+        try:
+            m1.compile()
+            assert False
+        except exceptions.ArgumentError:
+            assert True
 class BiDirectionalOneToManyTest(AssertMixin):
     """tests two mappers with a one-to-many relation to each other."""
     def setUpAll(self):

@@ -37,11 +37,11 @@ class ColumnProperty(mapper.MapperProperty):
                 statement.append_column(eagertable.corresponding_column(c))
             else:
                 statement.append_column(c)
-    def do_init(self, key, parent):
+    def do_init(self):
         # establish a SmartProperty property manager on the object for this key
-        if parent._is_primary_mapper():
+        if self.is_primary():
             #print "regiser col on class %s key %s" % (parent.class_.__name__, key)
-            sessionlib.attribute_manager.register_attribute(parent.class_, key, uselist = False)
+            sessionlib.attribute_manager.register_attribute(self.parent.class_, self.key, uselist = False)
     def execute(self, session, instance, row, identitykey, imap, isnew):
         if isnew:
             #print "POPULATING OBJ", instance.__class__.__name__, "COL", self.columns[0]._label, "WITH DATA", row[self.columns[0]], "ROW IS A", row.__class__.__name__, "COL ID", id(self.columns[0])
@@ -59,11 +59,11 @@ class DeferredColumnProperty(ColumnProperty):
         ColumnProperty.__init__(self, *columns)
     def copy(self):
         return DeferredColumnProperty(*self.columns)
-    def do_init(self, key, parent):
+    def do_init(self):
         # establish a SmartProperty property manager on the object for this key, 
         # containing a callable to load in the attribute
         if self.is_primary():
-            sessionlib.attribute_manager.register_attribute(parent.class_, key, uselist=False, callable_=lambda i:self.setup_loader(i))
+            sessionlib.attribute_manager.register_attribute(self.parent.class_, self.key, uselist=False, callable_=lambda i:self.setup_loader(i))
     def setup_loader(self, instance):
         if not self.localparent.is_assigned(instance):
             return mapper.object_mapper(instance).props[self.key].setup_loader(instance)
@@ -180,7 +180,7 @@ class PropertyLoader(mapper.MapperProperty):
         x.__dict__.update(self.__dict__)
         return x
         
-    def do_init_subclass(self, key, parent):
+    def do_init_subclass(self):
         """template method for subclasses of PropertyLoader"""
         pass
     
@@ -191,14 +191,13 @@ class PropertyLoader(mapper.MapperProperty):
         else:
             return self.argument.class_
         
-    def do_init(self, key, parent):
-        import sqlalchemy.orm
+    def do_init(self):
         if isinstance(self.argument, type):
-            self.mapper = mapper.class_mapper(self.argument, compile=False)._do_compile()
+            self.mapper = mapper.class_mapper(self.argument, compile=False)._check_compile()
         else:
-            self.mapper = self.argument._do_compile()
+            self.mapper = self.argument._check_compile()
 
-        self.mapper = self.mapper.get_select_mapper()._do_compile()
+        self.mapper = self.mapper.get_select_mapper()._check_compile()
             
         if self.association is not None:
             if isinstance(self.association, type):
@@ -213,10 +212,10 @@ class PropertyLoader(mapper.MapperProperty):
             if self.secondaryjoin is None:
                 self.secondaryjoin = sql.join(self.mapper.unjoined_table, self.secondary).onclause
             if self.primaryjoin is None:
-                self.primaryjoin = sql.join(parent.unjoined_table, self.secondary).onclause
+                self.primaryjoin = sql.join(self.parent.unjoined_table, self.secondary).onclause
         else:
             if self.primaryjoin is None:
-                self.primaryjoin = sql.join(parent.unjoined_table, self.target).onclause
+                self.primaryjoin = sql.join(self.parent.unjoined_table, self.target).onclause
 
         # if the foreign key wasnt specified and theres no assocaition table, try to figure
         # out who is dependent on who. we dont need all the foreign keys represented in the join,
@@ -237,9 +236,19 @@ class PropertyLoader(mapper.MapperProperty):
         if self.uselist is None:
             self.uselist = True
 
-        self._compile_synchronizers()
-        self._dependency_processor = dependency.create_dependency_processor(self.key, self.syncrules, self.cascade, secondary=self.secondary, association=self.association, is_backref=self.is_backref, post_update=self.post_update)
+        
+        if self.inherits is not None:
+            if hasattr(self.inherits, '_dependency_processor'):
+                self._dependency_processor = self.inherits._dependency_processor
 
+        if not hasattr(self, '_dependency_processor'):
+            self._compile_synchronizers()
+            self._dependency_processor = dependency.create_dependency_processor(self.key, self.syncrules, self.cascade, secondary=self.secondary, association=self.association, is_backref=self.is_backref, post_update=self.post_update)
+
+        if self.inherits is not None and not hasattr(self.inherits, '_dependency_processor'):
+            self.inherits._dependency_processor = self._dependency_processor
+            
+            
         # primary property handler, set up class attributes
         if self.is_primary():
             # if a backref name is defined, set up an extension to populate 
@@ -248,14 +257,14 @@ class PropertyLoader(mapper.MapperProperty):
                 self.attributeext = self.backref.get_extension()
         
             # set our class attribute
-            self._set_class_attribute(parent.class_, key)
+            self._set_class_attribute(self.parent.class_, self.key)
 
             if self.backref is not None:
                 self.backref.compile(self)
-        elif not sessionlib.attribute_manager.is_class_managed(parent.class_, key):
-            raise exceptions.ArgumentError("Attempting to assign a new relation '%s' to a non-primary mapper on class '%s'.  New relations can only be added to the primary mapper, i.e. the very first mapper created for class '%s' " % (key, parent.class_.__name__, parent.class_.__name__))
+        elif self.inherits is None and not sessionlib.attribute_manager.is_class_managed(self.parent.class_, self.key):
+            raise exceptions.ArgumentError("Attempting to assign a new relation '%s' to a non-primary mapper on class '%s'.  New relations can only be added to the primary mapper, i.e. the very first mapper created for class '%s' " % (self.key, self.parent.class_.__name__, self.parent.class_.__name__))
 
-        self.do_init_subclass(key, parent)
+        self.do_init_subclass()
 
     def _register_attribute(self, class_, callable_=None):
         sessionlib.attribute_manager.register_attribute(class_, self.key, uselist = self.uselist, extension=self.attributeext, cascade=self.cascade,  trackparent=True, callable_=callable_)
@@ -332,7 +341,7 @@ class PropertyLoader(mapper.MapperProperty):
             self.syncrules.compile(self.primaryjoin, parent_tables, target_tables)
 
 class LazyLoader(PropertyLoader):
-    def do_init_subclass(self, key, parent):
+    def do_init_subclass(self):
         (self.lazywhere, self.lazybinds, self.lazyreverse) = create_lazy_clause(self.parent.unjoined_table, self.primaryjoin, self.secondaryjoin, self.foreignkey)
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
@@ -440,10 +449,12 @@ def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
 
 class EagerLoader(LazyLoader):
     """loads related objects inline with a parent query."""
-    def do_init_subclass(self, key, parent, recursion_stack=None):
+    def do_init_subclass(self, recursion_stack=None):
+        if self.parent.isa(self.mapper):
+            raise exceptions.ArgumentError("Error creating eager relationship '%s' on parent class '%s' to child class '%s': Cant use eager loading on a self referential relationship." % (self.key, repr(self.parent.class_), repr(self.mapper.class_)))
         if recursion_stack is None:
-            LazyLoader.do_init_subclass(self, key, parent)
-        parent._has_eager = True
+            LazyLoader.do_init_subclass(self)
+        self.parent._has_eager = True
 
         self.eagertarget = self.target.alias()
         if self.secondary:
@@ -500,7 +511,7 @@ class EagerLoader(LazyLoader):
                     self.mapper.props[prop.key] = p
 #                    print "we are:", id(self), self.target.name, (self.secondary and self.secondary.name or "None"), self.parent.mapped_table.name
 #                    print "prop is",id(prop), prop.target.name, (prop.secondary and prop.secondary.name or "None"), prop.parent.mapped_table.name
-                    p.do_init_subclass(prop.key, prop.parent, recursion_stack)
+                    p.do_init_subclass(recursion_stack)
                     p._create_eager_chain(recursion_stack=recursion_stack)
                     p.eagerprimary = p.eagerprimary.copy_container()
 #                    aliasizer = sql_util.Aliasizer(p.parent.mapped_table, aliases={p.parent.mapped_table:self.eagertarget})
@@ -723,7 +734,7 @@ class EagerLazyOption(GenericOption):
         oldprop = mapper.props[key]
         newprop = class_.__new__(class_)
         newprop.__dict__.update(oldprop.__dict__)
-        newprop.do_init_subclass(key, mapper)
+        newprop.do_init_subclass()
         mapper._compile_property(key, newprop)
 
 class DeferredOption(GenericOption):

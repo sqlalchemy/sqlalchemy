@@ -149,18 +149,29 @@ class Mapper(object):
         if self.__is_compiled:
             return self
             
-        self._do_compile()
-        
-        # look for another mapper thats not compiled, and compile it.
-        # this will utlimately compile all mappers, including any that 
-        # need to set up backrefs on this mapper.
+        # compile all primary mappers
         for mapper in mapper_registry.values():
             if not mapper.__is_compiled:
-                mapper.compile()
-                break
+                mapper._do_compile()
+                
+        # initialize properties on all mappers
+        for mapper in mapper_registry.values():
+            if not mapper.__props_init:
+                mapper._initialize_properties()
+        
+        # if we're not primary, compile us
+        if self.non_primary:
+            self._do_compile()
+            self._initialize_properties()
                 
         return self
-
+    
+    def _check_compile(self):
+        if self.non_primary:
+            self._do_compile()
+            self._initialize_properties()
+        return self
+        
     def _do_compile(self):
         """compile this mapper into its final internal format.  
         
@@ -171,12 +182,13 @@ class Mapper(object):
             return self
         #print "COMPILING!", self.class_key, "non primary: ", self.non_primary
         self.__is_compiled = True
+        self.__props_init = False
         self._compile_extensions()
         self._compile_inheritance()
         self._compile_tables()
         self._compile_properties()
         self._compile_selectable()
-        self._initialize_properties()
+#        self._initialize_properties()
 
         return self
         
@@ -336,9 +348,7 @@ class Mapper(object):
             self.inherits._inheriting_mappers.add(self)
             for key, prop in self.inherits.__props.iteritems():
                 if not self.__props.has_key(key):
-                    p = prop.copy()
-                    if p.adapt(self):
-                        self._compile_property(key, p, init=False)
+                    p = prop.adapt_to_inherited(key, self)
 
         # load properties from the main table object,
         # not overriding those set up in the 'properties' argument
@@ -352,6 +362,7 @@ class Mapper(object):
             if prop is None:
                 prop = ColumnProperty(column)
                 self.__props[column.key] = prop
+                prop.set_parent(self)
             elif isinstance(prop, ColumnProperty):
                 prop.columns.append(column)
             else:
@@ -372,7 +383,8 @@ class Mapper(object):
         for key, prop in l:
             if getattr(prop, 'key', None) is None:
                 prop.init(key, self)
-
+        self.__props_init = True
+        
     def _compile_selectable(self):
         """if the 'select_table' keyword argument was specified, 
         set up a second "surrogate mapper" that will be used for select operations.
@@ -429,7 +441,7 @@ class Mapper(object):
             if session is not None and mapper is not None:
                 self._entity_name = entity_name
                 session._register_new(self)
-
+                
             if oldinit is not None:
                 try:
                     oldinit(self, *args, **kwargs)
@@ -452,12 +464,19 @@ class Mapper(object):
             self.class_.c = self.c
             
     def base_mapper(self):
-        """returns the ultimate base mapper in an inheritance chain"""
+        """return the ultimate base mapper in an inheritance chain"""
         if self.inherits is not None:
             return self.inherits.base_mapper()
         else:
             return self
     
+    def isa(self, other):
+        """return True if the given mapper inherits from this mapper"""
+        m = other
+        while m is not self and m.inherits is not None:
+            m = m.inherits
+        return m is self
+            
     def add_properties(self, dict_of_properties):
         """adds the given dictionary of properties to this mapper, using add_property."""
         for key, value in dict_of_properties.iteritems():
@@ -505,7 +524,8 @@ class Mapper(object):
                 raise exceptions.ArgumentError("'%s' is not an instance of MapperProperty or Column" % repr(prop))
 
         self.__props[key] = prop
-
+        prop.set_parent(self)
+        
         if isinstance(prop, ColumnProperty):
             col = self.select_table.corresponding_column(prop.columns[0], keys_ok=True, raiseerr=False)
             if col is None:
@@ -519,9 +539,7 @@ class Mapper(object):
             prop.init(key, self)
 
         for mapper in self._inheriting_mappers:
-            p = prop.copy()
-            if p.adapt(mapper):
-                mapper._compile_property(key, p, init=False)
+            p = prop.adapt_to_inherited(key, mapper)
         
     def __str__(self):
         return "Mapper|" + self.class_.__name__ + "|" + (self.entity_name is not None and "/%s" % self.entity_name or "") + str(self.local_table)
@@ -1097,22 +1115,26 @@ class MapperProperty(object):
     def setup(self, key, statement, **options):
         """called when a statement is being constructed.  """
         return self
-    def init(self, key, parent):
-        """called during Mapper compilation to compile each MapperProperty."""
-        self.key = key
+    def set_parent(self, parent):
         self.parent = parent
+    def init(self, key, parent):
+        """called after all mappers are compiled to assemble relationships between 
+        mappers, establish instrumented class attributes"""
+        self.key = key
         self.localparent = parent
-        self.do_init(key, parent)
-    def adapt(self, newparent):
-        """adapts this MapperProperty to a new parent, assuming the new parent is an inheriting
-        descendant of the old parent.  Should return True if the adaptation was successful, or
-        False if this MapperProperty cannot be adapted to the new parent (the case for "False" is,
-        the parent mapper has a polymorphic select, and this property represents a column that is not
-        represented in the new mapper's mapped table)"""
-        #self.parent = newparent
-        self.localparent = newparent
-        return True
-    def do_init(self, key, parent):
+        if not hasattr(self, 'inherits'):
+            self.inherits = None
+        self.do_init()
+    def adapt_to_inherited(self, key, newparent):
+        """adapt this MapperProperty to a new parent, assuming the new parent is an inheriting
+        descendant of the old parent.  """
+        p = self.copy()
+        newparent._compile_property(key, p, init=False)
+        p.localparent = newparent
+        p.parent = self.parent
+        p.inherits = getattr(self, 'inherits', self)
+        return p
+    def do_init(self):
         """template method for subclasses"""
         pass
     def register_deleted(self, object, uow):
@@ -1127,7 +1149,7 @@ class MapperProperty(object):
         """a return value of True indicates we are the primary MapperProperty for this loader's
         attribute on our mapper's class.  It means we can set the object's attribute behavior
         at the class level.  otherwise we have to set attribute behavior on a per-instance level."""
-        return self.parent._is_primary_mapper()
+        return self.inherits is None and self.parent._is_primary_mapper()
 
 class SynonymProperty(MapperProperty):
     """a marker object used by query.select_by to allow a property name to refer to another.
@@ -1342,8 +1364,8 @@ def has_mapper(object):
 def object_mapper(object, raiseerror=True):
     """given an object, returns the primary Mapper associated with the object instance"""
     try:
-        mapper = mapper_registry[ClassKey(object.__class__, getattr(object, '_entity_name'))]
-    except (KeyError, AttributeError):
+        mapper = mapper_registry[ClassKey(object.__class__, getattr(object, '_entity_name', None))]
+    except (KeyError, AttributeError):        
         if raiseerror:
             raise exceptions.InvalidRequestError("Class '%s' entity name '%s' has no mapper associated with it" % (object.__class__.__name__, getattr(object, '_entity_name', None)))
         else:

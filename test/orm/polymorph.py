@@ -105,8 +105,7 @@ class MultipleTableTest(testbase.PersistTest):
         print session.query(Person).select()        
     
     def testcompile2(self):
-        """this test fails.  mapper compilation completely doesnt work for this right now and likely
-        needs to be rewritten again."""
+        """test that a mapper can reference a property whose mapper inherits from this one."""
         person_join = polymorphic_union( {
             'engineer':people.join(engineers),
             'manager':people.join(managers),
@@ -124,6 +123,29 @@ class MultipleTableTest(testbase.PersistTest):
 
         #person_mapper.compile()
         class_mapper(Manager).compile()
+
+    def testcompile3(self):
+        """test that a mapper referencing an inheriting mapper in a self-referential relationship does 
+        not allow an eager load to be set up."""
+        person_join = polymorphic_union( {
+            'engineer':people.join(engineers),
+            'manager':people.join(managers),
+            'person':people.select(people.c.type=='person'),
+            }, None, 'pjoin')
+
+        person_mapper = mapper(Person, people, select_table=person_join, polymorphic_on=person_join.c.type,
+                    polymorphic_identity='person', 
+                    properties = dict(managers = relation(Manager, lazy=False))
+                )
+
+        mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
+        mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
+
+        try:
+            class_mapper(Manager).compile()
+            assert False
+        except exceptions.ArgumentError:
+            assert True
         
     def do_test(self, include_base=False, lazy_relation=True, redefine_colprop=False):
         """tests the polymorph.py example, with several options:
