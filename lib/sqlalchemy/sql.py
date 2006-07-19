@@ -985,7 +985,15 @@ class Cast(ColumnElement):
         visitor.visit_cast(self)
     def _get_from_objects(self):
         return self.clause._get_from_objects()
-        
+    def _make_proxy(self, selectable, name=None):
+        if name is not None:
+            co = ColumnClause(name, selectable, type=self.type)
+            co.orig_set = self.orig_set
+            selectable.columns[name]= co
+            return co
+        else:
+            return self
+            
 class FunctionGenerator(object):
     """generates Function objects based on getattr calls"""
     def __init__(self, engine=None):
@@ -1210,7 +1218,7 @@ class ColumnClause(ColumnElement):
     def _bind_param(self, obj):
         return BindParamClause(self._label, obj, shortname = self.name, type=self.type)
     def _make_proxy(self, selectable, name = None):
-        c = ColumnClause(name or self.name, selectable, hidden=self.hidden)
+        c = ColumnClause(name or self.name, selectable, hidden=self.hidden, type=self.type)
         c.orig_set = self.orig_set
         if not self.hidden:
             selectable.columns[c.name] = c
@@ -1349,7 +1357,6 @@ class CompoundSelect(SelectBaseMixin, FromClause):
             col = column._make_proxy(self, name=column._label)
         else:
             col = column._make_proxy(self, name=column.name)
-        
         try:
             colset = self._col_map[col.name]
         except KeyError:

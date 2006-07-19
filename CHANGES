@@ -32,6 +32,9 @@ a flush() under some circumstances, this was fixed
 - added "synonym()" function, applied to properties to have a 
 propname the same as another, for the purposes of overriding props
 and allowing the original propname to be accessible in select_by().
+- fix to typing in clause construction which specifically helps
+type issues with polymorphic_union (CAST/ColumnClause propigates
+its type to proxy columns)
 
 0.2.5
 - fixed endless loop bug in select_by(), if the traversal hit
