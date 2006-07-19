@@ -42,6 +42,8 @@ do_init() method is called on all properties now which are more
 aware of their "inherited" status if so.
 - eager loads explicitly disallowed on self-referential relationships, or
 relationships to an inheriting mapper (which is also self-referential)
+- reduced bind param size in query._get to appease the picky oracle 
+[ticket:244]
 
 0.2.5
 - fixed endless loop bug in select_by(), if the traversal hit

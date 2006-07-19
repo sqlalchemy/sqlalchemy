@@ -26,7 +26,7 @@ class Query(object):
         if not hasattr(self.mapper, '_get_clause'):
             _get_clause = sql.and_()
             for primary_key in self.mapper.pks_by_table[self.table]:
-                _get_clause.clauses.append(primary_key == sql.bindparam("pk_"+primary_key._label, type=primary_key.type))
+                _get_clause.clauses.append(primary_key == sql.bindparam(primary_key._label, type=primary_key.type))
             self.mapper._get_clause = _get_clause
         self._get_clause = self.mapper._get_clause
     def _get_session(self):
@@ -280,7 +280,7 @@ class Query(object):
         i = 0
         params = {}
         for primary_key in self.mapper.pks_by_table[self.table]:
-            params["pk_"+primary_key._label] = ident[i]
+            params[primary_key._label] = ident[i]
             # if there are not enough elements in the given identifier, then 
             # use the previous identifier repeatedly.  this is a workaround for the issue 
             # in [ticket:185], where a mapper that uses joined table inheritance needs to specify
