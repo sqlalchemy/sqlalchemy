@@ -602,6 +602,10 @@ class ANSICompiler(sql.Compiled):
 
 
 class ANSISchemaGenerator(engine.SchemaIterator):
+    def __init__(self, engine, proxy, connection=None, checkfirst=False, **params):
+        super(ANSISchemaGenerator, self).__init__(engine, proxy, **params)
+        self.checkfirst = checkfirst
+        self.connection = connection
     def get_column_specification(self, column, first_pk=False):
         raise NotImplementedError()
         
@@ -609,6 +613,9 @@ class ANSISchemaGenerator(engine.SchemaIterator):
         # the single whitespace before the "(" is significant
         # as its MySQL's method of indicating a table name and not a reserved word.
         # feel free to localize this logic to the mysql module
+        if self.checkfirst and self.engine.dialect.has_table(self.connection, table.name):
+            return
+            
         self.append("\nCREATE TABLE " + table.fullname + " (")
         
         separator = "\n"
@@ -682,6 +689,11 @@ class ANSISchemaGenerator(engine.SchemaIterator):
         
     
 class ANSISchemaDropper(engine.SchemaIterator):
+    def __init__(self, engine, proxy, connection=None, checkfirst=False, **params):
+        super(ANSISchemaDropper, self).__init__(engine, proxy, **params)
+        self.checkfirst = checkfirst
+        self.connection = connection
+
     def visit_index(self, index):
         self.append("\nDROP INDEX " + index.name)
         self.execute()
@@ -689,6 +701,8 @@ class ANSISchemaDropper(engine.SchemaIterator):
     def visit_table(self, table):
         # NOTE: indexes on the table will be automatically dropped, so
         # no need to drop them individually
+        if self.checkfirst and not self.engine.dialect.has_table(self.connection, table.name):
+            return
         self.append("\nDROP TABLE " + table.fullname)
         self.execute()
 

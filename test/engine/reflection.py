@@ -155,6 +155,22 @@ class ReflectionTest(PersistTest):
         finally:
             meta.drop_all()
 
+    def testcheckfirst(self):
+        meta = BoundMetaData(testbase.db)
+        
+        table = Table('checkfirst', meta, 
+            Column('col1', Integer, primary_key=True),
+            Column('col2', String(40)))
+        try:
+            table.create()
+            table.create(checkfirst=True)
+            table.drop()
+            table.drop(checkfirst=True)
+            table.create(checkfirst=True)
+            table.drop()
+        finally:
+            meta.drop_all()
+            
     def testtoengine(self):
         meta = MetaData('md1')
         meta2 = MetaData('md2')

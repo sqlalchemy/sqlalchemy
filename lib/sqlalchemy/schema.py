@@ -236,17 +236,17 @@ class Table(SchemaItem, sql.TableClause):
         this does not issue a SQL DROP statement."""
         key = _get_table_key(self.name, self.schema)
         del self.metadata.tables[key]
-    def create(self, connectable=None):
+    def create(self, connectable=None, checkfirst=False):
         if connectable is not None:
-            connectable.create(self)
+            connectable.create(self, checkfirst=checkfirst)
         else:
-            self.engine.create(self)
+            self.engine.create(self, checkfirst=checkfirst)
         return self
-    def drop(self, connectable=None):
+    def drop(self, connectable=None, checkfirst=False):
         if connectable is not None:
-            connectable.drop(self)
+            connectable.drop(self, checkfirst=checkfirst)
         else:
-            self.engine.drop(self)
+            self.engine.drop(self, checkfirst=checkfirst)
     def tometadata(self, metadata, schema=None):
         """return a copy of this Table associated with a different MetaData."""
         try:
