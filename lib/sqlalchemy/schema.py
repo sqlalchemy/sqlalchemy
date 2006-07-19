@@ -140,6 +140,8 @@ class Table(SchemaItem, sql.TableClause):
         the rest of the constructor arguments.  If this flag and the "redefine" flag are not set, constructing 
         the same table twice will result in an exception.
         
+        owner=None : optional owning user of this table.  useful for databases such as Oracle to aid in table
+        reflection.
         """
         super(Table, self).__init__(name)
         self._metadata = metadata
@@ -152,6 +154,7 @@ class Table(SchemaItem, sql.TableClause):
             self.fullname = "%s.%s" % (self.schema, self.name)
         else:
             self.fullname = self.name
+        self.owner = kwargs.pop('owner', None)
         self.kwargs = kwargs
 
     def _set_primary_key(self, pk):

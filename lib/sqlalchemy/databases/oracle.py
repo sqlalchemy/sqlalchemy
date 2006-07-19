@@ -89,6 +89,7 @@ FROM all_constraints ac,
   all_cons_columns rem
 WHERE ac.table_name = :table_name
 AND ac.constraint_type IN ('R','P')
+AND ac.owner = :owner
 AND ac.owner = loc.owner
 AND ac.constraint_name = loc.constraint_name
 AND ac.r_owner = rem.owner(+)
@@ -166,9 +167,24 @@ class OracleDialect(ansisql.ANSIDialect):
         return bool( cursor.fetchone() is not None )
         
     def reflecttable(self, connection, table):
-        c = connection.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from ALL_TAB_COLUMNS where TABLE_NAME = :table_name", {'table_name':table.name.upper()})
+        c = connection.execute ("select distinct OWNER from ALL_TAB_COLUMNS where TABLE_NAME = :table_name", {'table_name':table.name.upper()})
+        rows = c.fetchall()
+        if not rows :
+            raise exceptions.NoSuchTableError(table.name)
+        else:
+            if table.owner is not None:
+                if table.owner.upper() in [r[0] for r in rows]:
+                    owner = table.owner.upper()
+                else:
+                    raise exceptions.AssertionError("Specified owner %s does not own table %s"%(table.owner, table.name))
+            else:
+                if len(rows)==1:
+                    owner = rows[0][0]
+                else:
+                    raise exceptions.AssertionError("There are multiple tables with name %s in the schema, you must specifie owner"%table.name)
+
+        c = connection.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from ALL_TAB_COLUMNS where TABLE_NAME = :table_name and OWNER = :owner", {'table_name':table.name.upper(), 'owner':owner})
         
-        found_table = False
         while True:
             row = c.fetchone()
             if row is None:
@@ -203,10 +219,8 @@ class OracleDialect(ansisql.ANSIDialect):
             
             table.append_item (schema.Column(name, coltype, nullable=nullable, *colargs))
 
-        if not found_table:
-            raise exceptions.NoSuchTableError(table.name)
-        
-        c = connection.execute(constraintSQL, {'table_name' : table.name.upper()})
+       
+        c = connection.execute(constraintSQL, {'table_name' : table.name.upper(), 'owner' : owner})
         while True:
             row = c.fetchone()
             if row is None:
@@ -216,6 +230,7 @@ class OracleDialect(ansisql.ANSIDialect):
             if cons_type == 'P':
                 table.c[local_column]._set_primary_key()
             elif cons_type == 'R':
+                #table.append_item(ForeignKeyConstraint(value[0], value[1], name=name))
                 table.c[local_column].append_item(
                     schema.ForeignKey(schema.Table(remote_table,
                                             table.metadata,
