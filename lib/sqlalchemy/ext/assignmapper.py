@@ -17,7 +17,6 @@ def monkeypatch_objectstore_method(ctx, class_, name):
     setattr(class_, name, do)
     
 def assign_mapper(ctx, class_, *args, **kwargs):
-    kwargs.setdefault("is_primary", True)
     if not isinstance(getattr(class_, '__init__'), types.MethodType):
         def __init__(self, **kwargs):
              for key, value in kwargs.items():

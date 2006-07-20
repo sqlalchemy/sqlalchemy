@@ -1,3 +1,7 @@
+0.2.7
+- assignmapper was setting is_primary=True, causing all sorts of mayhem
+by not raising an error when redundant mappers were set up, fixed
+
 0.2.6
 - big overhaul to schema to allow truly composite primary and foreign
 key constraints, via new ForeignKeyConstraint and PrimaryKeyConstraint

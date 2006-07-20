@@ -206,7 +206,7 @@ class PropertyLoader(mapper.MapperProperty):
             
         if self.association is not None:
             if isinstance(self.association, type):
-                self.association = mapper.class_mapper(self.association, compile=False)
+                self.association = mapper.class_mapper(self.association, compile=False)._check_compile()
         
         self.target = self.mapper.mapped_table
 
