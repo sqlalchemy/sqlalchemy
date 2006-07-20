@@ -76,6 +76,7 @@ class Mapper(object):
         self.always_refresh = always_refresh
         self.version_id_col = version_id_col
         self.concrete = concrete
+        self.single = False
         self.inherits = inherits
         self.select_table = select_table
         self.local_table = local_table
@@ -230,6 +231,7 @@ class Mapper(object):
             # inherit_condition is optional.
             if self.local_table is None:
                 self.local_table = self.inherits.local_table
+                self.single = True
             if not self.local_table is self.inherits.local_table:
                 if self.concrete:
                     self._synchronizer= None
@@ -348,7 +350,7 @@ class Mapper(object):
             self.inherits._inheriting_mappers.add(self)
             for key, prop in self.inherits.__props.iteritems():
                 if not self.__props.has_key(key):
-                    p = prop.adapt_to_inherited(key, self)
+                    prop.adapt_to_inherited(key, self)
 
         # load properties from the main table object,
         # not overriding those set up in the 'properties' argument
@@ -539,7 +541,7 @@ class Mapper(object):
             prop.init(key, self)
 
         for mapper in self._inheriting_mappers:
-            p = prop.adapt_to_inherited(key, mapper)
+            prop.adapt_to_inherited(key, mapper)
         
     def __str__(self):
         return "Mapper|" + self.class_.__name__ + "|" + (self.entity_name is not None and "/%s" % self.entity_name or "") + str(self.local_table)
@@ -1133,7 +1135,6 @@ class MapperProperty(object):
         p.localparent = newparent
         p.parent = self.parent
         p.inherits = getattr(self, 'inherits', self)
-        return p
     def do_init(self):
         """template method for subclasses"""
         pass

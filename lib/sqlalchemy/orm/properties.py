@@ -48,6 +48,11 @@ class ColumnProperty(mapper.MapperProperty):
             # set a scalar object instance directly on the object, 
             # bypassing SmartProperty event handlers.
             instance.__dict__[self.key] = row[self.columns[0]]
+    def adapt_to_inherited(self, key, newparent):
+        if newparent.concrete:
+            return
+        else:
+            super(ColumnProperty, self).adapt_to_inherited(key, newparent)
     def __repr__(self):
         return "ColumnProperty(%s)" % repr([str(c) for c in self.columns])
         

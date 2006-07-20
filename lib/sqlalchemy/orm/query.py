@@ -18,7 +18,6 @@ class Query(object):
         else:
             self.mapper = class_or_mapper.compile()
         self.mapper = self.mapper.get_select_mapper().compile()
-
         self.always_refresh = kwargs.pop('always_refresh', self.mapper.always_refresh)
         self.order_by = kwargs.pop('order_by', self.mapper.order_by)
         self.extension = kwargs.pop('extension', self.mapper.extension)
@@ -317,7 +316,10 @@ class Query(object):
         if order_by is False:
             if self.table.default_order_by() is not None:
                 order_by = self.table.default_order_by()
-
+        
+        if self.mapper.single and self.mapper.polymorphic_on is not None and self.mapper.polymorphic_identity is not None:
+            whereclause = sql.and_(whereclause, self.mapper.polymorphic_on==self.mapper.polymorphic_identity)
+            
         if self._should_nest(**kwargs):
             from_obj.append(self.table)
             
@@ -366,5 +368,6 @@ class Query(object):
         # give all the attached properties a chance to modify the query
         for key, value in self.mapper.props.iteritems():
             value.setup(key, statement, **kwargs) 
+        
         return statement
 

@@ -8,7 +8,7 @@ class CompileTest(testbase.AssertMixin):
         
     def testone(self):
         global metadata, order, employee, product, tax, orderproduct
-        metadata = BoundMetaData(engine)
+        metadata = BoundMetaData(testbase.db)
 
         order = Table('orders', metadata, 
             Column('id', Integer, primary_key=True),
@@ -69,7 +69,7 @@ class CompileTest(testbase.AssertMixin):
     def testtwo(self):
         """test that conflicting backrefs raises an exception"""
         global metadata, order, employee, product, tax, orderproduct
-        metadata = BoundMetaData(engine)
+        metadata = BoundMetaData(testbase.db)
 
         order = Table('orders', metadata, 
             Column('id', Integer, primary_key=True),
