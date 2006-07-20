@@ -95,7 +95,7 @@ AND ac.constraint_name = loc.constraint_name
 AND ac.r_owner = rem.owner(+)
 AND ac.r_constraint_name = rem.constraint_name(+)
 -- order multiple primary keys correctly
-ORDER BY ac.constraint_name, loc.position"""
+ORDER BY ac.constraint_name, loc.position, rem.position"""
 
 
 def descriptor():
@@ -221,6 +221,7 @@ class OracleDialect(ansisql.ANSIDialect):
 
        
         c = connection.execute(constraintSQL, {'table_name' : table.name.upper(), 'owner' : owner})
+        fks = {}
         while True:
             row = c.fetchone()
             if row is None:
@@ -230,13 +231,19 @@ class OracleDialect(ansisql.ANSIDialect):
             if cons_type == 'P':
                 table.c[local_column]._set_primary_key()
             elif cons_type == 'R':
-                #table.append_item(ForeignKeyConstraint(value[0], value[1], name=name))
-                table.c[local_column].append_item(
-                    schema.ForeignKey(schema.Table(remote_table,
-                                            table.metadata,
-                                            autoload=True).c[remote_column]
-                                      )
-                    )
+                try:
+                    fk = fks[cons_name]
+                except KeyError:
+                   fk = ([], [])
+                   fks[cons_name] = fk
+                refspec = ".".join([remote_table, remote_column])
+                if local_column not in fk[0]:
+                    fk[0].append(local_column)
+                if refspec not in fk[1]:
+                    fk[1].append(refspec)
+
+        for name, value in fks.iteritems():
+            table.append_item(schema.ForeignKeyConstraint(value[0], value[1], name=name))
 
     def do_executemany(self, c, statement, parameters, context=None):
         rowcount = 0
