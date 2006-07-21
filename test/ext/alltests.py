@@ -1,17 +1,18 @@
 import testbase
-import unittest
+import unittest, doctest
 
 def suite():
-    modules_to_test = (
-	'ext.activemapper',
-	'ext.sqlsoup'
-        )
+    unittest_modules = ['ext.activemapper']
+    doctest_modules = ['sqlalchemy.ext.sqlsoup']
+
     alltests = unittest.TestSuite()
-    for name in modules_to_test:
+    for name in unittest_modules:
         mod = __import__(name)
         for token in name.split('.')[1:]:
             mod = getattr(mod, token)
         alltests.addTest(unittest.findTestCases(mod, suiteClass=None))
+    for name in doctest_modules:
+        alltests.addTest(doctest.DocTestSuite(name))
     return alltests
 
 
