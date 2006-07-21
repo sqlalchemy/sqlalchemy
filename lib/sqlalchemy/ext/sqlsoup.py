@@ -18,6 +18,9 @@ Creating a SqlSoup gateway is just like creating an SqlAlchemy engine:
 or, you can re-use an existing metadata:
 >>> db = SqlSoup(BoundMetaData(e))
 
+You can specify a schema within the database for your SqlSoup:
+# >>> db.schema = myschemaname
+
 Loading objects is as easy as this:
 >>> users = db.users.select()
 >>> users.sort()
@@ -173,11 +176,11 @@ class TableClassType(type):
             
 
 def _is_outer_join(selectable):
-	if not isinstance(selectable, sql.Join):
-		return False
-	if selectable.isouter:
-		return True
-	return _is_outer_join(selectable.left) or _is_outer_join(selectable.right)
+    if not isinstance(selectable, sql.Join):
+        return False
+    if selectable.isouter:
+        return True
+    return _is_outer_join(selectable.left) or _is_outer_join(selectable.right)
 
 def class_for_table(table):
     if isinstance(table, sql.Join):
@@ -208,9 +211,9 @@ def class_for_table(table):
         setattr(klass, m, eval(m))
     klass._table = table
     klass._mapper = mapper(klass,
-						   table,
-						   extension=objectstore.mapper_extension,
-						   allow_null_pks=_is_outer_join(table))
+                           table,
+                           extension=objectstore.mapper_extension,
+                           allow_null_pks=_is_outer_join(table))
     return klass
 
 class SqlSoup:
@@ -230,6 +233,7 @@ class SqlSoup:
             metadata = BoundMetaData(*args, **kwargs)
         self._metadata = metadata
         self._cache = {}
+        self.schema = None
     def delete(self, *args, **kwargs):
         objectstore.delete(*args, **kwargs)
     def flush(self):
@@ -256,7 +260,7 @@ class SqlSoup:
         try:
             t = self._cache[attr]
         except KeyError:
-            table = Table(attr, self._metadata, autoload=True)
+            table = Table(attr, self._metadata, autoload=True, schema=self.schema)
             if table.columns:
                 t = class_for_table(table)
             else:
