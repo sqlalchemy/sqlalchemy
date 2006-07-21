@@ -13,29 +13,29 @@ For testing purposes, we can create this db as follows:
 
 Creating a SqlSoup gateway is just like creating an SqlAlchemy engine:
 >>> from sqlalchemy.ext.sqlsoup import SqlSoup
->>> soup = SqlSoup('sqlite:///:memory:')
+>>> db = SqlSoup('sqlite:///:memory:')
 
 or, you can re-use an existing metadata:
->>> soup = SqlSoup(BoundMetaData(e))
+>>> db = SqlSoup(BoundMetaData(e))
 
 Loading objects is as easy as this:
->>> users = soup.users.select()
+>>> users = db.users.select()
 >>> users.sort()
 >>> users
-[Class_Users(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1), Class_Users(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0)]
+[MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0), MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)]
 
 Of course, letting the database do the sort is better (".c" is short for ".columns"):
->>> soup.users.select(order_by=[soup.users.c.name])
-[Class_Users(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1), Class_Users(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0)]
+>>> db.users.select(order_by=[db.users.c.name])
+[MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1), MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0)]
 
 Field access is intuitive:
 >>> users[0].email
-u'basepair@example.edu'
+u'student@example.edu'
 
 Of course, you don't want to load all users very often.  The common case is to
 select by a key or other field:
->>> soup.users.selectone_by(name='Bhargan Basepair')
-Class_Users(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)
+>>> db.users.selectone_by(name='Bhargan Basepair')
+MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)
 
 All the SqlAlchemy mapper select variants (select, select_by, selectone, selectone_by, selectfirst, selectfirst_by)
 are available.  See the SqlAlchemy documentation for details:
@@ -44,20 +44,52 @@ http://www.sqlalchemy.org/docs/sqlconstruction.myt
 Modifying objects is intuitive:
 >>> user = _
 >>> user.email = 'basepair+nospam@example.edu'
->>> soup.flush()
+>>> db.flush()
 
 (SqlSoup leverages the sophisticated SqlAlchemy unit-of-work code, so
 multiple updates to a single object will be turned into a single UPDATE
 statement when you flush.)
 
-Finally, insert and delete.  Let's insert a new loan, then delete it:
->>> soup.loans.insert(book_id=soup.books.selectfirst(soup.books.c.title=='Regional Variation in Moss').id, user_name=user.name)
-Class_Loans(book_id=2,user_name='Bhargan Basepair',loan_date=None)
->>> soup.flush()
+To finish covering the basics, let's insert a new loan, then delete it:
+>>> db.loans.insert(book_id=db.books.selectfirst(db.books.c.title=='Regional Variation in Moss').id, user_name=user.name)
+MappedLoans(book_id=2,user_name='Bhargan Basepair',loan_date=None)
+>>> db.flush()
 
->>> loan = soup.loans.selectone_by(book_id=2, user_name='Bhargan Basepair')
->>> soup.delete(loan)
->>> soup.flush()
+>>> loan = db.loans.selectone_by(book_id=2, user_name='Bhargan Basepair')
+>>> db.delete(loan)
+>>> db.flush()
+
+Occasionally, you will want to pull out a lot of data from related tables all at
+once.  In this situation, it is far
+more efficient to have the database perform the necessary join.  (Here
+we do not have "a lot of data," but hopefully the concept is still clear.)
+SQLAlchemy is smart enough to recognize that loans has a foreign key
+to users, and uses that as the join condition automatically.  You can join
+an arbitrary number of tables; here's a two-table one:
+>>> j = db.join(db.users, db.loans)
+>>> j.select()
+[MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
+
+You can compose arbitrarily complex joins (including outer joins), but
+the syntax is a bit more complicated.  First we need a raw SQLAlchemy Join object,
+which we can get from the join method defined on any of the table classes:
+>>> raw_join_1 = db.users.join(db.loans, isouter=True)
+>>> raw_join_1 # doctest:+ELLIPSIS
+<sqlalchemy.sql.Join object ...>
+
+# Then, we get SqlSoup to map it so that we can select from it as with the simple case:
+>>> j = db.map(raw_join_1)
+>>> j
+<class 'sqlalchemy.ext.sqlsoup.MappedJoin'>
+
+>>> j.select()
+[MappedJoin(name='Bhargan Basepair',email='basepair+nospam@example.edu',password='basepair',classname=None,admin=1,book_id=None,user_name=None,loan_date=None), MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
+
+You can also join tables to join objects:
+>>> raw_join_2 = raw_join_1.join(db.books, isouter=True)
+>>> j = db.map(raw_join_2)
+>>> j.select()
+[MappedJoin(name='Bhargan Basepair',email='basepair+nospam@example.edu',password='basepair',classname=None,admin=1,book_id=None,user_name=None,loan_date=None,id=None,title=None,published_year=None,authors=None), MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0),id=1,title='Mustards I Have Known',published_year='1989',authors='Jones')]
 """
 
 from sqlalchemy import *
@@ -99,10 +131,11 @@ values('Mustards I Have Known', '1989', 'Jones');
 insert into books(title, published_year, authors)
 values('Regional Variation in Moss', '1971', 'Flim and Flam');
 
-insert into loans(book_id, user_name)
+insert into loans(book_id, user_name, loan_date)
 values (
     (select min(id) from books), 
-    (select name from users where name like 'Joe%'))
+    (select name from users where name like 'Joe%'),
+    '2006-07-12 0:0:0')
 ;
 """.split(';')
 
@@ -128,14 +161,39 @@ class TableClassType(type):
         o = cls()
         o.__dict__.update(kwargs)
         return o
+    def join(cls, right, *args, **kwargs):
+        return join(cls, right, *args, **kwargs)
+    def _selectable(cls):
+        return cls._table
     def __getattr__(cls, attr):
         if attr == '_mapper':
             # called during mapper init
             raise AttributeError()
         return getattr(cls._mapper, attr)
+            
+
+def _is_outer_join(selectable):
+	if not isinstance(selectable, sql.Join):
+		return False
+	if selectable.isouter:
+		return True
+	return _is_outer_join(selectable.left) or _is_outer_join(selectable.right)
 
 def class_for_table(table):
-    klass = TableClassType('Class_' + table.name.capitalize(), (object,), {})
+    if isinstance(table, sql.Join):
+        mapname = 'MappedJoin'
+    else:
+        mapname = 'Mapped' + table.name.capitalize()
+    klass = TableClassType(mapname, (object,), {})
+    def __cmp__(self, o):
+        L = self.__class__.c.keys()
+        L.sort()
+        t1 = [getattr(self, k) for k in L]
+        try:
+            t2 = [getattr(o, k) for k in L]
+        except AttributeError:
+            raise TypeError('unable to compare with %s' % o.__class__)
+        return cmp(t1, t2)
     def __repr__(self):
         import locale
         encoding = locale.getdefaultlocale()[1]
@@ -146,8 +204,13 @@ def class_for_table(table):
                 value = value.encode(encoding)
             L.append("%s=%r" % (k, value))
         return '%s(%s)' % (self.__class__.__name__, ','.join(L))
-    klass.__repr__ = __repr__
-    klass._mapper = mapper(klass, table, extension=objectstore.mapper_extension)
+    for m in ['__cmp__', '__repr__']:
+        setattr(klass, m, eval(m))
+    klass._table = table
+    klass._mapper = mapper(klass,
+						   table,
+						   extension=objectstore.mapper_extension,
+						   allow_null_pks=_is_outer_join(table))
     return klass
 
 class SqlSoup:
@@ -177,6 +240,18 @@ class SqlSoup:
         # for debugging
         self._cache = {}
         self.rollback()
+    def map(self, selectable):
+        try:
+            t = self._cache[selectable]
+        except KeyError:
+            t = class_for_table(selectable)
+            self._cache[selectable] = t
+        return t
+    def join(self, left, right, *args):
+        j = join(left, right)
+        for arg in args:
+            j = join(j, arg)
+        return self.map(j)
     def __getattr__(self, attr):
         try:
             t = self._cache[attr]
