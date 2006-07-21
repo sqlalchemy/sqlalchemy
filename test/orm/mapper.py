@@ -256,6 +256,13 @@ class MapperTest(MapperSuperTest):
         q = create_session().query(m)
         q.select_by(email_address='foo')
         
+    def testjoinbyfk(self):
+        class UserWithAddress(object):
+			pass
+        j = join(users, addresses, isouter=True)
+        m = mapper(UserWithAddress, j, allow_null_pks=True)
+        q = create_session().query(m)
+        
     def testjoinvia(self):
         m = mapper(User, users, properties={
             'orders':relation(mapper(Order, orders, properties={
