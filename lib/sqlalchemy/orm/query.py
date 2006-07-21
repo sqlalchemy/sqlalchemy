@@ -220,10 +220,12 @@ class Query(object):
         ret = self.extension.select(self, arg=arg, **kwargs)
         if ret is not mapper.EXT_PASS:
             return ret
-        elif arg is not None and isinstance(arg, sql.Selectable):
-            return self.select_statement(arg, **kwargs)
-        else:
+        try:
+            s = arg._selectable_()
+        except AttributeError:
             return self.select_whereclause(whereclause=arg, **kwargs)
+        else:
+            return self.select_statement(s, **kwargs)
 
     def select_whereclause(self, whereclause=None, params=None, **kwargs):
         statement = self.compile(whereclause, **kwargs)

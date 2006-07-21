@@ -68,8 +68,6 @@ class ProxyEngine(BaseProxyEngine):
         BaseProxyEngine.__init__(self)
         # create the local storage for uri->engine map and current engine
         self.storage = local()
-        self.storage.connection = {}
-        self.storage.engine = None
         self.kwargs = kwargs
 
     def connect(self, *args, **kwargs):
@@ -87,13 +85,13 @@ class ProxyEngine(BaseProxyEngine):
             self.storage.engine = None
             map = self.storage.connection
         try:
-            self.engine = map[key]
+            self.storage.engine = map[key]
         except KeyError:
             map[key] = create_engine(*args, **kwargs)
             self.storage.engine = map[key]
             
     def get_engine(self):
-        if self.storage.engine is None:
+        if not hasattr(self.storage, 'engine') or self.storage.engine is None:
             raise AttributeError("No connection established")
         return self.storage.engine
 

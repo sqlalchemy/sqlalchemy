@@ -309,27 +309,30 @@ class ANSICompiler(sql.Compiled):
             if isinstance(c, sql.Select) and c._scalar:
                 c.accept_visitor(self)
                 inner_columns[self.get_str(c)] = c
-            elif c.is_selectable():
-                for co in c.columns:
-                    if select.use_labels:
-                        l = co.label(co._label)
-                        l.accept_visitor(self)
-                        inner_columns[co._label] = l
-                    # TODO: figure this out, a ColumnClause with a select as a parent
-                    # is different from any other kind of parent
-                    elif select.issubquery and isinstance(co, sql.ColumnClause) and co.table is not None and not isinstance(co.table, sql.Select):
-                        # SQLite doesnt like selecting from a subquery where the column
-                        # names look like table.colname, so add a label synonomous with
-                        # the column name
-                        l = co.label(co.name)
-                        l.accept_visitor(self)
-                        inner_columns[self.get_str(l.obj)] = l
-                    else:
-                        co.accept_visitor(self)
-                        inner_columns[self.get_str(co)] = co
-            else:
+                continue
+            try:
+                s = c._selectable()
+            except AttributeError:
                 c.accept_visitor(self)
                 inner_columns[self.get_str(c)] = c
+                continue
+            for co in s.columns:
+                if select.use_labels:
+                    l = co.label(co._label)
+                    l.accept_visitor(self)
+                    inner_columns[co._label] = l
+                # TODO: figure this out, a ColumnClause with a select as a parent
+                # is different from any other kind of parent
+                elif select.issubquery and isinstance(co, sql.ColumnClause) and co.table is not None and not isinstance(co.table, sql.Select):
+                    # SQLite doesnt like selecting from a subquery where the column
+                    # names look like table.colname, so add a label synonomous with
+                    # the column name
+                    l = co.label(co.name)
+                    l.accept_visitor(self)
+                    inner_columns[self.get_str(l.obj)] = l
+                else:
+                    co.accept_visitor(self)
+                    inner_columns[self.get_str(co)] = co
         self.select_stack.pop(-1)
         
         collist = string.join([self.get_str(v) for v in inner_columns.values()], ', ')

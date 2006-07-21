@@ -435,11 +435,6 @@ class ClauseElement(object):
         new structure can then be restructured without affecting the original."""
         return self
 
-    def is_selectable(self):
-        """returns True if this ClauseElement is Selectable, i.e. it contains a list of Column
-        objects and can be used as the target of a select statement."""
-        return False
-
     def _find_engine(self):
         """default strategy for locating an engine within the clause element.
         relies upon a local engine property, or looks in the "from" objects which 
@@ -542,7 +537,7 @@ class CompareMixin(object):
     def in_(self, *other):
         if len(other) == 0:
             return self.__eq__(None)
-        elif len(other) == 1 and not isinstance(other[0], Selectable):
+        elif len(other) == 1 and not hasattr(other[0], '_selectable'):
             return self.__eq__(other[0])
         elif _is_literal(other[0]):
             return self._compare('IN', ClauseList(parens=True, *[self._bind_param(o) for o in other]))
@@ -611,10 +606,10 @@ class CompareMixin(object):
 class Selectable(ClauseElement):
     """represents a column list-holding object."""
 
+    def _selectable(self):
+        return self
     def accept_visitor(self, visitor):
         raise NotImplementedError(repr(self))
-    def is_selectable(self):
-        return True
     def select(self, whereclauses = None, **params):
         return select([self], whereclauses, **params)
     def _group_parenthesized(self):
@@ -748,11 +743,14 @@ class FromClause(Selectable):
         self._orig_cols = {}
         export = self._exportable_columns()
         for column in export:
-            if column.is_selectable():
-                for co in column.columns:
-                    cp = self._proxy_column(co)
-                    for ci in cp.orig_set:
-                        self._orig_cols[ci] = cp
+            try:
+                s = column._selectable()
+            except AttributeError:
+                continue
+            for co in s.columns:
+                cp = self._proxy_column(co)
+                for ci in cp.orig_set:
+                    self._orig_cols[ci] = cp
         if self.oid_column is not None:
             for ci in self.oid_column.orig_set:
                 self._orig_cols[ci] = self.oid_column
@@ -1014,9 +1012,9 @@ class BinaryClause(ClauseElement):
         self.operator = operator
         self.type = sqltypes.to_instance(type)
         self.parens = False
-        if isinstance(self.left, BinaryClause) or isinstance(self.left, Selectable):
+        if isinstance(self.left, BinaryClause) or hasattr(self.left, '_selectable'):
             self.left.parens = True
-        if isinstance(self.right, BinaryClause) or isinstance(self.right, Selectable):
+        if isinstance(self.right, BinaryClause) or hasattr(self.right, '_selectable'):
             self.right.parens = True
     def copy_container(self):
         return BinaryClause(self.left.copy_container(), self.right.copy_container(), self.operator)
@@ -1049,10 +1047,10 @@ class BinaryExpression(BinaryClause, ColumnElement):
         
 class Join(FromClause):
     def __init__(self, left, right, onclause=None, isouter = False):
-        self.left = left
-        self.right = right
+        self.left = left._selectable()
+        self.right = right._selectable()
         if onclause is None:
-            self.onclause = self._match_primaries(left, right)
+            self.onclause = self._match_primaries(self.left, self.right)
         else:
             self.onclause = onclause
         self.isouter = isouter
