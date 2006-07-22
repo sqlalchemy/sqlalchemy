@@ -64,12 +64,14 @@ class ReflectionTest(PersistTest):
         addresses.create()
 
         # clear out table registry
-        users.deregister()
-        addresses.deregister()
+        meta.clear()
 
         try:
-            users = Table('engine_users', testbase.db, autoload = True)
-            addresses = Table('engine_email_addresses', testbase.db, autoload = True)
+            addresses = Table('engine_email_addresses', meta, autoload = True)
+            # reference the addresses foreign key col, which will require users to be 
+            # reflected at some point
+            print addresses.c.remote_user_id.foreign_key.column
+            users = Table('engine_users', meta, autoload = True)
         finally:
             addresses.drop()
             users.drop()

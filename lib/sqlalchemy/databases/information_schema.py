@@ -185,8 +185,10 @@ def reflecttable(connection, table, ischema_names):
             if current_schema == referred_schema:
                 referred_schema = table.schema
             if referred_schema is not None:
+                schema.Table(referred_table, table.metadata, autoload=True, schema=referred_schema, autoload_with=connection)
                 refspec = ".".join([referred_schema, referred_table, referred_column])
             else:
+                schema.Table(referred_table, table.metadata, autoload=True, autoload_with=connection)
                 refspec = ".".join([referred_table, referred_column])
             if constrained_column not in fk[0]:
                 fk[0].append(constrained_column)

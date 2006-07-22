@@ -237,6 +237,7 @@ class OracleDialect(ansisql.ANSIDialect):
                    fk = ([], [])
                    fks[cons_name] = fk
                 refspec = ".".join([remote_table, remote_column])
+                schema.Table(remote_table, table.metadata, autoload=True, autoload_with=connection)
                 if local_column not in fk[0]:
                     fk[0].append(local_column)
                 if refspec not in fk[1]:
