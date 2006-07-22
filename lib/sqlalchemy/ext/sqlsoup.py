@@ -67,32 +67,16 @@ once.  In this situation, it is far
 more efficient to have the database perform the necessary join.  (Here
 we do not have "a lot of data," but hopefully the concept is still clear.)
 SQLAlchemy is smart enough to recognize that loans has a foreign key
-to users, and uses that as the join condition automatically.  You can join
-an arbitrary number of tables; here's a two-table one:
->>> j = db.join(db.users, db.loans)
->>> j.select()
+to users, and uses that as the join condition automatically.
+>>> join1 = db.join(db.users, db.loans, isouter=True)
+>>> join1.select_by(name='Joe Student')
 [MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
 
-You can compose arbitrarily complex joins (including outer joins), but
-the syntax is a bit more complicated.  First we need a raw SQLAlchemy Join object,
-which we can get from the join method defined on any of the table classes:
->>> raw_join_1 = db.users.join(db.loans, isouter=True)
->>> raw_join_1 # doctest:+ELLIPSIS
-<sqlalchemy.sql.Join object ...>
-
-# Then, we get SqlSoup to map it so that we can select from it as with the simple case:
->>> j = db.map(raw_join_1)
->>> j
-<class 'sqlalchemy.ext.sqlsoup.MappedJoin'>
-
->>> j.select()
-[MappedJoin(name='Bhargan Basepair',email='basepair+nospam@example.edu',password='basepair',classname=None,admin=1,book_id=None,user_name=None,loan_date=None), MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
-
-You can also join tables to join objects:
->>> raw_join_2 = raw_join_1.join(db.books, isouter=True)
->>> j = db.map(raw_join_2)
->>> j.select()
-[MappedJoin(name='Bhargan Basepair',email='basepair+nospam@example.edu',password='basepair',classname=None,admin=1,book_id=None,user_name=None,loan_date=None,id=None,title=None,published_year=None,authors=None), MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0),id=1,title='Mustards I Have Known',published_year='1989',authors='Jones')]
+You can compose arbitrarily complex joins by combining Join objects with
+tables or other joins.
+>>> join2 = db.join(join1, db.books)
+>>> join2.select()
+[MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0),id=1,title='Mustards I Have Known',published_year='1989',authors='Jones')]
 """
 
 from sqlalchemy import *
@@ -164,8 +148,6 @@ class TableClassType(type):
         o = cls()
         o.__dict__.update(kwargs)
         return o
-    def join(cls, right, *args, **kwargs):
-        return join(cls, right, *args, **kwargs)
     def _selectable(cls):
         return cls._table
     def __getattr__(cls, attr):
@@ -182,11 +164,14 @@ def _is_outer_join(selectable):
         return True
     return _is_outer_join(selectable.left) or _is_outer_join(selectable.right)
 
-def class_for_table(table):
-    if isinstance(table, sql.Join):
-        mapname = 'MappedJoin'
+def class_for_table(selectable):
+    if not hasattr(selectable, '_selectable') \
+    or selectable._selectable() != selectable:
+        raise 'class_for_table requires a selectable as its argument'
+    if isinstance(selectable, schema.Table):
+        mapname = 'Mapped' + selectable.name.capitalize()
     else:
-        mapname = 'Mapped' + table.name.capitalize()
+        mapname = 'Mapped' + selectable.__class__.__name__
     klass = TableClassType(mapname, (object,), {})
     def __cmp__(self, o):
         L = self.__class__.c.keys()
@@ -209,11 +194,11 @@ def class_for_table(table):
         return '%s(%s)' % (self.__class__.__name__, ','.join(L))
     for m in ['__cmp__', '__repr__']:
         setattr(klass, m, eval(m))
-    klass._table = table
+    klass._table = selectable
     klass._mapper = mapper(klass,
-                           table,
+                           selectable,
                            extension=objectstore.mapper_extension,
-                           allow_null_pks=_is_outer_join(table))
+                           allow_null_pks=_is_outer_join(selectable))
     return klass
 
 class SqlSoup:
@@ -244,18 +229,18 @@ class SqlSoup:
         # for debugging
         self._cache = {}
         self.rollback()
-    def map(self, selectable):
+    def _map(self, selectable):
         try:
             t = self._cache[selectable]
         except KeyError:
             t = class_for_table(selectable)
             self._cache[selectable] = t
         return t
-    def join(self, left, right, *args):
-        j = join(left, right)
-        for arg in args:
-            j = join(j, arg)
-        return self.map(j)
+    def with_labels(self, item):
+        return self._map(select(use_labels=True, from_obj=[item._selectable()]).alias('foo'))
+    def join(self, *args, **kwargs):
+        j = join(*args, **kwargs)
+        return self._map(j)
     def __getattr__(self, attr):
         try:
             t = self._cache[attr]
