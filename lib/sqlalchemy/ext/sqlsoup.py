@@ -1,66 +1,81 @@
 """
+Introduction
+============
+
 SqlSoup provides a convenient way to access database tables without having
 to declare table or mapper classes ahead of time.
 
 Suppose we have a database with users, books, and loans tables
 (corresponding to the PyWebOff dataset, if you're curious).
-For testing purposes, we can create this db as follows:
-
->>> from sqlalchemy import create_engine
->>> e = create_engine('sqlite:///:memory:')
->>> for sql in _testsql: e.execute(sql) #doctest: +ELLIPSIS
-<...
+For testing purposes, we'll create this db as follows:
+	>>> from sqlalchemy import create_engine
+	>>> e = create_engine('sqlite:///:memory:')
+	>>> for sql in _testsql: e.execute(sql) #doctest: +ELLIPSIS
+	<...
 
 Creating a SqlSoup gateway is just like creating an SqlAlchemy engine:
->>> from sqlalchemy.ext.sqlsoup import SqlSoup
->>> db = SqlSoup('sqlite:///:memory:')
+	>>> from sqlalchemy.ext.sqlsoup import SqlSoup
+	>>> db = SqlSoup('sqlite:///:memory:')
 
 or, you can re-use an existing metadata:
->>> db = SqlSoup(BoundMetaData(e))
+	>>> db = SqlSoup(BoundMetaData(e))
 
 You can specify a schema within the database for your SqlSoup:
-# >>> db.schema = myschemaname
+	# >>> db.schema = myschemaname
+
+
+Loading objects
+===============
 
 Loading objects is as easy as this:
->>> users = db.users.select()
->>> users.sort()
->>> users
-[MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0), MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)]
+	>>> users = db.users.select()
+	>>> users.sort()
+	>>> users
+	[MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0), MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)]
 
 Of course, letting the database do the sort is better (".c" is short for ".columns"):
->>> db.users.select(order_by=[db.users.c.name])
-[MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1), MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0)]
+	>>> db.users.select(order_by=[db.users.c.name])
+	[MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1), MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0)]
 
 Field access is intuitive:
->>> users[0].email
-u'student@example.edu'
+	>>> users[0].email
+	u'student@example.edu'
 
 Of course, you don't want to load all users very often.  The common case is to
 select by a key or other field:
->>> db.users.selectone_by(name='Bhargan Basepair')
-MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)
+	>>> db.users.selectone_by(name='Bhargan Basepair')
+	MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)
 
 All the SqlAlchemy mapper select variants (select, select_by, selectone, selectone_by, selectfirst, selectfirst_by)
 are available.  See the SqlAlchemy documentation for details:
 http://www.sqlalchemy.org/docs/sqlconstruction.myt
 
+
+Modifying objects
+=================
+
 Modifying objects is intuitive:
->>> user = _
->>> user.email = 'basepair+nospam@example.edu'
->>> db.flush()
+	>>> user = _
+	>>> user.email = 'basepair+nospam@example.edu'
+	>>> db.flush()
 
 (SqlSoup leverages the sophisticated SqlAlchemy unit-of-work code, so
 multiple updates to a single object will be turned into a single UPDATE
 statement when you flush.)
 
-To finish covering the basics, let's insert a new loan, then delete it:
->>> db.loans.insert(book_id=db.books.selectfirst(db.books.c.title=='Regional Variation in Moss').id, user_name=user.name)
-MappedLoans(book_id=2,user_name='Bhargan Basepair',loan_date=None)
->>> db.flush()
 
->>> loan = db.loans.selectone_by(book_id=2, user_name='Bhargan Basepair')
->>> db.delete(loan)
->>> db.flush()
+To finish covering the basics, let's insert a new loan, then delete it:
+	>>> db.loans.insert(book_id=db.books.selectfirst(db.books.c.title=='Regional Variation in Moss').id, user_name=user.name)
+	MappedLoans(book_id=2,user_name='Bhargan Basepair',loan_date=None)
+	>>> db.flush()
+
+	>>> loan = db.loans.selectone_by(book_id=2, user_name='Bhargan Basepair')
+	>>> db.delete(loan)
+	>>> db.flush()
+
+
+Joins
+=====
 
 Occasionally, you will want to pull out a lot of data from related tables all at
 once.  In this situation, it is far
@@ -68,15 +83,15 @@ more efficient to have the database perform the necessary join.  (Here
 we do not have "a lot of data," but hopefully the concept is still clear.)
 SQLAlchemy is smart enough to recognize that loans has a foreign key
 to users, and uses that as the join condition automatically.
->>> join1 = db.join(db.users, db.loans, isouter=True)
->>> join1.select_by(name='Joe Student')
-[MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
+	>>> join1 = db.join(db.users, db.loans, isouter=True)
+	>>> join1.select_by(name='Joe Student')
+	[MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
 
 You can compose arbitrarily complex joins by combining Join objects with
 tables or other joins.
->>> join2 = db.join(join1, db.books)
->>> join2.select()
-[MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0),id=1,title='Mustards I Have Known',published_year='1989',authors='Jones')]
+	>>> join2 = db.join(join1, db.books)
+	>>> join2.select()
+	[MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0),id=1,title='Mustards I Have Known',published_year='1989',authors='Jones')]
 """
 
 from sqlalchemy import *
