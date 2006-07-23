@@ -20,7 +20,7 @@ Creating a SqlSoup gateway is just like creating an SqlAlchemy engine:
 or, you can re-use an existing metadata:
     >>> db = SqlSoup(BoundMetaData(e))
 
-You can specify a schema within the database for your SqlSoup:
+You can optionally specify a schema within the database for your SqlSoup:
     # >>> db.schema = myschemaname
 
 
@@ -46,9 +46,9 @@ select by a key or other field:
     >>> db.users.selectone_by(name='Bhargan Basepair')
     MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)
 
-All the SqlAlchemy mapper select variants (select, select_by, selectone, selectone_by, selectfirst, selectfirst_by)
+All the SqlAlchemy Query select variants (select, select_by, selectone, selectone_by, selectfirst, selectfirst_by)
 are available.  See the SqlAlchemy documentation for details:
-http://www.sqlalchemy.org/docs/sqlconstruction.myt
+http://www.sqlalchemy.org/docs/datamapping.myt#datamapping_query
 
 
 Modifying objects
