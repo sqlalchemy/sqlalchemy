@@ -251,6 +251,21 @@ class AttributesTest(PersistTest):
         
         b2.element = None
         assert not manager.get_history(b2, 'element').hasparent(f2)
+
+    def testdescriptorattributes(self):
+        """changeset: 1633 broke ability to use ORM to map classes with unusual
+        descriptor attributes (for example, classes that inherit from ones
+        implementing zope.interface.Interface).
+        This is a simple regression test to prevent that defect.
+        """
+        class des(object):
+            def __get__(self, instance, owner): raise AttributeError('fake attribute')
+
+        class Foo(object):
+            A = des()
+
+        manager = attributes.AttributeManager()
+        manager.reset_class_managed(Foo)
         
 if __name__ == "__main__":
     unittest.main()

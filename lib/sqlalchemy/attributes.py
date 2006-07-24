@@ -573,7 +573,7 @@ class AttributeManager(object):
         if not isinstance(class_, type):
             raise repr(class_) + " is not a type"
         for key in dir(class_):
-            value = getattr(class_, key)
+            value = getattr(class_, key, None)
             if isinstance(value, InstrumentedAttribute):
                 yield value
                 
