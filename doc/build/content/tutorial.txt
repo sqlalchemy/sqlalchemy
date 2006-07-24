@@ -83,7 +83,7 @@ Now, when we tell "metadata" about the tables in our database, we can issue CREA
 
 For the purposes of this tutorial, we will stick with "bound" objects, as it makes the code simpler and easier to read.  
 
-### Creating a Table {@name=table}
+### Creating a Table {@name=table_creating}
 
 With `metadata` as our established home for tables, lets make a Table for it:
 
@@ -211,7 +211,7 @@ Result sets also support iteration.  We'll show this with a slightly different f
     (3, u'Fred')
     (4, u'Harry')
 
-### Table Relationships
+### Table Relationships {@name=table_relationships}
 
 Lets create a second table, `email_addresses`, which references the `users` table.  To define the relationship between the two tables, we will use the `ForeignKey` construct.  We will also issue the `CREATE` statement for the table in one step:
 
