@@ -90,6 +90,7 @@ to users, and uses that as the join condition automatically.
 If you join tables that have an identical column name, pass use_lables to your
 select:
     >>> db.with_labels(join1).select()
+    [MappedUsersLoansJoin(users_name='Joe Student',users_email='student@example.edu',users_password='student',users_classname=None,users_admin=0,loans_book_id=1,loans_user_name='Joe Student',loans_loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
 
 You can compose arbitrarily complex joins by combining Join objects with
 tables or other joins.
@@ -183,14 +184,21 @@ def _is_outer_join(selectable):
         return True
     return _is_outer_join(selectable.left) or _is_outer_join(selectable.right)
 
+def _selectable_name(selectable):
+    if isinstance(selectable, sql.Alias):
+        return _selectable_name(selectable.selectable)
+    elif isinstance(selectable, sql.Select):
+        return ''.join([_selectable_name(s) for s in selectable._froms])
+    elif isinstance(selectable, schema.Table):
+        return selectable.name.capitalize()
+    else:
+        return selectable.__class__.__name__
+
 def class_for_table(selectable):
     if not hasattr(selectable, '_selectable') \
     or selectable._selectable() != selectable:
         raise 'class_for_table requires a selectable as its argument'
-    if isinstance(selectable, schema.Table):
-        mapname = 'Mapped' + selectable.name.capitalize()
-    else:
-        mapname = 'Mapped' + selectable.__class__.__name__
+    mapname = 'Mapped' + _selectable_name(selectable)
     klass = TableClassType(mapname, (object,), {})
     def __cmp__(self, o):
         L = self.__class__.c.keys()
@@ -256,7 +264,8 @@ class SqlSoup:
             self._cache[selectable] = t
         return t
     def with_labels(self, item):
-        return self._map(select(use_labels=True, from_obj=[item._selectable()]).alias('foo'))
+        # TODO give meaningful aliases
+        return self._map(item._selectable().select(use_labels=True).alias('foo'))
     def join(self, *args, **kwargs):
         j = join(*args, **kwargs)
         return self._map(j)
