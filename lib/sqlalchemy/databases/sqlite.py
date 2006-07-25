@@ -141,7 +141,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
         return SQLiteSchemaGenerator(*args, **kwargs)
     def create_connect_args(self, url):
         filename = url.database or ':memory:'
-        return ([filename], {})
+        return ([filename], url.query)
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
     def create_execution_context(self):

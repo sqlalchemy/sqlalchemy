@@ -225,6 +225,7 @@ class PGDialect(ansisql.ANSIDialect):
                 opts['port'] = int(opts['port'])
             else:
                 opts['port'] = str(opts['port'])
+        opts.update(url.query)
         return ([], opts)
 
     def create_execution_context(self):

@@ -241,6 +241,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
 
     def create_connect_args(self, url):
         self.opts = url.translate_connect_args(['host', 'database', 'user', 'password', 'port'])
+        self.opts.update(url.query)
         return ([], self.opts)
 
     def connect_args(self):

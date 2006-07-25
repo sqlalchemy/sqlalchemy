@@ -141,6 +141,7 @@ class OracleDialect(ansisql.ANSIDialect):
             dsn = dsn,
             threaded = self.threaded
             )
+        opts.update(url.query)
         return ([], opts)
         
     def type_descriptor(self, typeobj):

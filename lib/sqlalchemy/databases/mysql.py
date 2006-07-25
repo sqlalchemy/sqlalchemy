@@ -265,6 +265,18 @@ class MySQLDialect(ansisql.ANSIDialect):
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args(['host', 'db', 'user', 'passwd', 'port'])
+        opts.update(url.query)
+        def coercetype(param, type):
+            if param in opts and type(param) is not type:
+                if type is bool:
+                    opts[param] = bool(int(opts[param]))
+                else:
+                    opts[param] = type(opts[param])
+        coercetype('compress', bool)
+        coercetype('connect_timeout', int)
+        coercetype('use_unicode', bool)   # this could break SA Unicode type
+        coercetype('charset', str)        # this could break SA Unicode type
+        # TODO: what about options like "ssl", "cursorclass" and "conv" ?
         return [[], opts]
 
     def create_execution_context(self):

@@ -123,6 +123,10 @@ class FireBirdDialect(ansisql.ANSIDialect):
         if opts.get('port'):
             opts['host'] = "%s/%s" % (opts['host'], opts['port'])
             del opts['port']
+        opts.update(url.query)
+        # pop arguments that we took at the module level
+        opts.pop('type_conv', None)
+        opts.pop('concurrency_level', None)
         self.opts = opts
         
         return ([], self.opts)

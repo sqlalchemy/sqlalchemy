@@ -5,6 +5,7 @@ by not raising an error when redundant mappers were set up, fixed
 primary key columns are null (i.e. when mapping to outer joins etc)
 - fixed reflection of foreign keys to autoload the referenced table
 if it was not loaded already
+- [ticket:256] - pass URL query string arguments to connect() function
 
 0.2.6
 - big overhaul to schema to allow truly composite primary and foreign
