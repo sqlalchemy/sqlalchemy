@@ -387,9 +387,6 @@ PassiveDefault also sends a message to the `Engine` that data is available after
 
         # an on-insert database-side default
         Column('data1', Integer, PassiveDefault("d1_func")),
-
-        # an on-update database-side default
-        Column('data2', Integer, PassiveDefault("d2_func", for_update=True))
     )
     # insert a row
     r = mytable.insert().execute(name='fred')
