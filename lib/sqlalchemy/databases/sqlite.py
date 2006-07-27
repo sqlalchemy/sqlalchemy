@@ -7,7 +7,7 @@
 
 import sys, StringIO, string, types, re
 
-from sqlalchemy import sql, engine, schema, ansisql, exceptions, pool
+from sqlalchemy import sql, engine, schema, ansisql, exceptions, pool, PassiveDefault
 import sqlalchemy.engine.default as default
 import sqlalchemy.types as sqltypes
 import datetime,time
@@ -178,7 +178,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
                 break
             #print "row! " + repr(row)
             found_table = True
-            (name, type, nullable, primary_key) = (row[1], row[2].upper(), not row[3], row[5])
+            (name, type, nullable, has_default, primary_key) = (row[1], row[2].upper(), not row[3], row[4], row[5])
             
             match = re.match(r'(\w+)(\(.*?\))?', type)
             coltype = match.group(1)
@@ -190,7 +190,11 @@ class SQLiteDialect(ansisql.ANSIDialect):
                 args = re.findall(r'(\d+)', args)
                 #print "args! " +repr(args)
                 coltype = coltype(*[int(a) for a in args])
-            table.append_item(schema.Column(name, coltype, primary_key = primary_key, nullable = nullable))
+
+            colargs= []
+            if has_default:
+                colargs.append(PassiveDefault('?'))
+            table.append_item(schema.Column(name, coltype, primary_key = primary_key, nullable = nullable, *colargs))
         
         if not found_table:
             raise exceptions.NoSuchTableError(table.name)
