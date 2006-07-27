@@ -148,7 +148,13 @@ class PropertyLoader(mapper.MapperProperty):
         self.order_by = order_by
         self.attributeext=attributeext
         if isinstance(backref, str):
-            self.backref = BackRef(backref)
+            # propigate explicitly sent primary/secondary join conditions to the BackRef object if
+            # just a string was sent
+            if secondary is not None:
+                # reverse primary/secondary in case of a many-to-many
+                self.backref = BackRef(backref, primaryjoin=secondaryjoin, secondaryjoin=primaryjoin)
+            else:
+                self.backref = BackRef(backref, primaryjoin=primaryjoin, secondaryjoin=secondaryjoin)
         else:
             self.backref = backref
         self.is_backref = is_backref
@@ -684,14 +690,15 @@ class BackRef(object):
         if not mapper.props.has_key(self.key):
             pj = self.kwargs.pop('primaryjoin', None)
             sj = self.kwargs.pop('secondaryjoin', None)
-            # TODO: we are going to have the newly backref'd property create its 
-            # primary/secondary join through normal means, and only override if they are
-            # specified to the constructor.  think about if this is really going to work
-            # all the way.
+            # the backref will compile its own primary/secondary join conditions.  if you have it
+            # use the pj/sj of the parent relation in all cases, a bunch of polymorphic unit tests
+            # fail (maybe we can look into that too).
+            # the PropertyLoader class is currently constructing BackRef objects using the explictly
+            # passed primary/secondary join conditions, if the backref was passed to it as just a string.
             #if pj is None:
             #    if prop.secondaryjoin is not None:
-            #        # if setting up a backref to a many-to-many, reverse the order
-            #        # of the "primary" and "secondary" joins
+                    # if setting up a backref to a many-to-many, reverse the order
+                    # of the "primary" and "secondary" joins
             #        pj = prop.secondaryjoin
             #        sj = prop.primaryjoin
             #    else:

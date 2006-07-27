@@ -7,6 +7,8 @@ primary key columns are null (i.e. when mapping to outer joins etc)
 if it was not loaded already
 - [ticket:256] - pass URL query string arguments to connect() function
 - [ticket:257] - oracle boolean type
+- custom primary/secondary join conditions in a relation *will* be propigated
+to backrefs by default.  specifying a backref() will override this behavior.
 
 0.2.6
 - big overhaul to schema to allow truly composite primary and foreign
