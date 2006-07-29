@@ -97,6 +97,22 @@ tables or other joins.
     >>> join2 = db.join(join1, db.books)
     >>> join2.select()
     [MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0),id=1,title='Mustards I Have Known',published_year='1989',authors='Jones')]
+
+
+Advanced Use
+============
+
+You can access the SqlSoup's engine attribute to compose SQL directly.
+The engine's <b>execute</b> method corresponds
+to the one of a DBAPI cursor, and returns a ResultProxy that has <b>fetch</b> methods
+you would also see on a cursor.
+
+    >>> rp = db.engine.execute('select name, email from users order by name')
+    >>> for name, email in rp.fetchall(): print name, email
+    Bhargan Basepair basepair+nospam@example.edu
+    Joe Student student@example.edu
+
+You can also pass this engine object to other SQLAlchemy constructs.
 """
 
 from sqlalchemy import *
@@ -234,7 +250,6 @@ class SqlSoup:
         args may either be an SQLEngine or a set of arguments suitable
         for passing to create_engine
         """
-        from sqlalchemy import MetaData
         # meh, sometimes having method overloading instead of kwargs would be easier
         if isinstance(args[0], MetaData):
             args = list(args)
@@ -246,6 +261,9 @@ class SqlSoup:
         self._metadata = metadata
         self._cache = {}
         self.schema = None
+    def engine(self):
+        return self._metadata._engine
+    engine = property(engine)
     def delete(self, *args, **kwargs):
         objectstore.delete(*args, **kwargs)
     def flush(self):
