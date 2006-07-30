@@ -65,13 +65,23 @@ statement when you flush.)
 
 
 To finish covering the basics, let's insert a new loan, then delete it:
-    >>> db.loans.insert(book_id=db.books.selectfirst(db.books.c.title=='Regional Variation in Moss').id, user_name=user.name)
+    >>> book_id = db.books.selectfirst(db.books.c.title=='Regional Variation in Moss').id
+    >>> db.loans.insert(book_id=book_id, user_name=user.name)
     MappedLoans(book_id=2,user_name='Bhargan Basepair',loan_date=None)
     >>> db.flush()
 
     >>> loan = db.loans.selectone_by(book_id=2, user_name='Bhargan Basepair')
     >>> db.delete(loan)
     >>> db.flush()
+
+You can also delete rows that have not been loaded as objects.  Let's do our insert/delete cycle once more,
+this time using the loans table's delete method:
+    >>> db.loans.insert(book_id=book_id, user_name=user.name)
+    MappedLoans(book_id=2,user_name='Bhargan Basepair',loan_date=None)
+    >>> db.flush()
+
+    >>> db.loans.delete(db.loans.c.book_id==2).execute() # doctest: +ELLIPSIS
+    <...>
 
 
 Joins
@@ -190,6 +200,8 @@ class TableClassType(type):
         if attr == '_mapper':
             # called during mapper init
             raise AttributeError()
+        if attr in ['delete']:
+            return getattr(cls._table, attr)
         return getattr(cls._mapper, attr)
             
 
