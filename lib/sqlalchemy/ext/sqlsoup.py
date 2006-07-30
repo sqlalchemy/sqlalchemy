@@ -48,7 +48,9 @@ select by a key or other field:
 
 All the SqlAlchemy Query select variants (select, select_by, selectone, selectone_by, selectfirst, selectfirst_by)
 are available.  See the SqlAlchemy documentation for details:
-http://www.sqlalchemy.org/docs/datamapping.myt#datamapping_query
+http://www.sqlalchemy.org/docs/datamapping.myt#datamapping_query for general info and examples,
+and http://www.sqlalchemy.org/docs/sqlconstruction.myt for details on construction WHERE clauses.
+
 
 
 Modifying objects
@@ -75,7 +77,10 @@ To finish covering the basics, let's insert a new loan, then delete it:
     >>> db.flush()
 
 You can also delete rows that have not been loaded as objects.  Let's do our insert/delete cycle once more,
-this time using the loans table's delete method:
+this time using the loans table's delete method.  (For SQLAlchemy experts:
+note that no flush() call is required since this
+delete acts at the SQL level, not at the Mapper level.)  The same where-clause construction rules
+apply here as to the select methods.
     >>> db.loans.insert(book_id=book_id, user_name=user.name)
     MappedLoans(book_id=2,user_name='Bhargan Basepair',loan_date=None)
     >>> db.flush()
