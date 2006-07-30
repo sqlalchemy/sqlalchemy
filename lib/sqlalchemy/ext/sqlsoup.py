@@ -80,7 +80,7 @@ this time using the loans table's delete method:
     MappedLoans(book_id=2,user_name='Bhargan Basepair',loan_date=None)
     >>> db.flush()
 
-    >>> db.loans.delete(db.loans.c.book_id==2).execute() # doctest: +ELLIPSIS
+    >>> db.loans.delete(db.loans.c.book_id==2) # doctest: +ELLIPSIS
     <...>
 
 
@@ -196,12 +196,12 @@ class TableClassType(type):
         return o
     def _selectable(cls):
         return cls._table
+    def delete(cls, *args, **kwargs):
+        return cls._table.delete(*args, **kwargs).execute()
     def __getattr__(cls, attr):
         if attr == '_mapper':
             # called during mapper init
             raise AttributeError()
-        if attr in ['delete']:
-            return getattr(cls._table, attr)
         return getattr(cls._mapper, attr)
             
 
