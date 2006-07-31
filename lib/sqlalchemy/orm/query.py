@@ -221,7 +221,7 @@ class Query(object):
         if ret is not mapper.EXT_PASS:
             return ret
         try:
-            s = arg._selectable_()
+            s = arg._selectable()
         except AttributeError:
             return self.select_whereclause(whereclause=arg, **kwargs)
         else:
