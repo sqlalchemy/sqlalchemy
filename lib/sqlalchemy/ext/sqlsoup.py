@@ -84,11 +84,15 @@ apply here as to the select methods.
     >>> db.loans.insert(book_id=book_id, user_name=user.name)
     MappedLoans(book_id=2,user_name='Bhargan Basepair',loan_date=None)
     >>> db.flush()
+    >>> db.loans.delete(db.loans.c.book_id==2)
 
-    >>> db.loans.delete(db.loans.c.book_id==2) # doctest: +ELLIPSIS
-    <...>
+You can similarly update multiple rows at once.  This will change the book_id to 1 in all loans whose book_id is 2:
 
+    >>> db.loans.update(db.loans.c.book_id==2, book_id=1)
+    >>> db.loans.select_by(db.loans.c.book_id==1)
+    [MappedLoans(book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
 
+	
 Joins
 =====
 
@@ -202,7 +206,9 @@ class TableClassType(type):
     def _selectable(cls):
         return cls._table
     def delete(cls, *args, **kwargs):
-        return cls._table.delete(*args, **kwargs).execute()
+        cls._table.delete(*args, **kwargs).execute()
+    def update(cls, whereclause=None, values=None, **kwargs):
+        cls._table.update(whereclause, values).execute(**kwargs)
     def __getattr__(cls, attr):
         if attr == '_mapper':
             # called during mapper init
