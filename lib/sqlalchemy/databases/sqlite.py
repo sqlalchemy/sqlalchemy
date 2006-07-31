@@ -178,7 +178,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
                 break
             #print "row! " + repr(row)
             found_table = True
-            (name, type, nullable, has_default, primary_key) = (row[1], row[2].upper(), not row[3], row[4], row[5])
+            (name, type, nullable, has_default, primary_key) = (row[1], row[2].upper(), not row[3], row[4] is not None, row[5])
             
             match = re.match(r'(\w+)(\(.*?\))?', type)
             coltype = match.group(1)
