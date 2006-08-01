@@ -46,11 +46,23 @@ select by a key or other field:
     >>> db.users.selectone_by(name='Bhargan Basepair')
     MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)
 
-All the SqlAlchemy Query select variants (select, select_by, selectone, selectone_by, selectfirst, selectfirst_by)
-are available.  See the SqlAlchemy documentation for details:
-http://www.sqlalchemy.org/docs/datamapping.myt#datamapping_query for general info and examples,
-and http://www.sqlalchemy.org/docs/sqlconstruction.myt for details on construction WHERE clauses.
 
+Select variants
+---------------
+
+All the SqlAlchemy Query select variants are available.
+Here's a quick summary of these methods:
+
+- get(PK): load a single object identified by its primary key (either a scalar, or a tuple)
+- select(Clause, **kwargs): perform a select restricted by the Clause argument; returns a list of objects.  The most common clause argument takes the form "db.tablename.c.columname == value."  The most common optional argument is order_by.
+- select_by(**params): the *_by selects allow using bare column names.  (columname=value)This feels more natural to most Python programmers; the downside is you can't specify order_by or other select options.
+- selectfirst, selectfirst_by: returns only the first object found; equivalent to select(...)[0] or select_by(...)[0], except None is returned if no rows are selected.
+- selectone, selectone_by: like selectfirst or selectfirst_by, but raises if less or more than one object is selected.
+- count, count_by: returns an integer count of the rows selected.
+
+See the SqlAlchemy documentation for details:
+- http://www.sqlalchemy.org/docs/datamapping.myt#datamapping_query for general info and examples,
+- http://www.sqlalchemy.org/docs/sqlconstruction.myt for details on construction WHERE clauses.
 
 
 Modifying objects
@@ -92,7 +104,7 @@ You can similarly update multiple rows at once.  This will change the book_id to
     >>> db.loans.select_by(db.loans.c.book_id==1)
     [MappedLoans(book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
 
-	
+    
 Joins
 =====
 
@@ -132,6 +144,15 @@ you would also see on a cursor.
     Joe Student student@example.edu
 
 You can also pass this engine object to other SQLAlchemy constructs.
+
+
+Extra tests
+===========
+
+Boring tests here.  Nothing of real expository value.
+
+    >>> db.users.select(db.users.c.classname==None, order_by=[db.users.c.name])
+    [MappedUsers(name='Bhargan Basepair',email='basepair+nospam@example.edu',password='basepair',classname=None,admin=1), MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0)]
 """
 
 from sqlalchemy import *
