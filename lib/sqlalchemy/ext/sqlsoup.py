@@ -62,7 +62,7 @@ Here's a quick summary of these methods:
 
 See the SqlAlchemy documentation for details:
 - http://www.sqlalchemy.org/docs/datamapping.myt#datamapping_query for general info and examples,
-- http://www.sqlalchemy.org/docs/sqlconstruction.myt for details on construction WHERE clauses.
+- http://www.sqlalchemy.org/docs/sqlconstruction.myt for details on constructing WHERE clauses.
 
 
 Modifying objects
@@ -118,16 +118,16 @@ to users, and uses that as the join condition automatically.
     >>> join1.select_by(name='Joe Student')
     [MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
 
-If you join tables that have an identical column name, pass use_lables to your
-select:
-    >>> db.with_labels(join1).select()
-    [MappedUsersLoansJoin(users_name='Joe Student',users_email='student@example.edu',users_password='student',users_classname=None,users_admin=0,loans_book_id=1,loans_user_name='Joe Student',loans_loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
-
 You can compose arbitrarily complex joins by combining Join objects with
 tables or other joins.
     >>> join2 = db.join(join1, db.books)
     >>> join2.select()
     [MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0),id=1,title='Mustards I Have Known',published_year='1989',authors='Jones')]
+
+If you join tables that have an identical column name, wrap your join with "with_labels",
+and all the columns will be prefixed with their table name:
+    >>> db.with_labels(join1).select()
+    [MappedUsersLoansJoin(users_name='Joe Student',users_email='student@example.edu',users_password='student',users_classname=None,users_admin=0,loans_book_id=1,loans_user_name='Joe Student',loans_loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
 
 
 Advanced Use
@@ -314,10 +314,6 @@ class SqlSoup:
         objectstore.get_session().flush()
     def rollback(self):
         objectstore.clear()
-    def _reset(self):
-        # for debugging
-        self._cache = {}
-        self.rollback()
     def _map(self, selectable):
         try:
             t = self._cache[selectable]
