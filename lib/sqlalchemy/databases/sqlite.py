@@ -212,7 +212,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
                 fk = ([],[])
                 fks[constraint_name] = fk
             
-            print "row! " + repr([key for key in row.keys()]), repr(row)
+            #print "row! " + repr([key for key in row.keys()]), repr(row)
             # look up the table based on the given table's engine, not 'self',
             # since it could be a ProxyEngine
             remotetable = schema.Table(tablename, table.metadata, autoload=True, autoload_with=connection)
