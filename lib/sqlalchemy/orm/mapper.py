@@ -474,6 +474,10 @@ class Mapper(object):
         else:
             return self
     
+    def common_parent(self, other):
+        """return true if the given mapper shares a common inherited parent as this mapper"""
+        return self.base_mapper() is other.base_mapper()
+        
     def isa(self, other):
         """return True if the given mapper inherits from this mapper"""
         m = other

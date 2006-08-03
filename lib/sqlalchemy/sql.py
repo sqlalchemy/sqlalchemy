@@ -1070,17 +1070,22 @@ class Join(FromClause):
         return column
     def _match_primaries(self, primary, secondary):
         crit = []
+        constraints = util.Set()
         for fk in secondary.foreign_keys:
             if fk.references(primary):
                 crit.append(primary.corresponding_column(fk.column) == fk.parent)
+                constraints.add(fk.constraint)
                 self.foreignkey = fk.parent
         if primary is not secondary:
             for fk in primary.foreign_keys:
                 if fk.references(secondary):
                     crit.append(secondary.corresponding_column(fk.column) == fk.parent)
+                    constraints.add(fk.constraint)
                     self.foreignkey = fk.parent
         if len(crit) == 0:
             raise exceptions.ArgumentError("Cant find any foreign key relationships between '%s' and '%s'" % (primary.name, secondary.name))
+#        elif len(constraints) > 1:
+#            raise exceptions.ArgumentError("Cant determine join between '%s' and '%s'; tables have more than one foreign key constraint relationship between them.  Please specify the 'onclause' of this join explicitly. %s" % (primary.name, secondary.name, constraints))
         elif len(crit) == 1:
             return (crit[0])
         else:

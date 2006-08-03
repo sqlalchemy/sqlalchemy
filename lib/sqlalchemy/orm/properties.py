@@ -219,15 +219,17 @@ class PropertyLoader(mapper.MapperProperty):
         if self.secondaryjoin is not None and self.secondary is None:
             raise exceptions.ArgumentError("Property '" + self.key + "' specified with secondary join condition but no secondary argument")
         # if join conditions were not specified, figure them out based on foreign keys
-        if self.secondary is not None:
-            if self.secondaryjoin is None:
-                self.secondaryjoin = sql.join(self.mapper.unjoined_table, self.secondary).onclause
-            if self.primaryjoin is None:
-                self.primaryjoin = sql.join(self.parent.unjoined_table, self.secondary).onclause
-        else:
-            if self.primaryjoin is None:
-                self.primaryjoin = sql.join(self.parent.unjoined_table, self.target).onclause
-
+        try:
+            if self.secondary is not None:
+                if self.secondaryjoin is None:
+                    self.secondaryjoin = sql.join(self.mapper.unjoined_table, self.secondary).onclause
+                if self.primaryjoin is None:
+                    self.primaryjoin = sql.join(self.parent.unjoined_table, self.secondary).onclause
+            else:
+                if self.primaryjoin is None:
+                    self.primaryjoin = sql.join(self.parent.unjoined_table, self.target).onclause
+        except exceptions.ArgumentError, e:
+            raise exceptions.ArgumentError("Error determining primary and/or secondary join for relationship '%s' between mappers '%s' and '%s'.  You should specify the 'primaryjoin' (and 'secondaryjoin', if there is an association table present) keyword arguments to the relation() function (or for backrefs, by specifying the backref using the backref() function with keyword arguments) to explicitly specify the join conditions.  Nested error is \"%s\"" % (self.key, self.localparent, self.mapper, str(e)))
         # if the foreign key wasnt specified and theres no assocaition table, try to figure
         # out who is dependent on who. we dont need all the foreign keys represented in the join,
         # just one of them.  

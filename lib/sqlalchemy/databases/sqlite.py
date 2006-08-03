@@ -200,16 +200,30 @@ class SQLiteDialect(ansisql.ANSIDialect):
             raise exceptions.NoSuchTableError(table.name)
         
         c = connection.execute("PRAGMA foreign_key_list(" + table.name + ")", {})
+        fks = {}
         while True:
             row = c.fetchone()
             if row is None:
                 break
-            (tablename, localcol, remotecol) = (row[2], row[3], row[4])
-            #print "row! " + repr(row)
+            (constraint_name, tablename, localcol, remotecol) = (row[0], row[2], row[3], row[4])
+            try:
+                fk = fks[constraint_name]
+            except KeyError:
+                fk = ([],[])
+                fks[constraint_name] = fk
+            
+            print "row! " + repr([key for key in row.keys()]), repr(row)
             # look up the table based on the given table's engine, not 'self',
             # since it could be a ProxyEngine
             remotetable = schema.Table(tablename, table.metadata, autoload=True, autoload_with=connection)
-            table.c[localcol].append_item(schema.ForeignKey(remotetable.c[remotecol]))
+            constrained_column = table.c[localcol].name
+            refspec = ".".join([tablename, remotecol])
+            if constrained_column not in fk[0]:
+                fk[0].append(constrained_column)
+            if refspec not in fk[1]:
+                fk[1].append(refspec)
+        for name, value in fks.iteritems():
+            table.append_item(schema.ForeignKeyConstraint(value[0], value[1]))    
         # check for UNIQUE indexes
         c = connection.execute("PRAGMA index_list(" + table.name + ")", {})
         unique_indexes = []

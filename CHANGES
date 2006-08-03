@@ -9,6 +9,11 @@ if it was not loaded already
 - [ticket:257] - oracle boolean type
 - custom primary/secondary join conditions in a relation *will* be propigated
 to backrefs by default.  specifying a backref() will override this behavior.
+- better check for ambiguous join conditions in sql.Join; propigates to a
+better error message in PropertyLoader (i.e. relation()/backref()) for when
+the join condition can't be reasonably determined.
+- sqlite creates ForeignKeyConstraint objects properly upon table 
+reflection.
 
 0.2.6
 - big overhaul to schema to allow truly composite primary and foreign

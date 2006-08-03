@@ -155,7 +155,8 @@ class ReflectionTest(PersistTest):
             self.assert_(and_(table.c.multi_id==table2.c.foo, table.c.multi_rev==table2.c.bar).compare(j.onclause))
 
         finally:
-            meta.drop_all()
+            pass
+#            meta.drop_all()
 
     def testcheckfirst(self):
         meta = BoundMetaData(testbase.db)
