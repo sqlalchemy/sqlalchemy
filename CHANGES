@@ -14,6 +14,9 @@ better error message in PropertyLoader (i.e. relation()/backref()) for when
 the join condition can't be reasonably determined.
 - sqlite creates ForeignKeyConstraint objects properly upon table 
 reflection.
+- adjustments to pool stemming from changes made for [ticket:224]. 
+overflow counter should only be decremented if the connection actually
+succeeded.  added a test script to attempt testing this.
 
 0.2.6
 - big overhaul to schema to allow truly composite primary and foreign

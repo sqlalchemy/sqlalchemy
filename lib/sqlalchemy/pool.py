@@ -102,9 +102,9 @@ class Pool(object):
         self._purge_for_threadlocal()
         self.do_return_conn(agent.connection)
 
-    def return_invalid(self):
+    def return_invalid(self, agent):
         self._purge_for_threadlocal()
-        self.do_return_invalid()
+        self.do_return_invalid(agent.connection)
         
     def get(self):
         return self.do_get()
@@ -115,7 +115,7 @@ class Pool(object):
     def do_return_conn(self, conn):
         raise NotImplementedError()
         
-    def do_return_invalid(self):
+    def do_return_invalid(self, conn):
         raise NotImplementedError()
         
     def status(self):
@@ -141,7 +141,7 @@ class ConnectionFairy(object):
                 self.connection = pool.get()
             except:
                 self.connection = None
-                self.pool.return_invalid()
+                self.pool.return_invalid(self)
                 raise
         if self.pool.echo:
             self.pool.log("Connection %s checked out from pool" % repr(self.connection))
@@ -149,7 +149,7 @@ class ConnectionFairy(object):
         if self.pool.echo:
             self.pool.log("Invalidate connection %s" % repr(self.connection))
         self.connection = None
-        self.pool.return_invalid()
+        self.pool.return_invalid(self)
     def cursor(self, *args, **kwargs):
         return CursorFairy(self, self.connection.cursor(*args, **kwargs))
     def __getattr__(self, key):
@@ -204,7 +204,7 @@ class SingletonThreadPool(Pool):
     def do_return_conn(self, conn):
         pass
         
-    def do_return_invalid(self):
+    def do_return_invalid(self, conn):
         try:
             del self._conns[thread.get_ident()]
         except KeyError:
@@ -235,8 +235,9 @@ class QueuePool(Pool):
         except Queue.Full:
             self._overflow -= 1
 
-    def do_return_invalid(self):
-        self._overflow -= 1
+    def do_return_invalid(self, conn):
+        if conn is not None:
+            self._overflow -= 1
         
     def do_get(self):
         try:
