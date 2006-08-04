@@ -18,6 +18,7 @@ reflection.
 overflow counter should only be decremented if the connection actually
 succeeded.  added a test script to attempt testing this.
 - fixed mysql reflection of default values to be PassiveDefault
+- added reflected 'tinyint' type to MS-SQL [ticket:263]
 
 0.2.6
 - big overhaul to schema to allow truly composite primary and foreign
