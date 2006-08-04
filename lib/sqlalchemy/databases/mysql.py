@@ -347,11 +347,13 @@ class MySQLDialect(ansisql.ANSIDialect):
                 else:
                     argslist = re.findall(r'(\d+)', args)
                     coltype = coltype(*[int(a) for a in argslist], **kw)
-            
-            table.append_item(schema.Column(name, coltype, 
+
+            colargs= []
+            if default:
+                colargs.append(schema.PassiveDefault(sql.text(default)))
+            table.append_item(schema.Column(name, coltype, *colargs, 
                                             **dict(primary_key=primary_key,
                                                    nullable=nullable,
-                                                   default=default
                                                    )))
 
         tabletype = self.moretableinfo(connection, table=table)
