@@ -184,10 +184,11 @@ class CursorFairy(object):
 class SingletonThreadPool(Pool):
     """Maintains one connection per each thread, never moving to another thread.  this is
     used for SQLite."""
-    def __init__(self, creator, **params):
+    def __init__(self, creator, pool_size=5, **params):
         Pool.__init__(self, **params)
         self._conns = {}
         self._creator = creator
+        self.size = pool_size
 
     def dispose(self):
         for key, conn in self._conns.items():
@@ -203,7 +204,16 @@ class SingletonThreadPool(Pool):
             del self._conns[thread.get_ident()]
         except KeyError:
             pass
-                    
+    
+    def cleanup(self):
+        for key in self._conns.keys():
+            try:
+                del self._conns[key]
+            except KeyError:
+                pass
+            if len(self._conns) <= self.size:
+                return
+                                    
     def status(self):
         return "SingletonThreadPool id:%d thread:%d size: %d" % (id(self), thread.get_ident(), len(self._conns))
 
@@ -222,6 +232,8 @@ class SingletonThreadPool(Pool):
         except KeyError:
             c = self._creator()
             self._conns[thread.get_ident()] = c
+            if len(self._conns) > self.size:
+                self.cleanup()
             return c
     
 class QueuePool(Pool):

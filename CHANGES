@@ -19,8 +19,9 @@ overflow counter should only be decremented if the connection actually
 succeeded.  added a test script to attempt testing this.
 - fixed mysql reflection of default values to be PassiveDefault
 - added reflected 'tinyint' type to MS-SQL [ticket:263]
-- temporary workaround dispose_local() added to SingletonThreadPool
-for sqlite applications that dispose of threads en masse
+- SingletonThreadPool has a size and does a cleanup pass, so that 
+only a given number of thread-local connections stay around (needed
+for sqlite applications that dispose of threads en masse)
 
 0.2.6
 - big overhaul to schema to allow truly composite primary and foreign
