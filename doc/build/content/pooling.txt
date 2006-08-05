@@ -67,3 +67,16 @@ Or with SingletonThreadPool:
     # SQLite connections require the SingletonThreadPool    
     p = pool.SingletonThreadPool(getconn)
     
+#### Important Note about Disposing Threads with SingletonThreadPool {@name=note}
+
+SQLite connections automatically use `SingletonThreadPool` to manage connections.  This is a simple dictionary of connections mapped to the identifiers of threads.  If you are running an application which disposes of threads, such as FastCGI or SimpleHTTPServer, it is *extremely important* that the corresponding SQLite connection within the exiting thread also be removed, or the connection will remain:
+
+    {python}
+    pool.dispose_local()
+    
+Or with an engine:
+
+    {python}
+    engine.connection_provider._pool.dispose_local()
+    
+A future release of SQLAlchemy will address this in a more automated way.

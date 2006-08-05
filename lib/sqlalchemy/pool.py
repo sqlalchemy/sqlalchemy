@@ -197,7 +197,13 @@ class SingletonThreadPool(Pool):
                 # sqlite won't even let you close a conn from a thread that didn't create it
                 pass
             del self._conns[key]
-            
+    
+    def dispose_local(self):
+        try:
+            del self._conns[thread.get_ident()]
+        except KeyError:
+            pass
+                    
     def status(self):
         return "SingletonThreadPool id:%d thread:%d size: %d" % (id(self), thread.get_ident(), len(self._conns))
 
