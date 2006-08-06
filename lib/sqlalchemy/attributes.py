@@ -34,13 +34,13 @@ class InstrumentedAttribute(object):
     def hasparent(self, item):
         """returns True if the given item is attached to a parent object 
         via the attribute represented by this InstrumentedAttribute."""
-        return item._state.get(('hasparent', self))
+        return item._state.get(('hasparent', id(self)))
         
     def sethasparent(self, item, value):
         """sets a boolean flag on the given item corresponding to whether or not it is
         attached to a parent object via the attribute represented by this InstrumentedAttribute."""
         if item is not None:
-            item._state[('hasparent', self)] = value
+            item._state[('hasparent', id(self))] = value
 
     def get_history(self, obj, passive=False):
         """return a new AttributeHistory object for the given object/this attribute's key.

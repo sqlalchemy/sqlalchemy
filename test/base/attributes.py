@@ -6,6 +6,7 @@ import pickle
 
 
 class MyTest(object):pass
+class MyTest2(object):pass
     
 class AttributesTest(PersistTest):
     """tests for the attributes.py module, which deals with tracking attribute changes on an object."""
@@ -43,7 +44,15 @@ class AttributesTest(PersistTest):
         manager.register_attribute(MyTest, 'user_id', uselist = False)
         manager.register_attribute(MyTest, 'user_name', uselist = False)
         manager.register_attribute(MyTest, 'email_address', uselist = False)
+        manager.register_attribute(MyTest2, 'a', uselist = False)
+        manager.register_attribute(MyTest2, 'b', uselist = False)
+        # shouldnt be pickling callables at the class level
+        def somecallable(*args):
+            return None
+        manager.register_attribute(MyTest, 'mt2', uselist = False, trackparent=True, callable_=somecallable)
         x = MyTest()
+        x.mt2 = MyTest2()
+        
         x.user_id=7
         s = pickle.dumps(x)
         x2 = pickle.loads(s)

@@ -22,6 +22,7 @@ succeeded.  added a test script to attempt testing this.
 - SingletonThreadPool has a size and does a cleanup pass, so that 
 only a given number of thread-local connections stay around (needed
 for sqlite applications that dispose of threads en masse)
+- fixed small pickle bug with lazy loaders [ticket:265]
 
 0.2.6
 - big overhaul to schema to allow truly composite primary and foreign
