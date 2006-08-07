@@ -23,6 +23,8 @@ succeeded.  added a test script to attempt testing this.
 only a given number of thread-local connections stay around (needed
 for sqlite applications that dispose of threads en masse)
 - fixed small pickle bug with lazy loaders [ticket:265]
+- fixed possible error in mysql reflection where certain versions
+return an array instead of string for SHOW CREATE TABLE call
 
 0.2.6
 - big overhaul to schema to allow truly composite primary and foreign

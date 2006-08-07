@@ -372,7 +372,12 @@ class MySQLDialect(ansisql.ANSIDialect):
         CONSTRAINT `child_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `parent` (`id`) ON DELETE CASCADE\n) TYPE=InnoDB
         """
         c = connection.execute("SHOW CREATE TABLE " + table.name, {})
-        desc = c.fetchone()[1].strip()
+        desc_fetched = c.fetchone()[1]
+        if type(desc_fetched) is not str:
+            # may get array.array object here, depending on version (such as mysql 4.1.14 vs. 4.1.11)
+            desc_fetched = desc_fetched.tostring()
+        desc = desc_fetched.strip()
+
         tabletype = ''
         lastparen = re.search(r'\)[^\)]*\Z', desc)
         if lastparen:
