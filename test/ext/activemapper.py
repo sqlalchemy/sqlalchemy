@@ -1,8 +1,9 @@
 import testbase
-from sqlalchemy.ext.activemapper           import ActiveMapper, column, one_to_many, one_to_one, objectstore
+from sqlalchemy.ext.activemapper           import ActiveMapper, column, one_to_many, one_to_one, many_to_many, objectstore
 from sqlalchemy             import and_, or_, clear_mappers, backref
-from sqlalchemy             import ForeignKey, String, Integer, DateTime
+from sqlalchemy             import ForeignKey, String, Integer, DateTime, Table, Column
 from datetime               import datetime
+import sqlalchemy
 
 import sqlalchemy.ext.activemapper as activemapper
 
@@ -219,6 +220,61 @@ class testcase(testbase.PersistTest):
         self.assertEquals(len(results), 1)
 
         self.assertEquals(Person.count(), 2)
+
+class testmanytomany(testbase.PersistTest):
+     def setUpAll(self):
+         global secondarytable, foo, baz
+         secondarytable = Table("secondarytable",
+             activemapper.metadata,
+             Column("foo_id", Integer, ForeignKey("foo.id"),primary_key=True),
+             Column("baz_id", Integer, ForeignKey("baz.id"),primary_key=True))
+
+         class foo(activemapper.ActiveMapper):
+             class mapping:
+                 name = column(String(30))
+#                 bazrel = many_to_many('baz', secondarytable, backref='foorel')
+
+         class baz(activemapper.ActiveMapper):
+             class mapping:
+                 name = column(String(30))
+                 foorel = many_to_many("foo", secondarytable, backref='bazrel')
+
+         activemapper.metadata.connect(testbase.db)
+         activemapper.create_tables()
+
+     # Create a couple of activemapper objects
+     def create_objects(self):
+         return foo(name='foo1'), baz(name='baz1')
+
+     def tearDownAll(self):
+         clear_mappers()
+         activemapper.drop_tables()
+
+     def testbasic(self):
+         # Set up activemapper objects
+         foo1, baz1 = self.create_objects()
+
+         objectstore.flush()
+         objectstore.clear()
+
+         foo1 = foo.get_by(name='foo1')
+         baz1 = baz.get_by(name='baz1')
+         
+         # Just checking ...
+         assert (foo1.name == 'foo1')
+         assert (baz1.name == 'baz1')
+
+         # Diagnostics ...
+         # import sys
+         # sys.stderr.write("\nbazrel missing from dir(foo1):\n%s\n"  % dir(foo1))
+         # sys.stderr.write("\nbazrel in foo1 relations:\n%s\n" %  foo1.relations)
+
+         # Optimistically based on activemapper one_to_many test, try  to append
+         # baz1 to foo1.bazrel - (AttributeError: 'foo' object has no attribute 'bazrel')
+         print sqlalchemy.class_mapper(foo).props
+         print sqlalchemy.class_mapper(baz).props
+         foo1.bazrel.append(baz1)
+         assert (foo1.bazrel == [baz1])
         
 class testselfreferential(testbase.PersistTest):
     def setUpAll(self):
