@@ -49,9 +49,9 @@ class AttributesTest(PersistTest):
         # shouldnt be pickling callables at the class level
         def somecallable(*args):
             return None
-        manager.register_attribute(MyTest, 'mt2', uselist = False, trackparent=True, callable_=somecallable)
+        manager.register_attribute(MyTest, 'mt2', uselist = True, trackparent=True, callable_=somecallable)
         x = MyTest()
-        x.mt2 = MyTest2()
+        x.mt2.append(MyTest2())
         
         x.user_id=7
         s = pickle.dumps(x)

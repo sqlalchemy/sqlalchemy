@@ -300,14 +300,16 @@ class InstrumentedList(object):
         self[:] = []
         
     def __getstate__(self):
-        """implemented to allow pickling, since __obj is a weakref."""
-        return {'key':self.key, 'obj':self.obj, 'data':self.data, 'attr':self.attr}
+        """implemented to allow pickling, since __obj is a weakref, also the InstrumentedAttribute has callables
+        attached to it"""
+        return {'key':self.key, 'obj':self.obj, 'data':self.data}
     def __setstate__(self, d):
-        """implemented to allow pickling, since __obj is a weakref."""
+        """implemented to allow pickling, since __obj is a weakref, also the InstrumentedAttribute has callables
+        attached to it"""
         self.key = d['key']
         self.__obj = weakref.ref(d['obj'])
         self.data = d['data']
-        self.attr = d['attr']
+        self.attr = getattr(d['obj'].__class__, self.key)
         
     obj = property(lambda s:s.__obj())
 
