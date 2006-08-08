@@ -435,18 +435,20 @@ class LazyLoader(PropertyLoader):
 def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     binds = {}
     reverse = {}
+    def column_in_table(table, column):
+        return table.corresponding_column(column, raiseerr=False, keys_ok=False) is not None
+        
     def bind_label():
         return "lazy_" + hex(random.randint(0, 65535))[2:]
-    
     def visit_binary(binary):
         circular = isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column) and binary.left.table is binary.right.table
-        if isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column) and ((not circular and binary.left.table is table) or (circular and binary.right in foreignkey)):
+        if isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column) and ((not circular and column_in_table(table, binary.left)) or (circular and binary.right in foreignkey)):
             col = binary.left
             binary.left = binds.setdefault(binary.left,
                     sql.BindParamClause(bind_label(), None, shortname=binary.left.name, type=binary.right.type))
             reverse[binary.right] = binds[col]
 
-        if isinstance(binary.right, schema.Column) and isinstance(binary.left, schema.Column) and ((not circular and binary.right.table is table) or (circular and binary.left in foreignkey)):
+        if isinstance(binary.right, schema.Column) and isinstance(binary.left, schema.Column) and ((not circular and column_in_table(table, binary.right)) or (circular and binary.left in foreignkey)):
             col = binary.right
             binary.right = binds.setdefault(binary.right,
                     sql.BindParamClause(bind_label(), None, shortname=binary.right.name, type=binary.left.type))
