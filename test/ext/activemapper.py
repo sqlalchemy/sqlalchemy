@@ -249,7 +249,7 @@ class testmanytomany(testbase.PersistTest):
      def tearDownAll(self):
          clear_mappers()
          activemapper.drop_tables()
-
+         objectstore.clear()
      def testbasic(self):
          # Set up activemapper objects
          foo1, baz1 = self.create_objects()
