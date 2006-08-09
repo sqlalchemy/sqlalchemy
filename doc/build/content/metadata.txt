@@ -255,14 +255,14 @@ Creating and dropping individual tables can be done via the `create()` and `drop
 `drop()` method:
     
     {python}
-    {sql}employees.drop(engine=e)
+    {sql}employees.drop(connectable=e)
     DROP TABLE employees
     {}            
 
 The `create()` and `drop()` methods also support an optional keyword argument `checkfirst` which will issue the database's appropriate pragma statements to check if the table exists before creating or dropping:
 
     {python}
-    employees.create(engine=e, checkfirst=True)
+    employees.create(connectable=e, checkfirst=True)
     employees.drop(checkfirst=False)
     
 Entire groups of Tables can be created and dropped directly from the `MetaData` object with `create_all()` and `drop_all()`.  These methods always check for the existence of each table before creating or dropping.  Each method takes an optional `engine` keyword argument which can reference an `Engine` or a `Connection`.  If no engine is specified, the underlying bound `Engine`,  if any, is used:
@@ -286,7 +286,7 @@ Entire groups of Tables can be created and dropped directly from the `MetaData` 
         Column('pref_value', String(100))
     )
     
-    {sql}metadata.create_all(engine=engine)
+    {sql}metadata.create_all(connectable=engine)
     PRAGMA table_info(users){}
     CREATE TABLE users(
             user_id INTEGER NOT NULL PRIMARY KEY, 

@@ -717,15 +717,15 @@ class Index(SchemaItem):
                                 % (self.name, column))
         self.columns.append(column)
         
-    def create(self, engine=None):
-        if engine is not None:
-            engine.create(self)
+    def create(self, connectable=None):
+        if connectable is not None:
+            connectable.create(self)
         else:
             self.engine.create(self)
         return self
-    def drop(self, engine=None):
-        if engine is not None:
-            engine.drop(self)
+    def drop(self, connectable=None):
+        if connectable is not None:
+            connectable.drop(self)
         else:
             self.engine.drop(self)
     def accept_schema_visitor(self, visitor):
@@ -751,12 +751,26 @@ class MetaData(SchemaItem):
     def table_iterator(self, reverse=True):
         return self._sort_tables(self.tables.values(), reverse=reverse)
         
-    def create_all(self, engine=None, tables=None):
+    def create_all(self, connectable=None, tables=None, engine=None):
+        """create all tables stored in this metadata.
+        
+        This will conditionally create tables depending on if they do not yet
+        exist in the database.
+        
+        connectable - a Connectable used to access the database; or use the engine
+        bound to this MetaData.
+        
+        tables - optional list of tables to create
+        
+        engine - deprecated argument."""
         if not tables:
             tables = self.tables.values()
 
-        if engine is None and self.is_bound():
-            engine = self.engine
+        if connectable is None:
+            connectable = engine
+            
+        if connectable is None and self.is_bound():
+            connectable = self.engine
 
         def do(conn):
             e = conn.engine
@@ -765,14 +779,28 @@ class MetaData(SchemaItem):
                 if e.dialect.has_table(conn, table.name):
                     continue
                 conn.create(table)
-        engine.run_callable(do)
+        connectable.run_callable(do)
         
-    def drop_all(self, engine=None, tables=None):
+    def drop_all(self, connectable=None, tables=None, engine=None):
+        """drop all tables stored in this metadata.
+        
+        This will conditionally drop tables depending on if they currently 
+        exist in the database.
+        
+        connectable - a Connectable used to access the database; or use the engine
+        bound to this MetaData.
+        
+        tables - optional list of tables to drop
+        
+        engine - deprecated argument."""
         if not tables:
             tables = self.tables.values()
 
-        if engine is None and self.is_bound():
-            engine = self.engine
+        if connectable is None:
+            connectable = engine
+
+        if connectable is None and self.is_bound():
+            connectable = self.engine
         
         def do(conn):
             e = conn.engine
@@ -780,7 +808,7 @@ class MetaData(SchemaItem):
             for table in ts:
                 if e.dialect.has_table(conn, table.name):
                     conn.drop(table)
-        engine.run_callable(do)
+        connectable.run_callable(do)
                 
     def _sort_tables(self, tables, reverse=False):
         import sqlalchemy.sql_util

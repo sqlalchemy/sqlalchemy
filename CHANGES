@@ -25,7 +25,9 @@ for sqlite applications that dispose of threads en masse)
 - fixed small pickle bug(s) with lazy loaders [ticket:265] [ticket:267]
 - fixed possible error in mysql reflection where certain versions
 return an array instead of string for SHOW CREATE TABLE call
-- fix to lazy loads when mapping to joins
+- fix to lazy loads when mapping to joins [changeset:1770]
+- all create()/drop() calls have a keyword argument of "connectable".
+"engine" is deprecated.
 
 0.2.6
 - big overhaul to schema to allow truly composite primary and foreign

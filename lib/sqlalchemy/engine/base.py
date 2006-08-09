@@ -305,7 +305,7 @@ class Connection(Connectable):
     def default_schema_name(self):
         return self.__engine.dialect.get_default_schema_name(self)
     def run_callable(self, callable_):
-        callable_(self)
+        return callable_(self)
     def _execute_raw(self, statement, parameters=None, cursor=None, echo=None, context=None, **kwargs):
         if cursor is None:
             cursor = self.connection.cursor()
