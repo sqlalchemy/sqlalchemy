@@ -121,6 +121,8 @@ class OrderedProperties(object):
             return self.__data[key]
         except KeyError:
             raise AttributeError(key)
+    def __contains__(self, key):
+        return key in self.__data
     def keys(self):
         return self.__data.keys()
     def has_key(self, key):
