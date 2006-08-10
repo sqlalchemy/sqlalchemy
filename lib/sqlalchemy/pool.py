@@ -169,7 +169,11 @@ class ConnectionFairy(object):
         if self.connection is not None:
             if self.pool.echo:
                 self.pool.log("Connection %s being returned to pool" % repr(self.connection))
-            self.connection.rollback()
+            try:
+                self.connection.rollback()
+            except:
+                # damn mysql -- (todo look for NotSupportedError)
+                pass
             self.pool.return_conn(self)
             self.pool = None
             self.connection = None
