@@ -297,6 +297,13 @@ class MySQLDialect(ansisql.ANSIDialect):
     def schemadropper(self, *args, **kwargs):
         return MySQLSchemaDropper(*args, **kwargs)
 
+    def do_rollback(self, connection):
+        # some versions of MySQL just dont support rollback() at all....
+        try:
+            connection.rollback()
+        except:
+            pass
+
     def get_default_schema_name(self):
         if not hasattr(self, '_default_schema_name'):
             self._default_schema_name = text("select database()", self).scalar()

@@ -73,10 +73,7 @@ class DefaultDialect(base.Dialect):
         """implementations might want to put logic here for turning autocommit on/off,
         etc."""
         #print "ENGINE ROLLBACK ON ", connection.connection
-        try:
-            connection.rollback()
-        except:
-            pass
+        connection.rollback()
     def do_commit(self, connection):
         """implementations might want to put logic here for turning autocommit on/off, etc."""
         #print "ENGINE COMMIT ON ", connection.connection
