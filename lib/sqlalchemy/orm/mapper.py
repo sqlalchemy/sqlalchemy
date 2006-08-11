@@ -228,7 +228,7 @@ class Mapper(object):
                 self.inherits = class_mapper(self.inherits, compile=False)._do_compile()
             else:
                 self.inherits = self.inherits._do_compile()
-            if self.class_.__mro__[1] != self.inherits.class_:
+            if not issubclass(self.class_, self.inherits.class_):
                 raise exceptions.ArgumentError("Class '%s' does not inherit from '%s'" % (self.class_.__name__, self.inherits.class_.__name__))
             # inherit_condition is optional.
             if self.local_table is None:

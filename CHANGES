@@ -30,6 +30,9 @@ return an array instead of string for SHOW CREATE TABLE call
 "engine" is deprecated.
 - fixed ms-sql connect() to work with adodbapi
 - added "nowait" flag to Select()
+- inheritance check uses issubclass() instead of direct __mro__ check
+to make sure class A inherits from B, allowing mapper inheritance to more 
+flexibly correspond to class inheritance [ticket:271]
 
 0.2.6
 - big overhaul to schema to allow truly composite primary and foreign
