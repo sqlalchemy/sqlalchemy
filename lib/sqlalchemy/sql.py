@@ -1589,7 +1589,7 @@ class UpdateBase(ClauseElement):
         return self.table.engine
 
 class Insert(UpdateBase):
-    def __init__(self, table, values=None, **params):
+    def __init__(self, table, values=None):
         self.table = table
         self.select = None
         self.parameters = self._process_colparams(values)
@@ -1601,7 +1601,7 @@ class Insert(UpdateBase):
         visitor.visit_insert(self)
 
 class Update(UpdateBase):
-    def __init__(self, table, whereclause, values=None, **params):
+    def __init__(self, table, whereclause, values=None):
         self.table = table
         self.whereclause = whereclause
         self.parameters = self._process_colparams(values)
