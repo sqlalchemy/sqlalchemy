@@ -55,7 +55,7 @@ class ClauseSynchronizer(object):
                     source = binary.right
                     dest = binary.left
                 else:
-                    raise ArgumentError("Cant determine direction for relationship %s = %s" % (binary.left.fullname, binary.right.fullname))
+                    raise ArgumentError("Cant determine direction for relationship %s = %s" % (binary.left.table.fullname, binary.right.table.fullname))
                 if self.direction == ONETOMANY:
                     self.syncrules.append(SyncRule(self.parent_mapper, source, dest, dest_mapper=self.child_mapper))
                 elif self.direction == MANYTOONE:
