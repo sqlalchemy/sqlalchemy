@@ -29,6 +29,7 @@ return an array instead of string for SHOW CREATE TABLE call
 - all create()/drop() calls have a keyword argument of "connectable".
 "engine" is deprecated.
 - fixed ms-sql connect() to work with adodbapi
+- added "nowait" flag to Select()
 
 0.2.6
 - big overhaul to schema to allow truly composite primary and foreign

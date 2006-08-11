@@ -400,6 +400,9 @@ class ANSICompiler(sql.Compiled):
  
         if select.for_update:
             text += " FOR UPDATE"
+
+        if select.nowait:
+            text += " NOWAIT"
             
         if getattr(select, 'parens', False):
             self.strings[select] = "(" + text + ")"
