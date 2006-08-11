@@ -7,7 +7,9 @@ Set up the PYTHONPATH:
     export PYTHONPATH=./test/
 
 The unittest framework will automatically prepend './lib/' to sys.path.  this forces the local 
-version to run, bypassing any setuptools-installed installations.
+version to run, bypassing any setuptools-installed installations (a PYTHONPATH setting, referencing
+a local directory of python scripts, does not override setuptools-installed eggs anymore, unfortunately.
+refer comments on this to distutils-SIG).
 
 To run all tests:
 
