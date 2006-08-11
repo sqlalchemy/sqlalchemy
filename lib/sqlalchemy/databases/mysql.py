@@ -215,6 +215,7 @@ colspecs = {
 ischema_names = {
     'bigint' : MSBigInteger,
     'int' : MSInteger,
+    'mediumint' : MSInteger,
     'smallint' : MSSmallInteger,
     'tinyint' : MSSmallInteger, 
     'varchar' : MSString,

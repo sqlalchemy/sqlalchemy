@@ -18,7 +18,8 @@ reflection.
 overflow counter should only be decremented if the connection actually
 succeeded.  added a test script to attempt testing this.
 - fixed mysql reflection of default values to be PassiveDefault
-- added reflected 'tinyint' type to MS-SQL [ticket:263]
+- added reflected 'tinyint', 'mediumint' type to MS-SQL [ticket:263], 
+[ticket:264]
 - SingletonThreadPool has a size and does a cleanup pass, so that 
 only a given number of thread-local connections stay around (needed
 for sqlite applications that dispose of threads en masse)
