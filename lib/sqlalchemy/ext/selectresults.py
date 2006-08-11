@@ -29,22 +29,34 @@ class SelectResults(object):
     def count(self):
         """executes the SQL count() function against the SelectResults criterion."""
         return self._query.count(self._clause)
-    
+
+    def _col_aggregate(self, col, func):
+        """executes func() function against the given column
+
+        For performance, only use subselect if order_by attribute is set.
+        
+        """
+        if self._ops.get('order_by'):
+            s1 = sql.select([col], self._clause, **self._ops).alias('u')
+            return sql.select([func(s1.corresponding_column(col))]).scalar()
+        else:
+            return sql.select([func(col)], self._clause, **self._ops).scalar()
+
     def min(self, col):
         """executes the SQL min() function against the given column"""
-        return sql.select([sql.func.min(col)], self._clause, **self._ops).scalar()
+        return self._col_aggregate(col, sql.func.min)
 
     def max(self, col):
         """executes the SQL max() function against the given column"""
-        return sql.select([sql.func.max(col)], self._clause, **self._ops).scalar()
+        return self._col_aggregate(col, sql.func.max)
 
     def sum(self, col):
         """executes the SQL sum() function against the given column"""
-        return sql.select([sql.func.sum(col)], self._clause, **self._ops).scalar()
+        return self._col_aggregate(col, sql.func.sum)
 
     def avg(self, col):
         """executes the SQL avg() function against the given column"""
-        return sql.select([sql.func.avg(col)], self._clause, **self._ops).scalar()
+        return self._col_aggregate(col, sql.func.avg)
 
     def clone(self):
         """creates a copy of this SelectResults."""
