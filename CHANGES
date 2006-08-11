@@ -28,6 +28,7 @@ return an array instead of string for SHOW CREATE TABLE call
 - fix to lazy loads when mapping to joins [changeset:1770]
 - all create()/drop() calls have a keyword argument of "connectable".
 "engine" is deprecated.
+- fixed ms-sql connect() to work with adodbapi
 
 0.2.6
 - big overhaul to schema to allow truly composite primary and foreign

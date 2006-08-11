@@ -237,16 +237,12 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
 class MSSQLDialect(ansisql.ANSIDialect):            
     def __init__(self, module = None, **params):
         self.module = module or dbmodule
-        self.opts = {}
         ansisql.ANSIDialect.__init__(self, **params)
 
     def create_connect_args(self, url):
-        self.opts = url.translate_connect_args(['host', 'database', 'user', 'password', 'port'])
-        self.opts.update(url.query)
-        return ([], self.opts)
-
-    def connect_args(self):
-        return make_connect_string(self.opts)
+        opts = url.translate_connect_args(['host', 'database', 'user', 'password', 'port'])
+        opts.update(url.query)
+        return make_connect_string(opts)
 
     def create_execution_context(self):
         return MSSQLExecutionContext(self)
