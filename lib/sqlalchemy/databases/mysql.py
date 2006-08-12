@@ -298,6 +298,9 @@ class MySQLDialect(ansisql.ANSIDialect):
     def schemadropper(self, *args, **kwargs):
         return MySQLSchemaDropper(*args, **kwargs)
 
+    def preparer(self):
+        return MySQLIdentifierPreparer()
+
     def do_rollback(self, connection):
         # some versions of MySQL just dont support rollback() at all....
         try:
@@ -428,7 +431,7 @@ class MySQLCompiler(ansisql.ANSICompiler):
         
 class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, override_pk=False, first_pk=False):
-        colspec = column.name + " " + column.type.engine_impl(self.engine).get_col_spec()
+        colspec = self.preparer.format_column(column) + " " + column.type.engine_impl(self.engine).get_col_spec()
         default = self.get_column_default_string(column)
         if default is not None:
             colspec += " DEFAULT " + default
@@ -451,5 +454,15 @@ class MySQLSchemaDropper(ansisql.ANSISchemaDropper):
     def visit_index(self, index):
         self.append("\nDROP INDEX " + index.name + " ON " + index.table.name)
         self.execute()
+
+class MySQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
+    def __init__(self):
+        super(MySQLIdentifierPreparer, self).__init__(initial_quote='`')
+    def _escape_identifier(self, value):
+        #TODO: determin MySQL's escaping rules
+        return value
+    def _fold_identifier_case(self, value):
+        #TODO: determin MySQL's case folding rules
+        return value
 
 dialect = MySQLDialect

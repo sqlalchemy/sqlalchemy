@@ -139,6 +139,8 @@ class SQLiteDialect(ansisql.ANSIDialect):
         return SQLiteCompiler(self, statement, bindparams, **kwargs)
     def schemagenerator(self, *args, **kwargs):
         return SQLiteSchemaGenerator(*args, **kwargs)
+    def preparer(self):
+        return SQLiteIdentifierPreparer()
     def create_connect_args(self, url):
         filename = url.database or ':memory:'
         return ([filename], url.query)
@@ -148,7 +150,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
         return SQLiteExecutionContext(self)
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
-
+    
     def oid_column_name(self):
         return "oid"
 
@@ -276,7 +278,7 @@ class SQLiteCompiler(ansisql.ANSICompiler):
 
 class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, **kwargs):
-        colspec = column.name + " " + column.type.engine_impl(self.engine).get_col_spec()
+        colspec = self.preparer.format_column(column) + " " + column.type.engine_impl(self.engine).get_col_spec()
         default = self.get_column_default_string(column)
         if default is not None:
             colspec += " DEFAULT " + default
@@ -294,6 +296,10 @@ class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
     #        self.append("\tUNIQUE (%s)" % string.join([c.name for c in constraint],', '))
     #    else:
     #        super(SQLiteSchemaGenerator, self).visit_primary_key_constraint(constraint)
-            
+
+class SQLiteIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
+    def __init__(self):
+        super(SQLiteIdentifierPreparer, self).__init__(omit_schema=True)
+
 dialect = SQLiteDialect
 poolclass = pool.SingletonThreadPool       

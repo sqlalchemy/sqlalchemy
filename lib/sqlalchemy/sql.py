@@ -1185,7 +1185,8 @@ class Label(ColumnElement):
         return self.obj._get_from_objects()
     def _make_proxy(self, selectable, name = None):
         return self.obj._make_proxy(selectable, name=self.name)
-     
+
+legal_characters = util.Set(string.ascii_letters + string.digits + '_')     
 class ColumnClause(ColumnElement):
     """represents a textual column clause in a SQL statement.  May or may not
     be bound to an underlying Selectable."""
@@ -1203,6 +1204,7 @@ class ColumnClause(ColumnElement):
                     self.__label = self.__label[0:24] + "_" + hex(random.randint(0, 65535))[2:]
             else:
                 self.__label = self.name
+            self.__label = "".join([x for x in self.__label if x in legal_characters])
         return self.__label
     _label = property(_get_label)
     def accept_visitor(self, visitor): 

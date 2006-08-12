@@ -268,6 +268,9 @@ class MSSQLDialect(ansisql.ANSIDialect):
     def defaultrunner(self, engine, proxy):
         return MSSQLDefaultRunner(engine, proxy)
 
+    def preparer(self):
+        return MSSQLIdentifierPreparer()
+
     def get_default_schema_name(self):
         return "dbo"
         
@@ -510,7 +513,7 @@ class MSSQLCompiler(ansisql.ANSICompiler):
         
 class MSSQLSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, **kwargs):
-        colspec = column.name + " " + column.type.engine_impl(self.engine).get_col_spec()
+        colspec = self.preparer.format_column(column) + " " + column.type.engine_impl(self.engine).get_col_spec()
 
         # install a IDENTITY Sequence if we have an implicit IDENTITY column
         if column.primary_key and isinstance(column.type, sqltypes.Integer):
@@ -537,5 +540,15 @@ class MSSQLSchemaDropper(ansisql.ANSISchemaDropper):
 
 class MSSQLDefaultRunner(ansisql.ANSIDefaultRunner):
     pass
+
+class MSSQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
+    def __init__(self):
+        super(MSSQLIdentifierPreparer, self).__init__(initial_quote='[', final_quote=']')
+    def _escape_identifier(self, value):
+        #TODO: determin MSSQL's escapeing rules
+        return value
+    def _fold_identifier_case(self, value):
+        #TODO: determin MSSQL's case folding rules
+        return value
 
 dialect = MSSQLDialect

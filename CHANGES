@@ -1,4 +1,9 @@
 0.2.7
+- quoting facilities set up so that database-specific quoting can be
+turned on for individual table, schema, and column identifiers when
+used in all queries/creates/drops.  Enabled via "quote=True" in 
+Table or Column, as well as "quote_schema=True" in Table.  Thanks to
+Aaron Spike for his excellent efforts.
 - assignmapper was setting is_primary=True, causing all sorts of mayhem
 by not raising an error when redundant mappers were set up, fixed
 - added allow_null_pks option to Mapper, allows rows where some

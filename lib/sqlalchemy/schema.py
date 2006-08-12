@@ -142,6 +142,12 @@ class Table(SchemaItem, sql.TableClause):
         
         owner=None : optional owning user of this table.  useful for databases such as Oracle to aid in table
         reflection.
+        
+        quote=False : indicates that the Table identifier must be properly escaped and quoted before being sent 
+        to the database.
+        
+        quote_schema=False : indicates that the Namespace identifier must be properly escaped and quoted before being sent 
+        to the database.
         """
         super(Table, self).__init__(name)
         self._metadata = metadata
@@ -155,6 +161,8 @@ class Table(SchemaItem, sql.TableClause):
         else:
             self.fullname = self.name
         self.owner = kwargs.pop('owner', None)
+        self.quote = kwargs.pop('quote', False)
+        self.quote_schema = kwargs.pop('quote_schema', False)
         self.kwargs = kwargs
 
     def _set_primary_key(self, pk):
@@ -322,6 +330,8 @@ class Column(SchemaItem, sql.ColumnClause):
         specify the same index name will all be included in the index, in the
         order of their creation.
 
+        quote=False : indicates that the Column identifier must be properly escaped and quoted before being sent 
+        to the database.
         """
         name = str(name) # in case of incoming unicode
         super(Column, self).__init__(name, None, type)
@@ -333,6 +343,7 @@ class Column(SchemaItem, sql.ColumnClause):
         self.default = kwargs.pop('default', None)
         self.index = kwargs.pop('index', None)
         self.unique = kwargs.pop('unique', None)
+        self.quote = kwargs.pop('quote', False)
         self.onupdate = kwargs.pop('onupdate', None)
         if self.index is not None and self.unique is not None:
             raise exceptions.ArgumentError("Column may not define both index and unique")

@@ -97,7 +97,10 @@ class FireBirdExecutionContext(default.DefaultExecutionContext):
  
     def defaultrunner(self, proxy):
         return FBDefaultRunner(self, proxy)
-        
+
+    def preparer(self):
+        return FBIdentifierPreparer()
+
 class FireBirdDialect(ansisql.ANSIDialect):
     def __init__(self, module = None, **params):
         global _initialized_kb
@@ -298,7 +301,7 @@ class FBCompiler(ansisql.ANSICompiler):
 
 class FBSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, **kwargs):
-        colspec = column.name 
+        colspec = self.preparer.format_column(column) 
         colspec += " " + column.type.engine_impl(self.engine).get_col_spec()
         default = self.get_column_default_string(column)
         if default is not None:
@@ -325,5 +328,8 @@ class FBDefaultRunner(ansisql.ANSIDefaultRunner):
     def visit_sequence(self, seq):
         return self.proxy("SELECT gen_id(" + seq.name + ", 1) FROM rdb$database").fetchone()[0]
 
+class FBIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
+    def __init__(self):
+        super(FBIdentifierPreparer,self).__init__(omit_schema=True)
 
 dialect = FireBirdDialect

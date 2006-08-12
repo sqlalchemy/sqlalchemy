@@ -245,6 +245,8 @@ class PGDialect(ansisql.ANSIDialect):
         return PGSchemaDropper(*args, **kwargs)
     def defaultrunner(self, engine, proxy):
         return PGDefaultRunner(engine, proxy)
+    def preparer(self):
+        return PGIdentifierPreparer()
         
     def get_default_schema_name(self, connection):
         if not hasattr(self, '_default_schema_name'):
@@ -331,7 +333,7 @@ class PGCompiler(ansisql.ANSICompiler):
 class PGSchemaGenerator(ansisql.ANSISchemaGenerator):
         
     def get_column_specification(self, column, **kwargs):
-        colspec = column.name
+        colspec = self.preparer.format_column(column)
         if column.primary_key and not column.foreign_key and isinstance(column.type, sqltypes.Integer) and (column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional)):
             colspec += " SERIAL"
         else:
@@ -381,5 +383,9 @@ class PGDefaultRunner(ansisql.ANSIDefaultRunner):
             return c.fetchone()[0]
         else:
             return None
+
+class PGIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
+    def _fold_identifier_case(self, value):
+        return value.lower()
 
 dialect = PGDialect
