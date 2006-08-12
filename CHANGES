@@ -8,6 +8,14 @@ Aaron Spike for his excellent efforts.
 by not raising an error when redundant mappers were set up, fixed
 - added allow_null_pks option to Mapper, allows rows where some
 primary key columns are null (i.e. when mapping to outer joins etc)
+- modifcation to unitofwork to not maintain ordering within the
+"new" list or within the UOWTask "objects" list; instead, new objects
+are tagged with an ordering identifier as they are registered as new
+with the session, and the INSERT statements are then sorted within the 
+mapper save_obj.  the INSERT ordering has basically been pushed all
+the way to the end of the flush cycle. that way the various sorts and 
+organizations occuring within UOWTask (particularly the circular task 
+sort) dont have to worry about maintaining order (which they werent anyway)
 - fixed reflection of foreign keys to autoload the referenced table
 if it was not loaded already
 - [ticket:256] - pass URL query string arguments to connect() function

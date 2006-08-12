@@ -84,7 +84,7 @@ class UnitOfWork(object):
         else:
             self.identity_map = weakref.WeakValueDictionary()
             
-        self.new = util.OrderedSet()
+        self.new = util.Set() #OrderedSet()
         self.dirty = util.Set()
         
         self.deleted = util.Set()
@@ -133,6 +133,10 @@ class UnitOfWork(object):
         if not hasattr(obj, '_instance_key'):
             mapper = object_mapper(obj)
             obj._instance_key = mapper.instance_key(obj)
+        try:
+            delattr(obj, '_sa_insert_order')
+        except AttributeError:
+            pass
         self.identity_map[obj._instance_key] = obj
         attribute_manager.commit(obj)
         
@@ -141,6 +145,7 @@ class UnitOfWork(object):
             raise InvalidRequestError("Object '%s' already has an identity - it cant be registered as new" % repr(obj))
         if obj not in self.new:
             self.new.add(obj)
+            obj._sa_insert_order = len(self.new)
         self.unregister_deleted(obj)
         
     def register_dirty(self, obj):
@@ -242,7 +247,6 @@ class UOWTransaction(object):
         mapper = object_mapper(obj)
         self.mappers.add(mapper)
         task = self.get_task_by_mapper(mapper)
-
         if postupdate:
             mod = task.append_postupdate(obj)
             if mod: self._mark_modified()
@@ -519,7 +523,7 @@ class UOWTask(object):
         # deleted by this UOWTask's Mapper.
         # in the case of the row-based "circular sort", the UOWTaskElement may
         # also reference further UOWTasks which are dependent on that UOWTaskElement.
-        self.objects = util.OrderedDict()
+        self.objects = {} #util.OrderedDict()
         
         # a list of UOWDependencyProcessors which are executed after saves and
         # before deletes, to synchronize data to dependent objects

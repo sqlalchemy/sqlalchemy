@@ -825,6 +825,9 @@ class Mapper(object):
 
             if len(insert):
                 statement = table.insert()
+                def comparator(a, b):
+                    return cmp(a[0]._sa_insert_order, b[0]._sa_insert_order)
+                insert.sort(comparator)
                 for rec in insert:
                     (obj, params) = rec
                     c = connection.execute(statement, params)
