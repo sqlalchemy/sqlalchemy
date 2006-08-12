@@ -179,7 +179,7 @@ class FireBirdDialect(ansisql.ANSIDialect):
             8  : lambda r: sqltypes.Integer(), # LONG
             9  : lambda r: sqltypes.Float(), # QUAD
             10 : lambda r: sqltypes.Float(), # FLOAT
-            27 : lambda r: sqltypes.Double(), # DOUBLE
+            27 : lambda r: sqltypes.Float(), # DOUBLE
             35 : lambda r: sqltypes.DateTime(), # TIMESTAMP
             37 : lambda r: sqltypes.String(r['FLEN']), # VARYING
             261: lambda r: sqltypes.TEXT(), # BLOB
@@ -200,34 +200,86 @@ class FireBirdDialect(ansisql.ANSIDialect):
         FROM RDB$RELATION_FIELDS R 
              JOIN RDB$FIELDS F ON R.RDB$FIELD_SOURCE=F.RDB$FIELD_NAME
         WHERE F.RDB$SYSTEM_FLAG=0 and R.RDB$RELATION_NAME=?
-        ORDER BY R.RDB$FIELD_POSITION;"""
-        keyqry = """
-        SELECT RC.RDB$CONSTRAINT_TYPE KEYTYPE,
-               RC.RDB$CONSTRAINT_NAME CNAME,
-               RC.RDB$INDEX_NAME INAME,
-               SE.RDB$FIELD_NAME SENAME,
+        ORDER BY R.RDB$FIELD_POSITION"""
+        keyqry = """\
+        SELECT SE.RDB$FIELD_NAME SENAME
         FROM RDB$RELATION_CONSTRAINTS RC
-            LEFT JOIN RDB$INDEX_SEGMENTS SE
-              ON RC.RDB$INDEX_NAME=SE.RDB$INDEX_NAME
-        WHERE RC.RDB$RELATION_NAME=? AND SE.RDB$FIELD_NAME=?
-        """
-    
-        #import pdb;pdb.set_trace()
+             JOIN RDB$INDEX_SEGMENTS SE
+               ON RC.RDB$INDEX_NAME=SE.RDB$INDEX_NAME
+        WHERE RC.RDB$CONSTRAINT_TYPE=? AND RC.RDB$RELATION_NAME=?"""
+        fkqry = """\
+        SELECT RC.RDB$CONSTRAINT_NAME CNAME,
+               CSE.RDB$FIELD_NAME FNAME,
+               IX2.RDB$RELATION_NAME RNAME,
+               SE.RDB$FIELD_NAME SENAME
+        FROM RDB$RELATION_CONSTRAINTS RC
+             JOIN RDB$INDICES IX1
+               ON IX1.RDB$INDEX_NAME=RC.RDB$INDEX_NAME
+             JOIN RDB$INDICES IX2
+               ON IX2.RDB$INDEX_NAME=IX1.RDB$FOREIGN_KEY
+             JOIN RDB$INDEX_SEGMENTS CSE
+               ON CSE.RDB$INDEX_NAME=IX1.RDB$INDEX_NAME
+             JOIN RDB$INDEX_SEGMENTS SE
+               ON SE.RDB$INDEX_NAME=IX2.RDB$INDEX_NAME
+        WHERE RC.RDB$CONSTRAINT_TYPE=? AND RC.RDB$RELATION_NAME=?
+        ORDER BY SE.RDB$INDEX_NAME, SE.RDB$FIELD_POSITION"""
+
+        # get primary key fields
+        c = connection.execute(keyqry, ["PRIMARY KEY", table.name.upper()])
+        pkfields =[r['SENAME'] for r in c.fetchall()]
+
         # get all of the fields for this table
+
+        def lower_if_possible(name):
+            # Remove trailing spaces: FB uses a CHAR() type,
+            # that is padded with spaces
+            name = name.rstrip()
+            # If its composed only by upper case chars, use
+            # the lowered version, otherwise keep the original
+            # (even if stripped...)
+            lname = name.lower()
+            if lname.upper() == name and not ' ' in name:
+                return lname
+            return name
+
         c = connection.execute(tblqry, [table.name.upper()])
         while True:
             row = c.fetchone()
             if not row: break
-            args = [row['FNAME']]
+            name = row['FNAME']
+            args = [lower_if_possible(name)]
+            
             kw = {}
             # get the data types and lengths
             args.append(column_func[row['FTYPE']](row))
 
-            # is it a foreign key (and what is it linked to)
-
             # is it a primary key?
+            kw['primary_key'] = name in pkfields
+
             table.append_item(schema.Column(*args, **kw))
-            # does the field have indexes
+
+        # get the foreign keys
+        c = connection.execute(fkqry, ["FOREIGN KEY", table.name.upper()])
+        fks = {}
+        while True:
+            row = c.fetchone()
+            if not row: break
+
+            cname = lower_if_possible(row['CNAME'])
+            try:
+                fk = fks[cname]
+            except KeyError:
+                fks[cname] = fk = ([], [])
+            rname = lower_if_possible(row['RNAME'])
+            schema.Table(rname, table.metadata, autoload=True, autoload_with=connection)
+            fname = lower_if_possible(row['FNAME'])
+            refspec = rname + '.' + lower_if_possible(row['SENAME'])
+            fk[0].append(fname)
+            fk[1].append(refspec)
+
+        for name,value in fks.iteritems():
+            table.append_item(schema.ForeignKeyConstraint(value[0], value[1], name=name))
+                              
 
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
