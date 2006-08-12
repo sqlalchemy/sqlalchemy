@@ -750,12 +750,12 @@ class ANSIIdentifierPreparer(object):
     
     def _prepare_table(self, table, use_schema=False):
         names = []
-        if table.quote:
+        if isinstance(table, schema.Table) and table.quote:
             names.append(self._quote_identifier(table.name))
         else:
-            names.append(self._fold_identifier_case(table.name))
+            names.append(table.name) #self._fold_identifier_case(table.name))
         
-        if not self.omit_schema and use_schema and table.schema:
+        if not self.omit_schema and use_schema and isinstance(table, schema.Table) and table.schema:
             if table.quote_schema:
                 names.insert(0, self._quote_identifier(table.schema))
             else:
@@ -765,10 +765,10 @@ class ANSIIdentifierPreparer(object):
 
     def _prepare_column(self, column, use_table=True, **kwargs):
         names = []
-        if column.quote:
+        if isinstance(column, schema.Column) and column.quote:
             names.append(self._quote_identifier(column.name))
         else:
-            names.append(self._fold_identifier_case(column.name))
+            names.append(column.name) #self._fold_identifier_case(column.name))
 
         if use_table:
             names.insert(0, self._prepare_table(column.table, **kwargs))

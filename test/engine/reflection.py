@@ -290,6 +290,7 @@ class CreateDropTest(PersistTest):
 
 class SchemaTest(PersistTest):
     # this test should really be in the sql tests somewhere, not engine
+    @testbase.unsupported('sqlite')
     def testiteration(self):
         metadata = MetaData()
         table1 = Table('table1', metadata, 
