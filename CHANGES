@@ -46,6 +46,7 @@ max, min, etc.) on a SelectResults that has an ORDER BY clause
 fixes to mysql text types to work with this methodology
 [ticket:269] 
 - some fixes to sqlite date type organization
+- added MSTinyInteger to MS-SQL [ticket:263]
 
 0.2.6
 - big overhaul to schema to allow truly composite primary and foreign

@@ -92,6 +92,10 @@ class MSInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
 
+class MSTinyInteger(sqltypes.Integer): 
+    def get_col_spec(self):
+        return "TINYINT"
+
 class MSSmallInteger(sqltypes.Smallinteger):
     def get_col_spec(self):
         return "SMALLINT"
@@ -174,7 +178,7 @@ colspecs = {
 ischema_names = {
     'int' : MSInteger,
     'smallint' : MSSmallInteger,
-    'tinyint' : MSSmallInteger,
+    'tinyint' : MSTinyInteger,
     'varchar' : MSString,
     'char' : MSChar,
     'text' : MSText,
