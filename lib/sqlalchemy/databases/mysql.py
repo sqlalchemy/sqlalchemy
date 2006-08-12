@@ -115,28 +115,19 @@ class MSText(sqltypes.TEXT):
         super(MSText, self).__init__()
     def get_col_spec(self):
         return "TEXT"
-class MSTinyText(sqltypes.TEXT):
-    def __init__(self, **kw):
-        self.binary = 'binary' in kw
-        super(MSTinyText, self).__init__()
+class MSTinyText(MSText):
     def get_col_spec(self):
         if self.binary:
             return "TEXT BINARY"
         else:
            return "TEXT"
-class MSMediumText(sqltypes.TEXT):
-    def __init__(self, **kw):
-        self.binary = 'binary' in kw
-        super(MSMediumText, self).__init__()
+class MSMediumText(MSText):
     def get_col_spec(self):
         if self.binary:
             return "MEDIUMTEXT BINARY"
         else:
             return "MEDIUMTEXT"
-class MSLongText(sqltypes.TEXT):
-    def __init__(self, **kw):
-        self.binary = 'binary' in kw
-        super(MSLongText, self).__init__()
+class MSLongText(MSText):
     def get_col_spec(self):
         if self.binary:
             return "LONGTEXT BINARY"
@@ -431,6 +422,7 @@ class MySQLCompiler(ansisql.ANSICompiler):
         
 class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, override_pk=False, first_pk=False):
+        t = column.type.engine_impl(self.engine)
         colspec = self.preparer.format_column(column) + " " + column.type.engine_impl(self.engine).get_col_spec()
         default = self.get_column_default_string(column)
         if default is not None:

@@ -42,6 +42,9 @@ flexibly correspond to class inheritance [ticket:271]
 - SelectResults will use a subselect, when calling an aggregate (i.e.
 max, min, etc.) on a SelectResults that has an ORDER BY clause
 [ticket:252]
+- fixes to types so that database-specific types more easily used;
+fixes to mysql text types to work with this methodology
+[ticket:269] 
 
 0.2.6
 - big overhaul to schema to allow truly composite primary and foreign

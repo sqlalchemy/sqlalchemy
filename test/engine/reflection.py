@@ -5,6 +5,7 @@ import sqlalchemy.ansisql as ansisql
 
 from sqlalchemy import *
 from sqlalchemy.exceptions import NoSuchTableError
+import sqlalchemy.databases.mysql as mysql
 
 import unittest, re, StringIO
 
@@ -93,7 +94,30 @@ class ReflectionTest(PersistTest):
         finally:
             addresses.drop()
             users.drop()
-
+            
+    @testbase.supported('mysql')
+    def testmysqltypes(self):
+        meta1 = BoundMetaData(testbase.db)
+        table = Table(
+            'mysql_types', meta1,
+            Column('id', Integer, primary_key=True),
+            Column('num1', mysql.MSInteger(unsigned=True)),
+            Column('text1', mysql.MSLongText),
+            Column('text2', mysql.MSLongText())
+            )
+        try:
+            table.create(checkfirst=True)
+            meta2 = BoundMetaData(testbase.db)
+            t2 = Table('mysql_types', meta2, autoload=True)
+            assert isinstance(t2.c.num1.type, mysql.MSInteger)
+            assert t2.c.num1.type.unsigned
+            assert isinstance(t2.c.text1.type, mysql.MSLongText)
+            assert isinstance(t2.c.text2.type, mysql.MSLongText)
+            t2.drop()
+            t2.create()
+        finally:
+            table.drop(checkfirst=True)
+        
     def testmultipk(self):
         table = Table(
             'engine_multi', testbase.db, 

@@ -37,7 +37,7 @@ class TypeEngine(AbstractType):
     def dialect_impl(self, dialect):
         try:
             return self.impl_dict[dialect]
-        except:
+        except KeyError:
             return self.impl_dict.setdefault(dialect, dialect.type_descriptor(self))
     def _get_impl(self):
         if hasattr(self, '_impl'):
@@ -96,6 +96,7 @@ def to_instance(typeobj):
 def adapt_type(typeobj, colspecs):
     if isinstance(typeobj, type):
         typeobj = typeobj()
+    
     for t in typeobj.__class__.__mro__[0:-1]:
         try:
             impltype = colspecs[t]
@@ -104,6 +105,12 @@ def adapt_type(typeobj, colspecs):
             pass
     else:
         # couldnt adapt...raise exception ?
+        return typeobj
+    # if we adapted the given generic type to a database-specific type, 
+    # but it turns out the originally given "generic" type
+    # is actually a subclass of our resulting type, then we were already
+    # were given a more specific type than that required; so use that.
+    if (issubclass(typeobj.__class__, impltype)):
         return typeobj
     return typeobj.adapt(impltype)
     
