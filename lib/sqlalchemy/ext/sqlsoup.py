@@ -181,7 +181,7 @@ CREATE TABLE loans (
     book_id              int PRIMARY KEY REFERENCES books(id),
     user_name            varchar(32) references users(name) 
         ON DELETE SET NULL ON UPDATE CASCADE,
-    loan_date            date DEFAULT current_timestamp
+    loan_date            datetime DEFAULT current_timestamp
 );
 
 insert into users(name, email, password, admin)

@@ -31,9 +31,7 @@ class SLInteger(sqltypes.Integer):
 class SLSmallInteger(sqltypes.Smallinteger):
     def get_col_spec(self):
         return "SMALLINT"
-class SLDateTime(sqltypes.DateTime):
-    def get_col_spec(self):
-        return "TIMESTAMP"
+class DateTimeMixin(object):
     def convert_bind_param(self, value, dialect):
         if value is not None:
             return str(value)
@@ -49,16 +47,20 @@ class SLDateTime(sqltypes.DateTime):
         except ValueError:
             (value, microsecond) = (value, 0)
         return time.strptime(value, fmt)[0:6] + (microsecond,)
+    
+class SLDateTime(sqltypes.DateTime, DateTimeMixin):
+    def get_col_spec(self):
+        return "TIMESTAMP"
     def convert_result_value(self, value, dialect):
         tup = self._cvt(value, dialect, "%Y-%m-%d %H:%M:%S")
         return tup and datetime.datetime(*tup)
-class SLDate(SLDateTime):
+class SLDate(sqltypes.Date, DateTimeMixin):
     def get_col_spec(self):
         return "DATE"
     def convert_result_value(self, value, dialect):
         tup = self._cvt(value, dialect, "%Y-%m-%d")
         return tup and datetime.date(*tup[0:3])
-class SLTime(SLDateTime):
+class SLTime(sqltypes.Time, DateTimeMixin):
     def get_col_spec(self):
         return "TIME"
     def convert_result_value(self, value, dialect):
