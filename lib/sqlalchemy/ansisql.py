@@ -722,8 +722,8 @@ class ANSISchemaDropper(engine.SchemaIterator):
 class ANSIDefaultRunner(engine.DefaultRunner):
     pass
 
-class ANSIIdentifierPreparer(object):
-    """Transforms identifiers into ANSI-Compliant delimited identifiers where required"""
+class ANSIIdentifierPreparer(schema.SchemaVisitor):
+    """Transforms identifiers of SchemaItems into ANSI-Compliant delimited identifiers where required"""
     def __init__(self, initial_quote='"', final_quote=None, omit_schema=False):
         """Constructs a new ANSIIdentifierPreparer object.
         
@@ -735,54 +735,80 @@ class ANSIIdentifierPreparer(object):
         self.initial_quote = initial_quote
         self.final_quote = final_quote or self.initial_quote
         self.omit_schema = omit_schema
-    
+        self.strings = {}
+        self.__visited = util.Set()
+        
     def _escape_identifier(self, value):
+        """escape an identifier.
+        
+        subclasses should override this to provide database-dependent escaping behavior."""
         return value.replace('"', '""')
     
     def _quote_identifier(self, value):
+        """quote an identifier.
+        
+        subclasses should override this to provide database-dependent quoting behavior."""
         return self.initial_quote + self._escape_identifier(value) + self.final_quote
     
     def _fold_identifier_case(self, value):
+        """fold the case of an identifier.
+        
+        subclassses should override this to provide database-dependent case folding behavior."""
         return value
         # ANSI SQL calls for the case of all unquoted identifiers to be folded to UPPER.
         # some tests would need to be rewritten if this is done.
         #return value.upper()
     
-    def _prepare_table(self, table, use_schema=False):
-        names = []
-        if isinstance(table, schema.Table) and table.quote:
-            names.append(self._quote_identifier(table.name))
+    def visit_table(self, table):
+        if table in self.__visited:
+            return
+        if table.quote:
+            self.strings[table] = self._quote_identifier(table.name)
         else:
-            names.append(table.name) #self._fold_identifier_case(table.name))
-        
-        if not self.omit_schema and use_schema and isinstance(table, schema.Table) and table.schema:
+            self.strings[table] = table.name # TODO: case folding ?
+        if table.schema:
             if table.quote_schema:
-                names.insert(0, self._quote_identifier(table.schema))
-            else:
-                names.insert(0, self._fold_identifier_case(table.schema))
-        
-        return ".".join(names)
-
-    def _prepare_column(self, column, use_table=True, **kwargs):
-        names = []
-        if isinstance(column, schema.Column) and column.quote:
-            names.append(self._quote_identifier(column.name))
+                self.strings[(table, 'schema')] = self._quote_identifier(table.schema)
+            else: 
+                self.strings[(table, 'schema')] = table.schema # TODO: case folding ?
+            
+    def visit_column(self, column):
+        if column in self.__visited:
+            return
+        if column.quote:
+            self.strings[column] = self._quote_identifier(column.name)
         else:
-            names.append(column.name) #self._fold_identifier_case(column.name))
+            self.strings[column] = column.name # TODO: case folding ?
+    
+    def __start_visit(self, obj):
+        if obj in self.__visited:
+            return
+        if isinstance(obj, schema.SchemaItem):
+            obj.accept_schema_visitor(self)
+        self.__visited.add(obj)
+         
+    def __prepare_table(self, table, use_schema=False):
+        self.__start_visit(table)
+        if not self.omit_schema and use_schema and (table, 'schema') in self.strings:
+            return self.strings[(table, 'schema')] + "." + self.strings.get(table, table.name)
+        else:
+            return self.strings.get(table, table.name)
 
+    def __prepare_column(self, column, use_table=True, **kwargs):
+        self.__start_visit(column)
         if use_table:
-            names.insert(0, self._prepare_table(column.table, **kwargs))
-
-        return ".".join(names)
+            return self.__prepare_table(column.table, **kwargs) + "." + self.strings.get(column, column.name)
+        else:
+            return self.strings.get(column, column.name)
     
     def format_table(self, table, use_schema=True):
         """Prepare a quoted table and schema name"""
-        return self._prepare_table(table, use_schema=use_schema)
+        return self.__prepare_table(table, use_schema=use_schema)
     
     def format_column(self, column):
-        """Prepare a quoted column name"""
-        return self._prepare_column(column, use_table=False)
+        """Prepare a quoted column name """
+        return self.__prepare_column(column, use_table=False)
     
     def format_column_with_table(self, column):
         """Prepare a quoted column name with table name"""
-        return self._prepare_column(column)
+        return self.__prepare_column(column)
