@@ -717,6 +717,8 @@ class BackRef(object):
             parent = prop.parent.primary_mapper()
             relation = cls(parent, prop.secondary, pj, sj, backref=prop.key, is_backref=True, **self.kwargs)
             mapper._compile_property(self.key, relation);
+        elif not isinstance(mapper.props[self.key], PropertyLoader):
+            raise exceptions.ArgumentError("Cant create backref '%s' on mapper '%s'; an incompatible property of that name already exists" % (self.key, str(mapper)))
         else:
             # else set one of us as the "backreference"
             parent = prop.parent.primary_mapper()
