@@ -221,6 +221,37 @@ Some databases support the concept of multiple schemas.  A `Table` can reference
 
 Within the `MetaData` collection, this table will be identified by the combination of `financial_info` and `remote_banks`.  If another table called `financial_info` is referenced without the `remote_banks` schema, it will refer to a different `Table`.  `ForeignKey` objects can reference columns in this table using the form `remote_banks.financial_info.id`.
 
+#### ON UPDATE and ON DELETE {@name=onupdate}
+
+`ON UPDATE` and `ON DELETE` clauses to a table create are specified within the `ForeignKeyConstraint` object, using the `on_update` and `on_delete` keyword arguments:
+
+    {python}
+    foobar = Table('foobar', meta,
+        Column('id', Integer, primary_key=True),
+        Column('lala', String(40)),
+        ForeignKeyConstraint(['lala'],['hoho.lala'], on_update="CASCADE", on_delete="CASCADE"))
+
+#### Enabling Table / Column Quoting {@name=quoting}
+
+Many table, schema, or column names require quoting to be enabled.  Reasons for this include names that are the same as a database reserved word, or for identifiers that use MixedCase, where the database would normally "fold" the case convention into lower or uppercase (such as Postgres).  SQLAlchemy currently has no internal logic to automatically determine when quoting should be used; so its off unless explicitly enabled for a particular column or table.  Turning on quoting for a column or table identifier is performed manually by the `quote=True` flag on `Column` or `Table`, as well as the `quote_schema=True` flag for `Table`. 
+
+    {python}
+    table2 = Table('WorstCase2', metadata,
+        # desc is a reserved word so quote this column
+        Column('desc', Integer, quote=True, primary_key=True),
+
+        # MixedCase uses a mixed case convention, so quote this column
+        Column('MixedCase', Integer, quote=True),
+
+        # Union is both a reserved word and mixed case
+        Column('Union', Integer, quote=True),
+
+        # normal_column doesnt require quoting
+        Column('normal_column', String(30)),
+        
+        # the table name uses mixed case, so turn on quoting for the table ident
+        quote=True)
+
 #### Other Options {@name=options}
 
 `Tables` may support database-specific options, such as MySQL's `engine` option that can specify "MyISAM", "InnoDB", and other backends for the table:
