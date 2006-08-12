@@ -364,7 +364,7 @@ class Query(object):
             # to use it in "order_by".  insure they are in the column criterion (particularly oid).
             # TODO: this should be done at the SQL level not the mapper level
             if kwargs.get('distinct', False) and order_by:
-                statement.append_column(*util.to_list(order_by))
+                [statement.append_column(c) for c in util.to_list(order_by)]
         # plugin point
 
         # give all the attached properties a chance to modify the query
