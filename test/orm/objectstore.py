@@ -1081,7 +1081,7 @@ class SaveTest(SessionTest):
             def __init__(self, name):
                 self.name = name
             def __eq__(self, other):
-                return other.name == self.name
+                return other.__class__ == Keyword and other.name == self.name
             def __repr__(self):
                 return "Keyword(%s, %s)" % (getattr(self, 'keyword_id', 'None'), self.name)
                 
