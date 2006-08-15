@@ -4,7 +4,13 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import thread, threading, weakref, UserList, time, string, inspect, sys, sets
+import weakref, UserList, time, string, inspect, sys, sets
+try:
+    import thread, threading
+except ImportError:
+    import dummy_thread as thread
+    import dummy_threading as threading
+
 from exceptions import *
 import __builtin__
 

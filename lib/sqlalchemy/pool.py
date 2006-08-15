@@ -17,7 +17,7 @@ import sqlalchemy.queue as Queue
 try:
     import thread
 except:
-    import dummythread as thread
+    import dummy_thread as thread
 
 proxies = {}
 
