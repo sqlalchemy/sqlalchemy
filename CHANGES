@@ -1,3 +1,9 @@
+0.2.8
+- eesh !  the tutorial doctest was broken for quite some time.
+- add_property() method on mapper does a "compile all mappers"
+step in case the given property references a non-compiled mapper
+(as it did in the case of the tutorial !)
+
 0.2.7
 - quoting facilities set up so that database-specific quoting can be
 turned on for individual table, schema, and column identifiers when

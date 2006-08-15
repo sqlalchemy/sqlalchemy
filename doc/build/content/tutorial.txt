@@ -99,10 +99,11 @@ As you might have guessed, we have just defined a table named `users` which has 
     {python}
     >>> metadata.engine.echo = True
     >>> users_table.create() # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
-    CREATE TABLE users(
-        user_id INTEGER NOT NULL PRIMARY KEY,
+    CREATE TABLE users (
+        user_id INTEGER NOT NULL,
         user_name VARCHAR(40),
-        password VARCHAR(10)
+        password VARCHAR(10),
+        PRIMARY KEY (user_id)
     )
     ...
 
@@ -220,10 +221,12 @@ Lets create a second table, `email_addresses`, which references the `users` tabl
     ...     Column('address_id', Integer, primary_key=True),
     ...     Column('email_address', String(100), nullable=False),
     ...     Column('user_id', Integer, ForeignKey('users.user_id'))).create() # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
-    CREATE TABLE email_addresses(
-        address_id INTEGER NOT NULL PRIMARY KEY,
+    CREATE TABLE email_addresses (
+        address_id INTEGER NOT NULL,
         email_address VARCHAR(100) NOT NULL,
-        user_id INTEGER REFERENCES users(user_id)
+        user_id INTEGER,
+        PRIMARY KEY (address_id),
+        FOREIGN KEY(user_id) REFERENCES users (user_id)
     )
     ...
 

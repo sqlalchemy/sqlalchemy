@@ -151,7 +151,17 @@ class Mapper(object):
         this is the 'external' version of the method which is not reentrant."""
         if self.__is_compiled:
             return self
-            
+        
+        self._compile_all()
+        
+        # if we're not primary, compile us
+        if self.non_primary:
+            self._do_compile()
+            self._initialize_properties()
+                
+        return self
+    
+    def _compile_all(self):
         # compile all primary mappers
         for mapper in mapper_registry.values():
             if not mapper.__is_compiled:
@@ -162,13 +172,6 @@ class Mapper(object):
             if not mapper.__props_init:
                 mapper._initialize_properties()
         
-        # if we're not primary, compile us
-        if self.non_primary:
-            self._do_compile()
-            self._initialize_properties()
-                
-        return self
-    
     def _check_compile(self):
         if self.non_primary:
             self._do_compile()
@@ -496,6 +499,8 @@ class Mapper(object):
         has already been compiled, then the given MapperProperty is compiled immediately."""
         self.properties[key] = prop
         if self.__is_compiled:
+            # if we're compiled, make sure all the other mappers are compiled too
+            self._compile_all()
             self._compile_property(key, prop, init=True)
             
     def _create_prop_from_column(self, column, skipmissing=False):
