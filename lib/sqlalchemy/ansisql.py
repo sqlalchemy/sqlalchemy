@@ -759,15 +759,19 @@ class ANSIIdentifierPreparer(schema.SchemaVisitor):
         # some tests would need to be rewritten if this is done.
         #return value.upper()
     
+    def _requires_quotes(self, value):
+        """return true if the given identifier requires quoting."""
+        return False
+        
     def visit_table(self, table):
         if table in self.__visited:
             return
-        if table.quote:
+        if table.quote or self._requires_quotes(table.name):
             self.strings[table] = self._quote_identifier(table.name)
         else:
             self.strings[table] = table.name # TODO: case folding ?
         if table.schema:
-            if table.quote_schema:
+            if table.quote_schema or self._requires_quotes(table.quote_schema):
                 self.strings[(table, 'schema')] = self._quote_identifier(table.schema)
             else: 
                 self.strings[(table, 'schema')] = table.schema # TODO: case folding ?
@@ -775,7 +779,7 @@ class ANSIIdentifierPreparer(schema.SchemaVisitor):
     def visit_column(self, column):
         if column in self.__visited:
             return
-        if column.quote:
+        if column.quote or self._requires_quotes(column.name):
             self.strings[column] = self._quote_identifier(column.name)
         else:
             self.strings[column] = column.name # TODO: case folding ?
