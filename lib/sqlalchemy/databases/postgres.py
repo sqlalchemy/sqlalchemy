@@ -279,9 +279,14 @@ class PGDialect(ansisql.ANSIDialect):
         return self.module
 
     def has_table(self, connection, table_name):
+        # TODO: why are we case folding here ?
         cursor = connection.execute("""select relname from pg_class where lower(relname) = %(name)s""", {'name':table_name.lower()})
         return bool( not not cursor.rowcount )
 
+    def has_sequence(self, connection, sequence_name):
+        cursor = connection.execute('''SELECT relname FROM pg_class WHERE relkind = 'S' AND relnamespace IN ( SELECT oid FROM pg_namespace WHERE nspname NOT LIKE 'pg_%%' AND nspname != 'information_schema' AND relname = %(seqname)s);''', {'seqname': sequence_name})
+        return bool(not not cursor.rowcount)
+        
     def reflecttable(self, connection, table):
         if self.version == 2:
             ischema_names = pg2_ischema_names
@@ -347,13 +352,13 @@ class PGSchemaGenerator(ansisql.ANSISchemaGenerator):
         return colspec
 
     def visit_sequence(self, sequence):
-        if not sequence.optional:
+        if not sequence.optional and not self.engine.dialect.has_sequence(self.connection, sequence.name):
             self.append("CREATE SEQUENCE %s" % sequence.name)
             self.execute()
             
 class PGSchemaDropper(ansisql.ANSISchemaDropper):
     def visit_sequence(self, sequence):
-        if not sequence.optional:
+        if not sequence.optional and self.engine.dialect.has_sequence(self.connection, sequence.name):
             self.append("DROP SEQUENCE %s" % sequence.name)
             self.execute()
 

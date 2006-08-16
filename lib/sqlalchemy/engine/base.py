@@ -85,6 +85,8 @@ class Dialect(sql.AbstractDialect):
         raise NotImplementedError()
     def has_table(self, connection, table_name):
         raise NotImplementedError()
+    def has_sequence(self, connection, sequence_name):
+        raise NotImplementedError()
     def dbapi(self):
         """subclasses override this method to provide the DBAPI module used to establish
         connections."""

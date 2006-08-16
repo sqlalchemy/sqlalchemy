@@ -117,7 +117,18 @@ class ReflectionTest(PersistTest):
             t2.create()
         finally:
             table.drop(checkfirst=True)
-        
+            
+    @testbase.supported('postgres')
+    def testredundantsequence(self):
+        meta1 = BoundMetaData(testbase.db)
+        t = Table('mytable', meta1, 
+            Column('col1', Integer, Sequence('fooseq')))
+        try:
+            testbase.db.execute("CREATE SEQUENCE fooseq")
+            t.create()
+        finally:
+            t.drop()
+            
     def testmultipk(self):
         table = Table(
             'engine_multi', testbase.db, 

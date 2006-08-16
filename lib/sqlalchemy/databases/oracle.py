@@ -180,6 +180,10 @@ class OracleDialect(ansisql.ANSIDialect):
     def has_table(self, connection, table_name):
         cursor = connection.execute("""select table_name from all_tables where table_name=:name""", {'name':table_name.upper()})
         return bool( cursor.fetchone() is not None )
+
+    def has_sequence(self, connection, sequence_name):
+        cursor = connection.execute("""select sequence_name from all_sequences where sequence_name=:name""", {'name':sequence_name.upper()})
+        return bool( cursor.fetchone() is not None )
         
     def reflecttable(self, connection, table):
         c = connection.execute ("select distinct OWNER from ALL_TAB_COLUMNS where TABLE_NAME = :table_name", {'table_name':table.name.upper()})
@@ -370,13 +374,15 @@ class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):
         return colspec
 
     def visit_sequence(self, sequence):
-        self.append("CREATE SEQUENCE %s" % sequence.name)
-        self.execute()
+        if not self.engine.dialect.has_sequence(self.connection, sequence.name):
+            self.append("CREATE SEQUENCE %s" % sequence.name)
+            self.execute()
 
 class OracleSchemaDropper(ansisql.ANSISchemaDropper):
     def visit_sequence(self, sequence):
-        self.append("DROP SEQUENCE %s" % sequence.name)
-        self.execute()
+        if self.engine.dialect.has_sequence(self.connection, sequence.name):
+            self.append("DROP SEQUENCE %s" % sequence.name)
+            self.execute()
 
 class OracleDefaultRunner(ansisql.ANSIDefaultRunner):
     def exec_default_sql(self, default):
