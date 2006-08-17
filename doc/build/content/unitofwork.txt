@@ -369,10 +369,10 @@ Example usage is as follows:
         item2 = sess.query(Item).get(2)
         item1.foo = 'bar'
         item2.bar = 'foo'
-        trans.commit()
     except:
         trans.rollback()
         raise
+    trans.commit()
 
 The `create_transaction()` method creates a new SessionTransaction object but does not declare any connection/transaction resources.  At the point of the first `get()` call, a connection resource is opened off the engine that corresponds to the Item classes' mapper and is stored within the `SessionTransaction` with an open `Transaction`.  When `trans.commit()` is called, the `flush()` method is called on the `Session` and the corresponding update statements are issued to the database within the scope of the transaction already opened; afterwards, the underying Transaction is committed, and connection resources are freed.
 
@@ -393,10 +393,10 @@ To associate a specific `Connection` with the `SessionTransaction`, use the `add
         trans.add(connection)
         connection.execute(mytable.update(), {'col1':4, 'col2':17})
         session.flush() # flush() operation will use the same connection
-        trans.commit()  
     except:
         trans.rollback()
         raise
+    trans.commit()  
 
 The `add()` method will key the `Connection`'s underlying `Engine` to this `SessionTransaction`.  When mapper operations are performed against this `Engine`, the `Connection` explicitly added will be used.  This **overrides** any other `Connection` objects that the underlying Session was associated with, corresponding to the underlying `Engine` of that `Connection`.  However, if the `SessionTransaction` itself is already associated with a `Connection`, then an exception is thrown.
 
@@ -407,10 +407,10 @@ The other way is just to use the `Connection` referenced by the `SessionTransact
     try:
         connection = trans.connection(UserClass)   # get the Connection used by the UserClass' Mapper
         connection.execute(mytable.update(), {'col1':4, 'col2':17})
-        trans.commit()
     except:
         trans.rollback()
         raise
+    trans.commit()
         
 The `connection()` method also exists on the `Session` object itself, and can be called regardless of whether or not a `SessionTransaction` is in progress.  If a `SessionTransaction` is in progress, it will return the connection referenced by the transaction.  If an `Engine` is being used with `threadlocal` strategy, the `Connection` returned will correspond to the connection resources that are bound to the current thread, if any (i.e. it is obtained by calling `contextual_connection()`).
 
@@ -427,10 +427,10 @@ The transactions issued by `SessionTransaction` as well as internally by the `Se
         stuff[2].foo = 'bar'
         connection.execute(mytable.insert(), dict(id=12, value="bar"))    # use connection explicitly
         session.flush()     # Session flushes with "connection", using transaction "trans"
-        trans.commit()      # commit
     except:
         trans.rollback()    # or rollback
         raise
+    trans.commit()      # commit
 
 ### Analyzing Object Flushes {@name=logging}    
 

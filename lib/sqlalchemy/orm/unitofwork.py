@@ -195,10 +195,10 @@ class UnitOfWork(object):
         flush_context.transaction = trans
         try:
             flush_context.execute(echo=echo)
-            trans.commit()
         except:
             trans.rollback()
             raise
+        trans.commit()
             
         flush_context.post_exec()
         
