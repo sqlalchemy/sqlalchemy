@@ -389,7 +389,10 @@ class LazyLoader(PropertyLoader):
 
             session = sessionlib.object_session(instance)
             if session is None:
-                raise exceptions.InvalidRequestError("Parent instance %s is not bound to a Session; lazy load operation of attribute '%s' cannot proceed" % (instance.__class__, self.key))
+                try:
+                    session = mapper.object_mapper(instance).get_session()
+                except exceptions.InvalidRequestError:
+                    raise exceptions.InvalidRequestError("Parent instance %s is not bound to a Session, and no contextual session is established; lazy load operation of attribute '%s' cannot proceed" % (instance.__class__, self.key))
                 
             # if we have a simple straight-primary key load, use mapper.get()
             # to possibly save a DB round trip

@@ -3,7 +3,7 @@ import testbase
 import unittest, sys, os
 from sqlalchemy import *
 import sqlalchemy.exceptions as exceptions
-
+from sqlalchemy.ext.sessioncontext import SessionContext
 from tables import *
 import tables
 
@@ -610,6 +610,18 @@ class LazyTest(MapperSuperTest):
         q = create_session().query(m)
         l = q.select(users.c.user_id == 7)
         self.assert_result(l, User,
+            {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
+            )
+
+    def testbindstosession(self):
+        ctx = SessionContext(create_session)
+        m = mapper(User, users, properties = dict(
+            addresses = relation(mapper(Address, addresses, extension=ctx.mapper_extension), lazy=True)
+        ), extension=ctx.mapper_extension)
+        q = ctx.current.query(m)
+        u = q.selectfirst(users.c.user_id == 7)
+        ctx.current.expunge(u)
+        self.assert_result([u], User,
             {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
             )
 

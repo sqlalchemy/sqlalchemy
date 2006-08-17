@@ -4,6 +4,10 @@
 step in case the given property references a non-compiled mapper
 (as it did in the case of the tutorial !)
 - [ticket:277] check for pg sequence already existing before create
+- if a contextual session is established via MapperExtension.get_session
+(as it is using the sessioncontext plugin, etc), a lazy load operation
+will use that session by default if the parent object is not 
+persistent with a session already.
 
 0.2.7
 - quoting facilities set up so that database-specific quoting can be
