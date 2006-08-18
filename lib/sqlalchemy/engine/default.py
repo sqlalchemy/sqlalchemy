@@ -98,9 +98,9 @@ class DefaultDialect(base.Dialect):
         if parameters is not None:
            if self.positional:
                 if executemany:
-                    parameters = [p.values() for p in parameters]
+                    parameters = [p.get_raw_list() for p in parameters]
                 else:
-                    parameters = parameters.values()
+                    parameters = parameters.get_raw_list()
            else:
                 if executemany:
                     parameters = [p.get_raw_dict() for p in parameters]

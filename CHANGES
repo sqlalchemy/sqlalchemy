@@ -16,6 +16,9 @@ parent isnt available to cascade from.
 to save)
 - improved the check for objects being part of a session when the
 unit of work seeks to flush() them as part of a relationship..
+- [ticket:280] statement execution supports using the same BindParam
+object more than once in an expression; simplified handling of positional
+parameters.  nice job by Bill Noon figuring out the basic idea.
 
 0.2.7
 - quoting facilities set up so that database-specific quoting can be

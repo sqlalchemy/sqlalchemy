@@ -74,6 +74,7 @@ class ANSICompiler(sql.Compiled):
         self.bindtemplate = ":%s"
         self.paramstyle = dialect.paramstyle
         self.positional = dialect.positional
+        self.positiontup = []
         self.preparer = dialect.preparer()
         
     def after_compile(self):
@@ -84,7 +85,6 @@ class ANSICompiler(sql.Compiled):
         if self.paramstyle=='pyformat':
             self.strings[self.statement] = re.sub(match, lambda m:'%(' + m.group(1) +')s', self.strings[self.statement])
         elif self.positional:
-            self.positiontup = []
             params = re.finditer(match, self.strings[self.statement])
             for p in params:
                 self.positiontup.append(p.group(1))
@@ -128,15 +128,10 @@ class ANSICompiler(sql.Compiled):
             bindparams = {}
         bindparams.update(params)
 
-        d = sql.ClauseParameters(self.dialect)
-        if self.positional:
-            for k in self.positiontup:
-                b = self.binds[k]
-                d.set_parameter(k, b.value, b)
-        else:
-            for b in self.binds.values():
-                d.set_parameter(b.key, b.value, b)
-            
+        d = sql.ClauseParameters(self.dialect, self.positiontup)
+        for b in self.binds.values():
+            d.set_parameter(b.key, b.value, b)
+
         for key, value in bindparams.iteritems():
             try:
                 b = self.binds[key]
@@ -146,20 +141,6 @@ class ANSICompiler(sql.Compiled):
 
         return d
 
-    def get_named_params(self, parameters):
-        """given the results of the get_params method, returns the parameters
-        in dictionary format.  For a named paramstyle, this just returns the
-        same dictionary.  For a positional paramstyle, the given parameters are
-        assumed to be in list format and are converted back to a dictionary.
-        """
-        if self.positional:
-            p = {}
-            for i in range(0, len(self.positiontup)):
-                p[self.positiontup[i]] = parameters[i]
-            return p
-        else:
-            return parameters
-    
     def default_from(self):
         """called when a SELECT statement has no froms, and no FROM clause is to be appended.  
         gives Oracle a chance to tack on a "FROM DUAL" to the string output. """

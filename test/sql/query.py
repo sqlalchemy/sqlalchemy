@@ -115,6 +115,16 @@ class QueryTest(PersistTest):
         finally:
             test_table.drop()
 
+    def test_repeated_bindparams(self):
+        """test that a BindParam can be used more than once.  
+        this should be run for dbs with both positional and named paramstyles."""
+        self.users.insert().execute(user_id = 7, user_name = 'jack')
+        self.users.insert().execute(user_id = 8, user_name = 'fred')
+
+        u = bindparam('uid')
+        s = self.users.select(or_(self.users.c.user_name==u, self.users.c.user_name==u))
+        r = s.execute(uid='fred').fetchall()
+        assert len(r) == 1
         
     def testdelete(self):
         self.users.insert().execute(user_id = 7, user_name = 'jack')
