@@ -34,7 +34,7 @@ class MSDecimal(MSNumeric):
     def get_col_spec(self):
         if self.precision is not None and self.length is not None:
             return kw_colspec(self, "DECIMAL(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length})
-class MSDouble(sqltypes.Numeric):
+class MSDouble(MSNumeric):
     def __init__(self, precision=10, length=2, **kw):
         if (precision is None and length is not None) or (precision is not None and length is None):
             raise exceptions.ArgumentError("You must specify both precision and length or omit both altogether.")
@@ -60,17 +60,6 @@ class MSFloat(sqltypes.Float):
             return kw_colspec(self, "FLOAT(%(precision)s)" % {'precision': self.precision})
         else:
             return kw_colspec(self, "FLOAT")
-class MSBigInteger(sqltypes.Integer):
-    def __init__(self, length=None, **kw):
-        self.length = length
-        self.unsigned = 'unsigned' in kw
-        self.zerofill = 'zerofill' in kw
-        super(MSBigInteger, self).__init__()
-    def get_col_spec(self):
-        if self.length is not None:
-            return kw_colspec(self, "BIGINT(%(length)s)" % {'length': self.length})
-        else:
-            return kw_colspec(self, "BIGINT")
 class MSInteger(sqltypes.Integer):
     def __init__(self, length=None, **kw):
         self.length = length
@@ -82,6 +71,17 @@ class MSInteger(sqltypes.Integer):
             return kw_colspec(self, "INTEGER(%(length)s)" % {'length': self.length})
         else:
             return kw_colspec(self, "INTEGER")
+class MSBigInteger(MSInteger):
+    def __init__(self, length=None, **kw):
+        self.length = length
+        self.unsigned = 'unsigned' in kw
+        self.zerofill = 'zerofill' in kw
+        super(MSBigInteger, self).__init__()
+    def get_col_spec(self):
+        if self.length is not None:
+            return kw_colspec(self, "BIGINT(%(length)s)" % {'length': self.length})
+        else:
+            return kw_colspec(self, "BIGINT")
 class MSSmallInteger(sqltypes.Smallinteger):
     def __init__(self, length=None, **kw):
         self.length = length
@@ -153,7 +153,12 @@ class MSBinary(sqltypes.Binary):
             return None
         else:
             return buffer(value)
-class MSEnum(sqltypes.String):
+
+class MSMediumBlob(MSBinary):
+    def get_col_spec(self):
+        return "MEDIUMBLOB"
+            
+class MSEnum(MSString):
     def __init__(self, *enums):
         self.__enums_hidden = enums
         length = 0

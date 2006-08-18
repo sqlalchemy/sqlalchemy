@@ -103,7 +103,12 @@ class ReflectionTest(PersistTest):
             Column('id', Integer, primary_key=True),
             Column('num1', mysql.MSInteger(unsigned=True)),
             Column('text1', mysql.MSLongText),
-            Column('text2', mysql.MSLongText())
+            Column('text2', mysql.MSLongText()),
+             Column('num2', mysql.MSBigInteger),
+             Column('num3', mysql.MSBigInteger()),
+             Column('num4', mysql.MSDouble),
+             Column('num5', mysql.MSDouble()),
+             Column('enum1', mysql.MSEnum('"black"', '"white"')),
             )
         try:
             table.create(checkfirst=True)
@@ -113,6 +118,11 @@ class ReflectionTest(PersistTest):
             assert t2.c.num1.type.unsigned
             assert isinstance(t2.c.text1.type, mysql.MSLongText)
             assert isinstance(t2.c.text2.type, mysql.MSLongText)
+            assert isinstance(t2.c.num2.type, mysql.MSBigInteger)
+            assert isinstance(t2.c.num3.type, mysql.MSBigInteger)
+            assert isinstance(t2.c.num4.type, mysql.MSDouble)
+            assert isinstance(t2.c.num5.type, mysql.MSDouble)
+            assert isinstance(t2.c.enum1.type, mysql.MSEnum)
             t2.drop()
             t2.create()
         finally:
