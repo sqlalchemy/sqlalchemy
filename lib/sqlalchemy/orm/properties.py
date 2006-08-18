@@ -216,6 +216,11 @@ class PropertyLoader(mapper.MapperProperty):
         
         self.target = self.mapper.mapped_table
 
+        if self.cascade.delete_orphan:
+            if self.parent.class_ is self.mapper.class_:
+                raise exceptions.ArgumentError("Cant establish 'delete-orphan' cascade rule on a self-referential relationship.  You probably want cascade='all', which includes delete cascading but not orphan detection.")
+            self.mapper.primary_mapper().delete_orphans.append((self.key, self.parent.class_))
+            
         if self.secondaryjoin is not None and self.secondary is None:
             raise exceptions.ArgumentError("Property '" + self.key + "' specified with secondary join condition but no secondary argument")
         # if join conditions were not specified, figure them out based on foreign keys

@@ -106,9 +106,10 @@ class UnitOfWork(object):
             pass
 
     def _validate_obj(self, obj):
-        if hasattr(obj, '_instance_key') and not self.identity_map.has_key(obj._instance_key):
-            raise InvalidRequestError("Instance '%s' is not attached or pending within this session" % repr(obj._instance_key))
-        
+        if (hasattr(obj, '_instance_key') and not self.identity_map.has_key(obj._instance_key)) or \
+            (not hasattr(obj, '_instance_key') and obj not in self.new):
+            raise InvalidRequestError("Instance '%s' is not attached or pending within this session" % repr(obj))
+
     def update(self, obj):
         """called to add an object to this UnitOfWork as though it were loaded from the DB,
         but is actually coming from somewhere else, like a web session or similar."""
@@ -184,7 +185,10 @@ class UnitOfWork(object):
                 continue
             if obj in self.deleted:
                 continue
-            flush_context.register_object(obj)
+            if object_mapper(obj)._is_orphan(obj):
+                flush_context.register_object(obj, isdelete=True)
+            else:
+                flush_context.register_object(obj)
             
         for obj in self.deleted:
             if objset is not None and not obj in objset:

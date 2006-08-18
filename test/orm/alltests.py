@@ -11,6 +11,7 @@ def suite():
         
         'orm.sessioncontext', 
         'orm.objectstore',
+	'orm.session',
         'orm.cascade',
         'orm.relationships',
         'orm.association',

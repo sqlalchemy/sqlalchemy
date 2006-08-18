@@ -86,6 +86,7 @@ class Mapper(object):
         self.properties = properties or {}
         self.allow_column_override = allow_column_override
         self.allow_null_pks = allow_null_pks
+        self.delete_orphans = []
         
         # a Column which is used during a select operation to retrieve the 
         # "polymorphic identity" of the row, which indicates which Mapper should be used
@@ -139,6 +140,13 @@ class Mapper(object):
         # of dependency
         #self.compile()
     
+    def _is_orphan(self, obj):
+        for (key,klass) in self.delete_orphans:
+            if not getattr(klass, key).hasparent(obj):
+                return True
+        else:
+            return False
+            
     def _get_props(self):
         self.compile()
         return self.__props

@@ -44,7 +44,7 @@ class SelfReferentialTest(AssertMixin):
         class C1(Tester):
             pass
         m1 = mapper(C1, t1, properties = {
-            'c1s':relation(C1, private=True),
+            'c1s':relation(C1, cascade="all"),
             'parent':relation(C1, primaryjoin=t1.c.parent_c1==t1.c.c1, foreignkey=t1.c.c1, lazy=True, uselist=False)
         })
         a = C1('head c1')
@@ -62,7 +62,7 @@ class SelfReferentialTest(AssertMixin):
             pass
         
         m1 = mapper(C1, t1, properties = {
-            'c1s' : relation(C1, private=True),
+            'c1s' : relation(C1, cascade="all"),
             'c2s' : relation(mapper(C2, t2), private=True)
         })
 

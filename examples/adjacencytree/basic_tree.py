@@ -49,7 +49,7 @@ mapper(TreeNode, trees, properties=dict(
     id=trees.c.node_id,
     name=trees.c.node_name,
     parent_id=trees.c.parent_node_id,
-    children=relation(TreeNode, private=True, backref=backref("parent", foreignkey=trees.c.node_id)),
+    children=relation(TreeNode, cascade="all", backref=backref("parent", foreignkey=trees.c.node_id)),
 ))
 
 print "\n\n\n----------------------------"
