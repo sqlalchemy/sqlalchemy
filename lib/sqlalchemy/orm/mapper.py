@@ -603,6 +603,7 @@ class Mapper(object):
     def instances(self, cursor, session, *mappers, **kwargs):
         """given a cursor (ResultProxy) from an SQLEngine, returns a list of object instances
         corresponding to the rows in the cursor."""
+        self.compile()
         limit = kwargs.get('limit', None)
         offset = kwargs.get('offset', None)
         populate_existing = kwargs.get('populate_existing', False)
