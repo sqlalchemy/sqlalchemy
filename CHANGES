@@ -25,6 +25,8 @@ with use_information_schema=True argument to create_engine
 - added natural_case argument to Table, Column, semi-experimental
 flag for use with table reflection to help with quoting rules
 [ticket:155]
+- unit tests updated to run without any pysqlite installed; pool
+test uses a mock DBAPI
 
 0.2.7
 - quoting facilities set up so that database-specific quoting can be

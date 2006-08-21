@@ -85,9 +85,16 @@ class ProxyEngineTest1(ProxyTestBase):
 class ThreadProxyTest(ProxyTestBase):
 
     def tearDownAll(self):
-        os.remove('threadtesta.db')
-        os.remove('threadtestb.db')
+        try:
+            os.remove('threadtesta.db')
+        except OSError:
+            pass
+        try:
+            os.remove('threadtestb.db')
+        except OSError:
+            pass
         
+    @testbase.supported('sqlite')
     def test_multi_thread(self):
         
         from threading import Thread
