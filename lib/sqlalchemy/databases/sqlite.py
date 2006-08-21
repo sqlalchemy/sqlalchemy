@@ -135,7 +135,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
     def __init__(self, **kwargs):
         def vers(num):
             return tuple([int(x) for x in num.split('.')])
-        self.supports_cast = (vers(sqlite.sqlite_version) >= vers("3.2.3"))
+        self.supports_cast = (sqlite is not None and vers(sqlite.sqlite_version) >= vers("3.2.3"))
         ansisql.ANSIDialect.__init__(self, **kwargs)
     def compiler(self, statement, bindparams, **kwargs):
         return SQLiteCompiler(self, statement, bindparams, **kwargs)
@@ -160,8 +160,6 @@ class SQLiteDialect(ansisql.ANSIDialect):
         return ([self.filename], self.opts)
 
     def dbapi(self):
-        if sqlite is None:
-            raise exceptions.ArgumentError("Couldn't import sqlite or pysqlite2")
         return sqlite
         
     def has_table(self, connection, table_name):
