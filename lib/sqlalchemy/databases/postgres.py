@@ -307,7 +307,7 @@ class PGDialect(ansisql.ANSIDialect):
         if self.use_information_schema:
             ischema.reflecttable(connection, table, ischema_names)
         else:
-            preparer = self.preparer()
+            preparer = self.identifier_preparer
             if table.schema is not None:
                 current_schema = table.schema
             else:
