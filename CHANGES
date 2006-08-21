@@ -19,6 +19,12 @@ unit of work seeks to flush() them as part of a relationship..
 - [ticket:280] statement execution supports using the same BindParam
 object more than once in an expression; simplified handling of positional
 parameters.  nice job by Bill Noon figuring out the basic idea.
+- postgres reflection moved to use pg_schema tables, can be overridden
+with use_information_schema=True argument to create_engine
+[ticket:60], [ticket:71]
+- added natural_case argument to Table, Column, semi-experimental
+flag for use with table reflection to help with quoting rules
+[ticket:155]
 
 0.2.7
 - quoting facilities set up so that database-specific quoting can be

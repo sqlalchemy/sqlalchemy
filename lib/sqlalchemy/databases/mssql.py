@@ -273,7 +273,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
         return MSSQLDefaultRunner(engine, proxy)
 
     def preparer(self):
-        return MSSQLIdentifierPreparer()
+        return MSSQLIdentifierPreparer(self)
 
     def get_default_schema_name(self):
         return "dbo"
@@ -546,8 +546,8 @@ class MSSQLDefaultRunner(ansisql.ANSIDefaultRunner):
     pass
 
 class MSSQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
-    def __init__(self):
-        super(MSSQLIdentifierPreparer, self).__init__(initial_quote='[', final_quote=']')
+    def __init__(self, dialect):
+        super(MSSQLIdentifierPreparer, self).__init__(dialect, initial_quote='[', final_quote=']')
     def _escape_identifier(self, value):
         #TODO: determin MSSQL's escapeing rules
         return value

@@ -295,7 +295,7 @@ class MySQLDialect(ansisql.ANSIDialect):
         return MySQLSchemaDropper(*args, **kwargs)
 
     def preparer(self):
-        return MySQLIdentifierPreparer()
+        return MySQLIdentifierPreparer(self)
 
     def do_rollback(self, connection):
         # some versions of MySQL just dont support rollback() at all....
@@ -453,8 +453,8 @@ class MySQLSchemaDropper(ansisql.ANSISchemaDropper):
         self.execute()
 
 class MySQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
-    def __init__(self):
-        super(MySQLIdentifierPreparer, self).__init__(initial_quote='`')
+    def __init__(self, dialect):
+        super(MySQLIdentifierPreparer, self).__init__(dialect, initial_quote='`')
     def _escape_identifier(self, value):
         #TODO: determin MySQL's escaping rules
         return value

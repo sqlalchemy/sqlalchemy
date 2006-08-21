@@ -354,6 +354,7 @@ class SchemaTest(PersistTest):
         table1.accept_schema_visitor(gen)
         table2.accept_schema_visitor(gen)
         buf = buf.getvalue()
+        print buf
         assert buf.index("CREATE TABLE someschema.table1") > -1
         assert buf.index("CREATE TABLE someschema.table2") > -1
          

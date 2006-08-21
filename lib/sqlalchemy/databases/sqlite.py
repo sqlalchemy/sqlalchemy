@@ -142,7 +142,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
     def schemagenerator(self, *args, **kwargs):
         return SQLiteSchemaGenerator(*args, **kwargs)
     def preparer(self):
-        return SQLiteIdentifierPreparer()
+        return SQLiteIdentifierPreparer(self)
     def create_connect_args(self, url):
         filename = url.database or ':memory:'
         return ([filename], url.query)
@@ -300,8 +300,8 @@ class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
     #        super(SQLiteSchemaGenerator, self).visit_primary_key_constraint(constraint)
 
 class SQLiteIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
-    def __init__(self):
-        super(SQLiteIdentifierPreparer, self).__init__(omit_schema=True)
+    def __init__(self, dialect):
+        super(SQLiteIdentifierPreparer, self).__init__(dialect, omit_schema=True)
 
 dialect = SQLiteDialect
 poolclass = pool.SingletonThreadPool       

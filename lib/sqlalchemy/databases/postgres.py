@@ -15,6 +15,8 @@ import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
 import sqlalchemy.exceptions as exceptions
 import information_schema as ischema
+from sqlalchemy import * 
+import re
 
 try:
     import mx.DateTime.DateTime as mxDateTime
@@ -151,8 +153,11 @@ pg2_ischema_names = {
     'float' : PGFloat,
     'real' : PGFloat,
     'double precision' : PGFloat,
+    'timestamp' : PG2DateTime,
     'timestamp with time zone' : PG2DateTime,
     'timestamp without time zone' : PG2DateTime,
+    'time with time zone' : PG2Time,
+    'time without time zone' : PG2Time,
     'date' : PG2Date,
     'time': PG2Time,
     'bytea' : PGBinary,
@@ -165,6 +170,11 @@ pg1_ischema_names.update({
     'date' : PG1Date,
     'time' : PG1Time
     })
+
+reserved_words = util.Set(['all', 'analyse', 'analyze', 'and', 'any', 'array', 'as', 'asc', 'asymmetric', 'authorization', 'between', 'binary', 'both', 'case', 'cast', 'check', 'collate', 'column', 'constraint', 'create', 'cross', 'current_date', 'current_role', 'current_time', 'current_timestamp', 'current_user', 'default', 'deferrable', 'desc', 'distinct', 'do', 'else', 'end', 'except', 'false', 'for', 'foreign', 'freeze', 'from', 'full', 'grant', 'group', 'having', 'ilike', 'in', 'initially', 'inner', 'intersect', 'into', 'is', 'isnull', 'join', 'leading', 'left', 'like', 'limit', 'localtime', 'localtimestamp', 'natural', 'new', 'not', 'notnull', 'null', 'off', 'offset', 'old', 'on', 'only', 'or', 'order', 'outer', 'overlaps', 'placing', 'primary', 'references', 'right', 'select', 'session_user', 'similar', 'some', 'symmetric', 'table', 'then', 'to', 'trailing', 'true', 'union', 'unique', 'user', 'using', 'verbose', 'when', 'where'])
+
+legal_characters = util.Set(string.ascii_lowercase + string.digits + '_$')
+illegal_initial_characters = util.Set(string.digits + '$')
 
 def engine(opts, **params):
     return PGSQLEngine(opts, **params)
@@ -197,7 +207,7 @@ class PGExecutionContext(default.DefaultExecutionContext):
                 self._last_inserted_ids = [v for v in row]
     
 class PGDialect(ansisql.ANSIDialect):
-    def __init__(self, module=None, use_oids=False, **params):
+    def __init__(self, module=None, use_oids=False, use_information_schema=False, **params):
         self.use_oids = use_oids
         if module is None:
             #if psycopg is None:
@@ -214,6 +224,7 @@ class PGDialect(ansisql.ANSIDialect):
         except:
             self.version = 1
         ansisql.ANSIDialect.__init__(self, **params)
+        self.use_information_schema = use_information_schema
         # produce consistent paramstyle even if psycopg2 module not present
         if self.module is None:
             self.paramstyle = 'pyformat'
@@ -246,7 +257,7 @@ class PGDialect(ansisql.ANSIDialect):
     def defaultrunner(self, engine, proxy):
         return PGDefaultRunner(engine, proxy)
     def preparer(self):
-        return PGIdentifierPreparer()
+        return PGIdentifierPreparer(self)
         
     def get_default_schema_name(self, connection):
         if not hasattr(self, '_default_schema_name'):
@@ -293,7 +304,155 @@ class PGDialect(ansisql.ANSIDialect):
         else:
             ischema_names = pg1_ischema_names
 
-        ischema.reflecttable(connection, table, ischema_names)
+        if self.use_information_schema:
+            ischema.reflecttable(connection, table, ischema_names)
+        else:
+            preparer = self.preparer()
+            if table.schema is not None:
+                current_schema = table.schema
+            else:
+                current_schema = connection.default_schema_name()
+    
+            ## information schema in pg suffers from too many permissions' restrictions
+            ## let us find out at the pg way what is needed...
+    
+            SQL_COLS = """
+                SELECT a.attname,
+                  pg_catalog.format_type(a.atttypid, a.atttypmod),
+                  (SELECT substring(d.adsrc for 128) FROM pg_catalog.pg_attrdef d
+                   WHERE d.adrelid = a.attrelid AND d.adnum = a.attnum AND a.atthasdef)
+                  AS DEFAULT,
+                  a.attnotnull, a.attnum
+                FROM pg_catalog.pg_attribute a
+                WHERE a.attrelid = (
+                    SELECT c.oid
+                    FROM pg_catalog.pg_class c
+                         LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                    WHERE (n.nspname = :schema OR pg_catalog.pg_table_is_visible(c.oid))
+                          AND c.relname = :table_name AND (c.relkind = 'r' OR c.relkind = 'v')
+                ) AND a.attnum > 0 AND NOT a.attisdropped
+                ORDER BY a.attnum
+            """
+    
+            s = text(SQL_COLS )
+            c = connection.execute(s, table_name=table.name, schema=current_schema)
+            found_table = False
+            while True:
+                row = c.fetchone()
+                if row is None:
+                    break
+                found_table = True
+                name = row['attname']
+                natural_case = preparer._is_natural_case(name)
+                ## strip (30) from character varying(30)
+                attype = re.search('([^\(]+)', row['format_type']).group(1)
+    
+                nullable = row['attnotnull'] == False
+                try:
+                    charlen = re.search('\(([\d,]+)\)',row['format_type']).group(1)
+                except:
+                    charlen = None
+    
+                numericprec = None
+                numericscale = None
+                default = row['default']
+                if attype == 'numeric':
+                    numericprec, numericscale = charlen.split(',')
+                    charlen = None
+                if attype == 'double precision':
+                    numericprec, numericscale = (53, None)
+                    charlen = None
+                if attype == 'integer':
+                    numericprec, numericscale = (32, 0)
+                    charlen = None
+    
+                args = []
+                for a in (charlen, numericprec, numericscale):
+                    if a is not None:
+                        args.append(int(a))
+    
+                coltype = ischema_names[attype]
+                coltype = coltype(*args)
+                colargs= []
+                if default is not None:
+                    colargs.append(PassiveDefault(sql.text(default)))
+                table.append_item(schema.Column(name, coltype, nullable=nullable, natural_case=natural_case, *colargs))
+    
+    
+            if not found_table:
+                raise exceptions.NoSuchTableError(table.name)
+    
+            # Primary keys
+            PK_SQL = """
+              SELECT attname FROM pg_attribute 
+              WHERE attrelid = (
+                 SELECT indexrelid FROM  pg_index i, pg_class c, pg_namespace n
+                 WHERE n.nspname = :schema AND c.relname = :table_name 
+                 AND c.oid = i.indrelid AND n.oid = c.relnamespace
+                 AND i.indisprimary = 't' ) ;
+            """ 
+            t = text(PK_SQL)
+            c = connection.execute(t, table_name=table.name, schema=current_schema)
+            while True:
+                row = c.fetchone()
+                if row is None:
+                    break
+                pk = row[0]
+                table.c[pk]._set_primary_key()
+    
+            # Foreign keys
+            FK_SQL = """
+              SELECT conname, pg_catalog.pg_get_constraintdef(oid, true) as condef 
+              FROM  pg_catalog.pg_constraint r 
+              WHERE r.conrelid = (
+                  SELECT c.oid FROM pg_catalog.pg_class c 
+                               LEFT JOIN pg_catalog.pg_namespace n
+                               ON n.oid = c.relnamespace 
+                  WHERE c.relname = :table_name 
+                    AND pg_catalog.pg_table_is_visible(c.oid)) 
+                    AND r.contype = 'f' ORDER BY 1
+    
+            """
+            
+            t = text(FK_SQL)
+            c = connection.execute(t, table_name=table.name)
+            while True:
+                row = c.fetchone()
+                if row is None:
+                    break
+
+                identifier = '(?:[a-z_][a-z0-9_$]+|"(?:[^"]|"")+")'
+                identifier_group = '%s(?:, %s)*' % (identifier, identifier)
+                identifiers = '(%s)(?:, (%s))*' % (identifier, identifier)
+                f = re.compile(identifiers)
+                # FOREIGN KEY (mail_user_id,"Mail_User_ID2") REFERENCES "mYschema".euro_user(user_id,"User_ID2")
+                foreign_key_pattern = 'FOREIGN KEY \((%s)\) REFERENCES (?:(%s)\.)?(%s)\((%s)\)' % (identifier_group, identifier, identifier, identifier_group)
+                p = re.compile(foreign_key_pattern)
+                
+                m = p.search(row['condef'])
+                (constrained_columns, referred_schema, referred_table, referred_columns) = m.groups() 
+                
+                constrained_columns = [preparer._unquote_identifier(x) for x in f.search(constrained_columns).groups() if x]
+                if referred_schema:
+                    referred_schema = preparer._unquote_identifier(referred_schema)
+                referred_table = preparer._unquote_identifier(referred_table)
+                referred_columns = [preparer._unquote_identifier(x) for x in f.search(referred_columns).groups() if x]
+                
+                natural_case = preparer._is_natural_case(referred_table)
+                
+                refspec = []
+                if referred_schema is not None:
+                    natural_case_schema = preparer._is_natural_case(referred_schema)
+                    schema.Table(referred_table, table.metadata, autoload=True, schema=referred_schema, 
+                                autoload_with=connection, natural_case=natural_case, natural_case_schema = natural_case_schema)
+                    for column in referred_columns:
+                        refspec.append(".".join([referred_schema, referred_table, column]))
+                else:
+                    schema.Table(referred_table, table.metadata, autoload=True, autoload_with=connection, natural_case=natural_case)
+                    for column in referred_columns:
+                        refspec.append(".".join([referred_table, column]))
+                
+                table.append_item(ForeignKeyConstraint(constrained_columns, refspec, row['conname']))
 
 class PGCompiler(ansisql.ANSICompiler):
         
@@ -392,5 +551,18 @@ class PGDefaultRunner(ansisql.ANSIDefaultRunner):
 class PGIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
     def _fold_identifier_case(self, value):
         return value.lower()
-
+    def _requires_quotes(self, value, natural_case):
+        if natural_case:
+            value = self._fold_identifier_case(str(value))
+        retval = bool(len([x for x in str(value) if x not in legal_characters]))
+        if not retval and (value[0] in illegal_initial_characters or value in reserved_words):
+            retval = True
+        return retval
+    def _unquote_identifier(self, value):
+        if value[0] == self.initial_quote:
+            value = value[1:-1].replace('""','"')
+        return value
+    def _is_natural_case(self, value):
+        return self._fold_identifier_case(value) == value
+    
 dialect = PGDialect

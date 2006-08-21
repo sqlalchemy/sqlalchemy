@@ -144,10 +144,16 @@ class Table(SchemaItem, sql.TableClause):
         reflection.
         
         quote=False : indicates that the Table identifier must be properly escaped and quoted before being sent 
-        to the database.
+        to the database. This flag overrides all other quoting behavior.
         
         quote_schema=False : indicates that the Namespace identifier must be properly escaped and quoted before being sent 
-        to the database.
+        to the database. This flag overrides all other quoting behavior.
+        
+        natural_case=True : indicates that the identifier should be interpreted by the database in the natural case for identifiers.
+        Mixed case is not sufficient to cause this identifier to be quoted; it must contain an illegal character.
+        
+        natural_case_schema=True : indicates that the identifier should be interpreted by the database in the natural case for identifiers.
+        Mixed case is not sufficient to cause this identifier to be quoted; it must contain an illegal character.
         """
         super(Table, self).__init__(name)
         self._metadata = metadata
@@ -163,6 +169,8 @@ class Table(SchemaItem, sql.TableClause):
         self.owner = kwargs.pop('owner', None)
         self.quote = kwargs.pop('quote', False)
         self.quote_schema = kwargs.pop('quote_schema', False)
+        self.natural_case = kwargs.pop('natural_case', True)
+        self.natural_case_schema = kwargs.pop('natural_case_schema', True)
         self.kwargs = kwargs
 
     def _set_primary_key(self, pk):
@@ -332,6 +340,9 @@ class Column(SchemaItem, sql.ColumnClause):
 
         quote=False : indicates that the Column identifier must be properly escaped and quoted before being sent 
         to the database.
+
+        natural_case=True : indicates that the identifier should be interpreted by the database in the natural case for identifiers.
+        Mixed case is not sufficient to cause this identifier to be quoted; it must contain an illegal character.
         """
         name = str(name) # in case of incoming unicode
         super(Column, self).__init__(name, None, type)
@@ -344,6 +355,7 @@ class Column(SchemaItem, sql.ColumnClause):
         self.index = kwargs.pop('index', None)
         self.unique = kwargs.pop('unique', None)
         self.quote = kwargs.pop('quote', False)
+        self.natural_case = kwargs.pop('natural_case', True)
         self.onupdate = kwargs.pop('onupdate', None)
         if self.index is not None and self.unique is not None:
             raise exceptions.ArgumentError("Column may not define both index and unique")

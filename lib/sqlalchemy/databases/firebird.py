@@ -99,7 +99,7 @@ class FireBirdExecutionContext(default.DefaultExecutionContext):
         return FBDefaultRunner(self, proxy)
 
     def preparer(self):
-        return FBIdentifierPreparer()
+        return FBIdentifierPreparer(self)
 
 class FireBirdDialect(ansisql.ANSIDialect):
     def __init__(self, module = None, **params):
@@ -381,7 +381,7 @@ class FBDefaultRunner(ansisql.ANSIDefaultRunner):
         return self.proxy("SELECT gen_id(" + seq.name + ", 1) FROM rdb$database").fetchone()[0]
 
 class FBIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
-    def __init__(self):
-        super(FBIdentifierPreparer,self).__init__(omit_schema=True)
+    def __init__(self, dialect):
+        super(FBIdentifierPreparer,self).__init__(dialect, omit_schema=True)
 
 dialect = FireBirdDialect
