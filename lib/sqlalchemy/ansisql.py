@@ -774,7 +774,15 @@ class ANSIIdentifierPreparer(schema.SchemaVisitor):
             self.__strings[column] = self._quote_identifier(column.name)
         else:
             self.__strings[column] = column.name
-        
+    
+    def visit_sequence(self, sequence):
+        if sequence in self.__visited:
+            return
+        if sequence.quote or self._requires_quotes(sequence.name, sequence.natural_case):
+            self.__strings[sequence] = self._quote_identifier(sequence.name)
+        else:
+            self.__strings[sequence] = sequence.name
+                
     def __analyze_identifiers(self, obj):
         """insure that each object we encounter is analyzed only once for its lifetime."""
         if obj in self.__visited:
@@ -782,7 +790,11 @@ class ANSIIdentifierPreparer(schema.SchemaVisitor):
         if isinstance(obj, schema.SchemaItem):
             obj.accept_schema_visitor(self)
         self.__visited[obj] = True
-         
+    
+    def __prepare_sequence(self, sequence):
+        self.__analyze_identifiers(sequence)
+        return self.__strings.get(sequence, sequence.name)
+             
     def __prepare_table(self, table, use_schema=False):
         self.__analyze_identifiers(table)
         tablename = self.__strings.get(table, (table.name, None))[0]
@@ -798,6 +810,9 @@ class ANSIIdentifierPreparer(schema.SchemaVisitor):
         else:
             return self.__strings.get(column, column.name)
     
+    def format_sequence(self, sequence):
+        return self.__prepare_sequence(sequence)
+        
     def format_table(self, table, use_schema=True):
         """Prepare a quoted table and schema name"""
         return self.__prepare_table(table, use_schema=use_schema)

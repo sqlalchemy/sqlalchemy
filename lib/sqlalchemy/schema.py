@@ -169,8 +169,11 @@ class Table(SchemaItem, sql.TableClause):
         self.owner = kwargs.pop('owner', None)
         self.quote = kwargs.pop('quote', False)
         self.quote_schema = kwargs.pop('quote_schema', False)
-        self.natural_case = kwargs.pop('natural_case', True)
-        self.natural_case_schema = kwargs.pop('natural_case_schema', True)
+        default_natural_case = metadata.natural_case
+        if default_natural_case is None:
+            default_natural_case = True
+        self.natural_case = kwargs.pop('natural_case', default_natural_case)
+        self.natural_case_schema = kwargs.pop('natural_case_schema', default_natural_case)
         self.kwargs = kwargs
 
     def _set_primary_key(self, pk):
@@ -403,6 +406,8 @@ class Column(SchemaItem, sql.ColumnClause):
         if getattr(self, 'table', None) is not None:
             raise exceptions.ArgumentError("this Column already has a table!")
         table.append_column(self)
+        if self.table.metadata.natural_case is not None:
+            self.natural_case = self.table.metadata.natural_case
         if self.index or self.unique:
             table.append_index_column(self, index=self.index,
                                       unique=self.unique)
@@ -595,12 +600,14 @@ class ColumnDefault(DefaultGenerator):
         
 class Sequence(DefaultGenerator):
     """represents a sequence, which applies to Oracle and Postgres databases."""
-    def __init__(self, name, start = None, increment = None, optional=False, **kwargs):
+    def __init__(self, name, start = None, increment = None, optional=False, quote=False, natural_case=True, **kwargs):
         super(Sequence, self).__init__(**kwargs)
         self.name = name
         self.start = start
         self.increment = increment
         self.optional=optional
+        self.natural_case = natural_case
+        self.quote = quote
     def __repr__(self):
         return "Sequence(%s)" % string.join(
              [repr(self.name)] +
@@ -609,6 +616,8 @@ class Sequence(DefaultGenerator):
     def _set_parent(self, column):
         super(Sequence, self)._set_parent(column)
         column.sequence = self
+        if column.metadata.natural_case is not None:
+            self.natural_case = column.metadata.natural_case
     def create(self):
        self.engine.create(self)
        return self
@@ -763,10 +772,11 @@ class Index(SchemaItem):
         
 class MetaData(SchemaItem):
     """represents a collection of Tables and their associated schema constructs."""
-    def __init__(self, name=None):
+    def __init__(self, name=None, natural_case=None, **kwargs):
         # a dictionary that stores Table objects keyed off their name (and possibly schema name)
         self.tables = {}
         self.name = name
+        self.natural_case = natural_case
     def is_bound(self):
         return False
     def clear(self):
@@ -850,7 +860,7 @@ class MetaData(SchemaItem):
 class BoundMetaData(MetaData):
     """builds upon MetaData to provide the capability to bind to an Engine implementation."""
     def __init__(self, engine_or_url, name=None, **kwargs):
-        super(BoundMetaData, self).__init__(name)
+        super(BoundMetaData, self).__init__(name, **kwargs)
         if isinstance(engine_or_url, str):
             self._engine = sqlalchemy.create_engine(engine_or_url, **kwargs)
         else:
@@ -861,8 +871,8 @@ class BoundMetaData(MetaData):
 class DynamicMetaData(MetaData):
     """builds upon MetaData to provide the capability to bind to multiple Engine implementations
     on a dynamically alterable, thread-local basis."""
-    def __init__(self, name=None, threadlocal=True):
-        super(DynamicMetaData, self).__init__(name)
+    def __init__(self, name=None, threadlocal=True, **kwargs):
+        super(DynamicMetaData, self).__init__(name, **kwargs)
         if threadlocal:
             self.context = util.ThreadLocal()
         else:

@@ -530,6 +530,8 @@ class PGDefaultRunner(ansisql.ANSIDefaultRunner):
                 return c.fetchone()[0]
             elif isinstance(column.type, sqltypes.Integer) and (column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional)):
                 sch = column.table.schema
+                # TODO: this has to build into the Sequence object so we can get the quoting 
+                # logic from it
                 if sch is not None:
                     exc = "select nextval('%s.%s_%s_seq')" % (sch, column.table.name, column.name)
                 else:
@@ -543,7 +545,7 @@ class PGDefaultRunner(ansisql.ANSIDefaultRunner):
         
     def visit_sequence(self, seq):
         if not seq.optional:
-            c = self.proxy("select nextval('%s')" % seq.name)
+            c = self.proxy("select nextval('%s')" % seq.name) #TODO: self.dialect.preparer.format_sequence(seq))
             return c.fetchone()[0]
         else:
             return None
