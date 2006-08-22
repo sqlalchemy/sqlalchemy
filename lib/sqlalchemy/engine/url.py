@@ -1,5 +1,6 @@
 import re
 import cgi
+import urllib
 import sqlalchemy.exceptions as exceptions
 
 class URL(object):
@@ -19,7 +20,7 @@ class URL(object):
         if self.username is not None:
             s += self.username
             if self.password is not None:
-                s += ':' + self.password
+                s += ':' + urllib.quote_plus(self.password)
             s += "@"
         if self.host is not None:
             s += self.host
@@ -81,6 +82,8 @@ def _parse_rfc1738_args(name):
         else:
             query = None
         opts = {'username':username,'password':password,'host':host,'port':port,'database':database, 'query':query}
+        if opts['password'] is not None:
+            opts['password'] = urllib.unquote_plus(opts['password'])
         return URL(name, **opts)
     else:
         raise exceptions.ArgumentError("Could not parse rfc1738 URL from string '%s'" % name)
