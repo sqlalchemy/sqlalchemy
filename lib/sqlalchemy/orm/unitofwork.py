@@ -180,18 +180,24 @@ class UnitOfWork(object):
         else:
             objset = None
 
+        processed = util.Set()
         for obj in [n for n in self.new] + [d for d in self.dirty]:
             if objset is not None and not obj in objset:
                 continue
-            if obj in self.deleted:
+            if obj in self.deleted or obj in processed:
                 continue
             if object_mapper(obj)._is_orphan(obj):
-                flush_context.register_object(obj, isdelete=True)
+                for c in [obj] + list(object_mapper(obj).cascade_iterator('delete', obj)):
+                    if c in processed:
+                        continue
+                    flush_context.register_object(c, isdelete=True)
+                    processed.add(c)
             else:
                 flush_context.register_object(obj)
-            
+                processed.add(obj)
+                
         for obj in self.deleted:
-            if objset is not None and not obj in objset:
+            if (objset is not None and not obj in objset) or obj in processed:
                 continue
             flush_context.register_object(obj, isdelete=True)
         
