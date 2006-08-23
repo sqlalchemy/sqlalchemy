@@ -670,7 +670,7 @@ class ForeignKeyConstraint(Constraint):
         fk._set_parent(self.table.c[col])
         self._append_fk(fk)
     def _append_fk(self, fk):
-        self.columns.append(self.table.c[fk.parent.name])
+        self.columns.append(self.table.c[fk.parent.key])
         self.elements.append(fk)
     def copy(self):
         return ForeignKeyConstraint([x.parent.name for x in self.elements], [x._get_colspec() for x in self.elements], name=self.name, onupdate=self.onupdate, ondelete=self.ondelete)
