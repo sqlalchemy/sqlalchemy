@@ -16,6 +16,8 @@ import base
 class PoolConnectionProvider(base.ConnectionProvider):
     def __init__(self, dialect, url, poolclass=None, pool=None, **kwargs):
         (cargs, cparams) = dialect.create_connect_args(url)
+        cparams.update(kwargs.pop('connect_args', {}))
+        
         if pool is None:
             kwargs.setdefault('echo', False)
             kwargs.setdefault('use_threadlocal',True)
@@ -29,7 +31,8 @@ class PoolConnectionProvider(base.ConnectionProvider):
                     return dbapi.connect(*cargs, **cparams)
                 except Exception, e:
                     raise exceptions.DBAPIError("Connection failed", e)
-            self._pool = poolclass(connect, **kwargs)
+            creator = kwargs.pop('creator', connect)
+            self._pool = poolclass(creator, **kwargs)
         else:
             if isinstance(pool, sqlalchemy.pool.DBProxy):
                 self._pool = pool.get_pool(*cargs, **cparams)

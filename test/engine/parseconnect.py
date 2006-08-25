@@ -1,6 +1,8 @@
 from testbase import PersistTest
 import sqlalchemy.engine.url as url
+from sqlalchemy import *
 import unittest
+
         
 class ParseConnectTest(PersistTest):
     def testrfc1738(self):
@@ -33,6 +35,56 @@ class ParseConnectTest(PersistTest):
             assert u.host == 'hostspec' or u.host == '127.0.0.1' or (not u.host)
             assert str(u) == text
 
+class CreateEngineTest(PersistTest):
+    """test that create_engine arguments of different types get propigated properly"""
+    def testconnectquery(self):
+        dbapi = MockDBAPI(foober='12', lala='18', fooz='somevalue')
+        
+        # start the postgres dialect, but put our mock DBAPI as the module instead of psycopg
+        e = create_engine('postgres://scott:tiger@somehost/test?foober=12&lala=18&fooz=somevalue', module=dbapi)
+        c = e.connect()
+
+    def testkwargs(self):
+        dbapi = MockDBAPI(foober=12, lala=18, hoho={'this':'dict'}, fooz='somevalue')
+
+        # start the postgres dialect, but put our mock DBAPI as the module instead of psycopg
+        e = create_engine('postgres://scott:tiger@somehost/test?fooz=somevalue', connect_args={'foober':12, 'lala':18, 'hoho':{'this':'dict'}}, module=dbapi)
+        c = e.connect()
+
+    def testcustom(self):
+        dbapi = MockDBAPI(foober=12, lala=18, hoho={'this':'dict'}, fooz='somevalue')
+
+        def connect():
+            return dbapi.connect(foober=12, lala=18, fooz='somevalue', hoho={'this':'dict'})
+            
+        # start the postgres dialect, but put our mock DBAPI as the module instead of psycopg
+        e = create_engine('postgres://', creator=connect, module=dbapi)
+        c = e.connect()
+    
+    def testrecycle(self):
+        dbapi = MockDBAPI(foober=12, lala=18, hoho={'this':'dict'}, fooz='somevalue')
+        e = create_engine('postgres://', pool_recycle=472, module=dbapi)
+        assert e.connection_provider._pool._recycle == 472
+        
+class MockDBAPI(object):
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+        self.paramstyle = 'named'
+    def connect(self, **kwargs):
+        print kwargs, self.kwargs
+        for k in self.kwargs:
+            assert k in kwargs, "key %s not present in dictionary" % k
+            assert kwargs[k]==self.kwargs[k], "value %s does not match %s" % (kwargs[k], self.kwargs[k])
+        return MockConnection()
+class MockConnection(object):
+    def close(self):
+        pass
+    def cursor(self):
+        return MockCursor()
+class MockCursor(object):
+    def close(self):
+        pass
+mock_dbapi = MockDBAPI()
             
 if __name__ == "__main__":
     unittest.main()

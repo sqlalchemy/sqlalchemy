@@ -115,6 +115,46 @@ class PoolTest(PersistTest):
         except exceptions.TimeoutError, e:
             assert int(time.time() - now) == 2
         
+    def test_mixed_close(self):
+        p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = -1, use_threadlocal = True, echo=True)
+        c1 = p.connect()
+        c2 = p.connect()
+        assert c1 is c2
+        c1.close()
+        c2 = None
+        assert p.checkedout() == 1
+        c1 = None
+        assert p.checkedout() == 0
+    
+    def test_trick_the_counter(self):
+        """this is a "flaw" in the connection pool; since threadlocal uses a single ConnectionFairy per thread
+        with an open/close counter, you can fool the counter into giving you a ConnectionFairy with an
+        ambiguous counter.  i.e. its not true reference counting."""
+        p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = -1, use_threadlocal = True, echo=True)
+        c1 = p.connect()
+        c2 = p.connect()
+        assert c1 is c2
+        c1.close()
+        c2 = p.connect()
+        c2.close()
+        self.assert_(p.checkedout() != 0)
+
+        c2.close()
+        self.assert_(p.checkedout() == 0)
+
+    def test_recycle(self):
+        p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 1, max_overflow = 0, use_threadlocal = False, echo=True, recycle=3)
+        
+        c1 = p.connect()
+        c_id = id(c1.connection)
+        c1.close()
+        c2 = p.connect()
+        assert id(c2.connection) == c_id
+        c2.close()
+        time.sleep(3)
+        c3= p.connect()
+        assert id(c3.connection) != c_id
+        
     def testthreadlocal_del(self):
         self._do_testthreadlocal(useclose=False)
 
@@ -123,7 +163,7 @@ class PoolTest(PersistTest):
 
     def _do_testthreadlocal(self, useclose=False):
         for p in (
-            pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = -1, use_threadlocal = True, echo = False),
+            pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = -1, use_threadlocal = True, echo = True),
             pool.SingletonThreadPool(creator = lambda: mock_dbapi.connect('foo.db'), use_threadlocal = True)
         ):   
             c1 = p.connect()
@@ -143,8 +183,6 @@ class PoolTest(PersistTest):
             else:
                 c2 = None
         
-            c3 = None
-            
             if useclose:
                 c1 = p.connect()
                 c2 = p.connect()
@@ -153,8 +191,8 @@ class PoolTest(PersistTest):
                 c2.close()
                 self.assert_(c1.connection is not None)
                 c1.close()
-            else:
-                c1 = c2 = c3 = None
+
+            c1 = c2 = c3 = None
             
             # extra tests with QueuePool to insure connections get __del__()ed when dereferenced
             if isinstance(p, pool.QueuePool):

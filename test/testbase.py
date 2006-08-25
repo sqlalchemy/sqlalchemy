@@ -146,18 +146,22 @@ class PersistTest(unittest.TestCase):
 class MockPool(pool.Pool):
     """this pool is hardcore about only one connection being used at a time."""
     def __init__(self, creator, **params):
-        pool.Pool.__init__(self, **params)
-        self.connection = creator()
+        pool.Pool.__init__(self, creator, **params)
+        self.connection = pool._ConnectionRecord(self)
         self._conn = self.connection
         
     def status(self):
         return "MockPool"
 
+    def create_connection(self):
+        raise "Invalid"
+
     def do_return_conn(self, conn):
         assert conn is self._conn and self.connection is None
         self.connection = conn
 
-    def do_return_invalid(self):
+    def do_return_invalid(self, conn):
+        pass
         raise "Invalid"
 
     def do_get(self):

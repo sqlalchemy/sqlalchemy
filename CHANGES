@@ -1,4 +1,12 @@
 0.2.8
+- cleanup on connection methods + documentation.  custom DBAPI
+arguments specified in query string, 'connect_args' argument
+to 'create_engine', or custom creation function via 'creator'
+function to 'create_engine'.
+- added "recycle" argument to Pool, is "pool_recycle" on create_engine,
+defaults to 3600 seconds; connections after this age will be closed and
+replaced with a new one, to handle db's that automatically close 
+stale connections [ticket:274]
 - eesh !  the tutorial doctest was broken for quite some time.
 - add_property() method on mapper does a "compile all mappers"
 step in case the given property references a non-compiled mapper

@@ -61,6 +61,28 @@ Available drivernames are `sqlite`, `mysql`, `postgres`, `oracle`, `mssql`, and 
 
 The `Engine` will create its first connection to the database when a SQL statement is executed.  As concurrent statements are executed, the underlying connection pool will grow to a default size of five connections, and will allow a default "overflow" of ten.   Since the `Engine` is essentially "home base" for the connection pool, it follows that you should keep a single `Engine` per database established within an application, rather than creating a new one for each connection.
 
+#### Custom DBAPI keyword arguments
+
+Custom arguments can be passed to the underlying DBAPI in three ways.  String-based arguments can be passed directly from the URL string as query arguments:
+
+    {python}
+    db = create_engine('postgres://scott:tiger@localhost/test?argument1=foo&argument2=bar')
+
+If SQLAlchemy's database connector is aware of a particular query argument, it may convert its type from string to its proper type.
+    
+`create_engine` also takes an argument `connect_args` which is an additional dictionary that will be passed to `connect()`.  This can be used when arguments of a type other than string are required, and SQLAlchemy's database connector has no type conversion logic present for that parameter:
+
+    {python}
+    db = create_engine('postgres://scott:tiger@localhost/test', create_args = {'argument1':17, 'argument2':'bar'})
+
+The most customizable connection method of all is to pass a `creator` argument, which specifies a callable that returns a DBAPI connection:
+
+    {python}
+    def connect():
+        return psycopg.connect(user='scott', host='localhost')
+
+    db = create_engine('postgres://', creator=connect)
+        
 ### Database Engine Options {@name=options}
 
 Keyword options can also be specified to `create_engine()`, following the string URL as follows:
@@ -71,9 +93,10 @@ Keyword options can also be specified to `create_engine()`, following the string
 Options that can be specified include the following:
 
 * strategy='plain' : the Strategy describes the general configuration used to create this Engine.  The two available values are `plain`, which is the default, and `threadlocal`, which applies a "thread-local context" to implicit executions performed by the Engine.  This context is further described in [dbengine_connections_context](rel:dbengine_connections_context).
-* pool=None : an instance of `sqlalchemy.pool.Pool` to be used as the underlying source for connections, overriding the engine's connect arguments (pooling is described in [pooling](rel:pooling)).  If None, a default `Pool` (usually `QueuePool`, or `SingletonThreadPool` in the case of SQLite) will be created using the engine's connect arguments.
+* poolclass=None : a `sqlalchemy.pool.Pool` subclass (or duck-typed equivalent) that will be instantated in place of the default connection pool.
+* pool=None : an actual pool instance.  Note that an already-constructed pool should already know how to create database connections, so this option supercedes any other connect options specified.  Typically, it is an instance of `sqlalchemy.pool.Pool` to be used as the underlying source for connections.  For more on connection pooling, see [pooling](rel:pooling).
 
-Example:
+Example of a manual invocation of `pool.QueuePool` (which is the pool instance used for all databases except sqlite):
 
     {python}
     from sqlalchemy import *
@@ -88,6 +111,7 @@ Example:
 * pool_size=5 : the number of connections to keep open inside the connection pool.  This used with `QueuePool` as well as `SingletonThreadPool` as of 0.2.7.
 * max_overflow=10 : the number of connections to allow in "overflow", that is connections that can be opened above and beyond the initial five.  this is only used with `QueuePool`.
 * pool_timeout=30 : number of seconds to wait before giving up on getting a connection from the pool.  This is only used with `QueuePool`.
+* pool_recycle=3600 : this setting causes the pool to recycle connections after the given number of seconds has passed.  It defaults to 3600 seconds, or one hour.  Note that MySQL in particular will disconnect automatically if no activity is detected on a connection for eight hours.
 * echo=False : if True, the Engine will log all statements as well as a repr() of their parameter lists to the engines logger, which defaults to sys.stdout.  The `echo` attribute of `ComposedSQLEngine` can be modified at any time to turn logging on and off.  If set to the string `"debug"`, result rows will be printed to the standard output as well.
 * logger=None : a file-like object where logging output can be sent, if echo is set to True.  Newlines will not be sent with log messages.  This defaults to an internal logging object which references `sys.stdout`.
 * module=None : used by database implementations which support multiple DBAPI modules, this is a reference to a DBAPI2 module to be used instead of the engine's default module.  For Postgres, the default is psycopg2, or psycopg1 if 2 cannot be found.  For Oracle, its cx_Oracle.
