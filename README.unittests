@@ -1,5 +1,7 @@
 To run unit tests (assuming unix-style commandline, adjust as needed for windows):
 
+Python 2.4 or greater is required since the unit tests use decorators.
+
 cd into the SQLAlchemy distribution directory.
 
 Set up the PYTHONPATH:

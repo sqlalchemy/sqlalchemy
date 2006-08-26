@@ -5,6 +5,21 @@ All licenses allow for non-commercial and commercial use.
 To install:
 
 	python setup.py install
-	
+
+SVN checkouts also inlcude setup.cfg file allowing setuptools to create 
+an svn-tagged build.  
+
+Documentation is available in HTML format in the ./doc/ directory.
+
+The "raw" format of the documentation is Markdown with a few extra syntaxes 
+added in; those files are present in ./doc/build/content/.
+
+To fully generate the documentation into both Myghty and HTML format:
+
+	cd ./doc/build/
+	python genhtml.py
+
+Information running unit tests is in README.unittests.	
+
 good luck !
 	
