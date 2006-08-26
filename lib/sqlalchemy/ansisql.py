@@ -659,9 +659,11 @@ class ANSISchemaGenerator(engine.SchemaIterator):
     def visit_primary_key_constraint(self, constraint):
         if len(constraint) == 0:
             return
-        self.append(", \n")
-        self.append("\tPRIMARY KEY (%s)" % string.join([self.preparer.format_column(c) for c in constraint],', '))
-            
+        self.append(", \n\tPRIMARY KEY ")
+        if constraint.name is not None:
+            self.append("%s " % constraint.name)
+        self.append("(%s)" % (string.join([self.preparer.format_column(c) for c in constraint],', ')))
+                    
     def visit_foreign_key_constraint(self, constraint):
         self.append(", \n\t ")
         if constraint.name is not None:
