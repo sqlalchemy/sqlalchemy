@@ -266,7 +266,7 @@ Many table, schema, or column names require quoting to be enabled.  Reasons for 
     
 ### Creating and Dropping Database Tables {@name=creating}    
 
-Creating and dropping individual tables can be done via the `create()` and `drop()` methods of `Table`; these methods take an optional `engine` parameter which references an `Engine` or a `Connection`.  If not supplied, the `Engine` bound to the `MetaData` will be used, else an error is raised:
+Creating and dropping individual tables can be done via the `create()` and `drop()` methods of `Table`; these methods take an optional `connectable` parameter which references an `Engine` or a `Connection`.  If not supplied, the `Engine` bound to the `MetaData` will be used, else an error is raised:
 
     {python}
     meta = BoundMetaData('sqlite:///:memory:')
@@ -296,7 +296,7 @@ The `create()` and `drop()` methods also support an optional keyword argument `c
     employees.create(connectable=e, checkfirst=True)
     employees.drop(checkfirst=False)
     
-Entire groups of Tables can be created and dropped directly from the `MetaData` object with `create_all()` and `drop_all()`.  These methods always check for the existence of each table before creating or dropping.  Each method takes an optional `engine` keyword argument which can reference an `Engine` or a `Connection`.  If no engine is specified, the underlying bound `Engine`,  if any, is used:
+Entire groups of Tables can be created and dropped directly from the `MetaData` object with `create_all()` and `drop_all()`.  These methods always check for the existence of each table before creating or dropping.  Each method takes an optional `connectable` keyword argument which can reference an `Engine` or a `Connection`.  If no engine is specified, the underlying bound `Engine`,  if any, is used:
 
     {python}
     engine = create_engine('sqlite:///:memory:')

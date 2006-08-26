@@ -72,7 +72,7 @@ It is possible to install a default "threadlocal" session context by importing a
     objectstore.flush()
     
     # which is the same as this (assuming we are still on the same thread):
-    session = objectstore.get_session()
+    session = objectstore.session
     session.flush()
 
 We will now cover some of the key concepts used by Sessions and its underlying Unit of Work.
