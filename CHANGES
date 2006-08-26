@@ -7,6 +7,13 @@ function to 'create_engine'.
 defaults to 3600 seconds; connections after this age will be closed and
 replaced with a new one, to handle db's that automatically close 
 stale connections [ticket:274]
+- changed "invalidate" semantics with pooled connection; will 
+instruct the underlying connection record to reconnect the next 
+time its called.  "invalidate" will also automatically be called
+if any error is thrown in the underlying call to connection.cursor().
+this will hopefully allow the connection pool to reconnect to a
+database that had been stopped and started without restarting
+the connecting application [ticket:121] 
 - eesh !  the tutorial doctest was broken for quite some time.
 - add_property() method on mapper does a "compile all mappers"
 step in case the given property references a non-compiled mapper

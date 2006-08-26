@@ -104,9 +104,6 @@ class Pool(object):
     def return_conn(self, agent):
         self.do_return_conn(agent._connection_record)
 
-    def return_invalid(self, agent):
-        self.do_return_invalid(agent._connection_record)
-        
     def get(self):
         return self.do_get()
     
@@ -114,9 +111,6 @@ class Pool(object):
         raise NotImplementedError()
         
     def do_return_conn(self, conn):
-        raise NotImplementedError()
-        
-    def do_return_invalid(self, conn):
         raise NotImplementedError()
         
     def status(self):
@@ -133,26 +127,35 @@ class Pool(object):
 
 class _ConnectionRecord(object):
     def __init__(self, pool):
-        self.pool = pool
+        self.__pool = pool
         self.connection = self.__connect()
     def close(self):
         self.connection.close()
+    def invalidate(self):
+        self.__pool.log("Invalidate connection %s" % repr(self.connection))
+        self.__close()
+        self.connection = None
     def get_connection(self):
-        if self.pool._recycle > -1 and time.time() - self.starttime > self.pool._recycle:
-            self.pool.log("Connection %s exceeded timeout; recycling" % repr(self.connection))
-            try:
-                self.connection.close()
-            except Exception, e:
-                self.pool.log("Connection %s threw an error: %s" % (repr(self.connection), str(e)))
+        if self.connection is None:
+            self.connection = self.__connect()
+        elif (self.__pool._recycle > -1 and time.time() - self.starttime > self.__pool._recycle):
+            self.__pool.log("Connection %s exceeded timeout; recycling" % repr(self.connection))
+            self.__close()
             self.connection = self.__connect()
         return self.connection
+    def __close(self):
+        try:
+            self.__pool.log("Closing connection %s" % (repr(self.connection)))
+            self.connection.close()
+        except Exception, e:
+            self.__pool.log("Connection %s threw an error on close: %s" % (repr(self.connection), str(e)))
     def __connect(self):
         try:
             self.starttime = time.time()
-            return self.pool._creator()
-        except:
+            return self.__pool._creator()
+        except Exception, e:
+            self.__pool.log("Error on connect(): %s" % (str(e)))
             raise
-            # TODO: reconnect support here ?
 
 class _ThreadFairy(object):
     """marks a thread identifier as owning a connection, for a thread local pool."""
@@ -171,19 +174,19 @@ class _ConnectionFairy(object):
         except:
             self.connection = None # helps with endless __getattr__ loops later on
             self._connection_record = None
-            self.__pool.return_invalid(self)
             raise
         if self.__pool.echo:
             self.__pool.log("Connection %s checked out from pool" % repr(self.connection))
     def invalidate(self):
-        if self.__pool.echo:
-            self.__pool.log("Invalidate connection %s" % repr(self.connection))
+        self._connection_record.invalidate()
         self.connection = None
-        self._connection_record = None
-        self._threadfairy = None
-        self.__pool.return_invalid(self)
+        self._close()
     def cursor(self, *args, **kwargs):
-        return _CursorFairy(self, self.connection.cursor(*args, **kwargs))
+        try:
+            return _CursorFairy(self, self.connection.cursor(*args, **kwargs))
+        except Exception, e:
+            self.invalidate()
+            raise
     def __getattr__(self, key):
         return getattr(self.connection, key)
     def checkout(self):
@@ -199,16 +202,15 @@ class _ConnectionFairy(object):
         self._close()
     def _close(self):
         if self.connection is not None:
-            if self.__pool.echo:
-                self.__pool.log("Connection %s being returned to pool" % repr(self.connection))
             try:
                 self.connection.rollback()
             except:
                 # damn mysql -- (todo look for NotSupportedError)
                 pass
+        if self._connection_record is not None:
+            if self.__pool.echo:
+                self.__pool.log("Connection %s being returned to pool" % repr(self.connection))
             self.__pool.return_conn(self)
-        self.__pool = None
-        self.connection = None
         self._connection_record = None
         self._threadfairy = None
             
@@ -257,12 +259,6 @@ class SingletonThreadPool(Pool):
     def do_return_conn(self, conn):
         pass
         
-    def do_return_invalid(self, conn):
-        try:
-            del self._conns[thread.get_ident()]
-        except KeyError:
-            pass
-            
     def do_get(self):
         try:
             return self._conns[thread.get_ident()]
@@ -288,10 +284,6 @@ class QueuePool(Pool):
         except Queue.Full:
             self._overflow -= 1
 
-    def do_return_invalid(self, conn):
-        if conn is not None:
-            self._overflow -= 1
-        
     def do_get(self):
         try:
             return self._pool.get(self._max_overflow > -1 and self._overflow >= self._max_overflow, self._timeout)

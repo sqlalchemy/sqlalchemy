@@ -6,7 +6,11 @@ import sqlalchemy.pool as pool
 import sqlalchemy.exceptions as exceptions
 
 class MockDBAPI(object):
+    def __init__(self):
+        self.throw_error = False
     def connect(self, argument):
+        if self.throw_error:
+            raise Exception("couldnt connect !")
         return MockConnection()
 class MockConnection(object):
     def close(self):
@@ -154,6 +158,37 @@ class PoolTest(PersistTest):
         time.sleep(3)
         c3= p.connect()
         assert id(c3.connection) != c_id
+    
+    def test_invalidate(self):
+        dbapi = MockDBAPI()
+        p = pool.QueuePool(creator = lambda: dbapi.connect('foo.db'), pool_size = 1, max_overflow = 0, use_threadlocal = False, echo=True)
+        c1 = p.connect()
+        c_id = id(c1.connection)
+        c1.close(); c1=None
+
+        c1 = p.connect()
+        assert id(c1.connection) == c_id
+        c1.invalidate()
+        c1 = None
+        
+        c1 = p.connect()
+        assert id(c1.connection) != c_id
+
+    def test_reconnect(self):
+        dbapi = MockDBAPI()
+        p = pool.QueuePool(creator = lambda: dbapi.connect('foo.db'), pool_size = 1, max_overflow = 0, use_threadlocal = False, echo=True)
+        c1 = p.connect()
+        c_id = id(c1.connection)
+        c1.close(); c1=None
+
+        c1 = p.connect()
+        assert id(c1.connection) == c_id
+        dbapi.raise_error = True
+        c1.invalidate()
+        c1 = None
+
+        c1 = p.connect()
+        assert id(c1.connection) != c_id
         
     def testthreadlocal_del(self):
         self._do_testthreadlocal(useclose=False)
