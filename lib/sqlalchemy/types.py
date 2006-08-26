@@ -181,15 +181,21 @@ class Float(Numeric):
 
 class DateTime(TypeEngine):
     """implements a type for datetime.datetime() objects"""
-    pass
-
+    def __init__(self, timezone=True):
+        self.timezone = timezone
+    def adapt(self, impltype):
+        return impltype(timezone=self.timezone)
+        
 class Date(TypeEngine):
     """implements a type for datetime.date() objects"""
     pass
 
 class Time(TypeEngine):
     """implements a type for datetime.time() objects"""
-    pass
+    def __init__(self, timezone=True):
+        self.timezone = timezone
+    def adapt(self, impltype):
+        return impltype(timezone=self.timezone)
 
 class Binary(TypeEngine):
     def __init__(self, length=None):

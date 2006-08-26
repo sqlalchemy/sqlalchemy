@@ -36,7 +36,12 @@ flag for use with table reflection to help with quoting rules
 - unit tests updated to run without any pysqlite installed; pool
 test uses a mock DBAPI
 - urls support escaped characters in passwords [ticket:281]
-- added limit/offset to UNION queries
+- added limit/offset to UNION queries (though not yet in oracle)
+- added "timezone=True" flag to DateTime and Time types.  postgres
+so far will convert this to "TIME[STAMP] (WITH|WITHOUT) TIME ZONE",
+so that control over timezone presence is more controllable (psycopg2
+returns datetimes with tzinfo's if available, which can create confusion
+against datetimes that dont).
 
 0.2.7
 - quoting facilities set up so that database-specific quoting can be

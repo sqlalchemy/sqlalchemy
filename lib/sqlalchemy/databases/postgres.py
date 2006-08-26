@@ -46,7 +46,7 @@ class PGSmallInteger(sqltypes.Smallinteger):
         return "SMALLINT"
 class PG2DateTime(sqltypes.DateTime):
     def get_col_spec(self):
-        return "TIMESTAMP"
+        return "TIMESTAMP " + (self.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
 class PG1DateTime(sqltypes.DateTime):
     def convert_bind_param(self, value, dialect):
         if value is not None:
@@ -70,7 +70,7 @@ class PG1DateTime(sqltypes.DateTime):
                                  value.hour, value.minute, seconds,
                                  microseconds)
     def get_col_spec(self):
-        return "TIMESTAMP"
+        return "TIMESTAMP " + (self.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
 class PG2Date(sqltypes.Date):
     def get_col_spec(self):
         return "DATE"
@@ -89,7 +89,7 @@ class PG1Date(sqltypes.Date):
         return "DATE"
 class PG2Time(sqltypes.Time):
     def get_col_spec(self):
-        return "TIME"
+        return "TIME " + (self.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
 class PG1Time(sqltypes.Time):
     def convert_bind_param(self, value, dialect):
         # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
@@ -102,7 +102,7 @@ class PG1Time(sqltypes.Time):
         # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
         return value
     def get_col_spec(self):
-        return "TIME"
+        return "TIME " + (self.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
 
 class PGText(sqltypes.TEXT):
     def get_col_spec(self):
