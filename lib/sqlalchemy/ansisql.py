@@ -244,6 +244,7 @@ class ANSICompiler(sql.Compiled):
         order_by = self.get_str(cs.order_by_clause)
         if order_by:
             text += " ORDER BY " + order_by
+        text += self.visit_select_postclauses(cs)
         if cs.parens:
             self.strings[cs] = "(" + text + ")"
         else:
@@ -409,12 +410,14 @@ class ANSICompiler(sql.Compiled):
         return (select.limit or select.offset) and self.limit_clause(select) or ""
 
     def limit_clause(self, select):
+        text = ""
         if select.limit is not None:
-            return  " \n LIMIT " + str(select.limit)
+            text +=  " \n LIMIT " + str(select.limit)
         if select.offset is not None:
             if select.limit is None:
-                return " \n LIMIT -1"
-            return " OFFSET " + str(select.offset)
+                text += " \n LIMIT -1"
+            text += " OFFSET " + str(select.offset)
+        return text
 
     def visit_table(self, table):
         self.froms[table] = self.preparer.format_table(table)

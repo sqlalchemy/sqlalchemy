@@ -1347,6 +1347,8 @@ class CompoundSelect(SelectBaseMixin, FromClause):
         self.correlate = kwargs.pop('correlate', False)
         self.for_update = kwargs.pop('for_update', False)
         self.nowait = kwargs.pop('nowait', False)
+        self.limit = kwargs.get('limit', None)
+        self.offset = kwargs.get('offset', None)
         for s in self.selects:
             s.group_by(None)
             s.order_by(None)

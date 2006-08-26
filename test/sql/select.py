@@ -461,6 +461,19 @@ FROM myothertable UNION SELECT thirdtable.userid, thirdtable.otherstuff FROM thi
             )
             assert u.corresponding_column(table2.c.otherid) is u.c.otherid
             
+            self.runtest(
+                union(
+                    select([table1]),
+                    select([table2]),
+                    order_by=['myid'],
+                    offset=10,
+                    limit=5
+                )
+            ,    "SELECT mytable.myid, mytable.name, mytable.description \
+FROM mytable UNION SELECT myothertable.otherid, myothertable.othername \
+FROM myothertable ORDER BY myid \
+ LIMIT 5 OFFSET 10"
+            )
             
     def testouterjoin(self):
         # test an outer join.  the oracle module should take the ON clause of the join and
