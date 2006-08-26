@@ -324,6 +324,40 @@ class OracleCompiler(ansisql.ANSICompiler):
                 self.parameters[c.key] = None
         return ansisql.ANSICompiler.visit_insert(self, insert)
 
+    def _TODO_visit_compound_select(self, select):
+        """need to determine how to get LIMIT/OFFSET into a UNION for oracle"""
+        if getattr(select, '_oracle_visit', False):
+            # cancel out the compiled order_by on the select
+            if hasattr(select, "order_by_clause"):
+                self.strings[select.order_by_clause] = ""
+            ansisql.ANSICompiler.visit_compound_select(self, select)
+            return
+            
+        if select.limit is not None or select.offset is not None:
+            select._oracle_visit = True
+            # to use ROW_NUMBER(), an ORDER BY is required. 
+            orderby = self.strings[select.order_by_clause]
+            if not orderby:
+                orderby = select.oid_column
+                orderby.accept_visitor(self)
+                orderby = self.strings[orderby]
+            class SelectVisitor(sql.ClauseVisitor):
+                def visit_select(self, select):
+                    select.append_column(sql.ColumnClause("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn"))
+            select.accept_visitor(SelectVisitor())
+            limitselect = sql.select([c for c in select.c if c.key!='ora_rn'])
+            if select.offset is not None:
+                limitselect.append_whereclause("ora_rn>%d" % select.offset)
+                if select.limit is not None:
+                    limitselect.append_whereclause("ora_rn<=%d" % (select.limit + select.offset))
+            else:
+                limitselect.append_whereclause("ora_rn<=%d" % select.limit)
+            limitselect.accept_visitor(self)
+            self.strings[select] = self.strings[limitselect]
+            self.froms[select] = self.froms[limitselect]
+        else:
+            ansisql.ANSICompiler.visit_compound_select(self, select)
+        
     def visit_select(self, select):
         """looks for LIMIT and OFFSET in a select statement, and if so tries to wrap it in a 
         subquery with row_number() criterion."""
