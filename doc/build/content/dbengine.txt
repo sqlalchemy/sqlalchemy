@@ -167,7 +167,7 @@ Both `Connection` and `Engine` fulfill an interface known as `Connectable` which
 
 #### Implicit Connection Contexts {@name=context}
 
-An **implicit connection** refers to connections that are allocated by the `Engine` internally.  There are two general cases when this occurs:  when using the various `execute()` methods that are available off the `Engine` object itself, and when calling the `execute()` method on constructed SQL objects, which are described in [sqlconstruction](rel:sqlconstruction).
+An **implicit connection** refers to connections that are allocated by the `Engine` internally.  There are two general cases when this occurs:  when using the various `execute()` methods that are available off the `Engine` object itself, and when calling the `execute()` method on constructed SQL objects, which are described in [sql](rel:sql).
 
     {python title="Implicit Connection"}
     engine = create_engine('sqlite:///:memory:')
