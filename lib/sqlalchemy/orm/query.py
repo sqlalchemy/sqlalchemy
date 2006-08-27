@@ -232,7 +232,10 @@ class Query(object):
         return self._select_statement(statement, params=params)
 
     def count(self, whereclause=None, params=None, **kwargs):
-        s = self.table.count(whereclause)
+        if self._nestable(**kwargs):
+            s = self.table.select(whereclause, **kwargs).alias('getcount').count()
+        else:
+            s = self.table.count(whereclause)
         return self.session.scalar(self.mapper, s, params=params)
 
     def select_statement(self, statement, **params):
@@ -302,14 +305,18 @@ class Query(object):
         return self.instances(statement, params=params, **kwargs)
 
     def _should_nest(self, **kwargs):
-        """returns True if the given statement options indicate that we should "nest" the
+        """return True if the given statement options indicate that we should "nest" the
         generated query as a subquery inside of a larger eager-loading query.  this is used
         with keywords like distinct, limit and offset and the mapper defines eager loads."""
         return (
             self.mapper.has_eager()
-            and (kwargs.has_key('limit') or kwargs.has_key('offset') or kwargs.get('distinct', False))
+            and self._nestable(**kwargs)
         )
 
+    def _nestable(self, **kwargs):
+        """return true if the given statement options imply it should be nested."""
+        return (kwargs.has_key('limit') or kwargs.has_key('offset') or kwargs.get('distinct', False))
+        
     def compile(self, whereclause = None, **kwargs):
         order_by = kwargs.pop('order_by', False)
         from_obj = kwargs.pop('from_obj', [])

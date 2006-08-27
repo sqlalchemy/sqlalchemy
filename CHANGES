@@ -49,6 +49,8 @@ so far will convert this to "TIME[STAMP] (WITH|WITHOUT) TIME ZONE",
 so that control over timezone presence is more controllable (psycopg2
 returns datetimes with tzinfo's if available, which can create confusion
 against datetimes that dont).
+- fix to using query.count() with distinct, **kwargs with SelectResults
+count() [ticket:287]
 
 0.2.7
 - quoting facilities set up so that database-specific quoting can be

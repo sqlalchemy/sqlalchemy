@@ -28,7 +28,7 @@ class SelectResults(object):
 
     def count(self):
         """executes the SQL count() function against the SelectResults criterion."""
-        return self._query.count(self._clause)
+        return self._query.count(self._clause, **self._ops)
 
     def _col_aggregate(self, col, func):
         """executes func() function against the given column
