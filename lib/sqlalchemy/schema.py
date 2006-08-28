@@ -91,10 +91,14 @@ class TableSingleton(type):
             # we do it after the table is in the singleton dictionary to support
             # circular foreign keys
             if autoload:
-                if autoload_with:
-                    autoload_with.reflecttable(table)
-                else:
-                    metadata.engine.reflecttable(table)
+                try:
+                    if autoload_with:
+                        autoload_with.reflecttable(table)
+                    else:
+                        metadata.engine.reflecttable(table)
+                except exceptions.NoSuchTableError:
+                    table.deregister()
+                    raise
             # initialize all the column, etc. objects.  done after
             # reflection to allow user-overrides
             table._init_items(*args)

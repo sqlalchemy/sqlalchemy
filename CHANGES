@@ -51,6 +51,7 @@ returns datetimes with tzinfo's if available, which can create confusion
 against datetimes that dont).
 - fix to using query.count() with distinct, **kwargs with SelectResults
 count() [ticket:287]
+- deregister Table from MetaData when autoload fails; [ticket:289]
 
 0.2.7
 - quoting facilities set up so that database-specific quoting can be
