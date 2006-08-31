@@ -339,7 +339,6 @@ class PGDialect(ansisql.ANSIDialect):
                     break
                 found_table = True
                 name = row['attname']
-                natural_case = preparer._is_natural_case(name)
                 ## strip (30) from character varying(30)
                 attype = re.search('([^\(]+)', row['format_type']).group(1)
     
@@ -372,7 +371,7 @@ class PGDialect(ansisql.ANSIDialect):
                 colargs= []
                 if default is not None:
                     colargs.append(PassiveDefault(sql.text(default)))
-                table.append_item(schema.Column(name, coltype, nullable=nullable, case_sensitive=not natural_case, *colargs))
+                table.append_item(schema.Column(name, coltype, nullable=nullable, *colargs))
     
     
             if not found_table:
@@ -434,17 +433,14 @@ class PGDialect(ansisql.ANSIDialect):
                 referred_table = preparer._unquote_identifier(referred_table)
                 referred_columns = [preparer._unquote_identifier(x) for x in f.search(referred_columns).groups() if x]
                 
-                natural_case = preparer._is_natural_case(referred_table)
-                
                 refspec = []
                 if referred_schema is not None:
-                    natural_case_schema = preparer._is_natural_case(referred_schema)
                     schema.Table(referred_table, table.metadata, autoload=True, schema=referred_schema, 
-                                autoload_with=connection, case_sensitive= not natural_case, case_sensitive_schema = not natural_case_schema)
+                                autoload_with=connection)
                     for column in referred_columns:
                         refspec.append(".".join([referred_schema, referred_table, column]))
                 else:
-                    schema.Table(referred_table, table.metadata, autoload=True, autoload_with=connection, case_sensitive=not natural_case)
+                    schema.Table(referred_table, table.metadata, autoload=True, autoload_with=connection)
                     for column in referred_columns:
                         refspec.append(".".join([referred_table, column]))
                 
@@ -553,7 +549,5 @@ class PGIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
         if value[0] == self.initial_quote:
             value = value[1:-1].replace('""','"')
         return value
-    def _is_natural_case(self, value):
-        return self._fold_identifier_case(value) == value
     
 dialect = PGDialect

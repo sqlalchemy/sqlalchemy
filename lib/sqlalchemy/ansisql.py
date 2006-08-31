@@ -836,6 +836,9 @@ class ANSIIdentifierPreparer(schema.SchemaVisitor):
     def should_quote(self, object):
         return object.quote or self._requires_quotes(object.name, object.case_sensitive) 
  
+    def is_natural_case(self, object):
+        return object.quote or self._requires_quotes(object.name, object.case_sensitive)
+        
     def format_sequence(self, sequence):
         return self.__prepare_sequence(sequence)
         
