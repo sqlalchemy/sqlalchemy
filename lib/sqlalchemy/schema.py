@@ -600,7 +600,7 @@ class DefaultGenerator(SchemaItem):
         except AttributeError:
             return self._metadata
     def _get_parent(self):
-        return self.column
+        return getattr(self, 'column', None)
     def _set_parent(self, column):
         self.column = column
         self._metadata = self.column.table.metadata
@@ -687,7 +687,7 @@ class Constraint(SchemaItem):
     def copy(self):
         raise NotImplementedError()
     def _get_parent(self):
-        return self.table
+        return getattr(self, 'table', None)
         
 class ForeignKeyConstraint(Constraint):
     """table-level foreign key constraint, represents a colleciton of ForeignKey objects."""
