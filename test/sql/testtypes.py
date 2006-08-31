@@ -311,7 +311,7 @@ class TimezoneTest(AssertMixin):
         # get a date without a tzinfo
         somedate = datetime.datetime(2005, 10,20, 11, 52, 00)
         notztable.insert().execute(id=1, name='row1', date=somedate)
-        c = notztable.update(tztable.c.id==1).execute(name='newname')
+        c = notztable.update(notztable.c.id==1).execute(name='newname')
         x = c.last_updated_params()
         print x['date'] == somedate
         
