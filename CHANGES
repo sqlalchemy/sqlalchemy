@@ -37,9 +37,16 @@ parameters.  nice job by Bill Noon figuring out the basic idea.
 - postgres reflection moved to use pg_schema tables, can be overridden
 with use_information_schema=True argument to create_engine
 [ticket:60], [ticket:71]
-- added natural_case argument to Table, Column, semi-experimental
-flag for use with table reflection to help with quoting rules
-[ticket:155]
+- added case_sensitive argument to MetaData, Table, Column, determines
+itself automatically based on if a parent schemaitem has a non-None
+setting for the flag, or if not, then whether the identifier name is all lower
+case or not.  when set to True, quoting is applied to identifiers with mixed or 
+uppercase identifiers.  quoting is also applied automatically in all cases to 
+identifiers that are known to be reserved words or contain other non-standard 
+characters. various database dialects can override all of this behavior, but 
+currently they are all using the default behavior.  tested with postgres, mysql, 
+sqlite.  needs more testing with firebird, oracle, ms-sql. part of the ongoing 
+work with [ticket:155]
 - unit tests updated to run without any pysqlite installed; pool
 test uses a mock DBAPI
 - urls support escaped characters in passwords [ticket:281]

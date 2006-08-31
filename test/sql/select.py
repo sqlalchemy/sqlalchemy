@@ -344,9 +344,9 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
 
     def testcalculatedcolumns(self):
          value_tbl = table('values',
-             Column('id', Integer),
-             Column('val1', Float),
-             Column('val2', Float),
+             column('id', Integer),
+             column('val1', Float),
+             column('val2', Float),
          )
 
          self.runtest(
@@ -549,10 +549,10 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
         
     def testcast(self):
         tbl = table('casttest',
-                    Column('id', Integer),
-                    Column('v1', Float),
-                    Column('v2', Float),
-                    Column('ts', TIMESTAMP),
+                    column('id', Integer),
+                    column('v1', Float),
+                    column('v2', Float),
+                    column('ts', TIMESTAMP),
                     )
         
         def check_results(dialect, expected_results, literal):

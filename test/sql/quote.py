@@ -12,14 +12,12 @@ class QuoteTest(PersistTest):
         table1 = Table('WorstCase1', metadata,
             Column('lowercase', Integer, primary_key=True),
             Column('UPPERCASE', Integer),
-            Column('MixedCase', Integer, quote=True),
-            Column('ASC', Integer, quote=True),
-            quote=True)
+            Column('MixedCase', Integer),
+            Column('ASC', Integer))
         table2 = Table('WorstCase2', metadata,
-            Column('desc', Integer, quote=True, primary_key=True),
-            Column('Union', Integer, quote=True),
-            Column('MixedCase', Integer, quote=True),
-            quote=True)
+            Column('desc', Integer, primary_key=True),
+            Column('Union', Integer),
+            Column('MixedCase', Integer))
         table1.create()
         table2.create()
     
@@ -67,6 +65,19 @@ class QuoteTest(PersistTest):
         res2 = select([table2.c.desc, table2.c.Union, table2.c.MixedCase], use_labels=True).execute().fetchall()
         print res2
         assert(res2==[(1,2,3),(2,2,3),(4,3,2)])
+    
+    def testcascade(self):
+        lcmetadata = MetaData(case_sensitive=False)
+        t1 = Table('SomeTable', lcmetadata, 
+            Column('UcCol', Integer),
+            Column('normalcol', String))
+        t2 = Table('othertable', lcmetadata,
+            Column('UcCol', Integer),
+            Column('normalcol', String, ForeignKey('SomeTable.normalcol')))
+        assert lcmetadata.case_sensitive is False
+        assert t1.c.UcCol.case_sensitive is False
+        assert t2.c.normalcol.case_sensitive is False
+        
         
 if __name__ == "__main__":
     testbase.main()

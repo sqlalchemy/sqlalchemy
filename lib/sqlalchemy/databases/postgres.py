@@ -171,10 +171,6 @@ pg1_ischema_names.update({
     'time' : PG1Time
     })
 
-reserved_words = util.Set(['all', 'analyse', 'analyze', 'and', 'any', 'array', 'as', 'asc', 'asymmetric', 'authorization', 'between', 'binary', 'both', 'case', 'cast', 'check', 'collate', 'column', 'constraint', 'create', 'cross', 'current_date', 'current_role', 'current_time', 'current_timestamp', 'current_user', 'default', 'deferrable', 'desc', 'distinct', 'do', 'else', 'end', 'except', 'false', 'for', 'foreign', 'freeze', 'from', 'full', 'grant', 'group', 'having', 'ilike', 'in', 'initially', 'inner', 'intersect', 'into', 'is', 'isnull', 'join', 'leading', 'left', 'like', 'limit', 'localtime', 'localtimestamp', 'natural', 'new', 'not', 'notnull', 'null', 'off', 'offset', 'old', 'on', 'only', 'or', 'order', 'outer', 'overlaps', 'placing', 'primary', 'references', 'right', 'select', 'session_user', 'similar', 'some', 'symmetric', 'table', 'then', 'to', 'trailing', 'true', 'union', 'unique', 'user', 'using', 'verbose', 'when', 'where'])
-
-legal_characters = util.Set(string.ascii_lowercase + string.digits + '_$')
-illegal_initial_characters = util.Set(string.digits + '$')
 
 def engine(opts, **params):
     return PGSQLEngine(opts, **params)
@@ -376,7 +372,7 @@ class PGDialect(ansisql.ANSIDialect):
                 colargs= []
                 if default is not None:
                     colargs.append(PassiveDefault(sql.text(default)))
-                table.append_item(schema.Column(name, coltype, nullable=nullable, natural_case=natural_case, *colargs))
+                table.append_item(schema.Column(name, coltype, nullable=nullable, case_sensitive=not natural_case, *colargs))
     
     
             if not found_table:
@@ -444,11 +440,11 @@ class PGDialect(ansisql.ANSIDialect):
                 if referred_schema is not None:
                     natural_case_schema = preparer._is_natural_case(referred_schema)
                     schema.Table(referred_table, table.metadata, autoload=True, schema=referred_schema, 
-                                autoload_with=connection, natural_case=natural_case, natural_case_schema = natural_case_schema)
+                                autoload_with=connection, case_sensitive= not natural_case, case_sensitive_schema = not natural_case_schema)
                     for column in referred_columns:
                         refspec.append(".".join([referred_schema, referred_table, column]))
                 else:
-                    schema.Table(referred_table, table.metadata, autoload=True, autoload_with=connection, natural_case=natural_case)
+                    schema.Table(referred_table, table.metadata, autoload=True, autoload_with=connection, case_sensitive=not natural_case)
                     for column in referred_columns:
                         refspec.append(".".join([referred_table, column]))
                 
@@ -533,9 +529,9 @@ class PGDefaultRunner(ansisql.ANSIDefaultRunner):
                 # TODO: this has to build into the Sequence object so we can get the quoting 
                 # logic from it
                 if sch is not None:
-                    exc = "select nextval('%s.%s_%s_seq')" % (sch, column.table.name, column.name)
+                    exc = "select nextval('\"%s.%s_%s_seq\"')" % (sch, column.table.name, column.name)
                 else:
-                    exc = "select nextval('%s_%s_seq')" % (column.table.name, column.name)
+                    exc = "select nextval('\"%s_%s_seq\"')" % (column.table.name, column.name)
                 c = self.proxy(exc)
                 return c.fetchone()[0]
             else:
@@ -553,13 +549,6 @@ class PGDefaultRunner(ansisql.ANSIDefaultRunner):
 class PGIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
     def _fold_identifier_case(self, value):
         return value.lower()
-    def _requires_quotes(self, value, natural_case):
-        if natural_case:
-            value = self._fold_identifier_case(str(value))
-        retval = bool(len([x for x in str(value) if x not in legal_characters]))
-        if not retval and (value[0] in illegal_initial_characters or value in reserved_words):
-            retval = True
-        return retval
     def _unquote_identifier(self, value):
         if value[0] == self.initial_quote:
             value = value[1:-1].replace('""','"')
