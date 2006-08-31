@@ -77,6 +77,12 @@ class ReflectionTest(PersistTest):
             addresses.drop()
             users.drop()
         
+        # a hack to remove the defaults we got reflecting from postgres
+        # SERIAL columns, since they reference sequences that were just dropped.
+        # PG 8.1 doesnt want to create them if the underlying sequence doesnt exist
+        users.c.user_id.default = None
+        addresses.c.address_id.default = None
+        
         users.create()
         addresses.create()
         try:
@@ -142,8 +148,8 @@ class ReflectionTest(PersistTest):
     def testmultipk(self):
         table = Table(
             'engine_multi', testbase.db, 
-            Column('multi_id', Integer, primary_key=True),
-            Column('multi_rev', Integer, primary_key=True),
+            Column('multi_id', Integer, Sequence('multi_id_seq'), primary_key=True),
+            Column('multi_rev', Integer, Sequence('multi_rev_seq'), primary_key=True),
             Column('name', String(50), nullable=False),
             Column('val', String(100))
         )
@@ -161,6 +167,8 @@ class ReflectionTest(PersistTest):
             table.c['multi_rev'].primary_key
             ]
         )
+
+
         table.create()
         table.insert().execute({'multi_id':1,'multi_rev':1,'name':'row1', 'val':'value1'})
         table.insert().execute({'multi_id':2,'multi_rev':18,'name':'row2', 'val':'value2'})
