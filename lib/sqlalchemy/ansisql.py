@@ -556,7 +556,7 @@ class ANSICompiler(sql.Compiled):
         # case one: no parameters in the statement, no parameters in the 
         # compiled params - just return binds for all the table columns
         if self.parameters is None and stmt.parameters is None:
-            return [(c, sql.bindparam(c.name, type=c.type)) for c in stmt.table.columns]
+            return [(c, sql.bindparam(c.key, type=c.type)) for c in stmt.table.columns]
 
         # if we have statement parameters - set defaults in the 
         # compiled params
@@ -589,7 +589,7 @@ class ANSICompiler(sql.Compiled):
             if d.has_key(c):
                 value = d[c]
                 if sql._is_literal(value):
-                    value = sql.bindparam(c.name, value, type=c.type)
+                    value = sql.bindparam(c.key, value, type=c.type)
                 values.append((c, value))
         return values
 

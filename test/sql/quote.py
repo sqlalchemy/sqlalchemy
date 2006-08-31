@@ -13,10 +13,10 @@ class QuoteTest(PersistTest):
             Column('lowercase', Integer, primary_key=True),
             Column('UPPERCASE', Integer),
             Column('MixedCase', Integer),
-            Column('ASC', Integer))
+            Column('ASC', Integer, key='a123'))
         table2 = Table('WorstCase2', metadata,
-            Column('desc', Integer, primary_key=True),
-            Column('Union', Integer),
+            Column('desc', Integer, primary_key=True, key='d123'),
+            Column('Union', Integer, key='u123'),
             Column('MixedCase', Integer))
         table1.create()
         table2.create()
@@ -30,12 +30,12 @@ class QuoteTest(PersistTest):
         table2.drop()
         
     def testbasic(self):
-        table1.insert().execute({'lowercase':1,'UPPERCASE':2,'MixedCase':3,'ASC':4},
-                {'lowercase':2,'UPPERCASE':2,'MixedCase':3,'ASC':4},
-                {'lowercase':4,'UPPERCASE':3,'MixedCase':2,'ASC':1})
-        table2.insert().execute({'desc':1,'Union':2,'MixedCase':3},
-                {'desc':2,'Union':2,'MixedCase':3},
-                {'desc':4,'Union':3,'MixedCase':2})
+        table1.insert().execute({'lowercase':1,'UPPERCASE':2,'MixedCase':3,'a123':4},
+                {'lowercase':2,'UPPERCASE':2,'MixedCase':3,'a123':4},
+                {'lowercase':4,'UPPERCASE':3,'MixedCase':2,'a123':1})
+        table2.insert().execute({'d123':1,'u123':2,'MixedCase':3},
+                {'d123':2,'u123':2,'MixedCase':3},
+                {'d123':4,'u123':3,'MixedCase':2})
         
         res1 = select([table1.c.lowercase, table1.c.UPPERCASE, table1.c.MixedCase, table1.c.ASC]).execute().fetchall()
         print res1
@@ -51,18 +51,18 @@ class QuoteTest(PersistTest):
         assert t2.c.has_key('MixedCase')
     
     def testlabels(self):
-        table1.insert().execute({'lowercase':1,'UPPERCASE':2,'MixedCase':3,'ASC':4},
-                {'lowercase':2,'UPPERCASE':2,'MixedCase':3,'ASC':4},
-                {'lowercase':4,'UPPERCASE':3,'MixedCase':2,'ASC':1})
-        table2.insert().execute({'desc':1,'Union':2,'MixedCase':3},
-                {'desc':2,'Union':2,'MixedCase':3},
-                {'desc':4,'Union':3,'MixedCase':2})
+        table1.insert().execute({'lowercase':1,'UPPERCASE':2,'MixedCase':3,'a123':4},
+                {'lowercase':2,'UPPERCASE':2,'MixedCase':3,'a123':4},
+                {'lowercase':4,'UPPERCASE':3,'MixedCase':2,'a123':1})
+        table2.insert().execute({'d123':1,'u123':2,'MixedCase':3},
+                {'d123':2,'u123':2,'MixedCase':3},
+                {'d123':4,'u123':3,'MixedCase':2})
         
-        res1 = select([table1.c.lowercase, table1.c.UPPERCASE, table1.c.MixedCase, table1.c.ASC], use_labels=True).execute().fetchall()
+        res1 = select([table1.c.lowercase, table1.c.UPPERCASE, table1.c.MixedCase, table1.c.a123], use_labels=True).execute().fetchall()
         print res1
         assert(res1==[(1,2,3,4),(2,2,3,4),(4,3,2,1)])
         
-        res2 = select([table2.c.desc, table2.c.Union, table2.c.MixedCase], use_labels=True).execute().fetchall()
+        res2 = select([table2.c.d123, table2.c.u123, table2.c.MixedCase], use_labels=True).execute().fetchall()
         print res2
         assert(res2==[(1,2,3),(2,2,3),(4,3,2)])
     

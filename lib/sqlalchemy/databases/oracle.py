@@ -186,7 +186,8 @@ class OracleDialect(ansisql.ANSIDialect):
         return bool( cursor.fetchone() is not None )
         
     def reflecttable(self, connection, table):
-        c = connection.execute ("select distinct OWNER from ALL_TAB_COLUMNS where TABLE_NAME = :table_name", {'table_name':table.name.upper()})
+        # TODO: determine how oracle puts case sensitive names in data dictionary
+        c = connection.execute ("select distinct OWNER from ALL_TAB_COLUMNS where TABLE_NAME = :table_name", {'table_name':name.upper()})
         rows = c.fetchall()
         if not rows :
             raise exceptions.NoSuchTableError(table.name)
@@ -397,7 +398,7 @@ class OracleCompiler(ansisql.ANSICompiler):
 
 class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, **kwargs):
-        colspec = column.name
+        colspec = self.preparer.format_column(column)
         colspec += " " + column.type.engine_impl(self.engine).get_col_spec()
         default = self.get_column_default_string(column)
         if default is not None:
@@ -409,7 +410,7 @@ class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):
 
     def visit_sequence(self, sequence):
         if not self.engine.dialect.has_sequence(self.connection, sequence.name):
-            self.append("CREATE SEQUENCE %s" % sequence.name)
+            self.append("CREATE SEQUENCE %s" % self.preparer.format_sequence(sequence))
             self.execute()
 
 class OracleSchemaDropper(ansisql.ANSISchemaDropper):
