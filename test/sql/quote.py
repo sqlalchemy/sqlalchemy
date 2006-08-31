@@ -37,11 +37,11 @@ class QuoteTest(PersistTest):
                 {'d123':2,'u123':2,'MixedCase':3},
                 {'d123':4,'u123':3,'MixedCase':2})
         
-        res1 = select([table1.c.lowercase, table1.c.UPPERCASE, table1.c.MixedCase, table1.c.ASC]).execute().fetchall()
+        res1 = select([table1.c.lowercase, table1.c.UPPERCASE, table1.c.MixedCase, table1.c.a123]).execute().fetchall()
         print res1
         assert(res1==[(1,2,3,4),(2,2,3,4),(4,3,2,1)])
         
-        res2 = select([table2.c.desc, table2.c.Union, table2.c.MixedCase]).execute().fetchall()
+        res2 = select([table2.c.d123, table2.c.u123, table2.c.MixedCase]).execute().fetchall()
         print res2
         assert(res2==[(1,2,3),(2,2,3),(4,3,2)])
         

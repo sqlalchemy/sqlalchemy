@@ -508,7 +508,7 @@ class PGSchemaGenerator(ansisql.ANSISchemaGenerator):
 
     def visit_sequence(self, sequence):
         if not sequence.optional and not self.engine.dialect.has_sequence(self.connection, sequence.name):
-            self.append("CREATE SEQUENCE %s" % sequence.name)
+            self.append("CREATE SEQUENCE %s" % self.preparer.format_sequence(sequence))
             self.execute()
             
 class PGSchemaDropper(ansisql.ANSISchemaDropper):
