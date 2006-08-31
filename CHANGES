@@ -45,7 +45,7 @@ uppercase identifiers.  quoting is also applied automatically in all cases to
 identifiers that are known to be reserved words or contain other non-standard 
 characters. various database dialects can override all of this behavior, but 
 currently they are all using the default behavior.  tested with postgres, mysql, 
-sqlite.  needs more testing with firebird, oracle, ms-sql. part of the ongoing 
+sqlite, oracle.  needs more testing with firebird, ms-sql. part of the ongoing 
 work with [ticket:155]
 - unit tests updated to run without any pysqlite installed; pool
 test uses a mock DBAPI

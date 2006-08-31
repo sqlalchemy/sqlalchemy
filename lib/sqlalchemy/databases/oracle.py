@@ -186,8 +186,12 @@ class OracleDialect(ansisql.ANSIDialect):
         return bool( cursor.fetchone() is not None )
         
     def reflecttable(self, connection, table):
-        # TODO: determine how oracle puts case sensitive names in data dictionary
-        c = connection.execute ("select distinct OWNER from ALL_TAB_COLUMNS where TABLE_NAME = :table_name", {'table_name':name.upper()})
+        preparer = self.identifier_preparer
+        if not preparer.should_quote(table):
+            name = table.name.upper()
+        else:
+            name = table.name
+        c = connection.execute ("select distinct OWNER from ALL_TAB_COLUMNS where TABLE_NAME = :table_name", {'table_name':name})
         rows = c.fetchall()
         if not rows :
             raise exceptions.NoSuchTableError(table.name)
@@ -203,7 +207,7 @@ class OracleDialect(ansisql.ANSIDialect):
                 else:
                     raise exceptions.AssertionError("There are multiple tables with name %s in the schema, you must specifie owner"%table.name)
 
-        c = connection.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from ALL_TAB_COLUMNS where TABLE_NAME = :table_name and OWNER = :owner", {'table_name':table.name.upper(), 'owner':owner})
+        c = connection.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from ALL_TAB_COLUMNS where TABLE_NAME = :table_name and OWNER = :owner", {'table_name':name, 'owner':owner})
         
         while True:
             row = c.fetchone()
@@ -234,8 +238,10 @@ class OracleDialect(ansisql.ANSIDialect):
             colargs = []
             if default is not None:
                 colargs.append(schema.PassiveDefault(sql.text(default)))
-            
-            name = name.lower()
+          
+            # if name comes back as all upper, assume its case folded 
+            if (name.upper() == name): 
+                name = name.lower()
             
             table.append_item (schema.Column(name, coltype, nullable=nullable, *colargs))
 

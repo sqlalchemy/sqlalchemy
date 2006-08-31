@@ -832,7 +832,10 @@ class ANSIIdentifierPreparer(schema.SchemaVisitor):
             return self.__prepare_table(column.table, **kwargs) + "." + self.__strings.get(column, column.name)
         else:
             return self.__strings.get(column, column.name)
-    
+   
+    def should_quote(self, object):
+        return object.quote or self._requires_quotes(object.name, object.case_sensitive) 
+ 
     def format_sequence(self, sequence):
         return self.__prepare_sequence(sequence)
         
