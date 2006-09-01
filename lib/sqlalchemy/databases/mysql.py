@@ -317,9 +317,11 @@ class MySQLDialect(ansisql.ANSIDialect):
         return bool( not not cursor.rowcount )
 
     def reflecttable(self, connection, table):
-        # to use information_schema:
-        #ischema.reflecttable(self, table, ischema_names, use_mysql=True)
-        
+        # reference:  http://dev.mysql.com/doc/refman/5.0/en/name-case-sensitivity.html
+        case_sensitive = connection.execute("show variables like 'lower_case_table_names'").fetchone()[1] == 0
+        if not case_sensitive:
+            table.name = table.name.lower()
+            table.metadata.tables[table.name]= table
         c = connection.execute("describe " + table.name, {})
         found_table = False
         while True:
