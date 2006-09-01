@@ -31,10 +31,13 @@ class InstrumentedAttribute(object):
             return self
         return self.get(obj)
 
-    def hasparent(self, item):
-        """returns True if the given item is attached to a parent object 
-        via the attribute represented by this InstrumentedAttribute."""
-        return item._state.get(('hasparent', id(self)))
+    def hasparent(self, item, optimistic=False):
+        """return True if the given item is attached to a parent object 
+        via the attribute represented by this InstrumentedAttribute.
+        
+        optimistic indicates what we should return if the given item has no "hasparent"
+        record at all for the given attribute."""
+        return item._state.get(('hasparent', id(self)), optimistic)
         
     def sethasparent(self, item, value):
         """sets a boolean flag on the given item corresponding to whether or not it is
@@ -136,8 +139,12 @@ class InstrumentedAttribute(object):
                         return InstrumentedAttribute.PASSIVE_NORESULT
                     values = callable_()
                     l = InstrumentedList(self, obj, self._adapt_list(values), init=False)
-                    if self.trackparent and values is not None:
-                        [self.sethasparent(v, True) for v in values if v is not None]
+                    
+                    # mark loaded instances with "hasparent" status.  commented out
+                    # because loaded objects use "optimistic" parent-checking
+                    #if self.trackparent and values is not None:
+                    #    [self.sethasparent(v, True) for v in values if v is not None]
+                    
                     # if a callable was executed, then its part of the "committed state"
                     # if any, so commit the newly loaded data
                     orig = state.get('original', None)
@@ -157,8 +164,12 @@ class InstrumentedAttribute(object):
                         return InstrumentedAttribute.PASSIVE_NORESULT
                     value = callable_()
                     obj.__dict__[self.key] = value
-                    if self.trackparent and value is not None:
-                        self.sethasparent(value, True)
+
+                    # mark loaded instances with "hasparent" status.  commented out
+                    # because loaded objects use "optimistic" parent-checking
+                    #if self.trackparent and value is not None:
+                    #    self.sethasparent(value, True)
+                    
                     # if a callable was executed, then its part of the "committed state"
                     # if any, so commit the newly loaded data
                     orig = state.get('original', None)

@@ -186,10 +186,22 @@ class AttributesTest(PersistTest):
         assert p1.blog is b
         assert p1 in b.posts
 
-        # no orphans
-        assert getattr(Blog, 'posts').hasparent(p1)
-        assert getattr(Post, 'blog').hasparent(b)
+        # no orphans (but we are using optimistic checks)
+        assert getattr(Blog, 'posts').hasparent(p1, optimistic=True)
+        assert getattr(Post, 'blog').hasparent(b, optimistic=True)
         
+        # lazy loads currently not processed for "hasparent" status, so without
+        # optimistic, it returns false
+        assert not getattr(Blog, 'posts').hasparent(p1, optimistic=False)
+        assert not getattr(Post, 'blog').hasparent(b, optimistic=False)
+        
+        # ok what about non-optimistic.  well, dont use lazy loaders,
+        # assign things manually, so the "hasparent" flags get set
+        b2 = Blog()
+        p2 = Post()
+        b2.posts.append(p2)
+        assert getattr(Blog, 'posts').hasparent(p2, optimistic=False)
+        assert getattr(Post, 'blog').hasparent(b2, optimistic=False)
         
     def testinheritance(self):
         """tests that attributes are polymorphic"""

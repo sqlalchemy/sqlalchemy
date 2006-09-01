@@ -670,6 +670,18 @@ class LazyTest(MapperSuperTest):
             {'user_id' : 9, 'addresses' : (Address, [])},
             )
 
+    def testorphanstate(self):
+        """test that a lazily loaded child object is not marked as an orphan"""
+        m = mapper(User, users, properties={
+            'addresses':relation(Address, cascade="all,delete-orphan", lazy=True)
+        })
+        mapper(Address, addresses)
+
+        q = create_session().query(m)
+        user = q.get(7)
+        assert getattr(User, 'addresses').hasparent(user.addresses[0], optimistic=True)
+        assert not class_mapper(Address)._is_orphan(user.addresses[0])
+        
     def testlimit(self):
         ordermapper = mapper(Order, orders, properties = dict(
                 items = relation(mapper(Item, orderitems), lazy = True)
@@ -881,6 +893,19 @@ class EagerTest(MapperSuperTest):
             },
         )
 
+    def testorphanstate(self):
+        """test that an eagerly loaded child object is not marked as an orphan"""
+        m = mapper(User, users, properties={
+            'addresses':relation(Address, cascade="all,delete-orphan", lazy=False)
+        })
+        mapper(Address, addresses)
+        
+        s = create_session()
+        q = s.query(m)
+        user = q.get(7)
+        assert getattr(User, 'addresses').hasparent(user.addresses[0], optimistic=True)
+        assert not class_mapper(Address)._is_orphan(user.addresses[0])
+        
     def testwithrepeat(self):
         """tests a one-to-many eager load where we also query on joined criterion, where the joined
         criterion is using the same tables that are used within the eager load.  the mapper must insure that the 

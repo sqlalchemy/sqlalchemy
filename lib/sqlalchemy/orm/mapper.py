@@ -141,8 +141,9 @@ class Mapper(object):
         #self.compile()
     
     def _is_orphan(self, obj):
+        optimistic = hasattr(obj, '_instance_key')
         for (key,klass) in self.delete_orphans:
-            if not getattr(klass, key).hasparent(obj):
+            if not getattr(klass, key).hasparent(obj, optimistic=optimistic):
                 return True
         else:
             return False
