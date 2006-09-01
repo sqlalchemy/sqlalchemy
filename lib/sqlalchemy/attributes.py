@@ -134,7 +134,10 @@ class InstrumentedAttribute(object):
                 if callable_ is not None:
                     if passive:
                         return InstrumentedAttribute.PASSIVE_NORESULT
-                    l = InstrumentedList(self, obj, self._adapt_list(callable_()), init=False)
+                    values = callable_()
+                    l = InstrumentedList(self, obj, self._adapt_list(values), init=False)
+                    if self.trackparent and values is not None:
+                        [self.sethasparent(v, True) for v in values if v is not None]
                     # if a callable was executed, then its part of the "committed state"
                     # if any, so commit the newly loaded data
                     orig = state.get('original', None)
@@ -152,7 +155,10 @@ class InstrumentedAttribute(object):
                 if callable_ is not None:
                     if passive:
                         return InstrumentedAttribute.PASSIVE_NORESULT
-                    obj.__dict__[self.key] = callable_()
+                    value = callable_()
+                    obj.__dict__[self.key] = value
+                    if self.trackparent and value is not None:
+                        self.sethasparent(value, True)
                     # if a callable was executed, then its part of the "committed state"
                     # if any, so commit the newly loaded data
                     orig = state.get('original', None)

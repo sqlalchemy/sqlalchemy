@@ -167,6 +167,7 @@ relationships to an inheriting mapper (which is also self-referential)
 - added 'checkfirst' argument to table.create()/table.drop(), as 
 well as table.exists() [ticket:234]
 - some other ongoing fixes to inheritance [ticket:245]
+- attribute/backref/orphan/history-tracking tweaks as usual...
 
 0.2.5
 - fixed endless loop bug in select_by(), if the traversal hit
