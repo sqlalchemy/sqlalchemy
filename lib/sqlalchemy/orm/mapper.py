@@ -141,9 +141,10 @@ class Mapper(object):
         #self.compile()
     
     def _is_orphan(self, obj):
-        optimistic = hasattr(obj, '_instance_key')
         for (key,klass) in self.delete_orphans:
-            if not getattr(klass, key).hasparent(obj, optimistic=optimistic):
+            if not getattr(klass, key).hasparent(obj):
+                if not has_identity(obj):
+                    raise exceptions.FlushError("instance %s is an unsaved, pending instance and is an orphan" % obj)
                 return True
         else:
             return False
@@ -710,7 +711,7 @@ class Mapper(object):
 
         if not postupdate:
             for obj in objects:
-                if not hasattr(obj, "_instance_key"):
+                if not has_identity(obj):
                     self.extension.before_insert(self, connection, obj)
                 else:
                     self.extension.before_update(self, connection, obj)
@@ -747,7 +748,7 @@ class Mapper(object):
                 # 'postupdate' means a PropertyLoader is telling us, "yes I know you 
                 # already inserted/updated this row but I need you to UPDATE one more 
                 # time"
-                isinsert = not postupdate and not hasattr(obj, "_instance_key")
+                isinsert = not postupdate and not has_identity(obj)
                 hasdata = False
                 for col in table.columns:
                     if col is self.version_id_col:
@@ -1392,6 +1393,9 @@ def hash_key(obj):
     else:
         return repr(obj)
 
+def has_identity(object):
+    return hasattr(object, '_instance_key')
+    
 def has_mapper(object):
     """returns True if the given object has a mapper association"""
     return hasattr(object, '_entity_name')

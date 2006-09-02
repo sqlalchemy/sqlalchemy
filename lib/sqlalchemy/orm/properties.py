@@ -218,7 +218,7 @@ class PropertyLoader(mapper.MapperProperty):
 
         if self.cascade.delete_orphan:
             if self.parent.class_ is self.mapper.class_:
-                raise exceptions.ArgumentError("Cant establish 'delete-orphan' cascade rule on a self-referential relationship.  You probably want cascade='all', which includes delete cascading but not orphan detection.")
+                raise exceptions.ArgumentError("Cant establish 'delete-orphan' cascade rule on a self-referential relationship (attribute '%s' on class '%s').  You probably want cascade='all', which includes delete cascading but not orphan detection." %(self.key, self.parent.class_.__name__))
             self.mapper.primary_mapper().delete_orphans.append((self.key, self.parent.class_))
             
         if self.secondaryjoin is not None and self.secondary is None:
@@ -379,9 +379,17 @@ class LazyLoader(PropertyLoader):
                 return None
             else:
                 return mapper.object_mapper(instance).props[self.key].setup_loader(instance)
+        
         def lazyload():
             params = {}
             allparams = True
+            # if the instance wasnt loaded from the database, then it cannot lazy load
+            # child items.  one reason for this is that a bi-directional relationship
+            # will not update properly, since bi-directional uses lazy loading functions
+            # in both directions, and this instance will not be present in the lazily-loaded
+            # results of the other objects since its not in the database
+            if not mapper.has_identity(instance):
+                return None
             #print "setting up loader, lazywhere", str(self.lazywhere), "binds", self.lazybinds
             for col, bind in self.lazybinds.iteritems():
                 params[bind.key] = self.parent._getattrbycolumn(instance, col)

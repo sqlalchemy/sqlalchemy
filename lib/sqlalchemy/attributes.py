@@ -32,19 +32,16 @@ class InstrumentedAttribute(object):
         return self.get(obj)
 
     def hasparent(self, item, optimistic=False):
-        """return True if the given item is attached to a parent object 
-        via the attribute represented by this InstrumentedAttribute.
-        
-        optimistic indicates what we should return if the given item has no "hasparent"
-        record at all for the given attribute."""
-        return item._state.get(('hasparent', id(self)), optimistic)
+        """return the boolean value of a "hasparent" flag attached to the given item.
+        """
+        return item._state.get(('hasparent', id(self)), False)
         
     def sethasparent(self, item, value):
         """sets a boolean flag on the given item corresponding to whether or not it is
         attached to a parent object via the attribute represented by this InstrumentedAttribute."""
         if item is not None:
             item._state[('hasparent', id(self))] = value
-
+            
     def get_history(self, obj, passive=False):
         """return a new AttributeHistory object for the given object/this attribute's key.
         
@@ -140,16 +137,12 @@ class InstrumentedAttribute(object):
                     values = callable_()
                     l = InstrumentedList(self, obj, self._adapt_list(values), init=False)
                     
-                    # mark loaded instances with "hasparent" status.  commented out
-                    # because loaded objects use "optimistic" parent-checking
-                    #if self.trackparent and values is not None:
-                    #    [self.sethasparent(v, True) for v in values if v is not None]
-                    
                     # if a callable was executed, then its part of the "committed state"
                     # if any, so commit the newly loaded data
                     orig = state.get('original', None)
                     if orig is not None:
                         orig.commit_attribute(self, obj, l)
+                    
                 else:
                     # note that we arent raising AttributeErrors, just creating a new
                     # blank list and setting it.
@@ -165,11 +158,6 @@ class InstrumentedAttribute(object):
                     value = callable_()
                     obj.__dict__[self.key] = value
 
-                    # mark loaded instances with "hasparent" status.  commented out
-                    # because loaded objects use "optimistic" parent-checking
-                    #if self.trackparent and value is not None:
-                    #    self.sethasparent(value, True)
-                    
                     # if a callable was executed, then its part of the "committed state"
                     # if any, so commit the newly loaded data
                     orig = state.get('original', None)
@@ -478,14 +466,21 @@ class CommittedState(object):
         if attr.uselist:
             if value is not False:
                 self.data[attr.key] = [x for x in value]
+                if attr.trackparent:
+                    [attr.sethasparent(x, True) for x in self.data[attr.key]]
             elif obj.__dict__.has_key(attr.key):
                 self.data[attr.key] = [x for x in obj.__dict__[attr.key]]
+                if attr.trackparent:
+                    [attr.sethasparent(x, True) for x in self.data[attr.key]]
         else:
             if value is not False:
                 self.data[attr.key] = value
+                if attr.trackparent:
+                    attr.sethasparent(self.data[attr.key], True)
             elif obj.__dict__.has_key(attr.key):
                 self.data[attr.key] = obj.__dict__[attr.key]
-                        
+                if attr.trackparent:
+                    attr.sethasparent(self.data[attr.key], True)
     def rollback(self, manager, obj):
         for attr in manager.managed_attributes(obj.__class__):
             if self.data.has_key(attr.key):

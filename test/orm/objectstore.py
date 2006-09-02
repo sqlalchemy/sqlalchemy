@@ -25,15 +25,11 @@ class SessionTest(AssertMixin):
 class HistoryTest(SessionTest):
     def setUpAll(self):
         SessionTest.setUpAll(self)
-        db.echo = False
         users.create()
         addresses.create()
-        db.echo = testbase.echo
     def tearDownAll(self):
-        db.echo = False
         addresses.drop()
         users.drop()
-        db.echo = testbase.echo
         SessionTest.tearDownAll(self)
         
     def testattr(self):
@@ -230,7 +226,6 @@ class PKTest(SessionTest):
     @testbase.unsupported('mssql')
     def setUpAll(self):
         SessionTest.setUpAll(self)
-        #db.echo = False
         global table
         global table2
         global table3
@@ -256,14 +251,11 @@ class PKTest(SessionTest):
         table.create()
         table2.create()
         table3.create()
-        db.echo = testbase.echo
     @testbase.unsupported('mssql')
     def tearDownAll(self):
-        db.echo = False
         table.drop()
         table2.drop()
         table3.drop()
-        db.echo = testbase.echo
         SessionTest.tearDownAll(self)
         
     # not support on sqlite since sqlite's auto-pk generation only works with
@@ -430,7 +422,6 @@ class DefaultTest(SessionTest):
     defaults back from the engine."""
     def setUpAll(self):
         SessionTest.setUpAll(self)
-        #db.echo = 'debug'
         use_string_defaults = db.engine.__module__.endswith('postgres') or db.engine.__module__.endswith('oracle') or db.engine.__module__.endswith('sqlite')
 
         if use_string_defaults:
@@ -504,17 +495,12 @@ class SaveTest(SessionTest):
 
     def setUpAll(self):
         SessionTest.setUpAll(self)
-        db.echo = False
         tables.create()
-        db.echo = testbase.echo
     def tearDownAll(self):
-        db.echo = False
         tables.drop()
-        db.echo = testbase.echo
         SessionTest.tearDownAll(self)
         
     def setUp(self):
-        db.echo = False
         keywords.insert().execute(
             dict(name='blue'),
             dict(name='red'),
@@ -524,12 +510,9 @@ class SaveTest(SessionTest):
             dict(name='round'),
             dict(name='square')
         )
-        db.echo = testbase.echo
 
     def tearDown(self):
-        db.echo = False
         tables.delete()
-        db.echo = testbase.echo
 
         #self.assert_(len(ctx.current.new) == 0)
         #self.assert_(len(ctx.current.dirty) == 0)
@@ -1224,7 +1207,6 @@ class SaveTest(SessionTest):
 class SaveTest2(SessionTest):
 
     def setUp(self):
-        db.echo = False
         ctx.current.clear()
         clear_mappers()
         self.users = Table('users', db,
@@ -1244,13 +1226,10 @@ class SaveTest2(SessionTest):
 #        raise repr(self.addresses) + repr(self.addresses.foreign_keys)
         self.users.create()
         self.addresses.create()
-        db.echo = testbase.echo
 
     def tearDown(self):
-        db.echo = False
         self.addresses.drop()
         self.users.drop()
-        db.echo = testbase.echo
         SessionTest.tearDown(self)
     
     def testbackwardsnonmatch(self):
@@ -1339,7 +1318,7 @@ class SaveTest3(SessionTest):
         pass
 
     def testmanytomanyxtracolremove(self):
-        """tests that a many-to-many on a table that has an extra column can properly delete rows from the table
+        """test that a many-to-many on a table that has an extra column can properly delete rows from the table
         without referencing the extra column"""
         mapper(Keyword, t3)
 

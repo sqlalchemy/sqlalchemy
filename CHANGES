@@ -29,10 +29,7 @@ parent isnt available to cascade from.
 - mappers can tell if one of their objects is an "orphan" based
 on interactions with the attribute package. this check is based
 on a status flag maintained for each relationship 
-when objects are attached and detached from each other.  if the
-status flag is not present, its assumed to be "False" for a 
-transient instance and assumed to be "True" for a persisted/detached
- instance.
+when objects are attached and detached from each other.
 - it is now invalid to declare a self-referential relationship with
 "delete-orphan" (as the abovementioned check would make them impossible
 to save)

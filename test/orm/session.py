@@ -32,11 +32,11 @@ class OrphanDeletionTest(AssertMixin):
         ))
         s = create_session()
         a = Address()
+        s.save(a)
         try:
-            s.save(a)
-        except exceptions.InvalidRequestError, e:
+            s.flush()
+        except exceptions.FlushError, e:
             pass
-        s.flush()
         assert a.address_id is None, "Error: address should not be persistent"
         
     def test_delete_new_object(self):

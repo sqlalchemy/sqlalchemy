@@ -59,14 +59,10 @@ item_keyword_result = [
 
 class MapperSuperTest(AssertMixin):
     def setUpAll(self):
-        db.echo = False
         tables.create()
         tables.data()
-        db.echo = testbase.echo
     def tearDownAll(self):
-        db.echo = False
         tables.drop()
-        db.echo = testbase.echo
     def tearDown(self):
         clear_mappers()
     def setUp(self):
@@ -85,7 +81,7 @@ class MapperTest(MapperSuperTest):
         self.assert_(u is not u2)
 
     def testunicodeget(self):
-        """tests that Query.get properly sets up the type for the bind parameter.  using unicode would normally fail 
+        """test that Query.get properly sets up the type for the bind parameter.  using unicode would normally fail 
         on postgres, mysql and oracle unless it is converted to an encoded string"""
         metadata = BoundMetaData(db)
         table = Table('foo', metadata, 
@@ -151,7 +147,7 @@ class MapperTest(MapperSuperTest):
         self.assert_(a not in u.addresses)
 
     def testbadconstructor(self):
-        """tests that if the construction of a mapped class fails, the instnace does not get placed in the session"""
+        """test that if the construction of a mapped class fails, the instnace does not get placed in the session"""
         class Foo(object):
             def __init__(self, one, two):
                 pass
@@ -169,7 +165,7 @@ class MapperTest(MapperSuperTest):
             pass
             
     def testrefresh_lazy(self):
-        """tests that when a lazy loader is set as a trigger on an object's attribute (at the attribute level, not the class level), a refresh() operation doesnt fire the lazy loader or create any problems"""
+        """test that when a lazy loader is set as a trigger on an object's attribute (at the attribute level, not the class level), a refresh() operation doesnt fire the lazy loader or create any problems"""
         s = create_session()
         mapper(User, users, properties={'addresses':relation(mapper(Address, addresses))})
         q2 = s.query(User).options(lazyload('addresses'))
@@ -179,6 +175,7 @@ class MapperTest(MapperSuperTest):
         self.assert_sql_count(db, go, 1)
 
     def testexpire(self):
+        """test the expire function"""
         s = create_session()
         mapper(User, users, properties={'addresses':relation(mapper(Address, addresses), lazy=False)})
         u = s.get(User, 7)
@@ -209,6 +206,7 @@ class MapperTest(MapperSuperTest):
         self.assert_(u.user_name =='jack')
         
     def testrefresh2(self):
+        """test a hang condition that was occuring on expire/refresh"""
         s = create_session()
         mapper(Address, addresses)
 
@@ -231,6 +229,7 @@ class MapperTest(MapperSuperTest):
         s.refresh(u) #hangs
         
     def testmagic(self):
+        """not sure what this is really testing."""
         mapper(User, users, properties = {
             'addresses' : relation(mapper(Address, addresses))
         })
@@ -270,15 +269,33 @@ class MapperTest(MapperSuperTest):
         })
         q = create_session().query(m)
         q.select_by(email_address='foo')
-        
-    def testjoinbyfk(self):
-        class UserWithAddress(object):
-			pass
-        j = join(users, addresses, isouter=True)
-        m = mapper(UserWithAddress, j, allow_null_pks=True)
+
+    def testmappingtojoin(self):
+        """test mapping to a join"""
+        usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
+        m = mapper(User, usersaddresses, primary_key=[users.c.user_id])
         q = create_session().query(m)
+        l = q.select()
+        self.assert_result(l, User, *user_result[0:2])
+        
+    def testmappingtoouterjoin(self):
+        """test mapping to an outer join, with a composite primary key that allows nulls"""
+        result = [
+        {'user_id' : 7, 'address_id' : 1},
+        {'user_id' : 8, 'address_id' : 2},
+        {'user_id' : 8, 'address_id' : 3},
+        {'user_id' : 8, 'address_id' : 4},
+        {'user_id' : 9, 'address_id':None}
+        ]
+        
+        j = join(users, addresses, isouter=True)
+        m = mapper(User, j, allow_null_pks=True, primary_key=[users.c.user_id, addresses.c.address_id])
+        q = create_session().query(m)
+        l = q.select()
+        self.assert_result(l, User, *result)
         
     def testjoinvia(self):
+        """test the join_via and join_to functions"""
         m = mapper(User, users, properties={
             'orders':relation(mapper(Order, orders, properties={
                 'items':relation(mapper(Item, orderitems))
@@ -300,6 +317,7 @@ class MapperTest(MapperSuperTest):
         self.assert_result(l, User, user_result[0])
         
     def testorderby(self):
+        """test ordering at the mapper and query level"""
         # TODO: make a unit test out of these various combinations
 #        m = mapper(User, users, order_by=desc(users.c.user_name))
         mapper(User, users, order_by=None)
@@ -313,7 +331,7 @@ class MapperTest(MapperSuperTest):
         
     @testbase.unsupported('firebird') 
     def testfunction(self):
-        """tests mapping to a SELECT statement that has functions in it."""
+        """test mapping to a SELECT statement that has functions in it."""
         s = select([users, (users.c.user_id * 2).label('concat'), func.count(addresses.c.address_id).label('count')],
         users.c.user_id==addresses.c.user_id, group_by=[c for c in users.c]).alias('myselect')
         mapper(User, s)
@@ -326,18 +344,15 @@ class MapperTest(MapperSuperTest):
         
     @testbase.unsupported('firebird') 
     def testcount(self):
+        """test the count function on Query
+        
+        (why doesnt this work on firebird?)"""
         mapper(User, users)
         q = create_session().query(User)
         self.assert_(q.count()==3)
         self.assert_(q.count(users.c.user_id.in_(8,9))==2)
         self.assert_(q.count_by(user_name='fred')==1)
             
-    def testmultitable(self):
-        usersaddresses = sql.join(users, addresses, users.c.user_id == addresses.c.user_id)
-        m = mapper(User, usersaddresses, primary_key=[users.c.user_id])
-        q = create_session().query(m)
-        l = q.select()
-        self.assert_result(l, User, *user_result[0:2])
 
     def testoverride(self):
         # assert that overriding a column raises an error
