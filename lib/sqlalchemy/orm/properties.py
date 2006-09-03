@@ -580,7 +580,6 @@ class EagerLoader(LazyLoader):
         else:
             towrap = self.localparent.mapped_table
 
- #       print "hello, towrap", str(towrap)
         if self.secondaryjoin is not None:
             statement._outerjoin = sql.outerjoin(towrap, self.eagersecondary, self.eagerprimary).outerjoin(self.eagertarget, self.eagersecondaryjoin)
             if self.order_by is False and self.secondary.default_order_by() is not None:
@@ -623,8 +622,6 @@ class EagerLoader(LazyLoader):
                 # call _instance on the row, even though the object has been created,
                 # so that we further descend into properties
                 self.mapper._instance(session, decorated_row, imap, None)
-                
-            return
         else:
             if isnew:
                 # call the SmartProperty's initialize() method to create a new, blank list
@@ -636,7 +633,7 @@ class EagerLoader(LazyLoader):
                 # store it in the "scratch" area, which is local to this load operation.
                 imap['_scratch'][(instance, self.key)] = appender
             result_list = imap['_scratch'][(instance, self.key)]
-        self.mapper._instance(session, decorated_row, imap, result_list)
+            self.mapper._instance(session, decorated_row, imap, result_list)
 
     def _create_decorator_row(self):
         class DecoratorDict(object):

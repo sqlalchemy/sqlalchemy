@@ -39,8 +39,7 @@ class InstrumentedAttribute(object):
     def sethasparent(self, item, value):
         """sets a boolean flag on the given item corresponding to whether or not it is
         attached to a parent object via the attribute represented by this InstrumentedAttribute."""
-        if item is not None:
-            item._state[('hasparent', id(self))] = value
+        item._state[('hasparent', id(self))] = value
             
     def get_history(self, obj, passive=False):
         """return a new AttributeHistory object for the given object/this attribute's key.
@@ -55,9 +54,17 @@ class InstrumentedAttribute(object):
         return AttributeHistory(self, obj, current, passive=passive)
 
     def set_callable(self, obj, callable_):
-        """sets a callable function on the given object which will be executed when this attribute
-        is next accessed.  if the callable is None, then initializes the attribute with an empty value
-        (which overrides any class-level callables that might be on this attribute.)"""
+        """set a callable function for this attribute on the given object.
+        
+        this callable will be executed when the attribute is next accessed, 
+        and is assumed to construct part of the instances previously stored state. When
+        its value or values are loaded, they will be established as part of the 
+        instance's "committed state".  while "trackparent" information will be assembled
+        for these instances, attribute-level event handlers will not be fired.
+        
+        the callable overrides the class level callable set in the InstrumentedAttribute
+        constructor.
+        """
         if callable_ is None:
             self.initialize(obj)
         else:
@@ -105,6 +112,10 @@ class InstrumentedAttribute(object):
             return data
             
     def initialize(self, obj):
+        """initialize this attribute on the given object instance.
+        
+        if this is a list-based attribute, a new, blank list will be created.
+        if a scalar attribute, the value will be initialized to None."""
         if self.uselist:
             l = InstrumentedList(self, obj, self._blank_list())
             obj.__dict__[self.key] = l
@@ -242,7 +253,7 @@ class InstrumentedAttribute(object):
     def append_event(self, event, obj, value):
         """called by InstrumentedList when an item is appended"""
         obj._state['modified'] = True
-        if self.trackparent:
+        if self.trackparent and value is not None:
             self.sethasparent(value, True)
         for ext in self.extensions:
             ext.append(event or self, obj, value)
@@ -250,7 +261,7 @@ class InstrumentedAttribute(object):
     def remove_event(self, event, obj, value):
         """called by InstrumentedList when an item is removed"""
         obj._state['modified'] = True
-        if self.trackparent:
+        if self.trackparent and value is not None:
             self.sethasparent(value, False)
         for ext in self.extensions:
             ext.delete(event or self, obj, value)
@@ -262,7 +273,10 @@ class InstrumentedList(object):
     
     note that this list does a lot less than earlier versions of SA list-based attributes, which used HistoryArraySet.  
     this list wrapper does *not* maintain setlike semantics, meaning you can add as many duplicates as 
-    you want (which can break a lot of SQL), and also does not do anything related to history tracking."""
+    you want (which can break a lot of SQL), and also does not do anything related to history tracking.
+    
+    Please see ticket #213 for information on the future of this class, where it will be broken out into more 
+    collection-specific subtypes."""
     def __init__(self, attr, obj, data, init=True):
         self.attr = attr
         # this weakref is to prevent circular references between the parent object
@@ -463,24 +477,22 @@ class CommittedState(object):
             self.commit_attribute(attr, obj)
 
     def commit_attribute(self, attr, obj, value=False):
-        if attr.uselist:
-            if value is not False:
+        """establish the value of attribute 'attr' on instance 'obj' as "committed". 
+        
+        this corresponds to a previously saved state being restored. """
+        if value is False:
+            if obj.__dict__.has_key(attr.key):
+                value = obj.__dict__[attr.key]
+        if value is not False:
+            if attr.uselist:
                 self.data[attr.key] = [x for x in value]
                 if attr.trackparent:
-                    [attr.sethasparent(x, True) for x in self.data[attr.key]]
-            elif obj.__dict__.has_key(attr.key):
-                self.data[attr.key] = [x for x in obj.__dict__[attr.key]]
-                if attr.trackparent:
-                    [attr.sethasparent(x, True) for x in self.data[attr.key]]
-        else:
-            if value is not False:
+                    [attr.sethasparent(x, True) for x in self.data[attr.key] if x is not None]
+            else:
                 self.data[attr.key] = value
-                if attr.trackparent:
-                    attr.sethasparent(self.data[attr.key], True)
-            elif obj.__dict__.has_key(attr.key):
-                self.data[attr.key] = obj.__dict__[attr.key]
-                if attr.trackparent:
-                    attr.sethasparent(self.data[attr.key], True)
+                if attr.trackparent and value is not None:
+                    attr.sethasparent(value, True)
+
     def rollback(self, manager, obj):
         for attr in manager.managed_attributes(obj.__class__):
             if self.data.has_key(attr.key):

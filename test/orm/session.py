@@ -53,7 +53,11 @@ class OrphanDeletionTest(AssertMixin):
         u.addresses.append(a)
         u.addresses.remove(a)
         s.delete(u)
-        s.flush() # (erroneously) causes "a" to be persisted
+        try:
+            s.flush() # (erroneously) causes "a" to be persisted
+            assert False
+        except exceptions.FlushError:
+            assert True
         assert u.user_id is None, "Error: user should not be persistent"
         assert a.address_id is None, "Error: address should not be persistent"
 
@@ -109,7 +113,11 @@ class CascadingOrphanDeletionTest(AssertMixin):
 
         order.items.append(item)
         order.items.remove(item) # item is an orphan, but attr is not so flush() tries to save attr
-        s.flush()
+        try:
+            s.flush()
+            assert False
+        except exceptions.FlushError:
+            assert True
 
         assert item.id is None
         assert attr.id is None
