@@ -23,6 +23,9 @@ step in case the given property references a non-compiled mapper
 (as it is using the sessioncontext plugin, etc), a lazy load operation
 will use that session by default if the parent object is not 
 persistent with a session already.
+- lazy loads will not fire off for an object that does not have a 
+database identity (why?  
+see http://www.sqlalchemy.org/trac/wiki/WhyDontForeignKeysLoadData)
 - unit-of-work does a better check for "orphaned" objects that are
 part of a "delete-orphan" cascade, for certain conditions where the 
 parent isnt available to cascade from.
