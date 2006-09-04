@@ -32,6 +32,7 @@ class SelectResultsTest(PersistTest):
         global foo
         foo.drop()
         self.uninstall_threadlocal()
+        clear_mappers()
     
     def test_selectby(self):
         res = self.query.select_by(range=5)
@@ -111,6 +112,7 @@ class SelectResultsTest2(PersistTest):
     def tearDownAll(self):
         metadata.drop_all()
         self.uninstall_threadlocal()
+        clear_mappers()
 
     def test_distinctcount(self):
         res = self.query.select()
@@ -120,6 +122,42 @@ class SelectResultsTest2(PersistTest):
         res = self.query.select(and_(table1.c.id==table2.c.t1id,table2.c.t1id==1), distinct=True)
         self.assertEqual(res.count(), 1)
 
+class SelectResultsTest3(PersistTest):
+    def setUpAll(self):
+        self.install_threadlocal()
+        global metadata, table1, table2
+        metadata = BoundMetaData(testbase.db)
+        table1 = Table('Table1', metadata,
+            Column('ID', Integer, primary_key=True),
+            )
+        table2 = Table('Table2', metadata,
+            Column('T1ID', Integer, ForeignKey("Table1.ID"), primary_key=True),
+            Column('NUM', Integer, primary_key=True),
+            )
+        assign_mapper(Obj1, table1, extension=SelectResultsExt())
+        assign_mapper(Obj2, table2, extension=SelectResultsExt())
+        metadata.create_all()
+        table1.insert().execute({'ID':1},{'ID':2},{'ID':3},{'ID':4})
+        table2.insert().execute({'NUM':1,'T1ID':1},{'NUM':2,'T1ID':1},{'NUM':3,'T1ID':1},\
+{'NUM':4,'T1ID':2},{'NUM':5,'T1ID':2},{'NUM':6,'T1ID':3})
+
+    def setUp(self):
+        self.query = Obj1.mapper.query()
+        #self.orig = self.query.select_whereclause()
+        #self.res = self.query.select()
+
+    def tearDownAll(self):
+        metadata.drop_all()
+        self.uninstall_threadlocal()
+        clear_mappers()
+        
+    def test_distinctcount(self):
+        res = self.query.select()
+        assert res.count() == 4
+        res = self.query.select(and_(table1.c.ID==table2.c.T1ID,table2.c.T1ID==1))
+        assert res.count() == 3
+        res = self.query.select(and_(table1.c.ID==table2.c.T1ID,table2.c.T1ID==1), distinct=True)
+        self.assertEqual(res.count(), 1)
 
 
 if __name__ == "__main__":

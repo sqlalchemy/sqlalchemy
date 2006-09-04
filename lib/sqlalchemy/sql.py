@@ -1148,6 +1148,7 @@ class Alias(FromClause):
                 alias = alias[0:15]
             alias = alias + "_" + hex(random.randint(0, 65535))[2:]
         self.name = alias
+        self.case_sensitive = getattr(baseselectable, "case_sensitive", alias.lower() != alias)
         
     def _locate_oid_column(self):
         if self.selectable.oid_column is not None:
@@ -1180,6 +1181,7 @@ class Label(ColumnElement):
         while isinstance(obj, Label):
             obj = obj.obj
         self.obj = obj
+        self.case_sensitive = getattr(obj, "case_sensitive", name.lower() != name)
         self.type = sqltypes.to_instance(type)
         obj.parens=True
     key = property(lambda s: s.name)
@@ -1206,7 +1208,7 @@ class ColumnClause(ColumnElement):
     def _get_label(self):
         if self.__label is None:
             if self.table is not None and self.table.named_with_column():
-                self.__label =  self.table.name + "_" + self.name
+                self.__label = self.table.name + "_" + self.name
                 if self.table.c.has_key(self.__label) or len(self.__label) >= 30:
                     self.__label = self.__label[0:24] + "_" + hex(random.randint(0, 65535))[2:]
             else:

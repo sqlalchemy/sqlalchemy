@@ -77,6 +77,18 @@ class QuoteTest(PersistTest):
         assert lcmetadata.case_sensitive is False
         assert t1.c.UcCol.case_sensitive is False
         assert t2.c.normalcol.case_sensitive is False
+    
+    def testlabels(self):
+        """test the quoting of labels.
+        
+        if labels arent quoted, a query in postgres in particular will fail since it produces:
+        
+        SELECT LaLa.lowercase, LaLa."UPPERCASE", LaLa."MixedCase", LaLa."ASC" 
+        FROM (SELECT DISTINCT "WorstCase1".lowercase AS lowercase, "WorstCase1"."UPPERCASE" AS UPPERCASE, "WorstCase1"."MixedCase" AS MixedCase, "WorstCase1"."ASC" AS ASC \nFROM "WorstCase1") AS LaLa
+        
+        where the "UPPERCASE" column of "LaLa" doesnt exist.
+        """
+        x = table1.select(distinct=True).alias("LaLa").select().scalar()
         
         
 if __name__ == "__main__":
