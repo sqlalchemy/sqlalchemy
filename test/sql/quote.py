@@ -90,6 +90,35 @@ class QuoteTest(PersistTest):
         """
         x = table1.select(distinct=True).alias("LaLa").select().scalar()
         
+    def testlabelsnocase(self):
+        metadata = MetaData()
+        table1 = Table('SomeCase1', metadata,
+            Column('lowercase', Integer, primary_key=True),
+            Column('UPPERCASE', Integer),
+            Column('MixedCase', Integer))
+        table2 = Table('SomeCase2', metadata,
+            Column('id', Integer, primary_key=True, key='d123'),
+            Column('col2', Integer, key='u123'),
+            Column('MixedCase', Integer))
+        
+        # first test case sensitive tables migrating via tometadata
+        meta = BoundMetaData(testbase.db, case_sensitive=False)
+        lc_table1 = table1.tometadata(meta)
+        lc_table2 = table2.tometadata(meta)
+        assert lc_table1.case_sensitive is False
+        assert lc_table1.c.UPPERCASE.case_sensitive is False
+        s = lc_table1.select()
+        assert hasattr(s.c.UPPERCASE, "case_sensitive")
+        assert s.c.UPPERCASE.case_sensitive is False
+        
+        # now, the aliases etc. should be case-insensitive.  PG will screw up if this doesnt work.
+        # also, if this test is run in the context of the other tests, we also test that the dialect properly
+        # caches identifiers with "case_sensitive" and "not case_sensitive" separately.
+        meta.create_all()
+        try:
+            x = lc_table1.select(distinct=True).alias("lala").select().scalar()
+        finally:
+            meta.drop_all()
         
 if __name__ == "__main__":
     testbase.main()

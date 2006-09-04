@@ -775,14 +775,15 @@ class ANSIIdentifierPreparer(object):
         if getattr(obj, 'quote', False):
             return self._quote_identifier(ident)
         if self.dialect.cache_identifiers:
+            case_sens = getattr(obj, 'case_sensitive', None)
             try:
-                return self.__strings[ident]
+                return self.__strings[(ident, case_sens)]
             except KeyError:
                 if self._requires_quotes(ident, getattr(obj, 'case_sensitive', ident == ident.lower())):
-                    self.__strings[ident] = self._quote_identifier(ident)
+                    self.__strings[(ident, case_sens)] = self._quote_identifier(ident)
                 else:
-                    self.__strings[ident] = ident
-                return self.__strings[ident]
+                    self.__strings[(ident, case_sens)] = ident
+                return self.__strings[(ident, case_sens)]
         else:
             if self._requires_quotes(ident, getattr(obj, 'case_sensitive', ident == ident.lower())):
                 return self._quote_identifier(ident)
