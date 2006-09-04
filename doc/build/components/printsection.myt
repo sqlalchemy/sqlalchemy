@@ -128,7 +128,7 @@ Next: <& formatting.myt:itemlink, item=item.next, includefile=ispaged &>
 	<& topnavcontrol, **ARGS &>
 
 	<a name="table_of_contents"></a>
-	<span class="docheadertext">Table of Contents</span>
+	<h2>Table of Contents</h2>
 	&nbsp;&nbsp;
 	<a href="#full_index">(view full table)</a>
 	<br/><br/>
@@ -142,7 +142,7 @@ Next: <& formatting.myt:itemlink, item=item.next, includefile=ispaged &>
 
 	<div class="maintoc">
 	<a name="full_index"></a>
-	<span class="docheadertext">Table of Contents: Full</span>
+	<h2>Table of Contents: Full</h2>
 	&nbsp;&nbsp;
 	<a href="#table_of_contents">(view brief table)</a>
 	<br/><br/>

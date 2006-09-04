@@ -120,9 +120,25 @@ pre {
 	margin: 0px 0px 0px 0px;
 }
 
-.docheadertext {
+h1, .docheadertext {
        font-size: 16px;
        font-weight: bold;
+       padding: 0px;
+       margin: 0px;
+}
+
+h2 {
+    font-size: 16px;
+    font-weight: bold;
+    display: inline;
+    padding: 0px;
+    margin: 0px;
+}
+
+h3, .sectionheadertext {
+	font-weight: bold;
+	font-size: 16px;
+	display: inline;
 }
 
 .docheader {
@@ -139,10 +155,6 @@ pre {
 	padding: 20px 0px 0px 0px;
 }
 
-.sectionheadertext {
-	font-weight: bold;
-	font-size: 16px;
-}
 
 .sectiontext {
 	font-size: 12px;
@@ -156,24 +168,26 @@ pre {
 	margin: 0px 0px 10px 0px;
 }
 
-.toclinkcontainer {
-	padding:0px 0px 0px 8px;
-	/*border:1px solid;*/
+.toc_list {
+    padding:0px;
+	margin: 0px;
+    }
+.toc_list li {
+	font-size: 12px;
+	list-style-type: none;
+    padding:0px 0px 3px 8px;
+	margin: 0px;
 }
-
-.tocsection {
-	padding:2px 2px 2px 8px;
+.small_toc_list {
+    padding: 0px 0px 0px 8px;
 }
-
+.small_toc_list li {
+	font-size: 11px;
+	list-style-type: none;
+}
 .toclink {
 	font-size: 12px;
 	padding:0px 0px 3px 8px;
-	/*border:1px solid;*/
-}
-
-.smalltoclink {
-	font-size: 11px;
-	padding:0px 0px 3px 0px;
 }
 
 .docstring {

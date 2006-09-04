@@ -233,24 +233,39 @@ Within the `MetaData` collection, this table will be identified by the combinati
 
 #### Enabling Table / Column Quoting {@name=quoting}
 
-Many table, schema, or column names require quoting to be enabled.  Reasons for this include names that are the same as a database reserved word, or for identifiers that use MixedCase, where the database would normally "fold" the case convention into lower or uppercase (such as Postgres).  SQLAlchemy currently has no internal logic to automatically determine when quoting should be used; so its off unless explicitly enabled for a particular column or table.  Turning on quoting for a column or table identifier is performed manually by the `quote=True` flag on `Column` or `Table`, as well as the `quote_schema=True` flag for `Table`. 
+Feature Status: [Alpha Implementation][alpha_implementation] 
+
+Many table, schema, or column names require quoting to be enabled.  Reasons for this include names that are the same as a database reserved word, or for identifiers that use MixedCase, where the database would normally "fold" the case convention into lower or uppercase (such as Postgres).  SQLAlchemy as of version 0.2.8 will attempt to automatically determine when quoting should be used.  It will determine a value for every identifier name called `case_sensitive`, which defaults to `False` if the identifer name uses no uppercase letters, or `True` otherwise.  This flag may be explicitly set on any schema item as well (schema items include `Table`, `Column`, `MetaData`, `Sequence`, etc.) to override this default setting, where objects will inherit the setting from an enclosing object if not explicitly overridden.
+
+When `case_sensitive` is `True`, the dialect will do what it has to in order for the database to recognize the casing.  For Postgres and Oracle, this means using quoted identifiers.
+
+Identifiers that match known SQL reserved words (such as "asc", "union", etc.) will also be quoted according to the dialect's quoting convention regardless of the `case_sensitive` setting.
+
+To force quoting for an identifier, set the "quote=True" flag on `Column` or `Table`, as well as the `quote_schema=True` flag for `Table`. 
 
     {python}
     table2 = Table('WorstCase2', metadata,
-        # desc is a reserved word so quote this column
-        Column('desc', Integer, quote=True, primary_key=True),
+        # desc is a reserved word, which will be quoted.
+        Column('desc', Integer, primary_key=True),
 
-        # MixedCase uses a mixed case convention, so quote this column
-        Column('MixedCase', Integer, quote=True),
+        # if using a reserved word which SQLAlchemy doesn't know about,
+        # specify quote=True
+        Column('some_reserved_word', Integer, quote=True, primary_key=True),
+
+        # MixedCase uses a mixed case convention. 
+        # it will be automatically quoted since it is case sensitive
+        Column('MixedCase', Integer),
 
         # Union is both a reserved word and mixed case
-        Column('Union', Integer, quote=True),
+        Column('Union', Integer),
 
         # normal_column doesnt require quoting
-        Column('normal_column', String(30)),
-        
-        # the table name uses mixed case, so turn on quoting for the table ident
-        quote=True)
+        Column('normal_column', String(30)))
+
+    # to use tables where case_sensitive is False by default regardless
+    # of idenfifier casings, set "case_sensitive" to false at any level
+    # (or true to force case sensitive for lowercase identifiers as well)
+    lowercase_metadata = MetaData(case_sensitive=False)
 
 #### Other Options {@name=options}
 

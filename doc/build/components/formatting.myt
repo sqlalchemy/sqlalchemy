@@ -6,50 +6,6 @@
 </%global>
 
 
-<%def printtocelement>
-<%doc>prints a TOCElement as a table of contents item and prints its immediate child items</%doc>
-    <%args>
-        item
-        includefile
-        bold = False
-        full = False
-        children = True
-    </%args>
-
-    <div class="toclink">
-        <A style="<% bold and "font-weight:bold;" or "" %>" href="<% item.get_link(includefile, anchor = (not includefile)) %>"><% item.description %></a>
-    </div>
-    
-% if children:  
-    <div class="toclinkcontainer">
-%   for i in item.children:
-        <& printsmtocelem, item=i, includefile = includefile, children=full &>
-%
-    </div>
-%
-</%def>
-
-<%def printsmtocelem>
-    <%args>
-        item
-        includefile
-        children = False
-    </%args>    
-    <div class="toclinkcontainer">
-    
-    <div class="smalltoclink">
-    <A href="<% item.get_link(includefile) %>"><% item.description %></a>
-    </div>
-
-% if children:
-%   for i in item.children:
-        <& printsmtocelem, item = i, includefile = includefile &>
-%
-%
-    </div>
-
-</%def>
-
 <%method printtoc>
 <%args> 
     root
@@ -60,23 +16,62 @@
 </%args>
 
 % header = False
+<ul class="toc_list">
 % for i in root.children:
 
 %   if i.header:
 %       if header:
-    </div>
+    </ul>
 %
 %   header = True
-    <b><% i.header %></b><br/>
-    <div class="tocsection">
+    <h3><% i.header %></h3>
+    <ul class="toc_list">
 %
     <& printtocelement, item=i, includefile = includefile, bold = (i == current and includefile), full = full, children=children &>
 %
 
-%   if header:
-    </div>
-%
+</ul>
 </%method>
+
+<%def printtocelement>
+<%doc>prints a TOCElement as a table of contents item and prints its immediate child items</%doc>
+    <%args>
+        item
+        includefile
+        bold = False
+        full = False
+        children = True
+    </%args>
+
+        <li><A style="<% bold and "font-weight:bold;" or "" %>" href="<% item.get_link(includefile, anchor = (not includefile)) %>"><% item.description %></a></li>
+    
+% if children:  
+    <ul class="small_toc_list">
+%   for i in item.children:
+        <& printsmtocelem, item=i, includefile = includefile, children=full &>
+%
+    </ul>
+%
+</%def>
+
+<%def printsmtocelem>
+    <%args>
+        item
+        includefile
+        children = False
+    </%args>    
+    <li><A href="<% item.get_link(includefile) %>"><% item.description %></a></li>
+
+% if children:
+    <ul class="small_toc_list">
+%   for i in item.children:
+        <& printsmtocelem, item = i, includefile = includefile &>
+%
+    </ul>
+%
+
+</%def>
+
 
 
 <%method printitem>
@@ -99,7 +94,7 @@
 <div class="subsection" style="margin-left:<% repr(10 + indentlevel * 10) %>px;">
 
 % if not omitheader:
-    <span class="sectionheadertext"><% item.description %></span>
+    <h3><% item.description %></h3>
 %
     <div class="sectiontext">
 

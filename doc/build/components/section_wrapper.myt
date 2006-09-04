@@ -29,7 +29,7 @@
 
 <div class="docheader">
 
-<div class="docheadertext" ><% title %></div>
+<h1><% title %></h1>
 % if version is not None:
 <div class="">Version: <% version %>   Last Updated: <% time.strftime('%x %X', time.localtime(last_updated)) %></div>
 %
