@@ -145,7 +145,7 @@ class Mapper(object):
         for (key,klass) in self.delete_orphans:
             if not getattr(klass, key).hasparent(obj, optimistic=optimistic):
                 if not has_identity(obj):
-                    raise exceptions.FlushError("instance %s is an unsaved, pending instance and is an orphan" % obj)
+                    raise exceptions.FlushError("instance %s is an unsaved, pending instance and is an orphan (is not attached to any parent '%s' instance via that classes' '%s' attribute)" % (obj, klass.__name__, key))
                 return True
         else:
             return False
