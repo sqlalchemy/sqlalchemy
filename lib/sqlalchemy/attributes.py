@@ -33,8 +33,14 @@ class InstrumentedAttribute(object):
 
     def hasparent(self, item, optimistic=False):
         """return the boolean value of a "hasparent" flag attached to the given item.
+        
+        the 'optimistic' flag determines what the default return value should be if 
+        no "hasparent" flag can be located.  as this function is used to determine if 
+        an instance is an "orphan", instances that were loaded from storage should be assumed
+        to not be orphans, until a True/False value for this flag is set.  an instance attribute
+        that is loaded by a callable function will also not have a "hasparent" flag.
         """
-        return item._state.get(('hasparent', id(self)), False)
+        return item._state.get(('hasparent', id(self)), optimistic)
         
     def sethasparent(self, item, value):
         """sets a boolean flag on the given item corresponding to whether or not it is
@@ -486,12 +492,16 @@ class CommittedState(object):
         if value is not False:
             if attr.uselist:
                 self.data[attr.key] = [x for x in value]
-                if attr.trackparent:
-                    [attr.sethasparent(x, True) for x in self.data[attr.key] if x is not None]
+                # not tracking parent on lazy-loaded instances at the moment.
+                # its not needed since they will be "optimistically" tested
+                #if attr.trackparent:
+                #    [attr.sethasparent(x, True) for x in self.data[attr.key] if x is not None]
             else:
                 self.data[attr.key] = value
-                if attr.trackparent and value is not None:
-                    attr.sethasparent(value, True)
+                # not tracking parent on lazy-loaded instances at the moment.
+                # its not needed since they will be "optimistically" tested
+                #if attr.trackparent and value is not None:
+                #    attr.sethasparent(value, True)
 
     def rollback(self, manager, obj):
         for attr in manager.managed_attributes(obj.__class__):

@@ -182,13 +182,14 @@ class AttributesTest(PersistTest):
         Blog.posts.set_callable(b, lambda:[p1])
         Post.blog.set_callable(p1, lambda:b)
         manager.commit(p1, b)
+
+        # no orphans (called before the lazy loaders fire off)
+        assert getattr(Blog, 'posts').hasparent(p1, optimistic=True)
+        assert getattr(Post, 'blog').hasparent(b, optimistic=True)
+
         # assert connections
         assert p1.blog is b
         assert p1 in b.posts
-
-        # no orphans
-        assert getattr(Blog, 'posts').hasparent(p1)
-        assert getattr(Post, 'blog').hasparent(b)
         
         # manual connections
         b2 = Blog()
