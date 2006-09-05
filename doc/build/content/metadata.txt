@@ -1,3 +1,6 @@
+[alpha_api]: javascript:alphaApi()
+[alpha_implementation]: javascript:alphaImplementation()
+
 Database Meta Data {@name=metadata}
 ==================
 
