@@ -212,6 +212,14 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             literal("a") + literal("b") * literal("c"), ":literal + (:liter_1 * :liter_2)"
         )
 
+    def testunicodestartswith(self):
+	string = u"hi \xf6 \xf5"
+	self.runtest(
+		table1.select(table1.c.name.startswith(string)),
+		"SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.name LIKE :mytable_name",
+		checkparams = {'mytable_name': u'hi \xf6 \xf5%'},
+	)
+
     def testmultiparam(self):
         self.runtest(
             select(["*"], or_(table1.c.myid == 12, table1.c.myid=='asdf', table1.c.myid == 'foo')), 

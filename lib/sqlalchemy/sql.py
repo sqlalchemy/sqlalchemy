@@ -554,9 +554,9 @@ class CompareMixin(object):
             # statement out of it.
             return self._compare('IN', union(parens=True, *other))
     def startswith(self, other):
-        return self._compare('LIKE', str(other) + "%")
+        return self._compare('LIKE', other + "%")
     def endswith(self, other):
-        return self._compare('LIKE', "%" + str(other))
+        return self._compare('LIKE', "%" + other)
     def label(self, name):
         return Label(name, self, self.type)
     def distinct(self):
