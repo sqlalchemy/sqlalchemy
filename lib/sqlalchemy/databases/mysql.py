@@ -72,11 +72,6 @@ class MSInteger(sqltypes.Integer):
         else:
             return kw_colspec(self, "INTEGER")
 class MSBigInteger(MSInteger):
-    def __init__(self, length=None, **kw):
-        self.length = length
-        self.unsigned = 'unsigned' in kw
-        self.zerofill = 'zerofill' in kw
-        super(MSBigInteger, self).__init__()
     def get_col_spec(self):
         if self.length is not None:
             return kw_colspec(self, "BIGINT(%(length)s)" % {'length': self.length})
