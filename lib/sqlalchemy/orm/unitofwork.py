@@ -516,6 +516,71 @@ class UOWDependencyProcessor(object):
     def branch(self, task):
         return UOWDependencyProcessor(self.processor, task)
 
+class UOWExecutor(object):
+    def execute(self, trans, task, isdelete=None):
+        if isdelete is not True:
+            self.execute_save_steps(trans, task)
+        if isdelete is not False:
+            self.execute_delete_steps(trans, task)
+
+    def save_objects(self, trans, task):
+        task._save_objects(trans)
+
+    def delete_objects(self, trans, task):
+        task._delete_objects(trans)
+    
+    def execute_dependency(self, trans, dep, isdelete):
+        dep.execute(trans, isdelete)
+        
+    def execute_save_steps(self, trans, task):
+        if task.circular is not None:
+            self.execute_save_steps(trans, task.circular)
+        else:
+            self.save_objects(trans, task)
+            self.execute_cyclical_dependencies(trans, task, False)
+            self.execute_per_element_childtasks(trans, task, False)
+            self.execute_dependencies(trans, task, False)
+            self.execute_dependencies(trans, task, True)
+            self.execute_childtasks(trans, task, False)
+                
+    def execute_delete_steps(self, trans, task):    
+        if task.circular is not None:
+            self.execute_delete_steps(trans, task.circular)
+        else:
+            self.execute_cyclical_dependencies(trans, task, True)
+            self.execute_childtasks(trans, task, True)
+            self.execute_per_element_childtasks(trans, task, True)
+            self.delete_objects(trans, task)
+
+    def execute_dependencies(self, trans, task, isdelete=None):
+        alltasks = list(task.polymorphic_tasks())
+        if isdelete is not True:
+            for task in alltasks:
+                for dep in task.dependencies:
+                    self.execute_dependency(trans, dep, False)
+        if isdelete is not False:
+            alltasks.reverse()
+            for task in alltasks:
+                for dep in task.dependencies:
+                    self.execute_dependency(trans, dep, True)
+
+    def execute_childtasks(self, trans, task, isdelete=None):
+        for polytask in task.polymorphic_tasks():
+            for child in polytask.childtasks:
+                self.execute(trans, child, isdelete)
+                
+    def execute_cyclical_dependencies(self, trans, task, isdelete):
+        for polytask in task.polymorphic_tasks():
+            for dep in polytask.cyclical_dependencies:
+                self.execute_dependency(trans, dep, isdelete)
+                
+    def execute_per_element_childtasks(self, trans, task, isdelete):
+        for polytask in task.polymorphic_tasks():
+            for element in polytask.tosave_elements + polytask.todelete_elements:
+                for child in element.childtasks:
+                    self.execute(trans, child, isdelete)
+    
+    
 class UOWTask(object):
     """represents the full list of objects that are to be saved/deleted by a specific Mapper."""
     def __init__(self, uowtransaction, mapper, circular_parent=None):
@@ -600,56 +665,12 @@ class UOWTask(object):
     def _delete_objects(self, trans):
         for task in self.polymorphic_tasks():
             task.mapper.delete_obj(task.todelete_objects, trans)
-    def _execute_dependencies(self, trans):
-        alltasks = list(self.polymorphic_tasks())
-        for task in alltasks:
-            for dep in task.dependencies:
-                dep.execute(trans, False)
-        alltasks.reverse()
-        for task in alltasks:
-            for dep in task.dependencies:
-                dep.execute(trans, True)
-    def _execute_childtasks(self, trans):
-        for task in self.polymorphic_tasks():
-            for child in task.childtasks:
-                child.execute(trans)
-    def _execute_cyclical_dependencies(self, trans, isdelete):
-        for task in self.polymorphic_tasks():
-            for dep in task.cyclical_dependencies:
-                dep.execute(trans, isdelete)
-    def _execute_per_element_childtasks(self, trans, isdelete):
-        for ptask in self.polymorphic_tasks():
-            if isdelete:
-                for element in ptask.todelete_elements:
-                    for task in element.childtasks:
-                        task.execute(trans)
-            else:
-                for element in ptask.tosave_elements:
-                    for task in element.childtasks:
-                        task.execute(trans)
             
     def execute(self, trans):
         """executes this UOWTask.  saves objects to be saved, processes all dependencies
         that have been registered, and deletes objects to be deleted. """
         
-        # a "circular" task is a circularly-sorted collection of UOWTask/UOWTaskElements
-        # derived from the components of this UOWTask, which accounts for inter-row dependencies.  
-        # if one was created for this UOWTask, it replaces the execution for this UOWTask.
-        if self.circular is not None:
-            self.circular.execute(trans)
-            return
-
-        # TODO: add a visitation system to the UOW classes and have this execution called
-        # from a separate executor object ? (would also handle dumping)
-        
-        self._save_objects(trans)
-        self._execute_cyclical_dependencies(trans, False)
-        self._execute_per_element_childtasks(trans, False)
-        self._execute_dependencies(trans)
-        self._execute_cyclical_dependencies(trans, True)
-        self._execute_childtasks(trans)
-        self._execute_per_element_childtasks(trans, True)
-        self._delete_objects(trans)
+        UOWExecutor().execute(trans, self)
 
     def polymorphic_tasks(self):
         """returns an iteration consisting of this UOWTask, and all UOWTasks whose 

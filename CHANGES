@@ -1,3 +1,8 @@
+0.2.9
+- more rearrangements of unit-of-work commit scheme to better allow
+dependencies within circular flushes to work properly...updated
+task traversal/logging implementation
+
 0.2.8
 - cleanup on connection methods + documentation.  custom DBAPI
 arguments specified in query string, 'connect_args' argument

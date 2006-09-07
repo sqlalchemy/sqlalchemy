@@ -1,13 +1,83 @@
+import unitofwork
 
 """dumps out a string representation of a UOWTask structure"""
 
-class UOWDumper(object):
+class UOWDumper(unitofwork.UOWExecutor):
     def __init__(self, task, buf, verbose=False):
         self.verbose = verbose
         self.indent = 0
         self.task = task
         self.buf = buf
+        self.starttask = task
+        #self.execute(None, task)
         self._dump(task)
+
+    # execute stuff is UNDER CONSTRUCTION
+    
+    def execute(self, trans, task, isdelete=None):
+        oldstarttask = self.starttask
+        self.starttask = task
+        try:
+            i = self._indent()
+            if len(i):
+                i = i[0:-1] + "-"
+            if task.circular is not None:
+                self.buf.write(self._indent() + "\n")
+                self.buf.write(i + " " + self._repr_task(task))
+                self.buf.write("->circular->" + self._repr_task(task.circular))
+            else:
+                self.buf.write(self._indent() + "\n")
+                self.buf.write(i + " " + self._repr_task(task))
+            self.buf.write("\n")
+            super(UOWDumper, self).execute(trans, task, isdelete)
+        finally:
+            self.starttask = oldstarttask
+            
+    def save_objects(self, trans, task):
+        for rec in task.tosave_elements:
+            if rec.listonly:
+                continue
+            if self.verbose:
+                header(self.buf, self._indent() + "  |- Save elements"+ self._inheritance_tag(task) + "\n")
+            self.buf.write(self._indent() + "  |- " + self._repr_task_element(rec)  + "\n")
+
+    def delete_objects(self, trans, task):
+        for rec in task.todelete_elements:
+            if rec.listonly:
+                continue
+            if self.verbose:
+                header(self.buf, self._indent() + "  |- Delete elements"+ self._inheritance_tag(task) + "\n")
+            self.buf.write(self._indent() + "  |- " + self._repr_task_element(rec)  + "\n")
+
+    def _inheritance_tag(self, task):
+        if not self.verbose:
+            return ""
+        elif task is not self.starttask:
+            return (" (inheriting task %s)" % self._repr_task(task))
+        else:
+            return ""
+
+    def execute_dependency(self, transaction, dep, isdelete):
+        #self.buf.write()
+        pass
+
+    def execute_save_steps(self, trans, task):
+        super(UOWDumper, self).execute_save_steps(trans, task)
+
+    def execute_delete_steps(self, trans, task):    
+        super(UOWDumper, self).execute_delete_steps(trans, task)
+
+    def execute_dependencies(self, trans, task, isdelete=None):
+        super(UOWDumper, self).execute_dependencies(trans, task, isdelete)
+
+    def execute_childtasks(self, trans, task, isdelete=None):
+        super(UOWDumper, self).execute_childtasks(trans, task, isdelete)
+
+    def execute_cyclical_dependencies(self, trans, task, isdelete):
+        super(UOWDumper, self).execute_cyclical_dependencies(trans, task, isdelete)
+
+    def execute_per_element_childtasks(self, trans, task, isdelete):
+        super(UOWDumper, self).execute_per_element_childtasks(trans, task, isdelete)
         
     def _dump_processor(self, proc, deletes):
         if deletes:
@@ -144,6 +214,7 @@ class UOWDumper(object):
             self._dump(starttask.circular, indent=self.indent, circularparent=starttask)
             return
 
+
         i = self._indent()
         if len(i):
             i = i[0:-1] + "-"
@@ -185,3 +256,5 @@ class UOWDumper(object):
             self.buf.write(self._indent() + "  |----\n")
         
         self.buf.write(self._indent() + "\n")           
+
+
