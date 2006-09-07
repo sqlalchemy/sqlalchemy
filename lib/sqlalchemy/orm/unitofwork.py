@@ -577,9 +577,11 @@ class UOWExecutor(object):
     def execute_per_element_childtasks(self, trans, task, isdelete):
         for polytask in task.polymorphic_tasks():
             for element in polytask.tosave_elements + polytask.todelete_elements:
-                for child in element.childtasks:
-                    self.execute(trans, child, isdelete)
+                self.execute_element_childtasks(trans, element, isdelete)
     
+    def execute_element_childtasks(self, trans, element, isdelete):
+        for child in element.childtasks:
+            self.execute(trans, child, isdelete)
     
 class UOWTask(object):
     """represents the full list of objects that are to be saved/deleted by a specific Mapper."""
