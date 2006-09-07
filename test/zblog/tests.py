@@ -44,6 +44,7 @@ class SavePostTest(ZBlogTest):
 
     def tearDownAll(self):
         clear_mappers()
+        super(SavePostTest, self).tearDownAll()
         
     def testattach(self):
         """test that a transient/pending instance has proper bi-directional behavior.
