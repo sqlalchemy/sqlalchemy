@@ -2,6 +2,14 @@
 - more rearrangements of unit-of-work commit scheme to better allow
 dependencies within circular flushes to work properly...updated
 task traversal/logging implementation
+- changed "for_update" parameter to accept False/True/"nowait"
+and "read", the latter two of which are interpreted only by
+Oracle and Mysql [ticket:292]
+- added "lockmode" argument to base Query select/get functions, 
+including "with_lockmode" function to get a Query copy that has 
+a default locking mode.  Will translate "read"/"update" 
+arguments into a for_update argument on the select side.
+[ticket:292]
 
 0.2.8
 - cleanup on connection methods + documentation.  custom DBAPI

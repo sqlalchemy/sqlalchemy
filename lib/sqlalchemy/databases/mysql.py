@@ -411,6 +411,12 @@ class MySQLCompiler(ansisql.ANSICompiler):
             # TODO: put whatever MySQL does for CAST here.
             self.strings[cast] = self.strings[cast.clause]
 
+    def for_update_clause(self, select):
+        if select.for_update == 'read':
+             return ' LOCK IN SHARE MODE'
+        else:
+            return super(MySQLCompiler, self).for_update_clause(select)
+
     def limit_clause(self, select):
         text = ""
         if select.limit is not None:

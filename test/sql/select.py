@@ -55,7 +55,7 @@ class SQLTest(PersistTest):
         c = clause.compile(parameters=params, dialect=dialect)
         self.echo("\nSQL String:\n" + str(c) + repr(c.get_params()))
         cc = re.sub(r'\n', '', str(c))
-        self.assert_(cc == result, str(c) + "\n does not match \n" + result)
+        self.assert_(cc == result, "\n'" + cc + "'\n does not match \n'" + result + "'")
         if checkparams is not None:
             if isinstance(checkparams, list):
                 self.assert_(c.get_params().values() == checkparams, "params dont match ")
@@ -213,12 +213,12 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         )
 
     def testunicodestartswith(self):
-	string = u"hi \xf6 \xf5"
-	self.runtest(
-		table1.select(table1.c.name.startswith(string)),
-		"SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.name LIKE :mytable_name",
-		checkparams = {'mytable_name': u'hi \xf6 \xf5%'},
-	)
+        string = u"hi \xf6 \xf5"
+        self.runtest(
+            table1.select(table1.c.name.startswith(string)),
+            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.name LIKE :mytable_name",
+            checkparams = {'mytable_name': u'hi \xf6 \xf5%'},
+        )
 
     def testmultiparam(self):
         self.runtest(
@@ -249,9 +249,18 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         )
     
     def testforupdate(self):
-        self.runtest(
-            table1.select(table1.c.myid==7, for_update=True), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = :mytable_myid FOR UPDATE"
-        )
+        self.runtest(table1.select(table1.c.myid==7, for_update=True), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = :mytable_myid FOR UPDATE")
+    
+        self.runtest(table1.select(table1.c.myid==7, for_update="nowait"), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = :mytable_myid FOR UPDATE")
+
+        self.runtest(table1.select(table1.c.myid==7, for_update="nowait"), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = :mytable_myid FOR UPDATE NOWAIT", dialect=oracle.dialect())
+
+        self.runtest(table1.select(table1.c.myid==7, for_update="read"), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = %s LOCK IN SHARE MODE", dialect=mysql.dialect())
+
+        self.runtest(table1.select(table1.c.myid==7, for_update=True), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = %s FOR UPDATE", dialect=mysql.dialect())
+
+        self.runtest(table1.select(table1.c.myid==7, for_update=True), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = :mytable_myid FOR UPDATE", dialect=oracle.dialect())
+   
     def testalias(self):
         # test the alias for a table1.  column names stay the same, table name "changes" to "foo".
         self.runtest(

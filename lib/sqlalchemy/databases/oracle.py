@@ -402,6 +402,12 @@ class OracleCompiler(ansisql.ANSICompiler):
     def limit_clause(self, select):
         return ""
 
+    def for_update_clause(self, select):
+        if select.for_update=="nowait":
+            return " FOR UPDATE NOWAIT"
+        else:
+            return super(OracleCompiler, self).for_update_clause(select)
+
 class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column)

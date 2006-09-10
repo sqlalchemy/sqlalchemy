@@ -394,13 +394,9 @@ class ANSICompiler(sql.Compiled):
             text += " ORDER BY " + order_by
 
         text += self.visit_select_postclauses(select)
- 
-        if select.for_update:
-            text += " FOR UPDATE"
 
-        if select.nowait:
-            text += " NOWAIT"
-            
+        text += self.for_update_clause(select)
+
         if getattr(select, 'parens', False):
             self.strings[select] = "(" + text + ")"
         else:
@@ -414,6 +410,12 @@ class ANSICompiler(sql.Compiled):
     def visit_select_postclauses(self, select):
         """ called when building a SELECT statement, position is after all other SELECT clauses. Most DB syntaxes put LIMIT/OFFSET here """
         return (select.limit or select.offset) and self.limit_clause(select) or ""
+
+    def for_update_clause(self, select):
+        if select.for_update:
+            return " FOR UPDATE"
+        else:
+            return ""
 
     def limit_clause(self, select):
         text = ""

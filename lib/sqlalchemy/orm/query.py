@@ -1,4 +1,4 @@
-# orm/query.py
+ # orm/query.py
 # Copyright (C) 2005,2006 Michael Bayer mike_mp@zzzcomputing.com
 #
 # This module is part of SQLAlchemy and is released under
@@ -12,7 +12,7 @@ import mapper
 
 class Query(object):
     """encapsulates the object-fetching operations provided by Mappers."""
-    def __init__(self, class_or_mapper, session=None, entity_name=None, **kwargs):
+    def __init__(self, class_or_mapper, session=None, entity_name=None, lockmode=None, **kwargs):
         if isinstance(class_or_mapper, type):
             self.mapper = mapper.class_mapper(class_or_mapper, entity_name=entity_name)
         else:
@@ -20,6 +20,7 @@ class Query(object):
         self.mapper = self.mapper.get_select_mapper().compile()
         self.always_refresh = kwargs.pop('always_refresh', self.mapper.always_refresh)
         self.order_by = kwargs.pop('order_by', self.mapper.order_by)
+        self.lockmode = lockmode
         self.extension = kwargs.pop('extension', self.mapper.extension)
         self._session = session
         if not hasattr(self.mapper, '_get_clause'):
@@ -67,7 +68,8 @@ class Query(object):
 
         e.g.   u = usermapper.get_by(user_name = 'fred')
         """
-        x = self.select_whereclause(self.join_by(*args, **params), limit=1)
+        lockmode=params.pop('lockmode', self.lockmode)
+        x = self.select_whereclause(self.join_by(*args, **params), lockmode=lockmode, limit=1)
         if x:
             return x[0]
         else:
@@ -248,7 +250,11 @@ class Query(object):
     def options(self, *args, **kwargs):
         """returns a new Query object using the given MapperOptions."""
         return self.mapper.options(*args, **kwargs).using(session=self._session)
-
+    
+    def with_lockmode(self, mode):
+        """return a new Query object with the specified locking mode."""
+        return Query(self.mapper, self._session, lockmode=mode)
+        
     def __getattr__(self, key):
         if (key.startswith('select_by_')):
             key = key[10:]
@@ -270,8 +276,9 @@ class Query(object):
         finally:
             result.close()
         
-    def _get(self, key, ident=None, reload=False):
-        if not reload and not self.always_refresh:
+    def _get(self, key, ident=None, reload=False, lockmode=None):
+        lockmode = lockmode or self.lockmode
+        if not reload and not self.always_refresh and lockmode == None:
             try:
                 return self.session._get(key)
             except KeyError:
@@ -293,7 +300,7 @@ class Query(object):
             if len(ident) > i + 1:
                 i += 1
         try:
-            statement = self.compile(self._get_clause)
+            statement = self.compile(self._get_clause, lockmode=lockmode)
             return self._select_statement(statement, params=params, populate_existing=reload)[0]
         except IndexError:
             return None
@@ -320,11 +327,14 @@ class Query(object):
     def compile(self, whereclause = None, **kwargs):
         order_by = kwargs.pop('order_by', False)
         from_obj = kwargs.pop('from_obj', [])
+        lockmode = kwargs.pop('lockmode', self.lockmode)
         if order_by is False:
             order_by = self.order_by
         if order_by is False:
             if self.table.default_order_by() is not None:
                 order_by = self.table.default_order_by()
+
+        for_update = {'read':'read','update':True,'update_nowait':'nowait'}.get(lockmode, False)
         
         if self.mapper.single and self.mapper.polymorphic_on is not None and self.mapper.polymorphic_identity is not None:
             whereclause = sql.and_(whereclause, self.mapper.polymorphic_on==self.mapper.polymorphic_identity)
@@ -349,7 +359,7 @@ class Query(object):
             crit = []
             for i in range(0, len(self.table.primary_key)):
                 crit.append(s3.primary_key[i] == self.table.primary_key[i])
-            statement = sql.select([], sql.and_(*crit), from_obj=[self.table], use_labels=True)
+            statement = sql.select([], sql.and_(*crit), from_obj=[self.table], use_labels=True, for_update=for_update)
  #           raise "OK statement", str(statement)
  
             # now for the order by, convert the columns to their corresponding columns
@@ -364,7 +374,7 @@ class Query(object):
                 statement.order_by(*util.to_list(order_by))
         else:
             from_obj.append(self.table)
-            statement = sql.select([], whereclause, from_obj=from_obj, use_labels=True, **kwargs)
+            statement = sql.select([], whereclause, from_obj=from_obj, use_labels=True, for_update=for_update, **kwargs)
             if order_by:
                 statement.order_by(*util.to_list(order_by))
             # for a DISTINCT query, you need the columns explicitly specified in order
