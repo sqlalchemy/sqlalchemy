@@ -334,7 +334,10 @@ class Query(object):
             if self.table.default_order_by() is not None:
                 order_by = self.table.default_order_by()
 
-        for_update = {'read':'read','update':True,'update_nowait':'nowait'}.get(lockmode, False)
+        try:
+            for_update = {'read':'read','update':True,'update_nowait':'nowait',None:False}[lockmode]
+        except KeyError:
+            raise exceptions.ArgumentError("Unknown lockmode '%s'" % lockmode)
         
         if self.mapper.single and self.mapper.polymorphic_on is not None and self.mapper.polymorphic_identity is not None:
             whereclause = sql.and_(whereclause, self.mapper.polymorphic_on==self.mapper.polymorphic_identity)
