@@ -123,7 +123,9 @@ class Pool(object):
         raise NotImplementedError()
         
     def __del__(self):
-        self.dispose()
+        pass
+        # produces too much log garbage when apps end, due to python non-deterministic teardown
+        #self.dispose()
 
 class _ConnectionRecord(object):
     def __init__(self, pool):
