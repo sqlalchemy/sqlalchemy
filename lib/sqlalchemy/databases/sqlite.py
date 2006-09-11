@@ -273,6 +273,10 @@ class SQLiteCompiler(ansisql.ANSICompiler):
         else:
             text += " OFFSET 0"
         return text
+    def for_update_clause(self, select):
+        # sqlite has no "FOR UPDATE" AFAICT
+        return ''
+
     def binary_operator_string(self, binary):
         if isinstance(binary.type, sqltypes.String) and binary.operator == '+':
             return '||'
