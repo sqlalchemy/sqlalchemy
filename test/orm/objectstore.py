@@ -150,7 +150,7 @@ class VersioningTest(SessionTest):
             # a concurrent session has modified this, should throw
             # an exception
             s.flush()
-        except exceptions.SQLAlchemyError, e:
+        except exceptions.ConcurrentModificationError, e:
             #print e
             success = True
         assert success
@@ -166,10 +166,48 @@ class VersioningTest(SessionTest):
         success = False
         try:
             s.flush()
-        except exceptions.SQLAlchemyError, e:
+        except exceptions.ConcurrentModificationError, e:
             #print e
             success = True
         assert success
+    def testversioncheck(self):
+        """test that query.with_lockmode performs a 'version check' on an already loaded instance"""
+        s1 = create_session()
+        class Foo(object):pass
+        assign_mapper(Foo, version_table, version_id_col=version_table.c.version_id)
+        f1s1 =Foo(value='f1', _sa_session=s1)
+        s1.flush()
+        s2 = create_session()
+        f1s2 = s2.query(Foo).get(f1s1.id)
+        f1s2.value='f1 new value'
+        s2.flush()
+        try:
+            # load, version is wrong
+            s1.query(Foo).with_lockmode('read').get(f1s1.id)
+            assert False
+        except exceptions.ConcurrentModificationError, e:
+            assert True
+        # reload it
+        s1.query(Foo).load(f1s1.id)
+        # now assert version OK
+        s1.query(Foo).with_lockmode('read').get(f1s1.id)
+        
+        # assert brand new load is OK too
+        s1.clear()
+        s1.query(Foo).with_lockmode('read').get(f1s1.id)
+        
+    def testnoversioncheck(self):
+        """test that query.with_lockmode works OK when the mapper has no version id col"""
+        s1 = create_session()
+        class Foo(object):pass
+        assign_mapper(Foo, version_table)
+        f1s1 =Foo(value='f1', _sa_session=s1)
+        f1s1.version_id=0
+        s1.flush()
+        s2 = create_session()
+        f1s2 = s2.query(Foo).with_lockmode('read').get(f1s1.id)
+        assert f1s2.id == f1s1.id
+        assert f1s2.value == f1s1.value
         
 class UnicodeTest(SessionTest):
     def setUpAll(self):

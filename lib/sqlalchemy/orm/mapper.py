@@ -610,6 +610,7 @@ class Mapper(object):
         limit = kwargs.get('limit', None)
         offset = kwargs.get('offset', None)
         populate_existing = kwargs.get('populate_existing', False)
+        version_check = kwargs.get('version_check', False)
         
         result = util.UniqueAppender([])
         if mappers:
@@ -624,7 +625,7 @@ class Mapper(object):
             row = cursor.fetchone()
             if row is None:
                 break
-            self._instance(session, row, imap, result, populate_existing=populate_existing)
+            self._instance(session, row, imap, result, populate_existing=populate_existing, version_check=version_check)
             i = 0
             for m in mappers:
                 m._instance(session, row, imap, otherresults[i])
@@ -838,7 +839,7 @@ class Mapper(object):
                     rows += c.cursor.rowcount
 
                 if c.supports_sane_rowcount() and rows != len(update):
-                    raise exceptions.FlushError("ConcurrencyError - updated rowcount %d does not match number of objects updated %d" % (rows, len(update)))
+                    raise exceptions.ConcurrentModificationError("Updated rowcount %d does not match number of objects updated %d" % (rows, len(update)))
 
             if len(insert):
                 statement = table.insert()
@@ -932,7 +933,7 @@ class Mapper(object):
                 statement = table.delete(clause)
                 c = connection.execute(statement, delete)
                 if c.supports_sane_rowcount() and c.rowcount != len(delete):
-                    raise exceptions.FlushError("ConcurrencyError - updated rowcount %d does not match number of objects updated %d" % (c.cursor.rowcount, len(delete)))
+                    raise exceptions.ConcurrentModificationError("Updated rowcount %d does not match number of objects updated %d" % (c.cursor.rowcount, len(delete)))
                     
         [self.extension.after_delete(self, connection, obj) for obj in deleted_objects]
 
@@ -972,7 +973,7 @@ class Mapper(object):
     def get_select_mapper(self):
         return self.__surrogate_mapper or self
         
-    def _instance(self, session, row, imap, result = None, populate_existing = False):
+    def _instance(self, session, row, imap, result = None, populate_existing = False, version_check=False):
         """pulls an object instance from the given row and appends it to the given result
         list. if the instance already exists in the given identity map, its not added.  in
         either case, executes all the property loaders on the instance to also process extra
@@ -994,6 +995,9 @@ class Mapper(object):
         if session.has_key(identitykey):
             instance = session._get(identitykey)
             isnew = False
+            if version_check and self.version_id_col is not None and self._getattrbycolumn(instance, self.version_id_col) != row[self.version_id_col]:
+                raise exceptions.ConcurrentModificationError("Instance '%s' version of %s does not match %s" % (instance, self._getattrbycolumn(instance, self.version_id_col), row[self.version_id_col]))
+                        
             if populate_existing or session.is_expired(instance, unexpire=True):
                 if not imap.has_key(identitykey):
                     imap[identitykey] = instance

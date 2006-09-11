@@ -278,7 +278,7 @@ class Query(object):
         
     def _get(self, key, ident=None, reload=False, lockmode=None):
         lockmode = lockmode or self.lockmode
-        if not reload and not self.always_refresh and lockmode == None:
+        if not reload and not self.always_refresh and lockmode is None:
             try:
                 return self.session._get(key)
             except KeyError:
@@ -301,7 +301,7 @@ class Query(object):
                 i += 1
         try:
             statement = self.compile(self._get_clause, lockmode=lockmode)
-            return self._select_statement(statement, params=params, populate_existing=reload)[0]
+            return self._select_statement(statement, params=params, populate_existing=reload, version_check=(lockmode is not None))[0]
         except IndexError:
             return None
 

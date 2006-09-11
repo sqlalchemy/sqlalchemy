@@ -10,6 +10,9 @@ including "with_lockmode" function to get a Query copy that has
 a default locking mode.  Will translate "read"/"update" 
 arguments into a for_update argument on the select side.
 [ticket:292]
+- implemented "version check" logic in Query/Mapper, used
+when version_id_col is in effect and query.with_lockmode()
+is used to get() an instance thats already loaded
 
 0.2.8
 - cleanup on connection methods + documentation.  custom DBAPI
