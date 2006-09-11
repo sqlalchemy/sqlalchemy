@@ -28,7 +28,11 @@ class ArgumentError(SQLAlchemyError):
 class TimeoutError(SQLAlchemyError):
     """raised when a connection pool times out on getting a connection"""
     pass
-    
+
+class ConcurrentModificationError(SQLAlchemyError):
+    """raised when a concurrent modification condition is detected"""
+    pass
+        
 class FlushError(SQLAlchemyError):
     """raised when an invalid condition is detected upon a flush()"""
     pass
