@@ -68,8 +68,7 @@ class Query(object):
 
         e.g.   u = usermapper.get_by(user_name = 'fred')
         """
-        lockmode=params.pop('lockmode', self.lockmode)
-        x = self.select_whereclause(self.join_by(*args, **params), lockmode=lockmode, limit=1)
+        x = self.select_whereclause(self.join_by(*args, **params), limit=1)
         if x:
             return x[0]
         else:
