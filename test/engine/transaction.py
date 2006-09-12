@@ -21,6 +21,22 @@ class TransactionTest(testbase.PersistTest):
     def tearDownAll(self):
         users.drop(testbase.db)
     
+    def testcommits(self):
+        connection = testbase.db.connect()
+        transaction = connection.begin()
+        connection.execute(users.insert(), user_id=1, user_name='user1')
+        transaction.commit()
+
+        transaction = connection.begin()
+        connection.execute(users.insert(), user_id=2, user_name='user2')
+        connection.execute(users.insert(), user_id=3, user_name='user3')
+        transaction.commit()
+
+        transaction = connection.begin()
+        result = connection.execute("select * from query_users")
+        assert len(result.fetchall()) == 3
+        transaction.commit()
+        
     @testbase.unsupported('mysql')
     def testrollback(self):
         """test a basic rollback"""
@@ -156,6 +172,22 @@ class TLTransactionTest(testbase.PersistTest):
             assert len(result.fetchall()) == 3
         finally:
             external_connection.close()
+
+    def testcommits(self):
+        connection = tlengine.contextual_connect()
+        transaction = connection.begin()
+        connection.execute(users.insert(), user_id=1, user_name='user1')
+        transaction.commit()
+
+        transaction = connection.begin()
+        connection.execute(users.insert(), user_id=2, user_name='user2')
+        connection.execute(users.insert(), user_id=3, user_name='user3')
+        transaction.commit()
+
+        transaction = connection.begin()
+        result = connection.execute("select * from query_users")
+        assert len(result.fetchall()) == 3
+        transaction.commit()
 
     @testbase.unsupported('mysql')
     def testrollback_off_conn(self):

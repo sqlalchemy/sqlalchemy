@@ -211,10 +211,12 @@ class Connection(Connectable):
         if self.__engine.echo:
             self.__engine.log("ROLLBACK")
         self.__engine.dialect.do_rollback(self.connection)
+        self.__transaction = None
     def _commit_impl(self):
         if self.__engine.echo:
             self.__engine.log("COMMIT")
         self.__engine.dialect.do_commit(self.connection)
+        self.__transaction = None
     def _autocommit(self, statement):
         """when no Transaction is present, this is called after executions to provide "autocommit" behavior."""
         # TODO: have the dialect determine if autocommit can be set on the connection directly without this 
