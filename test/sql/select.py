@@ -404,6 +404,12 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
 
         # test a dotted func off the engine itself
         self.runtest(func.lala.hoho(7), "lala.hoho(:hoho)")
+    
+    def testextract(self):
+        """test the EXTRACT function"""
+        self.runtest(select([extract("month", table3.c.otherstuff)]), "SELECT extract(month FROM thirdtable.otherstuff) FROM thirdtable")
+        
+        self.runtest(select([extract("day", func.to_date("03/20/2005", "MM/DD/YYYY"))]), "SELECT extract(day FROM to_date(:to_date, :to_da_1))")
         
     def testjoin(self):
         self.runtest(

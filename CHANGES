@@ -15,6 +15,7 @@ when version_id_col is in effect and query.with_lockmode()
 is used to get() an instance thats already loaded
 - fixed bug where Connection wouldnt lose its Transaction
 after commit/rollback
+- added extract() function to sql dialect
 
 0.2.8
 - cleanup on connection methods + documentation.  custom DBAPI

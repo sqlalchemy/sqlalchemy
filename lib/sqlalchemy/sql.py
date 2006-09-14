@@ -10,7 +10,7 @@ from sqlalchemy import types as sqltypes
 import string, re, random, sets
 types = __import__('types')
 
-__all__ = ['text', 'table', 'column', 'func', 'select', 'update', 'insert', 'delete', 'join', 'and_', 'or_', 'not_', 'between_', 'case', 'cast', 'union', 'union_all', 'null', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'literal', 'bindparam', 'exists']
+__all__ = ['text', 'table', 'column', 'func', 'select', 'update', 'insert', 'delete', 'join', 'and_', 'or_', 'not_', 'between_', 'case', 'cast', 'union', 'union_all', 'null', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'literal', 'bindparam', 'exists', 'extract']
 
 def desc(column):
     """returns a descending ORDER BY clause element, e.g.:
@@ -155,7 +155,11 @@ def cast(clause, totype, **kwargs):
     """
     return Cast(clause, totype, **kwargs)
 
-
+def extract(field, expr):
+    """return extract(field FROM expr)"""
+    expr = BinaryClause(text(field), expr, "FROM")
+    return func.extract(expr)
+    
 def exists(*args, **params):
     params['correlate'] = True
     s = select(*args, **params)
