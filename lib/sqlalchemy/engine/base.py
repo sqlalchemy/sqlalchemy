@@ -466,6 +466,10 @@ class ComposedSQLEngine(sql.Engine, Connectable):
     def execute(self, statement, *multiparams, **params):
         connection = self.contextual_connect(close_with_result=True)
         return connection.execute(statement, *multiparams, **params)
+
+    def scalar(self, statement, *multiparams, **params):
+        connection = self.contextual_connect(close_with_result=True)
+        return connection.scalar(statement, *multiparams, **params)
         
     def execute_compiled(self, compiled, *multiparams, **params):
         connection = self.contextual_connect(close_with_result=True)
@@ -564,6 +568,7 @@ class ResultProxy:
     def close(self):
         if not self.closed:
             self.closed = True
+            self.cursor.close()
             if self.connection.should_close_with_result and self.dialect.supports_autoclose_results:
                 self.connection.close()
     

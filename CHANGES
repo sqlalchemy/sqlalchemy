@@ -16,6 +16,9 @@ is used to get() an instance thats already loaded
 - fixed bug where Connection wouldnt lose its Transaction
 after commit/rollback
 - added extract() function to sql dialect
+- added an implicit close() on the cursor in ResultProxy
+when the result closes
+- added scalar() method to ComposedSQLEngine
 
 0.2.8
 - cleanup on connection methods + documentation.  custom DBAPI
