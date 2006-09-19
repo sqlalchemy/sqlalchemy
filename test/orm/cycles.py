@@ -214,10 +214,12 @@ class OneToManyManyToOneTest(AssertMixin):
         ball = Table('ball', metadata,
          Column('id', Integer, Sequence('ball_id_seq', optional=True), primary_key=True),
          Column('person_id', Integer),
+         Column('data', String(30))
          )
         person = Table('person', metadata,
          Column('id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
          Column('favorite_ball_id', Integer, ForeignKey('ball.id')),
+         Column('data', String(30))
 #         Column('favorite_ball_id', Integer),
          )
 
@@ -267,10 +269,12 @@ class OneToManyManyToOneTest(AssertMixin):
     def testpostupdate_m2o(self):
         """tests a cycle between two rows, with a post_update on the many-to-one"""
         class Person(object):
-         pass
+            def __init__(self, data):
+                self.data = data
 
         class Ball(object):
-         pass
+            def __init__(self, data):
+                self.data = data
 
         Ball.mapper = mapper(Ball, ball)
         Person.mapper = mapper(Person, person, properties= dict(
@@ -281,12 +285,12 @@ class OneToManyManyToOneTest(AssertMixin):
 
         print str(Person.mapper.props['balls'].primaryjoin)
 
-        b = Ball()
-        p = Person()
+        b = Ball('some data')
+        p = Person('some data')
         p.balls.append(b)
-        p.balls.append(Ball())
-        p.balls.append(Ball())
-        p.balls.append(Ball())
+        p.balls.append(Ball('some data'))
+        p.balls.append(Ball('some data'))
+        p.balls.append(Ball('some data'))
         p.favorateBall = b
         sess = create_session()
         sess.save(b)
@@ -294,24 +298,24 @@ class OneToManyManyToOneTest(AssertMixin):
         
         self.assert_sql(db, lambda: sess.flush(), [
             (
-                "INSERT INTO person (favorite_ball_id) VALUES (:favorite_ball_id)",
-                {'favorite_ball_id': None}
+                "INSERT INTO person (favorite_ball_id, data) VALUES (:favorite_ball_id, :data)",
+                {'favorite_ball_id': None, 'data':'some data'}
             ),
             (
-                "INSERT INTO ball (person_id) VALUES (:person_id)",
-                lambda ctx:{'person_id':p.id}
+                "INSERT INTO ball (person_id, data) VALUES (:person_id, :data)",
+                lambda ctx:{'person_id':p.id, 'data':'some data'}
             ),
             (
-                "INSERT INTO ball (person_id) VALUES (:person_id)",
-                lambda ctx:{'person_id':p.id}
+                "INSERT INTO ball (person_id, data) VALUES (:person_id, :data)",
+                lambda ctx:{'person_id':p.id, 'data':'some data'}
             ),
             (
-                "INSERT INTO ball (person_id) VALUES (:person_id)",
-                lambda ctx:{'person_id':p.id}
+                "INSERT INTO ball (person_id, data) VALUES (:person_id, :data)",
+                lambda ctx:{'person_id':p.id, 'data':'some data'}
             ),
             (
-                "INSERT INTO ball (person_id) VALUES (:person_id)",
-                lambda ctx:{'person_id':p.id}
+                "INSERT INTO ball (person_id, data) VALUES (:person_id, :data)",
+                lambda ctx:{'person_id':p.id, 'data':'some data'}
             ),
             (
                 "UPDATE person SET favorite_ball_id=:favorite_ball_id WHERE person.id = :person_id",
@@ -320,24 +324,24 @@ class OneToManyManyToOneTest(AssertMixin):
         ], 
         with_sequences= [
                 (
-                    "INSERT INTO person (id, favorite_ball_id) VALUES (:id, :favorite_ball_id)",
-                    lambda ctx:{'id':ctx.last_inserted_ids()[0], 'favorite_ball_id': None}
+                    "INSERT INTO person (id, favorite_ball_id, data) VALUES (:id, :favorite_ball_id, :data)",
+                    lambda ctx:{'id':ctx.last_inserted_ids()[0], 'favorite_ball_id': None, 'data':'some data'}
                 ),
                 (
-                    "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
-                    lambda ctx:{'id':ctx.last_inserted_ids()[0],'person_id':p.id}
+                    "INSERT INTO ball (id, person_id, data) VALUES (:id, :person_id, :data)",
+                    lambda ctx:{'id':ctx.last_inserted_ids()[0],'person_id':p.id, 'data':'some data'}
                 ),
                 (
-                    "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
-                    lambda ctx:{'id':ctx.last_inserted_ids()[0],'person_id':p.id}
+                    "INSERT INTO ball (id, person_id, data) VALUES (:id, :person_id, :data)",
+                    lambda ctx:{'id':ctx.last_inserted_ids()[0],'person_id':p.id, 'data':'some data'}
                 ),
                 (
-                    "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
-                    lambda ctx:{'id':ctx.last_inserted_ids()[0],'person_id':p.id}
+                    "INSERT INTO ball (id, person_id, data) VALUES (:id, :person_id, :data)",
+                    lambda ctx:{'id':ctx.last_inserted_ids()[0],'person_id':p.id, 'data':'some data'}
                 ),
                 (
-                    "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
-                    lambda ctx:{'id':ctx.last_inserted_ids()[0],'person_id':p.id}
+                    "INSERT INTO ball (id, person_id, data) VALUES (:id, :person_id, :data)",
+                    lambda ctx:{'id':ctx.last_inserted_ids()[0],'person_id':p.id, 'data':'some data'}
                 ),
                 # heres the post update 
                 (
@@ -369,10 +373,12 @@ class OneToManyManyToOneTest(AssertMixin):
     def testpostupdate_o2m(self):
         """tests a cycle between two rows, with a post_update on the one-to-many"""
         class Person(object):
-         pass
+            def __init__(self, data):
+                self.data = data
 
         class Ball(object):
-         pass
+            def __init__(self, data):
+                self.data = data
 
         Ball.mapper = mapper(Ball, ball)
         Person.mapper = mapper(Person, person, properties= dict(
@@ -383,14 +389,14 @@ class OneToManyManyToOneTest(AssertMixin):
 
         print str(Person.mapper.props['balls'].primaryjoin)
 
-        b = Ball()
-        p = Person()
+        b = Ball('some data')
+        p = Person('some data')
         p.balls.append(b)
-        b2 = Ball()
+        b2 = Ball('some data')
         p.balls.append(b2)
-        b3 = Ball()
+        b3 = Ball('some data')
         p.balls.append(b3)
-        b4 = Ball()
+        b4 = Ball('some data')
         p.balls.append(b4)
         p.favorateBall = b
         sess = create_session()
@@ -398,24 +404,24 @@ class OneToManyManyToOneTest(AssertMixin):
 
         self.assert_sql(db, lambda: sess.flush(), [
                 (
-                    "INSERT INTO ball (person_id) VALUES (:person_id)",
-                    {'person_id':None}
+                    "INSERT INTO ball (person_id, data) VALUES (:person_id, :data)",
+                    {'person_id':None, 'data':'some data'}
                 ),
                 (
-                    "INSERT INTO ball (person_id) VALUES (:person_id)",
-                    {'person_id':None}
+                    "INSERT INTO ball (person_id, data) VALUES (:person_id, :data)",
+                    {'person_id':None, 'data':'some data'}
                 ),
                 (
-                    "INSERT INTO ball (person_id) VALUES (:person_id)",
-                    {'person_id':None}
+                    "INSERT INTO ball (person_id, data) VALUES (:person_id, :data)",
+                    {'person_id':None, 'data':'some data'}
                 ),
                 (
-                    "INSERT INTO ball (person_id) VALUES (:person_id)",
-                    {'person_id':None}
+                    "INSERT INTO ball (person_id, data) VALUES (:person_id, :data)",
+                    {'person_id':None, 'data':'some data'}
                 ),
                 (
-                    "INSERT INTO person (favorite_ball_id) VALUES (:favorite_ball_id)",
-                    lambda ctx:{'favorite_ball_id':b.id}
+                    "INSERT INTO person (favorite_ball_id, data) VALUES (:favorite_ball_id, :data)",
+                    lambda ctx:{'favorite_ball_id':b.id, 'data':'some data'}
                 ),
                 # heres the post update on each one-to-many item
                 (
@@ -437,24 +443,24 @@ class OneToManyManyToOneTest(AssertMixin):
         ],
         with_sequences=[
             (
-                "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
-                lambda ctx:{'id':ctx.last_inserted_ids()[0], 'person_id':None}
+                "INSERT INTO ball (id, person_id, data) VALUES (:id, :person_id, :data)",
+                lambda ctx:{'id':ctx.last_inserted_ids()[0], 'person_id':None, 'data':'some data'}
             ),
             (
-                "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
-                lambda ctx:{'id':ctx.last_inserted_ids()[0], 'person_id':None}
+                "INSERT INTO ball (id, person_id, data) VALUES (:id, :person_id, :data)",
+                lambda ctx:{'id':ctx.last_inserted_ids()[0], 'person_id':None, 'data':'some data'}
             ),
             (
-                "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
-                lambda ctx:{'id':ctx.last_inserted_ids()[0], 'person_id':None}
+                "INSERT INTO ball (id, person_id, data) VALUES (:id, :person_id, :data)",
+                lambda ctx:{'id':ctx.last_inserted_ids()[0], 'person_id':None, 'data':'some data'}
             ),
             (
-                "INSERT INTO ball (id, person_id) VALUES (:id, :person_id)",
-                lambda ctx:{'id':ctx.last_inserted_ids()[0], 'person_id':None}
+                "INSERT INTO ball (id, person_id, data) VALUES (:id, :person_id, :data)",
+                lambda ctx:{'id':ctx.last_inserted_ids()[0], 'person_id':None, 'data':'some data'}
             ),
             (
-                "INSERT INTO person (id, favorite_ball_id) VALUES (:id, :favorite_ball_id)",
-                lambda ctx:{'id':ctx.last_inserted_ids()[0], 'favorite_ball_id':b.id}
+                "INSERT INTO person (id, favorite_ball_id, data) VALUES (:id, :favorite_ball_id, :data)",
+                lambda ctx:{'id':ctx.last_inserted_ids()[0], 'favorite_ball_id':b.id, 'data':'some data'}
             ),
             (
                 "UPDATE ball SET person_id=:person_id WHERE ball.id = :ball_id",
@@ -498,10 +504,108 @@ class OneToManyManyToOneTest(AssertMixin):
             ),
             (
                 "DELETE FROM ball WHERE ball.id = :id",
-                None
-                # the order of deletion is not predictable, but its roughly:
-                # lambda ctx:[{'id': b.id}, {'id': b2.id}, {'id': b3.id}, {'id': b4.id}]
+                lambda ctx:[{'id': b.id}, {'id': b2.id}, {'id': b3.id}, {'id': b4.id}]
             )
+        ])
+
+class SelfReferentialPostUpdateTest(AssertMixin):
+    def setUpAll(self):
+        global metadata, node_table
+        metadata = BoundMetaData(testbase.db)
+        node_table = Table('node', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('path', String(50), nullable=False),
+            Column('parent_id', Integer, ForeignKey('node.id'), nullable=True),
+            Column('prev_sibling_id', Integer, ForeignKey('node.id'), nullable=True),
+            Column('next_sibling_id', Integer, ForeignKey('node.id'), nullable=True)
+        )
+        node_table.create()
+    def tearDownAll(self):
+        node_table.drop()
+    
+    def testbasic(self):
+        """test that post_update only fires off when needed.
+        
+        this test case used to produce many superfluous update statements, particularly upon delete"""
+        class Node(object):
+            def __init__(self, path=''):
+                self.path = path
+
+        n_mapper = mapper(Node, node_table, properties={
+            'children': relation(
+                Node,
+                primaryjoin=node_table.c.id==node_table.c.parent_id,
+                lazy=True,
+                cascade="all",
+                backref=backref("parent", primaryjoin=node_table.c.parent_id==node_table.c.id, foreignkey=node_table.c.id)
+            ),
+            'prev_sibling': relation(
+                Node,
+                primaryjoin=node_table.c.prev_sibling_id==node_table.c.id,
+                foreignkey=node_table.c.id,
+                lazy=True,
+                uselist=False
+            ),
+            'next_sibling': relation(
+                Node,
+                primaryjoin=node_table.c.next_sibling_id==node_table.c.id,
+                foreignkey=node_table.c.id,
+                lazy=True,
+                uselist=False,
+                post_update=True
+            )
+        })
+
+        session = create_session()
+
+        def append_child(parent, child):
+            if len(parent.children):
+                parent.children[-1].next_sibling = child
+                child.prev_sibling = parent.children[-1]
+            parent.children.append(child)
+        
+        def remove_child(parent, child):
+            child.parent = None
+            node = child.next_sibling
+            node.prev_sibling = child.prev_sibling
+            child.prev_sibling.next_sibling = node
+            session.delete(child)
+        root = Node('root')
+
+        about = Node('about')
+        cats = Node('cats')
+        stories = Node('stories')
+        bruce = Node('bruce')
+
+        append_child(root, about)
+        assert(about.prev_sibling is None)
+        append_child(root, cats)
+        assert(cats.prev_sibling is about)
+        assert(cats.next_sibling is None)
+        assert(about.next_sibling is cats)
+        assert(about.prev_sibling is None)
+        append_child(root, stories)
+        append_child(root, bruce)
+        session.save(root)
+        session.flush()
+
+        remove_child(root, cats)
+        # pre-trigger lazy loader on 'cats' to make the test easier
+        cats.children
+
+        self.assert_sql(db, lambda: session.flush(), [
+            (
+                "UPDATE node SET prev_sibling_id=:prev_sibling_id WHERE node.id = :node_id",
+                lambda ctx:{'prev_sibling_id':about.id, 'node_id':stories.id}
+            ),
+            (
+                "UPDATE node SET next_sibling_id=:next_sibling_id WHERE node.id = :node_id",
+                lambda ctx:{'next_sibling_id':stories.id, 'node_id':about.id}
+            ),
+            (
+                "DELETE FROM node WHERE node.id = :id",
+                lambda ctx:[{'id':cats.id}]
+            ),
         ])
         
 if __name__ == "__main__":

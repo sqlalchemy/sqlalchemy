@@ -19,6 +19,9 @@ after commit/rollback
 - added an implicit close() on the cursor in ResultProxy
 when the result closes
 - added scalar() method to ComposedSQLEngine
+- post_update behavior improved; does a better job at not 
+updating too many rows, updates only required columns
+[ticket:208]
 
 0.2.8
 - cleanup on connection methods + documentation.  custom DBAPI

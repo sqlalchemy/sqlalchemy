@@ -58,7 +58,7 @@ class DependencyProcessor(object):
             return (obj1, obj2)
         else:
             return (obj2, obj1)
-
+            
     def process_dependencies(self, task, deplist, uowcommit, delete = False):
         """this method is called during a flush operation to synchronize data between a parent and child object.
         it is called within the context of the various mappers and sometimes individual objects sorted according to their
@@ -81,6 +81,12 @@ class DependencyProcessor(object):
         this dependency processor represents"""
         return sessionlib.attribute_manager.get_history(obj, self.key, passive = passive)
 
+    def _conditional_post_update(self, obj, uowcommit, related):
+        if obj is not None and self.post_update:
+            for x in related:
+                if x is not None and (uowcommit.is_deleted(x) or not hasattr(x, '_instance_key')):
+                    uowcommit.register_object(obj, postupdate=True, post_update_cols=self.syncrules.dest_columns())
+                    break
 
 class OneToManyDP(DependencyProcessor):
     def register_dependencies(self, uowcommit):
@@ -103,21 +109,18 @@ class OneToManyDP(DependencyProcessor):
                     for child in childlist.deleted_items():
                         if child is not None and childlist.hasparent(child) is False:
                             self._synchronize(obj, child, None, True)
-                            if self.post_update:
-                                uowcommit.register_object(child, postupdate=True)
+                            self._conditional_post_update(child, uowcommit, [obj])
                     for child in childlist.unchanged_items():
                         if child is not None:
                             self._synchronize(obj, child, None, True)
-                            if self.post_update:
-                                uowcommit.register_object(child, postupdate=True)
+                            self._conditional_post_update(child, uowcommit, [obj])
         else:
             for obj in deplist:
                 childlist = self.get_object_dependencies(obj, uowcommit, passive=True)
                 if childlist is not None:
                     for child in childlist.added_items():
                         self._synchronize(obj, child, None, False)
-                        if child is not None and self.post_update:
-                            uowcommit.register_object(child, postupdate=True)
+                        self._conditional_post_update(child, uowcommit, [obj])
                     for child in childlist.deleted_items():
                         if not self.cascade.delete_orphan:
                             self._synchronize(obj, child, None, True)
@@ -194,16 +197,16 @@ class ManyToOneDP(DependencyProcessor):
                 # before we can DELETE the row
                 for obj in deplist:
                     self._synchronize(obj, None, None, True)
-                    uowcommit.register_object(obj, postupdate=True)
+                    childlist = self.get_object_dependencies(obj, uowcommit, passive=True)
+                    self._conditional_post_update(obj, uowcommit, childlist.deleted_items() + childlist.unchanged_items() + childlist.added_items())
         else:
             for obj in deplist:
                 childlist = self.get_object_dependencies(obj, uowcommit, passive=True)
                 if childlist is not None:
                     for child in childlist.added_items():
                         self._synchronize(obj, child, None, False)
-                if self.post_update:
-                    uowcommit.register_object(obj, postupdate=True)
-            
+                    self._conditional_post_update(obj, uowcommit, childlist.deleted_items() + childlist.unchanged_items() + childlist.added_items())
+                        
     def preprocess_dependencies(self, task, deplist, uowcommit, delete = False):
         #print self.mapper.mapped_table.name + " " + self.key + " " + repr(len(deplist)) + " PRE process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
         # TODO: post_update instructions should be established in this step as well

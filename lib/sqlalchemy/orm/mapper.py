@@ -703,12 +703,13 @@ class Mapper(object):
 
     def _setattrbycolumn(self, obj, column, value):
         self.columntoproperty[column][0].setattr(obj, value)
-            
-    def save_obj(self, objects, uow, postupdate=False):
+    
+    def save_obj(self, objects, uow, postupdate=False, post_update_cols=None):
         """called by a UnitOfWork object to save objects, which involves either an INSERT or
         an UPDATE statement for each table used by this mapper, for each element of the
         list."""
         #print "SAVE_OBJ MAPPER", self.class_.__name__, objects
+        
         connection = uow.transaction.connection(self)
 
         if not postupdate:
@@ -785,6 +786,8 @@ class Mapper(object):
                             # doing an UPDATE ? get the history for the attribute, with "passive"
                             # so as not to trigger any deferred loads.  if there is a new
                             # value, add it to the bind parameters
+                            if post_update_cols is not None and col not in post_update_cols:
+                                continue
                             prop = self._getpropbycolumn(col, False)
                             if prop is None:
                                 continue

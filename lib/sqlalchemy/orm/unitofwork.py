@@ -239,7 +239,7 @@ class UOWTransaction(object):
         self.__is_executing = False
         
     # TODO: shouldnt be able to register stuff here that is not in the enclosing Session
-    def register_object(self, obj, isdelete = False, listonly = False, postupdate=False, **kwargs):
+    def register_object(self, obj, isdelete = False, listonly = False, postupdate=False, post_update_cols=None, **kwargs):
         """adds an object to this UOWTransaction to be updated in the database.
 
         'isdelete' indicates whether the object is to be deleted or saved (update/inserted).
@@ -258,7 +258,7 @@ class UOWTransaction(object):
         self.mappers.add(mapper)
         task = self.get_task_by_mapper(mapper)
         if postupdate:
-            mod = task.append_postupdate(obj)
+            mod = task.append_postupdate(obj, post_update_cols)
             if mod: self._mark_modified()
             return
                 
@@ -283,7 +283,13 @@ class UOWTransaction(object):
         #if self.__is_executing:
         #    raise "test assertion failed"
         self.__modified = True
+    
         
+    def is_deleted(self, obj):
+        mapper = object_mapper(obj)
+        task = self.get_task_by_mapper(mapper)
+        return task.is_deleted(obj)
+            
     def get_task_by_mapper(self, mapper, dontcreate=False):
         """every individual mapper involved in the transaction has a single
         corresponding UOWTask object, which stores all the operations involved
@@ -650,9 +656,11 @@ class UOWTask(object):
             rec.isdelete = True
         return retval
     
-    def append_postupdate(self, obj):
+    def append_postupdate(self, obj, post_update_cols):
         # postupdates are UPDATED immeditely (for now)
-        self.mapper.save_obj([obj], self.uowtransaction, postupdate=True)
+        # convert post_update_cols list to a Set so that __hashcode__ is used to compare columns
+        # instead of __eq__
+        self.mapper.save_obj([obj], self.uowtransaction, postupdate=True, post_update_cols=util.Set(post_update_cols))
         return True
             
     def delete(self, obj):
@@ -711,7 +719,16 @@ class UOWTask(object):
             if obj in self.objects:
                 return True
         return False
-        
+
+    def is_inserted(self, obj):
+        return not hasattr(obj, '_instance_key')
+    
+    def is_deleted(self, obj):
+        try:
+            return self.objects[obj].isdelete
+        except KeyError:
+            return False
+          
     def get_elements(self, polymorphic=False):
         if polymorphic:
             for task in self.polymorphic_tasks():

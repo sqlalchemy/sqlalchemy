@@ -81,7 +81,10 @@ class ClauseSynchronizer(object):
         sqlclause.accept_visitor(processor)
         if len(self.syncrules) == rules_added:
             raise ArgumentError("No syncrules generated for join criterion " + str(sqlclause))
-        
+    
+    def dest_columns(self):
+        return [r.dest_column for r in self.syncrules if r.dest_column is not None]
+
     def execute(self, source, dest, obj=None, child=None, clearkeys=None):
         for rule in self.syncrules:
             rule.execute(source, dest, obj, child, clearkeys)
