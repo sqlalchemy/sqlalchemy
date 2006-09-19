@@ -50,7 +50,7 @@ try:
     connect = dbmodule.Connection
     make_connect_string = lambda keys: \
         [["Provider=SQLOLEDB;Data Source=%s;User Id=%s;Password=%s;Initial Catalog=%s" % (
-            keys["host"], keys["user"], keys["password"], keys["database"])], {}]
+            keys.get("host"), keys.get("user"), keys.get("password"), keys.get("database"))], {}]
     do_commit = False
     sane_rowcount = True
 except:
