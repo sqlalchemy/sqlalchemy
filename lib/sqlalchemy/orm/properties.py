@@ -205,9 +205,11 @@ class PropertyLoader(mapper.MapperProperty):
     def do_init(self):
         if isinstance(self.argument, type):
             self.mapper = mapper.class_mapper(self.argument, compile=False)._check_compile()
-        else:
+        elif isinstance(self.argument, mapper.Mapper):
             self.mapper = self.argument._check_compile()
-
+        else:
+            raise exceptions.ArgumentError("relation '%s' expects a class or a mapper argument (received: %s)" % (self.key, type(self.argument)))
+            
         self.mapper = self.mapper.get_select_mapper()._check_compile()
             
         if self.association is not None:
