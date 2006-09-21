@@ -313,7 +313,7 @@ class MySQLDialect(ansisql.ANSIDialect):
 
     def reflecttable(self, connection, table):
         # reference:  http://dev.mysql.com/doc/refman/5.0/en/name-case-sensitivity.html
-        case_sensitive = connection.execute("show variables like 'lower_case_table_names'").fetchone()[1] == 0
+        case_sensitive = int(connection.execute("show variables like 'lower_case_table_names'").fetchone()[1]) == 0
         if not case_sensitive:
             table.name = table.name.lower()
             table.metadata.tables[table.name]= table
