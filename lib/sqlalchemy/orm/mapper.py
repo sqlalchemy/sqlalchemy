@@ -566,7 +566,7 @@ class Mapper(object):
             prop.adapt_to_inherited(key, mapper)
         
     def __str__(self):
-        return "Mapper|" + self.class_.__name__ + "|" + (self.entity_name is not None and "/%s" % self.entity_name or "") + str(self.local_table)
+        return "Mapper| " + str(id(self)) + "|" + self.class_.__name__ + "|" + (self.entity_name is not None and "/%s" % self.entity_name or "") + (self.local_table and self.local_table.name or str(self.local_table)) + "|is_primary=" + repr(self._is_primary_mapper())
     
     def _is_primary_mapper(self):
         """returns True if this mapper is the primary mapper for its class key (class + entity_name)"""

@@ -161,6 +161,8 @@ class PropertyLoader(mapper.MapperProperty):
         
     private = property(lambda s:s.cascade.delete_orphan)
 
+    def __str__(self):
+        return self.__class__.__name__ + " " + str(self.parent) + "->" + self.key + "->" + str(self.mapper)
     def cascade_iterator(self, type, object, recursive):
         if not type in self.cascade:
             return
@@ -373,6 +375,7 @@ class LazyLoader(PropertyLoader):
         self._register_attribute(class_, callable_=lambda i: self.setup_loader(i))
 
     def setup_loader(self, instance):
+        #print self, "setup_loader", "parent", self.parent.mapped_table, "child", self.mapper.mapped_table, "join", self.lazywhere
         # make sure our parent mapper is the one thats assigned to this instance, else call that one
         if not self.localparent.is_assigned(instance):
             # if no mapper association with this instance (i.e. not in a session, not loaded by a mapper),
@@ -533,15 +536,15 @@ class EagerLoader(LazyLoader):
 
         if len(eagerprops):
             recursion_stack[self.localparent.mapped_table] = True
-            self.mapper = self.mapper.copy()
+            self.eagermapper = self.mapper.copy()
             try:
                 for prop in eagerprops:
                     if recursion_stack.has_key(prop.target):
                         # recursion - set the relationship as a LazyLoader
-                        p = EagerLazyOption(None, False).create_prop(self.mapper, prop.key)
+                        p = EagerLazyOption(None, False).create_prop(self.eagermapper, prop.key)
                         continue
                     p = prop.copy()
-                    self.mapper.props[prop.key] = p
+                    self.eagermapper.props[prop.key] = p
 #                    print "we are:", id(self), self.target.name, (self.secondary and self.secondary.name or "None"), self.parent.mapped_table.name
 #                    print "prop is",id(prop), prop.target.name, (prop.secondary and prop.secondary.name or "None"), prop.parent.mapped_table.name
                     p.do_init_subclass(recursion_stack)
@@ -552,7 +555,8 @@ class EagerLoader(LazyLoader):
                     #print "new eagertqarget", p.eagertarget.name, (p.secondary and p.secondary.name or "none"), p.parent.mapped_table.name
             finally:
                 del recursion_stack[self.localparent.mapped_table]
-
+        else:
+            self.eagermapper = self.mapper
         self._row_decorator = self._create_decorator_row()
         self.__eager_chain_init = id(self)
         
@@ -597,7 +601,7 @@ class EagerLoader(LazyLoader):
             self._aliasize_orderby(statement.order_by_clause, False)
                 
         statement.append_from(statement._outerjoin)
-        for key, value in self.mapper.props.iteritems():
+        for key, value in self.eagermapper.props.iteritems():
             value.setup(key, statement, eagertable=self.eagertarget)
             
         
@@ -608,7 +612,7 @@ class EagerLoader(LazyLoader):
         decorated_row = self._decorate_row(row)
         try:
             # check for identity key
-            identity_key = self.mapper._row_identity_key(decorated_row)
+            identity_key = self.eagermapper._row_identity_key(decorated_row)
         except KeyError:
             # else degrade to a lazy loader
             LazyLoader.execute(self, session, instance, row, identitykey, imap, isnew)
@@ -619,11 +623,11 @@ class EagerLoader(LazyLoader):
             if isnew:
                 # set a scalar object instance directly on the parent object, 
                 # bypassing SmartProperty event handlers.
-                instance.__dict__[self.key] = self.mapper._instance(session, decorated_row, imap, None)
+                instance.__dict__[self.key] = self.eagermapper._instance(session, decorated_row, imap, None)
             else:
                 # call _instance on the row, even though the object has been created,
                 # so that we further descend into properties
-                self.mapper._instance(session, decorated_row, imap, None)
+                self.eagermapper._instance(session, decorated_row, imap, None)
         else:
             if isnew:
                 # call the SmartProperty's initialize() method to create a new, blank list
@@ -635,7 +639,7 @@ class EagerLoader(LazyLoader):
                 # store it in the "scratch" area, which is local to this load operation.
                 imap['_scratch'][(instance, self.key)] = appender
             result_list = imap['_scratch'][(instance, self.key)]
-            self.mapper._instance(session, decorated_row, imap, result_list)
+            self.eagermapper._instance(session, decorated_row, imap, result_list)
 
     def _create_decorator_row(self):
         class DecoratorDict(object):

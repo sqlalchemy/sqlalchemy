@@ -26,6 +26,10 @@ updating too many rows, updates only required columns
 the appropriate negation operator if one is available.
 - calling a negation on an "IN" or "IS" clause will result in
 "NOT IN", "IS NOT" (as opposed to NOT (x IN y)). 
+- adjustments to eager loading so that its "eager chain" is
+kept separate from the normal mapper setup, thereby
+preventing conflicts with lazy loader operation, fixes 
+[ticket:308]
 
 0.2.8
 - cleanup on connection methods + documentation.  custom DBAPI
