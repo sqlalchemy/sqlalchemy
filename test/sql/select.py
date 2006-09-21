@@ -559,6 +559,9 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
 
         self.runtest(select([table1], table1.c.myid.in_(select([table2.c.otherid]))),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (SELECT myothertable.otherid AS otherid FROM myothertable)")
+
+        self.runtest(select([table1], ~table1.c.myid.in_(select([table2.c.otherid]))),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid NOT IN (SELECT myothertable.otherid AS otherid FROM myothertable)")
     
     def testlateargs(self):
         """tests that a SELECT clause will have extra "WHERE" clauses added to it at compile time if extra arguments

@@ -22,6 +22,10 @@ when the result closes
 - post_update behavior improved; does a better job at not 
 updating too many rows, updates only required columns
 [ticket:208]
+- BooleanExpression includes new "negate" argument to specify
+the appropriate negation operator if one is available.
+- calling a negation on an "IN" or "IS" clause will result in
+"NOT IN", "IS NOT" (as opposed to NOT (x IN y)). 
 
 0.2.8
 - cleanup on connection methods + documentation.  custom DBAPI

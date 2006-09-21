@@ -122,8 +122,7 @@ def or_(*clauses):
 
 def not_(clause):
     """returns a negation of the given clause, i.e. NOT(clause).  the ~ operator can be used as well."""
-    clause.parens=True
-    return BooleanExpression(TextClause("NOT"), clause, None)
+    return clause._negate()
 
 def between(ctest, cleft, cright):
     """ returns BETWEEN predicate clause (clausetest BETWEEN clauseleft AND clauseright).
@@ -527,7 +526,10 @@ class ClauseElement(object):
     def __or__(self, other):
         return or_(self, other)
     def __invert__(self):
-        return not_(self)
+        return self._negate()
+    def _negate(self):
+        self.parens=True
+        return BooleanExpression(TextClause("NOT"), self, None)
 
 class CompareMixin(object):
     """defines comparison operations for ClauseElements."""
@@ -551,12 +553,12 @@ class CompareMixin(object):
         elif len(other) == 1 and not hasattr(other[0], '_selectable'):
             return self.__eq__(other[0])
         elif _is_literal(other[0]):
-            return self._compare('IN', ClauseList(parens=True, *[self._bind_param(o) for o in other]))
+            return self._compare('IN', ClauseList(parens=True, *[self._bind_param(o) for o in other]), negate='NOT IN')
         else:
             # assume *other is a list of selects.
             # so put them in a UNION.  if theres only one, you just get one SELECT 
             # statement out of it.
-            return self._compare('IN', union(parens=True, *other))
+            return self._compare('IN', union(parens=True, *other), negate='NOT IN')
     def startswith(self, other):
         return self._compare('LIKE', other + "%")
     def endswith(self, other):
@@ -589,18 +591,18 @@ class CompareMixin(object):
             return self._bind_param(other)
         else:
             return other
-    def _compare(self, operator, obj):
+    def _compare(self, operator, obj, negate=None):
         if obj is None or isinstance(obj, Null):
             if operator == '=':
-                return BooleanExpression(self._compare_self(), null(), 'IS')
+                return BooleanExpression(self._compare_self(), null(), 'IS', negate='IS NOT')
             elif operator == '!=':
-                return BooleanExpression(self._compare_self(), null(), 'IS NOT')
+                return BooleanExpression(self._compare_self(), null(), 'IS NOT', negate='IS')
             else:
                 raise exceptions.ArgumentError("Only '='/'!=' operators can be used with NULL")
         else:
             obj = self._check_literal(obj)
 
-        return BooleanExpression(self._compare_self(), obj, operator, type=self._compare_type(obj))
+        return BooleanExpression(self._compare_self(), obj, operator, type=self._compare_type(obj), negate=negate)
     def _operate(self, operator, obj):
         if _is_literal(obj):
             obj = self._bind_param(obj)
@@ -613,7 +615,7 @@ class CompareMixin(object):
         """allows subclasses to override the type used in constructing BinaryClause objects.  Default return
         value is the type of the given object."""
         return obj.type
-        
+            
 class Selectable(ClauseElement):
     """represents a column list-holding object."""
 
@@ -1028,7 +1030,7 @@ class BinaryClause(ClauseElement):
         if isinstance(self.right, BinaryClause) or hasattr(self.right, '_selectable'):
             self.right.parens = True
     def copy_container(self):
-        return BinaryClause(self.left.copy_container(), self.right.copy_container(), self.operator)
+        return self.__class__(self.left.copy_container(), self.right.copy_container(), self.operator)
     def _get_from_objects(self):
         return self.left._get_from_objects() + self.right._get_from_objects()
     def accept_visitor(self, visitor):
@@ -1048,7 +1050,15 @@ class BinaryClause(ClauseElement):
 
 class BooleanExpression(BinaryClause):
     """represents a boolean expression, which is only useable in WHERE criterion."""
-    pass
+    def __init__(self, *args, **kwargs):
+        self.negate = kwargs.pop('negate', None)
+        super(BooleanExpression, self).__init__(*args, **kwargs)
+    def _negate(self):
+        if self.negate is not None:
+            return BooleanExpression(self.left, self.right, self.negate, negate=self.operator, type=self.type)
+        else:
+            return super(BooleanExpression, self)._negate()
+        
 class BinaryExpression(BinaryClause, ColumnElement):
     """represents a binary expression, which can be in a WHERE criterion or in the column list 
     of a SELECT.  By adding "ColumnElement" to its inherited list, it becomes a Selectable
