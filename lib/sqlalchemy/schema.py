@@ -581,11 +581,14 @@ class ForeignKey(SchemaItem):
                 else:
                     (schema,tname,colname) = m.group(1,2,3)
                 table = Table(tname, parenttable.metadata, mustexist=True, schema=schema)
-                if colname is None:
-                    key = self.parent
-                    self._column = table.c[self.parent.key]
-                else:
-                    self._column = table.c[colname]
+                try:
+                    if colname is None:
+                        key = self.parent
+                        self._column = table.c[self.parent.key]
+                    else:
+                        self._column = table.c[colname]
+                except KeyError, e:
+                    raise exceptions.ArgumentError("Could not create ForeignKey '%s' on table '%s': table '%s' has no column named '%s'" % (self._colspec, parenttable.name, table.name, e.args[0]))
             else:
                 self._column = self._colspec
 

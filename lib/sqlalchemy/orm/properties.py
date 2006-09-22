@@ -238,7 +238,7 @@ class PropertyLoader(mapper.MapperProperty):
                 if self.primaryjoin is None:
                     self.primaryjoin = sql.join(self.parent.unjoined_table, self.target).onclause
         except exceptions.ArgumentError, e:
-            raise exceptions.ArgumentError("Error determining primary and/or secondary join for relationship '%s' between mappers '%s' and '%s'.  You should specify the 'primaryjoin' (and 'secondaryjoin', if there is an association table present) keyword arguments to the relation() function (or for backrefs, by specifying the backref using the backref() function with keyword arguments) to explicitly specify the join conditions.  Nested error is \"%s\"" % (self.key, self.localparent, self.mapper, str(e)))
+            raise exceptions.ArgumentError("Error determining primary and/or secondary join for relationship '%s' between mappers '%s' and '%s'.  If the underlying error cannot be corrected, you should specify the 'primaryjoin' (and 'secondaryjoin', if there is an association table present) keyword arguments to the relation() function (or for backrefs, by specifying the backref using the backref() function with keyword arguments) to explicitly specify the join conditions.  Nested error is \"%s\"" % (self.key, self.localparent, self.mapper, str(e)))
         # if the foreign key wasnt specified and theres no assocaition table, try to figure
         # out who is dependent on who. we dont need all the foreign keys represented in the join,
         # just one of them.  
