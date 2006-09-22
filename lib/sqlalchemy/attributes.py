@@ -697,7 +697,7 @@ class AttributeManager(object):
     def register_attribute(self, class_, key, uselist, callable_=None, **kwargs):
         """registers an attribute at the class level to be instrumented for all instances
         of the class."""
-        #print "register attribute", key, "for class", class_
+        #print self, "register attribute", key, "for class", class_
         if not hasattr(class_, '_state'):
             def _get_state(self):
                 try:

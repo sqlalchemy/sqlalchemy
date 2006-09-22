@@ -135,6 +135,7 @@ class Mapper(object):
         # mapper.
         self._compile_class()
         
+        #print self, "constructed"
         # uncomment to compile at construction time (the old way)
         # this will break mapper setups that arent declared in the order
         # of dependency
@@ -197,7 +198,7 @@ class Mapper(object):
         """
         if self.__is_compiled:
             return self
-        #print "COMPILING!", self.class_key, "non primary: ", self.non_primary
+        #print self, "_do_compile"
         self.__is_compiled = True
         self.__props_init = False
         self._compile_extensions()
