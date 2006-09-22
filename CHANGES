@@ -30,6 +30,7 @@ the appropriate negation operator if one is available.
 kept separate from the normal mapper setup, thereby
 preventing conflicts with lazy loader operation, fixes 
 [ticket:308]
+- fix to deferred group loading
 
 0.2.8
 - cleanup on connection methods + documentation.  custom DBAPI

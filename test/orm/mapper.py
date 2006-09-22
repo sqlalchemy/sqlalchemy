@@ -579,7 +579,6 @@ class DeferredTest(MapperSuperTest):
         
     def testgroup(self):
         """tests deferred load with a group"""
-        
         m = mapper(Order, orders, properties = {
             'userident':deferred(orders.c.user_id, group='primary'),
             'description':deferred(orders.c.description, group='primary'),
@@ -590,7 +589,9 @@ class DeferredTest(MapperSuperTest):
             l = q.select()
             o2 = l[2]
             print o2.opened, o2.description, o2.userident
-
+            assert o2.opened == 1
+            assert o2.userident == 7
+            assert o2.description == 'order 3'
         orderby = str(orders.default_order_by()[0].compile(db))
         self.assert_sql(db, go, [
             ("SELECT orders.order_id AS orders_order_id FROM orders ORDER BY %s" % orderby, {}),

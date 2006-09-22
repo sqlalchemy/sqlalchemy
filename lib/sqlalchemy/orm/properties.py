@@ -98,8 +98,8 @@ class DeferredColumnProperty(ColumnProperty):
                             continue
                         # set a scalar object instance directly on the object, 
                         # bypassing SmartProperty event handlers.
-                        instance.__dict__[prop.key] = row[prop.columns[0]]
                         sessionlib.attribute_manager.init_instance_attribute(instance, prop.key, uselist=False)
+                        instance.__dict__[prop.key] = row[prop.columns[0]]
                     return row[self.columns[0]]    
                 finally:
                     result.close()
