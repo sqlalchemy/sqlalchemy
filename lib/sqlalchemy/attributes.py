@@ -612,6 +612,14 @@ class AttributeManager(object):
             value = getattr(class_, key, None)
             if isinstance(value, InstrumentedAttribute):
                 yield value
+
+    def noninherited_managed_attributes(self, class_):
+        if not isinstance(class_, type):
+            raise repr(class_) + " is not a type"
+        for key in class_.__dict__:
+            value = getattr(class_, key, None)
+            if isinstance(value, InstrumentedAttribute):
+                yield value
                 
     def is_modified(self, object):
         return object._state.get('modified', False)
@@ -668,7 +676,7 @@ class AttributeManager(object):
         
     def reset_class_managed(self, class_):
         """removes all InstrumentedAttribute property objects from the given class."""
-        for attr in self.managed_attributes(class_):
+        for attr in self.noninherited_managed_attributes(class_):
             delattr(class_, attr.key)
 
     def is_class_managed(self, class_, key):
@@ -689,6 +697,7 @@ class AttributeManager(object):
     def register_attribute(self, class_, key, uselist, callable_=None, **kwargs):
         """registers an attribute at the class level to be instrumented for all instances
         of the class."""
+        #print "register attribute", key, "for class", class_
         if not hasattr(class_, '_state'):
             def _get_state(self):
                 try:
