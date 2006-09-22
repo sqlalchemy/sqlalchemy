@@ -4,14 +4,13 @@ import unittest
 def suite():
     modules_to_test = (
         'orm.mapper',
-        'orm.selectresults',
         'orm.lazytest1',
         'orm.eagertest1',
         'orm.eagertest2',
         
         'orm.sessioncontext', 
-        'orm.objectstore',
-	'orm.session',
+        'orm.unitofwork',
+        'orm.session',
         'orm.cascade',
         'orm.relationships',
         'orm.association',

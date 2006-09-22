@@ -122,10 +122,5 @@ class CascadingOrphanDeletionTest(AssertMixin):
         assert item.id is None
         assert attr.id is None
 
-
-
-
-
-
 if __name__ == "__main__":    
     testbase.main()

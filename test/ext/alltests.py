@@ -2,7 +2,7 @@ import testbase
 import unittest, doctest
 
 def suite():
-    unittest_modules = ['ext.activemapper']
+    unittest_modules = ['ext.activemapper', 'ext.selectresults']
     doctest_modules = ['sqlalchemy.ext.sqlsoup']
 
     alltests = unittest.TestSuite()

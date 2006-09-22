@@ -7,6 +7,8 @@ from sqlalchemy.ext.sessioncontext import SessionContext
 from tables import *
 import tables
 
+"""tests general mapper operations with an emphasis on selecting/loading"""
+
 user_result = [{'user_id' : 7}, {'user_id' : 8}, {'user_id' : 9}]
 user_address_result = [
 {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
@@ -409,6 +411,37 @@ class MapperTest(MapperSuperTest):
             l = usermapper.instances(r, sess)
             self.assert_result(l, User, *user_address_result)
         self.assert_sql_count(db, go, 4)
+        
+        clear_mappers()
+        
+        # test with a deeper set of eager loads.  when we first load the three
+        # users, they will have no addresses or orders.  the number of lazy loads when
+        # traversing the whole thing will be three for the addresses and three for the 
+        # orders.
+        usermapper = mapper(User, users,
+            properties = {
+                'addresses':relation(mapper(Address, addresses), lazy=False),
+                'orders': relation(mapper(Order, orders, properties = {
+                    'items' : relation(mapper(Item, orderitems, properties = {
+                        'keywords' : relation(mapper(Keyword, keywords), itemkeywords, lazy=False)
+                    }), lazy=False)
+                }), lazy=False)
+            })
+
+        # first test straight eager load, 1 statement
+        def go():
+            l = usermapper.query(sess).select()
+            self.assert_result(l, User, *user_all_result)
+        self.assert_sql_count(db, go, 1)
+        
+        # then select just from users.  run it into instances.
+        # then assert the data, which will launch 6 more lazy loads
+        def go():
+            r = users.select().execute()
+            l = usermapper.instances(r, sess)
+            self.assert_result(l, User, *user_all_result)
+        self.assert_sql_count(db, go, 7)
+        
         
     def testlazyoptions(self):
         """tests that an eager relation can be upgraded to a lazy relation via the options method"""

@@ -9,7 +9,9 @@ import sqlalchemy.ext.assignmapper as assignmapper
 from tables import *
 import tables
 
-class SessionTest(AssertMixin):
+"""tests unitofwork operations"""
+
+class UnitOfWorkTest(AssertMixin):
     def setUpAll(self):
         global ctx, assign_mapper
         ctx = SessionContext(create_session)
@@ -22,15 +24,15 @@ class SessionTest(AssertMixin):
         ctx.current.clear()
         clear_mappers()
 
-class HistoryTest(SessionTest):
+class HistoryTest(UnitOfWorkTest):
     def setUpAll(self):
-        SessionTest.setUpAll(self)
+        UnitOfWorkTest.setUpAll(self)
         users.create()
         addresses.create()
     def tearDownAll(self):
         addresses.drop()
         users.drop()
-        SessionTest.tearDownAll(self)
+        UnitOfWorkTest.tearDownAll(self)
         
     def testattr(self):
         """tests the rolling back of scalar and list attributes.  this kind of thing
@@ -83,9 +85,9 @@ class HistoryTest(SessionTest):
         u = s.query(m).select()[0]
         print u.addresses[0].user
 
-class CustomAttrTest(SessionTest):
+class CustomAttrTest(UnitOfWorkTest):
     def setUpAll(self):
-        SessionTest.setUpAll(self)
+        UnitOfWorkTest.setUpAll(self)
         global sometable, metadata, someothertable
         metadata = BoundMetaData(testbase.db)
         sometable = Table('sometable', metadata,
@@ -109,11 +111,11 @@ class CustomAttrTest(SessionTest):
         f = Foo()
         assert isinstance(f.bars.data, MyList)
     def tearDownAll(self):
-        SessionTest.tearDownAll(self)
+        UnitOfWorkTest.tearDownAll(self)
             
-class VersioningTest(SessionTest):
+class VersioningTest(UnitOfWorkTest):
     def setUpAll(self):
-        SessionTest.setUpAll(self)
+        UnitOfWorkTest.setUpAll(self)
         ctx.current.clear()
         global version_table
         version_table = Table('version_test', db,
@@ -123,10 +125,10 @@ class VersioningTest(SessionTest):
         ).create()
     def tearDownAll(self):
         version_table.drop()
-        SessionTest.tearDownAll(self)
+        UnitOfWorkTest.tearDownAll(self)
     def tearDown(self):
         version_table.delete().execute()
-        SessionTest.tearDown(self)
+        UnitOfWorkTest.tearDown(self)
     
     @testbase.unsupported('mysql', 'mssql')
     def testbasic(self):
@@ -209,9 +211,9 @@ class VersioningTest(SessionTest):
         assert f1s2.id == f1s1.id
         assert f1s2.value == f1s1.value
         
-class UnicodeTest(SessionTest):
+class UnicodeTest(UnitOfWorkTest):
     def setUpAll(self):
-        SessionTest.setUpAll(self)
+        UnitOfWorkTest.setUpAll(self)
         global metadata, uni_table, uni_table2
         metadata = BoundMetaData(testbase.db)
         uni_table = Table('uni_test', metadata,
@@ -223,7 +225,7 @@ class UnicodeTest(SessionTest):
         metadata.create_all()
     def tearDownAll(self):
         metadata.drop_all()
-        SessionTest.tearDownAll(self)
+        UnitOfWorkTest.tearDownAll(self)
     def tearDown(self):
         clear_mappers()
         for t in metadata.table_iterator(reverse=True):
@@ -260,10 +262,10 @@ class UnicodeTest(SessionTest):
         t1 = ctx.current.query(Test).get_by(id=t1.id)
         assert len(t1.t2s) == 2
         
-class PKTest(SessionTest):
+class PKTest(UnitOfWorkTest):
     @testbase.unsupported('mssql')
     def setUpAll(self):
-        SessionTest.setUpAll(self)
+        UnitOfWorkTest.setUpAll(self)
         global table
         global table2
         global table3
@@ -294,7 +296,7 @@ class PKTest(SessionTest):
         table.drop()
         table2.drop()
         table3.drop()
-        SessionTest.tearDownAll(self)
+        UnitOfWorkTest.tearDownAll(self)
         
     # not support on sqlite since sqlite's auto-pk generation only works with
     # single column primary keys    
@@ -337,11 +339,11 @@ class PKTest(SessionTest):
         e.data = 'some more data'
         ctx.current.flush()
 
-class ForeignPKTest(SessionTest):
+class ForeignPKTest(UnitOfWorkTest):
     """tests mapper detection of the relationship direction when parent/child tables are joined on their
     primary keys"""
     def setUpAll(self):
-        SessionTest.setUpAll(self)
+        UnitOfWorkTest.setUpAll(self)
         global metadata, people, peoplesites
         metadata = BoundMetaData(testbase.db)
         people = Table("people", metadata,
@@ -358,7 +360,7 @@ class ForeignPKTest(SessionTest):
         metadata.create_all()
     def tearDownAll(self):
         metadata.drop_all()
-        SessionTest.tearDownAll(self)
+        UnitOfWorkTest.tearDownAll(self)
     def testbasic(self):
         class PersonSite(object):pass
         class Person(object):pass
@@ -380,10 +382,10 @@ class ForeignPKTest(SessionTest):
         ctx.current.flush()
         assert people.count(people.c.person=='im the key').scalar() == peoplesites.count(peoplesites.c.person=='im the key').scalar() == 1
         
-class PrivateAttrTest(SessionTest):
+class PrivateAttrTest(UnitOfWorkTest):
     """tests various things to do with private=True mappers"""
     def setUpAll(self):
-        SessionTest.setUpAll(self)
+        UnitOfWorkTest.setUpAll(self)
         global a_table, b_table
         a_table = Table('a',testbase.db,
             Column('a_id', Integer, Sequence('next_a_id'), primary_key=True),
@@ -397,7 +399,7 @@ class PrivateAttrTest(SessionTest):
     def tearDownAll(self):
         b_table.drop()
         a_table.drop()
-        SessionTest.tearDownAll(self)
+        UnitOfWorkTest.tearDownAll(self)
     
     def testsinglecommit(self):
         """tests that a commit of a single object deletes private relationships"""
@@ -454,12 +456,12 @@ class PrivateAttrTest(SessionTest):
         ctx.current.flush()
         assert b in sess.identity_map.values()
                 
-class DefaultTest(SessionTest):
+class DefaultTest(UnitOfWorkTest):
     """tests that when saving objects whose table contains DefaultGenerators, either python-side, preexec or database-side,
     the newly saved instances receive all the default values either through a post-fetch or getting the pre-exec'ed 
     defaults back from the engine."""
     def setUpAll(self):
-        SessionTest.setUpAll(self)
+        UnitOfWorkTest.setUpAll(self)
         use_string_defaults = db.engine.__module__.endswith('postgres') or db.engine.__module__.endswith('oracle') or db.engine.__module__.endswith('sqlite')
 
         if use_string_defaults:
@@ -479,7 +481,7 @@ class DefaultTest(SessionTest):
         self.table.create()
     def tearDownAll(self):
         self.table.drop()
-        SessionTest.tearDownAll(self)
+        UnitOfWorkTest.tearDownAll(self)
     def setUp(self):
         self.table = Table('default_test', db)
     def testinsert(self):
@@ -529,14 +531,14 @@ class DefaultTest(SessionTest):
         ctx.current.flush()
         self.assert_(h1.foober == 'im the update')
         
-class SaveTest(SessionTest):
+class SaveTest(UnitOfWorkTest):
 
     def setUpAll(self):
-        SessionTest.setUpAll(self)
+        UnitOfWorkTest.setUpAll(self)
         tables.create()
     def tearDownAll(self):
         tables.drop()
-        SessionTest.tearDownAll(self)
+        UnitOfWorkTest.tearDownAll(self)
         
     def setUp(self):
         keywords.insert().execute(
@@ -554,7 +556,7 @@ class SaveTest(SessionTest):
 
         #self.assert_(len(ctx.current.new) == 0)
         #self.assert_(len(ctx.current.dirty) == 0)
-        SessionTest.tearDown(self)
+        UnitOfWorkTest.tearDown(self)
 
     def testbasic(self):
         # save two users
@@ -1242,7 +1244,7 @@ class SaveTest(SessionTest):
         u.newyork_addresses.append(b)
         ctx.current.flush()
     
-class SaveTest2(SessionTest):
+class SaveTest2(UnitOfWorkTest):
 
     def setUp(self):
         ctx.current.clear()
@@ -1268,7 +1270,7 @@ class SaveTest2(SessionTest):
     def tearDown(self):
         self.addresses.drop()
         self.users.drop()
-        SessionTest.tearDown(self)
+        UnitOfWorkTest.tearDown(self)
     
     def testbackwardsnonmatch(self):
         m = mapper(Address, self.addresses, properties = dict(
@@ -1324,10 +1326,10 @@ class SaveTest2(SessionTest):
                         ]
         )
 
-class SaveTest3(SessionTest):
+class SaveTest3(UnitOfWorkTest):
 
     def setUpAll(self):
-        SessionTest.setUpAll(self)
+        UnitOfWorkTest.setUpAll(self)
         global metadata, t1, t2, t3
         metadata = testbase.metadata
         t1 = Table('items', metadata,
@@ -1348,7 +1350,7 @@ class SaveTest3(SessionTest):
         metadata.create_all()
     def tearDownAll(self):
         metadata.drop_all()
-        SessionTest.tearDownAll(self)
+        UnitOfWorkTest.tearDownAll(self)
 
     def setUp(self):
         pass
