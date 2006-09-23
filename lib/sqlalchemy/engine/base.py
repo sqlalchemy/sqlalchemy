@@ -211,6 +211,7 @@ class Connection(Connectable):
         if self.__engine.echo:
             self.__engine.log("ROLLBACK")
         self.__engine.dialect.do_rollback(self.connection)
+        self.__connection.close_open_cursors()
         self.__transaction = None
     def _commit_impl(self):
         if self.__engine.echo:
@@ -643,7 +644,7 @@ class ResultProxy:
             # and not just plain tuples ?
             self.close()
             return None
-
+    
 class RowProxy:
     """proxies a single cursor row for a parent ResultProxy."""
     def __init__(self, parent, row):

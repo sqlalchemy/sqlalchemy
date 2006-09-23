@@ -37,6 +37,9 @@ to before_XXXX and after_XXXX
 - added autoincrement=True to Column; will disable schema generation
 of SERIAL/AUTO_INCREMENT/identity seq for postgres/mysql/mssql if
 explicitly set to False
+- connection pool tracks open cursors and raises an error if connection
+is returned to pool with cursors still opened.  fixes issues with MySQL, 
+others
 
 0.2.8
 - cleanup on connection methods + documentation.  custom DBAPI

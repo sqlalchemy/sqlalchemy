@@ -168,6 +168,7 @@ class _ConnectionFairy(object):
     """proxies a DBAPI connection object and provides return-on-dereference support"""
     def __init__(self, pool):
         self._threadfairy = _ThreadFairy(self)
+        self.cursors = weakref.WeakKeyDictionary()
         self.__pool = pool
         self.__counter = 0
         try:
@@ -182,6 +183,7 @@ class _ConnectionFairy(object):
     def invalidate(self):
         self._connection_record.invalidate()
         self.connection = None
+        self.cursors = None
         self._close()
     def cursor(self, *args, **kwargs):
         try:
@@ -196,6 +198,9 @@ class _ConnectionFairy(object):
             raise "this connection is closed"
         self.__counter +=1
         return self    
+    def close_open_cursors(self):
+        for c in list(self.cursors):
+            c.close()
     def close(self):
         self.__counter -=1
         if self.__counter == 0:
@@ -203,6 +208,8 @@ class _ConnectionFairy(object):
     def __del__(self):
         self._close()
     def _close(self):
+        if self.cursors is not None and len(self.cursors):
+            raise exceptions.InvalidRequestError("This connection still has %d open cursors" % len(self.cursors))
         if self.connection is not None:
             try:
                 self.connection.rollback()
@@ -219,7 +226,12 @@ class _ConnectionFairy(object):
 class _CursorFairy(object):
     def __init__(self, parent, cursor):
         self.__parent = parent
+        self.__parent.cursors[self]=True
         self.cursor = cursor
+    def close(self):
+        if self in self.__parent.cursors:
+            del self.__parent.cursors[self]
+            self.cursor.close()
     def __getattr__(self, key):
         return getattr(self.cursor, key)
 
