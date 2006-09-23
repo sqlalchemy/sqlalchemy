@@ -227,23 +227,30 @@ class Binary(TypeEngine):
 
 class PickleType(MutableType, TypeDecorator):
     impl = Binary
-    def __init__(self, protocol=pickle.HIGHEST_PROTOCOL, pickler=None):
-       self.protocol = protocol
-       self.pickler = pickler or pickle
-       super(PickleType, self).__init__()
+    def __init__(self, protocol=pickle.HIGHEST_PROTOCOL, pickler=None, mutable=True):
+        self.protocol = protocol
+        self.pickler = pickler or pickle
+        self.mutable = mutable
+        super(PickleType, self).__init__()
     def convert_result_value(self, value, dialect):
-      if value is None:
-          return None
-      buf = self.impl.convert_result_value(value, dialect)
-      return self.pickler.loads(str(buf))
+        if value is None:
+            return None
+        buf = self.impl.convert_result_value(value, dialect)
+        return self.pickler.loads(str(buf))
     def convert_bind_param(self, value, dialect):
-      if value is None:
-          return None
-      return self.impl.convert_bind_param(self.pickler.dumps(value, self.protocol), dialect)
+        if value is None:
+            return None
+        return self.impl.convert_bind_param(self.pickler.dumps(value, self.protocol), dialect)
     def copy_value(self, value):
-      return self.pickler.loads(self.pickler.dumps(value, self.protocol))
+        if self.mutable:
+            return self.pickler.loads(self.pickler.dumps(value, self.protocol))
+        else:
+            return value
     def compare_values(self, x, y):
-        return self.pickler.dumps(x, self.protocol) == self.pickler.dumps(y, self.protocol)
+        if self.mutable:
+            return self.pickler.dumps(x, self.protocol) == self.pickler.dumps(y, self.protocol)
+        else:
+            return x is y
         
 class Boolean(TypeEngine):
     pass

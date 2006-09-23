@@ -294,11 +294,11 @@ class AttributesTest(PersistTest):
         b2.element = None
         assert not manager.get_history(b2, 'element').hasparent(f2)
 
-    def testaggressivediffs(self):
-        """test the 'double check for changes' behavior of check_modified"""
+    def testmutablescalars(self):
+        """test detection of changes on mutable scalar items"""
         class Foo(object):pass
         manager = attributes.AttributeManager()
-        manager.register_attribute(Foo, 'element', uselist=False, copy_function=lambda x:[y for y in x])
+        manager.register_attribute(Foo, 'element', uselist=False, copy_function=lambda x:[y for y in x], mutable_scalars=True)
         x = Foo()
         x.element = ['one', 'two', 'three']    
         manager.commit(x)

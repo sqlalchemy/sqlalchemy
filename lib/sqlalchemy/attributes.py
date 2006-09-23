@@ -13,15 +13,15 @@ class InstrumentedAttribute(object):
     
     PASSIVE_NORESULT = object()
     
-    def __init__(self, manager, key, uselist, callable_, typecallable, trackparent=False, extension=None, copy_function=None, compare_function=None, **kwargs):
+    def __init__(self, manager, key, uselist, callable_, typecallable, trackparent=False, extension=None, copy_function=None, compare_function=None, mutable_scalars=False, **kwargs):
         self.manager = manager
         self.key = key
         self.uselist = uselist
         self.callable_ = callable_
         self.typecallable= typecallable
         self.trackparent = trackparent
+        self.mutable_scalars = mutable_scalars
         if copy_function is None:
-            self._check_mutable_modified = False
             if uselist:
                 self._copyfunc = lambda x: [y for y in x]
             else:
@@ -29,7 +29,6 @@ class InstrumentedAttribute(object):
                 # is passed
                 self._copyfunc = lambda x: x
         else:
-            self._check_mutable_modified = True
             self._copyfunc = copy_function
         if compare_function is None:
             self._compare_function = lambda x,y: x == y
@@ -52,7 +51,7 @@ class InstrumentedAttribute(object):
         return self._copyfunc(value)
     
     def check_mutable_modified(self, obj):
-        if self._check_mutable_modified:
+        if self.mutable_scalars:
             h = self.get_history(obj, passive=True)
             if h is not None and h.is_modified():
                 obj._state['modified'] = True
