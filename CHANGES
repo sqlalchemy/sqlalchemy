@@ -1,4 +1,8 @@
 0.2.9
+- updates to MS-SQL driver: 
+   -- fixes bug 261 (table reflection broken for MS-SQL case-sensitive databases)
+   -- can now specify port for pymssql
+   -- introduces new "auto_identity_insert" option for auto-switching between "SET IDENTITY_INSERT" mode when values specified for IDENTITY columns 
 - more rearrangements of unit-of-work commit scheme to better allow
 dependencies within circular flushes to work properly...updated
 task traversal/logging implementation
