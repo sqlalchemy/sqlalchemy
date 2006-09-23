@@ -34,6 +34,9 @@ preventing conflicts with lazy loader operation, fixes
 - added "batch=True" flag to mapper; if False, save_obj
 will fully save one object at a time including calls
 to before_XXXX and after_XXXX
+- added autoincrement=True to Column; will disable schema generation
+of SERIAL/AUTO_INCREMENT/identity seq for postgres/mysql/mssql if
+explicitly set to False
 
 0.2.8
 - cleanup on connection methods + documentation.  custom DBAPI

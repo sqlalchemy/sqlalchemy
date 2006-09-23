@@ -120,12 +120,44 @@ class DefaultTest(PersistTest):
         l = t.select(t.c.col1==pk).execute()
         l = l.fetchone()
         self.assert_(l['col3'] == 55)
-        
-class SequenceTest(PersistTest):
 
+class AutoIncrementTest(PersistTest):
+    @testbase.supported('postgres', 'mysql')
+    def testnonautoincrement(self):
+        meta = BoundMetaData(testbase.db)
+        nonai_table = Table("aitest", meta, 
+            Column('id', Integer, autoincrement=False, primary_key=True),
+            Column('data', String(20)))
+        nonai_table.create()
+        try:
+            try:
+                # postgres will fail on first row, mysql fails on second row
+                nonai_table.insert().execute(data='row 1')
+                nonai_table.insert().execute(data='row 2')
+                assert False
+            except exceptions.SQLError, e:
+                print "Got exception", str(e)
+                assert True
+                
+            nonai_table.insert().execute(id=1, data='row 1')
+        finally:
+            nonai_table.drop()    
+
+    def testwithautoincrement(self):
+        meta = BoundMetaData(testbase.db)
+        table = Table("aitest", meta, 
+            Column('id', Integer, primary_key=True),
+            Column('data', String(20)))
+        table.create()
+        try:
+            table.insert().execute(data='row 1')
+            table.insert().execute(data='row 2')
+        finally:
+            table.drop()    
+
+class SequenceTest(PersistTest):
+    @testbase.supported('postgres', 'oracle')
     def setUpAll(self):
-        if testbase.db.engine.name != 'postgres' and testbase.db.engine.name != 'oracle':
-            return
         global cartitems
         cartitems = Table("cartitems", db, 
             Column("cart_id", Integer, Sequence('cart_id_seq'), primary_key=True),
@@ -159,9 +191,8 @@ class SequenceTest(PersistTest):
         x = cartitems.c.cart_id.sequence.execute()
         self.assert_(1 <= x <= 4)
         
+    @testbase.supported('postgres', 'oracle')
     def tearDownAll(self): 
-        if testbase.db.engine.name != 'postgres' and testbase.db.engine.name != 'oracle':
-            return
         cartitems.drop()
 
 if __name__ == "__main__":

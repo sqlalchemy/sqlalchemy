@@ -439,7 +439,7 @@ class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
         if not column.nullable:
             colspec += " NOT NULL"
         if column.primary_key:
-            if not column.foreign_key and first_pk and isinstance(column.type, sqltypes.Integer):
+            if not column.foreign_key and first_pk and column.autoincrement and isinstance(column.type, sqltypes.Integer):
                 colspec += " AUTO_INCREMENT"
         return colspec
 

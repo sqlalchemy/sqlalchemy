@@ -367,14 +367,15 @@ class Column(SchemaItem, sql.ColumnClause):
         Generated SQL, however, will still reference the column by its actual name.
         
         primary_key=False : True if this column is a primary key column.  Multiple columns can have this flag
-        set to specify composite primary keys.
+        set to specify composite primary keys.  As an alternative, the primary key of a Table can be specified
+        via an explicit PrimaryKeyConstraint instance appended to the Table's list of objects.
         
         nullable=True : True if this column should allow nulls. Defaults to True unless this column is a primary
         key column.
         
         default=None : a scalar, python callable, or ClauseElement representing the "default value" for this column,
         which will be invoked upon insert if this column is not present in the insert list or is given a value
-        of None.
+        of None.  The default expression will be converted into a ColumnDefault object upon initialization.
 
         hidden=False : indicates this column should not be listed in the
         table's list of columns.  Used for the "oid" column, which generally
@@ -392,8 +393,17 @@ class Column(SchemaItem, sql.ColumnClause):
         specify the same index name will all be included in the index, in the
         order of their creation.
 
+        autoincrement=True : Indicates that integer-based primary key columns should have autoincrementing behavior,
+        if supported by the underlying database.  This will affect CREATE TABLE statements such that they will
+        use the databases "auto-incrementing" keyword (such as SERIAL for postgres, AUTO_INCREMENT for mysql) and will
+        also affect the behavior of some dialects during INSERT statement execution such that they will assume primary 
+        key values are created in this manner.  If a Column has an explicit ColumnDefault object (such as via the 
+        "default" keyword, or a Sequence or PassiveDefault), then the value of autoincrement is ignored and is assumed 
+        to be False.  autoincrement value is only significant for a column with a type or subtype of Integer.
+        
         quote=False : indicates that the Column identifier must be properly escaped and quoted before being sent 
-        to the database.
+        to the database.  This flag should normally not be required as dialects can auto-detect conditions where quoting
+        is required.
 
         case_sensitive=True : indicates that the identifier should be interpreted by the database in the natural case for identifiers.
         Mixed case is not sufficient to cause this identifier to be quoted; it must contain an illegal character.
@@ -411,6 +421,7 @@ class Column(SchemaItem, sql.ColumnClause):
         self.quote = kwargs.pop('quote', False)
         self._set_casing_strategy(name, kwargs)
         self.onupdate = kwargs.pop('onupdate', None)
+        self.autoincrement = kwargs.pop('autoincrement', True)
         self.__originating_column = self
         if self.index is not None and self.unique is not None:
             raise exceptions.ArgumentError("Column may not define both index and unique")
