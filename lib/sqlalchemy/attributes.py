@@ -616,7 +616,7 @@ class AttributeManager(object):
     def noninherited_managed_attributes(self, class_):
         if not isinstance(class_, type):
             raise repr(class_) + " is not a type"
-        for key in class_.__dict__:
+        for key in list(class_.__dict__):
             value = getattr(class_, key, None)
             if isinstance(value, InstrumentedAttribute):
                 yield value

@@ -734,6 +734,32 @@ class SaveTest(UnitOfWorkTest):
         k = ctx.current.query(KeywordUser).get(id)
         assert k.user_name == 'keyworduser'
         assert k.keyword_name == 'a keyword'
+    
+    def testbatchmode(self):
+        class TestExtension(MapperExtension):
+            def before_insert(self, mapper, connection, instance):
+                self.current_instance = instance
+            def after_insert(self, mapper, connection, instance):
+                assert instance is self.current_instance
+        m = mapper(User, users, extension=TestExtension(), batch=False)
+        u1 = User()
+        u1.username = 'user1'
+        u2 = User()
+        u2.username = 'user2'
+        ctx.current.flush()
+        
+        clear_mappers()
+        
+        m = mapper(User, users, extension=TestExtension())
+        u1 = User()
+        u1.username = 'user1'
+        u2 = User()
+        u2.username = 'user2'
+        try:
+            ctx.current.flush()
+            assert False
+        except AssertionError:
+            assert True
         
     def testonetoone(self):
         m = mapper(User, users, properties = dict(

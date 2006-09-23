@@ -31,6 +31,9 @@ kept separate from the normal mapper setup, thereby
 preventing conflicts with lazy loader operation, fixes 
 [ticket:308]
 - fix to deferred group loading
+- added "batch=True" flag to mapper; if False, save_obj
+will fully save one object at a time including calls
+to before_XXXX and after_XXXX
 
 0.2.8
 - cleanup on connection methods + documentation.  custom DBAPI

@@ -53,7 +53,8 @@ class Mapper(object):
                 polymorphic_identity=None,
                 concrete=False,
                 select_table=None,
-                allow_null_pks=False):
+                allow_null_pks=False,
+                batch=True):
 
         if not issubclass(class_, object):
             raise exceptions.ArgumentError("Class '%s' is not a new-style class" % class_.__name__)
@@ -87,7 +88,7 @@ class Mapper(object):
         self.allow_column_override = allow_column_override
         self.allow_null_pks = allow_null_pks
         self.delete_orphans = []
-        
+        self.batch = batch
         # a Column which is used during a select operation to retrieve the 
         # "polymorphic identity" of the row, which indicates which Mapper should be used
         # to construct a new object instance from that row.
@@ -705,12 +706,18 @@ class Mapper(object):
     def _setattrbycolumn(self, obj, column, value):
         self.columntoproperty[column][0].setattr(obj, value)
     
-    def save_obj(self, objects, uow, postupdate=False, post_update_cols=None):
+    def save_obj(self, objects, uow, postupdate=False, post_update_cols=None, single=False):
         """called by a UnitOfWork object to save objects, which involves either an INSERT or
         an UPDATE statement for each table used by this mapper, for each element of the
         list."""
         #print "SAVE_OBJ MAPPER", self.class_.__name__, objects
         
+        # if batch=false, call save_obj separately for each object
+        if not single and not self.batch:
+            for obj in objects:
+                self.save_obj([obj], uow, postupdate=postupdate, post_update_cols=post_update_cols, single=True)
+            return
+            
         connection = uow.transaction.connection(self)
 
         if not postupdate:
@@ -818,6 +825,7 @@ class Mapper(object):
                         update.append((obj, params))
                 else:
                     insert.append((obj, params))
+                    
             if len(update):
                 clause = sql.and_()
                 for col in self.pks_by_table[table]:
