@@ -540,13 +540,13 @@ class ResultProxy:
         self.cursor = cursor
         self.engine = engine
         self.closed = False
-        self.executioncontext = executioncontext
-        self.echo = engine.echo=="debug"
-        self.__key_cache = {}
-        if executioncontext:
+        if executioncontext is not None:
+            self.__executioncontext = executioncontext
             self.rowcount = executioncontext.get_rowcount(cursor)
         else:
             self.rowcount = cursor.rowcount
+        self.echo = engine.echo=="debug"
+        self.__key_cache = {}
         metadata = cursor.description
         self.props = {}
         self.keys = []
@@ -566,6 +566,13 @@ class ResultProxy:
                 self.keys.append(colname)
                 self.props[i] = rec
                 i+=1
+    def _executioncontext(self):
+        try:
+            return self.__executioncontext
+        except AttributeError:
+            raise exceptions.InvalidRequestError("This ResultProxy does not have an execution context with which to complete this operation.  Execution contexts are not generated for literal SQL execution.")
+    executioncontext = property(_executioncontext)
+    
     def close(self):
         if not self.closed:
             self.closed = True
