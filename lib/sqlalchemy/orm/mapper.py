@@ -460,7 +460,7 @@ class Mapper(object):
             # save()d to some session.
             if session is not None and mapper is not None:
                 self._entity_name = entity_name
-                session._register_new(self)
+                session._register_pending(self)
                 
             if oldinit is not None:
                 try:
@@ -637,7 +637,7 @@ class Mapper(object):
         for value in imap.values():
             if value is scratch:
                 continue
-            session._register_clean(value)
+            session._register_persistent(value)
             
         if mappers:
             return [result.data] + [o.data for o in otherresults]

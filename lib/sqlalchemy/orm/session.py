@@ -357,30 +357,19 @@ class Session(object):
             #    raise exceptions.InvalidRequestError("Instance '%s' is an orphan, and must be attached to a parent object to be saved" % (repr(object)))
             
             m._assign_entity_name(object)
-            self._register_new(object)
+            self._register_pending(object)
 
     def _update_impl(self, object, **kwargs):
         if self._is_attached(object) and object not in self.deleted:
             return
         if not hasattr(object, '_instance_key'):
             raise exceptions.InvalidRequestError("Instance '%s' is not persisted" % repr(object))
-        if attribute_manager.is_modified(object):
-            self._register_dirty(object)
-        else:
-            self._register_clean(object)
+        self._register_persistent(object)
     
-    def _register_changed(self, obj):
-        if hasattr(obj, '_instance_key'):
-            self._register_dirty(obj)
-        else:
-            self._register_new(obj)
-    def _register_new(self, obj):
+    def _register_pending(self, obj):
         self._attach(obj)
         self.uow.register_new(obj)
-    def _register_dirty(self, obj):
-        self._attach(obj)
-        self.uow.register_dirty(obj)
-    def _register_clean(self, obj):
+    def _register_persistent(self, obj):
         self._attach(obj)
         self.uow.register_clean(obj)
     def _register_deleted(self, obj):
@@ -430,7 +419,7 @@ class Session(object):
     def has_key(self, key):
         return self.identity_map.has_key(key)
         
-    dirty = property(lambda s:s.uow.dirty, doc="a Set of all objects marked as 'dirty' within this Session")
+    dirty = property(lambda s:s.uow.locate_dirty(), doc="a Set of all objects marked as 'dirty' within this Session")
     deleted = property(lambda s:s.uow.deleted, doc="a Set of all objects marked as 'deleted' within this Session")
     new = property(lambda s:s.uow.new, doc="a Set of all objects marked as 'new' within this Session.")
     identity_map = property(lambda s:s.uow.identity_map, doc="a WeakValueDictionary consisting of all objects within this Session keyed to their _instance_key value.")

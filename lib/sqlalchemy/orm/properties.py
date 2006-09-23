@@ -18,10 +18,11 @@ import sets, random
 
 class ColumnProperty(mapper.MapperProperty):
     """describes an object attribute that corresponds to a table column."""
-    def __init__(self, *columns):
+    def __init__(self, *columns, **kwargs):
         """the list of columns describes a single object property. if there
         are multiple tables joined together for the mapper, this list represents
         the equivalent column as it appears across each table."""
+        self.deepcheck = kwargs.get('deepcheck', False)
         self.columns = list(columns)
     def getattr(self, object):
         return getattr(object, self.key, None)
@@ -41,7 +42,7 @@ class ColumnProperty(mapper.MapperProperty):
         # establish a SmartProperty property manager on the object for this key
         if self.is_primary():
             #print "regiser col on class %s key %s" % (parent.class_.__name__, key)
-            sessionlib.attribute_manager.register_attribute(self.parent.class_, self.key, uselist = False)
+            sessionlib.attribute_manager.register_attribute(self.parent.class_, self.key, uselist=False, copy_function=lambda x: self.columns[0].type.copy_value(x), compare_function=lambda x,y:self.columns[0].type.compare_values(x,y))
     def execute(self, session, instance, row, identitykey, imap, isnew):
         if isnew:
             #print "POPULATING OBJ", instance.__class__.__name__, "COL", self.columns[0]._label, "WITH DATA", row[self.columns[0]], "ROW IS A", row.__class__.__name__, "COL ID", id(self.columns[0])
@@ -60,15 +61,15 @@ class DeferredColumnProperty(ColumnProperty):
     """describes an object attribute that corresponds to a table column, which also
     will "lazy load" its value from the table.  this is per-column lazy loading."""
     def __init__(self, *columns, **kwargs):
-        self.group = kwargs.get('group', None)
-        ColumnProperty.__init__(self, *columns)
+        self.group = kwargs.pop('group', None)
+        ColumnProperty.__init__(self, *columns, **kwargs)
     def copy(self):
         return DeferredColumnProperty(*self.columns)
     def do_init(self):
         # establish a SmartProperty property manager on the object for this key, 
         # containing a callable to load in the attribute
         if self.is_primary():
-            sessionlib.attribute_manager.register_attribute(self.parent.class_, self.key, uselist=False, callable_=lambda i:self.setup_loader(i))
+            sessionlib.attribute_manager.register_attribute(self.parent.class_, self.key, uselist=False, callable_=lambda i:self.setup_loader(i), copy_function=lambda x: self.columns[0].type.copy_value(x), compare_function=lambda x,y:self.columns[0].type.compare_values(x,y))
     def setup_loader(self, instance):
         if not self.localparent.is_assigned(instance):
             return mapper.object_mapper(instance).props[self.key].setup_loader(instance)
@@ -789,6 +790,14 @@ class DeferredOption(GenericOption):
             prop = ColumnProperty(*oldprop.columns, **self.kwargs)
         mapper._compile_property(key, prop)
         
+class DeferGroupOption(mapper.MapperOption):
+    def __init__(self, group, defer=False, **kwargs):
+        self.group = group
+        self.defer = defer
+        self.kwargs = kwargs
+    def process(self, mapper):
+        self.process_by_key(mapper, self.key)
+    
 
 class BinaryVisitor(sql.ClauseVisitor):
     def __init__(self, func):

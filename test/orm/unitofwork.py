@@ -1,8 +1,7 @@
 from testbase import PersistTest, AssertMixin
-import unittest, sys, os
 from sqlalchemy import *
-import StringIO
 import testbase
+import pickleable
 from sqlalchemy.orm.mapper import global_extensions
 from sqlalchemy.ext.sessioncontext import SessionContext
 import sqlalchemy.ext.assignmapper as assignmapper
@@ -34,36 +33,6 @@ class HistoryTest(UnitOfWorkTest):
         users.drop()
         UnitOfWorkTest.tearDownAll(self)
         
-    def testattr(self):
-        """tests the rolling back of scalar and list attributes.  this kind of thing
-        should be tested mostly in attributes.py which tests independently of the ORM 
-        objects, but I think here we are going for
-        the Mapper not interfering with it."""
-        m = mapper(User, users, properties = dict(addresses = relation(mapper(Address, addresses))))
-        u = User()
-        u.user_id = 7
-        u.user_name = 'afdas'
-        u.addresses.append(Address())
-        u.addresses[0].email_address = 'hi'
-        u.addresses.append(Address())
-        u.addresses[1].email_address = 'there'
-        data = [User,
-            {'user_name' : 'afdas',
-             'addresses' : (Address, [{'email_address':'hi'}, {'email_address':'there'}])
-            },
-        ]
-        self.assert_result([u], data[0], *data[1:])
-
-        self.echo(repr(u.addresses))
-        ctx.current.uow.rollback_object(u)
-        
-        # depending on the setting in the get() method of InstrumentedAttribute in attributes.py, 
-        # username is either None or is a non-present attribute.
-        assert u.user_name is None
-        #assert not hasattr(u, 'user_name')
-        
-        assert u.addresses == []
-
     def testbackref(self):
         s = create_session()
         class User(object):pass
@@ -261,6 +230,55 @@ class UnicodeTest(UnitOfWorkTest):
         ctx.current.clear()
         t1 = ctx.current.query(Test).get_by(id=t1.id)
         assert len(t1.t2s) == 2
+
+class MutableTypesTest(UnitOfWorkTest):
+    def setUpAll(self):
+        UnitOfWorkTest.setUpAll(self)
+        global metadata, table
+        metadata = BoundMetaData(testbase.db)
+        table = Table('mutabletest', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', PickleType, nullable=False))
+        table.create()
+    def tearDownAll(self):
+        table.drop()
+        UnitOfWorkTest.tearDownAll(self)
+
+    def testbasic(self):
+        """test that types marked as MutableType get changes detected on them"""
+        class Foo(object):pass
+        mapper(Foo, table)
+        f1 = Foo()
+        f1.data = pickleable.Bar(4,5)
+        ctx.current.flush()
+        ctx.current.clear()
+        f2 = ctx.current.query(Foo).get_by(id=f1.id)
+        assert f2.data == f1.data
+        f2.data.y = 19
+        ctx.current.flush()
+        ctx.current.clear()
+        f3 = ctx.current.query(Foo).get_by(id=f1.id)
+        print f2.data, f3.data
+        assert f3.data != f1.data
+        assert f3.data == pickleable.Bar(4, 19)
+
+    def testnocomparison(self):
+        """test that types marked as MutableType get changes detected on them when the type has no __eq__ method"""
+        class Foo(object):pass
+        mapper(Foo, table)
+        f1 = Foo()
+        f1.data = pickleable.BarWithoutCompare(4,5)
+        ctx.current.flush()
+        ctx.current.clear()
+        f2 = ctx.current.query(Foo).get_by(id=f1.id)
+        f2.data.y = 19
+        ctx.current.flush()
+        ctx.current.clear()
+        f3 = ctx.current.query(Foo).get_by(id=f1.id)
+        print f2.data, f3.data
+        assert (f3.data.x, f3.data.y) == (4,19)
+        
+        
         
 class PKTest(UnitOfWorkTest):
     @testbase.unsupported('mssql')

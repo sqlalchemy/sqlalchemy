@@ -125,15 +125,16 @@ The `get()` method on `Query`, which retrieves an object based on primary key id
 
 ### Whats Changed ? {@name=changed}    
 
-The next concept is that in addition to the `Session` storing a record of all objects loaded or saved, it also stores lists of all *newly created* (i.e. pending) objects,  lists of all persistent objects whose attributes have been *modified*, and lists of all persistent objects that have been marked as *deleted*.  These lists are used when a `flush()` call is issued to save all changes.  After the flush occurs, these lists are all cleared out.
+The next concept is that in addition to the `Session` storing a record of all objects loaded or saved, it also stores lists of all *newly created* (i.e. pending) objects and lists of all persistent objects that have been marked as *deleted*.  These lists are used when a `flush()` call is issued to save all changes.  During a flush operation, it also scans its list of persistent instances for changes which are marked as dirty.
     
 These records are all tracked by a collection of `Set` objects (which are a SQLAlchemy-specific instance called a `HashSet`) that are also viewable off the `Session`:
 
     {python}
     # pending objects recently added to the Session
     session.new
-
-    # persistent objects with modifications
+    
+    # persistent objects which currently have changes detected
+    # (this Set is now created on the fly each time the property is called)
     session.dirty
 
     # persistent objects that have been marked as deleted via session.delete(obj)

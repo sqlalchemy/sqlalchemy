@@ -27,6 +27,12 @@ class AbstractType(object):
             return self._impl_dict
     impl_dict = property(_get_impl_dict)
 
+    def copy_value(self, value):
+        return value
+    def compare_values(self, x, y):
+        return x is y
+    def is_mutable(self):
+        return False
             
 class TypeEngine(AbstractType):
     def __init__(self, *args, **params):
@@ -85,7 +91,16 @@ class TypeDecorator(AbstractType):
         instance = self.__class__.__new__(self.__class__)
         instance.__dict__.update(self.__dict__)
         return instance
-        
+
+class MutableType(object):
+    """a mixin that marks a Type as holding a mutable object"""
+    def is_mutable(self):
+        return True
+    def copy_value(self, value):
+        raise NotImplementedError()
+    def compare_values(self, x, y):
+        return x == y
+    
 def to_instance(typeobj):
     if typeobj is None:
         return NULLTYPE
@@ -210,7 +225,7 @@ class Binary(TypeEngine):
     def adapt(self, impltype):
         return impltype(length=self.length)
 
-class PickleType(TypeDecorator):
+class PickleType(MutableType, TypeDecorator):
     impl = Binary
     def __init__(self, protocol=pickle.HIGHEST_PROTOCOL, pickler=None):
        self.protocol = protocol
@@ -225,7 +240,11 @@ class PickleType(TypeDecorator):
       if value is None:
           return None
       return self.impl.convert_bind_param(self.pickler.dumps(value, self.protocol), dialect)
-
+    def copy_value(self, value):
+      return self.pickler.loads(self.pickler.dumps(value, self.protocol))
+    def compare_values(self, x, y):
+        return self.pickler.dumps(x, self.protocol) == self.pickler.dumps(y, self.protocol)
+        
 class Boolean(TypeEngine):
     pass
 

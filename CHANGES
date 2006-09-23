@@ -40,6 +40,15 @@ explicitly set to False
 - connection pool tracks open cursors and raises an error if connection
 is returned to pool with cursors still opened.  fixes issues with MySQL, 
 others
+- attribute tracking modified to be more intelligent about detecting
+changes, particularly with mutable types.  TypeEngine objects now
+take a greater role in defining how to compare two scalar instances,
+including the addition of a MutableType mixin which is implemented by
+PickleType.  unit-of-work now tracks the "dirty" list as an expression
+of all persistent objects where the attribute manager detects changes.
+The basic issue thats fixed is detecting changes on PickleType 
+objects, but also generalizes type handling and "modified" object
+checking to be more complete and extensible.
 
 0.2.8
 - cleanup on connection methods + documentation.  custom DBAPI

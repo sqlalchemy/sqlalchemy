@@ -294,6 +294,26 @@ class AttributesTest(PersistTest):
         b2.element = None
         assert not manager.get_history(b2, 'element').hasparent(f2)
 
+    def testaggressivediffs(self):
+        """test the 'double check for changes' behavior of check_modified"""
+        class Foo(object):pass
+        manager = attributes.AttributeManager()
+        manager.register_attribute(Foo, 'element', uselist=False, copy_function=lambda x:[y for y in x])
+        x = Foo()
+        x.element = ['one', 'two', 'three']    
+        manager.commit(x)
+        x.element[1] = 'five'
+        assert manager.is_modified(x)
+        
+        manager.reset_class_managed(Foo)
+        manager = attributes.AttributeManager()
+        manager.register_attribute(Foo, 'element', uselist=False)
+        x = Foo()
+        x.element = ['one', 'two', 'three']    
+        manager.commit(x)
+        x.element[1] = 'five'
+        assert not manager.is_modified(x)
+        
     def testdescriptorattributes(self):
         """changeset: 1633 broke ability to use ORM to map classes with unusual
         descriptor attributes (for example, classes that inherit from ones

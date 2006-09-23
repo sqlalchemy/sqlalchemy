@@ -18,12 +18,13 @@ from session import Session as create_session
 
 __all__ = ['relation', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer',
         'mapper', 'clear_mappers', 'sql', 'extension', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query', 
-        'cascade_mappers', 'polymorphic_union', 'create_session', 'synonym', 'EXT_PASS' 
+        'cascade_mappers', 'polymorphic_union', 'create_session', 'synonym', 'EXT_PASS'
         ]
 
 def relation(*args, **kwargs):
-    """provides a relationship of a primary Mapper to a secondary Mapper, which corresponds
-    to a parent-child or associative table relationship."""
+    """provide a relationship of a primary Mapper to a secondary Mapper.
+    
+    This corresponds to a parent-child or associative table relationship."""
     if len(args) > 1 and isinstance(args[0], type):
         raise exceptions.ArgumentError("relation(class, table, **kwargs) is deprecated.  Please use relation(class, **kwargs) or relation(mapper, **kwargs).")
     return _relation_loader(*args, **kwargs)

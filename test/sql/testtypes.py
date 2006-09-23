@@ -1,5 +1,6 @@
 from testbase import PersistTest, AssertMixin
 import testbase
+import pickleable
 from sqlalchemy import *
 import string,datetime, re, sys
 import sqlalchemy.engine.url as url
@@ -164,15 +165,6 @@ class UnicodeTest(AssertMixin):
         finally:
             db.engine.dialect.convert_unicode = prev_unicode
 
-class Foo(object):
-    def __init__(self, moredata):
-        self.data = 'im data'
-        self.stuff = 'im stuff'
-        self.moredata = moredata
-    def __eq__(self, other):
-        return other.data == self.data and other.stuff == self.stuff and other.moredata==self.moredata
-
-import pickle
 
 class BinaryTest(AssertMixin):
     def setUpAll(self):
@@ -185,14 +177,14 @@ class BinaryTest(AssertMixin):
         # construct PickleType with non-native pickle module, since cPickle uses relative module
         # loading and confuses this test's parent package 'sql' with the 'sqlalchemy.sql' package relative
 	# to the 'types' module
-        Column('pickled', PickleType(pickler=pickle))
+        Column('pickled', PickleType)
         )
         binary_table.create()
     def tearDownAll(self):
         binary_table.drop()
     def testbinary(self):
-        testobj1 = Foo('im foo 1')
-        testobj2 = Foo('im foo 2')
+        testobj1 = pickleable.Foo('im foo 1')
+        testobj2 = pickleable.Foo('im foo 2')
 
         stream1 =self.get_module_stream('sqlalchemy.sql')
         stream2 =self.get_module_stream('sqlalchemy.schema')

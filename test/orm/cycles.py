@@ -592,7 +592,6 @@ class SelfReferentialPostUpdateTest(AssertMixin):
         remove_child(root, cats)
         # pre-trigger lazy loader on 'cats' to make the test easier
         cats.children
-
         self.assert_sql(db, lambda: session.flush(), [
             (
                 "UPDATE node SET prev_sibling_id=:prev_sibling_id WHERE node.id = :node_id",

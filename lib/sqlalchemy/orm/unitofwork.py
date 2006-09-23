@@ -23,11 +23,6 @@ import weakref
 import topological
 import sets
 
-# a global indicating if all flush() operations should have their plan
-# printed to standard output.  also can be affected by creating an engine
-# with the "echo_uow=True" keyword argument.
-LOG = False
-
 class UOWEventHandler(attributes.AttributeExtension):
     """an event handler added to all class attributes which handles session operations."""
     def __init__(self, key, class_, cascade=None):
@@ -35,9 +30,9 @@ class UOWEventHandler(attributes.AttributeExtension):
         self.class_ = class_
         self.cascade = cascade
     def append(self, event, obj, item):
+        # process "save_update" cascade rules for when an instance is appended to the list of another instance
         sess = object_session(obj)
         if sess is not None:
-            sess._register_changed(obj)
             if self.cascade is not None and self.cascade.save_update and item not in sess:
                 mapper = object_mapper(obj)
                 prop = mapper.props[self.key]
@@ -45,14 +40,14 @@ class UOWEventHandler(attributes.AttributeExtension):
                 sess.save_or_update(item, entity_name=ename)
 
     def delete(self, event, obj, item):
-        sess = object_session(obj)
-        if sess is not None:
-            sess._register_changed(obj)
+        # currently no cascade rules for removing an item from a list
+        # (i.e. it stays in the Session)
+        pass
 
     def set(self, event, obj, newvalue, oldvalue):
+        # process "save_update" cascade rules for when an instance is attached to another instance
         sess = object_session(obj)
         if sess is not None:
-            sess._register_changed(obj)
             if newvalue is not None and self.cascade is not None and self.cascade.save_update and newvalue not in sess:
                 mapper = object_mapper(obj)
                 prop = mapper.props[self.key]
@@ -75,7 +70,6 @@ class UOWAttributeManager(attributes.AttributeManager):
     def create_prop(self, class_, key, uselist, callable_, typecallable, **kwargs):
         return UOWProperty(self, class_, key, uselist, callable_, typecallable, **kwargs)
 
-
 class UnitOfWork(object):
     """main UOW object which stores lists of dirty/new/deleted objects.  provides top-level "flush" functionality as well as the transaction boundaries with the SQLEngine(s) involved in a write operation."""
     def __init__(self, identity_map=None):
@@ -85,8 +79,6 @@ class UnitOfWork(object):
             self.identity_map = weakref.WeakValueDictionary()
             
         self.new = util.Set() #OrderedSet()
-        self.dirty = util.Set()
-        
         self.deleted = util.Set()
 
     def _remove_deleted(self, obj):
@@ -94,10 +86,6 @@ class UnitOfWork(object):
             del self.identity_map[obj._instance_key]
         try:            
             self.deleted.remove(obj)
-        except KeyError:
-            pass
-        try:
-            self.dirty.remove(obj)
         except KeyError:
             pass
         try:
@@ -110,12 +98,6 @@ class UnitOfWork(object):
             (not hasattr(obj, '_instance_key') and obj not in self.new):
             raise InvalidRequestError("Instance '%s' is not attached or pending within this session" % repr(obj))
 
-    def update(self, obj):
-        """called to add an object to this UnitOfWork as though it were loaded from the DB,
-        but is actually coming from somewhere else, like a web session or similar."""
-        self.identity_map[obj._instance_key] = obj
-        self.register_dirty(obj)
-        
     def register_attribute(self, class_, key, uselist, **kwargs):
         attribute_manager.register_attribute(class_, key, uselist, **kwargs)
 
@@ -123,10 +105,6 @@ class UnitOfWork(object):
         attribute_manager.set_callable(obj, key, func, uselist, **kwargs)
     
     def register_clean(self, obj):
-        try:
-            self.dirty.remove(obj)
-        except KeyError:
-            pass
         try:
             self.new.remove(obj)
         except KeyError:
@@ -147,44 +125,39 @@ class UnitOfWork(object):
         if obj not in self.new:
             self.new.add(obj)
             obj._sa_insert_order = len(self.new)
-        self.unregister_deleted(obj)
-        
-    def register_dirty(self, obj):
-        if obj not in self.dirty:
-            self._validate_obj(obj)
-            self.dirty.add(obj)
-        self.unregister_deleted(obj)
-        
-    def is_dirty(self, obj):
-        if obj not in self.dirty:
-            return False
-        else:
-            return True
         
     def register_deleted(self, obj):
         if obj not in self.deleted:
             self._validate_obj(obj)
             self.deleted.add(obj)  
-
-    def unregister_deleted(self, obj):
-        try:
-            self.deleted.remove(obj)
-        except KeyError:
-            pass
-            
+    
+    def locate_dirty(self):
+        return util.Set([x for x in self.identity_map.values() if x not in self.deleted and attribute_manager.is_modified(x)])
+        
     def flush(self, session, objects=None, echo=False):
+        # this context will track all the objects we want to save/update/delete,
+        # and organize a hierarchical dependency structure.  it also handles
+        # communication with the mappers and relationships to fire off SQL
+        # and synchronize attributes between related objects.
         flush_context = UOWTransaction(self, session)
 
+        # create the set of all objects we want to operate upon
         if objects is not None:
+            # specific list passed in
             objset = util.Set(objects)
         else:
-            objset = None
+            # or just everything
+            objset = util.Set(self.identity_map.values()).union(self.new)
 
+        # detect persistent objects that have changes
+        dirty = self.locate_dirty()
+
+        # store objects whose fate has been decided
         processed = util.Set()
-        for obj in [n for n in self.new] + [d for d in self.dirty]:
-            if objset is not None and not obj in objset:
-                continue
-            if obj in self.deleted or obj in processed:
+        
+        # put all saves/updates into the flush context.  detect orphans and throw them into deleted.
+        for obj in self.new.union(dirty).intersection(objset).difference(self.deleted):
+            if obj in processed:
                 continue
             if object_mapper(obj)._is_orphan(obj):
                 for c in [obj] + list(object_mapper(obj).cascade_iterator('delete', obj)):
@@ -195,7 +168,8 @@ class UnitOfWork(object):
             else:
                 flush_context.register_object(obj)
                 processed.add(obj)
-                
+        
+        # put all remaining deletes into the flush context.
         for obj in self.deleted:
             if (objset is not None and not obj in objset) or obj in processed:
                 continue
@@ -211,19 +185,7 @@ class UnitOfWork(object):
         trans.commit()
             
         flush_context.post_exec()
-        
 
-    def rollback_object(self, obj):
-        """'rolls back' the attributes that have been changed on an object instance."""
-        attribute_manager.rollback(obj)
-        try:
-            self.dirty.remove(obj)
-        except KeyError:
-            pass
-        try:
-            self.deleted.remove(obj)
-        except KeyError:
-            pass
             
 class UOWTransaction(object):
     """handles the details of organizing and executing transaction tasks 
@@ -374,7 +336,7 @@ class UOWTransaction(object):
         
         head = self._sort_dependencies()
         self.__modified = False
-        if LOG or echo:
+        if echo:
             if head is None:
                 print "Task dump: None"
             else:
@@ -383,7 +345,7 @@ class UOWTransaction(object):
             head.execute(self)
         #if self.__modified and head is not None:
         #    raise "Assertion failed ! new pre-execute dependency step should eliminate post-execute changes (except post_update stuff)."
-        if LOG or echo:
+        if echo:
             print "\nExecute complete\n"
             
     def post_exec(self):
