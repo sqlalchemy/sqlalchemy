@@ -18,7 +18,7 @@ after commit/rollback
 - added extract() function to sql dialect
 - added an implicit close() on the cursor in ResultProxy
 when the result closes
-- added scalar() method to ComposedSQLEngine
+- added scalar() method to ComposedSQLEngine, ResultProxy
 - post_update behavior improved; does a better job at not 
 updating too many rows, updates only required columns
 [ticket:208]

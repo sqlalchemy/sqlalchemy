@@ -593,6 +593,7 @@ class ResultProxy:
                 rec = self.props[key]
             self.__key_cache[key] = rec
             return rec
+            
     def _has_key(self, row, key):
         try:
             self._convert_key(key)
@@ -624,7 +625,7 @@ class ResultProxy:
         return self.executioncontext.supports_sane_rowcount()
         
     def fetchall(self):
-        """fetches all rows, just like DBAPI cursor.fetchall()."""
+        """fetch all rows, just like DBAPI cursor.fetchall()."""
         l = []
         while True:
             v = self.fetchone()
@@ -633,7 +634,7 @@ class ResultProxy:
             l.append(v)
             
     def fetchone(self):
-        """fetches one row, just like DBAPI cursor.fetchone()."""
+        """fetch one row, just like DBAPI cursor.fetchone()."""
         row = self.cursor.fetchone()
         if row is not None:
             if self.echo: self.engine.log(repr(row))
@@ -644,6 +645,18 @@ class ResultProxy:
             # and not just plain tuples ?
             self.close()
             return None
+
+    def scalar(self):
+        """fetch the first column of the first row, and close the result set."""
+        row = self.cursor.fetchone()
+        try:
+            if row is not None:
+                if self.echo: self.engine.log(repr(row))
+                return row[0]
+            else:
+                return None
+        finally:
+            self.close()
     
 class RowProxy:
     """proxies a single cursor row for a parent ResultProxy."""
