@@ -251,6 +251,8 @@ class PickleType(MutableType, TypeDecorator):
             return self.pickler.dumps(x, self.protocol) == self.pickler.dumps(y, self.protocol)
         else:
             return x is y
+    def is_mutable(self):
+        return self.mutable
         
 class Boolean(TypeEngine):
     pass
