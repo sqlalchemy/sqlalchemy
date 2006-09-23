@@ -622,7 +622,7 @@ Note that with a circular relationship as above, you cannot declare both relatio
 
 ### Self Referential Mappers {@name=recursive}
 
-A self-referential mapper is a mapper that is designed to operate with an <b>adjacency list</b> table.  This is a table that contains one or more foreign keys back to itself, and is usually used to create hierarchical tree structures.  SQLAlchemy's default model of saving items based on table dependencies is not sufficient in this case, as an adjacency list table introduces dependencies between individual rows.  Fortunately, SQLAlchemy will automatically detect a self-referential mapper and do the extra lifting to make it work.  
+A self-referential mapper is a mapper that is designed to operate with an *adjacency list* table.  This is a table that contains one or more foreign keys back to itself, and is usually used to create hierarchical tree structures.  SQLAlchemy's default model of saving items based on table dependencies is not sufficient in this case, as an adjacency list table introduces dependencies between individual rows.  Fortunately, SQLAlchemy will automatically detect a self-referential mapper and do the extra lifting to make it work.  
 
     {python}
     # define a self-referential table
@@ -642,7 +642,7 @@ A self-referential mapper is a mapper that is designed to operate with an <b>adj
     TreeNode.mapper = mapper(TreeNode, trees, properties={
             'children' : relation(
                             TreeNode, 
-                            cascade="all, delete-orphan"
+                            cascade="all"
                          ),
             }
         )
@@ -652,7 +652,7 @@ A self-referential mapper is a mapper that is designed to operate with an <b>adj
     
     mymapper.add_property('children', relation(
                             mymapper, 
-                            cascade="all, delete-orphan"
+                            cascade="all"
                          ))
         
 This kind of mapper goes through a lot of extra effort when saving and deleting items, to determine the correct dependency graph of nodes within the tree.
@@ -677,7 +677,8 @@ A self-referential mapper where there is more than one relationship on the table
             'children' : relation(
                             TreeNode, 
                             primaryjoin=trees.c.parent_node_id==trees.c.node_id
-                            cascade="all, delete-orphan"
+                            cascade="all",
+                            backref=backref("parent", foreignkey=trees.c.node_id)
                          ),
             'root' : relation(
                     TreeNode,
