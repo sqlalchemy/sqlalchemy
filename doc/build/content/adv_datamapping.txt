@@ -153,7 +153,7 @@ When creating relations on a mapper, most examples so far have illustrated the m
     
     mapper(Address, addresses_table)
     mapper(User, users_table, properties={
-        'boston_addreses' : relation(Address, primaryjoin=
+        'boston_addresses' : relation(Address, primaryjoin=
                     and_(users_table.c.user_id==Address.c.user_id, 
                     Addresses.c.city=='Boston'))
     })
@@ -179,7 +179,7 @@ The previous example leads in to the idea of joining against the same table mult
 
     {python}
     mapper(User, users_table, properties={
-        'boston_addreses' : relation(Address, primaryjoin=
+        'boston_addresses' : relation(Address, primaryjoin=
                     and_(users_table.c.user_id==Address.c.user_id, 
                     Addresses.c.city=='Boston')),
         'newyork_addresses' : relation(Address, primaryjoin=
@@ -349,7 +349,7 @@ An example of a mapper with a lazy load relationship, upgraded to an eager load 
     
     # a 'lazy' relationship
     mapper(User, users_table, properties = {
-        'addreses':relation(mapper(Address, addresses_table), lazy=True)
+        'addresses':relation(mapper(Address, addresses_table), lazy=True)
     })
 
     # copy the mapper and convert 'addresses' to be eager
