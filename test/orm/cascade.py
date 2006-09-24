@@ -15,7 +15,7 @@ class O2MCascadeTest(testbase.AssertMixin):
 
     def setUpAll(self):
         global ctx, data
-        ctx = SessionContext(lambda: create_session(echo_uow=True))
+        ctx = SessionContext(lambda: create_session( ))
         tables.create()
         mapper(tables.User, tables.users, properties = dict(
             address = relation(mapper(tables.Address, tables.addresses), lazy = False, uselist = False, private = True),

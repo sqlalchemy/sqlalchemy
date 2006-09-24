@@ -54,4 +54,11 @@ def polymorphic_union(table_map, typecolname, aliasname='p_union'):
         else:
             result.append(sql.select([col(name, table) for name in colnames], from_obj=[table]))
     return sql.union_all(*result).alias(aliasname)
+
+def instance_str(instance):
+    """return a string describing an instance"""
+    return instance.__class__.__name__ + "@" + hex(id(instance))
+    
+def attribute_str(instance, attribute):
+    return instance_str(instance) + "." + attribute
     

@@ -16,7 +16,7 @@ try:
 except:
     import pickle
     
-from sqlalchemy import util, exceptions
+from sqlalchemy import util, exceptions, logging
 import sqlalchemy.queue as Queue
 
 try:
@@ -73,16 +73,16 @@ def clear_managers():
     for manager in proxies.values():
         manager.close()
     proxies.clear()
-
     
 class Pool(object):
-    def __init__(self, creator, recycle=-1, echo = False, use_threadlocal = True, logger=None):
+    def __init__(self, creator, recycle=-1, echo=None, use_threadlocal = True):
+        self.logger = logging.instance_logger(self)
         self._threadconns = weakref.WeakValueDictionary()
         self._creator = creator
         self._recycle = recycle
         self._use_threadlocal = use_threadlocal
         self.echo = echo
-        self._logger = logger or util.Logger(origin='pool')
+    echo = logging.echo_property()
     
     def unique_connection(self):
         return _ConnectionFairy(self).checkout()
@@ -117,15 +117,11 @@ class Pool(object):
         raise NotImplementedError()
 
     def log(self, msg):
-        self._logger.write(msg)
+        self.logger.info(msg)
 
     def dispose(self):
         raise NotImplementedError()
         
-    def __del__(self):
-        pass
-        # produces too much log garbage when apps end, due to python non-deterministic teardown
-        #self.dispose()
 
 class _ConnectionRecord(object):
     def __init__(self, pool):
@@ -154,7 +150,9 @@ class _ConnectionRecord(object):
     def __connect(self):
         try:
             self.starttime = time.time()
-            return self.__pool._creator()
+            connection = self.__pool._creator()
+            self.__pool.log("Created new connection %s" % repr(connection))
+            return connection
         except Exception, e:
             self.__pool.log("Error on connect(): %s" % (str(e)))
             raise

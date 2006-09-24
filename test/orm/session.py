@@ -12,14 +12,10 @@ from sqlalchemy import *
 class OrphanDeletionTest(AssertMixin):
 
     def setUpAll(self):
-        db.echo = False
         tables.create()
         tables.data()
-        db.echo = testbase.echo
     def tearDownAll(self):
-        db.echo = False
         tables.drop()
-        db.echo = testbase.echo
     def tearDown(self):
         clear_mappers()
     def setUp(self):
@@ -103,7 +99,7 @@ class CascadingOrphanDeletionTest(AssertMixin):
             items=relation(itemMapper, cascade="all,delete-orphan", backref="order")
         ))
 
-        s = create_session(echo_uow=True)
+        s = create_session( )
         order = Order()
         s.save(order)
 

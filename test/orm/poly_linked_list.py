@@ -109,7 +109,7 @@ class PolymorphicCircularTest(testbase.PersistTest):
                 ])
         
     def do_testlist(self, classes):
-        sess = create_session(echo_uow=False)
+        sess = create_session( )
 
         # create objects in a linked list
         count = 1

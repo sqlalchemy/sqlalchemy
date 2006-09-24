@@ -14,8 +14,7 @@ an "identity map" pattern.  The Unit of Work then maintains lists of objects tha
 dirty, or deleted and provides the capability to flush all those changes at once.
 """
 
-from sqlalchemy import attributes
-from sqlalchemy import util
+from sqlalchemy import attributes, util, logging
 import sqlalchemy
 from sqlalchemy.exceptions import *
 import StringIO
@@ -80,6 +79,9 @@ class UnitOfWork(object):
             
         self.new = util.Set() #OrderedSet()
         self.deleted = util.Set()
+        self.logger = logging.instance_logger(self)
+
+    echo = logging.echo_property()
 
     def _remove_deleted(self, obj):
         if hasattr(obj, "_instance_key"):
@@ -139,6 +141,8 @@ class UnitOfWork(object):
         # and organize a hierarchical dependency structure.  it also handles
         # communication with the mappers and relationships to fire off SQL
         # and synchronize attributes between related objects.
+        echo = logging.is_info_enabled(self.logger)
+        
         flush_context = UOWTransaction(self, session)
 
         # create the set of all objects we want to operate upon
@@ -185,7 +189,6 @@ class UnitOfWork(object):
         trans.commit()
             
         flush_context.post_exec()
-
             
 class UOWTransaction(object):
     """handles the details of organizing and executing transaction tasks 
@@ -199,7 +202,8 @@ class UOWTransaction(object):
         self.tasks = {}
         self.__modified = False
         self.__is_executing = False
-        
+        self.logger = logging.instance_logger(self)
+    
     # TODO: shouldnt be able to register stuff here that is not in the enclosing Session
     def register_object(self, obj, isdelete = False, listonly = False, postupdate=False, post_update_cols=None, **kwargs):
         """adds an object to this UOWTransaction to be updated in the database.
@@ -301,19 +305,10 @@ class UOWTransaction(object):
         self._mark_modified()
 
     def execute(self, echo=False):
-        #print "\n------------------\nEXECUTE"
-        #for task in self.tasks.values():
-        #    print "\nTASK:", task
-        #    for obj in task.objects:
-        #        print "TASK OBJ:", obj
-        #    for elem in task.get_elements(polymorphic=True):
-        #        print "POLYMORPHIC TASK OBJ:", elem.obj
-        
         # insure that we have a UOWTask for every mapper that will be involved 
         # in the topological sort
         [self.get_task_by_mapper(m) for m in self._get_noninheriting_mappers()]
         
-        #print "-----------------------------"
         # pre-execute dependency processors.  this process may 
         # result in new tasks, objects and/or dependency processors being added,
         # particularly with 'delete-orphan' cascade rules.
@@ -338,15 +333,15 @@ class UOWTransaction(object):
         self.__modified = False
         if echo:
             if head is None:
-                print "Task dump: None"
+                self.logger.info("Task dump: None")
             else:
-                print "Task dump:\n" + head.dump()
+                self.logger.info("Task dump:\n" + head.dump())
         if head is not None:
             head.execute(self)
         #if self.__modified and head is not None:
         #    raise "Assertion failed ! new pre-execute dependency step should eliminate post-execute changes (except post_update stuff)."
         if echo:
-            print "\nExecute complete\n"
+            self.logger.info("Execute Complete")
             
     def post_exec(self):
         """after an execute/flush is completed, all of the objects and lists that have

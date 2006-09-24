@@ -111,7 +111,7 @@ class InheritTest(testbase.AssertMixin):
                 )
             )
 
-        session = create_session(echo_uow=False)
+        session = create_session( )
 
         a1 = Assembly(name='a1')
 
@@ -149,7 +149,7 @@ class InheritTest(testbase.AssertMixin):
                 )
             )
 
-        session = create_session(echo_uow=False)
+        session = create_session( )
 
         s = SpecLine(slave=Product(name='p1'))
         s2 = SpecLine(slave=Detail(name='d1'))
@@ -239,7 +239,7 @@ class InheritTest(testbase.AssertMixin):
         raster_document_mapper = mapper(RasterDocument, inherits=document_mapper,
             polymorphic_identity='raster_document')
 
-        session = create_session(echo_uow=False)
+        session = create_session( )
 
         a1 = Assembly(name='a1')
         a1.documents.append(RasterDocument('doc2'))

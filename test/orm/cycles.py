@@ -49,7 +49,7 @@ class SelfReferentialTest(AssertMixin):
         })
         a = C1('head c1')
         a.c1s.append(C1('another c1'))
-        sess = create_session(echo_uow=False)
+        sess = create_session( )
         sess.save(a)
         sess.flush()
         sess.delete(a)
@@ -73,7 +73,7 @@ class SelfReferentialTest(AssertMixin):
         a.c1s[0].c1s.append(C1('subchild2'))
         a.c1s[1].c2s.append(C2('child2 data1'))
         a.c1s[1].c2s.append(C2('child2 data2'))
-        sess = create_session(echo_uow=False)
+        sess = create_session( )
         sess.save(a)
         sess.flush()
         

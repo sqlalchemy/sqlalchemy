@@ -7,12 +7,8 @@ class IndexTest(testbase.AssertMixin):
     def setUp(self):
         global metadata
         metadata = BoundMetaData(testbase.db)
-        self.echo = testbase.db.echo
-        self.logger = testbase.db.logger
         
     def tearDown(self):
-        testbase.db.echo = self.echo
-        testbase.db.logger = testbase.db.engine.logger = self.logger
         metadata.drop_all()
     
     def test_constraint(self):
@@ -78,12 +74,6 @@ class IndexTest(testbase.AssertMixin):
     def test_index_create_inline(self):
         """Test indexes defined with tables"""
 
-        capt = []
-        class dummy:
-            pass
-        stream = dummy()
-        stream.write = capt.append
-        testbase.db.logger = testbase.db.engine.logger = stream
         events = Table('events', metadata,
                        Column('id', Integer, primary_key=True),
                        Column('name', String(30), unique=True),
@@ -101,7 +91,24 @@ class IndexTest(testbase.AssertMixin):
         assert 'idx_winners' in index_names
         assert len(index_names) == 4
 
-        events.create()
+        capt = []
+        connection = testbase.db.connect()
+        def proxy(statement, parameters):
+            capt.append(statement)
+            capt.append(repr(parameters))
+            connection.proxy(statement, parameters)
+        schemagen = testbase.db.dialect.schemagenerator(testbase.db, proxy)
+        events.accept_schema_visitor(schemagen)
+        
+        assert capt[0].strip().startswith('CREATE TABLE events')
+        assert capt[2].strip() == \
+            'CREATE UNIQUE INDEX ux_events_name ON events (name)'
+        assert capt[4].strip() == \
+            'CREATE INDEX ix_events_location ON events (location)'
+        assert capt[6].strip() == \
+            'CREATE UNIQUE INDEX sport_announcer ON events (sport, announcer)'
+        assert capt[8].strip() == \
+            'CREATE INDEX idx_winners ON events (winner)'
 
         # verify that the table is functional
         events.insert().execute(id=1, name='hockey finals', location='rink',
@@ -109,15 +116,6 @@ class IndexTest(testbase.AssertMixin):
                                 winner='sweden')
         ss = events.select().execute().fetchall()
 
-        assert capt[0].strip().startswith('CREATE TABLE events')
-        assert capt[3].strip() == \
-            'CREATE UNIQUE INDEX ux_events_name ON events (name)'
-        assert capt[6].strip() == \
-            'CREATE INDEX ix_events_location ON events (location)'
-        assert capt[9].strip() == \
-            'CREATE UNIQUE INDEX sport_announcer ON events (sport, announcer)'
-        assert capt[12].strip() == \
-            'CREATE INDEX idx_winners ON events (winner)'
             
 if __name__ == "__main__":    
     testbase.main()

@@ -2,7 +2,7 @@ import testbase
 import unittest, sys, datetime
 
 db = testbase.db
-#db.echo_uow=True
+#db. 
 
 from sqlalchemy import *
 

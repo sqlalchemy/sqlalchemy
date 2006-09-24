@@ -30,7 +30,9 @@ Help is available via:
     			mysql, oracle, oracle8, mssql)
       --mockpool            use mock pool
       --verbose             full debug echoing
-      --noecho              Disable SQL statement echoing
+      --log-info=LOG_INFO   turn on info logging for <LOG> (multiple OK)
+      --log-debug=LOG_DEBUG
+                            turn on debug logging for <LOG> (multiple OK)
       --quiet               be totally quiet
       --nothreadlocal       dont use thread-local mod
       --enginestrategy=ENGINESTRATEGY
@@ -46,4 +48,9 @@ Additionally, to run a speciic test within the module, specify it as ClassName.m
 
     python test/orm/mapper.py MapperTest.testget
 
+Logging is now available via Python's logging package.  Any area of SQLAlchemy can be logged 
+through the unittest interface, such as:
 
+Log mapper configuration, connection pool checkouts, and SQL statement execution:
+
+    python test/orm/unitofwork.py --log-info=sqlalchemy.orm.mapper --log-debug=sqlalchemy.pool --log-info=sqlalchemy.engine

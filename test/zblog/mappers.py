@@ -107,7 +107,7 @@ Comment.find_by_post = staticmethod(find_by_post)
 
 def start_session():
     """creates a new session for the start of a request."""
-    trans.session = create_session(bind_to=zblog.database.engine, echo_uow=False)
+    trans.session = create_session(bind_to=zblog.database.engine )
 
 def session():
     return trans.session

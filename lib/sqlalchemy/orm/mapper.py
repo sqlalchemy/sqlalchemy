@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy import sql, schema, util, exceptions
+from sqlalchemy import sql, schema, util, exceptions, logging
 from sqlalchemy import sql_util as sqlutil
 import util as mapperutil
 import sync
@@ -135,13 +135,20 @@ class Mapper(object):
         # calls to class_mapper() for the class_/entity name combination will return this 
         # mapper.
         self._compile_class()
+
+        self.__log("constructed")
         
-        #print self, "constructed"
         # uncomment to compile at construction time (the old way)
         # this will break mapper setups that arent declared in the order
         # of dependency
         #self.compile()
     
+    def __log(self, msg):
+        self.logger.info("(" + self.class_.__name__ + "|" + (self.entity_name is not None and "/%s" % self.entity_name or "") + (self.local_table and self.local_table.name or str(self.local_table)) + (not self._is_primary_mapper() and "|non-primary" or "") + ") " + msg)
+    
+    def __log_debug(self, msg):
+        self.logger.debug("(" + self.class_.__name__ + "|" + (self.entity_name is not None and "/%s" % self.entity_name or "") + (self.local_table and self.local_table.name or str(self.local_table)) + (not self._is_primary_mapper() and "|non-primary" or "") + ") " + msg)
+            
     def _is_orphan(self, obj):
         optimistic = has_identity(obj)
         for (key,klass) in self.delete_orphans:
@@ -199,7 +206,7 @@ class Mapper(object):
         """
         if self.__is_compiled:
             return self
-        #print self, "_do_compile"
+        self.__log("_do_compile() started")
         self.__is_compiled = True
         self.__props_init = False
         self._compile_extensions()
@@ -207,8 +214,7 @@ class Mapper(object):
         self._compile_tables()
         self._compile_properties()
         self._compile_selectable()
-#        self._initialize_properties()
-
+        self.__log("_do_compile() complete")
         return self
         
     def _compile_extensions(self):
@@ -383,6 +389,7 @@ class Mapper(object):
                 prop = ColumnProperty(column)
                 self.__props[column.key] = prop
                 prop.set_parent(self)
+                self.__log("adding ColumnProperty %s" % (column.key))
             elif isinstance(prop, ColumnProperty):
                 prop.columns.append(column)
             else:
@@ -399,10 +406,12 @@ class Mapper(object):
     def _initialize_properties(self):
         """calls the init() method on all MapperProperties attached to this mapper.  this will incur the
         compilation of related mappers."""
+        self.__log("_initialize_properties() started")
         l = [(key, prop) for key, prop in self.__props.iteritems()]
         for key, prop in l:
             if getattr(prop, 'key', None) is None:
                 prop.init(key, self)
+        self.__log("_initialize_properties() complete")
         self.__props_init = True
         
     def _compile_selectable(self):
@@ -544,6 +553,8 @@ class Mapper(object):
         circular relationships, or overriding the parameters of auto-generated properties
         such as backreferences."""
 
+        self.__log("_compile_property(%s, %s)" % (key, prop.__class__.__name__))
+
         if not isinstance(prop, MapperProperty):
             prop = self._create_prop_from_column(prop, skipmissing=skipmissing)
             if prop is None:
@@ -608,6 +619,7 @@ class Mapper(object):
     def instances(self, cursor, session, *mappers, **kwargs):
         """given a cursor (ResultProxy) from an SQLEngine, returns a list of object instances
         corresponding to the rows in the cursor."""
+        self.__log_debug("instances()")
         self.compile()
         limit = kwargs.get('limit', None)
         offset = kwargs.get('offset', None)
@@ -701,6 +713,7 @@ class Mapper(object):
         prop = self._getpropbycolumn(column, raiseerror)
         if prop is None:
             return NO_ATTRIBUTE
+        #self.__log_debug("get column attribute '%s' from instance %s" % (column.key, mapperutil.instance_str(obj)))
         return prop.getattr(obj)
 
     def _setattrbycolumn(self, obj, column, value):
@@ -1042,6 +1055,7 @@ class Mapper(object):
             instance = self.extension.create_instance(self, session, row, imap, self.class_)
             if instance is EXT_PASS:
                 instance = self._create_instance(session)
+            self.__log_debug("new instance %s identity %s" % (mapperutil.instance_str(instance), str(identitykey)))
             imap[identitykey] = instance
             isnew = True
         else:
@@ -1144,6 +1158,8 @@ class Mapper(object):
     def select_text(self, text, **params):
         """deprecated. use Query instead."""
         return self.query().select_text(text, **params)
+
+Mapper.logger = logging.class_logger(Mapper)
         
 class MapperProperty(object):
     """an element attached to a Mapper that describes and assists in the loading and saving 

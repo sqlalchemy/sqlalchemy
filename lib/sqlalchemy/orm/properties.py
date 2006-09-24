@@ -8,7 +8,7 @@
 well as relationships.  also defines some MapperOptions that can be used with the
 properties."""
 
-from sqlalchemy import sql, schema, util, attributes, exceptions, sql_util
+from sqlalchemy import sql, schema, util, attributes, exceptions, sql_util, logging
 import sync
 import mapper
 import session as sessionlib
@@ -41,11 +41,11 @@ class ColumnProperty(mapper.MapperProperty):
     def do_init(self):
         # establish a SmartProperty property manager on the object for this key
         if self.is_primary():
-            #print "regiser col on class %s key %s" % (parent.class_.__name__, key)
+            self.logger.info("register managed attribute %s on class %s" % (self.key, self.parent.class_.__name__))
             sessionlib.attribute_manager.register_attribute(self.parent.class_, self.key, uselist=False, copy_function=lambda x: self.columns[0].type.copy_value(x), compare_function=lambda x,y:self.columns[0].type.compare_values(x,y), mutable_scalars=self.columns[0].type.is_mutable())
     def execute(self, session, instance, row, identitykey, imap, isnew):
         if isnew:
-            #print "POPULATING OBJ", instance.__class__.__name__, "COL", self.columns[0]._label, "WITH DATA", row[self.columns[0]], "ROW IS A", row.__class__.__name__, "COL ID", id(self.columns[0])
+            self.logger.debug("populating %s with %s/%s" % (mapperutil.attribute_str(instance, self.key), row.__class__.__name__, self.columns[0].key))
             # set a scalar object instance directly on the object, 
             # bypassing SmartProperty event handlers.
             instance.__dict__[self.key] = row[self.columns[0]]
@@ -56,6 +56,8 @@ class ColumnProperty(mapper.MapperProperty):
             super(ColumnProperty, self).adapt_to_inherited(key, newparent)
     def __repr__(self):
         return "ColumnProperty(%s)" % repr([str(c) for c in self.columns])
+        
+ColumnProperty.logger = logging.class_logger(ColumnProperty)
         
 class DeferredColumnProperty(ColumnProperty):
     """describes an object attribute that corresponds to a table column, which also
@@ -69,11 +71,13 @@ class DeferredColumnProperty(ColumnProperty):
         # establish a SmartProperty property manager on the object for this key, 
         # containing a callable to load in the attribute
         if self.is_primary():
+            self.logger.info("register managed attribute %s on class %s" % (self.key, self.parent.class_.__name__))
             sessionlib.attribute_manager.register_attribute(self.parent.class_, self.key, uselist=False, callable_=lambda i:self.setup_loader(i), copy_function=lambda x: self.columns[0].type.copy_value(x), compare_function=lambda x,y:self.columns[0].type.compare_values(x,y), mutable_scalars=self.columns[0].type.is_mutable())
     def setup_loader(self, instance):
         if not self.localparent.is_assigned(instance):
             return mapper.object_mapper(instance).props[self.key].setup_loader(instance)
         def lazyload():
+            self.logger.debug("deferred load %s group %s" % (mapperutil.attribute_str(instance, self.key), str(self.group)))
             try:
                 pk = self.parent.pks_by_table[self.columns[0].table]
             except KeyError:
@@ -116,6 +120,8 @@ class DeferredColumnProperty(ColumnProperty):
                 sessionlib.attribute_manager.init_instance_attribute(instance, self.key, False, callable_=self.setup_loader(instance))
             else:
                 sessionlib.attribute_manager.reset_instance_attribute(instance, self.key)
+                
+DeferredColumnProperty.logger = logging.class_logger(DeferredColumnProperty)
 
 mapper.ColumnProperty = ColumnProperty
 
@@ -164,6 +170,7 @@ class PropertyLoader(mapper.MapperProperty):
 
     def __str__(self):
         return self.__class__.__name__ + " " + str(self.parent) + "->" + self.key + "->" + str(self.mapper)
+        
     def cascade_iterator(self, type, object, recursive):
         if not type in self.cascade:
             return
@@ -290,6 +297,7 @@ class PropertyLoader(mapper.MapperProperty):
         self.do_init_subclass()
 
     def _register_attribute(self, class_, callable_=None):
+        self.logger.info("register managed %s attribute %s on class %s" % ((self.uselist and "list-holding" or "scalar"), self.key, self.parent.class_.__name__))
         sessionlib.attribute_manager.register_attribute(class_, self.key, uselist = self.uselist, extension=self.attributeext, cascade=self.cascade,  trackparent=True, callable_=callable_)
 
     def _init_instance_attribute(self, instance, callable_=None):
@@ -363,6 +371,8 @@ class PropertyLoader(mapper.MapperProperty):
         else:
             self.syncrules.compile(self.primaryjoin, parent_tables, target_tables)
 
+PropertyLoader.logger = logging.class_logger(PropertyLoader)
+
 class LazyLoader(PropertyLoader):
     def do_init_subclass(self):
         (self.lazywhere, self.lazybinds, self.lazyreverse) = create_lazy_clause(self.parent.unjoined_table, self.primaryjoin, self.secondaryjoin, self.foreignkey)
@@ -387,6 +397,7 @@ class LazyLoader(PropertyLoader):
                 return mapper.object_mapper(instance).props[self.key].setup_loader(instance)
         
         def lazyload():
+            self.logger.debug("lazy load attribute %s on instance %s" % (self.key, mapperutil.instance_str(instance)))
             params = {}
             allparams = True
             # if the instance wasnt loaded from the database, then it cannot lazy load
@@ -442,17 +453,19 @@ class LazyLoader(PropertyLoader):
         if isnew:
             # new object instance being loaded from a result row
             if not self.is_primary():
-                #print "EXEC NON-PRIAMRY", repr(self.mapper.class_), self.key
+                self.logger.debug("set instance-level lazy loader on %s" % mapperutil.attribute_str(instance, self.key))
                 # we are not the primary manager for this attribute on this class - set up a per-instance lazyloader,
                 # which will override the clareset_instance_attributess-level behavior
                 self._init_instance_attribute(instance, callable_=self.setup_loader(instance))
             else:
-                #print "EXEC PRIMARY", repr(self.mapper.class_), self.key
+                self.logger.debug("set class-level lazy loader on %s" % mapperutil.attribute_str(instance, self.key))
                 # we are the primary manager for this attribute on this class - reset its per-instance attribute state, 
                 # so that the class-level lazy loader is executed when next referenced on this instance.
                 # this usually is not needed unless the constructor of the object referenced the attribute before we got 
                 # to load data into it.
                 sessionlib.attribute_manager.reset_instance_attribute(instance, self.key)
+ 
+LazyLoader.logger = logging.class_logger(LazyLoader)
  
 def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     binds = {}
@@ -616,11 +629,13 @@ class EagerLoader(LazyLoader):
             identity_key = self.eagermapper._row_identity_key(decorated_row)
         except KeyError:
             # else degrade to a lazy loader
+            self.logger.debug("degrade to lazy loader on %s" % mapperutil.attribute_str(instance, self.key))
             LazyLoader.execute(self, session, instance, row, identitykey, imap, isnew)
             return
                 
             
         if not self.uselist:
+            self.logger.debug("eagerload scalar instance on %s" % mapperutil.attribute_str(instance, self.key))
             if isnew:
                 # set a scalar object instance directly on the parent object, 
                 # bypassing SmartProperty event handlers.
@@ -631,6 +646,7 @@ class EagerLoader(LazyLoader):
                 self.eagermapper._instance(session, decorated_row, imap, None)
         else:
             if isnew:
+                self.logger.debug("initialize UniqueAppender on %s" % mapperutil.attribute_str(instance, self.key))
                 # call the SmartProperty's initialize() method to create a new, blank list
                 l = getattr(instance.__class__, self.key).initialize(instance)
                 
@@ -640,10 +656,11 @@ class EagerLoader(LazyLoader):
                 # store it in the "scratch" area, which is local to this load operation.
                 imap['_scratch'][(instance, self.key)] = appender
             result_list = imap['_scratch'][(instance, self.key)]
+            self.logger.debug("eagerload list instance on %s" % mapperutil.attribute_str(instance, self.key))
             self.eagermapper._instance(session, decorated_row, imap, result_list)
 
     def _create_decorator_row(self):
-        class DecoratorDict(object):
+        class EagerRowAdapter(object):
             def __init__(self, row):
                 self.row = row
             def has_key(self, key):
@@ -660,7 +677,7 @@ class EagerLoader(LazyLoader):
             map[parent] = c
             map[parent._label] = c
             map[parent.name] = c
-        return DecoratorDict
+        return EagerRowAdapter
 
     def _decorate_row(self, row):
         # since the EagerLoader makes an Alias of its mapper's table,
@@ -676,6 +693,8 @@ class EagerLoader(LazyLoader):
             # insure the "eager chain" step occurred
             self._create_eager_chain()
             return self._row_decorator(row)
+
+EagerLoader.logger = logging.class_logger(EagerLoader)
 
 class GenericOption(mapper.MapperOption):
     """a mapper option that can handle dotted property names,
@@ -699,6 +718,7 @@ class GenericOption(mapper.MapperOption):
     def create_prop(self, mapper, key):
         kwargs = util.constructor_args(oldprop)
         mapper._compile_property(key, class_(**kwargs ))
+
 
 class BackRef(object):
     """stores the name of a backreference property as well as options to 

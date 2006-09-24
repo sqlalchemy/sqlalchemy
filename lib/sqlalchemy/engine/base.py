@@ -1,4 +1,4 @@
-from sqlalchemy import exceptions, sql, schema, util, types
+from sqlalchemy import exceptions, sql, schema, util, types, logging
 import StringIO, sys, re
 
 class ConnectionProvider(object):
@@ -204,18 +204,15 @@ class Connection(Connectable):
     def in_transaction(self):
         return self.__transaction is not None
     def _begin_impl(self):
-        if self.__engine.echo:
-            self.__engine.log("BEGIN")
+        self.__engine.logger.info("BEGIN")
         self.__engine.dialect.do_begin(self.connection)
     def _rollback_impl(self):
-        if self.__engine.echo:
-            self.__engine.log("ROLLBACK")
+        self.__engine.logger.info("ROLLBACK")
         self.__engine.dialect.do_rollback(self.connection)
         self.__connection.close_open_cursors()
         self.__transaction = None
     def _commit_impl(self):
-        if self.__engine.echo:
-            self.__engine.log("COMMIT")
+        self.__engine.logger.info("COMMIT")
         self.__engine.dialect.do_commit(self.connection)
         self.__transaction = None
     def _autocommit(self, statement):
@@ -311,13 +308,12 @@ class Connection(Connectable):
         return self.__engine.dialect.get_default_schema_name(self)
     def run_callable(self, callable_):
         return callable_(self)
-    def _execute_raw(self, statement, parameters=None, cursor=None, echo=None, context=None, **kwargs):
+    def _execute_raw(self, statement, parameters=None, cursor=None, context=None, **kwargs):
         if cursor is None:
             cursor = self.connection.cursor()
         try:
-            if echo is True or self.__engine.echo is not False:
-                self.__engine.log(statement)
-                self.__engine.log(repr(parameters))
+            self.__engine.logger.info(statement)
+            self.__engine.logger.info(repr(parameters))
             if parameters is not None and isinstance(parameters, list) and len(parameters) > 0 and (isinstance(parameters[0], list) or isinstance(parameters[0], dict)):
                 self._executemany(cursor, statement, parameters, context=context)
             else:
@@ -389,15 +385,16 @@ class ComposedSQLEngine(sql.Engine, Connectable):
     Connects a ConnectionProvider, a Dialect and a CompilerFactory together to 
     provide a default implementation of SchemaEngine.
     """
-    def __init__(self, connection_provider, dialect, echo=False, logger=None, **kwargs):
+    def __init__(self, connection_provider, dialect, echo=None, **kwargs):
         self.connection_provider = connection_provider
         self.dialect=dialect
         self.echo = echo
-        self.logger = logger or util.Logger(origin='engine')
+        self.logger = logging.instance_logger(self)
 
     name = property(lambda s:sys.modules[s.dialect.__module__].descriptor()['name'])
     engine = property(lambda s:s)
-
+    echo = logging.echo_property()
+    
     def dispose(self):
         self.connection_provider.dispose()
     def create(self, entity, connection=None, **kwargs):
@@ -508,7 +505,7 @@ class ComposedSQLEngine(sql.Engine, Connectable):
 
     def log(self, msg):
         """logs a message using this SQLEngine's logger stream."""
-        self.logger.write(msg)
+        self.logger.info(msg)
 
 class ResultProxy:
     """wraps a DBAPI cursor object to provide access to row columns based on integer
@@ -545,8 +542,8 @@ class ResultProxy:
             self.rowcount = executioncontext.get_rowcount(cursor)
         else:
             self.rowcount = cursor.rowcount
-        self.echo = engine.echo=="debug"
         self.__key_cache = {}
+        self.__echo = engine.echo == 'debug'
         metadata = cursor.description
         self.props = {}
         self.keys = []
@@ -644,7 +641,8 @@ class ResultProxy:
         """fetch one row, just like DBAPI cursor.fetchone()."""
         row = self.cursor.fetchone()
         if row is not None:
-            if self.echo: self.engine.log(repr(row))
+            if self.__echo:
+                self.engine.logger.debug("Row " + repr(row))
             return RowProxy(self, row)
         else:
             # controversy!  can we auto-close the cursor after results are consumed ?
@@ -658,7 +656,8 @@ class ResultProxy:
         row = self.cursor.fetchone()
         try:
             if row is not None:
-                if self.echo: self.engine.log(repr(row))
+                if self.__echo:
+                    self.engine.logger.debug("Row " + repr(row))
                 return row[0]
             else:
                 return None

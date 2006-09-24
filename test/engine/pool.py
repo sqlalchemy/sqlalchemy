@@ -5,6 +5,7 @@ import unittest, sys, os, time
 import sqlalchemy.pool as pool
 import sqlalchemy.exceptions as exceptions
 
+mcid = 1
 class MockDBAPI(object):
     def __init__(self):
         self.throw_error = False
@@ -13,6 +14,10 @@ class MockDBAPI(object):
             raise Exception("couldnt connect !")
         return MockConnection()
 class MockConnection(object):
+    def __init__(self):
+        global mcid
+        self.id = mcid
+        mcid += 1
     def close(self):
         pass
     def cursor(self):
@@ -65,7 +70,7 @@ class PoolTest(PersistTest):
         self._do_testqueuepool(useclose=True)
 
     def _do_testqueuepool(self, useclose=False):
-        p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = -1, use_threadlocal = False, echo = False)
+        p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = -1, use_threadlocal = False)
     
         def status(pool):
             tup = (pool.size(), pool.checkedin(), pool.overflow(), pool.checkedout())
@@ -108,7 +113,7 @@ class PoolTest(PersistTest):
         self.assert_(status(p) == (3, 2, 0, 1))
     
     def test_timeout(self):
-        p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = 0, use_threadlocal = False, echo = False, timeout=2)
+        p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = 0, use_threadlocal = False, timeout=2)
         c1 = p.get()
         c2 = p.get()
         c3 = p.get()
@@ -120,7 +125,7 @@ class PoolTest(PersistTest):
             assert int(time.time() - now) == 2
         
     def test_mixed_close(self):
-        p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = -1, use_threadlocal = True, echo=True)
+        p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = -1, use_threadlocal = True)
         c1 = p.connect()
         c2 = p.connect()
         assert c1 is c2
@@ -134,7 +139,7 @@ class PoolTest(PersistTest):
         """this is a "flaw" in the connection pool; since threadlocal uses a single ConnectionFairy per thread
         with an open/close counter, you can fool the counter into giving you a ConnectionFairy with an
         ambiguous counter.  i.e. its not true reference counting."""
-        p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = -1, use_threadlocal = True, echo=True)
+        p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = -1, use_threadlocal = True)
         c1 = p.connect()
         c2 = p.connect()
         assert c1 is c2
@@ -147,7 +152,7 @@ class PoolTest(PersistTest):
         self.assert_(p.checkedout() == 0)
 
     def test_recycle(self):
-        p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 1, max_overflow = 0, use_threadlocal = False, echo=True, recycle=3)
+        p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 1, max_overflow = 0, use_threadlocal = False, recycle=3)
         
         c1 = p.connect()
         c_id = id(c1.connection)
@@ -161,34 +166,34 @@ class PoolTest(PersistTest):
     
     def test_invalidate(self):
         dbapi = MockDBAPI()
-        p = pool.QueuePool(creator = lambda: dbapi.connect('foo.db'), pool_size = 1, max_overflow = 0, use_threadlocal = False, echo=True)
+        p = pool.QueuePool(creator = lambda: dbapi.connect('foo.db'), pool_size = 1, max_overflow = 0, use_threadlocal = False)
         c1 = p.connect()
-        c_id = id(c1.connection)
+        c_id = c1.connection.id
         c1.close(); c1=None
 
         c1 = p.connect()
-        assert id(c1.connection) == c_id
+        assert c1.connection.id == c_id
         c1.invalidate()
         c1 = None
         
         c1 = p.connect()
-        assert id(c1.connection) != c_id
+        assert c1.connection.id != c_id
 
     def test_reconnect(self):
         dbapi = MockDBAPI()
-        p = pool.QueuePool(creator = lambda: dbapi.connect('foo.db'), pool_size = 1, max_overflow = 0, use_threadlocal = False, echo=True)
+        p = pool.QueuePool(creator = lambda: dbapi.connect('foo.db'), pool_size = 1, max_overflow = 0, use_threadlocal = False)
         c1 = p.connect()
-        c_id = id(c1.connection)
+        c_id = c1.connection.id
         c1.close(); c1=None
 
         c1 = p.connect()
-        assert id(c1.connection) == c_id
+        assert c1.connection.id == c_id
         dbapi.raise_error = True
         c1.invalidate()
         c1 = None
 
         c1 = p.connect()
-        assert id(c1.connection) != c_id
+        assert c1.connection.id != c_id
         
     def testthreadlocal_del(self):
         self._do_testthreadlocal(useclose=False)
@@ -198,7 +203,7 @@ class PoolTest(PersistTest):
 
     def _do_testthreadlocal(self, useclose=False):
         for p in (
-            pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = -1, use_threadlocal = True, echo = True),
+            pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = -1, use_threadlocal = True),
             pool.SingletonThreadPool(creator = lambda: mock_dbapi.connect('foo.db'), use_threadlocal = True)
         ):   
             c1 = p.connect()
@@ -247,4 +252,4 @@ class PoolTest(PersistTest):
         
         
 if __name__ == "__main__":
-    unittest.main()        
+    testbase.main()        

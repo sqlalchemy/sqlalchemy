@@ -830,7 +830,6 @@ class LazyTest(MapperSuperTest):
 
 class EagerTest(MapperSuperTest):
     def testbasic(self):
-        testbase.db.echo="debug"
         """tests a basic one-to-many eager load"""
         m = mapper(Address, addresses)
         

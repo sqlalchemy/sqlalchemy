@@ -191,7 +191,6 @@ class InheritTest(testbase.AssertMixin):
         print [x for x in session]
         session.clear()
 
-        session.echo_uow=True
         session.flush()
         session.clear()
         p = session.query(Publication).selectone_by(name='Test')
