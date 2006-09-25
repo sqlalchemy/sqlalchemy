@@ -79,12 +79,11 @@ class Session(object):
             self.hash_key = hash_key
         _sessions[self.hash_key] = self
 
-    class _echo_uow(object):
-        def __get__(self, obj, owner):
-            return obj.uow.echo
-        def __set__(self, obj, value):
-            obj.uow.echo = value
-    echo_uow = _echo_uow()
+    def _get_echo_uow(self):
+        return self.uow.echo
+    def _set_echo_uow(self, value):
+        self.uow.echo = value
+    echo_uow = property(_get_echo_uow,_set_echo_uow)
     
     def create_transaction(self, **kwargs):
         """returns a new SessionTransaction corresponding to an existing or new transaction.
