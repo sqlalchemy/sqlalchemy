@@ -38,7 +38,7 @@ def create_engine(*args, **kwargs):
     locates that strategy and invokes its create() method to produce the Engine.
     The strategies themselves are instances of EngineStrategy, and the built in 
     ones are present in the sqlalchemy.engine.strategies module.  Current implementations
-    include "plain" and "threadlocal".  The default used by this function is "threadlocal".
+    include "plain" and "threadlocal".  The default used by this function is "plain".
     
     "plain" provides support for a Connection object which can be used to execute SQL queries 
     with a specific underlying DBAPI connection.

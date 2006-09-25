@@ -108,7 +108,7 @@ class UOWDumper(unitofwork.UOWExecutor):
         super(UOWDumper, self).execute_per_element_childtasks(trans, task, isdelete)
 
     def execute_element_childtasks(self, trans, element, isdelete):
-        self.header("%s subelements of UOWTaskElement(%s)" % ((isdelete and "Delete" or "Save"), id(element)))
+        self.header("%s subelements of UOWTaskElement(%s)" % ((isdelete and "Delete" or "Save"), hex(id(element))))
         super(UOWDumper, self).execute_element_childtasks(trans, element, isdelete)
         self.closeheader()
         
@@ -122,7 +122,7 @@ class UOWDumper(unitofwork.UOWExecutor):
             self.buf.write(self._indent() + "   |- %s attribute on %s (UOWDependencyProcessor(%d) processing %s)\n" % (
                 repr(proc.processor.key), 
                     ("%s's to be %s" % (self._repr_task_class(proc.targettask), deletes and "deleted" or "saved")),
-                id(proc), 
+                hex(id(proc)), 
                 self._repr_task(proc.targettask))
             )
         elif False:
@@ -143,11 +143,11 @@ class UOWDumper(unitofwork.UOWExecutor):
             objid = "(placeholder)"
         else:
             if attribute is not None:
-                objid = "%s(%d).%s" % (te.obj.__class__.__name__, id(te.obj), attribute)
+                objid = "%s(%s).%s" % (te.obj.__class__.__name__, hex(id(te.obj)), attribute)
             else:
-                objid = "%s(%d)" % (te.obj.__class__.__name__, id(te.obj))
+                objid = "%s(%s)" % (te.obj.__class__.__name__, hex(id(te.obj)))
         if self.verbose:
-            return "%s (UOWTaskElement(%d, %s))" % (objid, id(te), (te.listonly and 'listonly' or (te.isdelete and 'delete' or 'save')))
+            return "%s (UOWTaskElement(%s, %s))" % (objid, hex(id(te)), (te.listonly and 'listonly' or (te.isdelete and 'delete' or 'save')))
         elif process:
             return "Process %s" % (objid)
         else:
@@ -162,9 +162,9 @@ class UOWDumper(unitofwork.UOWExecutor):
         else:
             name = '(none)'
         if task.circular_parent:
-            return ("UOWTask(%d->%d, %s)" % (id(task.circular_parent), id(task), name))
+            return ("UOWTask(%s->%s, %s)" % (hex(id(task.circular_parent)), hex(id(task)), name))
         else:
-            return ("UOWTask(%d, %s)" % (id(task), name))
+            return ("UOWTask(%s, %s)" % (hex(id(task)), name))
         
     def _repr_task_class(self, task):
         if task.mapper is not None and task.mapper.__class__.__name__ == 'Mapper':
@@ -173,7 +173,7 @@ class UOWDumper(unitofwork.UOWExecutor):
             return '(none)'
 
     def _repr(self, obj):
-        return "%s(%d)" % (obj.__class__.__name__, id(obj))
+        return "%s(%s)" % (obj.__class__.__name__, hex(id(obj)))
 
     def _indent(self):
         return "   |" * self.indent

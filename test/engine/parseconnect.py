@@ -1,4 +1,5 @@
 from testbase import PersistTest
+import testbase
 import sqlalchemy.engine.url as url
 from sqlalchemy import *
 import unittest
@@ -87,5 +88,5 @@ class MockCursor(object):
 mock_dbapi = MockDBAPI()
             
 if __name__ == "__main__":
-    unittest.main()
+    testbase.main()
         

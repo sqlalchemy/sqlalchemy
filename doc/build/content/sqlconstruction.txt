@@ -132,7 +132,7 @@ The object returned by `execute()` is a `sqlalchemy.engine.ResultProxy` object, 
     # return the underlying connection resources back to 
     # the connection pool.  de-referencing the result
     # will also have the same effect.  if an explicit Connection was 
-    # used, then close() does nothing.
+    # used, then close() just closes the underlying cursor object.
     result.close()
 
 #### Using Column Labels {@name=labels}
