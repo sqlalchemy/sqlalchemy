@@ -132,7 +132,7 @@ class PropertyLoader(mapper.MapperProperty):
 
     """describes an object property that holds a single item or list of items that correspond
     to a related database table."""
-    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, association=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False, cascade=None):
+    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, association=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False, cascade=None, viewonly=False):
         self.uselist = uselist
         self.argument = argument
         self.secondary = secondary
@@ -140,6 +140,7 @@ class PropertyLoader(mapper.MapperProperty):
         self.secondaryjoin = secondaryjoin
         self.post_update = post_update
         self.direction = None
+        self.viewonly = viewonly
         
         self.foreignkey = util.to_set(foreignkey)
             
@@ -352,7 +353,8 @@ class PropertyLoader(mapper.MapperProperty):
         self._init_instance_attribute(instance)
 
     def register_dependencies(self, uowcommit):
-        self._dependency_processor.register_dependencies(uowcommit)
+        if not self.viewonly:
+            self._dependency_processor.register_dependencies(uowcommit)
             
     def _compile_synchronizers(self):
         """assembles a list of 'synchronization rules', which are instructions on how to populate
