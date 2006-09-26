@@ -105,6 +105,9 @@ class MSSmallInteger(sqltypes.Smallinteger):
         return "SMALLINT"
 
 class MSDateTime(sqltypes.DateTime):
+    def __init__(self, *a, **kw):
+        super(MSDateTime, self).__init__(False)
+
     def get_col_spec(self):
         return "DATETIME"
 
@@ -122,6 +125,9 @@ class MSDateTime(sqltypes.DateTime):
         return value
 
 class MSDate(sqltypes.Date):
+    def __init__(self, *a, **kw):
+        super(MSDate, self).__init__(False)
+
     def get_col_spec(self):
         return "SMALLDATETIME"
     
@@ -380,7 +386,9 @@ class MSSQLDialect(ansisql.ANSIDialect):
         current_schema = self.get_default_schema_name()
         columns = self.uppercase_table(ischema.columns)
         s = sql.select([columns],
-                   current_schema and sql.and_(columns.c.table_name==tablename, columns.c.table_schema==current_schema) or columns.c.table_name==tablename,
+                   current_schema
+                       and sql.and_(columns.c.table_name==tablename, columns.c.table_schema==current_schema)
+                       or columns.c.table_name==tablename,
                    )
         
         c = connection.execute(s)
@@ -398,7 +406,9 @@ class MSSQLDialect(ansisql.ANSIDialect):
 
         columns = self.uppercase_table(ischema.columns)
         s = sql.select([columns],
-                   current_schema and sql.and_(columns.c.table_name==table.name, columns.c.table_schema==current_schema) or columns.c.table_name==table.name,
+                   current_schema
+                       and sql.and_(columns.c.table_name==table.name, columns.c.table_schema==current_schema)
+                       or columns.c.table_name==table.name,
                    order_by=[columns.c.ordinal_position])
         
         c = connection.execute(s)
@@ -432,7 +442,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
         
         if not found_table:
             raise exceptions.NoSuchTableError(table.name)
-        
+
         # We also run an sp_columns to check for identity columns:
         # FIXME: note that this only fetches the existence of an identity column, not it's properties like (seed, increment)
         #        also, add a check to make sure we specify the schema name of the table
@@ -455,38 +465,41 @@ class MSSQLDialect(ansisql.ANSIDialect):
         C  = self.uppercase_table(ischema.column_constraints).alias('C') #information_schema.constraint_column_usage: the constrained column 
         R  = self.uppercase_table(ischema.column_constraints).alias('R') #information_schema.constraint_column_usage: the referenced column
 
-        fromjoin = TC.join(RR, RR.c.constraint_name == TC.c.constraint_name).join(C, C.c.constraint_name == RR.c.constraint_name)
-        fromjoin = fromjoin.join(R, R.c.constraint_name == RR.c.unique_constraint_name)
-
-        s = sql.select([TC.c.constraint_type, C.c.table_schema, C.c.table_name, C.c.column_name,
-                    R.c.table_schema, R.c.table_name, R.c.column_name],
-                   sql.and_(RR.c.constraint_schema == current_schema,  C.c.table_name == table.name),
-                   from_obj = [fromjoin], use_labels=True
-                   )
-        colmap = [TC.c.constraint_type, C.c.column_name, R.c.table_schema, R.c.table_name, R.c.column_name]
-               
+        # Primary key constraints
+        s = sql.select([C.c.column_name, TC.c.constraint_type], sql.and_(TC.c.constraint_name == C.c.constraint_name,
+                                                                         C.c.table_name == table.name))
         c = connection.execute(s)
+        for row in c:
+            if 'PRIMARY' in row[TC.c.constraint_type.name]:
+                table.c[row[C.c.column_name.name]]._set_primary_key()
 
-        while True:
-            row = c.fetchone()
-            if row is None:
-                break
-            print "CCROW", row.keys(), row
-            (type, constrained_column, referred_schema, referred_table, referred_column) = (
-                row[colmap[0]],
-                row[colmap[1]],
-                row[colmap[2]],
-                row[colmap[3]],
-                row[colmap[4]]
-                )
 
-            if type=='PRIMARY KEY':
-                table.c[constrained_column]._set_primary_key()
-            elif type=='FOREIGN KEY':
-                if current_schema == referred_schema:
-                    referred_schema = table.schema
-                remotetable = schema.Table(referred_table, table.metadata, autoload=True, autoload_with=connection, schema=referred_schema)
-                table.c[constrained_column].append_item(schema.ForeignKey(remotetable.c[referred_column]))
+        # Foreign key constraints
+        s = sql.select([C.c.column_name,
+                        R.c.table_schema, R.c.table_name, R.c.column_name,
+                        RR.c.constraint_name, RR.c.match_option, RR.c.update_rule, RR.c.delete_rule],
+                       sql.and_(C.c.table_name == table.name,
+                                C.c.constraint_name == RR.c.constraint_name,
+                                R.c.constraint_name == RR.c.unique_constraint_name
+                                ),
+                       order_by = [RR.c.constraint_name])
+        rows = connection.execute(s).fetchall()
+
+        # group rows by constraint ID, to handle multi-column FKs
+        import pdb; pdb.set_trace()
+        fknm, scols, rcols = (None, [], [])
+        for r in rows:
+            scol, rschema, rtbl, rcol, rfknm, fkmatch, fkuprule, fkdelrule = r
+            if rfknm != fknm:
+                if fknm:
+                    table.append_item(schema.ForeignKeyConstraint(scols, ['%s.%s' % (t,c) for (s,t,c) in rcols], fknm))
+                fknm, scols, rcols = (rfknm, [], [])
+            if (not scol in scols): scols.append(scol)
+            if (not (rschema, rtbl, rcol) in rcols): rcols.append((rschema, rtbl, rcol))
+
+        if fknm and scols:
+            table.append_item(schema.ForeignKeyConstraint(scols, ['%s.%s' % (t,c) for (s,t,c) in rcols], fknm))
+                                
 
 
 class MSSQLCompiler(ansisql.ANSICompiler):
