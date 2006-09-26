@@ -450,10 +450,10 @@ class MSSQLDialect(ansisql.ANSIDialect):
                 ic.sequence = schema.Sequence(ic.name + '_identity')
 
         # Add constraints
-        RR = self.uupercase_table(ischema.ref_constraints)    #information_schema.referential_constraints
-        TC = self.uupercase_table(ischema.constraints)        #information_schema.table_constraints
-        C  = self.uupercase_table(ischema.column_constraints).alias('C') #information_schema.constraint_column_usage: the constrained column 
-        R  = self.uupercase_table(ischema.column_constraints).alias('R') #information_schema.constraint_column_usage: the referenced column
+        RR = self.uppercase_table(ischema.ref_constraints)    #information_schema.referential_constraints
+        TC = self.uppercase_table(ischema.constraints)        #information_schema.table_constraints
+        C  = self.uppercase_table(ischema.column_constraints).alias('C') #information_schema.constraint_column_usage: the constrained column 
+        R  = self.uppercase_table(ischema.column_constraints).alias('R') #information_schema.constraint_column_usage: the referenced column
 
         fromjoin = TC.join(RR, RR.c.constraint_name == TC.c.constraint_name).join(C, C.c.constraint_name == RR.c.constraint_name)
         fromjoin = fromjoin.join(R, R.c.constraint_name == RR.c.unique_constraint_name)
