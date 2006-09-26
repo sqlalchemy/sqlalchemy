@@ -206,8 +206,8 @@ class _ConnectionFairy(object):
     def __del__(self):
         self._close()
     def _close(self):
-        if self.cursors is not None and len(self.cursors):
-            raise exceptions.InvalidRequestError("This connection still has %d open cursors" % len(self.cursors))
+#        if self.cursors is not None and len(self.cursors):
+#            raise exceptions.InvalidRequestError("This connection still has %d open cursors" % len(self.cursors))
         if self.connection is not None:
             try:
                 self.connection.rollback()
