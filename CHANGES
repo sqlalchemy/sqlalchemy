@@ -15,6 +15,7 @@ to orm to allow tracking of mapper configurations, row iteration.
    -- introduces new "auto_identity_insert" option for auto-switching between "SET IDENTITY_INSERT" mode when values specified for IDENTITY columns 
    -- now supports multi-column foreign keys
    -- fix to reflecting date/datetime columns
+   -- NCHAR and NVARCHAR type support added
 - more rearrangements of unit-of-work commit scheme to better allow
 dependencies within circular flushes to work properly...updated
 task traversal/logging implementation

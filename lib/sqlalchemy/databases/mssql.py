@@ -148,9 +148,15 @@ class MSText(sqltypes.TEXT):
 class MSString(sqltypes.String):
     def get_col_spec(self):
         return "VARCHAR(%(length)s)" % {'length' : self.length}
+class MSUnicode(sqltypes.Unicode):
+    def get_col_spec(self):
+        return "NVARCHAR(%(length)s)" % {'length' : self.length}
 class MSChar(sqltypes.CHAR):
     def get_col_spec(self):
         return "CHAR(%(length)s)" % {'length' : self.length}
+class MSNChar(sqltypes.NCHAR):
+    def get_col_spec(self):
+        return "NCHAR(%(length)s)" % {'length' : self.length}
 class MSBinary(sqltypes.Binary):
     def get_col_spec(self):
         return "IMAGE"
@@ -179,10 +185,12 @@ colspecs = {
     sqltypes.DateTime : MSDateTime,
     sqltypes.Date : MSDate,
     sqltypes.String : MSString,
+    sqltypes.Unicode : MSUnicode,
     sqltypes.Binary : MSBinary,
     sqltypes.Boolean : MSBoolean,
     sqltypes.TEXT : MSText,
     sqltypes.CHAR: MSChar,
+    sqltypes.NCHAR: MSNChar,
 }
 
 ischema_names = {
@@ -190,7 +198,9 @@ ischema_names = {
     'smallint' : MSSmallInteger,
     'tinyint' : MSTinyInteger,
     'varchar' : MSString,
+    'nvarchar' : MSUnicode,
     'char' : MSChar,
+    'nchar' : MSNChar,
     'text' : MSText,
     'decimal' : MSNumeric,
     'numeric' : MSNumeric,
@@ -237,8 +247,8 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
                     break
             if self.IINSERT:
                 proxy("SET IDENTITY_INSERT %s ON" % compiled.statement.table.name)
-	super(MSSQLExecutionContext, self).pre_exec(engine, proxy, compiled, parameters, **kwargs)
-	
+        super(MSSQLExecutionContext, self).pre_exec(engine, proxy, compiled, parameters, **kwargs)
+
     def post_exec(self, engine, proxy, compiled, parameters, **kwargs):
         """ Turn off the INDENTITY_INSERT mode if it's been activated, and fetch recently inserted IDENTIFY values (works only for one column) """
         if getattr(compiled, "isinsert", False):

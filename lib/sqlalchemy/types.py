@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 __all__ = [ 'TypeEngine', 'TypeDecorator', 'NullTypeEngine',
-            'INT', 'CHAR', 'VARCHAR', 'TEXT', 'FLOAT', 'DECIMAL', 
+            'INT', 'CHAR', 'VARCHAR', 'NCHAR', 'TEXT', 'FLOAT', 'DECIMAL', 
             'TIMESTAMP', 'DATETIME', 'CLOB', 'BLOB', 'BOOLEAN', 'String', 'Integer', 'Smallinteger',
             'Numeric', 'Float', 'DateTime', 'Date', 'Time', 'Binary', 'Boolean', 'Unicode', 'PickleType', 'NULLTYPE',
         'SMALLINT', 'DATE', 'TIME'
@@ -270,6 +270,7 @@ class TIME(Time): pass
 class CLOB(String): pass
 class VARCHAR(String): pass
 class CHAR(String):pass
+class NCHAR(Unicode):pass
 class BLOB(Binary): pass
 class BOOLEAN(Boolean): pass
 
