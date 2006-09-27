@@ -29,6 +29,8 @@ automatic "row switch" feature
 - changed "for_update" parameter to accept False/True/"nowait"
 and "read", the latter two of which are interpreted only by
 Oracle and Mysql [ticket:292]
+- added "viewonly" flag to relation(), allows construction of
+relations that have no effect on the flush() process.
 - added "lockmode" argument to base Query select/get functions, 
 including "with_lockmode" function to get a Query copy that has 
 a default locking mode.  Will translate "read"/"update" 
@@ -73,6 +75,14 @@ of all persistent objects where the attribute manager detects changes.
 The basic issue thats fixed is detecting changes on PickleType 
 objects, but also generalizes type handling and "modified" object
 checking to be more complete and extensible.
+- specifying joins in the from_obj argument of query.select() will
+replace the main table of the query, if the table is somewhere within
+the given from_obj.  this makes it possible to produce custom joins and
+outerjoins in queries without the main table getting added twice.
+[ticket:315]
+- added join_to and outerjoin_to transformative methods to SelectResults,
+to build up join/outerjoin conditions based on property names. also
+added select_from to explicitly set from_obj parameter.
 
 0.2.8
 - cleanup on connection methods + documentation.  custom DBAPI

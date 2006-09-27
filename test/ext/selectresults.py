@@ -1,9 +1,10 @@
-from testbase import PersistTest
+from testbase import PersistTest, AssertMixin
 import testbase
+import tables
 
 from sqlalchemy import *
 
-from sqlalchemy.ext.selectresults import SelectResultsExt
+from sqlalchemy.ext.selectresults import SelectResultsExt, SelectResults
 
 class Foo(object):
     pass
@@ -122,7 +123,53 @@ class SelectResultsTest2(PersistTest):
         res = self.query.select(and_(table1.c.id==table2.c.t1id,table2.c.t1id==1), distinct=True)
         self.assertEqual(res.count(), 1)
 
-class SelectResultsTest3(PersistTest):
+class RelationsTest(AssertMixin):
+    def setUpAll(self):
+        tables.create()
+        tables.data()
+    def tearDownAll(self):
+        tables.drop()
+    def tearDown(self):
+        clear_mappers()
+    def test_jointo(self):
+        """test the join_to and outerjoin_to functions on SelectResults"""
+        mapper(tables.User, tables.users, properties={
+            'orders':relation(mapper(tables.Order, tables.orders, properties={
+                'items':relation(mapper(tables.Item, tables.orderitems))
+            }))
+        })
+        session = create_session()
+        query = SelectResults(session.query(tables.User))
+        x = query.join_to('orders').join_to('items').select(tables.Item.c.item_id==2)
+        print x.compile()
+        self.assert_result(list(x), tables.User, tables.user_result[2])
+    def test_outerjointo(self):
+        """test the join_to and outerjoin_to functions on SelectResults"""
+        mapper(tables.User, tables.users, properties={
+            'orders':relation(mapper(tables.Order, tables.orders, properties={
+                'items':relation(mapper(tables.Item, tables.orderitems))
+            }))
+        })
+        session = create_session()
+        query = SelectResults(session.query(tables.User))
+        x = query.outerjoin_to('orders').outerjoin_to('items').select(or_(tables.Order.c.order_id==None,tables.Item.c.item_id==2))
+        print x.compile()
+        self.assert_result(list(x), tables.User, *tables.user_result[1:3])
+    def test_from(self):
+        mapper(tables.User, tables.users, properties={
+            'orders':relation(mapper(tables.Order, tables.orders, properties={
+                'items':relation(mapper(tables.Item, tables.orderitems))
+            }))
+        })
+        session = create_session()
+        query = SelectResults(session.query(tables.User))
+        x = query.select_from([tables.users.outerjoin(tables.orders).outerjoin(tables.orderitems)]).\
+            filter(or_(tables.Order.c.order_id==None,tables.Item.c.item_id==2))
+        print x.compile()
+        self.assert_result(list(x), tables.User, *tables.user_result[1:3])
+        
+
+class CaseSensitiveTest(PersistTest):
     def setUpAll(self):
         self.install_threadlocal()
         global metadata, table1, table2

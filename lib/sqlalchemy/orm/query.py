@@ -1,4 +1,4 @@
- # orm/query.py
+# orm/query.py
 # Copyright (C) 2005,2006 Michael Bayer mike_mp@zzzcomputing.com
 #
 # This module is part of SQLAlchemy and is released under
@@ -112,7 +112,7 @@ class Query(object):
                 clause &= c
         return clause
 
-    def _locate_prop(self, key):
+    def _locate_prop(self, key, start=None):
         import properties
         keys = []
         seen = util.Set()
@@ -137,7 +137,7 @@ class Query(object):
                         return x
                 else:
                     return None
-        p = search_for_prop(self.mapper)
+        p = search_for_prop(start or self.mapper)
         if p is None:
             raise exceptions.InvalidRequestError("Cant locate property named '%s'" % key)
         return [keys, p]
@@ -163,10 +163,9 @@ class Query(object):
             else:
                 clause &= prop.get_join()
             mapper = prop.mapper
-            
+
         return clause
-    
-        
+
     def selectfirst_by(self, *args, **params):
         """works like select_by(), but only returns the first result by itself, or None if no 
         objects returned.  Synonymous with get_by()"""
@@ -340,10 +339,15 @@ class Query(object):
         
         if self.mapper.single and self.mapper.polymorphic_on is not None and self.mapper.polymorphic_identity is not None:
             whereclause = sql.and_(whereclause, self.mapper.polymorphic_on==self.mapper.polymorphic_identity)
+        
+        alltables = []
+        for l in [sql_util.TableFinder(x) for x in from_obj]:
+            alltables += l
             
-        if self._should_nest(**kwargs):
+        if self.table not in alltables:
             from_obj.append(self.table)
             
+        if self._should_nest(**kwargs):
             # if theres an order by, add those columns to the column list
             # of the "rowcount" query we're going to make
             if order_by:
@@ -375,7 +379,6 @@ class Query(object):
                 [o.accept_visitor(aliasizer) for  o in order_by]
                 statement.order_by(*util.to_list(order_by))
         else:
-            from_obj.append(self.table)
             statement = sql.select([], whereclause, from_obj=from_obj, use_labels=True, for_update=for_update, **kwargs)
             if order_by:
                 statement.order_by(*util.to_list(order_by))

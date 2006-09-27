@@ -25,7 +25,6 @@ class Logger(object):
             local_stdout.write(msg)
     def flush(self):
         pass
-sys.stdout = Logger()    
 
 def echo_text(text):
     print text
@@ -363,10 +362,12 @@ parse_argv()
 
                     
 def runTests(suite):
+    sys.stdout = Logger()    
     runner = unittest.TextTestRunner(verbosity = quiet and 1 or 2)
     runner.run(suite)
     
 def main():
+    
     if len(sys.argv[1:]):
         suite =unittest.TestLoader().loadTestsFromNames(sys.argv[1:], __import__('__main__'))
     else:

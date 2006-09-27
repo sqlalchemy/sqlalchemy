@@ -3,9 +3,6 @@ from sqlalchemy import *
 import os
 import testbase
 
-__all__ = ['db', 'users', 'addresses', 'orders', 'orderitems', 'keywords', 'itemkeywords', 'userkeywords',
-            'User', 'Address', 'Order', 'Item', 'Keyword'
-        ]
 
 ECHO = testbase.echo
 db = testbase.db
@@ -129,6 +126,7 @@ def data():
         dict(keyword_id=7, item_id=2),
         dict(keyword_id=6, item_id=3)
     )
+
     
 class User(object):
     def __init__(self):
@@ -168,5 +166,54 @@ class Keyword(object):
         return "Keyword: %s/%s" % (repr(getattr(self, 'keyword_id', None)),repr(self.name))
 
 
+user_result = [{'user_id' : 7}, {'user_id' : 8}, {'user_id' : 9}]
+
+user_address_result = [
+{'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
+{'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}, {'address_id' : 4}])},
+{'user_id' : 9, 'addresses' : (Address, [])}
+]
+
+user_address_orders_result = [{'user_id' : 7, 
+    'addresses' : (Address, [{'address_id' : 1}]),
+    'orders' : (Order, [{'order_id' : 1}, {'order_id' : 3},{'order_id' : 5},])
+    },
+    {'user_id' : 8, 
+        'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}, {'address_id' : 4}]),
+        'orders' : (Order, [])
+    },
+    {'user_id' : 9, 
+        'addresses' : (Address, []),
+        'orders' : (Order, [{'order_id' : 2},{'order_id' : 4}])
+}]
+
+user_all_result = [
+{'user_id' : 7, 
+    'addresses' : (Address, [{'address_id' : 1}]),
+    'orders' : (Order, [
+        {'order_id' : 1, 'items': (Item, [])}, 
+        {'order_id' : 3, 'items': (Item, [{'item_id':3, 'item_name':'item 3'}, {'item_id':4, 'item_name':'item 4'}, {'item_id':5, 'item_name':'item 5'}])},
+        {'order_id' : 5, 'items': (Item, [])},
+        ])
+},
+{'user_id' : 8, 
+    'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}, {'address_id' : 4}]),
+    'orders' : (Order, [])
+},
+{'user_id' : 9, 
+    'addresses' : (Address, []),
+    'orders' : (Order, [
+        {'order_id' : 2, 'items': (Item, [{'item_id':1, 'item_name':'item 1'}, {'item_id':2, 'item_name':'item 2'}])},
+        {'order_id' : 4, 'items': (Item, [])}
+    ])
+}]
+
+item_keyword_result = [
+{'item_id' : 1, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 4}, {'keyword_id' : 6}])},
+{'item_id' : 2, 'keywords' : (Keyword, [{'keyword_id' : 2, 'name':'red'}, {'keyword_id' : 5, 'name':'small'}, {'keyword_id' : 7, 'name':'square'}])},
+{'item_id' : 3, 'keywords' : (Keyword, [{'keyword_id' : 3,'name':'green'}, {'keyword_id' : 4,'name':'big'}, {'keyword_id' : 6,'name':'round'}])},
+{'item_id' : 4, 'keywords' : (Keyword, [])},
+{'item_id' : 5, 'keywords' : (Keyword, [])}
+]
 
 #db.echo = True

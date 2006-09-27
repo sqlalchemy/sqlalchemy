@@ -298,6 +298,7 @@ class OracleCompiler(ansisql.ANSICompiler):
         
         self.froms[join] = self.get_from_text(join.left) + ", " + self.get_from_text(join.right)
         self.wheres[join] = sql.and_(self.wheres.get(join.left, None), join.onclause)
+        self.strings[join] = self.froms[join]
 
         if join.isouter:
             # if outer join, push on the right side table as the current "outertable"
