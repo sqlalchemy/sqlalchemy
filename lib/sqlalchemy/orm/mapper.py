@@ -282,6 +282,7 @@ class Mapper(object):
             if self.order_by is False:
                 self.order_by = self.inherits.order_by
             self.polymorphic_map = self.inherits.polymorphic_map
+            self.batch = self.inherits.batch
         else:
             self._synchronizer = None
             self.mapped_table = self.local_table
@@ -719,19 +720,19 @@ class Mapper(object):
     def _setattrbycolumn(self, obj, column, value):
         self.columntoproperty[column][0].setattr(obj, value)
     
-    def save_obj(self, objects, uow, postupdate=False, post_update_cols=None, single=False):
+    def save_obj(self, objects, uowtransaction, postupdate=False, post_update_cols=None, single=False):
         """called by a UnitOfWork object to save objects, which involves either an INSERT or
         an UPDATE statement for each table used by this mapper, for each element of the
         list."""
-        #print "SAVE_OBJ MAPPER", self.class_.__name__, objects
+        self.__log_debug("save_obj() start, " + (single and "non-batched" or "batched"))
         
         # if batch=false, call save_obj separately for each object
         if not single and not self.batch:
             for obj in objects:
-                self.save_obj([obj], uow, postupdate=postupdate, post_update_cols=post_update_cols, single=True)
+                self.save_obj([obj], uowtransaction, postupdate=postupdate, post_update_cols=post_update_cols, single=True)
             return
             
-        connection = uow.transaction.connection(self)
+        connection = uowtransaction.transaction.connection(self)
 
         if not postupdate:
             for obj in objects:
@@ -766,13 +767,22 @@ class Mapper(object):
             # for this table, in the case that the user
             # specified custom primary key cols.
             for obj in objects:
-                #print "SAVE_OBJ we are Mapper(" + str(id(self)) + ") obj: " +  obj.__class__.__name__ + repr(id(obj))
-                params = {}
+                instance_key = self.instance_key(obj)
+                self.__log_debug("save_obj() instance %s identity %s" % (mapperutil.instance_str(obj), str(instance_key)))
 
-                # 'postupdate' means a PropertyLoader is telling us, "yes I know you 
-                # already inserted/updated this row but I need you to UPDATE one more 
-                # time"
-                isinsert = not postupdate and not has_identity(obj)
+                # detect if we have a "pending" instance (i.e. has no instance_key attached to it),
+                # and another instance with the same identity key already exists as persistent.  convert to an 
+                # UPDATE if so.
+                is_row_switch = not postupdate and not has_identity(obj) and instance_key in uowtransaction.uow.identity_map
+                if is_row_switch:
+                    existing = uowtransaction.uow.identity_map[instance_key]
+                    if not uowtransaction.is_deleted(existing):
+                        raise exceptions.FlushError("New instance %s with identity key %s conflicts with persistent instance %s" % (mapperutil.instance_str(obj), str(instance_key), mapperutil.instance_str(existing)))
+                    self.__log_debug("detected row switch for identity %s.  will update %s, remove %s from transaction" % (instance_key, mapperutil.instance_str(obj), mapperutil.instance_str(existing)))
+                    uowtransaction.unregister_object(existing)
+
+                isinsert = not is_row_switch and not postupdate and not has_identity(obj)
+                params = {}
                 hasdata = False
                 for col in table.columns:
                     if col is self.version_id_col:
@@ -798,6 +808,7 @@ class Mapper(object):
                                 params[col.key] = value
                     elif self.polymorphic_on is not None and self.polymorphic_on.shares_lineage(col):
                         if isinsert:
+                            self.__log_debug("Using polymorphic identity '%s' for insert column '%s'" % (self.polymorphic_identity, col.key))
                             value = self.polymorphic_identity
                             if col.default is None or value is not None:
                                 params[col.key] = value
@@ -808,6 +819,10 @@ class Mapper(object):
                             # so as not to trigger any deferred loads.  if there is a new
                             # value, add it to the bind parameters
                             if post_update_cols is not None and col not in post_update_cols:
+                                continue
+                            elif is_row_switch:
+                                params[col.key] = self._getattrbycolumn(obj, col)
+                                hasdata = True
                                 continue
                             prop = self._getpropbycolumn(col, False)
                             if prop is None:
@@ -919,10 +934,10 @@ class Mapper(object):
                 elif v != params.get_original(c.name):
                     self._setattrbycolumn(obj, c, params.get_original(c.name))
 
-    def delete_obj(self, objects, uow):
+    def delete_obj(self, objects, uowtransaction):
         """called by a UnitOfWork object to delete objects, which involves a
         DELETE statement for each table used by this mapper, for each object in the list."""
-        connection = uow.transaction.connection(self)
+        connection = uowtransaction.transaction.connection(self)
         #print "DELETE_OBJ MAPPER", self.class_.__name__, objects
 
         [self.extension.before_delete(self, connection, obj) for obj in objects]

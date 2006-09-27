@@ -10,15 +10,22 @@ Test suite includes "--log-info" and "--log-debug" arguments
 which work independently of --verbose/--quiet.  Logging added
 to orm to allow tracking of mapper configurations, row iteration.
 - updates to MS-SQL driver: 
-   -- fixes bug 261 (table reflection broken for MS-SQL case-sensitive databases)
+   -- fixes bug 261 (table reflection broken for MS-SQL case-sensitive 
+   databases)
    -- can now specify port for pymssql
-   -- introduces new "auto_identity_insert" option for auto-switching between "SET IDENTITY_INSERT" mode when values specified for IDENTITY columns 
+   -- introduces new "auto_identity_insert" option for auto-switching 
+   between "SET IDENTITY_INSERT" mode when values specified for IDENTITY columns 
    -- now supports multi-column foreign keys
    -- fix to reflecting date/datetime columns
    -- NCHAR and NVARCHAR type support added
 - more rearrangements of unit-of-work commit scheme to better allow
 dependencies within circular flushes to work properly...updated
 task traversal/logging implementation
+- added an automatic "row switch" feature to mapping, which will
+detect a pending instance/deleted instance pair with the same 
+identity key and convert the INSERT/DELETE to a single UPDATE
+- "association" mappings simplified to take advantage of 
+automatic "row switch" feature
 - changed "for_update" parameter to accept False/True/"nowait"
 and "read", the latter two of which are interpreted only by
 Oracle and Mysql [ticket:292]

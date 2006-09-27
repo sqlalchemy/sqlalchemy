@@ -54,7 +54,7 @@ class UOWEventHandler(attributes.AttributeExtension):
                 sess.save_or_update(newvalue, entity_name=ename)
 
 class UOWProperty(attributes.InstrumentedAttribute):
-    """overrides InstrumentedAttribute to provide an extra AttributeExtension to all managed attributes
+    """override InstrumentedAttribute to provide an extra AttributeExtension to all managed attributes
     as well as the 'property' property."""
     def __init__(self, manager, class_, key, uselist, callable_, typecallable, cascade=None, extension=None, **kwargs):
         extension = util.to_list(extension or [])
@@ -65,12 +65,14 @@ class UOWProperty(attributes.InstrumentedAttribute):
     property = property(lambda s:class_mapper(s.class_).props[s.key], doc="returns the MapperProperty object associated with this property")
             
 class UOWAttributeManager(attributes.AttributeManager):
-    """overrides AttributeManager to provide the UOWProperty instance for all InstrumentedAttributes."""
+    """override AttributeManager to provide the UOWProperty instance for all InstrumentedAttributes."""
     def create_prop(self, class_, key, uselist, callable_, typecallable, **kwargs):
         return UOWProperty(self, class_, key, uselist, callable_, typecallable, **kwargs)
 
 class UnitOfWork(object):
-    """main UOW object which stores lists of dirty/new/deleted objects.  provides top-level "flush" functionality as well as the transaction boundaries with the SQLEngine(s) involved in a write operation."""
+    """main UOW object which stores lists of dirty/new/deleted objects.  
+    provides top-level "flush" functionality as well as the transaction 
+    boundaries with the SQLEngine(s) involved in a write operation."""
     def __init__(self, identity_map=None):
         if identity_map is not None:
             self.identity_map = identity_map
@@ -158,6 +160,7 @@ class UnitOfWork(object):
 
         # store objects whose fate has been decided
         processed = util.Set()
+        
         
         # put all saves/updates into the flush context.  detect orphans and throw them into deleted.
         for obj in self.new.union(dirty).intersection(objset).difference(self.deleted):
