@@ -13,29 +13,41 @@ types = __import__('types')
 __all__ = ['text', 'table', 'column', 'func', 'select', 'update', 'insert', 'delete', 'join', 'and_', 'or_', 'not_', 'between_', 'case', 'cast', 'union', 'union_all', 'null', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'literal', 'bindparam', 'exists', 'extract']
 
 def desc(column):
-    """returns a descending ORDER BY clause element, e.g.:
+    """return a descending ORDER BY clause element, e.g.:
     
     order_by = [desc(table1.mycol)]
     """    
     return CompoundClause(None, column, "DESC")
 
 def asc(column):
-    """returns an ascending ORDER BY clause element, e.g.:
+    """return an ascending ORDER BY clause element, e.g.:
     
     order_by = [asc(table1.mycol)]
     """
     return CompoundClause(None, column, "ASC")
 
 def outerjoin(left, right, onclause=None, **kwargs):
-    """returns an OUTER JOIN clause element, given the left and right hand expressions,
-    as well as the ON condition's expression.  To chain joins together, use the resulting
+    """return an OUTER JOIN clause element.
+    
+    left - the left side of the join
+    right - the right side of the join
+    onclause - optional criterion for the ON clause, 
+    is derived from foreign key relationships otherwise
+    
+    To chain joins together, use the resulting
     Join object's "join()" or "outerjoin()" methods."""
     return Join(left, right, onclause, isouter = True, **kwargs)
 
 def join(left, right, onclause=None, **kwargs):
-    """returns a JOIN clause element (regular inner join), given the left and right 
-    hand expressions, as well as the ON condition's expression.  To chain joins 
-    together, use the resulting Join object's "join()" or "outerjoin()" methods."""
+    """return a JOIN clause element (regular inner join).
+    
+    left - the left side of the join
+    right - the right side of the join
+    onclause - optional criterion for the ON clause, 
+    is derived from foreign key relationships otherwise
+
+    To chain joins together, use the resulting Join object's 
+    "join()" or "outerjoin()" methods."""
     return Join(left, right, onclause, **kwargs)
 
 def select(columns=None, whereclause = None, from_obj = [], **kwargs):
@@ -340,7 +352,7 @@ class Compiled(ClauseVisitor):
     reference those values as defaults."""
 
     def __init__(self, dialect, statement, parameters, engine=None):
-        """constructs a new Compiled object.
+        """construct a new Compiled object.
         
         statement - ClauseElement to be compiled
         
@@ -358,6 +370,10 @@ class Compiled(ClauseVisitor):
         self.statement = statement
         self.parameters = parameters
         self.engine = engine
+    
+    def compile(self):
+        self.statement.accept_visitor(self)
+        self.after_compile()
         
     def __str__(self):
         """returns the string text of the generated SQL statement."""
@@ -373,44 +389,17 @@ class Compiled(ClauseVisitor):
         """
         raise NotImplementedError()
 
-    def compile(self):
-        self.statement.accept_visitor(self)
-        self.after_compile()
-
     def execute(self, *multiparams, **params):
-        """executes this compiled object using the AbstractEngine it is bound to."""
+        """execute this compiled object."""
         e = self.engine
         if e is None:
             raise exceptions.InvalidRequestError("This Compiled object is not bound to any engine.")
         return e.execute_compiled(self, *multiparams, **params)
 
     def scalar(self, *multiparams, **params):
-        """executes this compiled object via the execute() method, then 
-        returns the first column of the first row.  Useful for executing functions,
-        sequences, rowcounts, etc."""
-        # we are still going off the assumption that fetching only the first row
-        # in a result set is not performance-wise any different than specifying limit=1
-        # else we'd have to construct a copy of the select() object with the limit
-        # installed (else if we change the existing select, not threadsafe)
-        r = self.execute(*multiparams, **params)
-        row = r.fetchone()
-        try:
-            if row is not None:
-                return row[0]
-            else:
-                return None
-        finally:
-            r.close()
+        """execute this compiled object and return the result's scalar value."""
+        return self.execute(*multiparams, **params).scalar()
 
-class Executor(object):
-    """context-sensitive executor for the using() function."""
-    def __init__(self, clauseelement, abstractengine=None):
-        self.engine=abstractengine
-        self.clauseelement = clauseelement
-    def execute(self, *multiparams, **params):
-        return self.clauseelement.execute_using(self.engine)
-    def scalar(self, *multiparams, **params):
-        return self.clauseelement.scalar_using(self.engine)
             
 class ClauseElement(object):
     """base class for elements of a programmatically constructed SQL expression."""
@@ -465,22 +454,20 @@ class ClauseElement(object):
             
     engine = property(lambda s: s._find_engine(), doc="attempts to locate a Engine within this ClauseElement structure, or returns None if none found.")
 
-    def using(self, abstractengine):
-        return Executor(self, abstractengine)
-
-    def execute_using(self, engine, *multiparams, **params):
-        compile_params = self._conv_params(*multiparams, **params)
-        return self.compile(engine=engine, parameters=compile_params).execute(*multiparams, **params)
-    def scalar_using(self, engine, *multiparams, **params):
-        compile_params = self._conv_params(*multiparams, **params)
-        return self.compile(engine=engine, parameters=compile_params).scalar(*multiparams, **params)
-    def _conv_params(self, *multiparams, **params):
+    def execute(self, *multiparams, **params):
+        """compile and execute this ClauseElement."""
         if len(multiparams):
-            return multiparams[0]
+            compile_params = multiparams[0]
         else:
-            return params
+            compile_params = params
+        return self.compile(engine=self.engine, parameters=compile_params).execute(*multiparams, **params)
+
+    def scalar(self, *multiparams, **params):
+        """compile and execute this ClauseElement, returning the result's scalar representation."""
+        return self.execute(*multiparams, **params).scalar()
+
     def compile(self, engine=None, parameters=None, compiler=None, dialect=None):
-        """compiles this SQL expression.
+        """compile this SQL expression.
         
         Uses the given Compiler, or the given AbstractDialect or Engine to create a Compiler.  If no compiler
         arguments are given, tries to use the underlying Engine this ClauseElement is bound
@@ -494,7 +481,6 @@ class ClauseElement(object):
         and INSERT statements the bind parameters that are present determine the SET and VALUES clause of 
         those statements.
         """
-
         if (isinstance(parameters, list) or isinstance(parameters, tuple)):
             parameters = parameters[0]
         
@@ -514,13 +500,6 @@ class ClauseElement(object):
 
     def __str__(self):
         return str(self.compile())
-        
-    def execute(self, *multiparams, **params):
-        return self.execute_using(self.engine, *multiparams, **params)
-
-    def scalar(self, *multiparams, **params):
-        return self.scalar_using(self.engine, *multiparams, **params)
-
     def __and__(self, other):
         return and_(self, other)
     def __or__(self, other):
@@ -745,8 +724,14 @@ class FromClause(Selectable):
     oid_column = property(_get_oid_column)
     
     def _export_columns(self):
-        """this method is called the first time any of the "exported attrbutes" are called. it receives from the Selectable
-        a list of all columns to be exported and creates "proxy" columns for each one."""
+        """initialize column collections.
+        
+        the collections include the primary key, foreign keys, list of all columns, as well as
+        the "_orig_cols" collection which is a dictionary used to match Table-bound columns
+        to proxied columns in this FromClause.  The columns in each collection are "proxied" from
+        the columns returned by the _exportable_columns method, where a "proxied" column maintains
+        most or all of the properties of its original column, except its parent Selectable is this FromClause.
+        """
         if hasattr(self, '_columns'):
             # TODO: put a mutex here ?  this is a key place for threading probs
             return
@@ -798,7 +783,7 @@ class BindParamClause(ClauseElement, CompareMixin):
 #        return self.obj._make_proxy(selectable, name=self.name)
 
 class TypeClause(ClauseElement):
-    """handles a type keyword in a SQL statement"""
+    """handles a type keyword in a SQL statement.  used by the Case statement."""
     def __init__(self, type):
         self.type = type
     def accept_visitor(self, visitor):
@@ -810,13 +795,7 @@ class TextClause(ClauseElement):
     """represents literal a SQL text fragment.  public constructor is the 
     text() function.  
     
-    TextClauses, since they can be anything, have no comparison operators or
-    typing information.
-      
-    A single literal value within a compiled SQL statement is more useful 
-    being specified as a bind parameter via the bindparam() method,
-    since it provides more information about what it is, including an optional
-    type, as well as providing comparison operations."""
+    """
     def __init__(self, text = "", engine=None, bindparams=None, typemap=None):
         self.parens = False
         self._engine = engine

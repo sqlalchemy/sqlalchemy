@@ -75,12 +75,14 @@ def clear_managers():
     proxies.clear()
     
 class Pool(object):
-    def __init__(self, creator, recycle=-1, echo=None, use_threadlocal = True):
+    def __init__(self, creator, recycle=-1, echo=None, use_threadlocal = True, auto_close_cursors=True, disallow_open_cursors=False):
         self.logger = logging.instance_logger(self)
         self._threadconns = weakref.WeakValueDictionary()
         self._creator = creator
         self._recycle = recycle
         self._use_threadlocal = use_threadlocal
+        self.auto_close_cursors = auto_close_cursors
+        self.disallow_open_cursors = disallow_open_cursors
         self.echo = echo
     echo = logging.echo_property()
     
@@ -206,8 +208,14 @@ class _ConnectionFairy(object):
     def __del__(self):
         self._close()
     def _close(self):
-#        if self.cursors is not None and len(self.cursors):
-#            raise exceptions.InvalidRequestError("This connection still has %d open cursors" % len(self.cursors))
+        if self.cursors is not None:
+            # cursors should be closed before connection is returned to the pool.  some dbapis like
+            # mysql have real issues if they are not.
+            if self.__pool.auto_close_cursors:
+                self.close_open_cursors()
+            elif self.__pool.disallow_open_cursors:
+                if len(self.cursors):
+                    raise exceptions.InvalidRequestError("This connection still has %d open cursors" % len(self.cursors))
         if self.connection is not None:
             try:
                 self.connection.rollback()

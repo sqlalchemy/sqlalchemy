@@ -110,7 +110,13 @@ class Dialect(sql.AbstractDialect):
         raise NotImplementedError()
     def do_execute(self, cursor, statement, parameters):
         raise NotImplementedError()
+    def compile(self, clauseelement, parameters=None):
+        """compile the given ClauseElement using this Dialect.
         
+        a convenience method which simply flips around the compile() call
+        on ClauseElement."""
+        return clauseelement.compile(dialect=self, parameters=parameters)
+            
 class ExecutionContext(object):
     """a messenger object for a Dialect that corresponds to a single execution.  The Dialect
     should provide an ExecutionContext via the create_execution_context() method.  
@@ -233,15 +239,7 @@ class Connection(Connectable):
         self.__connection = None
         del self.__connection
     def scalar(self, object, parameters=None, **kwargs):
-        result = self.execute(object, parameters, **kwargs)
-        row = result.fetchone()
-        try:
-            if row is not None:
-                return row[0]
-            else:
-                return None
-        finally:
-            result.close()
+        return self.execute(object, parameters, **kwargs).scalar()
     def execute(self, object, *multiparams, **params):
         return Connection.executors[type(object).__mro__[-2]](self, object, *multiparams, **params)
     def execute_default(self, default, **kwargs):
@@ -466,8 +464,7 @@ class ComposedSQLEngine(sql.Engine, Connectable):
         return connection.execute(statement, *multiparams, **params)
 
     def scalar(self, statement, *multiparams, **params):
-        connection = self.contextual_connect(close_with_result=True)
-        return connection.scalar(statement, *multiparams, **params)
+        return self.execute(statement, *multiparams, **params).scalar()
         
     def execute_compiled(self, compiled, *multiparams, **params):
         connection = self.contextual_connect(close_with_result=True)
@@ -658,7 +655,7 @@ class ResultProxy:
             if row is not None:
                 if self.__echo:
                     self.engine.logger.debug("Row " + repr(row))
-                return row[0]
+                return RowProxy(self, row)[0]
             else:
                 return None
         finally:
