@@ -599,13 +599,22 @@ class EagerLoader(LazyLoader):
         
         if hasattr(statement, '_outerjoin'):
             towrap = statement._outerjoin
-        else:
+        elif isinstance(self.localparent.mapped_table, schema.Table):
+            # if the mapper is against a plain Table, look in the from_obj of the select statement
+            # to join against whats already there.
             for (fromclause, finder) in [(x, sql_util.TableFinder(x)) for x in statement.froms]:
-                if self.localparent.mapped_table in finder:
+                # dont join against an Alias'ed Select.  we are really looking either for the 
+                # table itself or a Join that contains the table.  this logic still might need
+                # adjustments for scenarios not thought of yet.
+                if not isinstance(fromclause, sql.Alias) and self.localparent.mapped_table in finder:
                     towrap = fromclause
                     break
             else:
-                raise exceptions.InvalidRequestError("EagerLoader cannot locate a clause with which to outer join to, in query '%s'" % str(statement))
+                raise exceptions.InvalidRequestError("EagerLoader cannot locate a clause with which to outer join to, in query '%s' %s" % (str(statement), self.localparent.mapped_table))
+        else:
+            # if the mapper is against a select statement or something, we cant handle that at the
+            # same time as a custom FROM clause right now.
+            towrap = self.localparent.mapped_table
             
         if self.secondaryjoin is not None:
             statement._outerjoin = sql.outerjoin(towrap, self.eagersecondary, self.eagerprimary).outerjoin(self.eagertarget, self.eagersecondaryjoin)

@@ -7,6 +7,7 @@ def suite():
         'orm.lazytest1',
         'orm.eagertest1',
         'orm.eagertest2',
+        'orm.eagertest3',
         
         'orm.sessioncontext', 
         'orm.unitofwork',
