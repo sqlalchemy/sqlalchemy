@@ -683,8 +683,8 @@ class RowProxy:
     def __getattr__(self, name):
         try:
             return self.__parent._get_col(self.__row, name)
-        except KeyError:
-            raise AttributeError
+        except KeyError, e:
+            raise AttributeError(e.args[0])
     def items(self):
         return [(key, getattr(self, key)) for key in self.keys()]
     def keys(self):
