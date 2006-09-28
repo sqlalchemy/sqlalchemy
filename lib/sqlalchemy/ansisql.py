@@ -140,14 +140,14 @@ class ANSICompiler(sql.Compiled):
 
         d = sql.ClauseParameters(self.dialect, self.positiontup)
         for b in self.binds.values():
-            d.set_parameter(b.key, b.value, b)
+            d.set_parameter(b, b.value)
 
         for key, value in bindparams.iteritems():
             try:
                 b = self.binds[key]
             except KeyError:
                 continue
-            d.set_parameter(b.key, value, b)
+            d.set_parameter(b, value)
 
         return d
 
@@ -181,7 +181,7 @@ class ANSICompiler(sql.Compiled):
                 self.strings[column] = self.preparer.format_column_with_table(column)
 
     def visit_fromclause(self, fromclause):
-        self.froms[fromclause] = fromclause.from_name
+        self.froms[fromclause] = fromclause.name
 
     def visit_index(self, index):
         self.strings[index] = index.name

@@ -217,16 +217,16 @@ def table(name, *columns):
     of this object."""
     return TableClause(name, *columns)
     
-def bindparam(key, value = None, type=None):
+def bindparam(key, value=None, type=None, shortname=None):
     """creates a bind parameter clause with the given key.  
     
     An optional default value can be specified by the value parameter, and the optional type parameter
     is a sqlalchemy.types.TypeEngine object which indicates bind-parameter and result-set translation for
     this bind parameter."""
     if isinstance(key, ColumnClause):
-        return BindParamClause(key.name, value, type=key.type)
+        return BindParamClause(key.name, value, type=key.type, shortname=shortname)
     else:
-        return BindParamClause(key, value, type=type)
+        return BindParamClause(key, value, type=type, shortname=shortname)
 
 def text(text, engine=None, *args, **kwargs):
     """creates literal text to be inserted into a query.  
@@ -301,9 +301,9 @@ class ClauseParameters(dict):
         self.dialect=dialect
         self.binds = {}
         self.positional = positional or []
-    def set_parameter(self, key, value, bindparam):
-        self[key] = value
-        self.binds[key] = bindparam
+    def set_parameter(self, bindparam, value):
+        self[bindparam.key] = value
+        self.binds[bindparam.key] = bindparam
     def get_original(self, key):
         """returns the given parameter as it was originally placed in this ClauseParameters object, without any Type conversion"""
         return super(ClauseParameters, self).__getitem__(key)
@@ -654,14 +654,8 @@ class ColumnElement(Selectable, CompareMixin):
 
 class FromClause(Selectable):
     """represents an element that can be used within the FROM clause of a SELECT statement."""
-    def __init__(self, from_name = None):
-        self.from_name = self.name = from_name
-    def _display_name(self):
-        if self.named_with_column():
-            return self.name
-        else:
-            return None
-    displayname = property(_display_name)
+    def __init__(self, name=None):
+        self.name = name
     def _get_from_objects(self):
         # this could also be [self], at the moment it doesnt matter to the Select object
         return []
@@ -678,7 +672,7 @@ class FromClause(Selectable):
     def join(self, right, *args, **kwargs):
         return Join(self, right, *args, **kwargs)
     def outerjoin(self, right, *args, **kwargs):
-        return Join(self, right, isouter = True, *args, **kwargs)
+        return Join(self, right, isouter=True, *args, **kwargs)
     def alias(self, name=None):
         return Alias(self, name)
     def named_with_column(self):
@@ -760,9 +754,26 @@ class FromClause(Selectable):
 class BindParamClause(ClauseElement, CompareMixin):
     """represents a bind parameter.  public constructor is the bindparam() function."""
     def __init__(self, key, value, shortname=None, type=None):
+        """construct a BindParamClause.
+        
+        key - the key for this bind param.  will be used in the generated SQL statement
+        for dialects that use named parameters.  this value may be modified when part of a 
+        compilation operation, if other BindParamClause objects exist with the same key, or if 
+        its length is too long and truncation is required.
+        
+        value - initial value for this bind param.  This value may be overridden by the
+        dictionary of parameters sent to statement compilation/execution.
+        
+        shortname - defaults to the key, a 'short name' that will also identify this 
+        bind parameter, similar to an alias.  the bind parameter keys sent to a statement
+        compilation or compiled execution may match either the key or the shortname of the
+        corresponding BindParamClause objects.
+        
+        type - a TypeEngine object that will be used to pre-process the value corresponding
+        to this BindParamClause at execution time."""
         self.key = key
         self.value = value
-        self.shortname = shortname
+        self.shortname = shortname or key
         self.type = sqltypes.to_instance(type)
     def accept_visitor(self, visitor):
         visitor.visit_bindparam(self)
@@ -1506,7 +1517,7 @@ class Select(SelectBaseMixin, FromClause):
             setattr(self, attribute, condition)
 
     def clear_from(self, from_obj):
-        self._froms[from_obj] = FromClause(from_name = None)
+        self._froms[from_obj] = FromClause()
         
     def append_from(self, fromclause):
         if type(fromclause) == str:

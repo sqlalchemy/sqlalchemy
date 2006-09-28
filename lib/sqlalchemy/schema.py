@@ -435,12 +435,10 @@ class Column(SchemaItem, sql.ColumnClause):
 
     def __str__(self):
         if self.table is not None:
-            tname = self.table.displayname
-            if tname is not None:
-                return tname + "." + self.name
+            if self.table.named_with_column():
+                return self.table.name + "." + self.name
             else:
                 return self.name
-        else:
             return self.name
     
     def _derived_metadata(self):

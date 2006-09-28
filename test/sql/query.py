@@ -125,6 +125,15 @@ class QueryTest(PersistTest):
         s = self.users.select(or_(self.users.c.user_name==u, self.users.c.user_name==u))
         r = s.execute(uid='fred').fetchall()
         assert len(r) == 1
+    
+    def test_bindparam_shortname(self):
+        """test the 'shortname' field on BindParamClause."""
+        self.users.insert().execute(user_id = 7, user_name = 'jack')
+        self.users.insert().execute(user_id = 8, user_name = 'fred')
+        u = bindparam('uid', shortname='someshortname')
+        s = self.users.select(self.users.c.user_name==u)
+        r = s.execute(someshortname='fred').fetchall()
+        assert len(r) == 1
         
     def testdelete(self):
         self.users.insert().execute(user_id = 7, user_name = 'jack')
