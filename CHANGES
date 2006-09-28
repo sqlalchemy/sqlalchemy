@@ -80,9 +80,12 @@ replace the main table of the query, if the table is somewhere within
 the given from_obj.  this makes it possible to produce custom joins and
 outerjoins in queries without the main table getting added twice.
 [ticket:315]
+- eagerloading is adjusted to look in more complicated from clauses
+when attaching to the query.
 - added join_to and outerjoin_to transformative methods to SelectResults,
 to build up join/outerjoin conditions based on property names. also
 added select_from to explicitly set from_obj parameter.
+- sqlite boolean datatype converts False/True to 0/1 by default
 
 0.2.8
 - cleanup on connection methods + documentation.  custom DBAPI

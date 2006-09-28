@@ -1362,10 +1362,7 @@ class CompoundSelect(SelectBaseMixin, FromClause):
         self.order_by(*kwargs.get('order_by', [None]))
         self._col_map = {}
 
-#    name = property(lambda s:s.keyword + " statement")
-    def _foo(self):
-        raise "this is a temporary assertion while we refactor SQL to not call 'name' on non-table Selectables"    
-    name = property(lambda s:s._foo()) #"SELECT statement")
+    name = property(lambda s:s.keyword + " statement")
     
     def _locate_oid_column(self):
         return self.selects[0].oid_column
@@ -1576,7 +1573,7 @@ class UpdateBase(ClauseElement):
     """forms the base for INSERT, UPDATE, and DELETE statements."""
     def _process_colparams(self, parameters):
         """receives the "values" of an INSERT or UPDATE statement and constructs
-        appropriate ind parameters."""
+        appropriate bind parameters."""
         if parameters is None:
             return None
 

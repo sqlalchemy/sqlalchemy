@@ -600,8 +600,13 @@ class EagerLoader(LazyLoader):
         if hasattr(statement, '_outerjoin'):
             towrap = statement._outerjoin
         else:
-            towrap = self.localparent.mapped_table
-
+            for (fromclause, finder) in [(x, sql_util.TableFinder(x)) for x in statement.froms]:
+                if self.localparent.mapped_table in finder:
+                    towrap = fromclause
+                    break
+            else:
+                raise exceptions.InvalidRequestError("EagerLoader cannot locate a clause with which to outer join to, in query '%s'" % str(statement))
+            
         if self.secondaryjoin is not None:
             statement._outerjoin = sql.outerjoin(towrap, self.eagersecondary, self.eagerprimary).outerjoin(self.eagertarget, self.eagersecondaryjoin)
             if self.order_by is False and self.secondary.default_order_by() is not None:
