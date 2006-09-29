@@ -465,7 +465,6 @@ class MSSQLDialect(ansisql.ANSIDialect):
             col_name, type_name = row[3], row[5]
             if type_name.endswith("identity"):
                 ic = table.c[col_name]
-                ic.primary_key = True
                 # setup a psuedo-sequence to represent the identity attribute - we interpret this at table.create() time as the identity attribute
                 ic.sequence = schema.Sequence(ic.name + '_identity')
 
@@ -481,7 +480,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
         c = connection.execute(s)
         for row in c:
             if 'PRIMARY' in row[TC.c.constraint_type.name]:
-                table.c[row[C.c.column_name.name]]._set_primary_key()
+                table.c[row[0]]._set_primary_key()
 
 
         # Foreign key constraints
@@ -496,7 +495,6 @@ class MSSQLDialect(ansisql.ANSIDialect):
         rows = connection.execute(s).fetchall()
 
         # group rows by constraint ID, to handle multi-column FKs
-        import pdb; pdb.set_trace()
         fknm, scols, rcols = (None, [], [])
         for r in rows:
             scol, rschema, rtbl, rcol, rfknm, fkmatch, fkuprule, fkdelrule = r
