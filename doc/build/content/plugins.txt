@@ -90,7 +90,7 @@ The "scope" to which the session is associated, which by default is a thread-loc
 
 Examples of customized scope can include user-specific sessions or requests, or even sub-elements of an application, such as a graphical application which maintains a single `Session` per application window (this was the original motivation to create SessionContext).
 
-#### Using SessionContextExt
+#### Using SessionContextExt {@name=sessioncontextext}
 
 This is a `MapperExtension` which allows a `Mapper` to be automatically associated with a `SessionContext`.  Newly constructed objects get `save()`d to the session automatically, and `Query` objects can be constructed without a session. The instance of `SessionContextExt` is provided by the `SessionContext` itself:
 
@@ -139,7 +139,7 @@ SessionContextExt allows `Query` objects to be created against the mapped class 
     # then use it
     result = query.select()
     
-When installed globally, *all* `Mapper` objects will contain a built-in association to the `SessionContext`.  This means that once a mapped instance is created, creating a new `Session` and calling `save()` will raise an error, that the instance is already associated with a different session.  While you can always remove the object from its original session, `SessionContextExt` is probably convenient only for an application that does not need much explicit manipulation of sessions.
+When installed globally, all `Mapper` objects will contain a built-in association to the `SessionContext`.  This means that once a mapped instance is created, creating a new `Session` and calling `save()` with the instance as an argument will raise an error stating that the instance is already associated with a different session.  While you can always remove the object from its original session, `SessionContextExt` is probably convenient only for an application that does not need much explicit manipulation of sessions.
 
 The user still has some control over which session gets used at instance construction time.  An instance can be redirected at construction time to a different `Session` by specifying the keyword parameter `_sa_session` to its constructor, which is decorated by the mapper:
 
@@ -147,7 +147,7 @@ The user still has some control over which session gets used at instance constru
     session = create_session()  # create a new session distinct from the contextual session
     myuser = User(_sa_session=session)  # make a new User that is saved to this session
 
-Similarly, the **entity_name** parameter, which specifies an alternate `Mapper` to be used when attaching this instance to the `Session`, can be specified via `_sa_entity_name`:
+Similarly, the `entity_name` parameter, which specifies an alternate `Mapper` to be used when attaching this instance to the `Session`, can be specified via `_sa_entity_name`:
 
     {python}
     myuser = User(_sa_session=session, _sa_entity_name='altentity')
@@ -156,52 +156,62 @@ The decoration of mapped instances' `__init__()` method is similar to this examp
 
     {python}
     oldinit = class_.__init__   # the previous init method
-    def __init__(self):
-        session = ext.get_session() # get Session from this Mapper's MapperExtension
-        if session is EXT_PASS:
-            session = None
+    def __init__(self, *args, **kwargs):
+        session = kwargs.pop('_sa_session', None)
+        entity_name = kwargs.pop('_sa_entity_name', None)
+        if session is None:
+            session = ext.get_session() # get Session from this Mapper's MapperExtension
+            if session is EXT_PASS:
+                session = None
         if session is not None:
-            session.save(self)  # attach to the current session
-        oldinit(self)   # call previous init method
+            session.save(self, entity_name=entity_name)  # attach to the current session
+        oldinit(self, *args, **kwagrs)   # call previous init method
 
 ### SelectResults
 
 **Author:** Jonas Borgström
 
-SelectResults gives transformative behavior to the results returned from the `select` and `select_by` method of `Query`.  It supports three modes of operation; per-query, per-mapper, and per-application.
+SelectResults gives transformative behavior to the results returned from the `select` and `select_by` methods of `Query`. 
 
-    {python title="SelectResults with individual Query Objects"}
+    {python}
     from sqlalchemy.ext.selectresults import SelectResults
 
     query = session.query(MyClass)
-    res = SelectResults(query, table.c.column == "something")
-    res = res.order_by([table.c.column]) #add an order clause
+    res = SelectResults(query)
+    
+    res = res.filter(table.c.column == "something") # adds a WHERE clause (or appends to the existing via "and")
+    res = res.order_by([table.c.column]) # adds an ORDER BY clause
 
-    for x in res[:10]:  # Fetch and print the top ten instances
+    for x in res[:10]:  # Fetch and print the top ten instances - adds OFFSET 0 LIMIT 10 or equivalent
       print x.column2
 
-    x = list(res) # execute the query
+    # evaluate as a list, which executes the query
+    x = list(res)
 
     # Count how many instances that have column2 > 42
     # and column == "something"
     print res.filter(table.c.column2 > 42).count()
 
-Per mapper:
-
-    {python title="SelectResults used automatically with all session.query(SomeClass) operations"}
-    from sqlalchemy.ext.selectresults import SelectResultsExt
-    mapper(MyClass, mytable, extension=SelectResultsExt())
+    # select() is a synonym for filter()
     session.query(MyClass).select(mytable.c.column=="something").order_by([mytable.c.column])[2:7]
 
-Or across an application via the `selectresults` mod:
+An important facet of SelectResults is that the actual SQL execution does not occur until the object is used in a list or iterator context.  This means you can call any number of transformative methods (including `filter`, `order_by`, list range expressions, etc) before any SQL is actually issued.
 
-    {python title="SelectResults globally installed for all Query objects"}
+Configuration of SelectResults may be per-Query, per Mapper, or per application:
+
+    {python}
+    from sqlalchemy.ext.selectresults import SelectResults, SelectResultsExt
+    
+    # construct a SelectResults for an individual Query
+    sel = SelectResults(session.query(MyClass))
+    
+    # construct a Mapper where the Query.select()/select_by() methods will return a SelectResults:
+    mapper(MyClass, mytable, extension=SelectResultsExt())
+    
+    # globally configure all Mappers to return SelectResults, using the "selectresults" mod
     import sqlalchemy.mods.selectresults
 
-    mapper(MyClass, mytable)
-    session.query(MyClass).select(mytable.c.column=="something").order_by([mytable.c.column])[2:7]
-
-SelectResults greatly enhances querying and is highly recommended.  For example, heres how to transformatively construct a query using a combination of joins and outerjoins (requires 0.2.9 or above):
+SelectResults greatly enhances querying and is highly recommended.  For example, heres an example of constructing a query using a combination of joins and outerjoins (requires 0.2.9 or above):
 
     {python}
     mapper(User, users_table, properties={
@@ -220,7 +230,7 @@ For a full listing of methods, see the [generated documentation](rel:docstrings_
 
 **Author:** Mike Bayer
 
-This extension is used to decorate a mapped class with direct knowledge about its own `Mapper`, a contextual `Session`, as well as functions provided by the `Query` and `Session` objects.  The methods will automatically make usage of a contextual session with which all newly constructed objects are associated.  `assign_mapper` operates as a `MapperExtension`, and requires the usage of a `SessionContext` as well as `SessionContextExt`, described in a previous section.  It replaces the normal `mapper` function with its own version, that takes all the same arguments as the `mapper()` function with the addition of the `SessionContext` specified as the first argument:
+This extension is used to decorate a mapped class with direct knowledge about its own `Mapper`, a contextual `Session`, as well as functions provided by the `Query` and `Session` objects.  The methods will automatically make usage of a contextual session with which all newly constructed objects are associated.  `assign_mapper` operates as a `MapperExtension`, and requires the usage of a `SessionContext` as well as `SessionContextExt`, described in [plugins_sessioncontext](rel:plugins_sessioncontext).  It replaces the usage of the normal `mapper` function with its own version that adds a `SessionContext` specified as the first argument:
 
     {python}
     import sqlalchemy
@@ -288,7 +298,9 @@ In SQLAlchemy 0.1, users never dealt with explcit connections and didn't have a 
 When you import threadlocal, what you get is:
 
 * the "objectstore" session context object is now added to the `sqlalchemy` namespace.
+* a global `MapperExtension` is set up for all mappers which assigns "objectstore"'s session as the default session context, used by new instances as well as `Query` objects (see the section [plugins_sessioncontext_sessioncontextext](rel:plugins_sessioncontext_sessioncontextext)).
 * a new function "assign_mapper" is added to the `sqlalchemy` namespace, which calls the `assignmapper` mapper function using the new "objectstore" context.
+* the `create_engine` function is modified so that "threadlocal", and not "plain", is the default engine strategy.
 
 So an important point to understand is, **don't use the threadlocal mod unless you explcitly are looking for that behavior**.  Unfortunately, the easy import of the "threadlocal" mod has found its way into several tutorials on external websites, which produces application-wide behavior that is in conflict with the SQLAlchemy tutorial and data mapping documentation.
 
