@@ -8,34 +8,36 @@
 """bridges the PropertyLoader (i.e. a relation()) and the UOWTransaction 
 together to allow processing of scalar- and list-based dependencies at flush time."""
 
+import sync
 from sync import ONETOMANY,MANYTOONE,MANYTOMANY
 from sqlalchemy import sql, util
 import session as sessionlib
 
-def create_dependency_processor(key, syncrules, cascade, secondary=None, association=None, is_backref=False, post_update=False):
+def create_dependency_processor(prop):
     types = {
         ONETOMANY : OneToManyDP,
         MANYTOONE: ManyToOneDP,
         MANYTOMANY : ManyToManyDP,
     }
-    if association is not None:
-        return AssociationDP(key, syncrules, cascade, secondary, association, is_backref, post_update)
+    if prop.association is not None:
+        return AssociationDP(prop)
     else:
-        return types[syncrules.direction](key, syncrules, cascade, secondary, association, is_backref, post_update)
+        return types[prop.direction](prop)
 
 class DependencyProcessor(object):
-    def __init__(self, key, syncrules, cascade, secondary=None, association=None, is_backref=False, post_update=False):
-        # TODO: update instance variable names to be more meaningful
-        self.syncrules = syncrules
-        self.cascade = cascade
-        self.mapper = syncrules.child_mapper
-        self.parent = syncrules.parent_mapper
-        self.association = association
-        self.secondary = secondary
-        self.direction = syncrules.direction
-        self.is_backref = is_backref
-        self.post_update = post_update
-        self.key = key
+    def __init__(self, prop):
+        self.prop = prop
+        self.cascade = prop.cascade
+        self.mapper = prop.mapper
+        self.parent = prop.parent
+        self.association = prop.association
+        self.secondary = prop.secondary
+        self.direction = prop.direction
+        self.is_backref = prop.is_backref
+        self.post_update = prop.post_update
+        self.key = prop.key
+
+        self._compile_synchronizers()
 
     def register_dependencies(self, uowcommit):
         """tells a UOWTransaction what mappers are dependent on which, with regards
@@ -75,6 +77,23 @@ class DependencyProcessor(object):
         """called during a flush to synchronize primary key identifier values between a parent/child object, as well as 
         to an associationrow in the case of many-to-many."""
         raise NotImplementedError()
+
+    def _compile_synchronizers(self):
+        """assembles a list of 'synchronization rules', which are instructions on how to populate
+        the objects on each side of a relationship.  This is done when a PropertyLoader is 
+        first initialized.
+
+        The list of rules is used within commits by the _synchronize() method when dependent 
+        objects are processed."""
+        parent_tables = util.Set(self.parent.tables + [self.parent.mapped_table])
+        target_tables = util.Set(self.mapper.tables + [self.mapper.mapped_table])
+
+        self.syncrules = sync.ClauseSynchronizer(self.parent, self.mapper, self.direction)
+        if self.direction == sync.MANYTOMANY:
+            self.syncrules.compile(self.prop.primaryjoin, parent_tables, [self.secondary], False)
+            self.syncrules.compile(self.prop.secondaryjoin, target_tables, [self.secondary], True)
+        else:
+            self.syncrules.compile(self.prop.primaryjoin, parent_tables, target_tables)
         
     def get_object_dependencies(self, obj, uowcommit, passive = True):
         """returns the list of objects that are dependent on the given object, as according to the relationship
@@ -82,6 +101,13 @@ class DependencyProcessor(object):
         return sessionlib.attribute_manager.get_history(obj, self.key, passive = passive)
 
     def _conditional_post_update(self, obj, uowcommit, related):
+        """execute a post_update call.
+        
+        for relations that contain the post_update flag, an additional UPDATE statement may be
+        associated after an INSERT or before a DELETE in order to resolve circular row dependencies.
+        This method will check for the post_update flag being set on a particular relationship, and
+        given a target object and list of one or more related objects, and execute the UPDATE if the
+        given related object list contains INSERTs or DELETEs."""
         if obj is not None and self.post_update:
             for x in related:
                 if x is not None and (uowcommit.is_deleted(x) or not hasattr(x, '_instance_key')):

@@ -52,9 +52,14 @@ class QueueDependencySorter(object):
         def __str__(self):
             return self.safestr()
         def safestr(self, indent=0):
-            return (' ' * indent) + "%s  (idself=%s)" % (str(self.item), repr(id(self))) + repr(self.cycles) + "\n" + string.join([n.safestr(indent + 1) for n in self.children], '')
+            return (' ' * indent * 2) + \
+                str(self.item) + \
+                (self.cycles is not None and (" (cycles: " + repr([x for x in self.cycles]) + ")") or "") + \
+                "\n" + \
+                string.join([n.safestr(indent + 1) for n in self.children], '')
+                
         def describe(self):
-            return "%s  (idself=%s)" % (str(self.item), repr(id(self)))
+            return "%s" % (str(self.item))
         def __repr__(self):
             return self.describe()
         def is_dependent(self, child):

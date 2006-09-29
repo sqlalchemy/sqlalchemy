@@ -9,8 +9,8 @@ well as relationships.  also defines some MapperOptions that can be used with th
 properties."""
 
 from sqlalchemy import sql, schema, util, attributes, exceptions, sql_util, logging
-import sync
 import mapper
+import sync
 import session as sessionlib
 import dependency
 import util as mapperutil
@@ -250,7 +250,7 @@ class PropertyLoader(mapper.MapperProperty):
             raise exceptions.ArgumentError("Error determining primary and/or secondary join for relationship '%s' between mappers '%s' and '%s'.  If the underlying error cannot be corrected, you should specify the 'primaryjoin' (and 'secondaryjoin', if there is an association table present) keyword arguments to the relation() function (or for backrefs, by specifying the backref using the backref() function with keyword arguments) to explicitly specify the join conditions.  Nested error is \"%s\"" % (self.key, self.localparent, self.mapper, str(e)))
         # if the foreign key wasnt specified and theres no assocaition table, try to figure
         # out who is dependent on who. we dont need all the foreign keys represented in the join,
-        # just one of them.  
+        # just one of them.
         if not len(self.foreignkey) and self.secondaryjoin is None:
             # else we usually will have a one-to-many where the secondary depends on the primary
             # but its possible that its reversed
@@ -273,8 +273,7 @@ class PropertyLoader(mapper.MapperProperty):
                 self._dependency_processor = self.inherits._dependency_processor
 
         if not hasattr(self, '_dependency_processor'):
-            self._compile_synchronizers()
-            self._dependency_processor = dependency.create_dependency_processor(self.key, self.syncrules, self.cascade, secondary=self.secondary, association=self.association, is_backref=self.is_backref, post_update=self.post_update)
+            self._dependency_processor = dependency.create_dependency_processor(self)
 
         if self.inherits is not None and not hasattr(self.inherits, '_dependency_processor'):
             self.inherits._dependency_processor = self._dependency_processor
@@ -307,12 +306,15 @@ class PropertyLoader(mapper.MapperProperty):
     def _set_class_attribute(self, class_, key):
         """sets attribute behavior on our target class."""
         self._register_attribute(class_)
+
+    def _is_self_referential(self):
+        return self.parent.mapped_table is self.target or self.parent.select_table is self.target
         
     def _get_direction(self):
         """determines our 'direction', i.e. do we represent one to many, many to many, etc."""
         if self.secondaryjoin is not None:
             return sync.MANYTOMANY
-        elif self.parent.mapped_table is self.target or self.parent.select_table is self.target:
+        elif self._is_self_referential():
             if list(self.foreignkey)[0].primary_key:
                 return sync.MANYTOONE
             else:
@@ -356,22 +358,6 @@ class PropertyLoader(mapper.MapperProperty):
         if not self.viewonly:
             self._dependency_processor.register_dependencies(uowcommit)
             
-    def _compile_synchronizers(self):
-        """assembles a list of 'synchronization rules', which are instructions on how to populate
-        the objects on each side of a relationship.  This is done when a PropertyLoader is 
-        first initialized.
-        
-        The list of rules is used within commits by the _synchronize() method when dependent 
-        objects are processed."""
-        parent_tables = util.Set(self.parent.tables + [self.parent.mapped_table])
-        target_tables = util.Set(self.mapper.tables + [self.mapper.mapped_table])
-
-        self.syncrules = sync.ClauseSynchronizer(self.parent, self.mapper, self.direction)
-        if self.direction == sync.MANYTOMANY:
-            self.syncrules.compile(self.primaryjoin, parent_tables, [self.secondary], False)
-            self.syncrules.compile(self.secondaryjoin, target_tables, [self.secondary], True)
-        else:
-            self.syncrules.compile(self.primaryjoin, parent_tables, target_tables)
 
 PropertyLoader.logger = logging.class_logger(PropertyLoader)
 

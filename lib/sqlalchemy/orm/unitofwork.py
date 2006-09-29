@@ -377,9 +377,7 @@ class UOWTransaction(object):
             
         mappers = self._get_noninheriting_mappers()
         head = DependencySorter(self.dependencies, list(mappers)).sort(allow_all_cycles=True)
-        #print "-------------------------"
-        #print str(head)
-        #print "---------------------------"
+        self.logger.debug("Dependency sort:\n"+ str(head))
         task = sort_hier(head)
         return task
 
@@ -722,7 +720,7 @@ class UOWTask(object):
         
         #print "BEGIN CIRC SORT-------"
         #print "PRE-CIRC:"
-        #print list(cycles)[0].dump()
+        #print list(cycles) #[0].dump()
         
         # dependency processors that arent part of the cyclical thing
         # get put here
