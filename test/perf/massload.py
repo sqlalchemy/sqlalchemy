@@ -35,7 +35,7 @@ class LoadTest(AssertMixin):
         clear_mappers()
         for x in range(1,NUM/500+1):
             l = []
-            for y in range(x*500-500, x*500):
+            for y in range(x*500-500 + 1, x*500 + 1):
                 l.append({'item_id':y, 'value':'this is item #%d' % y})
             items.insert().execute(*l)
             
@@ -48,7 +48,7 @@ class LoadTest(AssertMixin):
         for x in range (1,NUM/100):
             # this is not needed with cpython which clears non-circular refs immediately
             #gc.collect()
-            l = query.select(items.c.item_id.between(x*100 - 100, x*100 - 1))
+            l = query.select(items.c.item_id.between(x*100 - 100 + 1, x*100))
             assert len(l) == 100
             print "loaded ", len(l), " items "
             # modifying each object will insure that the objects get placed in the "dirty" list
