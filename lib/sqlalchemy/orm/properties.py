@@ -377,7 +377,6 @@ PropertyLoader.logger = logging.class_logger(PropertyLoader)
 
 class LazyLoader(PropertyLoader):
     def do_init_subclass(self):
-        print "LAZYLOADER %d DOINITSUBCLASS" % id(self)
         (self.lazywhere, self.lazybinds, self.lazyreverse) = create_lazy_clause(self.parent.unjoined_table, self.primaryjoin, self.secondaryjoin, self.foreignkey)
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
