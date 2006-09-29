@@ -517,8 +517,10 @@ class Mapper(object):
             self.add_property(key, value)
 
     def add_property(self, key, prop):
-        """adds an indiviual MapperProperty to this mapper.  If the mapper has not been compiled yet,
-        just adds the property to the initial properties dictionary sent to the constructor.  if this Mapper
+        """add an indiviual MapperProperty to this mapper.  
+        
+        If the mapper has not been compiled yet, just adds the property to the initial 
+        properties dictionary sent to the constructor.  if this Mapper
         has already been compiled, then the given MapperProperty is compiled immediately."""
         self.properties[key] = prop
         if self.__is_compiled:
@@ -547,13 +549,14 @@ class Mapper(object):
         else:
             return None
 
-    def _compile_property(self, key, prop, init=True, skipmissing=False):
-        """adds an additional property to this mapper.  this is the same as if it were 
-        specified within the 'properties' argument to the constructor.  if the named
-        property already exists, this will replace it.  Useful for
-        circular relationships, or overriding the parameters of auto-generated properties
-        such as backreferences."""
-
+    def _compile_property(self, key, prop, init=True, skipmissing=False, localparent=None):
+        """add a MapperProperty to this or another Mapper, including configuration of the property.
+        
+        The properties' parent attribute will be set, and the property will also be 
+        copied amongst the mappers which inherit from this one.
+        
+        if the given prop is a Column or list of Columns, a ColumnProperty will be created.
+        """
         self.__log("_compile_property(%s, %s)" % (key, prop.__class__.__name__))
 
         if not isinstance(prop, MapperProperty):
@@ -561,9 +564,10 @@ class Mapper(object):
             if prop is None:
                 raise exceptions.ArgumentError("'%s' is not an instance of MapperProperty or Column" % repr(prop))
 
-        self.__props[key] = prop
+        effectiveparent = localparent or self
+        effectiveparent.__props[key] = prop
         prop.set_parent(self)
-        
+            
         if isinstance(prop, ColumnProperty):
             col = self.select_table.corresponding_column(prop.columns[0], keys_ok=True, raiseerr=False)
             if col is None:
@@ -574,11 +578,11 @@ class Mapper(object):
                 proplist.append(prop)
 
         if init:
-            prop.init(key, self)
+            prop.init(key, effectiveparent)
 
-        for mapper in self._inheriting_mappers:
+        for mapper in effectiveparent._inheriting_mappers:
             prop.adapt_to_inherited(key, mapper)
-        
+
     def __str__(self):
         return "Mapper|" + self.class_.__name__ + "|" + (self.entity_name is not None and "/%s" % self.entity_name or "") + (self.local_table and self.local_table.name or str(self.local_table)) + (not self._is_primary_mapper() and "|non-primary" or "")
     
@@ -1034,6 +1038,7 @@ class Mapper(object):
         identitykey = self._row_identity_key(row)
         if session.has_key(identitykey):
             instance = session._get(identitykey)
+            self.__log_debug("_instance(): using existing instance %s identity %s" % (mapperutil.instance_str(instance), str(identitykey)))
             isnew = False
             if version_check and self.version_id_col is not None and self._getattrbycolumn(instance, self.version_id_col) != row[self.version_id_col]:
                 raise exceptions.ConcurrentModificationError("Instance '%s' version of %s does not match %s" % (instance, self._getattrbycolumn(instance, self.version_id_col), row[self.version_id_col]))
@@ -1070,7 +1075,7 @@ class Mapper(object):
             instance = self.extension.create_instance(self, session, row, imap, self.class_)
             if instance is EXT_PASS:
                 instance = self._create_instance(session)
-            self.__log_debug("new instance %s identity %s" % (mapperutil.instance_str(instance), str(identitykey)))
+            self.__log_debug("_instance(): created new instance %s identity %s" % (mapperutil.instance_str(instance), str(identitykey)))
             imap[identitykey] = instance
             isnew = True
         else:

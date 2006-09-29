@@ -502,6 +502,32 @@ class InheritanceTest(MapperSuperTest):
         sess.clear()
         au = sess.query(usermapper).get_by(user_name='jack')
         self.assert_(au.email_address == 'jack@gmail.com')
+
+    def testlazyoption(self):
+        """test that a lazy options gets created against its correct mapper when
+        using options with inheriting mappers"""
+        class _Order(object):
+            pass
+        class _User(object):
+            pass
+        class AddressUser(_User):
+            pass
+        ordermapper = mapper(_Order, orders)
+        usermapper = mapper(_User, users, 
+            properties = {
+                'orders' : relation(ordermapper, lazy=True)
+            })
+        amapper = mapper(AddressUser, addresses, inherits = usermapper)
+            
+        sess = create_session()
+
+        def go():
+            l = sess.query(AddressUser).options(lazyload('orders')).select()
+            # this would fail because the "orders" lazyloader gets created against AddressUsers selectable
+            # and not _User's.
+            assert len(l[0].orders) == 3
+        self.assert_sql_count(db, go, 2)
+        
             
     
 class DeferredTest(MapperSuperTest):

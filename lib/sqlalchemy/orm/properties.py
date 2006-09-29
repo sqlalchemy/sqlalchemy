@@ -377,6 +377,7 @@ PropertyLoader.logger = logging.class_logger(PropertyLoader)
 
 class LazyLoader(PropertyLoader):
     def do_init_subclass(self):
+        print "LAZYLOADER %d DOINITSUBCLASS" % id(self)
         (self.lazywhere, self.lazybinds, self.lazyreverse) = create_lazy_clause(self.parent.unjoined_table, self.primaryjoin, self.secondaryjoin, self.foreignkey)
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
@@ -496,6 +497,7 @@ def create_lazy_clause(table, primaryjoin, secondaryjoin, foreignkey):
     lazywhere.accept_visitor(li)
     if secondaryjoin is not None:
         lazywhere = sql.and_(lazywhere, secondaryjoin)
+    LazyLoader.logger.debug("create_lazy_clause " + str(lazywhere))
     return (lazywhere, binds, reverse)
         
 
@@ -808,8 +810,12 @@ class EagerLazyOption(GenericOption):
         oldprop = mapper.props[key]
         newprop = class_.__new__(class_)
         newprop.__dict__.update(oldprop.__dict__)
-        newprop.do_init_subclass()
-        mapper._compile_property(key, newprop)
+        #newprop.do_init_subclass()
+        p = newprop
+        while p.inherits is not None:
+            p = p.inherits
+        real_parent_mapper = p.parent
+        real_parent_mapper._compile_property(key, newprop, localparent=mapper)
 
 class DeferredOption(GenericOption):
     def __init__(self, key, defer=False, **kwargs):
