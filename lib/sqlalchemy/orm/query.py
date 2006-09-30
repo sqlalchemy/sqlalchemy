@@ -122,8 +122,6 @@ class Query(object):
             seen.add(mapper_)
             if mapper_.props.has_key(key):
                 prop = mapper_.props[key]
-                if isinstance(prop, mapper.SynonymProperty):
-                    prop = mapper_.props[prop.name]
                 if isinstance(prop, properties.PropertyLoader):
                     keys.insert(0, prop.key)
                 return prop
