@@ -1,97 +1,110 @@
 0.2.9
-- logging is now implemented via standard python "logging" module.
-"echo" keyword parameters are still functional but set/unset
-log levels for their respective classes/instances.  all logging
-can be controlled directly through the Python API by setting
-INFO and DEBUG levels for loggers in the "sqlalchemy" namespace.
-class-level logging is under "sqlalchemy.<module>.<classname>",
-instance-level logging under "sqlalchemy.<module>.<classname>.<hexid>".
-Test suite includes "--log-info" and "--log-debug" arguments
-which work independently of --verbose/--quiet.  Logging added
-to orm to allow tracking of mapper configurations, row iteration.
-- internal refactoring to mapper instances() method to use a 
-SelectionContext object to track state during the operation.
-SLIGHT API BREAKAGE: the append_result() and populate_instances()
-methods on MapperExtension have a slightly different method signature
-now as a result of the change; hoping that these methods are not 
-in widespread use as of yet.
-- updates to MS-SQL driver: 
-   -- fixes bug 261 (table reflection broken for MS-SQL case-sensitive 
-   databases)
-   -- can now specify port for pymssql
-   -- introduces new "auto_identity_insert" option for auto-switching 
-   between "SET IDENTITY_INSERT" mode when values specified for IDENTITY columns 
-   -- now supports multi-column foreign keys
-   -- fix to reflecting date/datetime columns
-   -- NCHAR and NVARCHAR type support added
-- more rearrangements of unit-of-work commit scheme to better allow
-dependencies within circular flushes to work properly...updated
-task traversal/logging implementation
-- added an automatic "row switch" feature to mapping, which will
-detect a pending instance/deleted instance pair with the same 
-identity key and convert the INSERT/DELETE to a single UPDATE
-- "association" mappings simplified to take advantage of 
-automatic "row switch" feature
-- changed "for_update" parameter to accept False/True/"nowait"
-and "read", the latter two of which are interpreted only by
-Oracle and Mysql [ticket:292]
-- added "viewonly" flag to relation(), allows construction of
-relations that have no effect on the flush() process.
-- added "lockmode" argument to base Query select/get functions, 
-including "with_lockmode" function to get a Query copy that has 
-a default locking mode.  Will translate "read"/"update" 
-arguments into a for_update argument on the select side.
-[ticket:292]
-- implemented "version check" logic in Query/Mapper, used
-when version_id_col is in effect and query.with_lockmode()
-is used to get() an instance thats already loaded
-- fixed bug where Connection wouldnt lose its Transaction
-after commit/rollback
-- added extract() function to sql dialect
-- added an implicit close() on the cursor in ResultProxy
-when the result closes
-- added scalar() method to ComposedSQLEngine, ResultProxy
-- post_update behavior improved; does a better job at not 
-updating too many rows, updates only required columns
-[ticket:208]
-- BooleanExpression includes new "negate" argument to specify
-the appropriate negation operator if one is available.
-- calling a negation on an "IN" or "IS" clause will result in
-"NOT IN", "IS NOT" (as opposed to NOT (x IN y)). 
-- adjustments to eager loading so that its "eager chain" is
-kept separate from the normal mapper setup, thereby
-preventing conflicts with lazy loader operation, fixes 
-[ticket:308]
-- fix to deferred group loading
-- added "batch=True" flag to mapper; if False, save_obj
-will fully save one object at a time including calls
-to before_XXXX and after_XXXX
-- added autoincrement=True to Column; will disable schema generation
-of SERIAL/AUTO_INCREMENT/identity seq for postgres/mysql/mssql if
-explicitly set to False
-- connection pool tracks open cursors and raises an error if connection
-is returned to pool with cursors still opened.  fixes issues with MySQL, 
-others
-- attribute tracking modified to be more intelligent about detecting
-changes, particularly with mutable types.  TypeEngine objects now
-take a greater role in defining how to compare two scalar instances,
-including the addition of a MutableType mixin which is implemented by
-PickleType.  unit-of-work now tracks the "dirty" list as an expression
-of all persistent objects where the attribute manager detects changes.
-The basic issue thats fixed is detecting changes on PickleType 
-objects, but also generalizes type handling and "modified" object
-checking to be more complete and extensible.
-- specifying joins in the from_obj argument of query.select() will
-replace the main table of the query, if the table is somewhere within
-the given from_obj.  this makes it possible to produce custom joins and
-outerjoins in queries without the main table getting added twice.
-[ticket:315]
-- eagerloading is adjusted to look in more complicated from clauses
-when attaching to the query.
-- added join_to and outerjoin_to transformative methods to SelectResults,
-to build up join/outerjoin conditions based on property names. also
-added select_from to explicitly set from_obj parameter.
-- sqlite boolean datatype converts False/True to 0/1 by default
+- General:
+    - logging is now implemented via standard python "logging" module.
+    "echo" keyword parameters are still functional but set/unset
+    log levels for their respective classes/instances.  all logging
+    can be controlled directly through the Python API by setting
+    INFO and DEBUG levels for loggers in the "sqlalchemy" namespace.
+    class-level logging is under "sqlalchemy.<module>.<classname>",
+    instance-level logging under "sqlalchemy.<module>.<classname>.<hexid>".
+    Test suite includes "--log-info" and "--log-debug" arguments
+    which work independently of --verbose/--quiet.  Logging added
+    to orm to allow tracking of mapper configurations, row iteration.
+- Specific Databases:
+    - SQLite:
+    - sqlite boolean datatype converts False/True to 0/1 by default
+    - MS-SQL: 
+    - fixes bug 261 (table reflection broken for MS-SQL case-sensitive 
+    databases)
+    - can now specify port for pymssql
+    - introduces new "auto_identity_insert" option for auto-switching 
+    between "SET IDENTITY_INSERT" mode when values specified for IDENTITY columns 
+    - now supports multi-column foreign keys
+    - fix to reflecting date/datetime columns
+    - NCHAR and NVARCHAR type support added
+- Schema:
+    - added autoincrement=True to Column; will disable schema generation
+    of SERIAL/AUTO_INCREMENT/identity seq for postgres/mysql/mssql if
+    explicitly set to False
+    - TypeEngine objects now have methods to deal with copying and comparing
+    values of their specific type.  Currently used by the ORM, see below.
+- Connections/Pooling/Execution:
+    - connection pool tracks open cursors and automatically closes them
+    if connection is returned to pool with cursors still opened.  Can be
+    affected by options which cause it to raise an error instead, or to 
+    do nothing.  fixes issues with MySQL, others
+    - fixed bug where Connection wouldnt lose its Transaction
+    after commit/rollback
+    - added scalar() method to ComposedSQLEngine, ResultProxy
+    - ResultProxy will close() the underlying cursor when the ResultProxy
+    itself is closed.  this will auto-close cursors for ResultProxy objects
+    that have had all their rows fetched (or had scalar() called).
+- SQL Construction:
+    - changed "for_update" parameter to accept False/True/"nowait"
+    and "read", the latter two of which are interpreted only by
+    Oracle and Mysql [ticket:292]
+    - added extract() function to sql dialect 
+    (SELECT extract(field FROM expr))
+    - BooleanExpression includes new "negate" argument to specify
+    the appropriate negation operator if one is available.
+    - calling a negation on an "IN" or "IS" clause will result in
+    "NOT IN", "IS NOT" (as opposed to NOT (x IN y)). 
+- ORM:
+    - attribute tracking modified to be more intelligent about detecting
+    changes, particularly with mutable types.  TypeEngine objects now
+    take a greater role in defining how to compare two scalar instances,
+    including the addition of a MutableType mixin which is implemented by
+    PickleType.  unit-of-work now tracks the "dirty" list as an expression
+    of all persistent objects where the attribute manager detects changes.
+    The basic issue thats fixed is detecting changes on PickleType 
+    objects, but also generalizes type handling and "modified" object
+    checking to be more complete and extensible.
+    - internal refactoring to mapper instances() method to use a 
+    SelectionContext object to track state during the operation.
+    SLIGHT API BREAKAGE: the append_result() and populate_instances()
+    methods on MapperExtension have a slightly different method signature
+    now as a result of the change; hoping that these methods are not 
+    in widespread use as of yet.
+    - more rearrangements of unit-of-work commit scheme to better allow
+    dependencies within circular flushes to work properly...updated
+    task traversal/logging implementation
+    - added an automatic "row switch" feature to mapping, which will
+    detect a pending instance/deleted instance pair with the same 
+    identity key and convert the INSERT/DELETE to a single UPDATE
+    - "association" mappings simplified to take advantage of 
+    automatic "row switch" feature
+    - added "viewonly" flag to relation(), allows construction of
+    relations that have no effect on the flush() process.
+    - added "lockmode" argument to base Query select/get functions, 
+    including "with_lockmode" function to get a Query copy that has 
+    a default locking mode.  Will translate "read"/"update" 
+    arguments into a for_update argument on the select side.
+    [ticket:292]
+    - implemented "version check" logic in Query/Mapper, used
+    when version_id_col is in effect and query.with_lockmode()
+    is used to get() an instance thats already loaded
+    - post_update behavior improved; does a better job at not 
+    updating too many rows, updates only required columns
+    [ticket:208]
+    - adjustments to eager loading so that its "eager chain" is
+    kept separate from the normal mapper setup, thereby
+    preventing conflicts with lazy loader operation, fixes 
+    [ticket:308]
+    - fix to deferred group loading
+    - added "batch=True" flag to mapper; if False, save_obj
+    will fully save one object at a time including calls
+    to before_XXXX and after_XXXX
+    - specifying joins in the from_obj argument of query.select() will
+    replace the main table of the query, if the table is somewhere within
+    the given from_obj.  this makes it possible to produce custom joins and
+    outerjoins in queries without the main table getting added twice.
+    [ticket:315]
+    - eagerloading is adjusted to more thoughtfully attach its LEFT OUTER JOINs
+    to the given query, looking for custom "FROM" clauses that may have 
+    already been set up.
+    - added join_to and outerjoin_to transformative methods to SelectResults,
+    to build up join/outerjoin conditions based on property names. also
+    added select_from to explicitly set from_obj parameter.
 
 0.2.8
 - cleanup on connection methods + documentation.  custom DBAPI
