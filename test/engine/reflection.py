@@ -100,6 +100,86 @@ class ReflectionTest(PersistTest):
         finally:
             addresses.drop()
             users.drop()
+    
+    def testoverridecolumns(self):
+        """test that you can override columns which contain foreign keys to other reflected tables"""
+        meta = BoundMetaData(testbase.db)
+        users = Table('users', meta, 
+            Column('id', Integer, primary_key=True),
+            Column('name', String(30)))
+        addresses = Table('addresses', meta,
+            Column('id', Integer, primary_key=True),
+            Column('street', String(30)),
+            Column('user_id', Integer))
+            
+        meta.create_all()            
+        try:
+            meta2 = BoundMetaData(testbase.db)
+            a2 = Table('addresses', meta2, 
+                Column('user_id', Integer, ForeignKey('users.id')),
+                autoload=True)
+            u2 = Table('users', meta2, autoload=True)
+            
+            assert a2.c.user_id.foreign_key is not None
+            assert a2.c.user_id.foreign_key.parent is a2.c.user_id
+            assert u2.join(a2).onclause == u2.c.id==a2.c.user_id
+
+            meta3 = BoundMetaData(testbase.db)
+            u3 = Table('users', meta3, autoload=True)
+            a3 = Table('addresses', meta3, 
+                Column('user_id', Integer, ForeignKey('users.id')),
+                autoload=True)
+            
+            assert u3.join(a3).onclause == u3.c.id==a3.c.user_id
+            
+        finally:
+            meta.drop_all()
+
+    def testoverridecolumns2(self):
+        """test that you can override columns which contain foreign keys to other reflected tables,
+        where the foreign key column is also a primary key column"""
+        meta = BoundMetaData(testbase.db)
+        users = Table('users', meta, 
+            Column('id', Integer, primary_key=True),
+            Column('name', String(30)))
+        addresses = Table('addresses', meta,
+            Column('id', Integer, primary_key=True),
+            Column('street', String(30)))
+
+
+        meta.create_all()            
+        try:
+            meta2 = BoundMetaData(testbase.db)
+            a2 = Table('addresses', meta2, 
+                Column('id', Integer, ForeignKey('users.id'), primary_key=True, ),
+                autoload=True)
+            u2 = Table('users', meta2, autoload=True)
+
+            assert list(a2.primary_key) == [a2.c.id]
+            assert list(u2.primary_key) == [u2.c.id]
+            assert u2.join(a2).onclause == u2.c.id==a2.c.id
+
+            # heres what was originally failing, because a2's primary key
+            # had two "id" columns, one of which was not part of a2's "c" collection
+            #class Address(object):pass
+            #mapper(Address, a2)
+            #add1 = Address()
+            #sess = create_session()
+            #sess.save(add1)
+            #sess.flush()
+            
+            meta3 = BoundMetaData(testbase.db)
+            u3 = Table('users', meta3, autoload=True)
+            a3 = Table('addresses', meta3, 
+                Column('id', Integer, ForeignKey('users.id'), primary_key=True),
+                autoload=True)
+
+            assert list(a3.primary_key) == [a3.c.id]
+            assert list(u3.primary_key) == [u3.c.id]
+            assert u3.join(a3).onclause == u3.c.id==a3.c.id
+
+        finally:
+            meta.drop_all()
             
     @testbase.supported('mysql')
     def testmysqltypes(self):
@@ -146,6 +226,7 @@ class ReflectionTest(PersistTest):
             t.drop()
             
     def testmultipk(self):
+        """test that creating a table checks for a sequence before creating it"""
         table = Table(
             'engine_multi', testbase.db, 
             Column('multi_id', Integer, Sequence('multi_id_seq'), primary_key=True),

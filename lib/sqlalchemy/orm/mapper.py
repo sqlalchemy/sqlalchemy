@@ -343,6 +343,10 @@ class Mapper(object):
                 except KeyError:
                     l = self.pks_by_table.setdefault(t, util.OrderedSet())
                 for k in t.primary_key:
+                    #if k.key not in t.c and k._label not in t.c:
+                        # this is a condition that was occurring when table reflection was doubling up primary keys
+                        # that were overridden in the Table constructor
+                    #    raise exceptions.AssertionError("Column " + str(k) + " not located in the column set of table " + str(t))
                     l.add(k)
 
         if len(self.pks_by_table[self.mapped_table]) == 0:
@@ -392,6 +396,7 @@ class Mapper(object):
                 self.__log("adding ColumnProperty %s" % (column.key))
             elif isinstance(prop, ColumnProperty):
                 prop.columns.append(column)
+                self.__log("appending to existing ColumnProperty %s" % (column.key))
             else:
                 if not self.allow_column_override:
                     raise exceptions.ArgumentError("WARNING: column '%s' not being added due to property '%s'.  Specify 'allow_column_override=True' to mapper() to ignore this condition." % (column.key, repr(prop)))

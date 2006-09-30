@@ -28,6 +28,9 @@
     explicitly set to False
     - TypeEngine objects now have methods to deal with copying and comparing
     values of their specific type.  Currently used by the ORM, see below.
+    - fixed condition that occurred during reflection when a primary key
+    column was explciitly overridden, where the PrimaryKeyConstraint would
+    get both the reflected and the programmatic column doubled up
 - Connections/Pooling/Execution:
     - connection pool tracks open cursors and automatically closes them
     if connection is returned to pool with cursors still opened.  Can be

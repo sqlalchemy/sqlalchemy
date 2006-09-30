@@ -440,6 +440,8 @@ class Column(SchemaItem, sql.ColumnClause):
             else:
                 return self.name
             return self.name
+        else:
+            return self.name
     
     def _derived_metadata(self):
         return self.table.metadata
@@ -764,6 +766,10 @@ class PrimaryKeyConstraint(Constraint):
     def accept_schema_visitor(self, visitor):
         visitor.visit_primary_key_constraint(self)
     def append(self, col):
+        # TODO: change "columns" to a key-sensitive set ?
+        for c in self.columns:
+            if c.key == col.key:
+                self.columns.remove(c)
         self.columns.append(col)
         col.primary_key=True
     def copy(self):
