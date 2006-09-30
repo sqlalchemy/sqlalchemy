@@ -388,8 +388,8 @@ class Query(object):
         # plugin point
 
         # give all the attached properties a chance to modify the query
-        for key, value in self.mapper.props.iteritems():
-            value.setup(key, statement, **kwargs) 
+        for value in self.mapper.props.values():
+            value.setup(statement, **kwargs) 
         
         return statement
 

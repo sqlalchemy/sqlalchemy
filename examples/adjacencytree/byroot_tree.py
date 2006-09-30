@@ -91,7 +91,8 @@ class TreeLoader(MapperExtension):
         if instance.root is instance:
             connection.execute(mapper.mapped_table.update(TreeNode.c.id==instance.id, values=dict(root_node_id=instance.id)))
             instance.root_id = instance.id
-    def append_result(self, mapper, session, row, imap, result, instance, isnew, populate_existing=False):
+
+    def append_result(self, mapper, selectcontext, row, instance, identitykey, result, isnew):
         """runs as results from a SELECT statement are processed, and newly created or already-existing
         instances that correspond to each row are appended to result lists.  This method will only
         append root nodes to the result list, and will attach child nodes to their appropriate parent
@@ -101,8 +102,8 @@ class TreeLoader(MapperExtension):
             result.append(instance)
         else:
             if isnew or populate_existing:
-                parentnode = imap[mapper.identity_key(instance.parent_id)]
-                parentnode.children.append(instance, _mapper_nohistory=True)
+                parentnode = selectcontext.identity_map[mapper.identity_key(instance.parent_id)]
+                parentnode.children.append_without_event(instance)
         return False
             
 class TreeData(object):

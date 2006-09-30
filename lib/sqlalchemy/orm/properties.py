@@ -32,7 +32,7 @@ class ColumnProperty(mapper.MapperProperty):
         return sessionlib.attribute_manager.get_history(obj, self.key, passive=passive)
     def copy(self):
         return ColumnProperty(*self.columns)
-    def setup(self, key, statement, eagertable=None, **options):
+    def setup(self, statement, eagertable=None, **options):
         for c in self.columns:
             if eagertable is not None:
                 statement.append_column(eagertable.corresponding_column(c))
@@ -43,7 +43,7 @@ class ColumnProperty(mapper.MapperProperty):
         if self.is_primary():
             self.logger.info("register managed attribute %s on class %s" % (self.key, self.parent.class_.__name__))
             sessionlib.attribute_manager.register_attribute(self.parent.class_, self.key, uselist=False, copy_function=lambda x: self.columns[0].type.copy_value(x), compare_function=lambda x,y:self.columns[0].type.compare_values(x,y), mutable_scalars=self.columns[0].type.is_mutable())
-    def execute(self, session, instance, row, identitykey, imap, isnew):
+    def execute(self, selectcontext, instance, row, identitykey, isnew):
         if isnew:
             self.logger.debug("populating %s with %s/%s" % (mapperutil.attribute_str(instance, self.key), row.__class__.__name__, self.columns[0].key))
             # set a scalar object instance directly on the object, 
@@ -112,9 +112,9 @@ class DeferredColumnProperty(ColumnProperty):
                 return session.scalar(self.localparent, sql.select([self.columns[0]], clause, use_labels=True),None)
 
         return lazyload
-    def setup(self, key, statement, **options):
+    def setup(self, statement, **options):
         pass
-    def execute(self, session, instance, row, identitykey, imap, isnew):
+    def execute(self, selectcontext, instance, row, identitykey, isnew):
         if isnew:
             if not self.is_primary():
                 sessionlib.attribute_manager.init_instance_attribute(instance, self.key, False, callable_=self.setup_loader(instance))
@@ -348,7 +348,7 @@ class PropertyLoader(mapper.MapperProperty):
         else:
             return self.primaryjoin
 
-    def execute(self, session, instance, row, identitykey, imap, isnew):
+    def execute(self, selectcontext, instance, row, identitykey, isnew):
         if self.is_primary():
             return
         #print "PLAIN PROPLOADER EXEC NON-PRIAMRY", repr(id(self)), repr(self.mapper.class_), self.key
@@ -437,7 +437,7 @@ class LazyLoader(PropertyLoader):
                     return None
         return lazyload
         
-    def execute(self, session, instance, row, identitykey, imap, isnew):
+    def execute(self, selectcontext, instance, row, identitykey, isnew):
         if isnew:
             # new object instance being loaded from a result row
             if not self.is_primary():
@@ -577,7 +577,7 @@ class EagerLoader(LazyLoader):
                 orderby[i].accept_visitor(self.aliasizer)
         return orderby
         
-    def setup(self, key, statement, eagertable=None, **options):
+    def setup(self, statement, eagertable=None, **options):
         """add a left outer join to the statement thats being constructed"""
 
         # initialize the "eager" chain of EagerLoader objects
@@ -618,11 +618,10 @@ class EagerLoader(LazyLoader):
             self._aliasize_orderby(statement.order_by_clause, False)
                 
         statement.append_from(statement._outerjoin)
-        for key, value in self.eagermapper.props.iteritems():
-            value.setup(key, statement, eagertable=self.eagertarget)
+        for value in self.eagermapper.props.values():
+            value.setup(statement, eagertable=self.eagertarget)
             
-        
-    def execute(self, session, instance, row, identitykey, imap, isnew):
+    def execute(self, selectcontext, instance, row, identitykey, isnew):
         """receive a row.  tell our mapper to look for a new object instance in the row, and attach
         it to a list on the parent instance."""
         
@@ -633,7 +632,7 @@ class EagerLoader(LazyLoader):
         except KeyError:
             # else degrade to a lazy loader
             self.logger.debug("degrade to lazy loader on %s" % mapperutil.attribute_str(instance, self.key))
-            LazyLoader.execute(self, session, instance, row, identitykey, imap, isnew)
+            LazyLoader.execute(self, selectcontext, instance, row, identitykey, isnew)
             return
                 
             
@@ -642,11 +641,11 @@ class EagerLoader(LazyLoader):
             if isnew:
                 # set a scalar object instance directly on the parent object, 
                 # bypassing SmartProperty event handlers.
-                instance.__dict__[self.key] = self.eagermapper._instance(session, decorated_row, imap, None)
+                instance.__dict__[self.key] = self.eagermapper._instance(selectcontext, decorated_row, None)
             else:
                 # call _instance on the row, even though the object has been created,
                 # so that we further descend into properties
-                self.eagermapper._instance(session, decorated_row, imap, None)
+                self.eagermapper._instance(selectcontext, decorated_row, None)
         else:
             if isnew:
                 self.logger.debug("initialize UniqueAppender on %s" % mapperutil.attribute_str(instance, self.key))
@@ -657,10 +656,10 @@ class EagerLoader(LazyLoader):
                 appender = util.UniqueAppender(l.data)
                 
                 # store it in the "scratch" area, which is local to this load operation.
-                imap['_scratch'][(instance, self.key)] = appender
-            result_list = imap['_scratch'][(instance, self.key)]
+                selectcontext.attributes[(instance, self.key)] = appender
+            result_list = selectcontext.attributes[(instance, self.key)]
             self.logger.debug("eagerload list instance on %s" % mapperutil.attribute_str(instance, self.key))
-            self.eagermapper._instance(session, decorated_row, imap, result_list)
+            self.eagermapper._instance(selectcontext, decorated_row, result_list)
 
     def _create_decorator_row(self):
         class EagerRowAdapter(object):

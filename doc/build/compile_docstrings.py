@@ -25,7 +25,7 @@ make_doc(obj=sql, classes=[sql.Engine, sql.AbstractDialect, sql.ClauseParameters
 make_doc(obj=schema)
 make_doc(obj=engine, classes=[engine.Connectable, engine.ComposedSQLEngine, engine.Connection, engine.Transaction, engine.Dialect, engine.ConnectionProvider, engine.ExecutionContext, engine.ResultProxy, engine.RowProxy])
 make_doc(obj=strategies)
-make_doc(obj=orm, classes=[orm.Mapper, orm.MapperExtension])
+make_doc(obj=orm, classes=[orm.Mapper, orm.MapperExtension, orm.SelectionContext])
 make_doc(obj=orm.query, classes=[orm.query.Query])
 make_doc(obj=orm.session, classes=[orm.session.Session, orm.session.SessionTransaction])
 make_doc(obj=pool, classes=[pool.DBProxy, pool.Pool, pool.QueuePool, pool.SingletonThreadPool])
