@@ -40,8 +40,10 @@ def default_logging():
         handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s %(message)s'))
         rootlogger.addHandler(handler)
 
-def _get_instance_name(instance):                    
-    return instance.__class__.__module__ + "." + instance.__class__.__name__ + "." + hex(id(instance))
+def _get_instance_name(instance):
+    # since getLogger() does not have any way of removing logger objects from memory,
+    # instance logging displays the instance id as a modulus of 10 to prevent endless memory growth
+    return instance.__class__.__module__ + "." + instance.__class__.__name__ + ".0x.." + hex(id(instance))[-2:]
     
 def instance_logger(instance):
     return logging.getLogger(_get_instance_name(instance))
