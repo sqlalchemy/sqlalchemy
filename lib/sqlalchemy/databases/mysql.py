@@ -327,7 +327,9 @@ class MySQLDialect(ansisql.ANSIDialect):
             if not found_table:
                 found_table = True
 
-            (name, type, nullable, primary_key, default) = (row[0], row[1], row[2] == 'YES', row[3] == 'PRI', row[4])
+            # there is a configuration in ticket:318 where everything is coming back as unicode,
+            # not sure of the reason as of yet
+            (name, type, nullable, primary_key, default) = (str(row[0]), str(row[1]), row[2] == 'YES', row[3] == 'PRI', row[4])
             
             match = re.match(r'(\w+)(\(.*?\))?\s*(\w+)?\s*(\w+)?', type)
             col_type = match.group(1)
