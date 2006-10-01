@@ -327,8 +327,7 @@ class MySQLDialect(ansisql.ANSIDialect):
             if not found_table:
                 found_table = True
 
-            # there is a configuration in ticket:318 where everything is coming back as unicode,
-            # not sure of the reason as of yet
+            # these can come back as unicode if use_unicode=1 in the mysql connection
             (name, type, nullable, primary_key, default) = (str(row[0]), str(row[1]), row[2] == 'YES', row[3] == 'PRI', row[4])
             
             match = re.match(r'(\w+)(\(.*?\))?\s*(\w+)?\s*(\w+)?', type)
@@ -379,6 +378,8 @@ class MySQLDialect(ansisql.ANSIDialect):
         """
         c = connection.execute("SHOW CREATE TABLE " + table.name, {})
         desc_fetched = c.fetchone()[1]
+
+        # this can come back as unicode if use_unicode=1 in the mysql connection
         if type(desc_fetched) is unicode:
             desc_fetched = str(desc_fetched)
         elif type(desc_fetched) is not str:
