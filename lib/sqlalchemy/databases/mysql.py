@@ -377,7 +377,9 @@ class MySQLDialect(ansisql.ANSIDialect):
         """
         c = connection.execute("SHOW CREATE TABLE " + table.name, {})
         desc_fetched = c.fetchone()[1]
-        if type(desc_fetched) is not str:
+        if type(desc_fetched) is unicode:
+            desc_fetched = str(desc_fetched)
+        elif type(desc_fetched) is not str:
             # may get array.array object here, depending on version (such as mysql 4.1.14 vs. 4.1.11)
             desc_fetched = desc_fetched.tostring()
         desc = desc_fetched.strip()
