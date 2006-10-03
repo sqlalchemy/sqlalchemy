@@ -182,6 +182,8 @@ class BinaryTest(AssertMixin):
         binary_table.create()
     def tearDownAll(self):
         binary_table.drop()
+
+    @testbase.unsupported('oracle')
     def testbinary(self):
         testobj1 = pickleable.Foo('im foo 1')
         testobj2 = pickleable.Foo('im foo 2')
@@ -211,34 +213,58 @@ class DateTest(AssertMixin):
     def setUpAll(self):
         global users_with_date, insert_data
 
-        insert_data =  [
+        if db.engine.name == 'oracle':
+                oracle_subsecond = False
+                if oracle_subsecond:
+                        import sqlalchemy.databases.oracle as oracle
+                        insert_data =  [
+                                [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.date(2005,11,10), datetime.datetime(2005, 11, 10, 0, 0, 0, 29384)],
+                                [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.date(2005,10,10), datetime.datetime(2006, 5, 10, 15, 32, 47, 6754)],
+                                [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35, 54839), datetime.date(1970,4,1), datetime.datetime(2004, 9, 18, 4, 0, 52, 1043)],
+                                [10, 'colber', None, None, None]
+                        ]
+
+                        fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
+
+                        collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime),
+                   Column('user_date', Date), Column('user_time', oracle.OracleTimestamp)]
+                else:
+                        insert_data =  [
+                                [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.datetime(2005, 11, 10, 0, 0, 0)],
+                                [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.datetime(2006, 5, 10, 15, 32, 47)],
+                                [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.datetime(2004, 9, 18, 4, 0, 52)],
+                                [10, 'colber', None, None]
+                        ]
+
+                        fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
+
+                        collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime),
+                   Column('user_date', DateTime)]
+        elif db.engine.name == 'mysql' or db.engine.name == 'mssql':
+                insert_data =  [
+                        [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.date(2005,11,10), datetime.time(12,20,2)],
+                        [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.date(2005,10,10), datetime.time(0,0,0)],
+                        [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.date(1970,4,1), datetime.time(23,59,59,999)],
+                        [10, 'colber', None, None, None]
+                ]
+
+                fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
+
+                collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime(timezone=False)),
+                   Column('user_date', Date), Column('user_time', Time)]
+        else:
+                insert_data =  [
                         [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.date(2005,11,10), datetime.time(12,20,2)],
                         [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.date(2005,10,10), datetime.time(0,0,0)],
                         [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35, 54839), datetime.date(1970,4,1), datetime.time(23,59,59,999)],
                         [10, 'colber', None, None, None]
-        ]
+                ]
 
-        fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
+                fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
 
-        collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime(timezone=False)),
-                   Column('user_date', Date), Column('user_time', Time)]
-        
-        if db.engine.name == 'mysql' or db.engine.name == 'mssql':
-            # strip microseconds -- not supported by this engine (should be an easier way to detect this)
-            for d in insert_data:
-                if d[2] is not None:
-                    d[2] = d[2].replace(microsecond=0)
-                if d[4] is not None:
-                    d[4] = d[4].replace(microsecond=0)
-        
-        try:
-            db.type_descriptor(types.TIME).get_col_spec()
-        except:
-            # don't test TIME type -- not supported by this engine
-            insert_data = [d[:-1] for d in insert_data]
-            fnames = fnames[:-1]
-            collist = collist[:-1]
-
+                collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime(timezone=False)),
+                           Column('user_date', Date), Column('user_time', Time)]
+ 
         users_with_date = Table('query_users_with_date', db, redefine = True, *collist)
         users_with_date.create()
         insert_dicts = [dict(zip(fnames, d)) for d in insert_data]
@@ -270,6 +296,7 @@ class TimezoneTest(AssertMixin):
     if postgres returns it.  python then will not let you compare a datetime with a tzinfo to a datetime
     that doesnt have one.  this test illustrates two ways to have datetime types with and without timezone
     info. """
+    @testbase.supported('postgres')
     def setUpAll(self):
         global tztable, notztable, metadata
         metadata = BoundMetaData(testbase.db)
@@ -286,6 +313,7 @@ class TimezoneTest(AssertMixin):
             Column("name", String(20)),
         )
         metadata.create_all()
+    @testbase.supported('postgres')
     def tearDownAll(self):
         metadata.drop_all()
     

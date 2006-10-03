@@ -132,10 +132,11 @@ def descriptor():
 class OracleExecutionContext(default.DefaultExecutionContext):
     def pre_exec(self, engine, proxy, compiled, parameters):
         super(OracleExecutionContext, self).pre_exec(engine, proxy, compiled, parameters)
-        #self.set_input_sizes(proxy(), parameters)
+        if self.dialect.auto_setinputsizes:
+                self.set_input_sizes(proxy(), parameters)
         
 class OracleDialect(ansisql.ANSIDialect):
-    def __init__(self, use_ansi=True, module=None, threaded=True, **kwargs):
+    def __init__(self, use_ansi=True, auto_setinputsizes=False, module=None, threaded=True, **kwargs):
         self.use_ansi = use_ansi
         self.threaded = threaded
         if module is None:
@@ -143,6 +144,7 @@ class OracleDialect(ansisql.ANSIDialect):
         else:
             self.module = module
         self.supports_timestamp = hasattr(self.module, 'TIMESTAMP' )
+        self.auto_setinputsizes = auto_setinputsizes
         ansisql.ANSIDialect.__init__(self, **kwargs)
 
     def dbapi(self):

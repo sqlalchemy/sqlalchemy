@@ -174,14 +174,14 @@ class DefaultExecutionContext(base.ExecutionContext):
             plist = [parameters]
         if self.dialect.positional:
             inputsizes = []
-            for params in plist[0]:
+            for params in plist[0:1]:
                 for key in params.positional:
                     typeengine = params.binds[key].type
                     inputsizes.append(typeengine.get_dbapi_type(self.dialect.module))
             cursor.setinputsizes(*inputsizes)
         else:
             inputsizes = {}
-            for params in plist[0]:
+            for params in plist[0:1]:
                 for key in params.keys():
                     typeengine = params.binds[key].type
                     inputsizes[key] = typeengine.get_dbapi_type(self.dialect.module)
