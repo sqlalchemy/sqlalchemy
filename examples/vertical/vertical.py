@@ -50,9 +50,6 @@ class Entity(object):
     method is overridden to set all non "_" attributes as EntityValues within the 
     _entities dictionary. """
 
-    # establish the type of '_entities' 
-    _entities = EntityDict
-    
     def __getattr__(self, key):
         """getattr proxies requests for attributes which dont 'exist' on the object
         to the underying _entities dictionary."""
@@ -125,7 +122,7 @@ mapper(
 )
 
 mapper(Entity, entities, properties = {
-    '_entities' : relation(EntityValue, lazy=False, cascade='save-update')
+    '_entities' : relation(EntityValue, lazy=False, cascade='save-update', collection_class=EntityDict)
 })
 
 # create two entities.  the objects can be used about as regularly as

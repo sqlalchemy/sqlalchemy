@@ -675,6 +675,7 @@ class AttributeManager(object):
         the callable will only be executed if the given 'passive' flag is False.
         """
         attr = getattr(obj.__class__, key)
+        print "ATTR IS A", attr, "OBJ IS A", obj
         x = attr.get(obj, passive=passive)
         if x is InstrumentedAttribute.PASSIVE_NORESULT:
             return []
@@ -740,8 +741,10 @@ class AttributeManager(object):
                     self.__sa_attr_state = {}
                     return self.__sa_attr_state
             class_._state = property(_get_state)
-            
-        typecallable = getattr(class_, key, None)
+        
+        typecallable = kwargs.pop('typecallable', None)
+        if typecallable is None:
+            typecallable = getattr(class_, key, None)
         if isinstance(typecallable, InstrumentedAttribute):
             typecallable = None
         setattr(class_, key, self.create_prop(class_, key, uselist, callable_, typecallable=typecallable, **kwargs))

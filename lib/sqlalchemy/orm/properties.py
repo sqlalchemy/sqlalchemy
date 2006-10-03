@@ -47,7 +47,7 @@ mapper.ColumnProperty = ColumnProperty
 class PropertyLoader(StrategizedProperty):
     """describes an object property that holds a single item or list of items that correspond
     to a related database table."""
-    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, association=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False, cascade=None, viewonly=False, lazy=True):
+    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, association=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False, cascade=None, viewonly=False, lazy=True, collection_class=None):
         self.uselist = uselist
         self.argument = argument
         self.secondary = secondary
@@ -58,6 +58,7 @@ class PropertyLoader(StrategizedProperty):
         self.viewonly = viewonly
         self.lazy = lazy
         self.foreignkey = util.to_set(foreignkey)
+        self.collection_class = collection_class
             
         if cascade is not None:
             self.cascade = mapperutil.CascadeOptions(cascade)

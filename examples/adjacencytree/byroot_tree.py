@@ -46,7 +46,6 @@ class TreeNode(object):
     identifiable root.  Any node can return its root node and therefore the "tree" that it 
     belongs to, and entire trees can be selected from the database in one query, by 
     identifying their common root ID."""
-    children = NodeList
     
     def __init__(self, name):
         """for data integrity, a TreeNode requires its name to be passed as a parameter
@@ -118,6 +117,9 @@ print "\n\n\n----------------------------"
 print "Creating Tree Table:"
 print "----------------------------"
 
+import logging
+logging.getLogger('sqlalchemy.orm').setLevel(logging.DEBUG)
+
 metadata.create_all()
 
 # the mapper is created with properties that specify "lazy=None" - this is because we are going 
@@ -128,10 +130,11 @@ mapper(TreeNode, trees, properties=dict(
     parent_id=trees.c.parent_node_id,
     root_id=trees.c.root_node_id,
     root=relation(TreeNode, primaryjoin=trees.c.root_node_id==trees.c.node_id, foreignkey=trees.c.node_id, lazy=None, uselist=False),
-    children=relation(TreeNode, primaryjoin=trees.c.parent_node_id==trees.c.node_id, lazy=None, uselist=True, cascade="delete,save-update"),
+    children=relation(TreeNode, primaryjoin=trees.c.parent_node_id==trees.c.node_id, lazy=None, uselist=True, cascade="delete,save-update", collection_class=NodeList),
     data=relation(mapper(TreeData, treedata, properties=dict(id=treedata.c.data_id)), cascade="delete,delete-orphan,save-update", lazy=False)
     
-), extension = TreeLoader())
+), extension = TreeLoader()).compile()
+
 
 session = create_session()
 

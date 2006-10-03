@@ -105,7 +105,7 @@ The `synonym` keyword is currently an [Alpha Feature][alpha_api].
 
 Feature Status: [Alpha API][alpha_api] 
 
-A one-to-many or many-to-many relationship results in a list-holding element being attached to all instances of a class.  Currently, this list is an instance of `sqlalchemy.util.HistoryArraySet`, is a `UserDict` instance that *decorates* an underlying list object.  The implementation of this list can be controlled, and can in fact be any object that implements a `list`-style `append` and `__iter__` method.  A common need is for a list-based relationship to actually be a dictionary.  This can be achieved by subclassing `dict` to have `list`-like behavior.
+A one-to-many or many-to-many relationship results in a list-holding element being attached to all instances of a class.  The actual list is an "instrumented" list, which transparently maintains a relationship to a plain Python list.  The implementation of the underlying plain list can be changed to be any object that implements a `list`-style `append` and `__iter__` method.  A common need is for a list-based relationship to actually be a dictionary.  This can be achieved by subclassing `dict` to have `list`-like behavior.
 
 In this example, a class `MyClass` is defined, which is associated with a parent object `MyParent`.  The collection of `MyClass` objects on each `MyParent` object will be a dictionary, storing each `MyClass` instance keyed to its `name` attribute.
 
@@ -125,14 +125,12 @@ In this example, a class `MyClass` is defined, which is associated with a parent
 
     # parent class
     class MyParent(object):
-        # this class-level attribute provides the class to be
-        # used by the 'myclasses' attribute
-        myclasses = MyDict
+        pass
     
     # mappers, constructed normally
     mapper(MyClass, myclass_table)
     mapper(MyParent, myparent_table, properties={
-        'myclasses' : relation(MyClass)
+        'myclasses' : relation(MyClass, collection_class=MyDict)
     })
     
     # elements on 'myclasses' can be accessed via string keyname
@@ -256,6 +254,7 @@ Keyword options to the `relation` function include:
 * association - When specifying a many to many relationship with an association object, this keyword should reference the mapper or class of the target object of the association.  See the example in [datamapping_association](rel:datamapping_association).
 * post_update - this indicates that the relationship should be handled by a second UPDATE statement after an INSERT, or before a DELETE.  using this flag essentially means the relationship will not incur any "dependency" between parent and child item, as the particular foreign key relationship between them is handled by a second statement.  use this flag when a particular mapping arrangement will incur two rows that are dependent on each other, such as a table that has a one-to-many relationship to a set of child rows, and also has a column that references a single child row within that list (i.e. both tables contain a foreign key to each other).  If a flush() operation returns an error that a "cyclical dependency" was detected, this is a cue that you might want to use post_update.
 * viewonly=(True|False) - when set to True, the relation is used only for loading objects within the relationship, and has no effect on the unit-of-work flush process.  relations with viewonly can specify any kind of join conditions to provide additional views of related objects onto a parent object.
+* collection_class = None - a class or function that returns a new list-holding object.  will be used in place of a plain list for storing elements.
 
 ### Controlling Ordering {@name=orderby}
 
@@ -336,35 +335,6 @@ However, things get tricky when dealing with eager relationships, since a straig
     
 The main WHERE clause as well as the limiting clauses are coerced into a subquery; this subquery represents the desired result of objects.  A containing query, which handles the eager relationships, is joined against the subquery to produce the result.
 
-### More on Mapper Options {@name=options}
-
-The `options` method on the `Query` object, first introduced in [datamapping_relations_options](rel:datamapping_relations_options), produces a new `Query` object by creating a copy of the underlying `Mapper` and placing modified properties on it.  The `options` method is also directly available off the `Mapper` object itself, so that the newly copied `Mapper` can be dealt with directly.  The `options` method takes a variable number of `MapperOption` objects which know how to change specific things about the mapper.  The five available options are `eagerload`, `lazyload`, `noload`, `deferred` and `extension`.
-
-An example of a mapper with a lazy load relationship, upgraded to an eager load relationship:
-
-    {python}
-    class User(object):
-        pass
-    class Address(object):
-        pass
-    
-    # a 'lazy' relationship
-    mapper(User, users_table, properties = {
-        'addresses':relation(mapper(Address, addresses_table), lazy=True)
-    })
-
-    # copy the mapper and convert 'addresses' to be eager
-    eagermapper = class_mapper(User).options(eagerload('addresses'))
-
-The `defer` and `undefer` options can control the deferred loading of attributes:
-
-    {python}
-    # set the 'excerpt' deferred attribute to load normally
-    m = book_mapper.options(undefer('excerpt'))
-
-    # set the referenced mapper 'photos' to defer its loading of the column 'imagedata'
-    m = book_mapper.options(defer('photos.imagedata'))
-    
 ### Mapping a Class with Table Inheritance {@name=inheritance}
 
 Feature Status: [Alpha Implementation][alpha_implementation] 
@@ -743,77 +713,90 @@ Mappers can have functionality augmented or replaced at many points in its execu
 
     {python}
     class MapperExtension(object):
+        """base implementation for an object that provides overriding behavior to various
+        Mapper functions.  For each method in MapperExtension, a result of EXT_PASS indicates
+        the functionality is not overridden."""
+        def get_session(self):
+            """called to retrieve a contextual Session instance with which to
+            register a new object. Note: this is not called if a session is 
+            provided with the __init__ params (i.e. _sa_session)"""
+            return EXT_PASS
         def select_by(self, query, *args, **kwargs):
             """overrides the select_by method of the Query object"""
+            return EXT_PASS
         def select(self, query, *args, **kwargs):
             """overrides the select method of the Query object"""
-        def create_instance(self, mapper, session, row, imap, class_):
+            return EXT_PASS
+        def create_instance(self, mapper, selectcontext, row, class_):
             """called when a new object instance is about to be created from a row.  
             the method can choose to create the instance itself, or it can return 
             None to indicate normal object creation should take place.
 
             mapper - the mapper doing the operation
 
-            row - the result row from the database
+            selectcontext - SelectionContext corresponding to the instances() call
 
-            imap - a dictionary that is storing the running set of objects collected from the
-            current result set
+            row - the result row from the database
 
             class_ - the class we are mapping.
             """
-        def append_result(self, mapper, session, row, imap, result, instance, isnew, populate_existing=False):
+            return EXT_PASS
+        def append_result(self, mapper, selectcontext, row, instance, identitykey, result, isnew):
             """called when an object instance is being appended to a result list.
 
-            If this method returns True, it is assumed that the mapper should do the appending, else
-            if this method returns False, it is assumed that the append was handled by this method.
+            If this method returns EXT_PASS, it is assumed that the mapper should do the appending, else
+            if this method returns any other value or None, it is assumed that the append was handled by this method.
 
             mapper - the mapper doing the operation
 
+            selectcontext - SelectionContext corresponding to the instances() call
+
             row - the result row from the database
 
-            imap - a dictionary that is storing the running set of objects collected from the
-            current result set
-
-            result - an instance of util.HistoryArraySet(), which may be an attribute on an
-            object if this is a related object load (lazy or eager).  use result.append_nohistory(value)
-            to append objects to this list.
-
             instance - the object instance to be appended to the result
+
+            identitykey - the identity key of the instance
+
+            result - list to which results are being appended
 
             isnew - indicates if this is the first time we have seen this object instance in the current result
             set.  if you are selecting from a join, such as an eager load, you might see the same object instance
             many times in the same result set.
-
-            populate_existing - usually False, indicates if object instances that were already in the main 
-            identity map, i.e. were loaded by a previous select(), get their attributes overwritten
             """
-        def populate_instance(self, mapper, session, instance, row, identitykey, imap, isnew):
+            return EXT_PASS
+        def populate_instance(self, mapper, selectcontext, row, instance, identitykey, isnew):
             """called right before the mapper, after creating an instance from a row, passes the row
             to its MapperProperty objects which are responsible for populating the object's attributes.
-            If this method returns True, it is assumed that the mapper should do the appending, else
-            if this method returns False, it is assumed that the append was handled by this method.
+            If this method returns EXT_PASS, it is assumed that the mapper should do the appending, else
+            if this method returns any other value or None, it is assumed that the append was handled by this method.
 
             Essentially, this method is used to have a different mapper populate the object:
 
-                def populate_instance(self, mapper, session, instance, row, identitykey, imap, isnew):
-                    othermapper.populate_instance(session, instance, row, identitykey, imap, isnew, frommapper=mapper)
+                def populate_instance(self, mapper, selectcontext, instance, row, identitykey, isnew):
+                    othermapper.populate_instance(selectcontext, instance, row, identitykey, isnew, frommapper=mapper)
                     return True
             """
+            return EXT_PASS
         def before_insert(self, mapper, connection, instance):
             """called before an object instance is INSERTed into its table.
 
             this is a good place to set up primary key values and such that arent handled otherwise."""
+            return EXT_PASS
         def before_update(self, mapper, connection, instance):
             """called before an object instnace is UPDATED"""
+            return EXT_PASS
         def after_update(self, mapper, connection, instance):
             """called after an object instnace is UPDATED"""
+            return EXT_PASS
         def after_insert(self, mapper, connection, instance):
             """called after an object instance has been INSERTed"""
+            return EXT_PASS
         def before_delete(self, mapper, connection, instance):
             """called before an object instance is DELETEed"""
+            return EXT_PASS
         def after_delete(self, mapper, connection, instance):
             """called after an object instance is DELETEed"""
-        
+            return EXT_PASS        
 To use MapperExtension, make your own subclass of it and just send it off to a mapper:
 
     {python}

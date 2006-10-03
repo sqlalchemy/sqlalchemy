@@ -94,6 +94,9 @@
     identity key and convert the INSERT/DELETE to a single UPDATE
     - "association" mappings simplified to take advantage of 
     automatic "row switch" feature
+    - "custom list classes" is now implemented via the "collection_class"
+    keyword argument to relation().  the old way still works but is
+    deprecated [ticket:212]
     - added "viewonly" flag to relation(), allows construction of
     relations that have no effect on the flush() process.
     - added "lockmode" argument to base Query select/get functions, 

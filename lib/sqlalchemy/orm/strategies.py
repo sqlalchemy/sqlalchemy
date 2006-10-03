@@ -133,9 +133,11 @@ class AbstractRelationLoader(LoaderStrategy):
         
     def _register_attribute(self, class_, callable_=None):
         self.logger.info("register managed %s attribute %s on class %s" % ((self.uselist and "list-holding" or "scalar"), self.key, self.parent.class_.__name__))
-        sessionlib.attribute_manager.register_attribute(class_, self.key, uselist = self.uselist, extension=self.attributeext, cascade=self.cascade,  trackparent=True, callable_=callable_)
+        sessionlib.attribute_manager.register_attribute(class_, self.key, uselist = self.uselist, extension=self.attributeext, cascade=self.cascade,  trackparent=True, typecallable=self.parent_property.collection_class, callable_=callable_)
 
-class NoLoader(AbstractRelationLoader):        
+class NoLoader(AbstractRelationLoader):
+    def init_class_attribute(self):
+        self.parent_property._get_strategy(LazyLoader).init_class_attribute()
     def process_row(self, selectcontext, instance, row, identitykey, isnew):
         if isnew:
             if not self.is_default or len(selectcontext.options):
