@@ -17,7 +17,7 @@ import properties, strategies
 from session import Session as create_session
 
 __all__ = ['relation', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer',
-        'mapper', 'clear_mappers', 'sql', 'extension', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query', 
+        'mapper', 'clear_mappers', 'sql', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query', 
         'cascade_mappers', 'polymorphic_union', 'create_session', 'synonym', 'EXT_PASS'
         ]
 
@@ -58,11 +58,6 @@ def clear_mapper(m):
     new primary mapper."""
     del mapper_registry[m.hash_key]
 
-def extension(ext):
-    """returns a MapperOption that will add the given MapperExtension to the 
-    mapper returned by mapper.options()."""
-    return ExtensionOption(ext)
-    
 def eagerload(name):
     """returns a MapperOption that will convert the property of the given name
     into an eager load."""

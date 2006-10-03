@@ -33,6 +33,11 @@ class AbstractType(object):
         return x is y
     def is_mutable(self):
         return False
+    def get_dbapi_type(self, dbapi):
+        """return the corresponding type object from the underlying DBAPI, if any.
+        
+        this can be useful for calling setinputsizes(), for example."""
+        return None
             
 class TypeEngine(AbstractType):
     def __init__(self, *args, **params):
@@ -91,6 +96,8 @@ class TypeDecorator(AbstractType):
         instance = self.__class__.__new__(self.__class__)
         instance.__dict__.update(self.__dict__)
         return instance
+    def get_dbapi_type(self, dbapi):
+        return self.impl.get_dbapi_type(dbapi)
 
 class MutableType(object):
     """a mixin that marks a Type as holding a mutable object"""
@@ -158,7 +165,9 @@ class String(TypeEngine):
             return value
         else:
             return value.decode(dialect.encoding)
-            
+    def get_dbapi_type(self, dbapi):
+        return dbapi.STRING
+        
 class Unicode(TypeDecorator):
     impl = String
     def convert_bind_param(self, value, dialect):
@@ -174,8 +183,9 @@ class Unicode(TypeDecorator):
         
 class Integer(TypeEngine):
     """integer datatype"""
-    pass
-    
+    def get_dbapi_type(self, dbapi):
+        return dbapi.NUMBER
+        
 class SmallInteger(Integer):
     """ smallint datatype """
     pass
@@ -187,6 +197,8 @@ class Numeric(TypeEngine):
         self.length = length
     def adapt(self, impltype):
         return impltype(precision=self.precision, length=self.length)
+    def get_dbapi_type(self, dbapi):
+        return dbapi.NUMBER
 
 class Float(Numeric):
     def __init__(self, precision = 10):
@@ -200,10 +212,13 @@ class DateTime(TypeEngine):
         self.timezone = timezone
     def adapt(self, impltype):
         return impltype(timezone=self.timezone)
+    def get_dbapi_type(self, dbapi):
+        return dbapi.DATETIME
         
 class Date(TypeEngine):
     """implements a type for datetime.date() objects"""
-    pass
+    def get_dbapi_type(self, dbapi):
+        return dbapi.DATETIME
 
 class Time(TypeEngine):
     """implements a type for datetime.time() objects"""
@@ -211,6 +226,8 @@ class Time(TypeEngine):
         self.timezone = timezone
     def adapt(self, impltype):
         return impltype(timezone=self.timezone)
+    def get_dbapi_type(self, dbapi):
+        return dbapi.DATETIME
 
 class Binary(TypeEngine):
     def __init__(self, length=None):
@@ -224,6 +241,8 @@ class Binary(TypeEngine):
         return value
     def adapt(self, impltype):
         return impltype(length=self.length)
+    def get_dbapi_type(self, dbapi):
+        return dbapi.BINARY
 
 class PickleType(MutableType, TypeDecorator):
     impl = Binary

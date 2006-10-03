@@ -38,6 +38,13 @@ class OracleDateTime(sqltypes.DateTime):
 # Oracle does not allow milliseconds in DATE
 # Oracle does not support TIME columns
 
+# only if cx_oracle contains TIMESTAMP
+class OracleTimestamp(sqltypes.DateTime):
+    def get_col_spec(self):
+        return "TIMESTAMP"
+    def get_dbapi_type(self, dialect):
+        return dialect.TIMESTAMP
+        
 class OracleText(sqltypes.TEXT):
     def get_col_spec(self):
         return "CLOB"
@@ -79,9 +86,9 @@ colspecs = {
     sqltypes.Binary : OracleBinary,
     sqltypes.Boolean : OracleBoolean,
     sqltypes.TEXT : OracleText,
+    sqltypes.TIMESTAMP : OracleTimestamp,
     sqltypes.CHAR: OracleChar,
 }
-
 
 ischema_names = {
     'VARCHAR2' : OracleString,
@@ -89,7 +96,8 @@ ischema_names = {
     'DATETIME' : OracleDateTime,
     'NUMBER' : OracleNumeric,
     'BLOB' : OracleBinary,
-    'CLOB' : OracleText
+    'CLOB' : OracleText,
+    'TIMESTAMP' : OracleTimestamp
 }
 
 constraintSQL = """SELECT
@@ -122,8 +130,10 @@ def descriptor():
     ]}
 
 class OracleExecutionContext(default.DefaultExecutionContext):
-    pass
-    
+    def pre_exec(self, engine, proxy, compiled, parameters):
+        super(OracleExecutionContext).pre_exec(engine, proxy, compiled, parameters)
+        #self.set_input_sizes(proxy(), parameters)
+        
 class OracleDialect(ansisql.ANSIDialect):
     def __init__(self, use_ansi=True, module=None, threaded=True, **kwargs):
         self.use_ansi = use_ansi
@@ -132,6 +142,7 @@ class OracleDialect(ansisql.ANSIDialect):
             self.module = cx_Oracle
         else:
             self.module = module
+        self.supports_timestamp = hasattr(self.module, 'TIMESTAMP' )
         ansisql.ANSIDialect.__init__(self, **kwargs)
 
     def dbapi(self):
