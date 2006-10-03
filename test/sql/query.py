@@ -188,6 +188,26 @@ class QueryTest(PersistTest):
         r = db.execute('select user_name from query_users', {}).fetchone()
         self.assertEqual(len(r), 1)
         r.close()
+    
+    def test_functions(self):
+        x = testbase.db.func.current_date().execute().scalar()
+        y = testbase.db.func.current_date().select().execute().scalar()
+        z = testbase.db.func.current_date().scalar()
+        assert x == y == z
+
+    @testbase.supported('postgres')
+    def test_functions_with_cols(self):
+        x = testbase.db.func.current_date().execute().scalar()
+        y = testbase.db.func.current_date().select().execute().scalar()
+        z = testbase.db.func.current_date().scalar()
+        w = select(['*'], from_obj=[testbase.db.func.current_date()]).scalar()
+        
+        # construct a column-based FROM object out of a function, like in [ticket:172]
+        s = select([column('date', type=DateTime)], from_obj=[testbase.db.func.current_date()])
+        q = s.execute().fetchone()[s.c.date]
+        r = s.alias('datequery').select().scalar()
+        
+        assert x == y == z == w == q == r
         
     def test_column_order_with_simple_query(self):
         # should return values in column definition order

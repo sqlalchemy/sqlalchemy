@@ -22,6 +22,10 @@
     - now supports multi-column foreign keys
     - fix to reflecting date/datetime columns
     - NCHAR and NVARCHAR type support added
+    - Oracle:
+    - Oracle has experimental support for cx_Oracle.TIMESTAMP, which requires
+    a setinputsizes() call on the cursor that is now enabled via the
+    'auto_setinputsizes' flag to the oracle dialect.  
 - Schema:
     - added autoincrement=True to Column; will disable schema generation
     of SERIAL/AUTO_INCREMENT/identity seq for postgres/mysql/mssql if
@@ -52,6 +56,11 @@
     the appropriate negation operator if one is available.
     - calling a negation on an "IN" or "IS" clause will result in
     "NOT IN", "IS NOT" (as opposed to NOT (x IN y)). 
+    - Function objects know what to do in a FROM clause now.  their
+    behavior should be the same, except now you can also do things like
+    select(['*'], from_obj=[func.my_function()]) to get multiple 
+    columns from the result, or even use sql.column() constructs to name the 
+    return columns [ticket:172]
 - ORM:
     - attribute tracking modified to be more intelligent about detecting
     changes, particularly with mutable types.  TypeEngine objects now
@@ -63,13 +72,13 @@
     objects, but also generalizes type handling and "modified" object
     checking to be more complete and extensible.
     - a wide refactoring to "attribute loader" and "options" architectures.
-    ColumnLoader and PropertyLoader define their loading behaivor via switchable
+    ColumnProperty and PropertyLoader define their loading behaivor via switchable
     "strategies", and MapperOptions no longer use mapper/property copying 
     in order to function; they are instead propigated via QueryContext
     and SelectionContext objects at query/instnaces time.
     All of the copying of mappers and properties that was used to handle
-    inheritance as well as options() has been removed and the structure
-    of mappers and properties is much simpler and clearly laid out.
+    inheritance as well as options() has been removed; the structure
+    of mappers and properties is simpler than before and clearly laid out.
     - related to the mapper/property overhaul, internal refactoring to 
     mapper instances() method to use a SelectionContext object to track 
     state during the operation.

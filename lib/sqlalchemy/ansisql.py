@@ -239,8 +239,10 @@ class ANSICompiler(sql.Compiled):
             self.typemap.setdefault(func.name, func.type)
         if not self.apply_function_parens(func):
             self.strings[func] = ".".join(func.packagenames + [func.name])
+            self.froms[func] = self.strings[func]
         else:
             self.strings[func] = ".".join(func.packagenames + [func.name]) + "(" + string.join([self.get_str(c) for c in func.clauses], ', ') + ")"
+            self.froms[func] = self.strings[func]
         
     def visit_compound_select(self, cs):
         text = string.join([self.get_str(c) for c in cs.selects], " " + cs.keyword + " ")

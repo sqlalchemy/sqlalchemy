@@ -928,7 +928,8 @@ class CalculatedClause(ClauseList, ColumnElement):
     def _process_from_dict(self, data, asfrom):
         super(CalculatedClause, self)._process_from_dict(data, asfrom)
         # this helps a Select object get the engine from us
-        data.setdefault(self, self)
+        if asfrom:
+            data.setdefault(self, self)
     def copy_container(self):
         clauses = [clause.copy_container() for clause in self.clauses]
         return CalculatedClause(type=self.type, engine=self._engine, *clauses)
@@ -948,7 +949,7 @@ class CalculatedClause(ClauseList, ColumnElement):
         return self.type
 
                 
-class Function(CalculatedClause):
+class Function(CalculatedClause, FromClause):
     """describes a SQL function. extends CalculatedClause turn the "clauselist" into function
     arguments, also adds a "packagenames" argument"""
     def __init__(self, name, *clauses, **kwargs):
@@ -1567,6 +1568,16 @@ class Select(SelectBaseMixin, FromClause):
             if e is not None: 
                 self._engine = e
                 return e
+        # look through the columns (largely synomous with looking
+        # through the FROMs except in the case of CalculatedClause/Function)
+        for cc in self._raw_columns:
+            for c in cc.columns:
+                if getattr(c, 'table', None) is self:
+                    continue
+                e = c.engine
+                if e is not None:
+                    self._engine = e
+                    return e
         return None
 
 class UpdateBase(ClauseElement):
