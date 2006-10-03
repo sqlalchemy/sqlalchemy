@@ -131,7 +131,7 @@ def descriptor():
 
 class OracleExecutionContext(default.DefaultExecutionContext):
     def pre_exec(self, engine, proxy, compiled, parameters):
-        super(OracleExecutionContext).pre_exec(engine, proxy, compiled, parameters)
+        super(OracleExecutionContext, self).pre_exec(engine, proxy, compiled, parameters)
         #self.set_input_sizes(proxy(), parameters)
         
 class OracleDialect(ansisql.ANSIDialect):
