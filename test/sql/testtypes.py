@@ -214,55 +214,57 @@ class DateTest(AssertMixin):
         global users_with_date, insert_data
 
         if db.engine.name == 'oracle':
-                oracle_subsecond = False
-                if oracle_subsecond:
-                        import sqlalchemy.databases.oracle as oracle
-                        insert_data =  [
-                                [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.date(2005,11,10), datetime.datetime(2005, 11, 10, 0, 0, 0, 29384)],
-                                [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.date(2005,10,10), datetime.datetime(2006, 5, 10, 15, 32, 47, 6754)],
-                                [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35, 54839), datetime.date(1970,4,1), datetime.datetime(2004, 9, 18, 4, 0, 52, 1043)],
-                                [10, 'colber', None, None, None]
-                        ]
-
-                        fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
-
-                        collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime),
-                   Column('user_date', Date), Column('user_time', oracle.OracleTimestamp)]
-                else:
-                        insert_data =  [
-                                [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.datetime(2005, 11, 10, 0, 0, 0)],
-                                [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.datetime(2006, 5, 10, 15, 32, 47)],
-                                [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.datetime(2004, 9, 18, 4, 0, 52)],
-                                [10, 'colber', None, None]
-                        ]
-
-                        fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
-
-                        collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime),
-                   Column('user_date', DateTime)]
-        elif db.engine.name == 'mysql' or db.engine.name == 'mssql':
+            # still trying to get oracle sub-second resolution to work
+            oracle_subsecond = False
+            if oracle_subsecond:
+                import sqlalchemy.databases.oracle as oracle
                 insert_data =  [
-                        [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.date(2005,11,10), datetime.time(12,20,2)],
-                        [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.date(2005,10,10), datetime.time(0,0,0)],
-                        [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.date(1970,4,1), datetime.time(23,59,59,999)],
+                        [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.date(2005,11,10), datetime.datetime(2005, 11, 10, 0, 0, 0, 29384)],
+                        [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.date(2005,10,10), datetime.datetime(2006, 5, 10, 15, 32, 47, 6754)],
+                        [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35, 54839), datetime.date(1970,4,1), datetime.datetime(2004, 9, 18, 4, 0, 52, 1043)],
                         [10, 'colber', None, None, None]
                 ]
 
                 fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
 
-                collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime(timezone=False)),
-                   Column('user_date', Date), Column('user_time', Time)]
+                collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime),
+               Column('user_date', Date), Column('user_time', oracle.OracleTimestamp)]
+            else:
+                insert_data =  [
+                        [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.datetime(2005, 11, 10, 0, 0, 0)],
+                        [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.datetime(2006, 5, 10, 15, 32, 47)],
+                        [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.datetime(2004, 9, 18, 4, 0, 52)],
+                        [10, 'colber', None, None]
+                ]
+
+                fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
+
+                collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime),
+               Column('user_date', DateTime)]
+        elif db.engine.name == 'mysql' or db.engine.name == 'mssql' or db.engine.name == 'sqlite':
+            # these dont really support the TIME type at all
+            insert_data =  [
+                 [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.datetime(2005, 11, 10, 0, 0, 0)],
+                 [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.datetime(2006, 5, 10, 15, 32, 47)],
+                 [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.datetime(2004, 9, 18, 4, 0, 52)],
+                 [10, 'colber', None, None]
+            ]
+
+            fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
+
+            collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime),
+            Column('user_date', DateTime)]
         else:
-                insert_data =  [
-                        [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.date(2005,11,10), datetime.time(12,20,2)],
-                        [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.date(2005,10,10), datetime.time(0,0,0)],
-                        [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35, 54839), datetime.date(1970,4,1), datetime.time(23,59,59,999)],
-                        [10, 'colber', None, None, None]
-                ]
+            insert_data =  [
+                    [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.date(2005,11,10), datetime.time(12,20,2)],
+                    [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.date(2005,10,10), datetime.time(0,0,0)],
+                    [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35, 54839), datetime.date(1970,4,1), datetime.time(23,59,59,999)],
+                    [10, 'colber', None, None, None]
+            ]
 
-                fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
+            fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
 
-                collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime(timezone=False)),
+            collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime(timezone=False)),
                            Column('user_date', Date), Column('user_time', Time)]
  
         users_with_date = Table('query_users_with_date', db, redefine = True, *collist)
