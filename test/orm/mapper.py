@@ -369,6 +369,7 @@ class MapperTest(MapperSuperTest):
         
         # then select just from users.  run it into instances.
         # then assert the data, which will launch 3 more lazy loads
+        # (previous users in session fell out of scope and were removed from session's identity map)
         def go():
             r = users.select().execute()
             l = usermapper.instances(r, sess)
@@ -381,6 +382,7 @@ class MapperTest(MapperSuperTest):
         # users, they will have no addresses or orders.  the number of lazy loads when
         # traversing the whole thing will be three for the addresses and three for the 
         # orders.
+        # (previous users in session fell out of scope and were removed from session's identity map)
         usermapper = mapper(User, users,
             properties = {
                 'addresses':relation(mapper(Address, addresses), lazy=False),
@@ -956,7 +958,17 @@ class EagerTest(MapperSuperTest):
             {'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2, 'email_address':'ed@wood.com'}, {'address_id':3, 'email_address':'ed@bettyboop.com'}, {'address_id':4, 'email_address':'ed@lala.com'}])},
         )
         
-
+    def testcircular(self):
+        """test that a circular eager relationship breaks the cycle with a lazy loader"""
+        m = mapper(User, users, properties = dict(
+            addresses = relation(mapper(Address, addresses), lazy=False, backref=backref('user', lazy=False))
+        ))
+        assert class_mapper(User).props['addresses'].lazy is False
+        assert class_mapper(Address).props['user'].lazy is False
+        session = create_session()
+        l = session.query(User).select()
+        self.assert_result(l, User, *user_address_result)
+        
     def testcompile(self):
         """tests deferred operation of a pre-compiled mapper statement"""
         session = create_session()
@@ -1060,8 +1072,7 @@ class EagerTest(MapperSuperTest):
         m = mapper(Item, items, properties = dict(
                 keywords = relation(mapper(Keyword, keywords), itemkeywords, lazy=True, order_by=[keywords.c.keyword_id]),
             ))
-        m2 = m.options(eagerload('keywords'))
-        q = create_session().query(m2)
+        q = create_session().query(m).options(eagerload('keywords'))
         def go():
             l = q.select()
             self.assert_result(l, Item, *item_keyword_result)

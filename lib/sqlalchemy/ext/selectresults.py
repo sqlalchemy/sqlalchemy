@@ -99,7 +99,7 @@ class SelectResults(object):
         new = self.clone()
         new._ops['from_obj'] = from_obj
         return new
-        
+    
     def join_to(self, prop):
         """join the table of this SelectResults to the table located against the given property name.
         

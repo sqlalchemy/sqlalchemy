@@ -177,7 +177,7 @@ class M2MTest(testbase.AssertMixin):
             )    
 
     def testbidirectional(self):
-        """tests a bi-directional many-to-many relationship."""
+        """tests a many-to-many backrefs"""
         Place.mapper = mapper(Place, place)
         Transition.mapper = mapper(Transition, transition, properties = dict(
             inputs = relation(Place.mapper, place_output, lazy=True, backref='inputs'),
@@ -185,16 +185,6 @@ class M2MTest(testbase.AssertMixin):
             )
         )
 
-        Place.mapper.options()
-        print Place.mapper.props['inputs']
-        print Transition.mapper.props['inputs']
-        return
-        
-        Place.eagermapper = Place.mapper.options(
-            eagerload('inputs', selectalias='ip_alias'), 
-            eagerload('outputs', selectalias='op_alias')
-        )
-        
         t1 = Transition('transition1')
         t2 = Transition('transition2')
         t3 = Transition('transition3')

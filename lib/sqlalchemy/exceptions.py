@@ -50,7 +50,11 @@ class NoSuchTableError(InvalidRequestError):
 class AssertionError(SQLAlchemyError):
     """corresponds to internal state being detected in an invalid state"""
     pass
-    
+
+class NoSuchColumnError(KeyError, SQLAlchemyError):
+    """raised by RowProxy when a nonexistent column is requested from a row"""
+    pass
+        
 class DBAPIError(SQLAlchemyError):
     """something weird happened with a particular DBAPI version"""
     def __init__(self, message, orig):

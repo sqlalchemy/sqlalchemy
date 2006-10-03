@@ -587,7 +587,11 @@ class ResultProxy:
                     try:
                         rec = self.props[key.key.lower()]
                     except KeyError:
-                        rec = self.props[key.name.lower()]
+#                        rec = self.props[key.name.lower()]
+                        try:
+                            rec = self.props[key.name.lower()]
+                        except KeyError:
+                            raise exceptions.NoSuchColumnError("Could not locate column in row for column '%s'" % str(key))
             elif isinstance(key, str):
                 rec = self.props[key.lower()]
             else:
@@ -599,7 +603,7 @@ class ResultProxy:
         try:
             self._convert_key(key)
             return True
-        except KeyError:
+        except exceptions.NoSuchColumnError:
             return False
         
     def _get_col(self, row, key):

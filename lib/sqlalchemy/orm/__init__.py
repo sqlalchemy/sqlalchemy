@@ -13,7 +13,7 @@ from mapper import *
 from mapper import mapper_registry
 from query import Query
 from util import polymorphic_union
-import properties
+import properties, strategies
 from session import Session as create_session
 
 __all__ = ['relation', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer',
@@ -30,12 +30,7 @@ def relation(*args, **kwargs):
     return _relation_loader(*args, **kwargs)
 
 def _relation_loader(mapper, secondary=None, primaryjoin=None, secondaryjoin=None, lazy=True, **kwargs):
-    if lazy:
-        return properties.LazyLoader(mapper, secondary, primaryjoin, secondaryjoin, **kwargs)
-    elif lazy is None:
-        return properties.PropertyLoader(mapper, secondary, primaryjoin, secondaryjoin, **kwargs)
-    else:
-        return properties.EagerLoader(mapper, secondary, primaryjoin, secondaryjoin, **kwargs)
+    return properties.PropertyLoader(mapper, secondary, primaryjoin, secondaryjoin, lazy=lazy, **kwargs)
 
 def backref(name, **kwargs):
     return properties.BackRef(name, **kwargs)
@@ -43,7 +38,7 @@ def backref(name, **kwargs):
 def deferred(*columns, **kwargs):
     """returns a DeferredColumnProperty, which indicates this object attributes should only be loaded 
     from its corresponding table column when first accessed."""
-    return properties.DeferredColumnProperty(*columns, **kwargs)
+    return properties.ColumnProperty(deferred=True, *columns, **kwargs)
     
 def mapper(class_, table=None, *args, **params):
     """returns a newMapper object."""
@@ -67,29 +62,30 @@ def extension(ext):
     """returns a MapperOption that will add the given MapperExtension to the 
     mapper returned by mapper.options()."""
     return ExtensionOption(ext)
-def eagerload(name, **kwargs):
+    
+def eagerload(name):
     """returns a MapperOption that will convert the property of the given name
-    into an eager load.  Used with mapper.options()"""
-    return properties.EagerLazyOption(name, toeager=True, **kwargs)
+    into an eager load."""
+    return strategies.EagerLazyOption(name, lazy=False)
 
-def lazyload(name, **kwargs):
+def lazyload(name):
     """returns a MapperOption that will convert the property of the given name
-    into a lazy load.  Used with mapper.options()"""
-    return properties.EagerLazyOption(name, toeager=False, **kwargs)
+    into a lazy load"""
+    return strategies.EagerLazyOption(name, lazy=True)
 
-def noload(name, **kwargs):
-    """returns a MapperOption that will convert the property of the given name
-    into a non-load.  Used with mapper.options()"""
-    return properties.EagerLazyOption(name, toeager=None, **kwargs)
+def noload(name):
+    """return a MapperOption that will convert the property of the given name
+    into a non-load."""
+    return strategies.EagerLazyOption(name, lazy=None)
 
-def defer(name, **kwargs):
+def defer(name):
     """returns a MapperOption that will convert the column property of the given 
     name into a deferred load.  Used with mapper.options()"""
-    return properties.DeferredOption(name, defer=True)
-def undefer(name, **kwargs):
+    return strategies.DeferredOption(name, defer=True)
+def undefer(name):
     """returns a MapperOption that will convert the column property of the given
     name into a non-deferred (regular column) load.  Used with mapper.options."""
-    return properties.DeferredOption(name, defer=False)
+    return strategies.DeferredOption(name, defer=False)
     
 
 

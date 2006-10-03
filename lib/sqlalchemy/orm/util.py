@@ -55,6 +55,39 @@ def polymorphic_union(table_map, typecolname, aliasname='p_union'):
             result.append(sql.select([col(name, table) for name in colnames], from_obj=[table]))
     return sql.union_all(*result).alias(aliasname)
 
+class TranslatingDict(dict):
+    """a dictionary that stores ColumnElement objects as keys.  incoming ColumnElement
+    keys are translated against those of an underling FromClause for all operations.
+    This way the columns from any Selectable that is derived from or underlying this
+    TranslatingDict's selectable can be used as keys."""
+    def __init__(self, selectable):
+        super(TranslatingDict, self).__init__()
+        self.selectable = selectable
+    def __translate_col(self, col):
+        ourcol = self.selectable.corresponding_column(col, keys_ok=False, raiseerr=False)
+        #if col is not ourcol:
+        #    print "TD TRANSLATING ", col, "TO", ourcol
+        if ourcol is None:
+            return col
+        else:
+            return ourcol
+    def __getitem__(self, col):
+        return super(TranslatingDict, self).__getitem__(self.__translate_col(col))
+    def has_key(self, col):
+        return super(TranslatingDict, self).has_key(self.__translate_col(col))
+    def __setitem__(self, col, value):
+        return super(TranslatingDict, self).__setitem__(self.__translate_col(col), value)
+    def __contains__(self, col):
+        return self.has_key(col)
+    def setdefault(self, col, value):
+        return super(TranslatingDict, self).setdefault(self.__translate_col(col), value)
+
+class BinaryVisitor(sql.ClauseVisitor):
+    def __init__(self, func):
+        self.func = func
+    def visit_binary(self, binary):
+        self.func(binary)
+
 def instance_str(instance):
     """return a string describing an instance"""
     return instance.__class__.__name__ + "@" + hex(id(instance))

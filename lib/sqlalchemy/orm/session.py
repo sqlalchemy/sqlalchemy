@@ -180,12 +180,12 @@ class Session(object):
             if e is None:
                 raise exceptions.InvalidRequestError("Could not locate any Engine bound to mapper '%s'" % str(mapper))
             return e
-    def query(self, mapper_or_class, entity_name=None):
+    def query(self, mapper_or_class, entity_name=None, **kwargs):
         """return a new Query object corresponding to this Session and the mapper, or the classes' primary mapper."""
         if isinstance(mapper_or_class, type):
-            return query.Query(class_mapper(mapper_or_class, entity_name=entity_name), self)
+            return query.Query(class_mapper(mapper_or_class, entity_name=entity_name), self, **kwargs)
         else:
-            return query.Query(mapper_or_class, self)
+            return query.Query(mapper_or_class, self, **kwargs)
     def _sql(self):
         class SQLProxy(object):
             def __getattr__(self, key):

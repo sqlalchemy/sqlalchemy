@@ -8,6 +8,7 @@ from sqlalchemy import sql, schema, util, exceptions, logging
 from sqlalchemy import sql_util as sqlutil
 import util as mapperutil
 import sync
+from interfaces import MapperProperty, MapperOption, OperationContext
 import query as querylib
 import session as sessionlib
 import weakref
@@ -235,7 +236,7 @@ class Mapper(object):
             for ext_obj in util.to_list(extension):
                 extlist.add(ext_obj)
 
-        self.extension = ExtensionCarrier()
+        self.extension = _ExtensionCarrier()
         for ext in extlist:
             self.extension.elements.append(ext)
         
@@ -282,6 +283,7 @@ class Mapper(object):
                 self.order_by = self.inherits.order_by
             self.polymorphic_map = self.inherits.polymorphic_map
             self.batch = self.inherits.batch
+            self.inherits._inheriting_mappers.add(self)
         else:
             self._synchronizer = None
             self.mapped_table = self.local_table
@@ -363,7 +365,7 @@ class Mapper(object):
         # table columns mapped to lists of MapperProperty objects
         # using a list allows a single column to be defined as 
         # populating multiple object attributes
-        self.columntoproperty = TranslatingDict(self.mapped_table)
+        self.columntoproperty = mapperutil.TranslatingDict(self.mapped_table)
 
         # load custom properties 
         if self.properties is not None:
@@ -371,11 +373,6 @@ class Mapper(object):
                 self._compile_property(key, prop, False)
 
         if self.inherits is not None:
-            # transfer properties from the inherited mapper to here.
-            # this includes column properties as well as relations.
-            # the column properties will attempt to be translated from the selectable unit
-            # of the parent mapper to this mapper's selectable unit.
-            self.inherits._inheriting_mappers.add(self)
             for key, prop in self.inherits.__props.iteritems():
                 if not self.__props.has_key(key):
                     prop.adapt_to_inherited(key, self)
@@ -395,6 +392,10 @@ class Mapper(object):
                 prop.set_parent(self)
                 self.__log("adding ColumnProperty %s" % (column.key))
             elif isinstance(prop, ColumnProperty):
+                if prop.parent is not self:
+                    prop = ColumnProperty(deferred=prop.deferred, group=prop.group, *prop.columns)
+                    prop.set_parent(self)
+                    self.__props[column.key] = prop
                 prop.columns.append(column)
                 self.__log("appending to existing ColumnProperty %s" % (column.key))
             else:
@@ -407,6 +408,7 @@ class Mapper(object):
             # back to the property
             proplist = self.columntoproperty.setdefault(column, [])
             proplist.append(prop)
+
 
     def _initialize_properties(self):
         """calls the init() method on all MapperProperties attached to this mapper.  this will incur the
@@ -514,7 +516,10 @@ class Mapper(object):
         while m is not self and m.inherits is not None:
             m = m.inherits
         return m is self
-            
+
+    def accept_mapper_option(self, option):
+        option.process_mapper(self)
+        
     def add_properties(self, dict_of_properties):
         """adds the given dictionary of properties to this mapper, using add_property."""
         for key, value in dict_of_properties.iteritems():
@@ -553,7 +558,7 @@ class Mapper(object):
         else:
             return None
 
-    def _compile_property(self, key, prop, init=True, skipmissing=False, localparent=None):
+    def _compile_property(self, key, prop, init=True, skipmissing=False, setparent=True):
         """add a MapperProperty to this or another Mapper, including configuration of the property.
         
         The properties' parent attribute will be set, and the property will also be 
@@ -568,9 +573,9 @@ class Mapper(object):
             if prop is None:
                 raise exceptions.ArgumentError("'%s' is not an instance of MapperProperty or Column" % repr(prop))
 
-        effectiveparent = localparent or self
-        effectiveparent.__props[key] = prop
-        prop.set_parent(self)
+        self.__props[key] = prop
+        if setparent:
+            prop.set_parent(self)
             
         if isinstance(prop, ColumnProperty):
             col = self.select_table.corresponding_column(prop.columns[0], keys_ok=True, raiseerr=False)
@@ -582,9 +587,9 @@ class Mapper(object):
                 proplist.append(prop)
 
         if init:
-            prop.init(key, effectiveparent)
+            prop.init(key, self)
 
-        for mapper in effectiveparent._inheriting_mappers:
+        for mapper in self._inheriting_mappers:
             prop.adapt_to_inherited(key, mapper)
 
     def __str__(self):
@@ -671,33 +676,6 @@ class Mapper(object):
         return [self._getattrbycolumn(instance, column) for column in self.pks_by_table[self.mapped_table]]
         
 
-    def copy(self, **kwargs):
-        mapper = Mapper.__new__(Mapper)
-        mapper.__dict__.update(self.__dict__)
-        mapper.__dict__.update(kwargs)
-        mapper.__props = self.__props.copy()
-        mapper._inheriting_mappers = []
-        for m in self._inheriting_mappers:
-            mapper._inheriting_mappers.append(m.copy())
-        return mapper
-
-    def options(self, *options, **kwargs):
-        """uses this mapper as a prototype for a new mapper with different behavior.
-        *options is a list of options directives, which include eagerload(), lazyload(), and noload()"""
-        # TODO: this whole options() scheme is going to change, and not rely upon 
-        # making huge chains of copies anymore. stay tuned !
-        self.compile()
-        optkey = repr([hash_key(o) for o in options])
-        try:
-            return self._options[optkey]
-        except KeyError:
-            mapper = self.copy(**kwargs)
-            for option in options:
-                option.process(mapper)
-            self._options[optkey] = mapper
-            return mapper
-
-            
     def _getpropbycolumn(self, column, raiseerror=True):
         try:
             prop = self.columntoproperty[column]
@@ -1051,7 +1029,8 @@ class Mapper(object):
                 if result is not None:
                     result.append(instance)
             return instance
-                    
+        else:
+            self.__log_debug("_instance(): identity key %s not in session" % str(identitykey) + repr([mapperutil.instance_str(x) for x in context.session]))
         # look in result-local identitymap for it.
         exists = context.identity_map.has_key(identitykey)      
         if not exists:
@@ -1178,7 +1157,7 @@ class Mapper(object):
 
 Mapper.logger = logging.class_logger(Mapper)
 
-class SelectionContext(object):
+class SelectionContext(OperationContext):
     """created within the mapper.instances() method to store and share
     state among all the Mappers and MapperProperty objects used in a load operation.
     
@@ -1203,81 +1182,13 @@ class SelectionContext(object):
     
     """
     def __init__(self, mapper, session, **kwargs):
-        self.mapper = mapper
-        self.populate_existing = kwargs.get('populate_existing', False)
-        self.version_check = kwargs.get('version_check', False)
+        self.populate_existing = kwargs.pop('populate_existing', False)
+        self.version_check = kwargs.pop('version_check', False)
         self.session = session
         self.identity_map = {}
-        self.attributes = {}
-        
-        
-class MapperProperty(object):
-    """an element attached to a Mapper that describes and assists in the loading and saving 
-    of an attribute on an object instance."""
-    def setup(self, statement, **options):
-        """called when a statement is being constructed.  """
-        return self
-    def execute(self, selectcontext, instance, row, identitykey, isnew):
-        """called when the mapper receives a row.  instance is the parent instance
-        corresponding to the row. """
-        raise NotImplementedError()
-    def cascade_iterator(self, type, object, recursive=None):
-        return []
-    def cascade_callable(self, type, object, callable_, recursive=None):
-        return []
-    def copy(self):
-        raise NotImplementedError()
-    def get_criterion(self, query, key, value):
-        """Returns a WHERE clause suitable for this MapperProperty corresponding to the 
-        given key/value pair, where the key is a column or object property name, and value
-        is a value to be matched.  This is only picked up by PropertyLoaders.
-            
-        this is called by a mappers select_by method to formulate a set of key/value pairs into 
-        a WHERE criterion that spans multiple tables if needed."""
-        return None
-    def set_parent(self, parent):
-        self.parent = parent
-    def init(self, key, parent):
-        """called after all mappers are compiled to assemble relationships between 
-        mappers, establish instrumented class attributes"""
-        self.key = key
-        self.localparent = parent
-        if not hasattr(self, 'inherits'):
-            self.inherits = None
-        self.do_init()
-    def adapt_to_inherited(self, key, newparent):
-        """adapt this MapperProperty to a new parent, assuming the new parent is an inheriting
-        descendant of the old parent.  """
-        p = self.copy()
-        newparent._compile_property(key, p, init=False)
-        p.localparent = newparent
-        p.parent = self.parent
-        p.inherits = getattr(self, 'inherits', self)
-    def do_init(self):
-        """template method for subclasses"""
-        pass
-    def register_deleted(self, object, uow):
-        """called when the instance is being deleted"""
-        pass
-    def register_dependencies(self, *args, **kwargs):
-        """called by the Mapper in response to the UnitOfWork calling the Mapper's
-        register_dependencies operation.  Should register with the UnitOfWork all 
-        inter-mapper dependencies as well as dependency processors (see UOW docs for more details)"""
-        pass
-    def is_primary(self):
-        """a return value of True indicates we are the primary MapperProperty for this loader's
-        attribute on our mapper's class.  It means we can set the object's attribute behavior
-        at the class level.  otherwise we have to set attribute behavior on a per-instance level."""
-        return self.inherits is None and self.parent._is_primary_mapper()
+        super(SelectionContext, self).__init__(mapper, kwargs.pop('with_options', []), **kwargs)
 
-class MapperOption(object):
-    """describes a modification to a Mapper in the context of making a copy
-    of it.  This is used to assist in the prototype pattern used by mapper.options()."""
-    def process(self, mapper):
-        raise NotImplementedError()
-    def hash_key(self):
-        return repr(self)
-
+                
 class ExtensionOption(MapperOption):
     """adds a new MapperExtension to a mapper's chain of extensions"""
     def __init__(self, ext):
@@ -1372,7 +1283,7 @@ class MapperExtension(object):
         """called after an object instance is DELETEed"""
         return EXT_PASS
 
-class ExtensionCarrier(MapperExtension):
+class _ExtensionCarrier(MapperExtension):
     def __init__(self):
         self.elements = []
     # TODO: shrink down this approach using __getattribute__ or similar
@@ -1411,32 +1322,6 @@ class ExtensionCarrier(MapperExtension):
         else:
             return EXT_PASS
             
-class TranslatingDict(dict):
-    """a dictionary that stores ColumnElement objects as keys.  incoming ColumnElement
-    keys are translated against those of an underling FromClause for all operations.
-    This way the columns from any Selectable that is derived from or underlying this
-    TranslatingDict's selectable can be used as keys."""
-    def __init__(self, selectable):
-        super(TranslatingDict, self).__init__()
-        self.selectable = selectable
-    def __translate_col(self, col):
-        ourcol = self.selectable.corresponding_column(col, keys_ok=False, raiseerr=False)
-        #if col is not ourcol:
-        #    print "TD TRANSLATING ", col, "TO", ourcol
-        if ourcol is None:
-            return col
-        else:
-            return ourcol
-    def __getitem__(self, col):
-        return super(TranslatingDict, self).__getitem__(self.__translate_col(col))
-    def has_key(self, col):
-        return super(TranslatingDict, self).has_key(self.__translate_col(col))
-    def __setitem__(self, col, value):
-        return super(TranslatingDict, self).__setitem__(self.__translate_col(col), value)
-    def __contains__(self, col):
-        return self.has_key(col)
-    def setdefault(self, col, value):
-        return super(TranslatingDict, self).setdefault(self.__translate_col(col), value)
             
 class ClassKey(object):
     """keys a class and an entity name to a mapper, via the mapper_registry."""

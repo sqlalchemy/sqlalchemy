@@ -110,6 +110,7 @@ class EntityTest(AssertMixin):
         a2.email='a2@foo.com'
         u2.addresses.append(a2)
         sess.save(u2, entity_name='user2')
+        print u2.__dict__
         
         sess.flush()
         assert user1.select().execute().fetchall() == [(u1.user_id, u1.name)]
@@ -163,8 +164,41 @@ class EntityTest(AssertMixin):
         assert len(u1list) == len(u2list) == 1
         assert u1list[0] is not u2list[0]
         assert len(u1list[0].addresses) == len(u2list[0].addresses) == 1
+        # the lazy load requires that setup_loader() check that the correct LazyLoader
+        # is setting up for each load
         assert isinstance(u1list[0].addresses[0], Address1)
         assert isinstance(u2list[0].addresses[0], Address2)
-        
+    
+    def testpolymorphic_deferred(self):
+        """test that deferred columns load properly using entity names"""
+        class User(object):pass
+        u1mapper = mapper(User, user1, entity_name='user1', properties ={
+            'name':deferred(user1.c.name)
+        }, extension=ctx.mapper_extension)
+        u2mapper =mapper(User, user2, entity_name='user2', properties={
+            'name':deferred(user2.c.name)
+        }, extension=ctx.mapper_extension)
+
+        u1 = User(_sa_entity_name='user1')
+        u1.name = 'this is user 1'
+
+        u2 = User(_sa_entity_name='user2')
+        u2.name='this is user 2'
+
+        ctx.current.flush()
+        assert user1.select().execute().fetchall() == [(u1.user_id, u1.name)]
+        assert user2.select().execute().fetchall() == [(u2.user_id, u2.name)]
+
+        ctx.current.clear()
+        u1list = ctx.current.query(User, entity_name='user1').select()
+        u2list = ctx.current.query(User, entity_name='user2').select()
+        assert len(u1list) == len(u2list) == 1
+        assert u1list[0] is not u2list[0]
+        # the deferred column load requires that setup_loader() check that the correct DeferredColumnLoader
+        # is setting up for each load
+        assert u1list[0].name == 'this is user 1'
+        assert u2list[0].name == 'this is user 2'
+
+            
 if __name__ == "__main__":    
     testbase.main()
