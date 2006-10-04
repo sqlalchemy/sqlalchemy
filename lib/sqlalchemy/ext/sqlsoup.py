@@ -153,6 +153,16 @@ Boring tests here.  Nothing of real expository value.
 
     >>> db.users.select(db.users.c.classname==None, order_by=[db.users.c.name])
     [MappedUsers(name='Bhargan Basepair',email='basepair+nospam@example.edu',password='basepair',classname=None,admin=1), MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0)]
+    
+    >>> db.nopk
+    Traceback (most recent call last):
+    ...
+    PKNotFoundError: table 'nopk' does not have a primary key defined
+    
+    >>> db.nosuchtable
+    Traceback (most recent call last):
+    ...
+    NoSuchTableError: nosuchtable
 """
 
 from sqlalchemy import *
@@ -200,9 +210,13 @@ values (
     (select name from users where name like 'Joe%'),
     '2006-07-12 0:0:0')
 ;
+
+CREATE TABLE nopk (
+    i                    int
+);
 """.split(';')
 
-__all__ = ['NoSuchTableError', 'SqlSoup']
+__all__ = ['PKNotFoundError', 'SqlSoup']
 
 #
 # thread local SessionContext
@@ -215,7 +229,7 @@ class Objectstore(SessionContext):
 
 objectstore = Objectstore(create_session)
 
-class NoSuchTableError(SQLAlchemyError): pass
+class PKNotFoundError(SQLAlchemyError): pass
 
 # metaclass is necessary to expose class methods with getattr, e.g.
 # we want to pass db.users.select through to users._mapper.select
@@ -332,13 +346,13 @@ class SqlSoup:
             t = self._cache[attr]
         except KeyError:
             table = Table(attr, self._metadata, autoload=True, schema=self.schema)
+            if not table.primary_key.columns:
+                raise PKNotFoundError('table %r does not have a primary key defined' % attr)
             if table.columns:
                 t = class_for_table(table)
             else:
                 t = None
             self._cache[attr] = t
-        if not t:
-            raise NoSuchTableError('%s does not exist' % attr)
         return t
 
 if __name__ == '__main__':
