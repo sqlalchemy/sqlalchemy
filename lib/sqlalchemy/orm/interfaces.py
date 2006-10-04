@@ -22,8 +22,6 @@ class MapperProperty(object):
         return []
     def cascade_callable(self, type, object, callable_, recursive=None):
         return []
-    def copy(self):
-        raise NotImplementedError()
     def get_criterion(self, query, key, value):
         """Returns a WHERE clause suitable for this MapperProperty corresponding to the 
         given key/value pair, where the key is a column or object property name, and value
@@ -45,9 +43,6 @@ class MapperProperty(object):
         newparent._compile_property(key, self, init=False, setparent=False)
     def do_init(self):
         """template method for subclasses"""
-        pass
-    def register_deleted(self, object, uow):
-        """called when the instance is being deleted"""
         pass
     def register_dependencies(self, *args, **kwargs):
         """called by the Mapper in response to the UnitOfWork calling the Mapper's

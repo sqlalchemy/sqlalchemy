@@ -5,8 +5,9 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """defines a set of mapper.MapperProperty objects, including basic column properties as 
-well as relationships.  also defines some MapperOptions that can be used with the
-properties."""
+well as relationships.  the objects rely upon the LoaderStrategy objects in the strategies.py
+module to handle load operations.  PropertyLoader also relies upon the dependency.py module
+to handle flush-time dependency sorting and processing."""
 
 from sqlalchemy import sql, schema, util, attributes, exceptions, sql_util, logging
 import mapper

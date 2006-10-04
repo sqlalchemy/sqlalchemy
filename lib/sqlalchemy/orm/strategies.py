@@ -11,6 +11,7 @@ import session as sessionlib
 import util as mapperutil
 import sets, random
 
+"""sqlalchemy.orm.interfaces.LoaderStrategy implementations, and related MapperOptions."""
 
 class ColumnLoader(LoaderStrategy):
     def init(self):

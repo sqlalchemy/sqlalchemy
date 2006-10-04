@@ -67,7 +67,6 @@ class DependencyProcessor(object):
         insert/update/delete order (topological sort)."""
         raise NotImplementedError()
 
-    # TODO: all of these preproc rules need to take dependencies into account
     def preprocess_dependencies(self, task, deplist, uowcommit, delete = False):
         """used before the flushes' topological sort to traverse through related objects and insure every 
         instance which will require save/update/delete is properly added to the UOWTransaction."""
@@ -80,7 +79,7 @@ class DependencyProcessor(object):
 
     def _compile_synchronizers(self):
         """assembles a list of 'synchronization rules', which are instructions on how to populate
-        the objects on each side of a relationship.  This is done when a PropertyLoader is 
+        the objects on each side of a relationship.  This is done when a DependencyProcessor is 
         first initialized.
 
         The list of rules is used within commits by the _synchronize() method when dependent 
