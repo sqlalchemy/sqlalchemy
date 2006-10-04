@@ -1,4 +1,4 @@
-0.2.9
+0.3.0
 - General:
     - logging is now implemented via standard python "logging" module.
     "echo" keyword parameters are still functional but set/unset
@@ -6,7 +6,7 @@
     can be controlled directly through the Python API by setting
     INFO and DEBUG levels for loggers in the "sqlalchemy" namespace.
     class-level logging is under "sqlalchemy.<module>.<classname>",
-    instance-level logging under "sqlalchemy.<module>.<classname>.<hexid>".
+    instance-level logging under "sqlalchemy.<module>.<classname>.0x..<00-FF>".
     Test suite includes "--log-info" and "--log-debug" arguments
     which work independently of --verbose/--quiet.  Logging added
     to orm to allow tracking of mapper configurations, row iteration.
@@ -75,10 +75,11 @@
     ColumnProperty and PropertyLoader define their loading behaivor via switchable
     "strategies", and MapperOptions no longer use mapper/property copying 
     in order to function; they are instead propigated via QueryContext
-    and SelectionContext objects at query/instnaces time.
-    All of the copying of mappers and properties that was used to handle
+    and SelectionContext objects at query/instances time.
+    All of the internal copying of mappers and properties that was used to handle
     inheritance as well as options() has been removed; the structure
-    of mappers and properties is simpler than before and clearly laid out.
+    of mappers and properties is much simpler than before and is clearly laid out
+    in the new 'interfaces' module.
     - related to the mapper/property overhaul, internal refactoring to 
     mapper instances() method to use a SelectionContext object to track 
     state during the operation.

@@ -21,12 +21,10 @@ objects = []
 def make_doc(obj, classes=None, functions=None):
     objects.append(docstring.ObjectDoc(obj, classes=classes, functions=functions))
     
-make_doc(obj=sql, classes=[sql.Engine, sql.AbstractDialect, sql.ClauseParameters, sql.Compiled, sql.ClauseElement, sql.TableClause, sql.ColumnClause])
+make_doc(obj=sql, classes=[])
 make_doc(obj=schema)
 make_doc(obj=engine, classes=[engine.Connectable, engine.ComposedSQLEngine, engine.Connection, engine.Transaction, engine.Dialect, engine.ConnectionProvider, engine.ExecutionContext, engine.ResultProxy, engine.RowProxy])
-make_doc(obj=strategies)
-make_doc(obj=orm, classes=[orm.Mapper, orm.MapperExtension, orm.SelectionContext])
-make_doc(obj=orm.query, classes=[orm.query.Query])
+make_doc(obj=orm)
 make_doc(obj=orm.session, classes=[orm.session.Session, orm.session.SessionTransaction])
 make_doc(obj=pool, classes=[pool.DBProxy, pool.Pool, pool.QueuePool, pool.SingletonThreadPool])
 make_doc(obj=sessioncontext)

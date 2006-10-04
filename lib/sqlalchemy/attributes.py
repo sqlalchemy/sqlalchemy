@@ -675,7 +675,6 @@ class AttributeManager(object):
         the callable will only be executed if the given 'passive' flag is False.
         """
         attr = getattr(obj.__class__, key)
-        print "ATTR IS A", attr, "OBJ IS A", obj
         x = attr.get(obj, passive=passive)
         if x is InstrumentedAttribute.PASSIVE_NORESULT:
             return []

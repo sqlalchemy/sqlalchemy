@@ -7,7 +7,7 @@ SQLAlchemy has a variety of extensions and "mods" available which provide extra 
 
 **Author:**  Daniel Miller
 
-This plugin is used to instantiate and manage Session objects.  It provides several services:
+This plugin is used to instantiate and manage Session objects.  As of SQLAlchemy 0.2 it is the preferred way to provide thread-local session functionality to an application.  It provides several services:
 
 * serves as a factory to create sessions of a particular configuration.  This factory may either call `create_session()` with a particular set of arguments, or instantiate a different implementation of `Session` if one is available.
 * for the `Session` objects it creates, provides the ability to maintain a single `Session` per distinct application thread.  The `Session` returned by a `SessionContext` is called the *contextual session.*   Providing at least a thread-local context to sessions is important because the `Session` object is not threadsafe, and is intended to be used with localized sets of data, as opposed to a single session being used application wide.

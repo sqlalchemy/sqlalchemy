@@ -127,12 +127,15 @@ class StrategizedOption(MapperOption):
 class LoaderStrategy(object):
     """describes the loading behavior of a StrategizedProperty object.  The LoaderStrategy
     interacts with the querying process in three ways:
+    
       * it controls the configuration of the InstrumentedAttribute placed on a class to 
       handle the behavior of the attribute.  this may involve setting up class-level callable
       functions to fire off a select operation when the attribute is first accessed (i.e. a lazy load)
+
       * it processes the QueryContext at statement construction time, where it can modify the SQL statement
       that is being produced.  simple column attributes may add their represented column to the list of
       selected columns, "eager loading" properties may add LEFT OUTER JOIN clauses to the statement.
+
       * it processes the SelectionContext at row-processing time.  This may involve setting instance-level
       lazyloader functions on newly constructed instances, or may involve recursively appending child items 
       to a list in response to additionally eager-loaded objects in the query.

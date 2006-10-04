@@ -11,6 +11,7 @@ packages and tying operations to class properties and constructors.
 from sqlalchemy import sql, schema, engine, util, exceptions
 from mapper import *
 from mapper import mapper_registry
+import mapper as mapperlib
 from query import Query
 from util import polymorphic_union
 import properties, strategies
@@ -36,35 +37,35 @@ def backref(name, **kwargs):
     return properties.BackRef(name, **kwargs)
     
 def deferred(*columns, **kwargs):
-    """returns a DeferredColumnProperty, which indicates this object attributes should only be loaded 
+    """return a DeferredColumnProperty, which indicates this object attributes should only be loaded 
     from its corresponding table column when first accessed."""
     return properties.ColumnProperty(deferred=True, *columns, **kwargs)
     
 def mapper(class_, table=None, *args, **params):
-    """returns a newMapper object."""
+    """return a new Mapper object."""
     return Mapper(class_, table, *args, **params)
 
 def synonym(name):
     return SynonymProperty(name)
     
 def clear_mappers():
-    """removes all mappers that have been created thus far.  when new mappers are 
+    """remove all mappers that have been created thus far.  when new mappers are 
     created, they will be assigned to their classes as their primary mapper."""
     mapper_registry.clear()
     
 def clear_mapper(m):
-    """removes the given mapper from the storage of mappers.  when a new mapper is 
+    """remove the given mapper from the storage of mappers.  when a new mapper is 
     created for the previous mapper's class, it will be used as that classes' 
     new primary mapper."""
     del mapper_registry[m.hash_key]
 
 def eagerload(name):
-    """returns a MapperOption that will convert the property of the given name
+    """return a MapperOption that will convert the property of the given name
     into an eager load."""
     return strategies.EagerLazyOption(name, lazy=False)
 
 def lazyload(name):
-    """returns a MapperOption that will convert the property of the given name
+    """return a MapperOption that will convert the property of the given name
     into a lazy load"""
     return strategies.EagerLazyOption(name, lazy=True)
 

@@ -1188,15 +1188,6 @@ class SelectionContext(OperationContext):
         self.identity_map = {}
         super(SelectionContext, self).__init__(mapper, kwargs.pop('with_options', []), **kwargs)
 
-                
-class ExtensionOption(MapperOption):
-    """adds a new MapperExtension to a mapper's chain of extensions"""
-    def __init__(self, ext):
-        self.ext = ext
-    def process(self, mapper):
-        self.ext.next = mapper.extension
-        mapper.extension = self.ext
-
 class MapperExtension(object):
     """base implementation for an object that provides overriding behavior to various
     Mapper functions.  For each method in MapperExtension, a result of EXT_PASS indicates
@@ -1335,16 +1326,6 @@ class ClassKey(object):
         return self is other
     def __repr__(self):
         return "ClassKey(%s, %s)" % (repr(self.class_), repr(self.entity_name))
-
-def hash_key(obj):
-    if obj is None:
-        return 'None'
-    elif isinstance(obj, list):
-        return repr([hash_key(o) for o in obj])
-    elif hasattr(obj, 'hash_key'):
-        return obj.hash_key()
-    else:
-        return repr(obj)
 
 def has_identity(object):
     return hasattr(object, '_instance_key')
