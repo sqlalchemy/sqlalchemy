@@ -41,8 +41,15 @@ Field access is intuitive:
     >>> users[0].email
     u'student@example.edu'
 
-Of course, you don't want to load all users very often.  The common case is to
-select by a key or other field:
+Of course, you don't want to load all users very often.  Let's add a WHERE clause.
+Let's also switch the order_by to DESC while we're at it.
+    >>> from sqlalchemy import or_, and_, desc
+	>>> where = or_(db.users.c.name=='Bhargan Basepair', db.users.c.email=='student@example.edu')
+    >>> db.users.select(where, order_by=[desc(db.users.c.name)])
+    [MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0), MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)]
+
+You can also use the select...by methods if you're querying on a single column.
+This allows using keyword arguments as column names:
     >>> db.users.selectone_by(name='Bhargan Basepair')
     MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)
 
