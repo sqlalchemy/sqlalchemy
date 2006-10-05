@@ -508,19 +508,21 @@ class GenericBackrefExtension(AttributeExtension):
 class CommittedState(object):
     """stores the original state of an object when the commit() method on the attribute manager
     is called."""
+    NO_VALUE = object()
+    
     def __init__(self, manager, obj):
         self.data = {}
         for attr in manager.managed_attributes(obj.__class__):
             self.commit_attribute(attr, obj)
 
-    def commit_attribute(self, attr, obj, value=False):
+    def commit_attribute(self, attr, obj, value=NO_VALUE):
         """establish the value of attribute 'attr' on instance 'obj' as "committed". 
         
         this corresponds to a previously saved state being restored. """
-        if value is False:
+        if value is CommittedState.NO_VALUE:
             if obj.__dict__.has_key(attr.key):
                 value = obj.__dict__[attr.key]
-        if value is not False:
+        if value is not CommittedState.NO_VALUE:
             self.data[attr.key] = attr.copy(value)
 
             # not tracking parent on lazy-loaded instances at the moment.
