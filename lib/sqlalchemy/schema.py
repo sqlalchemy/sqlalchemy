@@ -987,7 +987,8 @@ class DynamicMetaData(MetaData):
         if hasattr(self.context, '_engine'):
             return self.context._engine
         else:
-            raise exceptions.InvalidRequestError("This DynamicMetaData is not connected to any engine")
+            return None
+#            raise exceptions.InvalidRequestError("This DynamicMetaData is not connected to any engine")
     engine=property(_get_engine)
             
 class SchemaVisitor(sql.ClauseVisitor):
