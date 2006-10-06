@@ -983,7 +983,12 @@ class DynamicMetaData(MetaData):
         """disposes all Engines to which this DynamicMetaData has been connected."""
         for e in self.__engines.values():
             e.dispose()
-    engine=property(lambda s:hasattr(s.context, '_engine') and s.context._engine or None)
+    def _get_engine(self):
+        if hasattr(self.context, '_engine'):
+            return self.context._engine
+        else:
+            raise exceptions.InvalidRequestError("This DynamicMetaData is not connected to any engine")
+    engine=property(_get_engine)
             
 class SchemaVisitor(sql.ClauseVisitor):
     """defines the visiting for SchemaItem objects"""
