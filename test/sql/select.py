@@ -1,7 +1,7 @@
 from testbase import PersistTest
 import testbase
 from sqlalchemy import *
-from sqlalchemy.databases import sqlite, postgres, mysql, oracle
+from sqlalchemy.databases import sqlite, postgres, mysql, oracle, firebird
 import unittest, re
 
 # the select test now tests almost completely with TableClause/ColumnClause objects,
@@ -264,9 +264,14 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
     def testalias(self):
         # test the alias for a table1.  column names stay the same, table name "changes" to "foo".
         self.runtest(
-        select([alias(table1, 'foo')])
-        ,"SELECT foo.myid, foo.name, foo.description FROM mytable AS foo")
+            select([alias(table1, 'foo')])
+            ,"SELECT foo.myid, foo.name, foo.description FROM mytable AS foo")
     
+        self.runtest(
+            select([alias(table1, 'foo')])
+            ,"SELECT foo.myid, foo.name, foo.description FROM mytable foo"
+            ,dialect=firebird.dialect())
+
         # create a select for a join of two tables.  use_labels means the column names will have
         # labels tablename_columnname, which become the column keys accessible off the Selectable object.
         # also, only use one column from the second table and all columns from the first table1.

@@ -117,7 +117,8 @@ class FireBirdDialect(ansisql.ANSIDialect):
             if isinstance(concurrency_level, types.StringTypes):
                 concurrency_level = int(concurrency_level)
             
-            kinterbasdb.init(type_conv=type_conv, concurrency_level=concurrency_level)
+            if kinterbasdb is not None:
+                kinterbasdb.init(type_conv=type_conv, concurrency_level=concurrency_level)
         ansisql.ANSIDialect.__init__(self, **params)
 
     def create_connect_args(self, url):
@@ -243,9 +244,11 @@ class FireBirdDialect(ansisql.ANSIDialect):
             return name
 
         c = connection.execute(tblqry, [table.name.upper()])
-        while True:
-            row = c.fetchone()
-            if not row: break
+        row = c.fetchone()
+        if not row:
+            raise exceptions.NoSuchTableError(table.name)
+
+        while row:
             name = row['FNAME']
             args = [lower_if_possible(name)]
             
@@ -257,6 +260,7 @@ class FireBirdDialect(ansisql.ANSIDialect):
             kw['primary_key'] = name in pkfields
 
             table.append_item(schema.Column(*args, **kw))
+            row = c.fetchone()
 
         # get the foreign keys
         c = connection.execute(fkqry, ["FOREIGN KEY", table.name.upper()])
@@ -314,6 +318,12 @@ class FBCompiler(ansisql.ANSICompiler):
         super(FBCompiler, self).__init__(dialect, statement, parameters, **kwargs)
         
       
+    def visit_alias(self, alias):
+        # Override to not use the AS keyword which FB 1.5 does not like
+        self.froms[alias] = self.get_from_text(alias.original) + " " + self.preparer.format_alias(alias)
+        self.strings[alias] = self.get_str(alias.original)
+
+
     def visit_column(self, column):
         return ansisql.ANSICompiler.visit_column(self, column)
             

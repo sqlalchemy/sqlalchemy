@@ -26,6 +26,9 @@
     - Oracle has experimental support for cx_Oracle.TIMESTAMP, which requires
     a setinputsizes() call on the cursor that is now enabled via the
     'auto_setinputsizes' flag to the oracle dialect.  
+    - Firebird:
+    - aliases do not use "AS"
+    - correctly raises NoSuchTableError when reflecting non-existent table
 - Schema:
     - added autoincrement=True to Column; will disable schema generation
     of SERIAL/AUTO_INCREMENT/identity seq for postgres/mysql/mssql if

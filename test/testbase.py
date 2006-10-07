@@ -40,7 +40,7 @@ def parse_argv():
 
     parser = optparse.OptionParser(usage = "usage: %prog [options] files...")
     parser.add_option("--dburi", action="store", dest="dburi", help="database uri (overrides --db)")
-    parser.add_option("--db", action="store", dest="db", default="sqlite", help="prefab database uri (sqlite, sqlite_file, postgres, mysql, oracle, oracle8, mssql)")
+    parser.add_option("--db", action="store", dest="db", default="sqlite", help="prefab database uri (sqlite, sqlite_file, postgres, mysql, oracle, oracle8, mssql, firebird)")
     parser.add_option("--mockpool", action="store_true", dest="mockpool", help="use mock pool")
     parser.add_option("--verbose", action="store_true", dest="verbose", help="full debug echoing")
     parser.add_option("--quiet", action="store_true", dest="quiet", help="be totally quiet")
@@ -75,9 +75,11 @@ def parse_argv():
             opts = {'use_ansi':False}
         elif DBTYPE == 'mssql':
             db_uri = 'mssql://scott:tiger@SQUAWK\\SQLEXPRESS/test'
+        elif DBTYPE == 'firebird':
+            db_uri = 'firebird://sysdba:s@localhost/tmp/test.fdb'
 
     if not db_uri:
-        raise "Could not create engine.  specify --db <sqlite|sqlite_file|postgres|mysql|oracle|oracle8|mssql> to test runner."
+        raise "Could not create engine.  specify --db <sqlite|sqlite_file|postgres|mysql|oracle|oracle8|mssql|firebird> to test runner."
 
     if not options.nothreadlocal:
         __import__('sqlalchemy.mods.threadlocal')
