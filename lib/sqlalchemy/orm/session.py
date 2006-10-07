@@ -225,13 +225,6 @@ class Session(object):
         return (class_, tuple([row[column] for column in primary_key]), entity_name)
     get_row_key = staticmethod(get_row_key)
     
-    def begin(self, *obj):
-        """deprecated"""
-        raise exceptions.InvalidRequestError("Session.begin() is deprecated.  use install_mod('legacy_session') to enable the old behavior")    
-    def commit(self, *obj):
-        """deprecated"""
-        raise exceptions.InvalidRequestError("Session.commit() is deprecated.  use install_mod('legacy_session') to enable the old behavior")    
-
     def flush(self, objects=None):
         """flush all the object modifications present in this session to the database.  
         

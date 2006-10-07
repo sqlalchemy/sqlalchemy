@@ -207,7 +207,6 @@ class UOWTransaction(object):
         self.__is_executing = False
         self.logger = logging.instance_logger(self)
     
-    # TODO: shouldnt be able to register stuff here that is not in the enclosing Session
     def register_object(self, obj, isdelete = False, listonly = False, postupdate=False, post_update_cols=None, **kwargs):
         """adds an object to this UOWTransaction to be updated in the database.
 
@@ -861,9 +860,6 @@ class UOWTask(object):
 
 class DependencySorter(topological.QueueDependencySorter):
     pass
-
-def mapper(*args, **params):
-    return sqlalchemy.mapper(*args, **params)
 
 def object_mapper(obj):
     return sqlalchemy.object_mapper(obj)
