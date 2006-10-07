@@ -181,6 +181,8 @@ class _ConnectionFairy(object):
         if self.__pool.echo:
             self.__pool.log("Connection %s checked out from pool" % repr(self.connection))
     def invalidate(self):
+        if self.connection is None:
+            raise exceptions.InvalidRequestError("This connection is closed")
         self._connection_record.invalidate()
         self.connection = None
         self.cursors = None
@@ -195,7 +197,7 @@ class _ConnectionFairy(object):
         return getattr(self.connection, key)
     def checkout(self):
         if self.connection is None:
-            raise "this connection is closed"
+            raise exceptions.InvalidRequestError("This connection is closed")
         self.__counter +=1
         return self    
     def close_open_cursors(self):
