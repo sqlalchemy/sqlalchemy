@@ -207,10 +207,14 @@ class PropertyLoader(StrategizedProperty):
         if self.secondaryjoin is not None:
             return sync.MANYTOMANY
         elif self._is_self_referential():
-            if list(self.foreignkey)[0].primary_key:
-                return sync.MANYTOONE
+            # for a self referential mapper, if the "foreignkey" is a single or composite primary key,
+            # then we are "many to one", since the remote site of the relationship identifies a singular entity.
+            # otherwise we are "one to many".
+            for f in self.foreignkey:
+                if not f.primary_key:
+                    return sync.ONETOMANY
             else:
-                return sync.ONETOMANY
+                return sync.MANYTOONE
         elif len([c for c in self.foreignkey if self.mapper.unjoined_table.corresponding_column(c, False) is not None]):
             return sync.ONETOMANY
         elif len([c for c in self.foreignkey if self.parent.unjoined_table.corresponding_column(c, False) is not None]):
