@@ -627,8 +627,7 @@ class UOWTask(object):
             pass
 
     def _save_objects(self, trans):
-        for task in self.polymorphic_tasks():
-            task.mapper.save_obj(task.tosave_objects, trans)
+        self.mapper.save_obj(self.polymorphic_tosave_objects, trans)
     def _delete_objects(self, trans):
         for task in self.polymorphic_tasks():
             task.mapper.delete_obj(task.todelete_objects, trans)
@@ -701,6 +700,7 @@ class UOWTask(object):
     todelete_elements = property(lambda self:[rec for rec in self.get_elements(polymorphic=False) if rec.isdelete])
     tosave_objects = property(lambda self:[rec.obj for rec in self.get_elements(polymorphic=False) if rec.obj is not None and not rec.listonly and rec.isdelete is False])
     todelete_objects = property(lambda self:[rec.obj for rec in self.get_elements(polymorphic=False) if rec.obj is not None and not rec.listonly and rec.isdelete is True])
+    polymorphic_tosave_objects = property(lambda self:[rec.obj for rec in self.get_elements(polymorphic=True) if rec.obj is not None and not rec.listonly and rec.isdelete is False])
         
     def _sort_circular_dependencies(self, trans, cycles):
         """for a single task, creates a hierarchical tree of "subtasks" which associate

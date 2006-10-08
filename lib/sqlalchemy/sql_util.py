@@ -6,8 +6,18 @@ import sqlalchemy.util as util
 
 
 class TableCollection(object):
-    def __init__(self):
-        self.tables = []
+    def __init__(self, tables=None):
+        self.tables = tables or []
+    def __len__(self):
+        return len(self.tables)
+    def __getitem__(self, i):
+        return self.tables[i]
+    def __iter__(self):
+        return iter(self.tables)
+    def __contains__(self, obj):
+        return obj in self.tables
+    def __add__(self, obj):
+        return self.tables + list(obj)
     def add(self, table):
         self.tables.append(table)
         if hasattr(self, '_sorted'):
@@ -29,10 +39,11 @@ class TableCollection(object):
         import sqlalchemy.orm.topological
         tuples = []
         class TVisitor(schema.SchemaVisitor):
-            def visit_foreign_key(self, fkey):
+            def visit_foreign_key(_self, fkey):
                 parent_table = fkey.column.table
-                child_table = fkey.parent.table
-                tuples.append( ( parent_table, child_table ) )
+                if parent_table in self:
+                    child_table = fkey.parent.table
+                    tuples.append( ( parent_table, child_table ) )
         vis = TVisitor()        
         for table in self.tables:
             table.accept_schema_visitor(vis)
@@ -57,16 +68,6 @@ class TableFinder(TableCollection, sql.ClauseVisitor):
             table.accept_visitor(self)
     def visit_table(self, table):
         self.tables.append(table)
-    def __len__(self):
-        return len(self.tables)
-    def __getitem__(self, i):
-        return self.tables[i]
-    def __iter__(self):
-        return iter(self.tables)
-    def __contains__(self, obj):
-        return obj in self.tables
-    def __add__(self, obj):
-        return self.tables + list(obj)
     def visit_column(self, column):
         if self.check_columns:
             column.table.accept_visitor(self)

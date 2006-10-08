@@ -98,6 +98,9 @@
     - more rearrangements of unit-of-work commit scheme to better allow
     dependencies within circular flushes to work properly...updated
     task traversal/logging implementation
+    - polymorphic mappers (i.e. using inheritance) now produces INSERT
+    statements in order of tables across all inherited classes
+    [ticket:321]
     - added an automatic "row switch" feature to mapping, which will
     detect a pending instance/deleted instance pair with the same 
     identity key and convert the INSERT/DELETE to a single UPDATE
