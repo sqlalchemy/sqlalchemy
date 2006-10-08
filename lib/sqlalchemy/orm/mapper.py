@@ -741,6 +741,20 @@ class Mapper(object):
                     for mapper in object_mapper(obj).iterate_to_root():
                         mapper.extension.before_update(mapper, connection, obj)
 
+        for obj in objects:
+            # detect if we have a "pending" instance (i.e. has no instance_key attached to it),
+            # and another instance with the same identity key already exists as persistent.  convert to an 
+            # UPDATE if so.
+            mapper = object_mapper(obj)
+            instance_key = mapper.instance_key(obj)
+            is_row_switch = not postupdate and not has_identity(obj) and instance_key in uowtransaction.uow.identity_map
+            if is_row_switch:
+                existing = uowtransaction.uow.identity_map[instance_key]
+                if not uowtransaction.is_deleted(existing):
+                    raise exceptions.FlushError("New instance %s with identity key %s conflicts with persistent instance %s" % (mapperutil.instance_str(obj), str(instance_key), mapperutil.instance_str(existing)))
+                self.__log_debug("detected row switch for identity %s.  will update %s, remove %s from transaction" % (instance_key, mapperutil.instance_str(obj), mapperutil.instance_str(existing)))
+                uowtransaction.unregister_object(existing)
+            
         inserted_objects = util.Set()
         updated_objects = util.Set()
         
@@ -761,18 +775,7 @@ class Mapper(object):
                 instance_key = mapper.instance_key(obj)
                 self.__log_debug("save_obj() instance %s identity %s" % (mapperutil.instance_str(obj), str(instance_key)))
 
-                # detect if we have a "pending" instance (i.e. has no instance_key attached to it),
-                # and another instance with the same identity key already exists as persistent.  convert to an 
-                # UPDATE if so.
-                is_row_switch = not postupdate and not has_identity(obj) and instance_key in uowtransaction.uow.identity_map
-                if is_row_switch:
-                    existing = uowtransaction.uow.identity_map[instance_key]
-                    if not uowtransaction.is_deleted(existing):
-                        raise exceptions.FlushError("New instance %s with identity key %s conflicts with persistent instance %s" % (mapperutil.instance_str(obj), str(instance_key), mapperutil.instance_str(existing)))
-                    self.__log_debug("detected row switch for identity %s.  will update %s, remove %s from transaction" % (instance_key, mapperutil.instance_str(obj), mapperutil.instance_str(existing)))
-                    uowtransaction.unregister_object(existing)
-
-                isinsert = not is_row_switch and not postupdate and not has_identity(obj)
+                isinsert = not instance_key in uowtransaction.uow.identity_map and not postupdate and not has_identity(obj)
                 params = {}
                 hasdata = False
                 for col in table.columns:
