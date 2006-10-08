@@ -11,7 +11,7 @@ class UOWDumper(unitofwork.UOWExecutor):
         self.starttask = task
         self.headers = {}
         self.execute(None, task)
-    
+
     def execute(self, trans, task, isdelete=None):
         oldstarttask = self.starttask
         oldheaders = self.headers
@@ -44,7 +44,25 @@ class UOWDumper(unitofwork.UOWExecutor):
             self.headers = oldheaders
             
     def save_objects(self, trans, task):
-        for rec in task.tosave_elements:
+        # sort elements to be inserted by insert order
+        def comparator(a, b):
+            if a.obj is None:
+                x = None
+            elif not hasattr(a.obj, '_sa_insert_order'):
+                x = None
+            else:
+                x = a.obj._sa_insert_order
+            if b.obj is None:
+                y = None
+            elif not hasattr(b.obj, '_sa_insert_order'):
+                y = None
+            else:
+                y = b.obj._sa_insert_order
+            return cmp(x, y)
+        
+        l = list(task.polymorphic_tosave_elements)
+        l.sort(comparator)
+        for rec in l:
             if rec.listonly:
                 continue
             self.header("Save elements"+ self._inheritance_tag(task))
@@ -52,7 +70,7 @@ class UOWDumper(unitofwork.UOWExecutor):
             self.closeheader()
             
     def delete_objects(self, trans, task):
-        for rec in task.todelete_elements:
+        for rec in task.polymorphic_todelete_elements:
             if rec.listonly:
                 continue
             self.header("Delete elements"+ self._inheritance_tag(task))
