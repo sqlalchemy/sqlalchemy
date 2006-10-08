@@ -773,7 +773,7 @@ class Mapper(object):
                 if table not in mapper.tables or not mapper._has_pks(table):
                     continue
                 instance_key = mapper.instance_key(obj)
-                self.__log_debug("save_obj() instance %s identity %s" % (mapperutil.instance_str(obj), str(instance_key)))
+                self.__log_debug("save_obj() table '%s' instance %s identity %s" % (table.name, mapperutil.instance_str(obj), str(instance_key)))
 
                 isinsert = not instance_key in uowtransaction.uow.identity_map and not postupdate and not has_identity(obj)
                 params = {}
