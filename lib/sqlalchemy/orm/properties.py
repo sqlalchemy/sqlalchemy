@@ -183,7 +183,8 @@ class PropertyLoader(StrategizedProperty):
         if self.uselist is None:
             self.uselist = True
         
-        self._dependency_processor = dependency.create_dependency_processor(self)
+        if not self.viewonly:
+            self._dependency_processor = dependency.create_dependency_processor(self)
             
         # primary property handler, set up class attributes
         if self.is_primary():
@@ -281,7 +282,8 @@ class BackRef(object):
                 raise exceptions.ArgumentError("Backrefs do not match:  backref '%s' expects to connect to %s, but found a backref already connected to %s" % (self.key, str(parent.class_), str(mapper.props[self.key].mapper.class_)))
             if not mapper.props[self.key].is_backref:
                 prop.is_backref=True
-                prop._dependency_processor.is_backref=True
+                if not prop.viewonly:
+                    prop._dependency_processor.is_backref=True
     def get_extension(self):
         """returns an attribute extension to use with this backreference."""
         return attributes.GenericBackrefExtension(self.key)
