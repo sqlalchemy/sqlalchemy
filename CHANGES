@@ -38,6 +38,11 @@
     - fixed condition that occurred during reflection when a primary key
     column was explciitly overridden, where the PrimaryKeyConstraint would
     get both the reflected and the programmatic column doubled up
+    - the "foreign_key" attribute on Column and ColumnElement in general
+    is deprecated, in favor of the "foreign_keys" list/set-based attribute,
+    which takes into account multiple foreign keys on one column. 
+    "foreign_key" will return the first element in the "foreign_keys" list/set
+    or None if the list is empty.
 - Connections/Pooling/Execution:
     - connection pool tracks open cursors and automatically closes them
     if connection is returned to pool with cursors still opened.  Can be

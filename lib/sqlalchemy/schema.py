@@ -433,12 +433,12 @@ class Column(SchemaItem, sql.ColumnClause):
         self.__originating_column = self
         if self.index is not None and self.unique is not None:
             raise exceptions.ArgumentError("Column may not define both index and unique")
-        self._foreign_key = None
+        self._foreign_keys = util.Set()
         if len(kwargs):
             raise exceptions.ArgumentError("Unknown arguments passed to Column: " + repr(kwargs.keys()))
 
     primary_key = util.SimpleProperty('_primary_key')
-    foreign_key = util.SimpleProperty('_foreign_key')
+    foreign_keys = util.SimpleProperty('_foreign_keys')
     columns = property(lambda self:[self])
 
     def __str__(self):
@@ -459,7 +459,7 @@ class Column(SchemaItem, sql.ColumnClause):
     def __repr__(self):
        return "Column(%s)" % string.join(
         [repr(self.name)] + [repr(self.type)] +
-        [repr(x) for x in [self.foreign_key] if x is not None] +
+        [repr(x) for x in self.foreign_keys if x is not None] +
         ["%s=%s" % (k, repr(getattr(self, k))) for k in ['key', 'primary_key', 'nullable', 'hidden', 'default', 'onupdate']]
        , ',')
         
@@ -501,11 +501,8 @@ class Column(SchemaItem, sql.ColumnClause):
         
         This is a copy of this Column referenced 
         by a different parent (such as an alias or select statement)"""
-        if self.foreign_key is None:
-            fk = None
-        else:
-            fk = self.foreign_key.copy()
-        c = Column(name or self.name, self.type, fk, self.default, key = name or self.key, primary_key = self.primary_key, nullable = self.nullable, hidden = self.hidden, quote=self.quote)
+        fk = [ForeignKey(f._colspec) for f in self.foreign_keys]
+        c = Column(name or self.name, self.type, self.default, key = name or self.key, primary_key = self.primary_key, nullable = self.nullable, hidden = self.hidden, quote=self.quote, *fk)
         c.table = selectable
         c.orig_set = self.orig_set
         c.__originating_column = self.__originating_column
@@ -513,8 +510,7 @@ class Column(SchemaItem, sql.ColumnClause):
             selectable.columns[c.key] = c
             if self.primary_key:
                 selectable.primary_key.append(c)
-        if fk is not None:
-            c._init_items(fk)
+        [c._init_items(f) for f in fk]
         return c
 
     def _case_sens(self):
@@ -530,8 +526,8 @@ class Column(SchemaItem, sql.ColumnClause):
             self.default.accept_schema_visitor(visitor)
         if self.onupdate is not None:
             self.onupdate.accept_schema_visitor(visitor)
-        if self.foreign_key is not None:
-            self.foreign_key.accept_schema_visitor(visitor)
+        for f in self.foreign_keys:
+            f.accept_schema_visitor(visitor)
         visitor.visit_column(self)
 
 
@@ -631,11 +627,11 @@ class ForeignKey(SchemaItem):
 
         # if a foreign key was already set up for the parent column, replace it with 
         # this one
-        if self.parent.foreign_key is not None:
-            self.parent.table.foreign_keys.remove(self.parent.foreign_key)
-        self.parent.foreign_key = self
-        self.parent.table.foreign_keys.append(self)
-
+        #if self.parent.foreign_key is not None:
+        #    self.parent.table.foreign_keys.remove(self.parent.foreign_key)
+        #self.parent.foreign_key = self
+        self.parent.foreign_keys.add(self)
+        self.parent.table.foreign_keys.add(self)
 class DefaultGenerator(SchemaItem):
     """Base class for column "default" values."""
     def __init__(self, for_update=False, metadata=None):

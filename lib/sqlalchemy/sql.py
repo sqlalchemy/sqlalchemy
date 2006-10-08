@@ -618,8 +618,14 @@ class ColumnElement(Selectable, CompareMixin):
     may correspond to several TableClause-attached columns)."""
     
     primary_key = property(lambda self:getattr(self, '_primary_key', False), doc="primary key flag.  indicates if this Column represents part or whole of a primary key.")
-    foreign_key = property(lambda self:getattr(self, '_foreign_key', False), doc="foreign key accessor.  points to a ForeignKey object which represents a Foreign Key placed on this column's ultimate ancestor.")
+    foreign_keys = property(lambda self:getattr(self, '_foreign_keys', []), doc="foreign key accessor.  points to a ForeignKey object which represents a Foreign Key placed on this column's ultimate ancestor.")
     columns = property(lambda self:[self], doc="Columns accessor which just returns self, to provide compatibility with Selectable objects.")
+    def _one_fkey(self):
+        if len(self._foreign_keys):
+            return list(self._foreign_keys)[0]
+        else:
+            return None
+    foreign_key = property(_one_fkey)
 
     def _get_orig_set(self):
         try:
@@ -731,7 +737,7 @@ class FromClause(Selectable):
             return
         self._columns = util.OrderedProperties()
         self._primary_key = []
-        self._foreign_keys = []
+        self._foreign_keys = util.Set()
         self._orig_cols = {}
         export = self._exportable_columns()
         for column in export:
@@ -1077,8 +1083,8 @@ class Join(FromClause):
         self._columns[column._label] = column
         if column.primary_key:
             self._primary_key.append(column)
-        if column.foreign_key:
-            self._foreign_keys.append(column.foreign_key)
+        for f in column.foreign_keys:
+            self._foreign_keys.add(f)
         return column
     def _match_primaries(self, primary, secondary):
         crit = []
@@ -1252,7 +1258,7 @@ class TableClause(FromClause):
         super(TableClause, self).__init__(name)
         self.name = self.fullname = name
         self._columns = util.OrderedProperties()
-        self._foreign_keys = []
+        self._foreign_keys = util.Set()
         self._primary_key = []
         for c in columns:
             self.append_column(c)

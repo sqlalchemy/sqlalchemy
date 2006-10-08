@@ -216,7 +216,7 @@ class PropertyLoader(StrategizedProperty):
         elif len([c for c in self.foreignkey if self.parent.unjoined_table.corresponding_column(c, False) is not None]):
             return sync.MANYTOONE
         else:
-            raise exceptions.ArgumentError("Cant determine relation direction '%s', for '%s' in mapper '%s' with primary join\n '%s'" %(repr(self.foreignkey), self.key, str(self.mapper), str(self.primaryjoin)))
+            raise exceptions.ArgumentError("Cant determine relation direction for '%s' in mapper '%s' with primary join\n '%s'" %(self.key, str(self.mapper), str(self.primaryjoin)))
             
     def _find_dependent(self):
         """searches through the primary join condition to determine which side
@@ -226,12 +226,16 @@ class PropertyLoader(StrategizedProperty):
         def foo(binary):
             if binary.operator != '=' or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
                 return
-            if binary.left.foreign_key is not None and binary.left.foreign_key.references(binary.right.table):
-                foreignkeys.add(binary.left)
-            elif binary.right.foreign_key is not None and binary.right.foreign_key.references(binary.left.table):
-                foreignkeys.add(binary.right)
+            for f in binary.left.foreign_keys:
+                if f.references(binary.right.table):
+                    foreignkeys.add(binary.left)
+            for f in binary.right.foreign_keys:
+                if f.references(binary.left.table):
+                    foreignkeys.add(binary.right)
         visitor = mapperutil.BinaryVisitor(foo)
         self.primaryjoin.accept_visitor(visitor)
+        if len(foreignkeys) == 0:
+            raise exceptions.ArgumentError("On relation '%s', can't figure out which side is the foreign key for join condition '%s'.  Specify the 'foreignkey' argument to the relation." % (self.key, str(self.primaryjoin)))
         self.foreignkey = foreignkeys
         
     def get_join(self):

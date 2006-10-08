@@ -71,7 +71,6 @@ class ReflectionTest(PersistTest):
             addresses = Table('engine_email_addresses', meta, autoload = True)
             # reference the addresses foreign key col, which will require users to be 
             # reflected at some point
-            print addresses.c.remote_user_id.foreign_key.column
             users = Table('engine_users', meta, autoload = True)
         finally:
             addresses.drop()
@@ -120,8 +119,8 @@ class ReflectionTest(PersistTest):
                 autoload=True)
             u2 = Table('users', meta2, autoload=True)
             
-            assert a2.c.user_id.foreign_key is not None
-            assert a2.c.user_id.foreign_key.parent is a2.c.user_id
+            assert len(a2.c.user_id.foreign_keys)>0
+            assert list(a2.c.user_id.foreign_keys)[0].parent is a2.c.user_id
             assert u2.join(a2).onclause == u2.c.id==a2.c.user_id
 
             meta3 = BoundMetaData(testbase.db)
@@ -336,8 +335,8 @@ class ReflectionTest(PersistTest):
         assert table_c.c.description.nullable 
         assert table.primary_key is not table_c.primary_key
         assert [x.name for x in table.primary_key] == [x.name for x in table_c.primary_key]
-        assert table2_c.c.myid.foreign_key.column is table_c.c.myid
-        assert table2_c.c.myid.foreign_key.column is not table.c.myid
+        assert list(table2_c.c.myid.foreign_keys)[0].column is table_c.c.myid
+        assert list(table2_c.c.myid.foreign_keys)[0].column is not table.c.myid
         
     # mysql throws its own exception for no such table, resulting in 
     # a sqlalchemy.SQLError instead of sqlalchemy.NoSuchTableError.
