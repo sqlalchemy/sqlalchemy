@@ -9,6 +9,8 @@
 import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
 from sqlalchemy.exceptions import *
+from sqlalchemy import logging
+import util as mapperutil
 
 """contains the ClauseSynchronizer class, which is used to map attributes between two objects
 in a manner corresponding to a SQL clause that compares column values."""
@@ -121,8 +123,11 @@ class SyncRule(object):
         if isinstance(dest, dict):
             dest[self.dest_column.key] = value
         else:
-            #print "SYNC VALUE", value, "TO", dest, self.source_column, self.dest_column
+            if logging.is_debug_enabled(self.logger):
+                self.logger.debug("execute() instances: %s(%s)->%s(%s) ('%s')" % (mapperutil.instance_str(source), str(self.source_column), mapperutil.instance_str(dest), str(self.dest_column), value))
             self.dest_mapper._setattrbycolumn(dest, self.dest_column, value)
+
+SyncRule.logger = logging.class_logger(SyncRule)
             
 class BinaryVisitor(sql.ClauseVisitor):
     def __init__(self, func):

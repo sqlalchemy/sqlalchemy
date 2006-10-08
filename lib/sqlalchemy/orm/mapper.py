@@ -895,6 +895,8 @@ class Mapper(object):
                     mapper._postfetch(connection, table, obj, c, c.last_inserted_params())
                     
                     # synchronize newly inserted ids from one table to the next
+                    # TODO: this fires off more than needed, try to organize syncrules
+                    # per table
                     def sync(mapper):
                         inherit = mapper.inherits
                         if inherit is not None:
