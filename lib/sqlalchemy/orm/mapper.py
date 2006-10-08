@@ -759,7 +759,6 @@ class Mapper(object):
         updated_objects = util.Set()
         
         table_to_mapper = {}
-        tables = util.Set()
         for mapper in self.polymorphic_iterator():
             for t in mapper.tables:
                 table_to_mapper.setdefault(t, mapper)
