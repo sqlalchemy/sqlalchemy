@@ -366,6 +366,8 @@ class MapperTest(MapperSuperTest):
             l = usermapper.query(sess).select()
             self.assert_result(l, User, *user_address_result)
         self.assert_sql_count(db, go, 1)
+
+        sess.clear()
         
         # then select just from users.  run it into instances.
         # then assert the data, which will launch 3 more lazy loads
@@ -377,6 +379,8 @@ class MapperTest(MapperSuperTest):
         self.assert_sql_count(db, go, 4)
         
         clear_mappers()
+
+        sess.clear()
         
         # test with a deeper set of eager loads.  when we first load the three
         # users, they will have no addresses or orders.  the number of lazy loads when
@@ -392,6 +396,8 @@ class MapperTest(MapperSuperTest):
                     }), lazy=False)
                 }), lazy=False)
             })
+
+        sess.clear()
 
         # first test straight eager load, 1 statement
         def go():
