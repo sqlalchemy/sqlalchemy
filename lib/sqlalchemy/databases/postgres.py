@@ -44,6 +44,9 @@ class PGInteger(sqltypes.Integer):
 class PGSmallInteger(sqltypes.Smallinteger):
     def get_col_spec(self):
         return "SMALLINT"
+class PGBigInteger(sqltypes.Integer):
+    def get_col_spec(self):
+        return "BIGINT"
 class PG2DateTime(sqltypes.DateTime):
     def get_col_spec(self):
         return "TIMESTAMP " + (self.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
@@ -144,7 +147,7 @@ pg1_colspecs.update({
 
 pg2_ischema_names = {
     'integer' : PGInteger,
-    'bigint' : PGInteger,
+    'bigint' : PGBigInteger,
     'smallint' : PGSmallInteger,
     'character varying' : PGString,
     'character' : PGChar,
