@@ -937,7 +937,7 @@ class MetaData(SchemaItem):
     def _sort_tables(self, tables, reverse=False):
         import sqlalchemy.sql_util
         sorter = sqlalchemy.sql_util.TableCollection()
-        for t in self.tables.values():
+        for t in tables:
             sorter.add(t)
         return sorter.sort(reverse=reverse)
         
