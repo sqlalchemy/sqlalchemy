@@ -13,6 +13,8 @@
 - Specific Databases:
     - SQLite:
     - sqlite boolean datatype converts False/True to 0/1 by default
+    - fixes to Date/Time (SLDate/SLTime) types; works as good as postgres 
+    now [ticket:335]
     - MS-SQL: 
     - fixes bug 261 (table reflection broken for MS-SQL case-sensitive 
     databases)

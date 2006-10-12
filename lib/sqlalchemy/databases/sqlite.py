@@ -51,24 +51,24 @@ class DateTimeMixin(object):
             (value, microsecond) = (value, 0)
         return time.strptime(value, fmt)[0:6] + (microsecond,)
     
-class SLDateTime(sqltypes.DateTime, DateTimeMixin):
+class SLDateTime(DateTimeMixin,sqltypes.DateTime):
     def get_col_spec(self):
         return "TIMESTAMP"
     def convert_result_value(self, value, dialect):
         tup = self._cvt(value, dialect, "%Y-%m-%d %H:%M:%S")
         return tup and datetime.datetime(*tup)
-class SLDate(sqltypes.Date, DateTimeMixin):
+class SLDate(DateTimeMixin, sqltypes.Date):
     def get_col_spec(self):
         return "DATE"
     def convert_result_value(self, value, dialect):
         tup = self._cvt(value, dialect, "%Y-%m-%d")
         return tup and datetime.date(*tup[0:3])
-class SLTime(sqltypes.Time, DateTimeMixin):
+class SLTime(DateTimeMixin, sqltypes.Time):
     def get_col_spec(self):
         return "TIME"
     def convert_result_value(self, value, dialect):
         tup = self._cvt(value, dialect, "%H:%M:%S")
-        return tup and datetime.time(*tup[4:7])
+        return tup and datetime.time(*tup[3:7])
 class SLText(sqltypes.TEXT):
     def get_col_spec(self):
         return "TEXT"
@@ -98,6 +98,7 @@ colspecs = {
     sqltypes.Float : SLNumeric,
     sqltypes.DateTime : SLDateTime,
     sqltypes.Date : SLDate,
+    sqltypes.Time : SLTime,
     sqltypes.String : SLString,
     sqltypes.Binary : SLBinary,
     sqltypes.Boolean : SLBoolean,

@@ -241,7 +241,7 @@ class DateTest(AssertMixin):
 
                 collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime),
                Column('user_date', DateTime)]
-        elif db.engine.name == 'mysql' or db.engine.name == 'mssql' or db.engine.name == 'sqlite':
+        elif db.engine.name == 'mysql' or db.engine.name == 'mssql':
             # these dont really support the TIME type at all
             insert_data =  [
                  [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.datetime(2005, 11, 10, 0, 0, 0)],
