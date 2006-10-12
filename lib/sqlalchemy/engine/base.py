@@ -654,8 +654,6 @@ class ResultProxy:
         row = self.cursor.fetchone()
         try:
             if row is not None:
-                if self.__echo:
-                    self.engine.logger.debug("Row " + repr(row))
                 return RowProxy(self, row)[0]
             else:
                 return None
