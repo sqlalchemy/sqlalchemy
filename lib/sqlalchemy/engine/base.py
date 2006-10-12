@@ -641,8 +641,6 @@ class ResultProxy:
         """fetch one row, just like DBAPI cursor.fetchone()."""
         row = self.cursor.fetchone()
         if row is not None:
-            if self.__echo:
-                self.engine.logger.debug("Row " + repr(row))
             return RowProxy(self, row)
         else:
             # controversy!  can we auto-close the cursor after results are consumed ?
@@ -670,6 +668,8 @@ class RowProxy:
         """RowProxy objects are constructed by ResultProxy objects."""
         self.__parent = parent
         self.__row = row
+        if self.__parent._ResultProxy__echo:
+            self.__parent.engine.logger.debug("Row " + repr(row))
     def close(self):
         self.__parent.close()
     def __iter__(self):
