@@ -659,10 +659,7 @@ class Mapper(object):
             for m in mappers:
                 otherresults.append(util.UniqueAppender([]))
                 
-        while True:
-            row = cursor.fetchone()
-            if row is None:
-                break
+        for row in cursor.fetchall():
             self._instance(context, row, result)
             i = 0
             for m in mappers:

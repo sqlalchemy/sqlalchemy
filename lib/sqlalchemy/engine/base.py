@@ -632,11 +632,10 @@ class ResultProxy:
     def fetchall(self):
         """fetch all rows, just like DBAPI cursor.fetchall()."""
         l = []
-        while True:
-            v = self.fetchone()
-            if v is None:
-                return l
-            l.append(v)
+        for row in self.cursor.fetchall():
+            l.append(RowProxy(self, row))
+        self.close()
+        return l
             
     def fetchone(self):
         """fetch one row, just like DBAPI cursor.fetchone()."""

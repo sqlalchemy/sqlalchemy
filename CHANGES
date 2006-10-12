@@ -56,6 +56,8 @@
     - ResultProxy will close() the underlying cursor when the ResultProxy
     itself is closed.  this will auto-close cursors for ResultProxy objects
     that have had all their rows fetched (or had scalar() called).
+    - ResultProxy.fetchall() internally uses DBAPI fetchall() for better efficiency,
+    added to mapper iteration as well (courtesy Michael Twomey)
 - SQL Construction:
     - changed "for_update" parameter to accept False/True/"nowait"
     and "read", the latter two of which are interpreted only by
