@@ -3,7 +3,30 @@ import cgi
 import urllib
 import sqlalchemy.exceptions as exceptions
 
+"""provides the URL object as well as the make_url parsing function."""
+
 class URL(object):
+    """represents the components of a URL used to connect to a database.
+    
+    This object is suitable to be passed directly to a create_engine() call.
+    The fields of the URL are parsed from a string by the module-level make_url() function.  
+    the string format of the URL is an RFC-1738-style string.  
+    
+    Attributes on URL include:
+    
+    drivername
+    
+    username
+    
+    password
+    
+    host
+    
+    port
+    
+    database
+    
+    query - a dictionary containing key/value pairs representing the URL's query string."""
     def __init__(self, drivername, username=None, password=None, host=None, port=None, database=None, query=None):
         self.drivername = drivername
         self.username = username
@@ -34,12 +57,13 @@ class URL(object):
             s += '?' + "&".join(["%s=%s" % (k, self.query[k]) for k in keys])
         return s
     def get_module(self):
+        """return the SQLAlchemy database module corresponding to this URL's driver name."""
         return getattr(__import__('sqlalchemy.databases.%s' % self.drivername).databases, self.drivername)
     def translate_connect_args(self, names):
-        """translates this URL's attributes into a dictionary of connection arguments used by a specific dbapi.
-        the names parameter is a list of argument names in the form ('host', 'database', 'user', 'password', 'port')
-        where the given strings match the corresponding argument names for the dbapi.  Will return a dictionary
-        with the dbapi-specific parameters."""
+        """translate this URL's attributes into a dictionary of connection arguments.
+        
+        given a list of argument names corresponding to the URL attributes ('host', 'database', 'username', 'password', 'port'),
+        will assemble the attribute values of this URL into the dictionary using the given names."""
         a = {}
         attribute_names = ['host', 'database', 'username', 'password', 'port']
         for n in names:
@@ -52,6 +76,10 @@ class URL(object):
     
 
 def make_url(name_or_url):
+    """given a string or unicode instance, produces a new URL instance.
+    
+    the given string is parsed according to the rfc1738 spec.
+    if an existing URL object is passed, just returns the object."""
     if isinstance(name_or_url, str) or isinstance(name_or_url, unicode):
         return _parse_rfc1738_args(name_or_url)
     else:

@@ -24,6 +24,7 @@ def make_doc(obj, classes=None, functions=None):
 make_doc(obj=sql, classes=[])
 make_doc(obj=schema)
 make_doc(obj=engine, classes=[engine.Connectable, engine.ComposedSQLEngine, engine.Connection, engine.Transaction, engine.Dialect, engine.ConnectionProvider, engine.ExecutionContext, engine.ResultProxy, engine.RowProxy])
+make_doc(obj=engine.url)
 make_doc(obj=orm)
 make_doc(obj=orm.session, classes=[orm.session.Session, orm.session.SessionTransaction])
 make_doc(obj=pool, classes=[pool.DBProxy, pool.Pool, pool.QueuePool, pool.SingletonThreadPool])
