@@ -138,7 +138,7 @@ class UnitOfWork(object):
     def locate_dirty(self):
         return util.Set([x for x in self.identity_map.values() if x not in self.deleted and attribute_manager.is_modified(x)])
         
-    def flush(self, session, objects=None, echo=False):
+    def flush(self, session, objects=None):
         # this context will track all the objects we want to save/update/delete,
         # and organize a hierarchical dependency structure.  it also handles
         # communication with the mappers and relationships to fire off SQL
@@ -185,7 +185,7 @@ class UnitOfWork(object):
         trans = session.create_transaction(autoflush=False)
         flush_context.transaction = trans
         try:
-            flush_context.execute(echo=echo)
+            flush_context.execute()
         except:
             trans.rollback()
             raise
@@ -206,6 +206,9 @@ class UOWTransaction(object):
         self.__modified = False
         self.__is_executing = False
         self.logger = logging.instance_logger(self)
+        self.echo = uow.echo
+        
+    echo = logging.echo_property()
     
     def register_object(self, obj, isdelete = False, listonly = False, postupdate=False, post_update_cols=None, **kwargs):
         """adds an object to this UOWTransaction to be updated in the database.
@@ -306,7 +309,7 @@ class UOWTransaction(object):
         task.dependencies.add(up)
         self._mark_modified()
 
-    def execute(self, echo=False):
+    def execute(self):
         # insure that we have a UOWTask for every mapper that will be involved 
         # in the topological sort
         [self.get_task_by_mapper(m) for m in self._get_noninheriting_mappers()]
@@ -333,7 +336,7 @@ class UOWTransaction(object):
         
         head = self._sort_dependencies()
         self.__modified = False
-        if echo:
+        if self.echo:
             if head is None:
                 self.logger.info("Task dump: None")
             else:
@@ -342,8 +345,7 @@ class UOWTransaction(object):
             head.execute(self)
         #if self.__modified and head is not None:
         #    raise "Assertion failed ! new pre-execute dependency step should eliminate post-execute changes (except post_update stuff)."
-        if echo:
-            self.logger.info("Execute Complete")
+        self.logger.info("Execute Complete")
             
     def post_exec(self):
         """after an execute/flush is completed, all of the objects and lists that have

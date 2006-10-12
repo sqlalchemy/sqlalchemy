@@ -30,8 +30,10 @@ import sys
 logging = __import__('logging')
 
 default_enabled = False
-def default_logging():
+def default_logging(name):
     global default_enabled
+    if logging.getLogger(name).getEffectiveLevel() < logging.WARN:
+        default_enabled=True
     if not default_enabled:
         default_enabled = True
         rootlogger = logging.getLogger('sqlalchemy')
@@ -58,13 +60,13 @@ def is_info_enabled(logger):
     return logger.isEnabledFor(logging.INFO)
         
 class echo_property(object):
-    level_map={logging.DEBUG : "debug", logging.NOTSET : False}
+    level_map={logging.DEBUG : "debug", logging.INFO:True}
     def __get__(self, instance, owner):
         level = logging.getLogger(_get_instance_name(instance)).getEffectiveLevel()
-        return echo_property.level_map.get(level, True)
+        return echo_property.level_map.get(level, False)
     def __set__(self, instance, value):
         if value:
-            default_logging()
+            default_logging(_get_instance_name(instance))
             logging.getLogger(_get_instance_name(instance)).setLevel(value == 'debug' and logging.DEBUG or logging.INFO)
         else:
             logging.getLogger(_get_instance_name(instance)).setLevel(logging.NOTSET)

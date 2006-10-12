@@ -134,7 +134,9 @@ class Session(object):
         objects in this Session."""
         for instance in self:
             self._unattach(instance)
+        echo = self.uow.echo
         self.uow = unitofwork.UnitOfWork()
+        self.uow.echo = echo
             
     def mapper(self, class_, entity_name=None):
         """given an Class, returns the primary Mapper responsible for persisting it"""
@@ -230,7 +232,7 @@ class Session(object):
         
         'objects' is a list or tuple of objects specifically to be flushed; if None, all
         new and modified objects are flushed."""
-        self.uow.flush(self, objects, echo=self.echo_uow)
+        self.uow.flush(self, objects)
 
     def get(self, class_, ident, **kwargs):
         """return an instance of the object based on the given identifier, or None if not found.  
