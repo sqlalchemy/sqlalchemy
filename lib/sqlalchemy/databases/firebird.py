@@ -156,8 +156,8 @@ class FireBirdDialect(ansisql.ANSIDialect):
     def has_table(self, connection, table_name):
         tblqry = """\
         SELECT count(*)
-             FROM RDB$RELATION_FIELDS R 
-        WHERE R.RDB$RELATION_NAME=?;"""
+        FROM RDB$RELATIONS R 
+        WHERE R.RDB$RELATION_NAME=?"""
     
         c = connection.execute(tblqry, [table_name.upper()])
         row = c.fetchone()
