@@ -202,6 +202,7 @@ ischema_names = {
     'char' : MSChar,
     'nchar' : MSNChar,
     'text' : MSText,
+    'ntext' : MSText, 
     'decimal' : MSNumeric,
     'numeric' : MSNumeric,
     'float' : MSFloat,
