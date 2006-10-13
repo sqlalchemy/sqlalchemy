@@ -228,9 +228,6 @@ ischema_names = {
     'enum': MSEnum,
 }
 
-def engine(opts, **params):
-    return MySQLEngine(opts, **params)
-
 def descriptor():
     return {'name':'mysql',
     'description':'MySQL',

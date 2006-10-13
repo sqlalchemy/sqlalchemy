@@ -37,7 +37,7 @@ class ANSIDialect(default.DefaultDialect):
         self.identifier_preparer = self.preparer()
         self.cache_identifiers = cache_identifiers
         
-    def connect_args(self):
+    def create_connect_args(self):
         return ([],{})
 
     def dbapi(self):

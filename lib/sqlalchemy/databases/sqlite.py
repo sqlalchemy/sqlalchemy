@@ -162,9 +162,6 @@ class SQLiteDialect(ansisql.ANSIDialect):
     def oid_column_name(self):
         return "oid"
 
-    def connect_args(self):
-        return ([self.filename], self.opts)
-
     def dbapi(self):
         return sqlite
         

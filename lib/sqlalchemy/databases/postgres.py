@@ -174,10 +174,6 @@ pg1_ischema_names.update({
     'time' : PG1Time
     })
 
-
-def engine(opts, **params):
-    return PGSQLEngine(opts, **params)
-
 def descriptor():
     return {'name':'postgres',
     'description':'PostGres',

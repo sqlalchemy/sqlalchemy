@@ -69,9 +69,6 @@ colspecs = {
     sqltypes.CHAR: FBChar,
 }
 
-def engine(*args, **params):
-    return FBSQLEngine(*args, **params)
-
 def descriptor():
     return {'name':'firebird',
     'description':'Firebird',
@@ -134,9 +131,6 @@ class FireBirdDialect(ansisql.ANSIDialect):
         self.opts = opts
         
         return ([], self.opts)
-
-    def connect_args(self):
-        return make_connect_string(self.opts)
 
     def create_execution_context(self):
         return FireBirdExecutionContext(self)

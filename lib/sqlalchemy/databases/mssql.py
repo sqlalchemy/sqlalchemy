@@ -213,9 +213,6 @@ ischema_names = {
     'image' : MSBinary
 }
 
-def engine(opts, **params):
-    return MSSQLEngine(opts, **params)
-
 def descriptor():
     return {'name':'mssql',
     'description':'MSSQL',
