@@ -108,8 +108,15 @@ class SyncRule(object):
         self.issecondary = issecondary
         self.dest_mapper = dest_mapper
         self.dest_column = dest_column
+            
         #print "SyncRule", source_mapper, source_column, dest_column, dest_mapper
-
+    def dest_primary_key(self):
+        try:
+            return self._dest_primary_key
+        except AttributeError:
+            self._dest_primary_key = self.dest_mapper is not None and self.dest_column in self.dest_mapper.pks_by_table[self.dest_column.table]
+            return self._dest_primary_key
+        
     def execute(self, source, dest, obj, child, clearkeys):
         if source is None:
             if self.issecondary is False:
@@ -123,6 +130,8 @@ class SyncRule(object):
         if isinstance(dest, dict):
             dest[self.dest_column.key] = value
         else:
+            if clearkeys and self.dest_primary_key():
+                return
             if logging.is_debug_enabled(self.logger):
                 self.logger.debug("execute() instances: %s(%s)->%s(%s) ('%s')" % (mapperutil.instance_str(source), str(self.source_column), mapperutil.instance_str(dest), str(self.dest_column), value))
             self.dest_mapper._setattrbycolumn(dest, self.dest_column, value)

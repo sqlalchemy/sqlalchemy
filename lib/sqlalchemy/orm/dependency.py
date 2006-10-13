@@ -222,7 +222,7 @@ class ManyToOneDP(DependencyProcessor):
                 # before we can DELETE the row
                 for obj in deplist:
                     self._synchronize(obj, None, None, True)
-                    childlist = self.get_object_dependencies(obj, uowcommit, passive=True)
+                    childlist = self.get_object_dependencies(obj, uowcommit, passive=False)
                     self._conditional_post_update(obj, uowcommit, childlist.deleted_items() + childlist.unchanged_items() + childlist.added_items())
         else:
             for obj in deplist:
