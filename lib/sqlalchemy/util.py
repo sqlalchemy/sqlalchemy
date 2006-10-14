@@ -115,21 +115,26 @@ class OrderedProperties(object):
         self.__data.clear()
         
 class OrderedDict(dict):
-    """A Dictionary that keeps its own internal ordering"""
-    
-    def __init__(self, values = None):
+    """A Dictionary that returns keys/values/items in the order they were added"""
+    def __init__(self, d=None, **kwargs):
         self._list = []
-        if values is not None:
-            for val in values:
-                self.update(val)
+        self.update(d, **kwargs)
     def keys(self):
         return list(self._list)
     def clear(self):
         self._list = []
         dict.clear(self)
-    def update(self, dict):
-        for key in dict.keys():
-            self.__setitem__(key, dict[key])
+    def update(self, d=None, **kwargs):
+        # d can be a dict or sequence of keys/values
+        if d:
+            if hasattr(d, 'iteritems'):
+                seq = d.iteritems()
+            else:
+                seq = d
+            for key, value in seq:
+                self.__setitem__(key, value)
+        if kwargs:
+            self.update(kwargs)
     def setdefault(self, key, value):
         if not self.has_key(key):
             self.__setitem__(key, value)
@@ -137,7 +142,7 @@ class OrderedDict(dict):
         else:
             return self.__getitem__(key)
     def values(self):
-        return map(lambda key: self[key], self._list)
+        return [self[key] for key in self._list]
     def __iter__(self):
         return iter(self._list)
     def itervalues(self):
