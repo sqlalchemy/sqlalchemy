@@ -87,6 +87,8 @@ class OrderedProperties(object):
         return len(self.__data)
     def __iter__(self):
         return self.__data.itervalues()
+    def __add__(self, other):
+        return list(self) + list(other)
     def __setitem__(self, key, object):
         self.__data[key] = object
     def __getitem__(self, key):

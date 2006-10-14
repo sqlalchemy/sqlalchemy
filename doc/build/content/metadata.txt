@@ -470,41 +470,86 @@ A Sequence object can be defined on a Table that is then used for a non-sequence
     
 A sequence can also be specified with `optional=True` which indicates the Sequence should only be used on a database that requires an explicit sequence, and not those that supply some other method of providing integer values.  At the moment, it essentially means "use this sequence only with Oracle and not Postgres".
     
-### Defining Indexes {@name=indexes}
+### Defining Constraints and Indexes {@name=constraints}
 
-Indexes can be defined on table columns, including named indexes, non-unique or unique, multiple column.  Indexes are included along with table create and drop statements.  They are not used for any kind of run-time constraint checking; SQLAlchemy leaves that job to the expert on constraint checking, the database itself.
+#### UNIQUE Constraint
+
+Unique constraints can be created anonymously on a single column using the `unique` keyword on `Column`.  Explicitly named unique constraints and/or those with multiple columns are created via the `UniqueConstraint` table-level construct.
 
     {python}
-    boundmeta = BoundMetaData('postgres:///scott:tiger@localhost/test')
-    mytable = Table('mytable', boundmeta, 
-        # define a unique index 
+    meta = MetaData()
+    mytable = Table('mytable', meta,
+    
+        # per-column anonymous unique constraint
         Column('col1', Integer, unique=True),
         
-        # define a unique index with a specific name
-        Column('col2', Integer, unique='mytab_idx_1'),
+        Column('col2', Integer),
+        Column('col3', Integer),
         
-        # define a non-unique index
-        Column('col3', Integer, index=True),
+        # explicit/composite unique constraint.  'name' is optional.
+        UniqueConstraint('col2', 'col3', name='uix_1')
+        )
+
+#### CHECK Constraint
+
+Check constraints can be named or unnamed and can be created at the Column or Table level, using the `CheckConstraint` construct.  The text of the check constraint is passed directly through to the database, so there is limited "database independent" behavior.  Column level check constraints generally should only refer to the column to which they are placed, while table level constraints can refer to any columns in the table.
+
+Note that some databases do not actively support check constraints such as MySQL and sqlite.
+
+    {python}
+    meta = MetaData()
+    mytable = Table('mytable', meta,
+    
+        # per-column CHECK constraint
+        Column('col1', Integer, CheckConstraint('col1&gt;5')),
         
-        # define a non-unique index with a specific name
-        Column('col4', Integer, index='mytab_idx_2'),
+        Column('col2', Integer),
+        Column('col3', Integer),
         
-        # pass the same name to multiple columns to add them to the same index
-        Column('col5', Integer, index='mytab_idx_2'),
-        
+        # table level CHECK constraint.  'name' is optional.
+        CheckConstraint('col2 &gt; col3 + 5', name='check1')
+        )
+    
+#### Indexes
+
+Indexes can be created anonymously (using an auto-generated name "ix_&lt;column label&gt;") for a single column using the inline `index` keyword on `Column`, which also modifies the usage of `unique` to apply the uniqueness to the index itself, instead of adding a separate UNIQUE constraint.  For indexes with specific names or which encompass more than one column, use the `Index` construct, which requires a name.  
+
+Note that the `Index` construct is created **externally** to the table which it corresponds, using `Column` objects and not strings.
+
+    {python}
+    meta = MetaData()
+    mytable = Table('mytable', meta,
+        # an indexed column, with index "ix_mytable_col1"
+        Column('col1', Integer, index=True),
+
+        # a uniquely indexed column with index "ix_mytable_col2"
+        Column('col2', Integer, index=True, unique=True),
+
+        Column('col3', Integer),
+        Column('col4', Integer),
+
+        Column('col5', Integer),
         Column('col6', Integer),
-        Column('col7', Integer)
-    )
-    
-    # create the table.  all the indexes will be created along with it.
-    mytable.create()
-    
-    # indexes can also be specified standalone
-    i = Index('mytab_idx_3', mytable.c.col6, mytable.c.col7, unique=False)
-    
-    # which can then be created separately (will also get created with table creates)
+        )
+
+    # place an index on col3, col4
+    Index('idx_col34', mytable.c.col3, mytable.c.col4)
+
+    # place a unique index on col5, col6
+    Index('myindex', mytable.c.col5, mytable.c.col6, unique=True)
+
+The `Index` objects will be created along with the CREATE statements for the table itself.  An index can also be created on its own independently of the table:
+
+    {python}
+    # create a table
+    sometable.create()
+
+    # define an index
+    i = Index('someindex', sometable.c.col5)
+
+    # create the index, will use the table's connectable, or specify the connectable keyword argument
     i.create()
-    
+
 ### Adapting Tables to Alternate Metadata {@name=adapting}
 
 A `Table` object created against a specific `MetaData` object can be re-created against a new MetaData using the `tometadata` method:

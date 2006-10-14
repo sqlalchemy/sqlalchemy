@@ -199,7 +199,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
             colargs= []
             if has_default:
                 colargs.append(PassiveDefault('?'))
-            table.append_item(schema.Column(name, coltype, primary_key = primary_key, nullable = nullable, *colargs))
+            table.append_column(schema.Column(name, coltype, primary_key = primary_key, nullable = nullable, *colargs))
         
         if not found_table:
             raise exceptions.NoSuchTableError(table.name)
@@ -228,7 +228,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
             if refspec not in fk[1]:
                 fk[1].append(refspec)
         for name, value in fks.iteritems():
-            table.append_item(schema.ForeignKeyConstraint(value[0], value[1]))    
+            table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1]))    
         # check for UNIQUE indexes
         c = connection.execute("PRAGMA index_list(" + table.name + ")", {})
         unique_indexes = []
@@ -250,8 +250,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
                 col = table.columns[row[2]]
             # unique index that includes the pk is considered a multiple primary key
             for col in cols:
-                column = table.columns[col]
-                table.columns[col]._set_primary_key()
+                table.primary_key.add(table.columns[col])
                     
 class SQLiteCompiler(ansisql.ANSICompiler):
     def visit_cast(self, cast):

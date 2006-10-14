@@ -2,7 +2,7 @@ import testbase
 from sqlalchemy import *
 import sys
 
-class IndexTest(testbase.AssertMixin):
+class ConstraintTest(testbase.AssertMixin):
     
     def setUp(self):
         global metadata
@@ -27,6 +27,59 @@ class IndexTest(testbase.AssertMixin):
             ForeignKeyConstraint(['emp_id', 'emp_soc'], ['employees.id', 'employees.soc'])
             )
         metadata.create_all()
+
+    @testbase.unsupported('sqlite', 'mysql')
+    def test_check_constraint(self):
+        foo = Table('foo', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('x', Integer),
+            Column('y', Integer),
+            CheckConstraint('x>y'))
+        bar = Table('bar', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('x', Integer, CheckConstraint('x>7')),
+            )
+
+        metadata.create_all()
+        foo.insert().execute(id=1,x=9,y=5)
+        try:
+            foo.insert().execute(id=2,x=5,y=9)
+            assert False
+        except exceptions.SQLError:
+            assert True
+
+        bar.insert().execute(id=1,x=10)
+        try:
+            bar.insert().execute(id=2,x=5)
+            assert False
+        except exceptions.SQLError:
+            assert True
+    
+    def test_unique_constraint(self):
+        foo = Table('foo', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('value', String(30), unique=True))
+        bar = Table('bar', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('value', String(30)),
+            Column('value2', String(30)),
+            UniqueConstraint('value', 'value2', name='uix1')
+            )
+        metadata.create_all()
+        foo.insert().execute(id=1, value='value1')
+        foo.insert().execute(id=2, value='value2')
+        bar.insert().execute(id=1, value='a', value2='a')
+        bar.insert().execute(id=2, value='a', value2='b')
+        try:
+            foo.insert().execute(id=3, value='value1')
+            assert False
+        except exceptions.SQLError:
+            assert True
+        try:
+            bar.insert().execute(id=3, value='a', value2='b')
+            assert False
+        except exceptions.SQLError:
+            assert True
         
     def test_index_create(self):
         employees = Table('employees', metadata,
@@ -39,12 +92,12 @@ class IndexTest(testbase.AssertMixin):
         i = Index('employee_name_index',
                   employees.c.last_name, employees.c.first_name)
         i.create()
-        assert employees.indexes['employee_name_index'] is i
+        assert i in employees.indexes
         
         i2 = Index('employee_email_index',
                    employees.c.email_address, unique=True)        
         i2.create()
-        assert employees.indexes['employee_email_index'] is i2
+        assert i2 in employees.indexes
 
     def test_index_create_camelcase(self):
         """test that mixed-case index identifiers are legal"""
@@ -76,16 +129,17 @@ class IndexTest(testbase.AssertMixin):
 
         events = Table('events', metadata,
                        Column('id', Integer, primary_key=True),
-                       Column('name', String(30), unique=True),
+                       Column('name', String(30), index=True, unique=True),
                        Column('location', String(30), index=True),
-                       Column('sport', String(30),
-                              unique='sport_announcer'),
-                       Column('announcer', String(30),
-                              unique='sport_announcer'),
-                       Column('winner', String(30), index='idx_winners'))
+                       Column('sport', String(30)),
+                       Column('announcer', String(30)),
+                       Column('winner', String(30)))
+
+        Index('sport_announcer', events.c.sport, events.c.announcer, unique=True)
+        Index('idx_winners', events.c.winner)
         
         index_names = [ ix.name for ix in events.indexes ]
-        assert 'ux_events_name' in index_names
+        assert 'ix_events_name' in index_names
         assert 'ix_events_location' in index_names
         assert 'sport_announcer' in index_names
         assert 'idx_winners' in index_names
@@ -97,19 +151,20 @@ class IndexTest(testbase.AssertMixin):
             capt.append(statement)
             capt.append(repr(parameters))
             connection.proxy(statement, parameters)
-        schemagen = testbase.db.dialect.schemagenerator(testbase.db, proxy)
+        schemagen = testbase.db.dialect.schemagenerator(testbase.db, proxy, connection)
         events.accept_schema_visitor(schemagen)
         
         assert capt[0].strip().startswith('CREATE TABLE events')
-        assert capt[2].strip() == \
-            'CREATE UNIQUE INDEX ux_events_name ON events (name)'
-        assert capt[4].strip() == \
-            'CREATE INDEX ix_events_location ON events (location)'
-        assert capt[6].strip() == \
-            'CREATE UNIQUE INDEX sport_announcer ON events (sport, announcer)'
-        assert capt[8].strip() == \
+        
+        s = set([capt[x].strip() for x in [2,4,6,8]])
+        
+        assert s == set([
+            'CREATE UNIQUE INDEX ix_events_name ON events (name)',
+            'CREATE INDEX ix_events_location ON events (location)',
+            'CREATE UNIQUE INDEX sport_announcer ON events (sport, announcer)',
             'CREATE INDEX idx_winners ON events (winner)'
-
+            ])
+            
         # verify that the table is functional
         events.insert().execute(id=1, name='hockey finals', location='rink',
                                 sport='hockey', announcer='some canadian',

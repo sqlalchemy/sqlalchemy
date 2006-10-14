@@ -253,7 +253,7 @@ class FireBirdDialect(ansisql.ANSIDialect):
             # is it a primary key?
             kw['primary_key'] = name in pkfields
 
-            table.append_item(schema.Column(*args, **kw))
+            table.append_column(schema.Column(*args, **kw))
             row = c.fetchone()
 
         # get the foreign keys
@@ -276,7 +276,7 @@ class FireBirdDialect(ansisql.ANSIDialect):
             fk[1].append(refspec)
 
         for name,value in fks.iteritems():
-            table.append_item(schema.ForeignKeyConstraint(value[0], value[1], name=name))
+            table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1], name=name))
                               
 
     def last_inserted_ids(self):

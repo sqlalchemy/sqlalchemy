@@ -370,7 +370,7 @@ class PGDialect(ansisql.ANSIDialect):
                 colargs= []
                 if default is not None:
                     colargs.append(PassiveDefault(sql.text(default)))
-                table.append_item(schema.Column(name, coltype, nullable=nullable, *colargs))
+                table.append_column(schema.Column(name, coltype, nullable=nullable, *colargs))
     
     
             if not found_table:
@@ -392,7 +392,7 @@ class PGDialect(ansisql.ANSIDialect):
                 if row is None:
                     break
                 pk = row[0]
-                table.c[pk]._set_primary_key()
+                table.primary_key.add(table.c[pk])
     
             # Foreign keys
             FK_SQL = """
@@ -443,7 +443,7 @@ class PGDialect(ansisql.ANSIDialect):
                     for column in referred_columns:
                         refspec.append(".".join([referred_table, column]))
                 
-                table.append_item(ForeignKeyConstraint(constrained_columns, refspec, row['conname']))
+                table.append_constraint(ForeignKeyConstraint(constrained_columns, refspec, row['conname']))
 
 class PGCompiler(ansisql.ANSICompiler):
         
@@ -502,13 +502,13 @@ class PGSchemaGenerator(ansisql.ANSISchemaGenerator):
         return colspec
 
     def visit_sequence(self, sequence):
-        if not sequence.optional and not self.engine.dialect.has_sequence(self.connection, sequence.name):
+        if not sequence.optional and (not self.dialect.has_sequence(self.connection, sequence.name)):
             self.append("CREATE SEQUENCE %s" % self.preparer.format_sequence(sequence))
             self.execute()
             
 class PGSchemaDropper(ansisql.ANSISchemaDropper):
     def visit_sequence(self, sequence):
-        if not sequence.optional and self.engine.dialect.has_sequence(self.connection, sequence.name):
+        if not sequence.optional and (self.dialect.has_sequence(self.connection, sequence.name)):
             self.append("DROP SEQUENCE %s" % sequence.name)
             self.execute()
 

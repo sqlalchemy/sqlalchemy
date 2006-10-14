@@ -91,7 +91,8 @@ class VersioningTest(UnitOfWorkTest):
         Column('id', Integer, Sequence('version_test_seq'), primary_key=True ),
         Column('version_id', Integer, nullable=False),
         Column('value', String(40), nullable=False)
-        ).create()
+        )
+        version_table.create()
     def tearDownAll(self):
         version_table.drop()
         UnitOfWorkTest.tearDownAll(self)
@@ -408,12 +409,14 @@ class PrivateAttrTest(UnitOfWorkTest):
         a_table = Table('a',testbase.db,
             Column('a_id', Integer, Sequence('next_a_id'), primary_key=True),
             Column('data', String(10)),
-            ).create()
+            )
     
         b_table = Table('b',testbase.db,
             Column('b_id',Integer,Sequence('next_b_id'),primary_key=True),
             Column('a_id',Integer,ForeignKey('a.a_id')),
-            Column('data',String(10))).create()
+            Column('data',String(10)))
+        a_table.create()
+        b_table.create()
     def tearDownAll(self):
         b_table.drop()
         a_table.drop()

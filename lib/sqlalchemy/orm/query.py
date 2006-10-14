@@ -366,10 +366,8 @@ class Query(object):
             if not distinct and order_by:
                 s2.order_by(*util.to_list(order_by))
             s3 = s2.alias('tbl_row_count')
-            crit = []
-            for i in range(0, len(self.table.primary_key)):
-                crit.append(s3.primary_key[i] == self.table.primary_key[i])
-            statement = sql.select([], sql.and_(*crit), from_obj=[self.table], use_labels=True, for_update=for_update)
+            crit = s3.primary_key==self.table.primary_key
+            statement = sql.select([], crit, from_obj=[self.table], use_labels=True, for_update=for_update)
             # now for the order by, convert the columns to their corresponding columns
             # in the "rowcount" query, and tack that new order by onto the "rowcount" query
             if order_by:

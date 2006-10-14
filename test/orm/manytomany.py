@@ -28,7 +28,7 @@ class Transition(object):
         
 class M2MTest(testbase.AssertMixin):
     def setUpAll(self):
-        self.install_threadlocal()
+        global metadata
         metadata = testbase.metadata
         global place
         place = Table('place', metadata,
@@ -68,28 +68,14 @@ class M2MTest(testbase.AssertMixin):
             Column('pl1_id', Integer, ForeignKey('place.place_id')),
             Column('pl2_id', Integer, ForeignKey('place.place_id')),
             )
-
-        place.create()
-        transition.create()
-        place_input.create()
-        place_output.create()
-        place_thingy.create()
-        place_place.create()
+        metadata.create_all()
 
     def tearDownAll(self):
-        place_place.drop()
-        place_input.drop()
-        place_output.drop()
-        place_thingy.drop()
-        place.drop()
-        transition.drop()
-        objectstore.clear()
+        metadata.drop_all()
         clear_mappers()
         #testbase.db.tables.clear()
-        self.uninstall_threadlocal()
         
     def setUp(self):
-        objectstore.clear()
         clear_mappers()
 
     def tearDown(self):
@@ -111,6 +97,7 @@ class M2MTest(testbase.AssertMixin):
             lazy=True,
             ))
 
+        sess = create_session()
         p1 = Place('place1')
         p2 = Place('place2')
         p3 = Place('place3')
@@ -118,7 +105,7 @@ class M2MTest(testbase.AssertMixin):
         p5 = Place('place5')
         p6 = Place('place6')
         p7 = Place('place7')
-
+        [sess.save(x) for x in [p1,p2,p3,p4,p5,p6,p7]]
         p1.places.append(p2)
         p1.places.append(p3)
         p5.places.append(p6)
@@ -127,10 +114,10 @@ class M2MTest(testbase.AssertMixin):
         p1.places.append(p5)
         p4.places.append(p3)
         p3.places.append(p4)
-        objectstore.flush()
+        sess.flush()
 
-        objectstore.clear()
-        l = Place.mapper.select(order_by=place.c.place_id)
+        sess.clear()
+        l = sess.query(Place).select(order_by=place.c.place_id)
         (p1, p2, p3, p4, p5, p6, p7) = l
         assert p1.places == [p2,p3,p5]
         assert p5.places == [p6]
@@ -144,8 +131,8 @@ class M2MTest(testbase.AssertMixin):
             pp = p.places
             self.echo("Place " + str(p) +" places " + repr(pp))
 
-        [objectstore.delete(p) for p in p1,p2,p3,p4,p5,p6,p7]
-        objectstore.flush()
+        [sess.delete(p) for p in p1,p2,p3,p4,p5,p6,p7]
+        sess.flush()
 
     def testdouble(self):
         """tests that a mapper can have two eager relations to the same table, via
@@ -165,10 +152,12 @@ class M2MTest(testbase.AssertMixin):
         tran.inputs.append(Place('place1'))
         tran.outputs.append(Place('place2'))
         tran.outputs.append(Place('place3'))
-        objectstore.flush()
+        sess = create_session()
+        sess.save(tran)
+        sess.flush()
 
-        objectstore.clear()
-        r = Transition.mapper.select()
+        sess.clear()
+        r = sess.query(Transition).select()
         self.assert_result(r, Transition, 
             {'name':'transition1', 
             'inputs' : (Place, [{'name':'place1'}]),
@@ -199,15 +188,15 @@ class M2MTest(testbase.AssertMixin):
         p2.inputs.append(t2)
         p3.inputs.append(t2)
         p1.outputs.append(t1)
-        
-        objectstore.flush()
+        sess = create_session()
+        [sess.save(x) for x in [t1,t2,t3,p1,p2,p3]]
+        sess.flush()
         
         self.assert_result([t1], Transition, {'outputs': (Place, [{'name':'place3'}, {'name':'place1'}])})
         self.assert_result([p2], Place, {'inputs': (Transition, [{'name':'transition1'},{'name':'transition2'}])})
 
 class M2MTest2(testbase.AssertMixin):        
     def setUpAll(self):
-        self.install_threadlocal()
         metadata = testbase.metadata
         global studentTbl
         studentTbl = Table('student', metadata, Column('name', String(20), primary_key=True))
@@ -217,22 +206,13 @@ class M2MTest2(testbase.AssertMixin):
         enrolTbl = Table('enrol', metadata,
             Column('student_id', String(20), ForeignKey('student.name'),primary_key=True),
             Column('course_id', String(20), ForeignKey('course.name'), primary_key=True))
-
-        studentTbl.create()
-        courseTbl.create()
-        enrolTbl.create()
+        metadata.create_all()
 
     def tearDownAll(self):
-        enrolTbl.drop()
-        studentTbl.drop()
-        courseTbl.drop()
-        objectstore.clear()
+        metadata.drop_all()
         clear_mappers()
-        #testbase.db.tables.clear()
-        self.uninstall_threadlocal()
         
     def setUp(self):
-        objectstore.clear()
         clear_mappers()
 
     def tearDown(self):
@@ -251,6 +231,7 @@ class M2MTest2(testbase.AssertMixin):
         Course.mapper = mapper(Course, courseTbl, properties = {
             'students': relation(Student.mapper, enrolTbl, lazy=True, backref='courses')
         })
+        sess = create_session()
         s1 = Student('Student1')
         c1 = Course('Course1')
         c2 = Course('Course2')
@@ -260,55 +241,53 @@ class M2MTest2(testbase.AssertMixin):
         c3.students.append(s1)
         self.assert_(len(s1.courses) == 3)
         self.assert_(len(c1.students) == 1)
-        objectstore.flush()
-        objectstore.clear()
-        s = Student.mapper.get_by(name='Student1')
-        c = Course.mapper.get_by(name='Course3')
+        sess.save(s1)
+        sess.flush()
+        sess.clear()
+        s = sess.query(Student).get_by(name='Student1')
+        c = sess.query(Course).get_by(name='Course3')
         self.assert_(len(s.courses) == 3)
         del s.courses[1]
         self.assert_(len(s.courses) == 2)
         
 class M2MTest3(testbase.AssertMixin):    
     def setUpAll(self):
-        self.install_threadlocal()
         metadata = testbase.metadata
         global c, c2a1, c2a2, b, a
         c = Table('c', metadata, 
             Column('c1', Integer, primary_key = True),
             Column('c2', String(20)),
-        ).create()
+        )
 
         a = Table('a', metadata, 
             Column('a1', Integer, primary_key=True),
             Column('a2', String(20)),
             Column('c1', Integer, ForeignKey('c.c1'))
-            ).create()
+            )
 
         c2a1 = Table('ctoaone', metadata, 
             Column('c1', Integer, ForeignKey('c.c1')),
             Column('a1', Integer, ForeignKey('a.a1'))
-        ).create()
+        )
         c2a2 = Table('ctoatwo', metadata, 
             Column('c1', Integer, ForeignKey('c.c1')),
             Column('a1', Integer, ForeignKey('a.a1'))
-        ).create()
+        )
 
         b = Table('b', metadata, 
             Column('b1', Integer, primary_key=True),
             Column('a1', Integer, ForeignKey('a.a1')),
             Column('b2', Boolean)
-        ).create()
-
+        )
+        metadata.create_all()
+        
     def tearDownAll(self):
         b.drop()
         c2a2.drop()
         c2a1.drop()
         a.drop()
         c.drop()
-        objectstore.clear()
         clear_mappers()
-        #testbase.db.tables.clear()
-        self.uninstall_threadlocal()
         
     def testbasic(self):
         class C(object):pass

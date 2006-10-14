@@ -109,7 +109,7 @@ class BiDirectionalOneToManyTest(AssertMixin):
             Column('c2', Integer)
         )
         metadata.create_all()
-        t2.c.c2.append_item(ForeignKey('t1.c1'))
+        t2.c.c2.append_foreign_key(ForeignKey('t1.c1'))
     def tearDownAll(self):
         t1.drop()
         t2.drop()
@@ -153,7 +153,7 @@ class BiDirectionalOneToManyTest2(AssertMixin):
         )
         t2.create()
         t1.create()
-        t2.c.c2.append_item(ForeignKey('t1.c1'))
+        t2.c.c2.append_foreign_key(ForeignKey('t1.c1'))
         t3 = Table('t1_data', metadata, 
             Column('c1', Integer, primary_key=True),
             Column('t1id', Integer, ForeignKey('t1.c1')),
@@ -225,8 +225,7 @@ class OneToManyManyToOneTest(AssertMixin):
 
         ball.create()
         person.create()
-#        person.c.favorite_ball_id.append_item(ForeignKey('ball.id'))
-        ball.c.person_id.append_item(ForeignKey('person.id'))
+        ball.c.person_id.append_foreign_key(ForeignKey('person.id'))
         
         # make the test more complete for postgres
         if db.engine.__module__.endswith('postgres'):

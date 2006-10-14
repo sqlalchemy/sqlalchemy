@@ -256,7 +256,7 @@ class OracleDialect(ansisql.ANSIDialect):
             if (name.upper() == name): 
                 name = name.lower()
             
-            table.append_item (schema.Column(name, coltype, nullable=nullable, *colargs))
+            table.append_column(schema.Column(name, coltype, nullable=nullable, *colargs))
 
        
         c = connection.execute(constraintSQL, {'table_name' : table.name.upper(), 'owner' : owner})
@@ -268,7 +268,7 @@ class OracleDialect(ansisql.ANSIDialect):
             #print "ROW:" , row                
             (cons_name, cons_type, local_column, remote_table, remote_column) = row
             if cons_type == 'P':
-                table.c[local_column]._set_primary_key()
+                table.primary_key.add(table.c[local_column])
             elif cons_type == 'R':
                 try:
                     fk = fks[cons_name]
@@ -283,7 +283,7 @@ class OracleDialect(ansisql.ANSIDialect):
                     fk[1].append(refspec)
 
         for name, value in fks.iteritems():
-            table.append_item(schema.ForeignKeyConstraint(value[0], value[1], name=name))
+            table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1], name=name))
 
     def do_executemany(self, c, statement, parameters, context=None):
         rowcount = 0

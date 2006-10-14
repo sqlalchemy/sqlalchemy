@@ -446,7 +446,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
             if default is not None:
                 colargs.append(schema.PassiveDefault(sql.text(default)))
                 
-            table.append_item(schema.Column(name, coltype, nullable=nullable, *colargs))
+            table.append_column(schema.Column(name, coltype, nullable=nullable, *colargs))
         
         if not found_table:
             raise exceptions.NoSuchTableError(table.name)
@@ -478,7 +478,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
         c = connection.execute(s)
         for row in c:
             if 'PRIMARY' in row[TC.c.constraint_type.name]:
-                table.c[row[0]]._set_primary_key()
+                table.primary_key.add(table.c[row[0]])
 
 
         # Foreign key constraints
@@ -498,13 +498,13 @@ class MSSQLDialect(ansisql.ANSIDialect):
             scol, rschema, rtbl, rcol, rfknm, fkmatch, fkuprule, fkdelrule = r
             if rfknm != fknm:
                 if fknm:
-                    table.append_item(schema.ForeignKeyConstraint(scols, ['%s.%s' % (t,c) for (s,t,c) in rcols], fknm))
+                    table.append_constraint(schema.ForeignKeyConstraint(scols, ['%s.%s' % (t,c) for (s,t,c) in rcols], fknm))
                 fknm, scols, rcols = (rfknm, [], [])
             if (not scol in scols): scols.append(scol)
             if (not (rschema, rtbl, rcol) in rcols): rcols.append((rschema, rtbl, rcol))
 
         if fknm and scols:
-            table.append_item(schema.ForeignKeyConstraint(scols, ['%s.%s' % (t,c) for (s,t,c) in rcols], fknm))
+            table.append_constraint(schema.ForeignKeyConstraint(scols, ['%s.%s' % (t,c) for (s,t,c) in rcols], fknm))
                                 
 
 

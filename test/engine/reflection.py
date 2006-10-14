@@ -59,8 +59,6 @@ class ReflectionTest(PersistTest):
             mysql_engine='InnoDB'
         )
 
-#        users.c.parent_user_id.set_foreign_key(ForeignKey(users.c.user_id))
-
         users.create()
         addresses.create()
 
@@ -154,6 +152,7 @@ class ReflectionTest(PersistTest):
                 autoload=True)
             u2 = Table('users', meta2, autoload=True)
 
+            print "ITS", list(a2.primary_key)
             assert list(a2.primary_key) == [a2.c.id]
             assert list(u2.primary_key) == [u2.c.id]
             assert u2.join(a2).onclause == u2.c.id==a2.c.id
@@ -226,19 +225,19 @@ class ReflectionTest(PersistTest):
             
     def testmultipk(self):
         """test that creating a table checks for a sequence before creating it"""
+        meta = BoundMetaData(testbase.db)
         table = Table(
-            'engine_multi', testbase.db, 
+            'engine_multi', meta, 
             Column('multi_id', Integer, Sequence('multi_id_seq'), primary_key=True),
             Column('multi_rev', Integer, Sequence('multi_rev_seq'), primary_key=True),
             Column('name', String(50), nullable=False),
             Column('val', String(100))
         )
         table.create()
-        # clear out table registry
-        table.deregister()
 
+        meta2 = BoundMetaData(testbase.db)
         try:
-            table = Table('engine_multi', testbase.db, autoload=True)
+            table = Table('engine_multi', meta2, autoload=True)
         finally:
             table.drop()
         
@@ -348,19 +347,20 @@ class ReflectionTest(PersistTest):
                           testbase.db, autoload=True)
         
     def testoverride(self):
+        meta = BoundMetaData(testbase.db)
         table = Table(
-            'override_test', testbase.db, 
+            'override_test', meta, 
             Column('col1', Integer, primary_key=True),
             Column('col2', String(20)),
             Column('col3', Numeric)
         )
         table.create()
         # clear out table registry
-        table.deregister()
 
+        meta2 = BoundMetaData(testbase.db)
         try:
             table = Table(
-                'override_test', testbase.db,
+                'override_test', meta2,
                 Column('col2', Unicode()),
                 Column('col4', String(30)), autoload=True)
         
@@ -403,22 +403,22 @@ class CreateDropTest(PersistTest):
         )
 
     def test_sorter( self ):
-        tables = metadata._sort_tables(metadata.tables.values())
+        tables = metadata.table_iterator(reverse=False)
         table_names = [t.name for t in tables]
         self.assert_( table_names == ['users', 'orders', 'items', 'email_addresses'] or table_names ==  ['users', 'email_addresses', 'orders', 'items'])
 
 
     def test_createdrop(self):
-        metadata.create_all(engine=testbase.db)
+        metadata.create_all(connectable=testbase.db)
         self.assertEqual( testbase.db.has_table('items'), True )
         self.assertEqual( testbase.db.has_table('email_addresses'), True )        
-        metadata.create_all(engine=testbase.db)
+        metadata.create_all(connectable=testbase.db)
         self.assertEqual( testbase.db.has_table('items'), True )        
 
-        metadata.drop_all(engine=testbase.db)
+        metadata.drop_all(connectable=testbase.db)
         self.assertEqual( testbase.db.has_table('items'), False )
         self.assertEqual( testbase.db.has_table('email_addresses'), False )                
-        metadata.drop_all(engine=testbase.db)
+        metadata.drop_all(connectable=testbase.db)
         self.assertEqual( testbase.db.has_table('items'), False )                
 
 class SchemaTest(PersistTest):
@@ -438,7 +438,7 @@ class SchemaTest(PersistTest):
         buf = StringIO.StringIO()
         def foo(s, p):
             buf.write(s)
-        gen = testbase.db.dialect.schemagenerator(testbase.db.engine, foo)
+        gen = testbase.db.dialect.schemagenerator(testbase.db.engine, foo, None)
         table1.accept_schema_visitor(gen)
         table2.accept_schema_visitor(gen)
         buf = buf.getvalue()

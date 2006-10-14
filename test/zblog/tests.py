@@ -12,9 +12,9 @@ from zblog.blog import *
 class ZBlogTest(AssertMixin):
 
     def create_tables(self):
-        tables.metadata.create_all(engine=db)
+        tables.metadata.create_all(connectable=db)
     def drop_tables(self):
-        tables.metadata.drop_all(engine=db)
+        tables.metadata.drop_all(connectable=db)
         
     def setUpAll(self):
         self.create_tables()

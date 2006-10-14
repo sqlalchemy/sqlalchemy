@@ -353,7 +353,7 @@ class MySQLDialect(ansisql.ANSIDialect):
             colargs= []
             if default:
                 colargs.append(schema.PassiveDefault(sql.text(default)))
-            table.append_item(schema.Column(name, coltype, *colargs, 
+            table.append_column(schema.Column(name, coltype, *colargs, 
                                             **dict(primary_key=primary_key,
                                                    nullable=nullable,
                                                    )))
@@ -397,7 +397,7 @@ class MySQLDialect(ansisql.ANSIDialect):
             refcols = [match.group('reftable') + "." + x for x in re.findall(r'`(.+?)`', match.group('refcols'))]
             schema.Table(match.group('reftable'), table.metadata, autoload=True, autoload_with=connection)
             constraint = schema.ForeignKeyConstraint(columns, refcols, name=match.group('name'))
-            table.append_item(constraint)
+            table.append_constraint(constraint)
 
         return tabletype
         

@@ -5,7 +5,7 @@ import unittest
 def suite():
     modules_to_test = (
         'sql.testtypes',
-        'sql.indexes',
+        'sql.constraints',
 
         # SQL syntax
         'sql.select',

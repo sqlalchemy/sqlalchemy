@@ -32,6 +32,28 @@
     - aliases do not use "AS"
     - correctly raises NoSuchTableError when reflecting non-existent table
 - Schema:
+    - a fair amount of cleanup to the schema package, removal of ambiguous
+    methods, methods that are no longer needed.  slightly more constrained
+    useage, greater emphasis on explicitness
+    - the "primary_key" attribute of Table and other selectables becomes
+    a setlike ColumnCollection object; is no longer ordered or numerically
+    indexed.  a comparison clause between two pks that are derived from the 
+    same underlying tables (i.e. such as two Alias objects) can be generated 
+    via table1.primary_key==table2.primary_key
+    - append_item() methods removed from Table and Column; preferably
+    construct Table/Column/related objects inline, but if needed use 
+    append_column(), append_foreign_key(), append_constraint(), etc.
+    - table.create() no longer returns the Table object, instead has no
+    return value.  the usual case is that tables are created via metadata,
+    which is preferable since it will handle table dependencies.
+    - added UniqueConstraint (goes at Table level), CheckConstraint
+    (goes at Table or Column level).
+    - index=False/unique=True on Column now creates a UniqueConstraint,
+    index=True/unique=False creates a plain Index, 
+    index=True/unique=True on Column creates a unique Index.  'index'
+    and 'unique' keyword arguments to column are now boolean only; for
+    explcit names and groupings of indexes or unique constraints, use the
+    UniqueConstraint/Index constructs explicitly.
     - added autoincrement=True to Column; will disable schema generation
     of SERIAL/AUTO_INCREMENT/identity seq for postgres/mysql/mssql if
     explicitly set to False
