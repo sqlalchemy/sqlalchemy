@@ -271,7 +271,7 @@ class Mapper(object):
                     # stricter set of tables to create "sync rules" by,based on the immediate
                     # inherited table, rather than all inherited tables
                     self._synchronizer = sync.ClauseSynchronizer(self, self, sync.ONETOMANY)
-                    self._synchronizer.compile(self.mapped_table.onclause, util.Set([self.inherits.local_table]), sqlutil.TableFinder(self.local_table))
+                    self._synchronizer.compile(self.mapped_table.onclause)
             else:
                 self._synchronizer = None
                 self.mapped_table = self.local_table

@@ -35,6 +35,7 @@ class DependencyProcessor(object):
         self.direction = prop.direction
         self.is_backref = prop.is_backref
         self.post_update = prop.post_update
+        self.foreignkey = prop.foreignkey
         self.key = prop.key
 
         self._compile_synchronizers()
@@ -84,15 +85,12 @@ class DependencyProcessor(object):
 
         The list of rules is used within commits by the _synchronize() method when dependent 
         objects are processed."""
-        parent_tables = util.Set(self.parent.tables + [self.parent.mapped_table])
-        target_tables = util.Set(self.mapper.tables + [self.mapper.mapped_table])
-
         self.syncrules = sync.ClauseSynchronizer(self.parent, self.mapper, self.direction)
         if self.direction == sync.MANYTOMANY:
-            self.syncrules.compile(self.prop.primaryjoin, parent_tables, [self.secondary], False)
-            self.syncrules.compile(self.prop.secondaryjoin, target_tables, [self.secondary], True)
+            self.syncrules.compile(self.prop.primaryjoin, issecondary=False)
+            self.syncrules.compile(self.prop.secondaryjoin, issecondary=True)
         else:
-            self.syncrules.compile(self.prop.primaryjoin, parent_tables, target_tables)
+            self.syncrules.compile(self.prop.primaryjoin, foreignkey=self.foreignkey)
         
     def get_object_dependencies(self, obj, uowcommit, passive = True):
         """returns the list of objects that are dependent on the given object, as according to the relationship

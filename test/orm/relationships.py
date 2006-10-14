@@ -217,6 +217,141 @@ class RelationTest2(testbase.PersistTest):
         assert sess.query(Employee).get([c1.company_id, 3]).reports_to.name == 'emp1'
         assert sess.query(Employee).get([c2.company_id, 3]).reports_to.name == 'emp5'
         
+class RelationTest3(testbase.PersistTest):
+    def setUpAll(self):
+        global jobs, pageversions, pages, metadata, Job, Page, PageVersion, PageComment
+        import datetime
+        metadata = BoundMetaData(testbase.db)  
+        jobs = Table("jobs", metadata,
+                        Column("jobno", Unicode(15), primary_key=True),
+                        Column("created", DateTime, nullable=False, default=datetime.datetime.now),
+                        Column("deleted", Boolean, nullable=False, default=False))
+        pageversions = Table("pageversions", metadata,
+                        Column("jobno", Unicode(15), primary_key=True),
+                        Column("pagename", Unicode(30), primary_key=True),
+                        Column("version", Integer, primary_key=True, default=1),
+                        Column("created", DateTime, nullable=False, default=datetime.datetime.now),
+                        Column("md5sum", String(32)),
+                        Column("width", Integer, nullable=False, default=0),
+                        Column("height", Integer, nullable=False, default=0),
+                        ForeignKeyConstraint(["jobno", "pagename"], ["pages.jobno", "pages.pagename"])
+                        )
+        pages = Table("pages", metadata,
+                        Column("jobno", Unicode(15), ForeignKey("jobs.jobno"), primary_key=True),
+                        Column("pagename", Unicode(30), primary_key=True),
+                        Column("created", DateTime, nullable=False, default=datetime.datetime.now),
+                        Column("deleted", Boolean, nullable=False, default=False),
+                        Column("current_version", Integer))
+        pagecomments = Table("pagecomments", metadata,
+            Column("jobno", Unicode(15), primary_key=True),
+            Column("pagename", Unicode(30), primary_key=True),
+            Column("comment_id", Integer, primary_key=True),
+            Column("content", Unicode),
+            ForeignKeyConstraint(["jobno", "pagename"], ["pages.jobno", "pages.pagename"])
+        )
+
+        metadata.create_all()
+        class Job(object):
+            def __init__(self, jobno=None):
+                self.jobno = jobno
+            def create_page(self, pagename, *args, **kwargs):
+                return Page(job=self, pagename=pagename, *args, **kwargs)
+        class PageVersion(object):
+            def __init__(self, page=None, version=None):
+                self.page = page
+                self.version = version
+        class Page(object):
+            def __init__(self, job=None, pagename=None):
+                self.job = job
+                self.pagename = pagename
+                self.currentversion = PageVersion(self, 1)
+            def __repr__(self):
+                return "Page jobno:%s pagename:%s %s" % (self.jobno, self.pagename, getattr(self, '_instance_key', None))
+            def add_version(self):
+                self.currentversion = PageVersion(self, self.currentversion.version+1)
+                comment = self.add_comment()
+                comment.closeable = False
+                comment.content = u'some content'
+                return self.currentversion
+            def add_comment(self):
+                nextnum = max([-1] + [c.comment_id for c in self.comments]) + 1
+                newcomment = PageComment()
+                newcomment.comment_id = nextnum
+                self.comments.append(newcomment)
+                newcomment.created_version = self.currentversion.version
+                return newcomment
+        class PageComment(object):
+            pass
+        mapper(Job, jobs)
+        mapper(PageVersion, pageversions)
+        mapper(Page, pages, properties={
+            'job': relation(Job, backref=backref('pages', cascade="all, delete-orphan", order_by=pages.c.pagename)),
+            'currentversion': relation(PageVersion,
+                            foreignkey=pages.c.current_version,
+                            primaryjoin=and_(pages.c.jobno==pageversions.c.jobno,
+                                             pages.c.pagename==pageversions.c.pagename,
+                                             pages.c.current_version==pageversions.c.version),
+                            post_update=True),
+            'versions': relation(PageVersion, cascade="all, delete-orphan",
+                            primaryjoin=and_(pages.c.jobno==pageversions.c.jobno,
+                                             pages.c.pagename==pageversions.c.pagename),
+                            order_by=pageversions.c.version,
+                            backref=backref('page', lazy=False,
+                                            primaryjoin=and_(pages.c.jobno==pageversions.c.jobno,
+                                                             pages.c.pagename==pageversions.c.pagename)))
+        })
+        mapper(PageComment, pagecomments, properties={
+            'page': relation(Page, primaryjoin=and_(pages.c.jobno==pagecomments.c.jobno,
+                                                    pages.c.pagename==pagecomments.c.pagename),
+                                backref=backref("comments", cascade="all, delete-orphan",
+                                                primaryjoin=and_(pages.c.jobno==pagecomments.c.jobno,
+                                                                 pages.c.pagename==pagecomments.c.pagename),
+                                                order_by=pagecomments.c.comment_id))
+        })
+
+
+    def tearDownAll(self):
+        clear_mappers()
+        metadata.drop_all()    
+
+    def testbasic(self):
+        """test the combination of complicated join conditions with post_update"""
+        j1 = Job('somejob')
+        j1.create_page('page1')
+        j1.create_page('page2')
+        j1.create_page('page3')
+
+        j2 = Job('somejob2')
+        j2.create_page('page1')
+        j2.create_page('page2')
+        j2.create_page('page3')
+
+        j2.pages[0].add_version()
+        j2.pages[0].add_version()
+        j2.pages[1].add_version()
+        print j2.pages
+        print j2.pages[0].versions
+        print j2.pages[1].versions
+        s = create_session()
+
+        s.save(j1)
+        s.save(j2)
+        s.flush()
+
+        s.clear()
+        j = s.query(Job).get_by(jobno='somejob')
+        oldp = list(j.pages)
+        j.pages = []
+
+        s.flush()
+
+        s.clear()
+        j = s.query(Job).get_by(jobno='somejob2')
+        j.pages[1].current_version = 12
+        s.delete(j)
+        s.flush()
+        
+        
         
         
 if __name__ == "__main__":

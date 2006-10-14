@@ -33,51 +33,57 @@ class ClauseSynchronizer(object):
         self.direction = direction
         self.syncrules = []
 
-    def compile(self, sqlclause, source_tables, target_tables, issecondary=None):
-        def check_for_table(binary, list1, list2):
-            #print "check for table", str(binary), [str(c) for c in l]
-            if binary.left.table in list1 and binary.right.table in list2:
-                return (binary.left, binary.right)
-            elif binary.right.table in list1 and binary.left.table in list2:
-                return (binary.right, binary.left)
-            else:
-                return (None, None)
-                
+    def compile(self, sqlclause, issecondary=None, foreignkey=None):
         def compile_binary(binary):
-            """assembles a SyncRule given a single binary condition"""
+            """assemble a SyncRule given a single binary condition"""
             if binary.operator != '=' or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
                 return
 
-            if binary.left.table == binary.right.table:
-                # self-cyclical relation
-                if binary.left.primary_key:
-                    source = binary.left
-                    dest = binary.right
-                elif binary.right.primary_key:
-                    source = binary.right
-                    dest = binary.left
-                else:
-                    raise ArgumentError("Cant determine direction for relationship %s = %s" % (binary.left.table.fullname, binary.right.table.fullname))
-                if self.direction == ONETOMANY:
-                    self.syncrules.append(SyncRule(self.parent_mapper, source, dest, dest_mapper=self.child_mapper))
-                elif self.direction == MANYTOONE:
-                    self.syncrules.append(SyncRule(self.child_mapper, source, dest, dest_mapper=self.parent_mapper))
-                else:
-                    raise AssertionError("assert failed")
-            else:
-                (pt, tt) = check_for_table(binary, source_tables, target_tables)
-                #print "OK", binary, [t.name for t in source_tables], [t.name for t in target_tables]
-                if pt and tt:
-                    if self.direction == ONETOMANY:
-                        self.syncrules.append(SyncRule(self.parent_mapper, pt, tt, dest_mapper=self.child_mapper))
-                    elif self.direction == MANYTOONE:
-                        self.syncrules.append(SyncRule(self.child_mapper, tt, pt, dest_mapper=self.parent_mapper))
+            source_column = None
+            dest_column = None
+            if foreignkey is not None:
+                # for self-referential relationships,
+                # the best we can do right now is figure out which side
+                # is the primary key
+                # TODO: need some better way for this
+                if binary.left.table == binary.right.table:
+                    if binary.left.primary_key:
+                        source_column = binary.left
+                        dest_column = binary.right
+                    elif binary.right.primary_key:
+                        source_column = binary.right
+                        dest_column = binary.left
                     else:
-                        if not issecondary:
-                            self.syncrules.append(SyncRule(self.parent_mapper, pt, tt, dest_mapper=self.child_mapper, issecondary=issecondary))
-                        else:
-                            self.syncrules.append(SyncRule(self.child_mapper, pt, tt, dest_mapper=self.parent_mapper, issecondary=issecondary))
-                            
+                        raise ArgumentError("Can't locate a primary key column in self-referential equality clause '%s'" % str(binary))
+                # for other relationships we are more flexible
+                # and go off the 'foreignkey' property
+                elif binary.left in foreignkey:
+                    dest_column = binary.left
+                    source_column = binary.right
+                elif binary.right in foreignkey:
+                    dest_column = binary.right
+                    source_column = binary.left
+                else:
+                    return
+            else:
+                if binary.left in [f.column for f in binary.right.foreign_keys]:
+                    dest_column = binary.right
+                    source_column = binary.left
+                elif binary.right in [f.column for f in binary.left.foreign_keys]:
+                    dest_column = binary.left
+                    source_column = binary.right
+            
+            if source_column and dest_column:    
+                if self.direction == ONETOMANY:
+                    self.syncrules.append(SyncRule(self.parent_mapper, source_column, dest_column, dest_mapper=self.child_mapper))
+                elif self.direction == MANYTOONE:
+                    self.syncrules.append(SyncRule(self.child_mapper, source_column, dest_column, dest_mapper=self.parent_mapper))
+                else:
+                    if not issecondary:
+                        self.syncrules.append(SyncRule(self.parent_mapper, source_column, dest_column, dest_mapper=self.child_mapper, issecondary=issecondary))
+                    else:
+                        self.syncrules.append(SyncRule(self.child_mapper, source_column, dest_column, dest_mapper=self.parent_mapper, issecondary=issecondary))
+
         rules_added = len(self.syncrules)
         processor = BinaryVisitor(compile_binary)
         sqlclause.accept_visitor(processor)
@@ -131,7 +137,8 @@ class SyncRule(object):
             dest[self.dest_column.key] = value
         else:
             if clearkeys and self.dest_primary_key():
-                return
+                raise exceptions.AssertionError("Dependency rule tried to blank-out a primary key column")
+                
             if logging.is_debug_enabled(self.logger):
                 self.logger.debug("execute() instances: %s(%s)->%s(%s) ('%s')" % (mapperutil.instance_str(source), str(self.source_column), mapperutil.instance_str(dest), str(self.dest_column), value))
             self.dest_mapper._setattrbycolumn(dest, self.dest_column, value)

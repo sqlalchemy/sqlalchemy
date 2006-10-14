@@ -42,7 +42,9 @@ class EagerTest(AssertMixin):
         mapper(Test,tests,properties={
             'owner':relation(Owner,backref='tests'),
             'category':relation(Category),
-            'owner_option': relation(Option,primaryjoin=and_(tests.c.id==options.c.test_id,tests.c.owner_id==options.c.owner_id),uselist=False ) 
+            'owner_option': relation(Option,primaryjoin=and_(tests.c.id==options.c.test_id,tests.c.owner_id==options.c.owner_id),
+                foreignkey=[options.c.test_id, options.c.owner_id],
+            uselist=False ) 
         })
 
         s=create_session()
