@@ -5,14 +5,22 @@ import os
 import re
 import doctest
 import sqlalchemy.util as util
+import sqlalchemy.logging as salog
+import logging
 
-# monkeypatch a plain logger
-class Logger(object):
-    def __init__(self, *args, **kwargs):
+salog.default_enabled=True
+rootlogger = logging.getLogger('sqlalchemy')
+rootlogger.setLevel(logging.NOTSET)
+class MyStream(object):
+    def write(self, string):
+        sys.stdout.write(string)
+        sys.stdout.flush()
+    def flush(self):
         pass
-    def write(self, msg):
-        print msg
-util.Logger = Logger
+handler = logging.StreamHandler(MyStream())
+handler.setFormatter(logging.Formatter('%(message)s'))
+rootlogger.addHandler(handler)
+
 
 def teststring(s, name, globs=None, verbose=None, report=True, 
                optionflags=0, extraglobs=None, raise_on_error=False, 

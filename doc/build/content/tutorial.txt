@@ -130,7 +130,7 @@ Inserting is achieved via the `insert()` method, which defines a *clause object*
 Since we created this insert statement object from the `users` table which is bound to our `Engine`, the statement itself is also bound to the `Engine`, and supports executing itself.  The `execute()` method of the clause object will *compile* the object into a string according to the underlying *dialect* of the Engine to which the statement is bound, and will then execute the resulting statement.  
 
     {python}
-    >>> i.execute(user_name='Mary', password='secure') # doctest:+ELLIPSIS
+    >>> i.execute(user_name='Mary', password='secure') # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
     INSERT INTO users (user_name, password) VALUES (?, ?)
     ['Mary', 'secure']
     COMMIT
@@ -214,13 +214,14 @@ Result sets also support iteration.  We'll show this with a slightly different f
 
 ### Table Relationships {@name=table_relationships}
 
-Lets create a second table, `email_addresses`, which references the `users` table.  To define the relationship between the two tables, we will use the `ForeignKey` construct.  We will also issue the `CREATE` statement for the table in one step:
+Lets create a second table, `email_addresses`, which references the `users` table.  To define the relationship between the two tables, we will use the `ForeignKey` construct.  We will also issue the `CREATE` statement for the table:
 
     {python}
     >>> email_addresses_table = Table('email_addresses', metadata,
     ...     Column('address_id', Integer, primary_key=True),
     ...     Column('email_address', String(100), nullable=False),
-    ...     Column('user_id', Integer, ForeignKey('users.user_id'))).create() # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
+    ...     Column('user_id', Integer, ForeignKey('users.user_id')))
+    >>> email_addresses_table.create() # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
     CREATE TABLE email_addresses (
         address_id INTEGER NOT NULL,
         email_address VARCHAR(100) NOT NULL,
