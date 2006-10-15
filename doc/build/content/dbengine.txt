@@ -123,7 +123,7 @@ Example of a manual invocation of `pool.QueuePool` (which is the pool instance u
 
 ### Using Connections {@name=connections}
 
-In this section we describe the SQL execution interface available from an `Engine` instance.  Note that when using the Object Relational Mapper (ORM) as well as when dealing with with "bound" metadata objects (described later), SQLAlchemy deals with the Engine for you and you generally don't need to know much about it; in those cases, you can skip this section and go to [metadata](rel:metadata).
+In this section we describe the SQL execution interface available from an `Engine` instance.  Note that when using the Object Relational Mapper (ORM) as well as when dealing with with "bound" metadata objects, SQLAlchemy deals with the Engine for you and you generally don't need to know much about it; in those cases, you can skip this section and go to [metadata](rel:metadata).  "Bound" metadata is described in [metadata_tables_binding](rel:metadata_tables_binding).
 
 The Engine provides a `connect()` method which returns a `Connection` object.  This object provides methods by which literal SQL text as well as SQL clause constructs can be compiled and executed.  
 
@@ -149,7 +149,7 @@ The execute method on `Engine` and `Connection` can also receive SQL clause cons
         print row['col1'], row['col2']
     connection.close()
 
-Both `Connection` and `Engine` fulfill an interface known as `Connectable` which specifies common functionality between the two objects, such as getting a `Connection` and executing queries.  Therefore, most SQLAlchemy functions which take an `Engine` as a parameter with which to execute SQL will also accept a `Connection`:
+Both `Connection` and `Engine` fulfill an interface known as `Connectable` which specifies common functionality between the two objects, such as getting a `Connection` and executing queries.  Therefore, most SQLAlchemy functions which take an `Engine` as a parameter with which to execute SQL will also accept a `Connection` (and the name of the argument is typically called `connectable`):
 
     {python title="Specify Engine or Connection"}
     engine = create_engine('sqlite:///:memory:')
@@ -159,11 +159,11 @@ Both `Connection` and `Engine` fulfill an interface known as `Connectable` which
     table = Table('sometable', metadata, Column('col1', Integer))
     
     # create the table with the Engine
-    table.create(engine=engine)
+    table.create(connectable=engine)
     
     # drop the table with a Connection off the Engine
     connection = engine.connect()
-    table.drop(engine=connection)
+    table.drop(connectable=connection)
 
 ### Transactions {@name=transactions}
 
@@ -214,7 +214,7 @@ Note that SQLAlchemy's Object Relational Mapper also provides a way to control t
 
 ### Implicit Execution {@name=implicit}
 
-**Implicit execution** refers to the execution of SQL without the explicit usage of a `Connection` object.  This occurs when you call the `execute()` method off of an `Engine` object or off of a constructed SQL expression (sql expressions are described in [sql](rel:sql)).
+**Implicit execution** refers to the execution of SQL without the explicit usage of a `Connection` object.  This occurs when you call the `execute()` method off of an `Engine` object or off of a SQL expression or table that is associated with "bound" metadata.
 
     {python title="Implicit Execution Using Engine"}
     engine = create_engine('sqlite:///:memory:')
