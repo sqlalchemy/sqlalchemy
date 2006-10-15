@@ -40,6 +40,8 @@
     indexed.  a comparison clause between two pks that are derived from the 
     same underlying tables (i.e. such as two Alias objects) can be generated 
     via table1.primary_key==table2.primary_key
+    - ForeignKey(Constraint) supports "use_alter=True", to create/drop a foreign key
+    via ALTER.  this allows circular foreign key relationships to be set up.
     - append_item() methods removed from Table and Column; preferably
     construct Table/Column/related objects inline, but if needed use 
     append_column(), append_foreign_key(), append_constraint(), etc.

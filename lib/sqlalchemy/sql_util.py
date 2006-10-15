@@ -40,6 +40,8 @@ class TableCollection(object):
         tuples = []
         class TVisitor(schema.SchemaVisitor):
             def visit_foreign_key(_self, fkey):
+                if fkey.use_alter:
+                    return
                 parent_table = fkey.column.table
                 if parent_table in self:
                     child_table = fkey.parent.table

@@ -225,7 +225,7 @@ class Connection(Connectable):
         """when no Transaction is present, this is called after executions to provide "autocommit" behavior."""
         # TODO: have the dialect determine if autocommit can be set on the connection directly without this 
         # extra step
-        if not self.in_transaction() and re.match(r'UPDATE|INSERT|CREATE|DELETE|DROP', statement.lstrip().upper()):
+        if not self.in_transaction() and re.match(r'UPDATE|INSERT|CREATE|DELETE|DROP|ALTER', statement.lstrip().upper()):
             self._commit_impl()
     def _autorollback(self):
         if not self.in_transaction():

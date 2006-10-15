@@ -147,6 +147,8 @@ class SQLiteDialect(ansisql.ANSIDialect):
         return SQLiteCompiler(self, statement, bindparams, **kwargs)
     def schemagenerator(self, *args, **kwargs):
         return SQLiteSchemaGenerator(*args, **kwargs)
+    def schemadropper(self, *args, **kwargs):
+        return SQLiteSchemaDropper(*args, **kwargs)
     def preparer(self):
         return SQLiteIdentifierPreparer(self)
     def create_connect_args(self, url):
@@ -283,6 +285,9 @@ class SQLiteCompiler(ansisql.ANSICompiler):
             return ansisql.ANSICompiler.binary_operator_string(self, binary)
 
 class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
+    def supports_alter(self):
+        return False
+        
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column) + " " + column.type.engine_impl(self.engine).get_col_spec()
         default = self.get_column_default_string(column)
@@ -302,6 +307,10 @@ class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
     #        self.append("\tUNIQUE (%s)" % string.join([c.name for c in constraint],', '))
     #    else:
     #        super(SQLiteSchemaGenerator, self).visit_primary_key_constraint(constraint)
+
+class SQLiteSchemaDropper(ansisql.ANSISchemaDropper):
+    def supports_alter(self):
+        return False
 
 class SQLiteIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
     def __init__(self, dialect):

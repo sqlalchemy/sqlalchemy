@@ -491,7 +491,7 @@ class ForeignKey(SchemaItem):
     
     One or more ForeignKey objects are used within a ForeignKeyConstraint
     object which represents the table-level constraint definition."""
-    def __init__(self, column, constraint=None, use_alter=False):
+    def __init__(self, column, constraint=None, use_alter=False, name=None):
         """Construct a new ForeignKey object.  
         
         "column" can be a schema.Column object representing the relationship, 
@@ -507,6 +507,7 @@ class ForeignKey(SchemaItem):
         self._column = None
         self.constraint = constraint
         self.use_alter = use_alter
+        self.name = name
         
     def __repr__(self):
         return "ForeignKey(%s)" % repr(self._get_colspec())
@@ -575,7 +576,7 @@ class ForeignKey(SchemaItem):
         self.parent = column
 
         if self.constraint is None and isinstance(self.parent.table, Table):
-            self.constraint = ForeignKeyConstraint([],[], use_alter=self.use_alter)
+            self.constraint = ForeignKeyConstraint([],[], use_alter=self.use_alter, name=self.name)
             self.parent.table.append_constraint(self.constraint)
             self.constraint._append_fk(self)
 
@@ -699,6 +700,8 @@ class ForeignKeyConstraint(Constraint):
         self.elements = util.Set()
         self.onupdate = onupdate
         self.ondelete = ondelete
+        if self.name is None and use_alter:
+            raise exceptions.ArgumentError("Alterable ForeignKey/ForeignKeyConstraint requires a name")
         self.use_alter = use_alter
     def _set_parent(self, table):
         self.table = table

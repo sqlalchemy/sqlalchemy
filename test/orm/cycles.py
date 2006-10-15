@@ -213,28 +213,19 @@ class OneToManyManyToOneTest(AssertMixin):
         global ball
         ball = Table('ball', metadata,
          Column('id', Integer, Sequence('ball_id_seq', optional=True), primary_key=True),
-         Column('person_id', Integer),
+         Column('person_id', Integer, ForeignKey('person.id', use_alter=True, name='fk_person_id')),
          Column('data', String(30))
          )
         person = Table('person', metadata,
          Column('id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
          Column('favorite_ball_id', Integer, ForeignKey('ball.id')),
          Column('data', String(30))
-#         Column('favorite_ball_id', Integer),
          )
 
-        ball.create()
-        person.create()
-        ball.c.person_id.append_foreign_key(ForeignKey('person.id'))
+        metadata.create_all()
         
-        # make the test more complete for postgres
-        if db.engine.__module__.endswith('postgres'):
-            db.execute("alter table ball add constraint fk_ball_person foreign key (person_id) references person(id)", {})
     def tearDownAll(self):
-        if db.engine.__module__.endswith('postgres'):
-            db.execute("alter table ball drop constraint fk_ball_person", {})
-        person.drop()
-        ball.drop()
+        metadata.drop_all()
         
     def tearDown(self):
         clear_mappers()

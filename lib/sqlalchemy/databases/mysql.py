@@ -456,6 +456,9 @@ class MySQLSchemaDropper(ansisql.ANSISchemaDropper):
     def visit_index(self, index):
         self.append("\nDROP INDEX " + index.name + " ON " + index.table.name)
         self.execute()
+    def drop_foreignkey(self, constraint):
+        self.append("ALTER TABLE %s DROP FOREIGN KEY %s" % (self.preparer.format_table(constraint.table), constraint.name))
+        self.execute()
 
 class MySQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
     def __init__(self, dialect):
