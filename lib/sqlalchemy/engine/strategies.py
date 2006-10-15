@@ -13,7 +13,7 @@ class EngineStrategy(object):
     """defines a function that receives input arguments and produces an instance of sql.Engine, typically
     an instance sqlalchemy.engine.base.ComposedSQLEngine or a subclass."""
     def __init__(self, name):
-        """constructs a new EngineStrategy object and sets it in the list of available strategies
+        """construct a new EngineStrategy object and sets it in the list of available strategies
         under this name."""
         self.name = name
         strategies[self.name] = self
