@@ -4,7 +4,7 @@ Database Engines {@name=dbengine}
 A database engine is a subclass of `sqlalchemy.sql.Engine`, and is the starting point for where SQLAlchemy provides a layer of abstraction on top of the various DBAPI2 database modules.  For all databases supported by SA, there is a specific "implementation" module, found in the `sqlalchemy.databases` package, that provides all the objects an `Engine` needs in order to perform its job.  A typical user of SQLAlchemy never needs to deal with these modules directly.  For many purposes, the only knowledge that's needed is how to create an Engine for a particular connection URL.  When dealing with direct execution of SQL statements, one would also be aware of Result, Connection, and Transaction objects.  The primary public facing objects are:
 
 * **URL** - represents the identifier for a particular database.  URL objects are usually created automatically based on a given connect string passed to the `create_engine()` function.
-* **Engine** - Combines a connection-providing resource with implementation-provided objects that know how to generate, execute, and gather information about SQL statements.  It also provides the primary interface by which Connections are obtained, as well as a context for constructed SQL objects and schema constructs to "implicitly execute" themselves, which is an optional feature of SA 0.2.  The Engine object that is normally dealt with is an instance of `sqlalchemy.engine.base.ComposedSQLEngine`.
+* **Engine** - Combines a connection-providing resource with implementation-provided objects that know how to generate, execute, and gather information about SQL statements.  It also provides the primary interface by which Connections are obtained, as well as a context for constructed SQL objects and schema constructs to "implicitly execute" themselves, which is an optional feature of SQLAlchemy.  The Engine object that is normally dealt with is an instance of `sqlalchemy.engine.base.ComposedSQLEngine`.
 * **Connection** - represents a connection to the database.  The underlying connection object returned by a DBAPI's connect() method is referenced internally by the Connection object.  Connection provides methods that handle the execution of SQLAlchemy's own SQL constructs, as well as literal string-based statements.  
 * **Transaction** - represents a transaction on a single Connection.  Includes `begin()`, `commit()` and `rollback()` methods that support basic "nestable" behavior, meaning an outermost transaction is maintained against multiple nested calls to begin/commit.
 * **ResultProxy** - Represents the results of an execution, and is most analgous to the cursor object in DBAPI.  It primarily allows iteration over result sets, but also provides an interface to information about inserts/updates/deletes, such as the count of rows affected, last inserted IDs, etc.
@@ -35,7 +35,7 @@ The SQLAlchemy Wiki contains a page of database notes, describing whatever quirk
 
 ### Establishing a Database Engine {@name=establishing}
 
-SQLAlchemy 0.2 indicates the source of an Engine strictly via [RFC-1738](http://rfc.net/rfc1738.html) style URLs, combined with optional keyword arguments to specify options for the Engine.  The form of the URL is:
+SQLAlchemy indicates the source of an Engine strictly via [RFC-1738](http://rfc.net/rfc1738.html) style URLs, combined with optional keyword arguments to specify options for the Engine.  The form of the URL is:
 
     $ driver://username:password@host:port/database
 
@@ -107,7 +107,7 @@ Example of a manual invocation of `pool.QueuePool` (which is the pool instance u
     
     engine = create_engine('mysql://', pool=pool.QueuePool(getconn, pool_size=20, max_overflow=40))
 
-* pool_size=5 : the number of connections to keep open inside the connection pool.  This used with `QueuePool` as well as `SingletonThreadPool` as of 0.2.7.
+* pool_size=5 : the number of connections to keep open inside the connection pool.  This used with `QueuePool` as well as `SingletonThreadPool`.
 * max_overflow=10 : the number of connections to allow in "overflow", that is connections that can be opened above and beyond the initial five.  this is only used with `QueuePool`.
 * pool_timeout=30 : number of seconds to wait before giving up on getting a connection from the pool.  This is only used with `QueuePool`.
 * pool_recycle=-1 : this setting causes the pool to recycle connections after the given number of seconds has passed.  It defaults to -1, or no timeout.  For example, setting to 3600 means connections will be recycled after one hour.  Note that MySQL in particular will disconnect automatically if no activity is detected on a connection for eight hours (although this is configurable with the MySQLDB connection itself and the  server configuration as well).
@@ -116,14 +116,14 @@ Example of a manual invocation of `pool.QueuePool` (which is the pool instance u
 * module=None : used by database implementations which support multiple DBAPI modules, this is a reference to a DBAPI2 module to be used instead of the engine's default module.  For Postgres, the default is psycopg2, or psycopg1 if 2 cannot be found.  For Oracle, its cx_Oracle.
 * use_ansi=True : used only by Oracle;  when False, the Oracle driver attempts to support a particular "quirk" of Oracle versions 8 and previous, that the LEFT OUTER JOIN SQL syntax is not supported, and the "Oracle join" syntax of using `&lt;column1&gt;(+)=&lt;column2&gt;` must be used in order to achieve a LEFT OUTER JOIN.  
 * threaded=True : used by cx_Oracle; sets the `threaded` parameter of the connection indicating thread-safe usage.  cx_Oracle docs indicate setting this flag to `False` will speed performance by 10-15%.  While this defaults to `False` in cx_Oracle, SQLAlchemy defaults it to `True`, preferring stability over early optimization.
-* strategy='plain' : the Strategy argument is used to select alternate implementations of the underlying Engine object, which coordinates operations between dialects, compilers, connections, and so on.  Currently, the only alternate strategy besides the default value of "plain" is the "threadlocal" strategy, which selects the usage of the `TLEngine` class that provides a modified connection scope for implicit executions.  Implicit execution as well as further detail on this setting are described in [connections_context](rel:dbengine_implicit).
+* strategy='plain' : the Strategy argument is used to select alternate implementations of the underlying Engine object, which coordinates operations between dialects, compilers, connections, and so on.  Currently, the only alternate strategy besides the default value of "plain" is the "threadlocal" strategy, which selects the usage of the `TLEngine` class that provides a modified connection scope for implicit executions.  Implicit execution as well as further detail on this setting are described in [dbengine_implicit](rel:dbengine_implicit).
 * use_oids=False : used only by Postgres, will enable the column name "oid" as the object ID column, which is also used for the default sort order of tables.  Postgres as of 8.1 has object IDs disabled by default.
 * convert_unicode=False : if set to True, all String/character based types will convert Unicode values to raw byte values going into the database, and all raw byte values to Python Unicode coming out in result sets.  This is an engine-wide method to provide unicode across the board.  For unicode conversion on a column-by-column level, use the `Unicode` column type instead.
 * encoding='utf-8' : the encoding to use for all Unicode translations, both by engine-wide unicode conversion as well as the `Unicode` type object.
 
 ### Using Connections {@name=connections}
 
-In this section we describe the SQL execution interface available from an `Engine` instance.  Note that when using the Object Relational Mapper (ORM) as well as when dealing with with "bound" metadata objects, SQLAlchemy deals with the Engine for you and you generally don't need to know much about it; in those cases, you can skip this section and go to [metadata](rel:metadata).  "Bound" metadata is described in [metadata_tables_binding](rel:metadata_tables_binding).
+In this section we describe the SQL execution interface available from an `Engine` instance.  Note that when using the Object Relational Mapper (ORM) as well as when dealing with with "bound" metadata objects, SQLAlchemy deals with the Engine and Connections for you and you generally don't need to know much about it; in those cases, you can skip this section and go to [metadata](rel:metadata).  "Bound" metadata is described in [metadata_tables_binding](rel:metadata_tables_binding).
 
 The Engine provides a `connect()` method which returns a `Connection` object.  This object provides methods by which literal SQL text as well as SQL clause constructs can be compiled and executed.  
 
@@ -223,6 +223,8 @@ Note that SQLAlchemy's Object Relational Mapper also provides a way to control t
         print row['col1'], row['col2']
     result.close()
 
+Using "bound" metadata:
+
     {python title="Implicit Execution Using Engine-Bound SQL Construct"}
     engine = create_engine('sqlite:///:memory:')
     meta = BoundMetaData(engine)
@@ -296,7 +298,7 @@ To get at the actual `Connection` object which is used by implicit executions, c
     conn1 = db.contextual_connection()
     conn2 = db.contextual_connection()
 
-    >>> assert conn1.connection is conn2.connection
+    >>> conn1.connection is conn2.connection
     True
 
 When the `plain` strategy is used, the `contextual_connection()` method is synonymous with the `connect()` method; both return a distinct connection from the pool.

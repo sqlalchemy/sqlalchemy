@@ -30,9 +30,9 @@ NO_ATTRIBUTE = object()
 EXT_PASS = object()
                 
 class Mapper(object):
-    """Persists object instances to and from schema.Table objects via the sql package.
-    Instances of this class should be constructed through this package's mapper() or
-    relation() function."""
+    """Defines the correlation of class attributes to database table columns.
+    
+    Instances of this class should be constructed via the sqlalchemy.orm.mapper() function."""
     def __init__(self, 
                 class_, 
                 local_table, 
