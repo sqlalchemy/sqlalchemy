@@ -158,6 +158,9 @@
     - added "batch=True" flag to mapper; if False, save_obj
     will fully save one object at a time including calls
     to before_XXXX and after_XXXX
+    - added "column_prefix=None" argument to mapper; prepends the
+    given string (typically '_') to column-based attributes automatically
+    set up from the mapper's Table
     - specifying joins in the from_obj argument of query.select() will
     replace the main table of the query, if the table is somewhere within
     the given from_obj.  this makes it possible to produce custom joins and

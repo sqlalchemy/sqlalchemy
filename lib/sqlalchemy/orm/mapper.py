@@ -53,7 +53,8 @@ class Mapper(object):
                 concrete=False,
                 select_table=None,
                 allow_null_pks=False,
-                batch=True):
+                batch=True,
+                column_prefix=None):
         """construct a new mapper.  
         
         All arguments may be sent to the sqlalchemy.orm.mapper() function where they are
@@ -120,6 +121,9 @@ class Mapper(object):
         setting to False indicates that an instance will be fully saved before saving the next instance, which 
         includes inserting/updating all table rows corresponding to the entity as well as calling all MapperExtension 
         methods corresponding to the save operation.
+
+        column_prefix - a string which will be prepended to the "key" name of all Columns when creating column-based
+        properties from the given Table.  does not affect explicitly specified column-based properties
         """
         if not issubclass(class_, object):
             raise exceptions.ArgumentError("Class '%s' is not a new-style class" % class_.__name__)
@@ -153,6 +157,7 @@ class Mapper(object):
         self.allow_null_pks = allow_null_pks
         self.delete_orphans = []
         self.batch = batch
+        self.column_prefix = column_prefix
         # a Column which is used during a select operation to retrieve the 
         # "polymorphic identity" of the row, which indicates which Mapper should be used
         # to construct a new object instance from that row.
@@ -449,19 +454,20 @@ class Mapper(object):
             if not self.columns.has_key(column.key):
                 self.columns[column.key] = self.select_table.corresponding_column(column, keys_ok=True, raiseerr=True)
 
+            column_key = (self.column_prefix or '') + column.key
             prop = self.__props.get(column.key, None)
             if prop is None:
                 prop = ColumnProperty(column)
-                self.__props[column.key] = prop
+                self.__props[column_key] = prop
                 prop.set_parent(self)
-                self.__log("adding ColumnProperty %s" % (column.key))
+                self.__log("adding ColumnProperty %s" % (column_key))
             elif isinstance(prop, ColumnProperty):
                 if prop.parent is not self:
                     prop = ColumnProperty(deferred=prop.deferred, group=prop.group, *prop.columns)
                     prop.set_parent(self)
-                    self.__props[column.key] = prop
+                    self.__props[column_key] = prop
                 prop.columns.append(column)
-                self.__log("appending to existing ColumnProperty %s" % (column.key))
+                self.__log("appending to existing ColumnProperty %s" % (column_key))
             else:
                 if not self.allow_column_override:
                     raise exceptions.ArgumentError("WARNING: column '%s' not being added due to property '%s'.  Specify 'allow_column_override=True' to mapper() to ignore this condition." % (column.key, repr(prop)))

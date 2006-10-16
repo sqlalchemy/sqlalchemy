@@ -63,7 +63,15 @@ class MapperTest(MapperSuperTest):
             assert False
         except exceptions.ArgumentError:
             pass
-        
+
+    def testcolumnprefix(self):
+        mapper(User, users, column_prefix='_')
+        s = create_session()
+        u = s.get(User, 7)
+        assert u._user_name=='jack'
+    	assert u._user_id ==7
+        assert not hasattr(u, 'user_name')
+          
     def testrefresh(self):
         mapper(User, users, properties={'addresses':relation(mapper(Address, addresses))})
         s = create_session()
