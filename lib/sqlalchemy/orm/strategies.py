@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from sqlalchemy import sql, schema, util, attributes, exceptions, sql_util, logging
-import mapper
+import mapper, query
 from interfaces import *
 import session as sessionlib
 import util as mapperutil
@@ -153,7 +153,7 @@ class LazyLoader(AbstractRelationLoader):
         (self.lazywhere, self.lazybinds, self.lazyreverse) = self._create_lazy_clause(self.parent.unjoined_table, self.primaryjoin, self.secondaryjoin, self.foreignkey)
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
-        self.use_get = not self.uselist and self.mapper.query()._get_clause.compare(self.lazywhere)
+        self.use_get = not self.uselist and query.Query(self.mapper)._get_clause.compare(self.lazywhere)
 
     def init_class_attribute(self):
         self._register_attribute(self.parent.class_, callable_=lambda i: self.setup_loader(i))
@@ -200,7 +200,7 @@ class LazyLoader(AbstractRelationLoader):
                 for primary_key in self.mapper.pks_by_table[self.mapper.mapped_table]:
                     bind = self.lazyreverse[primary_key]
                     ident.append(params[bind.key])
-                return self.mapper.using(session).get(ident)
+                return session.query(self.mapper).get(ident)
             elif self.order_by is not False:
                 order_by = self.order_by
             elif self.secondary is not None and self.secondary.default_order_by() is not None:

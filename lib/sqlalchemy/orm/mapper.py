@@ -38,7 +38,6 @@ class Mapper(object):
                 local_table, 
                 properties = None, 
                 primary_key = None, 
-                is_primary = False, 
                 non_primary = False,
                 inherits = None, 
                 inherit_condition = None, 
@@ -49,13 +48,79 @@ class Mapper(object):
                 always_refresh = False,
                 version_id_col = None,
                 polymorphic_on=None,
-                polymorphic_map=None,
+                _polymorphic_map=None,
                 polymorphic_identity=None,
                 concrete=False,
                 select_table=None,
                 allow_null_pks=False,
                 batch=True):
-
+        """construct a new mapper.  
+        
+        All arguments may be sent to the sqlalchemy.orm.mapper() function where they are
+        passed through to here.
+        
+        class_ - the class to be mapped.
+        
+        local_table - the table to which the class is mapped, or None if this mapper inherits
+        from another mapper using concrete table inheritance.
+        
+        properties - a dictionary mapping the string names of object attributes to MapperProperty 
+        instances, which define the persistence behavior of that attribute.  Note that the columns in the 
+        mapped table are automatically converted into ColumnProperty instances based on the "key" 
+        property of each Column (although they can be overridden using this dictionary).
+        
+        primary_key - a list of Column objects which define the "primary key" to be used against this mapper's
+        selectable unit.  This is normally simply the primary key of the "local_table", but can be overridden here.
+        
+        non_primary - construct a Mapper that will define only the selection of instances, not their persistence.
+        
+        inherits - another Mapper for which this Mapper will have an inheritance relationship with.
+        
+        inherit_condition - for joined table inheritance, a SQL expression (constructed ClauseElement) which 
+        will define how the two tables are joined; defaults to a natural join between the two tables.
+        
+        extension - a MapperExtension instance or list of MapperExtension instances which will be applied to
+        all operations by this Mapper.
+        
+        order_by - a single Column or list of Columns for which selection operations should use as the default
+        ordering for entities.  Defaults to the OID/ROWID of the table if any, or the first primary key column of the table.
+        
+        allow_column_override - if True, allows association relationships to be set up which override the usage of 
+        a column that is on the table (based on key/attribute name).
+        
+        entity_name - a name to be associated with the class, to allow alternate mappings for a single class.
+        
+        always_refresh - if True, all query operations for this mapped class will overwrite all data
+        within object instances that already exist within the session, erasing any in-memory changes with whatever
+        information was loaded from the database.
+        
+        version_id_col - a Column which must have an integer type that will be used to keep a running "version id" of
+        mapped entities in the database.  this is used during save operations to insure that no other thread or process
+        has updated the instance during the lifetime of the entity, else a ConcurrentModificationError exception is thrown.
+        
+        polymorphic_on - used with mappers in an inheritance relationship, a Column which will identify the class/mapper
+        combination to be used with a particular row.  requires the polymorphic_identity value to be set for all mappers
+        in the inheritance hierarchy.
+        
+        _polymorphic_map - used internally to propigate the full map of polymorphic identifiers to surrogate mappers.
+        
+        polymorphic_identity - a value which will be stored in the Column denoted by polymorphic_on, corresponding to the
+        "class identity" of this mapper.
+        
+        concrete - if True, indicates this mapper should use concrete table inheritance with its parent mapper.
+        
+        select_table - a Table or (more commonly) Selectable which will be used to select instances of this mapper's class.
+        usually used to provide polymorphic loading among several classes in an inheritance hierarchy.
+        
+        allow_null_pks - indicates that composite primary keys where one or more (but not all) columns contain NULL is a valid
+        primary key.  Primary keys which contain NULL values usually indicate that a result row does not contain an entity
+        and should be skipped.
+        
+        batch - indicates that save operations of multiple entities can be batched together for efficiency.  
+        setting to False indicates that an instance will be fully saved before saving the next instance, which 
+        includes inserting/updating all table rows corresponding to the entity as well as calling all MapperExtension 
+        methods corresponding to the save operation.
+        """
         if not issubclass(class_, object):
             raise exceptions.ArgumentError("Class '%s' is not a new-style class" % class_.__name__)
 
@@ -71,7 +136,6 @@ class Mapper(object):
         self.class_ = class_
         self.entity_name = entity_name
         self.class_key = ClassKey(class_, entity_name)
-        self.is_primary = is_primary
         self.primary_key = primary_key
         self.non_primary = non_primary
         self.order_by = order_by
@@ -100,10 +164,10 @@ class Mapper(object):
         
         # a dictionary of 'polymorphic identity' names, associating those names with
         # Mappers that will be used to construct object instances upon a select operation.
-        if polymorphic_map is None:
+        if _polymorphic_map is None:
             self.polymorphic_map = {}
         else:
-            self.polymorphic_map = polymorphic_map
+            self.polymorphic_map = _polymorphic_map
 
         class LOrderedProp(util.OrderedProperties):
             """this extends OrderedProperties to trigger a compile() before the
@@ -434,7 +498,7 @@ class Mapper(object):
                         props[key] = self.select_table.corresponding_column(prop)
                     elif (isinstance(prop, list) and sql.is_column(prop[0])):
                         props[key] = [self.select_table.corresponding_column(c) for c in prop]
-            self.__surrogate_mapper = Mapper(self.class_, self.select_table, non_primary=True, properties=props, polymorphic_map=self.polymorphic_map, polymorphic_on=self.select_table.corresponding_column(self.polymorphic_on))
+            self.__surrogate_mapper = Mapper(self.class_, self.select_table, non_primary=True, properties=props, _polymorphic_map=self.polymorphic_map, polymorphic_on=self.select_table.corresponding_column(self.polymorphic_on))
 
     def _compile_class(self):
         """if this mapper is to be a primary mapper (i.e. the non_primary flag is not set),
@@ -444,8 +508,8 @@ class Mapper(object):
         if self.non_primary:
             return
         
-        if not self.non_primary and (mapper_registry.has_key(self.class_key) and not self.is_primary):
-             raise exceptions.ArgumentError("Class '%s' already has a primary mapper defined.  Use is_primary=True to assign a new primary mapper to the class, or use non_primary=True to create a non primary Mapper" % self.class_)
+        if not self.non_primary and (mapper_registry.has_key(self.class_key)):
+             raise exceptions.ArgumentError("Class '%s' already has a primary mapper defined with entity name '%s'.  Use non_primary=True to create a non primary Mapper, or to create a new primary mapper, remove this mapper first via sqlalchemy.orm.clear_mapper(mapper), or preferably sqlalchemy.orm.clear_mappers() to clear all mappers." % (self.class_, self.entity_name))
 
         sessionlib.attribute_manager.reset_class_managed(self.class_)
     
@@ -532,9 +596,6 @@ class Mapper(object):
                     yield x
         return iterate(m)
                 
-    def accept_mapper_option(self, option):
-        option.process_mapper(self)
-        
     def add_properties(self, dict_of_properties):
         """adds the given dictionary of properties to this mapper, using add_property."""
         for key, value in dict_of_properties.iteritems():
@@ -986,13 +1047,21 @@ class Mapper(object):
             return False
             
     def register_dependencies(self, uowcommit, *args, **kwargs):
-        """called by an instance of unitofwork.UOWTransaction to register 
-        which mappers are dependent on which, as well as DependencyProcessor 
-        objects which will process lists of objects in between saves and deletes."""
+        """register DependencyProcessor instances with a unitofwork.UOWTransaction.
+        
+        this calls register_dependencies on all attached MapperProperty instances."""
         for prop in self.__props.values():
             prop.register_dependencies(uowcommit, *args, **kwargs)
     
     def cascade_iterator(self, type, object, recursive=None):
+        """iterate each element in an object graph, for all relations taht meet the given cascade rule.
+        
+        type - the name of the cascade rule (i.e. save-update, delete, etc.)
+        
+        object - the lead object instance.  child items will be processed per the relations
+        defined for this object's mapper.
+        
+        recursive - used by the function for internal context during recursive calls, leave as None."""
         if recursive is None:
             recursive=util.Set()
         for prop in self.__props.values():
@@ -1000,6 +1069,16 @@ class Mapper(object):
                 yield c
 
     def cascade_callable(self, type, object, callable_, recursive=None):
+        """execute a callable for each element in an object graph, for all relations that meet the given cascade rule.
+        
+        type - the name of the cascade rule (i.e. save-update, delete, etc.)
+        
+        object - the lead object instance.  child items will be processed per the relations
+        defined for this object's mapper.
+        
+        callable_ - the callable function.
+        
+        recursive - used by the function for internal context during recursive calls, leave as None."""
         if recursive is None:
             recursive=util.Set()
         for prop in self.__props.values():
@@ -1009,6 +1088,9 @@ class Mapper(object):
         return sessionlib.get_row_key(row, self.class_, self.pks_by_table[self.mapped_table], self.entity_name)
 
     def get_select_mapper(self):
+        """return the mapper used for issuing selects.
+        
+        this mapper is the same mapper as 'self' unless the select_table argument was specified for this mapper."""
         return self.__surrogate_mapper or self
         
     def _instance(self, context, row, result = None):
@@ -1111,66 +1193,6 @@ class Mapper(object):
             row = frommapper.translate_row(self, row)
         for prop in self.__props.values():
             prop.execute(selectcontext, instance, row, identitykey, isnew)
-
-    # deprecated query methods.  Query is constructed from Session, and the rest 
-    # of these methods are called off of Query now.
-    def query(self, session=None):
-        """deprecated. use Query instead."""
-        if session is not None:
-            return querylib.Query(self, session=session)
-
-        try:
-            if self._query.mapper is not self:
-                self._query = querylib.Query(self)
-            return self._query
-        except AttributeError:
-            self._query = querylib.Query(self)
-            return self._query
-    def using(self, session):
-        """deprecated. use Query instead."""
-        return querylib.Query(self, session=session)
-    def get(self, ident, **kwargs):
-        """deprecated. use Query instead."""
-        return self.query().get(ident, **kwargs)
-    def _get(self, key, ident=None, reload=False):
-        """deprecated. use Query instead."""
-        return self.query()._get(key, ident=ident, reload=reload)
-    def get_by(self, *args, **params):
-        """deprecated. use Query instead."""
-        return self.query().get_by(*args, **params)
-    def select_by(self, *args, **params):
-        """deprecated. use Query instead."""
-        return self.query().select_by(*args, **params)
-    def selectfirst_by(self, *args, **params):
-        """deprecated. use Query instead."""
-        return self.query().selectfirst_by(*args, **params)
-    def selectone_by(self, *args, **params):
-        """deprecated. use Query instead."""
-        return self.query().selectone_by(*args, **params)
-    def count_by(self, *args, **params):
-        """deprecated. use Query instead."""
-        return self.query().count_by(*args, **params)
-    def selectfirst(self, *args, **params):
-        """deprecated. use Query instead."""
-        return self.query().selectfirst(*args, **params)
-    def selectone(self, *args, **params):
-        """deprecated. use Query instead."""
-        return self.query().selectone(*args, **params)
-    def select(self, arg=None, **kwargs):
-        """deprecated. use Query instead."""
-        return self.query().select(arg=arg, **kwargs)
-    def select_whereclause(self, whereclause=None, params=None, **kwargs):
-        """deprecated. use Query instead."""
-        return self.query().select_whereclause(whereclause=whereclause, params=params, **kwargs)
-    def count(self, whereclause=None, params=None, **kwargs):
-        """deprecated. use Query instead."""
-        return self.query().count(whereclause=whereclause, params=params, **kwargs)
-    def select_statement(self, statement, **params):
-        """deprecated. use Query instead."""
-        return self.query().select_statement(statement, **params)
-    def select_text(self, text, **params):
-        """deprecated. use Query instead."""
-        return self.query().select_text(text, **params)
 
 Mapper.logger = logging.class_logger(Mapper)
 

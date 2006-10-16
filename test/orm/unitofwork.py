@@ -112,7 +112,7 @@ class VersioningTest(UnitOfWorkTest):
         f1.value='f1rev2'
         s.flush()
         s2 = create_session()
-        f1_s = Foo.mapper.using(s2).get(f1.id)
+        f1_s = s2.query(Foo).get(f1.id)
         f1_s.value='f1rev3'
         s2.flush()
 
@@ -468,8 +468,8 @@ class PrivateAttrTest(UnitOfWorkTest):
         ctx.current.flush()
         ctx.current.clear()
         sess = ctx.current
-        a1 = A.mapper.get(a1.a_id)
-        a2 = A.mapper.get(a2.a_id)
+        a1 = Query(A).get(a1.a_id)
+        a2 = Query(A).get(a2.a_id)
         assert a1.bs[0].a is a1
         b = a1.bs[0]
         b.a = a2
@@ -522,7 +522,7 @@ class DefaultTest(UnitOfWorkTest):
         self.assert_(h2.foober == h3.foober == h4.foober == 'im foober')
         self.assert_(h5.foober=='im the new foober')
         ctx.current.clear()
-        l = Hoho.mapper.select()
+        l = Query(Hoho).select()
         (h1, h2, h3, h4, h5) = l
         self.assert_(h1.hoho==self.althohoval)
         self.assert_(h3.hoho==self.althohoval)
@@ -593,7 +593,7 @@ class SaveTest(UnitOfWorkTest):
         ctx.current.flush()
 
         # assert the first one retreives the same from the identity map
-        nu = m.get(u.user_id)
+        nu = ctx.current.get(m, u.user_id)
         self.echo( "U: " + repr(u) + "NU: " + repr(nu))
         self.assert_(u is nu)
         
@@ -601,7 +601,7 @@ class SaveTest(UnitOfWorkTest):
         ctx.current.clear()
 
         # check it again, identity should be different but ids the same
-        nu = m.get(u.user_id)
+        nu = ctx.current.get(m, u.user_id)
         self.assert_(u is not nu and u.user_id == nu.user_id and nu.user_name == 'savetester')
 
         # change first users name and save
@@ -612,7 +612,7 @@ class SaveTest(UnitOfWorkTest):
 
         # select both
         #ctx.current.clear()
-        userlist = m.select(users.c.user_id.in_(u.user_id, u2.user_id), order_by=[users.c.user_name])
+        userlist = Query(m).select(users.c.user_id.in_(u.user_id, u2.user_id), order_by=[users.c.user_name])
         print repr(u.user_id), repr(userlist[0].user_id), repr(userlist[0].user_name)
         self.assert_(u.user_id == userlist[0].user_id and userlist[0].user_name == 'modifiedname')
         self.assert_(u2.user_id == userlist[1].user_id and userlist[1].user_name == 'savetester2')
@@ -631,7 +631,7 @@ class SaveTest(UnitOfWorkTest):
         u.addresses.append(Address())
         ctx.current.flush()
         ctx.current.clear()
-        ulist = m1.select()
+        ulist = ctx.current.query(m1).select()
         u1 = ulist[0]
         u1.user_name = 'newname'
         ctx.current.flush()
@@ -653,7 +653,7 @@ class SaveTest(UnitOfWorkTest):
         au = AddressUser()
         ctx.current.flush()
         ctx.current.clear()
-        l = AddressUser.mapper.selectone()
+        l = ctx.current.query(AddressUser).selectone()
         self.assert_(l.user_id == au.user_id and l.address_id == au.address_id)
     
     def testdeferred(self):
@@ -686,7 +686,7 @@ class SaveTest(UnitOfWorkTest):
 
         ctx.current.clear()
         
-        u = m.get(id)
+        u = ctx.current.get(User, id)
         assert u.user_name == 'multitester'
         
         usertable = users.select(users.c.user_id.in_(u.foo_id)).execute().fetchall()
@@ -704,7 +704,7 @@ class SaveTest(UnitOfWorkTest):
         self.assertEqual(addresstable[0].values(), [u.address_id, u.foo_id, 'lala@hey.com'])
 
         ctx.current.clear()
-        u = m.get(id)
+        u = ctx.current.get(User, id)
         assert u.user_name == 'imnew'
     
     def testhistoryget(self):
@@ -815,7 +815,7 @@ class SaveTest(UnitOfWorkTest):
         ctx.current.delete(u1)
         ctx.current.flush()
         ctx.current.clear()
-        u2 = m.get(u2.user_id)
+        u2 = ctx.current.get(User, u2.user_id)
         assert len(u2.addresses) == 1
     
     def testdelete(self):
@@ -942,14 +942,15 @@ class SaveTest(UnitOfWorkTest):
 
         # mapper with just users table
         assign_mapper(User, users)
-        User.mapper.select()
+        ctx.current.query(User).select()
         oldmapper = User.mapper
         # now a mapper with the users table plus a relation to the addresses
-        assign_mapper(User, users, is_primary=True, properties = dict(
+        clear_mapper(User.mapper)
+        assign_mapper(User, users, properties = dict(
             addresses = relation(mapper(Address, addresses), lazy = False)
         ))
         self.assert_(oldmapper is not User.mapper)
-        u = User.mapper.select()
+        u = ctx.current.query(User).select()
         u[0].addresses.append(Address())
         u[0].addresses[0].email_address='hi'
         
@@ -1056,7 +1057,7 @@ class SaveTest(UnitOfWorkTest):
             item.item_name = elem['item_name']
             item.keywords = []
             if len(elem['keywords'][1]):
-                klist = keywordmapper.select(keywords.c.name.in_(*[e['name'] for e in elem['keywords'][1]]))
+                klist = ctx.current.query(keywordmapper).select(keywords.c.name.in_(*[e['name'] for e in elem['keywords'][1]]))
             else:
                 klist = []
             khash = {}
@@ -1072,7 +1073,7 @@ class SaveTest(UnitOfWorkTest):
 
         ctx.current.flush()
         
-        l = m.select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name, keywords.c.name])
+        l = ctx.current.query(m).select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name, keywords.c.name])
         self.assert_result(l, *data)
 
         objects[4].item_name = 'item4updated'
@@ -1228,7 +1229,7 @@ class SaveTest(UnitOfWorkTest):
             item.keywords = []
             for kname in [e['keyword'][1]['name'] for e in elem['keywords'][1]]:
                 try:
-                    k = keywordmapper.select(keywords.c.name == kname)[0]
+                    k = Query(keywordmapper).select(keywords.c.name == kname)[0]
                 except IndexError:
                     k = Keyword()
                     k.name= kname
@@ -1238,15 +1239,15 @@ class SaveTest(UnitOfWorkTest):
 
         ctx.current.flush()
         ctx.current.clear()
-        l = m.select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name, keywords.c.name])
+        l = Query(m).select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name, keywords.c.name])
         self.assert_result(l, *data)
 
     def testbidirectional(self):
-        m1 = mapper(User, users, is_primary=True)
+        m1 = mapper(User, users)
         
         m2 = mapper(Address, addresses, properties = dict(
             user = relation(m1, lazy = False, backref='addresses')
-        ), is_primary=True)
+        ))
         
  
         u = User()

@@ -169,6 +169,7 @@
     - added join_to and outerjoin_to transformative methods to SelectResults,
     to build up join/outerjoin conditions based on property names. also
     added select_from to explicitly set from_obj parameter.
+    - removed "is_primary" flag from mapper.
 
 0.2.8
 - cleanup on connection methods + documentation.  custom DBAPI

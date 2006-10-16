@@ -363,7 +363,7 @@ class MapperTest(MapperSuperTest):
 
         # first test straight eager load, 1 statement
         def go():
-            l = usermapper.query(sess).select()
+            l = sess.query(usermapper).select()
             self.assert_result(l, User, *user_address_result)
         self.assert_sql_count(db, go, 1)
 
@@ -401,9 +401,11 @@ class MapperTest(MapperSuperTest):
 
         # first test straight eager load, 1 statement
         def go():
-            l = usermapper.query(sess).select()
+            l = sess.query(usermapper).select()
             self.assert_result(l, User, *user_all_result)
         self.assert_sql_count(db, go, 1)
+
+        sess.clear()
         
         # then select just from users.  run it into instances.
         # then assert the data, which will launch 6 more lazy loads
@@ -749,7 +751,8 @@ class LazyTest(MapperSuperTest):
         self.assert_result(l, User, *user_all_result)
         
         sess.clear()
-        m = mapper(Item, orderitems, is_primary=True, properties = dict(
+        clear_mappers()
+        m = mapper(Item, orderitems, properties = dict(
                 keywords = relation(mapper(Keyword, keywords), itemkeywords, lazy = True),
             ))
         
@@ -888,7 +891,8 @@ class EagerTest(MapperSuperTest):
         l = q.select(s.c.u2_user_id==User.c.user_id, distinct=True)
         self.assert_result(l, User, *user_all_result)
         sess.clear()
-        m = mapper(Item, orderitems, is_primary=True, properties = dict(
+        clear_mappers()
+        m = mapper(Item, orderitems, properties = dict(
                 keywords = relation(mapper(Keyword, keywords), itemkeywords, lazy = False, order_by=[keywords.c.keyword_id]),
             ))
         q = sess.query(m)

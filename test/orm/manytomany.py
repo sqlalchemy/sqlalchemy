@@ -309,7 +309,7 @@ class M2MTest3(testbase.AssertMixin):
             }
         )
 
-        o1 = C.get(1)
+        o1 = create_session().query(C).get(1)
 
 
 if __name__ == "__main__":    
