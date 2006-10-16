@@ -135,11 +135,13 @@ class ExecutionContext(object):
         """returns the count of rows updated/deleted for an UPDATE/DELETE statement"""
         raise NotImplementedError()
     def supports_sane_rowcount(self):
-        """Provided to indicate when MySQL is being used, which does not have standard behavior
-        for the "rowcount" function on a statement handle.  """
+        """Indicates if the "rowcount" DBAPI cursor function works properly.
+        
+        Currently, MySQLDB does not properly implement this function."""
         raise NotImplementedError()
     def last_inserted_ids(self):
-        """returns the list of the primary key values for the last insert statement executed.
+        """return the list of the primary key values for the last insert statement executed.
+        
         This does not apply to straight textual clauses; only to sql.Insert objects compiled against 
         a schema.Table object, which are executed via statement.execute().  The order of items in the 
         list is the same as that of the Table's 'primary_key' attribute.
@@ -148,16 +150,20 @@ class ExecutionContext(object):
         the "lastrowid" value in the cursor."""
         raise NotImplementedError()
     def last_inserted_params(self):
-        """returns a dictionary of the full parameter dictionary for the last compiled INSERT statement,
-        including any ColumnDefaults or Sequences that were pre-executed.  this value is thread-local."""
+        """return a dictionary of the full parameter dictionary for the last compiled INSERT statement.
+        
+        Includes any ColumnDefaults or Sequences that were pre-executed."""
         raise NotImplementedError()
     def last_updated_params(self):
-        """returns a dictionary of the full parameter dictionary for the last compiled UPDATE statement,
-        including any ColumnDefaults that were pre-executed. this value is thread-local."""
+        """return a dictionary of the full parameter dictionary for the last compiled UPDATE statement.
+        
+        Includes any ColumnDefaults that were pre-executed."""
         raise NotImplementedError()
     def lastrow_has_defaults(self):
-        """returns True if the last row INSERTED via a compiled insert statement contained PassiveDefaults,
-        indicating that the database inserted data beyond that which we gave it. this value is thread-local."""
+        """return True if the last row INSERTED via a compiled insert statement contained PassiveDefaults.
+        
+        The presence of PassiveDefaults indicates that the database inserted data beyond that which we 
+        passed to the query programmatically."""
         raise NotImplementedError()
 
 class Connectable(object):
@@ -504,7 +510,7 @@ class ComposedSQLEngine(sql.Engine, Connectable):
         """logs a message using this SQLEngine's logger stream."""
         self.logger.info(msg)
 
-class ResultProxy:
+class ResultProxy(object):
     """wraps a DBAPI cursor object to provide access to row columns based on integer
     position, case-insensitive column name, or by schema.Column object. e.g.:
     
@@ -517,7 +523,9 @@ class ResultProxy:
     col3 = row[mytable.c.mycol] # access via Column object.  
     
     ResultProxy also contains a map of TypeEngine objects and will invoke the appropriate
-    convert_result_value() method before returning columns.
+    convert_result_value() method before returning columns, as well as the ExecutionContext
+    corresponding to the statement execution.  It provides several methods for which
+    to obtain information from the underlying ExecutionContext.
     """
     class AmbiguousColumn(object):
         def __init__(self, key):
@@ -568,6 +576,12 @@ class ResultProxy:
     executioncontext = property(_executioncontext)
     
     def close(self):
+        """close this ResultProxy, and the underlying DBAPI cursor corresponding to the execution.
+        
+        If this ResultProxy was generated from an implicit execution, the underlying Connection will
+        also be closed (returns the underlying DBAPI connection to the connection pool.)
+        
+        This method is also called automatically when all result rows are exhausted."""
         if not self.closed:
             self.closed = True
             self.cursor.close()
@@ -619,14 +633,29 @@ class ResultProxy:
                 yield row
      
     def last_inserted_ids(self):
+        """return last_inserted_ids() from the underlying ExecutionContext.
+        
+        See ExecutionContext for details."""
         return self.executioncontext.last_inserted_ids()
     def last_updated_params(self):
+        """return last_updated_params() from the underlying ExecutionContext.
+        
+        See ExecutionContext for details."""
         return self.executioncontext.last_updated_params()
     def last_inserted_params(self):
+        """return last_inserted_params() from the underlying ExecutionContext.
+        
+        See ExecutionContext for details."""
         return self.executioncontext.last_inserted_params()
     def lastrow_has_defaults(self):
+        """return lastrow_has_defaults() from the underlying ExecutionContext.
+        
+        See ExecutionContext for details."""
         return self.executioncontext.lastrow_has_defaults()
     def supports_sane_rowcount(self):
+        """return supports_sane_rowcount() from the underlying ExecutionContext.
+        
+        See ExecutionContext for details."""
         return self.executioncontext.supports_sane_rowcount()
         
     def fetchall(self):
@@ -660,8 +689,12 @@ class ResultProxy:
         finally:
             self.close()
     
-class RowProxy:
-    """proxies a single cursor row for a parent ResultProxy."""
+class RowProxy(object):
+    """proxies a single cursor row for a parent ResultProxy.  Mostly follows 
+    "ordered dictionary" behavior, mapping result values to the string-based column name,
+    the integer position of the result in the row, as well as Column instances which
+    can be mapped to the original Columns that produced this result set (for results
+    that correspond to constructed SQL expressions)."""
     def __init__(self, parent, row):
         """RowProxy objects are constructed by ResultProxy objects."""
         self.__parent = parent
@@ -669,6 +702,7 @@ class RowProxy:
         if self.__parent._ResultProxy__echo:
             self.__parent.engine.logger.debug("Row " + repr(row))
     def close(self):
+        """close the parent ResultProxy."""
         self.__parent.close()
     def __iter__(self):
         for i in range(0, len(self.__row)):
@@ -678,6 +712,7 @@ class RowProxy:
     def __repr__(self):
         return repr(tuple([self.__parent._get_col(self.__row, key) for key in range(0, len(self.__row))]))
     def has_key(self, key):
+        """return True if this RowProxy contains the given key."""
         return self.__parent._has_key(self.__row, key)
     def __getitem__(self, key):
         return self.__parent._get_col(self.__row, key)
@@ -687,10 +722,13 @@ class RowProxy:
         except KeyError, e:
             raise AttributeError(e.args[0])
     def items(self):
+        """return a list of tuples, each tuple containing a key/value pair."""
         return [(key, getattr(self, key)) for key in self.keys()]
     def keys(self):
+        """return the list of keys as strings represented by this RowProxy."""
         return self.__parent.keys
-    def values(self): 
+    def values(self):
+        """return the values represented by this RowProxy as a list."""
         return list(self)
     def __len__(self): 
         return len(self.__row)
@@ -698,23 +736,33 @@ class RowProxy:
 class SchemaIterator(schema.SchemaVisitor):
     """a visitor that can gather text into a buffer and execute the contents of the buffer."""
     def __init__(self, engine, proxy, **params):
+        """construct a new SchemaIterator.
+        
+        engine - the Engine used by this SchemaIterator
+        
+        proxy - a callable which takes a statement and bind parameters and executes it, returning
+        the cursor (the actual DBAPI cursor).  The callable should use the same cursor repeatedly."""
         self.proxy = proxy
         self.engine = engine
         self.buffer = StringIO.StringIO()
 
     def append(self, s):
-        """appends content to the SchemaIterator's query buffer."""
+        """append content to the SchemaIterator's query buffer."""
         self.buffer.write(s)
 
     def execute(self):
-        """executes the contents of the SchemaIterator's buffer using its sql proxy and
-        clears out the buffer."""
+        """execute the contents of the SchemaIterator's buffer."""
         try:
             return self.proxy(self.buffer.getvalue(), None)
         finally:
             self.buffer.truncate(0)
 
 class DefaultRunner(schema.SchemaVisitor):
+    """a visitor which accepts ColumnDefault objects, produces the dialect-specific SQL corresponding
+    to their execution, and executes the SQL, returning the result value.
+    
+    DefaultRunners are used internally by Engines and Dialects.  Specific database modules should provide
+    their own subclasses of DefaultRunner to allow database-specific behavior."""
     def __init__(self, engine, proxy):
         self.proxy = proxy
         self.engine = engine
