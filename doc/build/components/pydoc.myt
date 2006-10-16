@@ -1,7 +1,5 @@
 <%global>
-    import re, types, string, docstring
-    def format_paragraphs(text):
-        return re.sub(r'([_\w])\n([_\w])', r'\1 \2', text or '', re.S)
+    import docstring
 </%global>
 
 <%method obj_doc>
@@ -10,7 +8,7 @@
     </%args>
     
 <&|doclib.myt:item, name=obj.name, description=obj.description &>
-<&|formatting.myt:formatplain&><% format_paragraphs(obj.doc) %></&>
+<&|formatting.myt:formatplain&><% obj.doc %></&>
 
 % if not obj.isclass and obj.functions:
 <&|doclib.myt:item, name="modfunc", description="Module Functions" &>
@@ -48,7 +46,7 @@
 <%method function_doc>
     <%args>func</%args>
     <&|formatting.myt:function_doc, name=func.name, link=func.link, arglist=func.arglist &>
-    <&|formatting.myt:formatplain&><% format_paragraphs(func.doc) %></&>
+    <&|formatting.myt:formatplain&><% func.doc %></&>
     </&>
 </%method>
 
@@ -58,6 +56,6 @@
         prop
     </%args>
     <&|formatting.myt:member_doc, name=prop.name, link=prop.link &>
-    <&|formatting.myt:formatplain&><% format_paragraphs(prop.doc) %></&>
+    <&|formatting.myt:formatplain&><% prop.doc %></&>
     </&>    
 </%method>

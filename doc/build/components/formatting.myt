@@ -187,7 +187,7 @@
 <%method formatplain>
     <%filter>
         import re
-        f = re.sub(r'\n[\s\t]*\n[\s\t]*', '</p>\n<p>', f, re.S)
+        f = re.sub(r'\n[\s\t]*\n[\s\t]*', '</p>\n<p>', f)
         f = "<p>" + f + "</p>"
         return f
     </%filter>
