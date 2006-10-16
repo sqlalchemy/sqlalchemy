@@ -1,7 +1,7 @@
 <%global>
     import re, types, string, docstring
     def format_paragraphs(text):
-        return re.sub(r'([\w])\n([\w])', r'\1 \2', text or '', re.S)
+        return re.sub(r'([_\w])\n([_\w])', r'\1 \2', text or '', re.S)
 </%global>
 
 <%method obj_doc>

@@ -23,8 +23,8 @@
     wrapper='section_wrapper.myt'
     onepage='documentation'
     index='index'
-    title='SQLAlchemy 0.2 Documentation'
-    version = '0.2.8'
+    title='SQLAlchemy 0.3 Documentation'
+    version = '0.3.0'
 </%attr>
 
 <%method title>

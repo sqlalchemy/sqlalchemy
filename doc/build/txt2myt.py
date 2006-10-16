@@ -202,7 +202,7 @@ def end_of_header(tree, level, start):
     return len(tree)
 
 def get_parent_map(tree):
-    return dict((c, p) for p in tree.getiterator() for c in p)
+    return dict([(c, p) for p in tree.getiterator() for c in p])
  
 def html2myghtydoc(html):
     """Convert HTML to Myghty template (for SQLAlchemy's doc framework)
@@ -270,7 +270,7 @@ def html2myghtydoc(html):
               "     Modify .txt file if need you to change the content.-->\n"
 
     # discard surrounding <html> tag
-    body = ''.join(tostring(e) for e in tree[:])
+    body = ''.join([tostring(e) for e in tree[:]])
 
     return header + body
 
