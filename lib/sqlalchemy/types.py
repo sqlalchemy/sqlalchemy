@@ -98,6 +98,12 @@ class TypeDecorator(AbstractType):
         return instance
     def get_dbapi_type(self, dbapi):
         return self.impl.get_dbapi_type(dbapi)
+    def copy_value(self, value):
+        return self.impl.copy_value(value)
+    def compare_values(self, x, y):
+        return self.impl.compare_values(x,y)
+    def is_mutable(self):
+        return self.impl.is_mutable()
 
 class MutableType(object):
     """a mixin that marks a Type as holding a mutable object"""
@@ -144,7 +150,6 @@ class NullTypeEngine(TypeEngine):
     def convert_result_value(self, value, dialect):
         return value
 
-    
 class String(TypeEngine):
     def __new__(cls, *args, **kwargs):
         if cls is not String or len(args) > 0 or kwargs.has_key('length'):
@@ -167,6 +172,8 @@ class String(TypeEngine):
             return value.decode(dialect.encoding)
     def get_dbapi_type(self, dbapi):
         return dbapi.STRING
+    def compare_values(self, x, y):
+        return x == y
         
 class Unicode(TypeDecorator):
     impl = String

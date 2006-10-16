@@ -239,7 +239,8 @@ class MutableTypesTest(UnitOfWorkTest):
         metadata = BoundMetaData(testbase.db)
         table = Table('mutabletest', metadata,
             Column('id', Integer, primary_key=True),
-            Column('data', PickleType, nullable=False))
+            Column('data', PickleType),
+            Column('value', Unicode(30)))
         table.create()
     def tearDownAll(self):
         table.drop()
@@ -279,6 +280,22 @@ class MutableTypesTest(UnitOfWorkTest):
         print f2.data, f3.data
         assert (f3.data.x, f3.data.y) == (4,19)
         
+    def testunicode(self):
+        """test that two equivalent unicode values dont get flagged as changed.
+        
+        apparently two equal unicode objects dont compare via "is" in all cases, so this
+        tests the compare_values() call on types.String and its usage via types.Unicode."""
+        class Foo(object):pass
+        mapper(Foo, table)
+        f1 = Foo()
+        f1.value = u'hi'
+        ctx.current.flush()
+        ctx.current.clear()
+        f1 = ctx.current.get(Foo, f1.id)
+        f1.value = u'hi'
+        def go():
+            ctx.current.flush()
+        self.assert_sql_count(db, go, 0)
         
         
 class PKTest(UnitOfWorkTest):
