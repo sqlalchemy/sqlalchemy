@@ -383,8 +383,8 @@ class Transaction(object):
         if self.__parent is self:
             self.__connection._commit_impl()
             self.__is_active = False
-        
-class ComposedSQLEngine(sql.Engine, Connectable):
+
+class Engine(sql.Executor, Connectable):
     """
     Connects a ConnectionProvider, a Dialect and a CompilerFactory together to 
     provide a default implementation of SchemaEngine.
@@ -415,7 +415,7 @@ class ComposedSQLEngine(sql.Engine, Connectable):
             connection.close()
     
     def _func(self):
-        return sql.FunctionGenerator(self)
+        return sql._FunctionGenerator(self)
     func = property(_func)
     def text(self, text, *args, **kwargs):
         """returns a sql.text() object for performing literal queries."""

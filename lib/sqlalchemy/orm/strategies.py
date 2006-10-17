@@ -247,13 +247,13 @@ class LazyLoader(AbstractRelationLoader):
             if isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column) and ((not circular and column_in_table(table, binary.left)) or (circular and binary.right in foreignkey)):
                 col = binary.left
                 binary.left = binds.setdefault(binary.left,
-                        sql.BindParamClause(bind_label(), None, shortname=binary.left.name, type=binary.right.type))
+                        sql.bindparam(bind_label(), None, shortname=binary.left.name, type=binary.right.type))
                 reverse[binary.right] = binds[col]
 
             if isinstance(binary.right, schema.Column) and isinstance(binary.left, schema.Column) and ((not circular and column_in_table(table, binary.right)) or (circular and binary.left in foreignkey)):
                 col = binary.right
                 binary.right = binds.setdefault(binary.right,
-                        sql.BindParamClause(bind_label(), None, shortname=binary.right.name, type=binary.left.type))
+                        sql.bindparam(bind_label(), None, shortname=binary.right.name, type=binary.left.type))
                 reverse[binary.left] = binds[col]
 
         lazywhere = primaryjoin.copy_container()

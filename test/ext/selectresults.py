@@ -25,7 +25,7 @@ class SelectResultsTest(PersistTest):
         objectstore.flush()
     
     def setUp(self):
-        self.query = Foo.mapper.query()
+        self.query = Query(Foo)
         self.orig = self.query.select_whereclause()
         self.res = self.query.select()
         
@@ -106,7 +106,7 @@ class SelectResultsTest2(PersistTest):
 {'num':4,'t1id':2},{'num':5,'t1id':2},{'num':6,'t1id':3})
 
     def setUp(self):
-        self.query = Obj1.mapper.query()
+        self.query = Query(Obj1)
         #self.orig = self.query.select_whereclause()
         #self.res = self.query.select()
 
@@ -189,7 +189,7 @@ class CaseSensitiveTest(PersistTest):
 {'NUM':4,'T1ID':2},{'NUM':5,'T1ID':2},{'NUM':6,'T1ID':3})
 
     def setUp(self):
-        self.query = Obj1.mapper.query()
+        self.query = Query(Obj1)
         #self.orig = self.query.select_whereclause()
         #self.res = self.query.select()
 

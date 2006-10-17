@@ -83,14 +83,14 @@ class TLTransaction(base.Transaction):
     def rollback(self):
         self.connection.session.rollback()
             
-class TLEngine(base.ComposedSQLEngine):
-    """a ComposedSQLEngine that includes support for thread-local managed transactions.  This engine
+class TLEngine(base.Engine):
+    """an Engine that includes support for thread-local managed transactions.  This engine
     is better suited to be used with threadlocal Pool object."""
     def __init__(self, *args, **kwargs):
         """the TLEngine relies upon the ConnectionProvider having "threadlocal" behavior,
         so that once a connection is checked out for the current thread, you get that same connection
         repeatedly."""
-        base.ComposedSQLEngine.__init__(self, *args, **kwargs)
+        super(TLEngine, self).__init__(*args, **kwargs)
         self.context = util.ThreadLocal()
     def raw_connection(self):
         """returns a DBAPI connection."""

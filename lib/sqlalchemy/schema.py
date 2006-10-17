@@ -96,10 +96,10 @@ def _get_table_key(name, schema):
     else:
         return schema + "." + name
         
-class TableSingleton(type):
+class _TableSingleton(type):
     """a metaclass used by the Table object to provide singleton behavior."""
     def __call__(self, name, metadata, *args, **kwargs):
-        if isinstance(metadata, sql.Engine):
+        if isinstance(metadata, sql.Executor):
             # backwards compatibility - get a BoundSchema associated with the engine
             engine = metadata
             if not hasattr(engine, '_legacy_metadata'):
@@ -150,13 +150,13 @@ class TableSingleton(type):
             return table
 
         
-class Table(SchemaItem, sql.TableClause):
+class Table(SchemaItem, sql._TableClause):
     """represents a relational database table.  This subclasses sql.TableClause to provide
     a table that is "wired" to an engine.  Whereas TableClause represents a table as its 
     used in a SQL expression, Table represents a table as its created in the database.  
     
     Be sure to look at sqlalchemy.sql.TableImpl for additional methods defined on a Table."""
-    __metaclass__ = TableSingleton
+    __metaclass__ = _TableSingleton
     
     def __init__(self, name, metadata, **kwargs):
         """Construct a Table.
@@ -302,7 +302,7 @@ class Table(SchemaItem, sql.TableClause):
                 args.append(c.copy())
             return Table(self.name, metadata, schema=schema, *args)
 
-class Column(SchemaItem, sql.ColumnClause):
+class Column(SchemaItem, sql._ColumnClause):
     """represents a column in a database table.  this is a subclass of sql.ColumnClause and
     represents an actual existing table in the database, in a similar fashion as TableClause/Table."""
     def __init__(self, name, type, *args, **kwargs):

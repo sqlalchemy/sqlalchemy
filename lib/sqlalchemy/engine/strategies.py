@@ -11,7 +11,7 @@ strategies = {}
 
 class EngineStrategy(object):
     """defines a function that receives input arguments and produces an instance of sql.Engine, typically
-    an instance sqlalchemy.engine.base.ComposedSQLEngine or a subclass."""
+    an instance sqlalchemy.engine.base.Engine or a subclass."""
     def __init__(self, name):
         """construct a new EngineStrategy object and sets it in the list of available strategies
         under this name."""
@@ -55,7 +55,7 @@ class PlainEngineStrategy(DefaultEngineStrategy):
     def get_pool_provider(self, dialect, url, **poolargs):
         return default.PoolConnectionProvider(dialect, url, **poolargs)
     def get_engine(self, provider, dialect, **kwargs):
-        return base.ComposedSQLEngine(provider, dialect, **kwargs)
+        return base.Engine(provider, dialect, **kwargs)
 PlainEngineStrategy()
 
 class ThreadLocalEngineStrategy(DefaultEngineStrategy):

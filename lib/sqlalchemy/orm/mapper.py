@@ -129,7 +129,7 @@ class Mapper(object):
             raise exceptions.ArgumentError("Class '%s' is not a new-style class" % class_.__name__)
 
         for table in (local_table, select_table):
-            if table is not None and isinstance(table, sql.SelectBaseMixin):
+            if table is not None and isinstance(table, sql._SelectBaseMixin):
                 # some db's, noteably postgres, dont want to select from a select
                 # without an alias.  also if we make our own alias internally, then
                 # the configured properties on the mapper are not matched against the alias 

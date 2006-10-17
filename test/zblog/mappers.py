@@ -66,7 +66,7 @@ def zblog_mappers():
         'user':relation(user.User, lazy=True, backref=backref('posts', cascade="all, delete-orphan")),
         'blog':relation(Blog, lazy=True, backref=backref('posts', cascade="all, delete-orphan")),
         'topics':relation(TopicAssociation, lazy=False, private=True, association=Topic, backref='post')
-    }, is_primary=True, order_by=[desc(posts_with_ccount.c.datetime)])
+    }, order_by=[desc(posts_with_ccount.c.datetime)])
 
 
     # comment mapper.  This mapper is handling a hierarchical relationship on itself, and contains
@@ -77,7 +77,7 @@ def zblog_mappers():
         'user':relation(user.User, lazy=False, backref=backref('comments', cascade="all, delete-orphan")),
         'parent':relation(Comment, primaryjoin=tables.comments.c.parent_comment_id==tables.comments.c.comment_id, foreignkey=tables.comments.c.comment_id, lazy=True, uselist=False),
         'replies':relation(Comment,primaryjoin=tables.comments.c.parent_comment_id==tables.comments.c.comment_id, lazy=True, uselist=True, cascade="all"),
-    }, is_primary=True)
+    })
 
 # we define one special find-by for the comments of a post, which is going to make its own "noload"
 # mapper and organize the comments into their correct hierarchy in one pass. hierarchical

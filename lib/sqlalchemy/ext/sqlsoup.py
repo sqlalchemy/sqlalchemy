@@ -252,10 +252,10 @@ class TableClassType(type):
     def update(cls, whereclause=None, values=None, **kwargs):
         cls._table.update(whereclause, values).execute(**kwargs)
     def __getattr__(cls, attr):
-        if attr == '_mapper':
+        if attr == '_query':
             # called during mapper init
             raise AttributeError()
-        return getattr(cls._mapper, attr)
+        return getattr(cls._query, attr)
             
 
 def _is_outer_join(selectable):
@@ -273,7 +273,10 @@ def _selectable_name(selectable):
     elif isinstance(selectable, schema.Table):
         return selectable.name.capitalize()
     else:
-        return selectable.__class__.__name__
+        x = selectable.__class__.__name__
+        if x[0] == '_':
+            x = x[1:]
+        return x
 
 def class_for_table(selectable):
     if not hasattr(selectable, '_selectable') \
@@ -307,6 +310,7 @@ def class_for_table(selectable):
                            selectable,
                            extension=objectstore.mapper_extension,
                            allow_null_pks=_is_outer_join(selectable))
+    klass._query = Query(klass._mapper)
     return klass
 
 class SqlSoup:

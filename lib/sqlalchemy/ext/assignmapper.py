@@ -1,9 +1,9 @@
-from sqlalchemy import mapper, util
+from sqlalchemy import mapper, util, Query
 import types
 
 def monkeypatch_query_method(ctx, class_, name):
     def do(self, *args, **kwargs):
-        query = class_.mapper.query(session=ctx.current)
+        query = Query(class_, session=ctx.current)
         return getattr(query, name)(*args, **kwargs)
     setattr(class_, name, classmethod(do))
 

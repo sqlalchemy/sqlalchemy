@@ -20,7 +20,7 @@ E.g.:
 is equivalent to:
 
     import logging
-    logging.getLogger('sqlalchemy.engine.ComposedSQLEngine.%s' % hex(id(engine))).setLevel(logging.DEBUG)
+    logging.getLogger('sqlalchemy.engine.Engine.%s' % hex(id(engine))).setLevel(logging.DEBUG)
     
 """
 

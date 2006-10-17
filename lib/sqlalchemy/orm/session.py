@@ -30,7 +30,7 @@ class SessionTransaction(object):
         return self.get_or_add(connectable)
     def get_or_add(self, connectable):
         # we reference the 'engine' attribute on the given object, which in the case of 
-        # Connection, ProxyEngine, Engine, ComposedSQLEngine, whatever, should return the original
+        # Connection, ProxyEngine, Engine, whatever, should return the original
         # "Engine" object that is handling the connection.
         if self.connections.has_key(connectable.engine):
             return self.connections[connectable.engine][0]

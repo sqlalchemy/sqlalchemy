@@ -51,7 +51,7 @@ class ObjectDoc(object):
                 classes = []
         
         if self.isclass:
-            self.description = "Class " + self.name
+            self.description = "class " + self.name
             if hasattr(obj, '__mro__'):
                 l = []
                 mro = list(obj.__mro__[1:])
@@ -63,7 +63,7 @@ class ObjectDoc(object):
                     l.insert(0, x)
                 self.description += "(" + string.join([x.__name__ for x in l], ',') + ")"
         else:
-            self.description = "Module " + self.name
+            self.description = "module " + self.name
 
         self.doc = obj.__doc__
 

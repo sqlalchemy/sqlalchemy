@@ -319,7 +319,7 @@ class ANSICompiler(sql.Compiled):
                     inner_columns[co._label] = l
                 # TODO: figure this out, a ColumnClause with a select as a parent
                 # is different from any other kind of parent
-                elif select.issubquery and isinstance(co, sql.ColumnClause) and co.table is not None and not isinstance(co.table, sql.Select):
+                elif select.issubquery and isinstance(co, sql._ColumnClause) and co.table is not None and not isinstance(co.table, sql.Select):
                     # SQLite doesnt like selecting from a subquery where the column
                     # names look like table.colname, so add a label synonomous with
                     # the column name
@@ -489,7 +489,7 @@ class ANSICompiler(sql.Compiled):
         colparams = self._get_colparams(insert_stmt, default_params)
 
         def create_param(p):
-            if isinstance(p, sql.BindParamClause):
+            if isinstance(p, sql._BindParamClause):
                 self.binds[p.key] = p
                 if p.shortname is not None:
                     self.binds[p.shortname] = p
@@ -521,7 +521,7 @@ class ANSICompiler(sql.Compiled):
         self.isupdate = True
         colparams = self._get_colparams(update_stmt, default_params)
         def create_param(p):
-            if isinstance(p, sql.BindParamClause):
+            if isinstance(p, sql._BindParamClause):
                 self.binds[p.key] = p
                 self.binds[p.shortname] = p
                 return self.bindparam_string(p.key)
@@ -577,7 +577,7 @@ class ANSICompiler(sql.Compiled):
         # now go thru compiled params, get the Column object for each key
         d = {}
         for key, value in parameters.iteritems():
-            if isinstance(key, sql.ColumnClause):
+            if isinstance(key, sql._ColumnClause):
                 d[key] = value
             else:
                 try:

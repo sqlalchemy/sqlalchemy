@@ -20,10 +20,12 @@ import sqlalchemy.ext.selectresults as selectresults
 objects = []
 def make_doc(obj, classes=None, functions=None):
     objects.append(docstring.ObjectDoc(obj, classes=classes, functions=functions))
-    
-make_doc(obj=sql, classes=[])
+
+# basically, if you see make_doc(obj=XXX) and thats it, we have separated out the public interface.  otherwise
+# still a work in progress.    
+make_doc(obj=sql)
 make_doc(obj=schema)
-make_doc(obj=engine, classes=[engine.Connectable, engine.ComposedSQLEngine, engine.Connection, engine.Transaction, engine.Dialect, engine.ConnectionProvider, engine.ExecutionContext, engine.ResultProxy, engine.RowProxy])
+make_doc(obj=engine)
 make_doc(obj=engine.url)
 make_doc(obj=orm, classes=[orm.MapperExtension])
 make_doc(obj=orm.mapperlib, classes=[orm.mapperlib.Mapper, orm.mapperlib.SelectionContext])

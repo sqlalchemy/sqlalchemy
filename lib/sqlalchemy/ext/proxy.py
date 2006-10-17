@@ -4,11 +4,11 @@ except ImportError:
     from sqlalchemy.util import ThreadLocal as local
 
 from sqlalchemy import sql
-from sqlalchemy.engine import create_engine
+from sqlalchemy.engine import create_engine, Engine
 
 __all__ = ['BaseProxyEngine', 'AutoConnectEngine', 'ProxyEngine']
 
-class BaseProxyEngine(sql.Engine):
+class BaseProxyEngine(sql.Executor):
     """Basis for all proxy engines."""
         
     def get_engine(self):

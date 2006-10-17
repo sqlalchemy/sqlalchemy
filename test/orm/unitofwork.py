@@ -347,7 +347,7 @@ class PKTest(UnitOfWorkTest):
         e.multi_rev = 2
         ctx.current.flush()
         ctx.current.clear()
-        e2 = Entry.mapper.get((e.multi_id, 2))
+        e2 = Query(Entry).get((e.multi_id, 2))
         self.assert_(e is not e2 and e._instance_key == e2._instance_key)
         
     # this one works with sqlite since we are manually setting up pk values
@@ -1325,7 +1325,7 @@ class SaveTest2(UnitOfWorkTest):
             Column('email_address', String(20)),
             redefine=True
         )
-        x = sql.Join(self.users, self.addresses)
+        x = sql.join(self.users, self.addresses)
 #        raise repr(self.users) + repr(self.users.primary_key)
 #        raise repr(self.addresses) + repr(self.addresses.foreign_keys)
         self.users.create()
