@@ -311,11 +311,11 @@ class Column(SchemaItem, sql._ColumnClause):
         name : the name of this column.  this should be the identical name as it appears,
         or will appear, in the database.
         
-        type : this is the type of column. This can be any subclass of types.TypeEngine,
-        including the database-agnostic types defined in the types module, database-specific types
-        defined within specific database modules, or user-defined types.
+        type: the TypeEngine for this column.
+        This can be any subclass of types.AbstractType, including the database-agnostic types defined 
+        in the types module, database-specific types defined within specific database modules, or user-defined types.
         
-        *args : ForeignKey and Sequence objects should be added as list values.
+        *args: Constraint, ForeignKey, ColumnDefault and Sequence objects should be added as list values.
         
         **kwargs : keyword arguments include:
         
@@ -364,7 +364,7 @@ class Column(SchemaItem, sql._ColumnClause):
         case_sensitive=True : indicates that the identifier should be interpreted by the database in the natural case for identifiers.
         Mixed case is not sufficient to cause this identifier to be quoted; it must contain an illegal character.
         """
-        name = str(name) # in case of incoming unicode
+        name = str(name) # in case of incoming unicode        
         super(Column, self).__init__(name, None, type)
         self.args = args
         self.key = kwargs.pop('key', name)
@@ -561,7 +561,9 @@ class ForeignKey(SchemaItem):
                     raise exceptions.ArgumentError("Could not create ForeignKey '%s' on table '%s': table '%s' has no column named '%s'" % (self._colspec, parenttable.name, table.name, e.args[0]))
             else:
                 self._column = self._colspec
-
+        # propigate TypeEngine to parent if it didnt have one
+        if self.parent.type is types.NULLTYPE:
+            self.parent.type = self._column.type
         return self._column
             
     column = property(lambda s: s._init_column())
