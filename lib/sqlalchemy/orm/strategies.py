@@ -240,21 +240,35 @@ class LazyLoader(AbstractRelationLoader):
         def column_in_table(table, column):
             return table.corresponding_column(column, raiseerr=False, keys_ok=False) is not None
 
+        def find_column_in_expr(expr):
+            if not isinstance(expr, sql.ColumnElement):
+                return None
+            columns = []
+            class FindColumnInColumnClause(sql.ClauseVisitor):
+                def visit_column(self, c):
+                    columns.append(c)
+            expr.accept_visitor(FindColumnInColumnClause())
+            return len(columns) and columns[0] or None
+                
         def bind_label():
             return "lazy_" + hex(random.randint(0, 65535))[2:]
         def visit_binary(binary):
-            circular = isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column) and binary.left.table is binary.right.table
-            if isinstance(binary.left, schema.Column) and isinstance(binary.right, schema.Column) and ((not circular and column_in_table(table, binary.left)) or (circular and binary.right in foreignkey)):
-                col = binary.left
-                binary.left = binds.setdefault(binary.left,
-                        sql.bindparam(bind_label(), None, shortname=binary.left.name, type=binary.right.type))
-                reverse[binary.right] = binds[col]
+            leftcol = find_column_in_expr(binary.left)
+            rightcol = find_column_in_expr(binary.right)
+            if leftcol is None or rightcol is None:
+                return
+            circular = leftcol.table is rightcol.table
+            if ((not circular and column_in_table(table, leftcol)) or (circular and rightcol in foreignkey)):
+                col = leftcol
+                binary.left = binds.setdefault(leftcol,
+                        sql.bindparam(bind_label(), None, shortname=leftcol.name, type=binary.right.type))
+                reverse[rightcol] = binds[col]
 
-            if isinstance(binary.right, schema.Column) and isinstance(binary.left, schema.Column) and ((not circular and column_in_table(table, binary.right)) or (circular and binary.left in foreignkey)):
-                col = binary.right
-                binary.right = binds.setdefault(binary.right,
-                        sql.bindparam(bind_label(), None, shortname=binary.right.name, type=binary.left.type))
-                reverse[binary.left] = binds[col]
+            if (leftcol is not rightcol) and ((not circular and column_in_table(table, rightcol)) or (circular and leftcol in foreignkey)):
+                col = rightcol
+                binary.right = binds.setdefault(rightcol,
+                        sql.bindparam(bind_label(), None, shortname=rightcol.name, type=binary.left.type))
+                reverse[leftcol] = binds[col]
 
         lazywhere = primaryjoin.copy_container()
         li = mapperutil.BinaryVisitor(visit_binary)
