@@ -19,7 +19,27 @@ import util as mapperutil
 import sets, random
 from interfaces import *
 
-    
+
+class SynonymProperty(MapperProperty):
+    def __init__(self, name):
+        self.name = name
+    def setup(self, querycontext, **kwargs):
+        pass
+    def execute(self, selectcontext, instance, row, identitykey, isnew):
+        pass
+    def do_init(self):
+        class SynonymProp(object):
+            def __set__(s, obj, value):
+                setattr(obj, self.name, value)
+                self.set(None, obj, value)
+            def __delete__(s, obj):
+                delattr(obj, self.name)
+            def __get__(s, obj, owner):
+                if obj is None:
+                    return s
+                return getattr(obj, self.name)
+        setattr(self.parent.class_, self.key, SynonymProp())
+        
 class ColumnProperty(StrategizedProperty):
     """describes an object attribute that corresponds to a table column."""
     def __init__(self, *columns, **kwargs):

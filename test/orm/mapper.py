@@ -350,6 +350,17 @@ class MapperTest(MapperSuperTest):
                 'foo' : users.c.user_name,
             })
 
+    def testsynonym(self):
+        sess = create_session()
+        mapper(User, users, properties = dict(
+            addresses = relation(mapper(Address, addresses), lazy = True),
+            uname = synonym('user_name'),
+            adlist = synonym('addresses')
+        ))
+        
+        u = sess.query(User).get_by(uname='jack')
+        self.assert_result(u.adlist, Address, *(user_address_result[0]['addresses'][1]))
+        
     def testeageroptions(self):
         """tests that a lazy relation can be upgraded to an eager relation via the options method"""
         sess = create_session()
