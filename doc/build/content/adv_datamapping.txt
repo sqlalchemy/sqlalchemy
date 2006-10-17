@@ -87,7 +87,7 @@ A common request is the ability to create custom class properties that override 
 It is also possible to route the the `select_by` and `get_by` functions on `Query` using the new property name, by establishing a `synonym`:
 
     {python}
-    mapper(MyClass, mytable, proeprties = {
+    mapper(MyClass, mytable, properties = {
         # map the '_email' attribute to the "email" column
         # on the table
         '_email': mytable.c.email
@@ -102,7 +102,7 @@ It is also possible to route the the `select_by` and `get_by` functions on `Quer
 Synonym can be established with the flag "proxy=True", to create a class-level proxy to the actual property:
 
     {python}
-    mapper(MyClass, mytable, proeprties = {
+    mapper(MyClass, mytable, properties = {
         '_email': mytable.c.email
         'email' : synonym('_email', proxy=True)
     })
