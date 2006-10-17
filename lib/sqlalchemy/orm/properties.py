@@ -21,13 +21,16 @@ from interfaces import *
 
 
 class SynonymProperty(MapperProperty):
-    def __init__(self, name):
+    def __init__(self, name, proxy=False):
         self.name = name
+        self.proxy = proxy
     def setup(self, querycontext, **kwargs):
         pass
     def execute(self, selectcontext, instance, row, identitykey, isnew):
         pass
     def do_init(self):
+        if not self.proxy:
+            return
         class SynonymProp(object):
             def __set__(s, obj, value):
                 setattr(obj, self.name, value)

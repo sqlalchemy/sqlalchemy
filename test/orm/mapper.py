@@ -354,8 +354,8 @@ class MapperTest(MapperSuperTest):
         sess = create_session()
         mapper(User, users, properties = dict(
             addresses = relation(mapper(Address, addresses), lazy = True),
-            uname = synonym('user_name'),
-            adlist = synonym('addresses')
+            uname = synonym('user_name', proxy=True),
+            adlist = synonym('addresses', proxy=True)
         ))
         
         u = sess.query(User).get_by(uname='jack')

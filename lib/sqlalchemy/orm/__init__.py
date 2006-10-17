@@ -45,9 +45,9 @@ def mapper(class_, table=None, *args, **params):
     """return a new Mapper object."""
     return Mapper(class_, table, *args, **params)
 
-def synonym(name):
+def synonym(name, proxy=False):
     """set up 'name' as a synonym to another MapperProperty."""
-    return properties.SynonymProperty(name)
+    return properties.SynonymProperty(name, proxy=proxy)
     
 def clear_mappers():
     """remove all mappers that have been created thus far.  when new mappers are 

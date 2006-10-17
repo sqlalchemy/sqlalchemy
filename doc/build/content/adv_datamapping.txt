@@ -84,7 +84,7 @@ A common request is the ability to create custom class properties that override 
        '_email': mytable.c.email
     })
 
-It is also possible to use the `select_by` and `get_by` functions on `Query` using the original property name, by establishing a `synonym`:
+It is also possible to route the the `select_by` and `get_by` functions on `Query` using the new property name, by establishing a `synonym`:
 
     {python}
     mapper(MyClass, mytable, proeprties = {
@@ -99,6 +99,20 @@ It is also possible to use the `select_by` and `get_by` functions on `Query` usi
     # now you can select_by(email)
     result = session.query(MyClass).select_by(email='john@smith.com')
 
+Synonym can be established with the flag "proxy=True", to create a class-level proxy to the actual property:
+
+    {python}
+    mapper(MyClass, mytable, proeprties = {
+        '_email': mytable.c.email
+        'email' : synonym('_email', proxy=True)
+    })
+
+    x = MyClass()
+    x.email = 'john@doe.com'
+    
+    >>> x._email
+    'john@doe.com'
+    
 The `synonym` keyword is currently an [Alpha Feature][alpha_api].
 
 #### Custom List Classes {@name=customlist}
