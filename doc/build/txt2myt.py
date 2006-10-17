@@ -66,7 +66,7 @@ def MyghtyTag(name_, attrib_={}, **extra):
 CODE_BLOCK = 'formatting.myt:code'
 DOCTEST_DIRECTIVES = re.compile(r'#\s*doctest:\s*[+-]\w+(,[+-]\w+)*\s*$', re.M)
 LINK = 'formatting.myt:link'
-LINK_MARKER = 'rel:'
+LINK_REG = re.compile(r'(bold)?rel\:(.+)')
 SECTION = 'doclib.myt:item'
 
 def process_code_blocks(tree):
@@ -113,7 +113,7 @@ def process_code_blocks(tree):
         
         if use_sliders:
             opts['use_sliders'] = True
-            
+        
         tag = MyghtyTag(CODE_BLOCK, opts)
         tag.text = text
         tag.tail = pre.tail
@@ -138,16 +138,23 @@ def process_rel_href(tree):
     """
     parent = get_parent_map(tree)
     for a in tree.findall('.//a'):
-        if a.get('href').startswith(LINK_MARKER):
+        m = LINK_REG.match(a.get('href'))
+        if m:
+            (bold, path) = m.group(1,2)
             text = a.text
-            path = a.get('href')[len(LINK_MARKER):]
             if text == path:
                 tag = MyghtyTag(LINK, path=path)
             else:
                 tag = MyghtyTag(LINK, path=path, text=text)
-            tag.tail = a.tail
             a_parent = parent[a]
-            a_parent[index(a_parent, a)] = tag
+            if bold:
+                bold = et.Element('strong')
+                bold.tail = a.tail
+                bold.append(tag)
+                a_parent[index(a_parent, a)] = bold
+            else:
+                tag.tail = a.tail
+                a_parent[index(a_parent, a)] = tag
 
 def process_headers(tree):
     """Replace all <h1>, <h2>... with Mighty tags

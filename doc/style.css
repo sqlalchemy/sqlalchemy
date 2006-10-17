@@ -20,6 +20,9 @@ a:visited {color:#0000FF;}
 a:active {color:#0000FF;}
 a:hover {color:#700000;}
 
+strong a {
+    font-weight: bold;
+}
 
 .toc {
 	background-color: #EEEEFB;
