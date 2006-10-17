@@ -150,7 +150,7 @@ class _TableSingleton(type):
             return table
 
         
-class Table(SchemaItem, sql._TableClause):
+class Table(SchemaItem, sql.TableClause):
     """represents a relational database table.  This subclasses sql.TableClause to provide
     a table that is "wired" to an engine.  Whereas TableClause represents a table as its 
     used in a SQL expression, Table represents a table as its created in the database.  

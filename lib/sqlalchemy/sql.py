@@ -10,7 +10,7 @@ from sqlalchemy import types as sqltypes
 import string, re, random, sets
 types = __import__('types')
 
-__all__ = ['text', 'table', 'column', 'func', 'select', 'update', 'insert', 'delete', 'join', 'and_', 'or_', 'not_', 'between_', 'case', 'cast', 'union', 'union_all', 'null', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'literal', 'bindparam', 'exists', 'extract','AbstractDialect', 'ClauseParameters', 'ClauseVisitor', 'Executor', 'Compiled', 'ClauseElement', 'ColumnElement', 'ColumnCollection', 'FromClause', 'Select', 'Alias', 'CompoundSelect','Join']
+__all__ = ['text', 'table', 'column', 'func', 'select', 'update', 'insert', 'delete', 'join', 'and_', 'or_', 'not_', 'between_', 'case', 'cast', 'union', 'union_all', 'null', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'literal', 'bindparam', 'exists', 'extract','AbstractDialect', 'ClauseParameters', 'ClauseVisitor', 'Executor', 'Compiled', 'ClauseElement', 'ColumnElement', 'ColumnCollection', 'FromClause', 'TableClause', 'Select', 'Alias', 'CompoundSelect','Join']
 
 def desc(column):
     """return a descending ORDER BY clause element, e.g.:
@@ -215,7 +215,7 @@ def column(text, table=None, type=None):
 def table(name, *columns):
     """returns a table clause.  this is a primitive version of the schema.Table object, which is a subclass
     of this object."""
-    return _TableClause(name, *columns)
+    return TableClause(name, *columns)
     
 def bindparam(key, value=None, type=None, shortname=None):
     """creates a bind parameter clause with the given key.  
@@ -441,7 +441,7 @@ class ClauseElement(object):
     def _find_engine(self):
         """default strategy for locating an engine within the clause element.
         relies upon a local engine property, or looks in the "from" objects which 
-        ultimately have to contain Tables or _TableClauses. """
+        ultimately have to contain Tables or TableClauses. """
         try:
             if self._engine is not None:
                 return self._engine
@@ -615,11 +615,11 @@ class Selectable(ClauseElement):
 
 class ColumnElement(Selectable, _CompareMixin):
     """represents a column element within the list of a Selectable's columns.
-    A ColumnElement can either be directly associated with a _TableClause, or
+    A ColumnElement can either be directly associated with a TableClause, or
     a free-standing textual column with no table, or is a "proxy" column, indicating
     it is placed on a Selectable such as an Alias or Select statement and ultimately corresponds 
-    to a _TableClause-attached column (or in the case of a CompositeSelect, a proxy ColumnElement
-    may correspond to several _TableClause-attached columns)."""
+    to a TableClause-attached column (or in the case of a CompositeSelect, a proxy ColumnElement
+    may correspond to several TableClause-attached columns)."""
     
     primary_key = property(lambda self:getattr(self, '_primary_key', False), doc="primary key flag.  indicates if this Column represents part or whole of a primary key.")
     foreign_keys = property(lambda self:getattr(self, '_foreign_keys', []), doc="foreign key accessor.  points to a ForeignKey object which represents a Foreign Key placed on this column's ultimate ancestor.")
@@ -641,7 +641,7 @@ class ColumnElement(Selectable, _CompareMixin):
         if len(s) == 0:
             s.add(self)
         self.__orig_set = s
-    orig_set = property(_get_orig_set, _set_orig_set,doc="""a Set containing _TableClause-bound, non-proxied ColumnElements for which this ColumnElement is a proxy.  In all cases except for a column proxied from a Union (i.e. CompoundSelect), this set will be just one element.""")
+    orig_set = property(_get_orig_set, _set_orig_set,doc="""a Set containing TableClause-bound, non-proxied ColumnElements for which this ColumnElement is a proxy.  In all cases except for a column proxied from a Union (i.e. CompoundSelect), this set will be just one element.""")
 
     def shares_lineage(self, othercolumn):
         """returns True if the given ColumnElement has a common ancestor to this ColumnElement."""
@@ -1276,9 +1276,9 @@ class _ColumnClause(ColumnElement):
     def _group_parenthesized(self):
         return False
 
-class _TableClause(FromClause):
+class TableClause(FromClause):
     def __init__(self, name, *columns):
-        super(_TableClause, self).__init__(name)
+        super(TableClause, self).__init__(name)
         self.name = self.fullname = name
         self._columns = ColumnCollection()
         self._foreign_keys = util.Set()
