@@ -155,6 +155,7 @@
     preventing conflicts with lazy loader operation, fixes 
     [ticket:308]
     - fix to deferred group loading
+    - session.flush() wont close a connection it opened [ticket:346]
     - added "batch=True" flag to mapper; if False, save_obj
     will fully save one object at a time including calls
     to before_XXXX and after_XXXX

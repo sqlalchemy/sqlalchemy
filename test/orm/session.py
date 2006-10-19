@@ -9,6 +9,28 @@ db = testbase.db
 from sqlalchemy import *
 
 
+class SessionTest(AssertMixin):
+    def setUpAll(self):
+        tables.create()
+        tables.data()
+    def tearDownAll(self):
+        tables.drop()
+    def tearDown(self):
+        tables.delete()
+        clear_mappers()
+    def setUp(self):
+        pass
+
+    def test_close(self):
+        """test that flush() doenst close a connection the session didnt open"""
+        c = testbase.db.connect()
+        class User(object):pass
+        mapper(User, users)
+        s = create_session(bind_to=c)
+        s.save(User())
+        s.flush()
+        c.execute("select * from users")
+    
 class OrphanDeletionTest(AssertMixin):
 
     def setUpAll(self):

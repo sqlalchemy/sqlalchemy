@@ -37,7 +37,7 @@ class SessionTransaction(object):
         e = connectable.engine
         c = connectable.contextual_connect()
         if not self.connections.has_key(e):
-            self.connections[e] = (c, c.begin())
+            self.connections[e] = (c, c.begin(), c is not connectable)
         return self.connections[e][0]
     def commit(self):
         if self.parent is not None:
@@ -58,7 +58,8 @@ class SessionTransaction(object):
         if self.parent is not None:
             return
         for t in self.connections.values():
-            t[0].close()
+            if t[2]:
+                t[0].close()
         self.session.transaction = None
 
 class Session(object):
