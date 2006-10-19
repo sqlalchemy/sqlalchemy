@@ -273,7 +273,7 @@ class Query(object):
     def execute(self, clauseelement, params=None, *args, **kwargs):
         result = self.session.execute(self.mapper, clauseelement, params=params)
         try:
-            return self.mapper.instances(result, self.session, with_options=self.with_options, **kwargs)
+            return self.instances(result, **kwargs)
         finally:
             result.close()
 
@@ -283,7 +283,7 @@ class Query(object):
 
         session = self.session
         
-        context = SelectionContext(self.mapper, session, **kwargs)
+        context = SelectionContext(self.mapper, session, with_options=self.with_options, **kwargs)
 
         result = util.UniqueAppender([])
         if mappers:

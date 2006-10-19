@@ -123,6 +123,12 @@
     methods on MapperExtension have a slightly different method signature
     now as a result of the change; hoping that these methods are not 
     in widespread use as of yet.
+    - instances() method moved to Query now, backwards-compatible 
+    version remains on Mapper.  
+    - added contains_eager() MapperOption, used in conjunction with
+    instances() to specify properties that should be eagerly loaded
+    from the result set, using their plain column names by default, or translated
+    given an custom row-translation function.
     - more rearrangements of unit-of-work commit scheme to better allow
     dependencies within circular flushes to work properly...updated
     task traversal/logging implementation

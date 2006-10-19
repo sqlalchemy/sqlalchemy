@@ -72,7 +72,6 @@ class StrategizedProperty(MapperProperty):
             self._all_strategies[cls] = strategy
             return strategy
     def setup(self, querycontext, **kwargs):
-        print "SP SETUP, KEY", self.key, " STRAT IS ",  self._get_context_strategy(querycontext)
         self._get_context_strategy(querycontext).setup_query(querycontext, **kwargs)
     def execute(self, selectcontext, instance, row, identitykey, isnew):
         self._get_context_strategy(selectcontext).process_row(selectcontext, instance, row, identitykey, isnew)
@@ -132,7 +131,8 @@ class StrategizedOption(PropertyOption):
     """a MapperOption that affects which LoaderStrategy will be used for an operation
     by a StrategizedProperty."""
     def process_query_property(self, context, property):
-        print  "HI " + self.key + " " + property.key
+        context.attributes[(LoaderStrategy, property)] = self.get_strategy_class()
+    def process_selection_property(self, context, property):
         context.attributes[(LoaderStrategy, property)] = self.get_strategy_class()
     def get_strategy_class(self):
         raise NotImplementedError()
