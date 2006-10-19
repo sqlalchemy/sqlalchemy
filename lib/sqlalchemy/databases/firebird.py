@@ -7,11 +7,11 @@
 
 import sys, StringIO, string, types
 
+from sqlalchemy import util
 import sqlalchemy.engine.default as default
 import sqlalchemy.sql as sql
 import sqlalchemy.schema as schema
 import sqlalchemy.ansisql as ansisql
-# from sqlalchemy import *
 import sqlalchemy.types as sqltypes
 import sqlalchemy.exceptions as exceptions
 try:
@@ -79,24 +79,11 @@ def descriptor():
         ('password', 'Password', None)
     ]}
     
+
 class FireBirdExecutionContext(default.DefaultExecutionContext):
     def supports_sane_rowcount(self):
         return True
     
-    def compiler(self, statement, bindparams, **kwargs):
-        return FBCompiler(statement, bindparams, **kwargs)
-
-    def schemagenerator(self, **params):
-        return FBSchemaGenerator(self, **params)
-    
-    def schemadropper(self, **params):
-        return FBSchemaDropper(self, **params)
- 
-    def defaultrunner(self, proxy):
-        return FBDefaultRunner(self, proxy)
-
-    def preparer(self):
-        return FBIdentifierPreparer(self)
 
 class FireBirdDialect(ansisql.ANSIDialect):
     def __init__(self, module = None, **params):
@@ -152,6 +139,9 @@ class FireBirdDialect(ansisql.ANSIDialect):
 
     def defaultrunner(self, engine, proxy):
         return FBDefaultRunner(engine, proxy)
+
+    def preparer(self):
+        return FBIdentifierPreparer(self)
 
     def has_table(self, connection, table_name):
         tblqry = """\
@@ -297,7 +287,6 @@ class FireBirdDialect(ansisql.ANSIDialect):
         c = self._pool.connect()
         c.supportsTransactions = 0
         return c
-
           
     def dbapi(self):
         return self.module
@@ -384,8 +373,51 @@ class FBDefaultRunner(ansisql.ANSIDefaultRunner):
     def visit_sequence(self, seq):
         return self.proxy("SELECT gen_id(" + seq.name + ", 1) FROM rdb$database").fetchone()[0]
 
+RESERVED_WORDS = util.Set(
+    ["action", "active", "add", "admin", "after", "all", "alter", "and", "any",
+     "as", "asc", "ascending", "at", "auto", "autoddl", "avg", "based", "basename",
+     "base_name", "before", "begin", "between", "bigint", "blob", "blobedit", "buffer",
+     "by", "cache", "cascade", "case", "cast", "char", "character", "character_length",
+     "char_length", "check", "check_point_len", "check_point_length", "close", "collate",
+     "collation", "column", "commit", "committed", "compiletime", "computed", "conditional",
+     "connect", "constraint", "containing", "continue", "count", "create", "cstring",
+     "current", "current_connection", "current_date", "current_role", "current_time",
+     "current_timestamp", "current_transaction", "current_user", "cursor", "database",
+     "date", "day", "db_key", "debug", "dec", "decimal", "declare", "default", "delete",
+     "desc", "descending", "describe", "descriptor", "disconnect", "display", "distinct",
+     "do", "domain", "double", "drop", "echo", "edit", "else", "end", "entry_point",
+     "escape", "event", "exception", "execute", "exists", "exit", "extern", "external",
+     "extract", "fetch", "file", "filter", "float", "for", "foreign", "found", "free_it",
+     "from", "full", "function", "gdscode", "generator", "gen_id", "global", "goto",
+     "grant", "group", "group_commit_", "group_commit_wait", "having", "help", "hour",
+     "if", "immediate", "in", "inactive", "index", "indicator", "init", "inner", "input",
+     "input_type", "insert", "int", "integer", "into", "is", "isolation", "isql", "join",
+     "key", "lc_messages", "lc_type", "left", "length", "lev", "level", "like", "logfile",
+     "log_buffer_size", "log_buf_size", "long", "manual", "max", "maximum", "maximum_segment",
+     "max_segment", "merge", "message", "min", "minimum", "minute", "module_name", "month",
+     "names", "national", "natural", "nchar", "no", "noauto", "not", "null", "numeric",
+     "num_log_buffers", "num_log_bufs", "octet_length", "of", "on", "only", "open", "option",
+     "or", "order", "outer", "output", "output_type", "overflow", "page", "pagelength",
+     "pages", "page_size", "parameter", "password", "plan", "position", "post_event",
+     "precision", "prepare", "primary", "privileges", "procedure", "protected", "public",
+     "quit", "raw_partitions", "rdb$db_key", "read", "real", "record_version", "recreate",
+     "references", "release", "release", "reserv", "reserving", "restrict", "retain",
+     "return", "returning_values", "returns", "revoke", "right", "role", "rollback",
+     "row_count", "runtime", "savepoint", "schema", "second", "segment", "select",
+     "set", "shadow", "shared", "shell", "show", "singular", "size", "smallint",
+     "snapshot", "some", "sort", "sqlcode", "sqlerror", "sqlwarning", "stability",
+     "starting", "starts", "statement", "static", "statistics", "sub_type", "sum",
+     "suspend", "table", "terminator", "then", "time", "timestamp", "to", "transaction",
+     "translate", "translation", "trigger", "trim", "type", "uncommitted", "union",
+     "unique", "update", "upper", "user", "using", "value", "values", "varchar",
+     "variable", "varying", "version", "view", "wait", "wait_time", "weekday", "when",
+     "whenever", "where", "while", "with", "work", "write", "year", "yearday" ])
+
 class FBIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
     def __init__(self, dialect):
         super(FBIdentifierPreparer,self).__init__(dialect, omit_schema=True)
+
+    def _reserved_words(self):
+        return RESERVED_WORDS
 
 dialect = FireBirdDialect
