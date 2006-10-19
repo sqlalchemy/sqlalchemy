@@ -123,7 +123,7 @@ Inserting is achieved via the `insert()` method, which defines a *clause object*
     {python}
     >>> i = users_table.insert()
     >>> i # doctest:+ELLIPSIS
-    <sqlalchemy.sql.Insert object at 0x...>
+    <sqlalchemy.sql._Insert object at 0x...>
     >>> print i
     INSERT INTO users (user_id, user_name, password) VALUES (?, ?, ?)
 
@@ -134,13 +134,13 @@ Since we created this insert statement object from the `users` table which is bo
     INSERT INTO users (user_name, password) VALUES (?, ?)
     ['Mary', 'secure']
     COMMIT
-    <sqlalchemy.engine.base.ResultProxy instance at 0x...>
+    <sqlalchemy.engine.base.ResultProxy object at 0x...>
 
     >>> i.execute({'user_name':'Tom'}, {'user_name':'Fred'}, {'user_name':'Harry'}) # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
     INSERT INTO users (user_name) VALUES (?)
     [['Tom'], ['Fred'], ['Harry']]
     COMMIT
-    <sqlalchemy.engine.base.ResultProxy instance at 0x...>
+    <sqlalchemy.engine.base.ResultProxy object at 0x...>
 
 
 Note that the `VALUES` clause of each `INSERT` statement was automatically adjusted to correspond to the parameters sent to the `execute()` method.  This is because the compilation step of a `ClauseElement` takes into account not just the constructed SQL object and the specifics of the type of database being used, but the execution parameters sent along as well.  
@@ -167,7 +167,7 @@ This time, we won't ignore the return value of `execute()`.  Its an instance of 
 
     {python}
     >>> r # doctest:+ELLIPSIS
-    <sqlalchemy.engine.base.ResultProxy instance at 0x...>
+    <sqlalchemy.engine.base.ResultProxy object at 0x...>
     >>> r.fetchone()
     (1, u'Mary', u'secure')
     >>> r.fetchall()
@@ -242,7 +242,7 @@ Next, lets put a few rows in:
     INSERT INTO email_addresses (email_address, user_id) VALUES (?, ?)
     [['tom@tom.com', 2], ['mary@mary.com', 1]]
     COMMIT
-    <sqlalchemy.engine.base.ResultProxy instance at 0x...>
+    <sqlalchemy.engine.base.ResultProxy object at 0x...>
 
 With two related tables, we can now construct a join amongst them using the `join` method:
 
@@ -275,8 +275,9 @@ A Mapper is usually created once per Python class, and at its core primarily mea
     {python}
     >>> class User(object):
     ...     def __repr__(self):
-    ...         return "(User %s,password:%s)" % (self.user_name, self.password)
-
+    ...        return "%s(%r,%r)" % (
+    ...            self.__class__.__name__, self.user_name, self.password)
+    
 The class is a new style class (i.e. it extends `object`) and does not require a constructor (although one may be provided if desired).  We just have one `__repr__` method on it which will display basic information about the User.  Note that the `__repr__` method references the instance variables `user_name` and `password` which otherwise aren't defined.  While we are free to explicitly define these attributes and treat them normally, this is optional; as SQLAlchemy's `Mapper` construct will manage them for us, since their names correspond to the names of columns in the `users` table.  Lets create a mapper, and observe that these attributes are now defined:
 
     {python}
@@ -311,7 +312,7 @@ The Session has all kinds of methods on it to retrieve and store objects, and al
     FROM users 
     WHERE users.user_name = ? ORDER BY users.oid
     ['Harry']
-    [(User Harry,password:None)]
+    [User(u'Harry',None)]
     
 All querying for objects is performed via an instance of `Query`.  The various `select` methods on an instance of `Mapper` also use an underlying `Query` object to perform the operation.  A `Query` is always bound to a specific `Session`.  
 
@@ -320,13 +321,13 @@ Lets turn off the database echoing for a moment, and try out a few methods on `Q
     {python}
     >>> metadata.engine.echo = False
     >>> print query.select(User.c.user_id==3)
-    [(User Fred,password:None)]
+    [User(u'Fred',None)]
     >>> print query.get(2)
-    (User Tom,password:None)
+    User(u'Tom',None)
     >>> print query.get_by(user_name='Mary')
-    (User Mary,password:secure)
+    User(u'Mary',u'secure')
     >>> print query.selectfirst(User.c.password==None)
-    (User Tom,password:None)
+    User(u'Tom',None)
     >>> print query.count()
     4
 
@@ -398,7 +399,8 @@ First, deal with the `email_addresses` table by itself.  We will create a new cl
     ...     def __init__(self, email_address):
     ...         self.email_address = email_address
     ...     def __repr__(self):
-    ...         return "(Address %s)" % (self.email_address)
+    ...         return "%s(%r)" % (
+    ...            self.__class__.__name__, self.email_address)    
     >>> mapper(Address, email_addresses_table) # doctest: +ELLIPSIS
     <sqlalchemy.orm.mapper.Mapper object at 0x...>
     
@@ -428,7 +430,7 @@ We can then treat the `addresses` attribute on each `User` object like a regular
     FROM email_addresses 
     WHERE ? = email_addresses.user_id ORDER BY email_addresses.oid
     [1]
-    [(Address mary@mary.com)]
+    [Address(u'mary@mary.com')]
 
 Adding to the list is just as easy.  New `Address` objects will be detected and saved when we `flush` the Session:
 
