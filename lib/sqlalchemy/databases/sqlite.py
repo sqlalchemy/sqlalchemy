@@ -186,7 +186,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
             #print "row! " + repr(row)
             found_table = True
             (name, type, nullable, has_default, primary_key) = (row[1], row[2].upper(), not row[3], row[4] is not None, row[5])
-            
+            name = re.sub(r'^\"|\"$', '', name)
             match = re.match(r'(\w+)(\(.*?\))?', type)
             coltype = match.group(1)
             args = match.group(2)
@@ -213,6 +213,9 @@ class SQLiteDialect(ansisql.ANSIDialect):
             if row is None:
                 break
             (constraint_name, tablename, localcol, remotecol) = (row[0], row[2], row[3], row[4])
+            tablename = re.sub(r'^\"|\"$', '', tablename)
+            localcol = re.sub(r'^\"|\"$', '', localcol)
+            remotecol = re.sub(r'^\"|\"$', '', remotecol)
             try:
                 fk = fks[constraint_name]
             except KeyError:

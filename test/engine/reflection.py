@@ -223,6 +223,32 @@ class ReflectionTest(PersistTest):
         finally:
             t.drop()
             
+    @testbase.supported('sqlite')
+    def test_goofy_sqlite(self):
+        testbase.db.execute("""CREATE TABLE "django_content_type" (
+            "id" integer NOT NULL PRIMARY KEY,
+            "django_stuff" text NULL
+        )
+        """)
+        testbase.db.execute("""
+        CREATE TABLE "django_admin_log" (
+            "id" integer NOT NULL PRIMARY KEY,
+            "action_time" datetime NOT NULL,
+            "content_type_id" integer NULL REFERENCES "django_content_type" ("id"),
+            "object_id" text NULL,
+            "change_message" text NOT NULL
+        )
+        """)
+        try:
+            meta = BoundMetaData(testbase.db)
+            table1 = Table("django_admin_log", meta, autoload=True)
+            table2 = Table("django_content_type", meta, autoload=True)
+            j = table1.join(table2)
+            assert j.onclause == table1.c.content_type_id==table2.c.id
+        finally:
+            testbase.db.execute("drop table django_admin_log")
+            testbase.db.execute("drop table django_content_type")
+
     def testmultipk(self):
         """test that creating a table checks for a sequence before creating it"""
         meta = BoundMetaData(testbase.db)
