@@ -140,15 +140,17 @@ class Session(object):
         self.uow.echo = echo
             
     def mapper(self, class_, entity_name=None):
-        """given an Class, returns the primary Mapper responsible for persisting it"""
+        """given an Class, return the primary Mapper responsible for persisting it"""
         return class_mapper(class_, entity_name = entity_name)
     def bind_mapper(self, mapper, bindto):
-        """binds the given Mapper to the given Engine or Connection.  All subsequent operations involving this
-        Mapper will use the given bindto."""
+        """bind the given Mapper to the given Engine or Connection.  
+        
+        All subsequent operations involving this Mapper will use the given bindto."""
         self.binds[mapper] = bindto
     def bind_table(self, table, bindto):
-        """binds the given Table to the given Engine or Connection.  All subsequent operations involving this
-        Table will use the given bindto."""
+        """bind the given Table to the given Engine or Connection.  
+        
+        All subsequent operations involving this Table will use the given bindto."""
         self.binds[table] = bindto
     def get_bind(self, mapper):
         """return the Engine or Connection which is used to execute statements on behalf of the given Mapper.
@@ -198,36 +200,6 @@ class Session(object):
                     
     sql = property(_sql)
     
-        
-    def get_id_key(ident, class_, entity_name=None):
-        """return an identity-map key for use in storing/retrieving an item from the identity map.
-
-        ident - a tuple of primary key values corresponding to the object to be stored.  these
-        values should be in the same order as the primary keys of the table 
-
-        class_ - a reference to the object's class
-
-        entity_name - optional string name to further qualify the class
-        """
-        return (class_, tuple(ident), entity_name)
-    get_id_key = staticmethod(get_id_key)
-
-    def get_row_key(row, class_, primary_key, entity_name=None):
-        """return an identity-map key for use in storing/retrieving an item from the identity map.
-
-        row - a sqlalchemy.dbengine.RowProxy instance or other map corresponding result-set
-        column names to their values within a row.
-
-        class_ - a reference to the object's class
-
-        primary_key - a list of column objects that will target the primary key values
-        in the given row.
-        
-        entity_name - optional string name to further qualify the class
-        """
-        return (class_, tuple([row[column] for column in primary_key]), entity_name)
-    get_row_key = staticmethod(get_row_key)
-    
     def flush(self, objects=None):
         """flush all the object modifications present in this session to the database.  
         
@@ -265,8 +237,12 @@ class Session(object):
             raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % repr(obj))
 
     def expire(self, obj):
-        """invalidate the data in the given object and sets them to refresh themselves
-        the next time they are requested."""
+        """mark the given object as expired.
+        
+        this will add an instrumentation to all mapped attributes on the instance such that when
+        an attribute is next accessed, the session will reload all attributes on the instance
+        from the database.
+        """
         self._validate_persistent(obj)
         def exp():
             if self.query(obj.__class__)._get(obj._instance_key, reload=True) is None:
@@ -274,6 +250,7 @@ class Session(object):
         attribute_manager.trigger_history(obj, exp)
 
     def is_expired(self, obj, unexpire=False):
+        """return True if the given object has been marked as expired."""
         ret = attribute_manager.has_trigger(obj)
         if ret and unexpire:
             attribute_manager.untrigger_history(obj)
@@ -290,8 +267,10 @@ class Session(object):
         
     def save(self, object, entity_name=None):
         """
-        Adds a transient (unsaved) instance to this Session.  This operation cascades the "save_or_update" 
-        method to associated instances if the relation is mapped with cascade="save-update".        
+        Add a transient (unsaved) instance to this Session.  
+        
+        This operation cascades the "save_or_update" method to associated instances if the 
+        relation is mapped with cascade="save-update".        
         
         The 'entity_name' keyword argument will further qualify the specific Mapper used to handle this
         instance.
@@ -300,15 +279,21 @@ class Session(object):
         object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e))
 
     def update(self, object, entity_name=None):
-        """Brings the given detached (saved) instance into this Session.
-        If there is a persistent instance with the same identifier (i.e. a saved instance already associated with this
-        Session), an exception is thrown. 
+        """Bring the given detached (saved) instance into this Session.
+        
+        If there is a persistent instance with the same identifier already associated
+        with this Session, an exception is thrown. 
+
         This operation cascades the "save_or_update" method to associated instances if the relation is mapped 
         with cascade="save-update"."""
         self._update_impl(object, entity_name=entity_name)
         object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e))
 
     def save_or_update(self, object, entity_name=None):
+        """save or update the given object into this Session.
+        
+        The presence of an '_instance_key' attribute on the instance determines whether to
+        save() or update() the instance."""
         self._save_or_update_impl(object, entity_name=entity_name)
         object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e))
     
@@ -320,11 +305,16 @@ class Session(object):
             self._update_impl(object, entity_name=entity_name)
         
     def delete(self, object, entity_name=None):
-        #self.uow.register_deleted(object)
+        """mark the given instance as deleted.
+        
+        the delete operation occurs upon flush()."""
         for c in [object] + list(object_mapper(object).cascade_iterator('delete', object)):
             self.uow.register_deleted(c)
 
     def merge(self, object, entity_name=None):
+        """merge the object into a newly loaded or existing instance from this Session.
+        
+        note: this method is currently not completely implemented."""
         instance = None
         for obj in [object] + list(object_mapper(object).cascade_iterator('merge', object)):
             key = getattr(obj, '_instance_key', None)
@@ -430,12 +420,6 @@ class Session(object):
         """deprecated; a synynom for merge()"""
         return self.merge(*args, **kwargs)
 
-def get_id_key(ident, class_, entity_name=None):
-    return Session.get_id_key(ident, class_, entity_name)
-
-def get_row_key(row, class_, primary_key, entity_name=None):
-    return Session.get_row_key(row, class_, primary_key, entity_name)
-
 def object_mapper(obj):
     return sqlalchemy.orm.object_mapper(obj)
 
@@ -453,6 +437,7 @@ attribute_manager = unitofwork.attribute_manager
 _sessions = weakref.WeakValueDictionary()
 
 def object_session(obj):
+    """return the Session to which the given object is bound, or None if none."""
     hashkey = getattr(obj, '_sa_session_id', None)
     if hashkey is not None:
         return _sessions.get(hashkey)
@@ -460,9 +445,3 @@ def object_session(obj):
 
 unitofwork.object_session = object_session
 
-
-def get_session(obj=None):
-    """deprecated"""
-    if obj is not None:
-        return object_session(obj)
-    raise exceptions.InvalidRequestError("get_session() is deprecated, and does not return the thread-local session anymore. Use the SessionContext.mapper_extension or import sqlalchemy.mod.threadlocal to establish a default thread-local context.")

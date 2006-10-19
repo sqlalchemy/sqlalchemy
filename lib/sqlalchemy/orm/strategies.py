@@ -458,10 +458,24 @@ class EagerLoader(AbstractRelationLoader):
             return
         
         try:
-            clauses = self.clauses_by_lead_mapper[selectcontext.mapper]
-            decorated_row = clauses._decorate_row(row)
+            # decorate the row according to the stored AliasedClauses for this eager load,
+            # or look for a user-defined decorator in the SelectContext (which was set up by the contains_eager() option)
+            if selectcontext.attributes.has_key((EagerLoader, self)):
+                # custom row decoration function, placed in the selectcontext by the 
+                # contains_eager() mapper option
+                decorator = selectcontext.attributes[(EagerLoader, self)]
+                if decorator is None:
+                    decorated_row = row
+                else:
+                    decorated_row = decorator(row)
+                print "OK! ROW IS", decorated_row
+            else:
+                # AliasedClauses, keyed to the lead mapper used in the query
+                clauses = self.clauses_by_lead_mapper[selectcontext.mapper]
+                decorated_row = clauses._decorate_row(row)
+                print "OK! DECORATED ROW IS", decorated_row
             # check for identity key
-            identity_key = self.mapper._row_identity_key(decorated_row)
+            identity_key = self.mapper.identity_key_from_row(decorated_row)
         except KeyError:
             # else degrade to a lazy loader
             self.logger.debug("degrade to lazy loader on %s" % mapperutil.attribute_str(instance, self.key))
@@ -513,5 +527,11 @@ class EagerLazyOption(StrategizedOption):
         elif self.lazy is None:
             return NoLoader
 
-
+class RowDecorateOption(PropertyOption):
+    def __init__(self, key, decorator=None):
+        super(RowDecorateOption, self).__init__(key)
+        self.decorator = decorator
+    def process_selection_property(self, context, property):
+        context.attributes[(EagerLoader, property)] = self.decorator
+        
 

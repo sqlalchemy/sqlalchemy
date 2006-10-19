@@ -36,7 +36,7 @@ import sqlalchemy.util as util
 from sqlalchemy.exceptions import *
 
 class QueueDependencySorter(object):
-    """this is a topological sort from wikipedia.  its very stable.  it creates a straight-line
+    """topological sort adapted from wikipedia's article on the subject.  it creates a straight-line
     list of elements, then a second pass groups non-dependent actions together to build
     more of a tree structure with siblings."""
     class Node:

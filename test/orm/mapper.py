@@ -477,6 +477,7 @@ class MapperTest(MapperSuperTest):
             print u[0].orders[1].items[0].keywords[1]
         self.assert_sql_count(db, go, 3)
         sess.clear()
+        print "MARK"
         u = q2.select()
         self.assert_sql_count(db, go, 2)
         
@@ -873,6 +874,19 @@ class EagerTest(MapperSuperTest):
             {'user_id' : 9, 'addresses' : (Address, [])}
             )
 
+    def testcustom(self):
+        mapper(User, users, properties={
+            'addresses':relation(Address, lazy=False)
+        })
+        mapper(Address, addresses)
+        
+        selectquery = users.outerjoin(addresses).select(use_labels=True)
+        q = create_session().query(User)
+        
+        l = q.options(contains_eager('addresses')).instances(selectquery.execute())
+#        l = q.instances(selectquery.execute())
+        self.assert_result(l, User, *user_address_result)
+        
     def testorderby_desc(self):
         m = mapper(Address, addresses)
 

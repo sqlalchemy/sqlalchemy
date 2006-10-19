@@ -5,10 +5,12 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 import session as sessionlib
-from sqlalchemy import sql, util, exceptions, sql_util
+from sqlalchemy import sql, util, exceptions, sql_util, logging
 
 import mapper
 from interfaces import OperationContext
+
+__all__ = ['Query', 'QueryContext', 'SelectionContext']
 
 class Query(object):
     """encapsulates the object-fetching operations provided by Mappers."""
@@ -244,7 +246,7 @@ class Query(object):
 
     def select_text(self, text, **params):
         t = sql.text(text)
-        return self.instances(t, params=params)
+        return self.execute(t, params=params)
 
     def options(self, *args, **kwargs):
         """returns a new Query object using the given MapperOptions."""
@@ -268,12 +270,43 @@ class Query(object):
         else:
             raise AttributeError(key)
 
-    def instances(self, clauseelement, params=None, *args, **kwargs):
+    def execute(self, clauseelement, params=None, *args, **kwargs):
         result = self.session.execute(self.mapper, clauseelement, params=params)
         try:
             return self.mapper.instances(result, self.session, with_options=self.with_options, **kwargs)
         finally:
             result.close()
+
+    def instances(self, cursor, *mappers, **kwargs):
+        """return a list of mapped instances corresponding to the rows in a given ResultProxy."""
+        self.__log_debug("instances()")
+
+        session = self.session
+        
+        context = SelectionContext(self.mapper, session, **kwargs)
+
+        result = util.UniqueAppender([])
+        if mappers:
+            otherresults = []
+            for m in mappers:
+                otherresults.append(util.UniqueAppender([]))
+
+        for row in cursor.fetchall():
+            self.mapper._instance(context, row, result)
+            i = 0
+            for m in mappers:
+                m._instance(context, row, otherresults[i])
+                i+=1
+
+        # store new stuff in the identity map
+        for value in context.identity_map.values():
+            session._register_persistent(value)
+
+        if mappers:
+            return [result.data] + [o.data for o in otherresults]
+        else:
+            return result.data
+
         
     def _get(self, key, ident=None, reload=False, lockmode=None):
         lockmode = lockmode or self.lockmode
@@ -308,7 +341,7 @@ class Query(object):
         statement.use_labels = True
         if params is None:
             params = {}
-        return self.instances(statement, params=params, **kwargs)
+        return self.execute(statement, params=params, **kwargs)
 
     def _should_nest(self, querycontext):
         """return True if the given statement options indicate that we should "nest" the
@@ -397,6 +430,11 @@ class Query(object):
         
         return statement
 
+    def __log_debug(self, msg):
+        self.logger.debug(msg)
+
+Query.logger = logging.class_logger(Query)
+
 class QueryContext(OperationContext):
     """created within the Query.compile() method to store and share
     state among all the Mappers and MapperProperty objects used in a query construction."""
@@ -412,4 +450,40 @@ class QueryContext(OperationContext):
         super(QueryContext, self).__init__(query.mapper, query.with_options, **kwargs)
     def select_args(self):
         return {'limit':self.limit, 'offset':self.offset, 'distinct':self.distinct}
+    def accept_option(self, opt):
+        opt.process_query_context(self)
+
+
+class SelectionContext(OperationContext):
+    """created within the query.instances() method to store and share
+    state among all the Mappers and MapperProperty objects used in a load operation.
+
+    SelectionContext contains these attributes:
+
+    mapper - the Mapper which originated the instances() call.
+
+    session - the Session that is relevant to the instances call.
+
+    identity_map - a dictionary which stores newly created instances that have
+    not yet been added as persistent to the Session.
+
+    attributes - a dictionary to store arbitrary data; eager loaders use it to
+    store additional result lists
+
+    populate_existing - indicates if its OK to overwrite the attributes of instances
+    that were already in the Session
+
+    version_check - indicates if mappers that have version_id columns should verify
+    that instances existing already within the Session should have this attribute compared
+    to the freshly loaded value
+
+    """
+    def __init__(self, mapper, session, **kwargs):
+        self.populate_existing = kwargs.pop('populate_existing', False)
+        self.version_check = kwargs.pop('version_check', False)
+        self.session = session
+        self.identity_map = {}
+        super(SelectionContext, self).__init__(mapper, kwargs.pop('with_options', []), **kwargs)
+    def accept_option(self, opt):
+        opt.process_selection_context(self)
         

@@ -19,7 +19,7 @@ from session import Session as create_session
 
 __all__ = ['relation', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer',
         'mapper', 'clear_mappers', 'clear_mapper', 'sql', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query', 
-        'cascade_mappers', 'polymorphic_union', 'create_session', 'synonym', 'EXT_PASS'
+        'cascade_mappers', 'polymorphic_union', 'create_session', 'synonym', 'contains_eager', 'EXT_PASS'
         ]
 
 def relation(*args, **kwargs):
@@ -75,6 +75,9 @@ def noload(name):
     into a non-load."""
     return strategies.EagerLazyOption(name, lazy=None)
 
+def contains_eager(key, decorator=None):
+    return strategies.RowDecorateOption(key, decorator=decorator)
+    
 def defer(name):
     """returns a MapperOption that will convert the column property of the given 
     name into a deferred load.  Used with mapper.options()"""

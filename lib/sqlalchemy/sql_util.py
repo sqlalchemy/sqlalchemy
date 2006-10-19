@@ -1,6 +1,4 @@
-import sqlalchemy.sql as sql
-import sqlalchemy.schema as schema
-import sqlalchemy.util as util
+from sqlalchemy import sql, util, schema, topological
 
 """utility functions that build upon SQL and Schema constructs"""
 
@@ -36,7 +34,6 @@ class TableCollection(object):
             return sorted
             
     def _do_sort(self):
-        import sqlalchemy.orm.topological
         tuples = []
         class TVisitor(schema.SchemaVisitor):
             def visit_foreign_key(_self, fkey):
@@ -49,7 +46,7 @@ class TableCollection(object):
         vis = TVisitor()        
         for table in self.tables:
             table.accept_schema_visitor(vis)
-        sorter = sqlalchemy.orm.topological.QueueDependencySorter( tuples, self.tables )
+        sorter = topological.QueueDependencySorter( tuples, self.tables )
         head =  sorter.sort()
         sequence = []
         def to_sequence( node, seq=sequence):

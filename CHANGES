@@ -36,7 +36,7 @@
     methods, methods that are no longer needed.  slightly more constrained
     useage, greater emphasis on explicitness
     - the "primary_key" attribute of Table and other selectables becomes
-    a setlike ColumnCollection object; is no longer ordered or numerically
+    a setlike ColumnCollection object; is ordered but not numerically
     indexed.  a comparison clause between two pks that are derived from the 
     same underlying tables (i.e. such as two Alias objects) can be generated 
     via table1.primary_key==table2.primary_key

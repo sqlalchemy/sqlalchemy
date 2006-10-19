@@ -72,6 +72,7 @@ class StrategizedProperty(MapperProperty):
             self._all_strategies[cls] = strategy
             return strategy
     def setup(self, querycontext, **kwargs):
+        print "SP SETUP, KEY", self.key, " STRAT IS ",  self._get_context_strategy(querycontext)
         self._get_context_strategy(querycontext).setup_query(querycontext, **kwargs)
     def execute(self, selectcontext, instance, row, identitykey, isnew):
         self._get_context_strategy(selectcontext).process_row(selectcontext, instance, row, identitykey, isnew)
@@ -92,32 +93,50 @@ class OperationContext(object):
         self.attributes = {}
         self.recursion_stack = util.Set()
         for opt in options:
-            opt.process_context(self)
+            self.accept_option(opt)
+    def accept_option(self, opt):
+        pass
 
 class MapperOption(object):
     """describes a modification to an OperationContext."""
-    def process_context(self, context):
+    def process_query_context(self, context):
         pass
-            
-class StrategizedOption(MapperOption):
-    """a MapperOption that affects which LoaderStrategy will be used for an operation
-    by a StrategizedProperty."""
+    def process_selection_context(self, context):
+        pass
+
+class PropertyOption(MapperOption):
+    """a MapperOption that is applied to a property off the mapper
+    or one of its child mappers, identified by a dot-separated key."""
     def __init__(self, key):
         self.key = key
-    def get_strategy_class(self):
-        raise NotImplementedError()
-    def process_context(self, context):
+    def process_query_property(self, context, property):
+        pass
+    def process_selection_property(self, context, property):
+        pass
+    def process_query_context(self, context):
+        self.process_query_property(context, self._get_property(context))
+    def process_selection_context(self, context):
+        self.process_selection_property(context, self._get_property(context))
+    def _get_property(self, context):
         try:
-            key = self.__key
+            prop = self.__prop
         except AttributeError:
             mapper = context.mapper
             for token in self.key.split('.'):
                 prop = mapper.props[token]
                 mapper = getattr(prop, 'mapper', None)
-            self.__key = (LoaderStrategy, prop)
-            key = self.__key
-        context.attributes[key] = self.get_strategy_class()
-                    
+            self.__prop = prop
+        return prop
+
+class StrategizedOption(PropertyOption):
+    """a MapperOption that affects which LoaderStrategy will be used for an operation
+    by a StrategizedProperty."""
+    def process_query_property(self, context, property):
+        print  "HI " + self.key + " " + property.key
+        context.attributes[(LoaderStrategy, property)] = self.get_strategy_class()
+    def get_strategy_class(self):
+        raise NotImplementedError()
+
 
 class LoaderStrategy(object):
     """describes the loading behavior of a StrategizedProperty object.  The LoaderStrategy

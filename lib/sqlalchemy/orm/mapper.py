@@ -13,7 +13,7 @@ import query as querylib
 import session as sessionlib
 import weakref
 
-__all__ = ['Mapper', 'MapperExtension', 'class_mapper', 'object_mapper', 'EXT_PASS', 'SelectionContext']
+__all__ = ['Mapper', 'MapperExtension', 'class_mapper', 'object_mapper', 'EXT_PASS']
 
 # a dictionary mapping classes to their primary mappers
 mapper_registry = weakref.WeakKeyDictionary()
@@ -686,20 +686,22 @@ class Mapper(object):
         return mapper_registry[self.class_key]
 
     def is_assigned(self, instance):
-        """returns True if this mapper handles the given instance.  this is dependent
-        not only on class assignment but the optional "entity_name" parameter as well."""
+        """return True if this mapper handles the given instance.  
+        
+        this is dependent not only on class assignment but the optional "entity_name" parameter as well."""
         return instance.__class__ is self.class_ and getattr(instance, '_entity_name', None) == self.entity_name
 
     def _assign_entity_name(self, instance):
-        """assigns this Mapper's entity name to the given instance.  subsequent Mapper lookups for this
-        instance will return the primary mapper corresponding to this Mapper's class and entity name."""
+        """assign this Mapper's entity name to the given instance.  
+        
+        subsequent Mapper lookups for this instance will return the primary 
+        mapper corresponding to this Mapper's class and entity name."""
         instance._entity_name = self.entity_name
         
     def get_session(self):
-        """returns the contextual session provided by the mapper extension chain
+        """return the contextual session provided by the mapper extension chain, if any.
         
-        raises InvalidRequestError if a session cannot be retrieved from the
-        extension chain
+        raises InvalidRequestError if a session cannot be retrieved from the extension chain
         """
         self.compile()
         s = self.extension.get_session()
@@ -708,52 +710,50 @@ class Mapper(object):
         return s
     
     def has_eager(self):
-        """returns True if one of the properties attached to this Mapper is eager loading"""
+        """return True if one of the properties attached to this Mapper is eager loading"""
         return getattr(self, '_has_eager', False)
-        
     
     def instances(self, cursor, session, *mappers, **kwargs):
-        """given a cursor (ResultProxy) from an SQLEngine, returns a list of object instances
-        corresponding to the rows in the cursor."""
-        self.__log_debug("instances()")
-        self.compile()
+        """return a list of mapped instances corresponding to the rows in a given ResultProxy."""
+        return querylib.Query(self, session).instances(cursor, *mappers, **kwargs)
+
+    def identity_key_from_row(self, row):
+        """return an identity-map key for use in storing/retrieving an item from the identity map.
+
+        row - a sqlalchemy.dbengine.RowProxy instance or other map corresponding result-set
+        column names to their values within a row.
+        """
+        return (self.class_, tuple([row[column] for column in self.pks_by_table[self.mapped_table]]), self.entity_name)
         
-        context = SelectionContext(self, session, **kwargs)
+    def identity_key_from_primary_key(self, primary_key):
+        """return an identity-map key for use in storing/retrieving an item from an identity map.
         
-        result = util.UniqueAppender([])
-        if mappers:
-            otherresults = []
-            for m in mappers:
-                otherresults.append(util.UniqueAppender([]))
-                
-        for row in cursor.fetchall():
-            self._instance(context, row, result)
-            i = 0
-            for m in mappers:
-                m._instance(context, row, otherresults[i])
-                i+=1
-                
-        # store new stuff in the identity map
-        for value in context.identity_map.values():
-            session._register_persistent(value)
-            
-        if mappers:
-            return [result.data] + [o.data for o in otherresults]
-        else:
-            return result.data
+        primary_key - a list of values indicating the identifier.
+        """
+        return (self.class_, tuple(util.to_list(primary_key)), self.entity_name)
+
+    def identity_key_from_instance(self, instance):
+        """return the identity key for the given instance, based on its primary key attributes.
         
-    def identity_key(self, primary_key):
-        """returns the instance key for the given identity value.  this is a global tracking object used by the Session, and is usually available off a mapped object as instance._instance_key."""
-        return sessionlib.get_id_key(util.to_list(primary_key), self.class_, self.entity_name)
+        this value is typically also found on the instance itself under the attribute name '_instance_key'.
+        """
+        return self.identity_key_from_primary_key(self.primary_key_from_instance(instance))
+
+    def primary_key_from_instance(self, instance):
+        """return the list of primary key values for the given instance."""
+        return [self._getattrbycolumn(instance, column) for column in self.pks_by_table[self.mapped_table]]
 
     def instance_key(self, instance):
-        """returns the instance key for the given instance.  this is a global tracking object used by the Session, and is usually available off a mapped object as instance._instance_key."""
-        return self.identity_key(self.identity(instance))
+        """deprecated.  a synonym for identity_key_from_instance."""
+        return self.identity_key_from_instance(instance)
+
+    def identity_key(self, primary_key):
+        """deprecated.  a synonym for identity_key_from_primary_key."""
+        return self.identity_key_from_primary_key(primary_key)
 
     def identity(self, instance):
-        """returns the identity (list of primary key values) for the given instance.  The list of values can be fed directly into the get() method as mapper.get(*key)."""
-        return [self._getattrbycolumn(instance, column) for column in self.pks_by_table[self.mapped_table]]
-        
+        """deprecated. a synoynm for primary_key_from_instance."""
+        return self.primary_key_from_instance(instance)
 
     def _getpropbycolumn(self, column, raiseerror=True):
         try:
@@ -1090,8 +1090,6 @@ class Mapper(object):
         for prop in self.__props.values():
             prop.cascade_callable(type, object, callable_, recursive)
             
-    def _row_identity_key(self, row):
-        return sessionlib.get_row_key(row, self.class_, self.pks_by_table[self.mapped_table], self.entity_name)
 
     def get_select_mapper(self):
         """return the mapper used for issuing selects.
@@ -1117,7 +1115,7 @@ class Mapper(object):
         # been exposed to being modified by the application.
         
         populate_existing = context.populate_existing or self.always_refresh
-        identitykey = self._row_identity_key(row)
+        identitykey = self.identity_key_from_row(row)
         if context.session.has_key(identitykey):
             instance = context.session._get(identitykey)
             self.__log_debug("_instance(): using existing instance %s identity %s" % (mapperutil.instance_str(instance), str(identitykey)))
@@ -1202,36 +1200,6 @@ class Mapper(object):
 
 Mapper.logger = logging.class_logger(Mapper)
 
-class SelectionContext(OperationContext):
-    """created within the mapper.instances() method to store and share
-    state among all the Mappers and MapperProperty objects used in a load operation.
-    
-    SelectionContext contains these attributes:
-    
-    mapper - the Mapper which originated the instances() call.
-    
-    session - the Session that is relevant to the instances call.
-    
-    identity_map - a dictionary which stores newly created instances that have
-    not yet been added as persistent to the Session.
-    
-    attributes - a dictionary to store arbitrary data; eager loaders use it to
-    store additional result lists
-    
-    populate_existing - indicates if its OK to overwrite the attributes of instances
-    that were already in the Session
-    
-    version_check - indicates if mappers that have version_id columns should verify
-    that instances existing already within the Session should have this attribute compared
-    to the freshly loaded value
-    
-    """
-    def __init__(self, mapper, session, **kwargs):
-        self.populate_existing = kwargs.pop('populate_existing', False)
-        self.version_check = kwargs.pop('version_check', False)
-        self.session = session
-        self.identity_map = {}
-        super(SelectionContext, self).__init__(mapper, kwargs.pop('with_options', []), **kwargs)
 
 class MapperExtension(object):
     """base implementation for an object that provides overriding behavior to various
@@ -1378,6 +1346,8 @@ def has_identity(object):
 def has_mapper(object):
     """returns True if the given object has a mapper association"""
     return hasattr(object, '_entity_name')
+
+
         
 def object_mapper(object, raiseerror=True):
     """given an object, returns the primary Mapper associated with the object instance"""
