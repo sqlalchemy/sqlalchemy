@@ -89,14 +89,13 @@
 
 % if not omitheader:
 <A name="<% item.path %>"></a>
+% if item.altlink:
+<A name="<% item.altlink %>"></a>
+%
 %
 
 <div class="subsection" style="margin-left:<% repr(10 + indentlevel * 10) %>px;">
 
-% if not omitheader:
-    <h3><% item.description %></h3>
-%
-    <div class="sectiontext">
 
 <%python>
     regexp = re.compile(r"__FORMAT:LINK{(?:\@path=(.+?))?(?:\@xtra=(.+?))?(?:\@text=(.+?))?(?:\@href=(.+?))?(?:\@class=(.+?))?}")
@@ -130,6 +129,15 @@
     re2 = re.compile(r"'''PYESC(.+?)PYESC'''", re.S)
     content = regexp.sub(link, item.content)
     content = re2.sub(lambda m: m.group(1), content)
+    description = regexp.sub(link, item.htmldescription or item.description)
+</%python>
+
+% if not omitheader:
+    <h3><% description %></h3>
+%
+    <div class="sectiontext">
+
+<%python>
     #m.write(item.content)
     m.write(content)
 </%python>

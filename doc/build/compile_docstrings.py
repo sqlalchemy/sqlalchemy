@@ -21,15 +21,13 @@ objects = []
 def make_doc(obj, classes=None, functions=None):
     objects.append(docstring.ObjectDoc(obj, classes=classes, functions=functions))
 
-# basically, if you see make_doc(obj=XXX) and thats it, we have separated out the public interface.  otherwise
-# still a work in progress.    
 make_doc(obj=sql)
 make_doc(obj=schema)
 make_doc(obj=engine)
 make_doc(obj=engine.url)
 make_doc(obj=orm, classes=[orm.MapperExtension])
-make_doc(obj=orm.mapperlib, classes=[orm.mapperlib.Mapper, orm.mapperlib.SelectionContext])
-make_doc(obj=orm.query, classes=[orm.query.Query, orm.query.QueryContext])
+make_doc(obj=orm.mapperlib, classes=[orm.mapperlib.Mapper])
+make_doc(obj=orm.query, classes=[orm.query.Query, orm.query.QueryContext, orm.query.SelectionContext])
 make_doc(obj=orm.session, classes=[orm.session.Session, orm.session.SessionTransaction])
 make_doc(obj=pool, classes=[pool.DBProxy, pool.Pool, pool.QueuePool, pool.SingletonThreadPool])
 make_doc(obj=sessioncontext)
