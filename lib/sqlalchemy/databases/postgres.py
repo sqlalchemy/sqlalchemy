@@ -359,14 +359,20 @@ class PGDialect(ansisql.ANSIDialect):
                 if attype == 'integer':
                     numericprec, numericscale = (32, 0)
                     charlen = None
-    
+
                 args = []
                 for a in (charlen, numericprec, numericscale):
                     if a is not None:
                         args.append(int(a))
+
+                kwargs = {}
+                if attype == 'timestamp with time zone':
+                    kwargs['timezone'] = True
+                elif attype == 'timestamp without time zone':
+                    kwargs['timezone'] = False
     
                 coltype = ischema_names[attype]
-                coltype = coltype(*args)
+                coltype = coltype(*args, **kwargs)
                 colargs= []
                 if default is not None:
                     colargs.append(PassiveDefault(sql.text(default)))

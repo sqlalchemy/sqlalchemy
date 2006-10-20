@@ -97,7 +97,24 @@ class ReflectionTest(PersistTest):
         finally:
             addresses.drop()
             users.drop()
-    
+            
+    @testbase.supported('postgres')
+    def testpgdates(self):
+        m1 = BoundMetaData(testbase.db)
+        t1 = Table('pgdate', m1, 
+            Column('date1', DateTime(timezone=True)),
+            Column('date2', DateTime(timezone=False))
+            )
+        m1.create_all()
+        try:
+            m2 = BoundMetaData(testbase.db)
+            t2 = Table('pgdate', m2, autoload=True)
+            assert t2.c.date1.type.timezone is True
+            assert t2.c.date2.type.timezone is False
+        finally:
+            m1.drop_all()
+            
+            
     def testoverridecolumns(self):
         """test that you can override columns which contain foreign keys to other reflected tables"""
         meta = BoundMetaData(testbase.db)
