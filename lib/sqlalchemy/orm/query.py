@@ -41,15 +41,17 @@ class Query(object):
     session = property(_get_session)
     
     def get(self, ident, **kwargs):
-        """returns an instance of the object based on the given identifier, or None
-        if not found.  The ident argument is a scalar or tuple of primary key column values
+        """return an instance of the object based on the given identifier, or None if not found.  
+        
+        The ident argument is a scalar or tuple of primary key column values
         in the order of the table def's primary key columns."""
         key = self.mapper.identity_key(ident)
         return self._get(key, ident, **kwargs)
 
     def load(self, ident, **kwargs):
-        """returns an instance of the object based on the given identifier. If not found,
-        raises an exception.  The method will *remove all pending changes* to the object
+        """return an instance of the object based on the given identifier. 
+        
+        If not found, raises an exception.  The method will *remove all pending changes* to the object
         already existing in the Session.  The ident argument is a scalar or tuple of primary
         key column values in the order of the table def's primary key columns."""
         key = self.mapper.identity_key(ident)
@@ -59,7 +61,8 @@ class Query(object):
         return instance
         
     def get_by(self, *args, **params):
-        """returns a single object instance based on the given key/value criterion. 
+        """return a single object instance based on the given key/value criterion.
+         
         this is either the first value in the result list, or None if the list is 
         empty.
 
@@ -78,7 +81,7 @@ class Query(object):
             return None
 
     def select_by(self, *args, **params):
-        """returns an array of object instances based on the given clauses and key/value criterion. 
+        """return an array of object instances based on the given clauses and key/value criterion. 
 
         *args is a list of zero or more ClauseElements which will be connected by AND operators.
 
@@ -97,8 +100,7 @@ class Query(object):
         return self.select_whereclause(self.join_by(*args, **params))
 
     def join_by(self, *args, **params):
-        """like select_by, but returns a ClauseElement representing the WHERE clause that would normally
-        be sent to select_whereclause by select_by."""
+        """return a ClauseElement representing the WHERE clause that would normally be sent to select_whereclause() by select_by()."""
         clause = None
         for arg in args:
             if clause is None:
@@ -231,10 +233,12 @@ class Query(object):
             return self.select_statement(s, **kwargs)
 
     def select_whereclause(self, whereclause=None, params=None, **kwargs):
+        """given a WHERE criterion, create a SELECT statement, execute and return the resulting instances."""
         statement = self.compile(whereclause, **kwargs)
         return self._select_statement(statement, params=params)
 
     def count(self, whereclause=None, params=None, **kwargs):
+        """given a WHERE criterion, create a SELECT COUNT statement, execute and return the resulting count value."""
         if self._nestable(**kwargs):
             s = self.table.select(whereclause, **kwargs).alias('getcount').count()
         else:
@@ -242,14 +246,16 @@ class Query(object):
         return self.session.scalar(self.mapper, s, params=params)
 
     def select_statement(self, statement, **params):
+        """given a ClauseElement-based statement, execute and return the resulting instances."""
         return self._select_statement(statement, params=params)
 
     def select_text(self, text, **params):
+        """given a literal string-based statement, execute and return the resulting instances."""
         t = sql.text(text)
         return self.execute(t, params=params)
 
     def options(self, *args, **kwargs):
-        """returns a new Query object using the given MapperOptions."""
+        """return a new Query object, applying the given list of MapperOptions."""
         return Query(self.mapper, self._session, with_options=args)
     
     def with_lockmode(self, mode):
@@ -271,6 +277,10 @@ class Query(object):
             raise AttributeError(key)
 
     def execute(self, clauseelement, params=None, *args, **kwargs):
+        """execute the given ClauseElement-based statement against this Query's session/mapper, return the resulting list of instances.
+        
+        After execution, closes the ResultProxy and its underlying resources.  
+        This method is one step above the instances() method, which takes the executed statement's ResultProxy directly."""
         result = self.session.execute(self.mapper, clauseelement, params=params)
         try:
             return self.instances(result, **kwargs)
@@ -278,7 +288,7 @@ class Query(object):
             result.close()
 
     def instances(self, cursor, *mappers, **kwargs):
-        """return a list of mapped instances corresponding to the rows in a given ResultProxy."""
+        """return a list of mapped instances corresponding to the rows in a given "cursor" (i.e. ResultProxy)."""
         self.__log_debug("instances()")
 
         session = self.session
@@ -357,6 +367,7 @@ class Query(object):
         return (kwargs.get('limit') is not None or kwargs.get('offset') is not None or kwargs.get('distinct', False))
         
     def compile(self, whereclause = None, **kwargs):
+        """given a WHERE criterion, produce a ClauseElement-based statement suitable for usage in the execute() method."""
         context = kwargs.pop('query_context', None)
         if context is None:
             context = QueryContext(self, kwargs)
@@ -449,8 +460,10 @@ class QueryContext(OperationContext):
         self.statement = None
         super(QueryContext, self).__init__(query.mapper, query.with_options, **kwargs)
     def select_args(self):
+        """return a dictionary of attributes from this QueryContext that can be applied to a sql.Select statement."""
         return {'limit':self.limit, 'offset':self.offset, 'distinct':self.distinct}
     def accept_option(self, opt):
+        """accept a MapperOption which will process (modify) the state of this QueryContext."""
         opt.process_query_context(self)
 
 
@@ -485,5 +498,6 @@ class SelectionContext(OperationContext):
         self.identity_map = {}
         super(SelectionContext, self).__init__(mapper, kwargs.pop('with_options', []), **kwargs)
     def accept_option(self, opt):
+        """accept a MapperOption which will process (modify) the state of this SelectionContext."""
         opt.process_selection_context(self)
         
