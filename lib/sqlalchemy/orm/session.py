@@ -17,7 +17,7 @@ class SessionTransaction(object):
         self.autoflush = autoflush
     def connection(self, mapper_or_class, entity_name=None):
         if isinstance(mapper_or_class, type):
-            mapper_or_class = class_mapper(mapper_or_class, entity_name=entity_name)
+            mapper_or_class = _class_mapper(mapper_or_class, entity_name=entity_name)
         if self.parent is not None:
             return self.parent.connection(mapper_or_class)
         engine = self.session.get_bind(mapper_or_class)
@@ -141,7 +141,7 @@ class Session(object):
             
     def mapper(self, class_, entity_name=None):
         """given an Class, return the primary Mapper responsible for persisting it"""
-        return class_mapper(class_, entity_name = entity_name)
+        return _class_mapper(class_, entity_name = entity_name)
     def bind_mapper(self, mapper, bindto):
         """bind the given Mapper to the given Engine or Connection.  
         
@@ -188,7 +188,7 @@ class Session(object):
     def query(self, mapper_or_class, entity_name=None, **kwargs):
         """return a new Query object corresponding to this Session and the mapper, or the classes' primary mapper."""
         if isinstance(mapper_or_class, type):
-            return query.Query(class_mapper(mapper_or_class, entity_name=entity_name), self, **kwargs)
+            return query.Query(_class_mapper(mapper_or_class, entity_name=entity_name), self, **kwargs)
         else:
             return query.Query(mapper_or_class, self, **kwargs)
     def _sql(self):
@@ -261,7 +261,7 @@ class Session(object):
         
         this will free all internal references to the object.  cascading will be applied according to the
         'expunge' cascade rule."""
-        for c in [object] + list(object_mapper(object).cascade_iterator('expunge', object)):
+        for c in [object] + list(_object_mapper(object).cascade_iterator('expunge', object)):
             self.uow._remove_deleted(c)
             self._unattach(c)
         
@@ -276,7 +276,7 @@ class Session(object):
         instance.
         """
         self._save_impl(object, entity_name=entity_name)
-        object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e))
+        _object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e))
 
     def update(self, object, entity_name=None):
         """Bring the given detached (saved) instance into this Session.
@@ -287,7 +287,7 @@ class Session(object):
         This operation cascades the "save_or_update" method to associated instances if the relation is mapped 
         with cascade="save-update"."""
         self._update_impl(object, entity_name=entity_name)
-        object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e))
+        _object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e))
 
     def save_or_update(self, object, entity_name=None):
         """save or update the given object into this Session.
@@ -295,7 +295,7 @@ class Session(object):
         The presence of an '_instance_key' attribute on the instance determines whether to
         save() or update() the instance."""
         self._save_or_update_impl(object, entity_name=entity_name)
-        object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e))
+        _object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e))
     
     def _save_or_update_impl(self, object, entity_name=None):
         key = getattr(object, '_instance_key', None)
@@ -308,7 +308,7 @@ class Session(object):
         """mark the given instance as deleted.
         
         the delete operation occurs upon flush()."""
-        for c in [object] + list(object_mapper(object).cascade_iterator('delete', object)):
+        for c in [object] + list(_object_mapper(object).cascade_iterator('delete', object)):
             self.uow.register_deleted(c)
 
     def merge(self, object, entity_name=None):
@@ -316,10 +316,10 @@ class Session(object):
         
         note: this method is currently not completely implemented."""
         instance = None
-        for obj in [object] + list(object_mapper(object).cascade_iterator('merge', object)):
+        for obj in [object] + list(_object_mapper(object).cascade_iterator('merge', object)):
             key = getattr(obj, '_instance_key', None)
             if key is None:
-                mapper = object_mapper(object)
+                mapper = _object_mapper(object)
                 ident = mapper.identity(object)
                 for k in ident:
                     if k is None:
@@ -341,7 +341,7 @@ class Session(object):
             if not self.identity_map.has_key(object._instance_key):
                 raise exceptions.InvalidRequestError("Instance '%s' is a detached instance or is already persistent in a different Session" % repr(object))
         else:
-            m = class_mapper(object.__class__, entity_name=kwargs.get('entity_name', None))
+            m = _class_mapper(object.__class__, entity_name=kwargs.get('entity_name', None))
             
             # this would be a nice exception to raise...however this is incompatible with a contextual 
             # session which puts all objects into the session upon construction.
@@ -420,10 +420,10 @@ class Session(object):
         """deprecated; a synynom for merge()"""
         return self.merge(*args, **kwargs)
 
-def object_mapper(obj):
+def _object_mapper(obj):
     return sqlalchemy.orm.object_mapper(obj)
 
-def class_mapper(class_, **kwargs):
+def _class_mapper(class_, **kwargs):
     return sqlalchemy.orm.class_mapper(class_, **kwargs)
 
 # this is the AttributeManager instance used to provide attribute behavior on objects.

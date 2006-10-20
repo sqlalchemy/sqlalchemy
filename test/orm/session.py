@@ -30,7 +30,35 @@ class SessionTest(AssertMixin):
         s.save(User())
         s.flush()
         c.execute("select * from users")
-    
+        u = User()
+        s.save(u)
+        s.user_name = 'some user'
+        s.flush()
+        u = User()
+        s.save(u)
+        s.user_name = 'some other user'
+        s.flush()
+
+    def test_close_two(self):
+        c = testbase.db.connect()
+        class User(object):pass
+        mapper(User, users)
+        s = create_session(bind_to=c)
+        tran = s.create_transaction()
+        s.save(User())
+        s.flush()
+        c.execute("select * from users")
+        u = User()
+        s.save(u)
+        s.user_name = 'some user'
+        s.flush()
+        u = User()
+        s.save(u)
+        s.user_name = 'some other user'
+        s.flush()
+        assert s.transaction is tran
+        tran.close()
+
 class OrphanDeletionTest(AssertMixin):
 
     def setUpAll(self):
