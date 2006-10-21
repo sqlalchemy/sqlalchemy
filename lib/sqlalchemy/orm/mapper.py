@@ -358,7 +358,10 @@ class Mapper(object):
             self.mapped_table = self.local_table
             if self.polymorphic_identity is not None:
                 self._add_polymorphic_mapping(self.polymorphic_identity, self)
-                
+
+        if self.mapped_table is None:
+            raise exceptions.ArgumentError("Mapper '%s' does not have a mapped_table specified.  (Are you using the return value of table.create()?  It no longer has a return value.)" % str(self))
+            
         # convert polymorphic class associations to mappers
         for key in self.polymorphic_map.keys():
             if isinstance(self.polymorphic_map[key], type):

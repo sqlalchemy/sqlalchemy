@@ -13,7 +13,7 @@ e = BoundMetaData('sqlite://', echo=True)
 entities = Table('entities', e, 
     Column('entity_id', Integer, primary_key=True),
     Column('title', String(100), nullable=False),
-    ).create()
+    )
 
 # this table represents dynamic fields that can be associated
 # with values attached to an Entity.
@@ -21,7 +21,7 @@ entities = Table('entities', e,
 entity_fields = Table('entity_fields', e,
     Column('field_id', Integer, primary_key=True),
     Column('name', String(40), nullable=False),
-    Column('datatype', String(30), nullable=False)).create()
+    Column('datatype', String(30), nullable=False))
     
 # this table represents attributes that are attached to an 
 # Entity object.  It combines a row from entity_fields with an actual value.
@@ -34,7 +34,9 @@ entity_values = Table('entity_values', e,
     Column('int_value', Integer), 
     Column('string_value', String(500)),
     Column('binary_value', PickleType),
-    Column('datetime_value', DateTime)).create()
+    Column('datetime_value', DateTime))
+
+e.create_all()
 
 class EntityDict(dict):
     """this is a dictionary that implements an append() and an __iter__ method.
