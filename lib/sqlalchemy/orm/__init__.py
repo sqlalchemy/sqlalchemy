@@ -17,7 +17,7 @@ from util import polymorphic_union
 import properties, strategies
 from session import Session as create_session
 
-__all__ = ['relation', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer',
+__all__ = ['relation', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer', 'extension', 
         'mapper', 'clear_mappers', 'clear_mapper', 'sql', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query', 
         'cascade_mappers', 'polymorphic_union', 'create_session', 'synonym', 'contains_eager', 'EXT_PASS'
         ]
@@ -73,6 +73,13 @@ def clear_mapper(m):
     new primary mapper."""
     del mapper_registry[m.class_key]
 
+def extension(ext):
+    """return a MapperOption that will insert the given MapperExtension to the 
+    beginning of the list of extensions that will be called in the context of the Query.
+    
+    used with query.options()."""
+    return mapperlib.ExtensionOption(ext)
+    
 def eagerload(name):
     """return a MapperOption that will convert the property of the given name
     into an eager load.  

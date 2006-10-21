@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-from sqlalchemy import util
+from sqlalchemy import util, logging
 
 class MapperProperty(object):
     """manages the relationship of a Mapper to a single class attribute, as well
@@ -102,7 +102,9 @@ class MapperOption(object):
         pass
     def process_selection_context(self, context):
         pass
-
+    def process_query(self, query):
+        pass
+        
 class PropertyOption(MapperOption):
     """a MapperOption that is applied to a property off the mapper
     or one of its child mappers, identified by a dot-separated key."""
@@ -126,13 +128,16 @@ class PropertyOption(MapperOption):
                 mapper = getattr(prop, 'mapper', None)
             self.__prop = prop
         return prop
+PropertyOption.logger = logging.class_logger(PropertyOption)
 
 class StrategizedOption(PropertyOption):
     """a MapperOption that affects which LoaderStrategy will be used for an operation
     by a StrategizedProperty."""
     def process_query_property(self, context, property):
+        self.logger.debug("applying option to QueryContext, property key '%s'" % self.key)
         context.attributes[(LoaderStrategy, property)] = self.get_strategy_class()
     def process_selection_property(self, context, property):
+        self.logger.debug("applying option to SelectionContext, property key '%s'" % self.key)
         context.attributes[(LoaderStrategy, property)] = self.get_strategy_class()
     def get_strategy_class(self):
         raise NotImplementedError()

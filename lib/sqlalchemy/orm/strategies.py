@@ -524,6 +524,7 @@ class EagerLazyOption(StrategizedOption):
             return EagerLoader
         elif self.lazy is None:
             return NoLoader
+EagerLazyOption.logger = logging.class_logger(EagerLazyOption)
 
 class RowDecorateOption(PropertyOption):
     def __init__(self, key, decorator=None):
@@ -531,5 +532,6 @@ class RowDecorateOption(PropertyOption):
         self.decorator = decorator
     def process_selection_property(self, context, property):
         context.attributes[(EagerLoader, property)] = self.decorator
+RowDecorateOption.logger = logging.class_logger(RowDecorateOption)
         
 

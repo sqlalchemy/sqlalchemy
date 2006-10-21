@@ -360,6 +360,15 @@ class MapperTest(MapperSuperTest):
         
         u = sess.query(User).get_by(uname='jack')
         self.assert_result(u.adlist, Address, *(user_address_result[0]['addresses'][1]))
+    
+    def testextensionoptions(self):
+        sess  = create_session()
+        mapper(User, users)
+        class testext(MapperExtension):
+            def select_by(self, *args, **kwargs):
+                return "HI"
+        l = sess.query(User).options(extension(testext())).select_by(x=5)
+        assert l == "HI"
         
     def testeageroptions(self):
         """tests that a lazy relation can be upgraded to an eager relation via the options method"""

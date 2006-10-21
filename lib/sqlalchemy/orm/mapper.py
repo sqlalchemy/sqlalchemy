@@ -1305,6 +1305,12 @@ class MapperExtension(object):
 class _ExtensionCarrier(MapperExtension):
     def __init__(self):
         self.elements = []
+    def insert(self, extension):
+        """insert a MapperExtension at the beginning of this ExtensionCarrier's list."""
+        self.elements.insert(0, extension)
+    def append(self, extension):
+        """append a MapperExtension at the end of this ExtensionCarrier's list."""
+        self.elements.append(extension)
     # TODO: shrink down this approach using __getattribute__ or similar
     def get_session(self):
         return self._do('get_session')
@@ -1334,14 +1340,19 @@ class _ExtensionCarrier(MapperExtension):
     def _do(self, funcname, *args, **kwargs):
         for elem in self.elements:
             if elem is self:
-                raise "WTF"
+                raise exceptions.AssertionError("ExtensionCarrier set to itself")
             ret = getattr(elem, funcname)(*args, **kwargs)
             if ret is not EXT_PASS:
                 return ret
         else:
             return EXT_PASS
             
-            
+class ExtensionOption(MapperExtension):
+    def __init__(self, ext):
+        self.ext = ext
+    def process_query(self, query):
+        query._insert_extension(self.ext)
+                    
 class ClassKey(object):
     """keys a class and an entity name to a mapper, via the mapper_registry."""
     __metaclass__ = util.ArgSingleton

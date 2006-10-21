@@ -14,7 +14,7 @@ __all__ = ['Query', 'QueryContext', 'SelectionContext']
 
 class Query(object):
     """encapsulates the object-fetching operations provided by Mappers."""
-    def __init__(self, class_or_mapper, session=None, entity_name=None, lockmode=None, with_options=None, **kwargs):
+    def __init__(self, class_or_mapper, session=None, entity_name=None, lockmode=None, with_options=None, extension=None, **kwargs):
         if isinstance(class_or_mapper, type):
             self.mapper = mapper.class_mapper(class_or_mapper, entity_name=entity_name)
         else:
@@ -24,7 +24,10 @@ class Query(object):
         self.always_refresh = kwargs.pop('always_refresh', self.mapper.always_refresh)
         self.order_by = kwargs.pop('order_by', self.mapper.order_by)
         self.lockmode = lockmode
-        self.extension = kwargs.pop('extension', self.mapper.extension)
+        self.extension = mapper._ExtensionCarrier()
+        if extension is not None:
+            self.extension.append(extension)
+        self.extension.append(self.mapper.extension)
         self._session = session
         if not hasattr(self.mapper, '_get_clause'):
             _get_clause = sql.and_()
@@ -32,6 +35,12 @@ class Query(object):
                 _get_clause.clauses.append(primary_key == sql.bindparam(primary_key._label, type=primary_key.type))
             self.mapper._get_clause = _get_clause
         self._get_clause = self.mapper._get_clause
+        for opt in self.with_options:
+            opt.process_query(self)
+    
+    def _insert_extension(self, ext):
+        self.extension.insert(ext)
+              
     def _get_session(self):
         if self._session is None:
             return self.mapper.get_session()
