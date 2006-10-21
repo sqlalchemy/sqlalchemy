@@ -1206,18 +1206,24 @@ class MapperExtension(object):
     Mapper functions.  For each method in MapperExtension, a result of EXT_PASS indicates
     the functionality is not overridden."""
     def get_session(self):
-        """called to retrieve a contextual Session instance with which to
-        register a new object. Note: this is not called if a session is 
-        provided with the __init__ params (i.e. _sa_session)"""
+        """retrieve a contextual Session instance with which to register a new object. 
+        
+        Note: this is not called if a session is provided with the __init__ params (i.e. _sa_session)"""
         return EXT_PASS
     def select_by(self, query, *args, **kwargs):
-        """overrides the select_by method of the Query object"""
+        """override the select_by method of the Query object.
+        
+        the return value of this method is used as the result of query.select_by() if the
+        value is anything other than EXT_PASS."""
         return EXT_PASS
     def select(self, query, *args, **kwargs):
-        """overrides the select method of the Query object"""
+        """override the select method of the Query object.
+        
+        the return value of this method is used as the result of query.select() if the
+        value is anything other than EXT_PASS."""
         return EXT_PASS
     def create_instance(self, mapper, selectcontext, row, class_):
-        """called when a new object instance is about to be created from a row.  
+        """receieve a row when a new object instance is about to be created from that row.  
         the method can choose to create the instance itself, or it can return 
         None to indicate normal object creation should take place.
         
@@ -1231,10 +1237,11 @@ class MapperExtension(object):
         """
         return EXT_PASS
     def append_result(self, mapper, selectcontext, row, instance, identitykey, result, isnew):
-        """called when an object instance is being appended to a result list.
+        """receive an object instance before that instance is appended to a result list.
         
-        If this method returns EXT_PASS, it is assumed that the mapper should do the appending, else
-        if this method returns any other value or None, it is assumed that the append was handled by this method.
+        If this method returns EXT_PASS, result appending will proceed normally.  
+        if this method returns any other value or None, result appending will not proceed for 
+        this instance, giving this extension an opportunity to do the appending itself, if desired.
 
         mapper - the mapper doing the operation
         
@@ -1254,37 +1261,42 @@ class MapperExtension(object):
         """
         return EXT_PASS
     def populate_instance(self, mapper, selectcontext, row, instance, identitykey, isnew):
-        """called right before the mapper, after creating an instance from a row, passes the row
-        to its MapperProperty objects which are responsible for populating the object's attributes.
-        If this method returns EXT_PASS, it is assumed that the mapper should do the appending, else
-        if this method returns any other value or None, it is assumed that the append was handled by this method.
+        """receive a newly-created instance before that instance has its attributes populated.
         
-        Essentially, this method is used to have a different mapper populate the object:
+        The normal population of attributes is according to each
+        attribute's corresponding MapperProperty (which includes column-based attributes as well
+        as relationships to other classes).  If this method returns EXT_PASS, instance population
+        will proceed normally.  If any other value or None is returned, instance population
+        will not proceed, giving this extension an opportunity to populate the instance itself, 
+        if desired..
+        
+        A common usage of this method is to have population performed by an alternate mapper.  This can
+        be acheived via the populate_instance() call on Mapper.
         
             def populate_instance(self, mapper, selectcontext, instance, row, identitykey, isnew):
                 othermapper.populate_instance(selectcontext, instance, row, identitykey, isnew, frommapper=mapper)
-                return True
+                return None
         """
         return EXT_PASS
     def before_insert(self, mapper, connection, instance):
-        """called before an object instance is INSERTed into its table.
+        """receive an object instance before that instance is INSERTed into its table.
         
         this is a good place to set up primary key values and such that arent handled otherwise."""
         return EXT_PASS
     def before_update(self, mapper, connection, instance):
-        """called before an object instnace is UPDATED"""
+        """receive an object instance before that instance is UPDATEed."""
         return EXT_PASS
     def after_update(self, mapper, connection, instance):
-        """called after an object instnace is UPDATED"""
+        """receive an object instance after that instance is UPDATEed."""
         return EXT_PASS
     def after_insert(self, mapper, connection, instance):
-        """called after an object instance has been INSERTed"""
+        """receive an object instance after that instance is INSERTed."""
         return EXT_PASS
     def before_delete(self, mapper, connection, instance):
-        """called before an object instance is DELETEed"""
+        """receive an object instance before that instance is DELETEed."""
         return EXT_PASS
     def after_delete(self, mapper, connection, instance):
-        """called after an object instance is DELETEed"""
+        """receive an object instance after that instance is DELETEed."""
         return EXT_PASS
 
 class _ExtensionCarrier(MapperExtension):

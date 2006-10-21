@@ -34,70 +34,103 @@ def _relation_loader(mapper, secondary=None, primaryjoin=None, secondaryjoin=Non
     return properties.PropertyLoader(mapper, secondary, primaryjoin, secondaryjoin, lazy=lazy, **kwargs)
 
 def backref(name, **kwargs):
+    """create a BackRef object with explicit arguments, which are the same arguments one
+    can send to relation().  
+    
+    used with the "backref" keyword argument to relation() in place
+    of a string argument. """
     return properties.BackRef(name, **kwargs)
     
 def deferred(*columns, **kwargs):
     """return a DeferredColumnProperty, which indicates this object attributes should only be loaded 
-    from its corresponding table column when first accessed."""
+    from its corresponding table column when first accessed.  
+    
+    used with the 'properties' dictionary sent to mapper()."""
     return properties.ColumnProperty(deferred=True, *columns, **kwargs)
     
 def mapper(class_, table=None, *args, **params):
-    """return a new Mapper object."""
+    """return a new Mapper object.
+    
+    See the Mapper class for a description of arguments."""
     return Mapper(class_, table, *args, **params)
 
 def synonym(name, proxy=False):
-    """set up 'name' as a synonym to another MapperProperty."""
+    """set up 'name' as a synonym to another MapperProperty.  
+    
+    Used with the 'properties' dictionary sent to mapper()."""
     return properties.SynonymProperty(name, proxy=proxy)
     
 def clear_mappers():
-    """remove all mappers that have been created thus far.  when new mappers are 
-    created, they will be assigned to their classes as their primary mapper."""
+    """remove all mappers that have been created thus far.  
+    
+    when new mappers are created, they will be assigned to their classes as their primary mapper."""
     mapper_registry.clear()
     
 def clear_mapper(m):
-    """remove the given mapper from the storage of mappers.  when a new mapper is 
-    created for the previous mapper's class, it will be used as that classes' 
+    """remove the given mapper from the storage of mappers.  
+    
+    when a new mapper is created for the previous mapper's class, it will be used as that classes' 
     new primary mapper."""
     del mapper_registry[m.class_key]
 
 def eagerload(name):
     """return a MapperOption that will convert the property of the given name
-    into an eager load."""
+    into an eager load.  
+    
+    used with query.options()."""
     return strategies.EagerLazyOption(name, lazy=False)
 
 def lazyload(name):
     """return a MapperOption that will convert the property of the given name
-    into a lazy load"""
+    into a lazy load.
+    
+    used with query.options()."""
     return strategies.EagerLazyOption(name, lazy=True)
 
 def noload(name):
     """return a MapperOption that will convert the property of the given name
-    into a non-load."""
+    into a non-load.  
+    
+    used with query.options()."""
     return strategies.EagerLazyOption(name, lazy=None)
 
 def contains_eager(key, decorator=None):
+    """return a MapperOption that will indicate to the query that the given 
+    attribute will be eagerly loaded without any row decoration, or using
+    a custom row decorator.  
+    
+    used when feeding SQL result sets directly into
+    query.instances()."""
     return strategies.RowDecorateOption(key, decorator=decorator)
     
 def defer(name):
-    """returns a MapperOption that will convert the column property of the given 
-    name into a deferred load.  Used with mapper.options()"""
+    """return a MapperOption that will convert the column property of the given 
+    name into a deferred load.  
+    
+    used with query.options()"""
     return strategies.DeferredOption(name, defer=True)
 def undefer(name):
-    """returns a MapperOption that will convert the column property of the given
-    name into a non-deferred (regular column) load.  Used with mapper.options."""
+    """return a MapperOption that will convert the column property of the given
+    name into a non-deferred (regular column) load.  
+    
+    used with query.options()."""
     return strategies.DeferredOption(name, defer=False)
     
 
-
-    
 def cascade_mappers(*classes_or_mappers):
-    """given a list of classes and/or mappers, identifies the foreign key relationships
+    """attempt to create a series of relations() between mappers automatically, via
+    introspecting the foreign key relationships of the underlying tables.
+    
+    given a list of classes and/or mappers, identifies the foreign key relationships
     between the given mappers or corresponding class mappers, and creates relation()
     objects representing those relationships, including a backreference.  Attempts to find
     the "secondary" table in a many-to-many relationship as well.  The names of the relations
     will be a lowercase version of the related class.  In the case of one-to-many or many-to-many,
     the name will be "pluralized", which currently is based on the English language (i.e. an 's' or 
-    'es' added to it)."""
+    'es' added to it).
+    
+    NOTE: this method usually works poorly, and its usage is generally not advised.
+    """
     table_to_mapper = {}
     for item in classes_or_mappers:
         if isinstance(item, Mapper):
