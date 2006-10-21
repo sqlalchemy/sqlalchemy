@@ -1,6 +1,8 @@
-import re, types, string, inspect
+"""
+defines a pickleable, recursive "generated python documentation" datastructure.
+"""
 
-"""sucks a module and its contents into a simple documentation object, suitable for pickling"""
+import re, types, string, inspect
 
 allobjects = {}
 
@@ -9,6 +11,7 @@ class AbstractDoc(object):
         allobjects[id(obj)] = self
         self.id = id(obj)
         self.allobjects = allobjects
+        self.toc_path = None
         
 class ObjectDoc(AbstractDoc):
     def __init__(self, obj, functions=None, classes=None):

@@ -10,6 +10,8 @@
     Test suite includes "--log-info" and "--log-debug" arguments
     which work independently of --verbose/--quiet.  Logging added
     to orm to allow tracking of mapper configurations, row iteration.
+    - the documentation-generation system has been overhauled to be
+    much simpler in design and more integrated with Markdown
 - Specific Databases:
     - SQLite:
     - sqlite boolean datatype converts False/True to 0/1 by default

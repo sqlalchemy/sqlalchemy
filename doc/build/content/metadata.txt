@@ -463,13 +463,13 @@ A table with a sequence looks like:
         Column("description", String(40)),
         Column("createdate", DateTime())
     )
-        
-The Sequence is used with Postgres or Oracle to indicate the name of a database sequence that will be used to create default values for a column.  When a table with a Sequence on a column is created in the database by SQLAlchemy, the database sequence object is also created.   Similarly, the database sequence is dropped when the table is dropped.  Sequences are typically used with primary key columns.  When using Postgres, if an integer primary key column defines no explicit Sequence or other default method, SQLAlchemy will create the column with the SERIAL keyword, and will pre-execute a sequence named "tablename_columnname_seq" in order to retrieve new primary key values, if they were not otherwise explicitly stated.   Oracle, which has no "auto-increment" keyword, requires that a Sequence be created for a table if automatic primary key generation is desired.  
-    
+
+The Sequence is used with Postgres or Oracle to indicate the name of a database sequence that will be used to create default values for a column.  When a table with a Sequence on a column is created in the database by SQLAlchemy, the database sequence object is also created.   Similarly, the database sequence is dropped when the table is dropped.  Sequences are typically used with primary key columns.  When using Postgres, if an integer primary key column defines no explicit Sequence or other default method, SQLAlchemy will create the column with the SERIAL keyword, and will pre-execute a sequence named "tablename_columnname_seq" in order to retrieve new primary key values, if they were not otherwise explicitly stated.   Oracle, which has no "auto-increment" keyword, requires that a Sequence be created for a table if automatic primary key generation is desired.
+
 A Sequence object can be defined on a Table that is then used for a non-sequence-supporting database.  In that case, the Sequence object is simply ignored.  Note that a Sequence object is **entirely optional for all databases except Oracle**, as other databases offer options for auto-creating primary key values, such as AUTOINCREMENT, SERIAL, etc.  SQLAlchemy will use these default methods for creating primary key values if no Sequence is present on the table metadata.
-    
+
 A sequence can also be specified with `optional=True` which indicates the Sequence should only be used on a database that requires an explicit sequence, and not those that supply some other method of providing integer values.  At the moment, it essentially means "use this sequence only with Oracle and not Postgres".
-    
+
 ### Defining Constraints and Indexes {@name=constraints}
 
 #### UNIQUE Constraint

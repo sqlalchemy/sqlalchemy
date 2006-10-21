@@ -1,0 +1,10 @@
+Documentation exists in its original format as Markdown files in the ./content directory.
+
+To generate documentation:
+
+	python genhtml.py
+
+This generates the Markdown files into Myghty templates as an interim step and then into HTML.  It also
+creates two pickled datafiles corresponding to the table of contents and all the generated docstrings
+for the SQLAlchemy sourcecode.
+

@@ -3,7 +3,7 @@ Tutorial
 This tutorial provides a relatively simple walking tour through the basic concepts of SQLAlchemy.  You may wish to skip it and dive into the [main manual][manual] which is more reference-oriented.  The examples in this tutorial comprise a fully working interactive Python session, and are guaranteed to be functioning courtesy of [doctest][].
 
 [doctest]: http://www.python.org/doc/lib/module-doctest.html
-[manual]: rel:howtoread
+[manual]: rel:metadata
 
 Installation
 ------------
