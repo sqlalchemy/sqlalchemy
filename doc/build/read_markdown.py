@@ -13,7 +13,7 @@ def dump_tree(elem, stream):
         dump_myghty_tag(elem, stream)
     else:
         if len(elem.attrib):
-            stream.write("<%s %s>" % (elem.tag, " ".join("%s=%s" % (key, repr(val)) for key, val in elem.attrib.iteritems())))
+            stream.write("<%s %s>" % (elem.tag, " ".join(["%s=%s" % (key, repr(val)) for key, val in elem.attrib.iteritems()])))
         else:
             stream.write("<%s>" % elem.tag)
         if elem.text:
