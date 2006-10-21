@@ -1,6 +1,6 @@
 import testbase
 from sqlalchemy.ext.activemapper           import ActiveMapper, column, one_to_many, one_to_one, many_to_many, objectstore
-from sqlalchemy             import and_, or_, clear_mappers, backref
+from sqlalchemy             import and_, or_, clear_mappers, backref, create_session, exceptions
 from sqlalchemy             import ForeignKey, String, Integer, DateTime, Table, Column
 from datetime               import datetime
 import sqlalchemy
@@ -14,6 +14,7 @@ class testcase(testbase.PersistTest):
         
         class Person(ActiveMapper):
             class mapping:
+                __version_id_col__ = 'row_version'
                 full_name   = column(String)
                 first_name  = column(String)
                 middle_name = column(String)
@@ -24,6 +25,7 @@ class testcase(testbase.PersistTest):
                 home_phone  = column(String)
                 cell_phone  = column(String)
                 work_phone  = column(String)
+                row_version = column(Integer, default=0)
                 prefs_id    = column(Integer, foreign_key=ForeignKey('preferences.id'))
                 addresses   = one_to_many('Address', colname='person_id', backref='person', order_by=['state', 'city', 'postal_code'])
                 preferences = one_to_one('Preferences', colname='pref_id', backref='person')
@@ -137,7 +139,41 @@ class testcase(testbase.PersistTest):
         self.assertEquals(person.id, p1.id)
         self.assertEquals(len(person.addresses), 2)
         self.assertEquals(person.addresses[0].postal_code, '30338')
-    
+
+    @testbase.unsupported('mysql')
+    def test_update(self):
+        p1 = self.create_person_one()
+        objectstore.flush()
+        objectstore.clear()
+        
+        person = Person.select()[0]
+        person.gender = 'F'
+        objectstore.flush()
+        objectstore.clear()
+        self.assertEquals(person.row_version, 2)
+
+        person = Person.select()[0]
+        person.gender = 'M'
+        objectstore.flush()
+        objectstore.clear()
+        self.assertEquals(person.row_version, 3)
+
+        #TODO: check that a concurrent modification raises exception
+        p1 = Person.select()[0]
+        s1 = objectstore.session
+        s2 = create_session()
+        objectstore.context.current = s2
+        p2 = Person.select()[0]
+        p1.first_name = "jack"
+        p2.first_name = "ed"
+        objectstore.flush()
+        try:
+            objectstore.context.current = s1
+            objectstore.flush()
+            assert False
+        except exceptions.ConcurrentModificationError:
+            pass
+        
     
     def test_delete(self):
         p1 = self.create_person_one()

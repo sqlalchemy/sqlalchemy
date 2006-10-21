@@ -206,7 +206,9 @@ class ActiveMapperMeta(type):
         autoload   = False
         _metadata  = getattr(sys.modules[cls.__module__], 
                              "__metadata__", metadata)
-        
+        version_id_col = None
+        version_id_col_object = None
+
         if 'mapping' in dict:
             found_pk = False
             
@@ -223,7 +225,10 @@ class ActiveMapperMeta(type):
                 if '__autoload__' == name:
                     autoload = True
                     continue
-                    
+                
+                if '__version_id_col__' == name:
+                    version_id_col = value
+
                 if name.startswith('__'): continue
                 
                 if isinstance(value, column):
@@ -263,12 +268,16 @@ class ActiveMapperMeta(type):
                 cls.columns = cls.table._columns
             
             # check for inheritence
+            if version_id_col is not None:
+                version_id_col_object = getattr(cls.table.c, version_id_col, None)
+                assert(version_id_col_object is not None, "version_id_col (%s) does not exist." % version_id_col)
+
             if hasattr(bases[0], "mapping"):
                 cls._base_mapper= bases[0].mapper
                 assign_mapper(objectstore.context, cls, cls.table, 
-                              inherits=cls._base_mapper)
+                              inherits=cls._base_mapper, version_id_col=version_id_col_object)
             else:
-                assign_mapper(objectstore.context, cls, cls.table)
+                assign_mapper(objectstore.context, cls, cls.table, version_id_col=version_id_col_object)
             cls.relations = relations
             ActiveMapperMeta.classes[clsname] = cls
             

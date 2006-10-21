@@ -23,6 +23,9 @@ class CascadeOptions(object):
     
 
 def polymorphic_union(table_map, typecolname, aliasname='p_union'):
+    """create a UNION statement used by a polymorphic mapper.
+    
+    See the SQLAlchemy advanced mapping docs for an example of how this is used."""
     colnames = util.Set()
     colnamemaps = {}
     types = {}
