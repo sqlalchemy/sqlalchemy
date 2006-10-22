@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-import sys, StringIO, string
+import sys, StringIO, string, re
 
 import sqlalchemy.util as util
 import sqlalchemy.sql as sql
@@ -246,7 +246,11 @@ class OracleDialect(ansisql.ANSIDialect):
             elif coltype=='CHAR' or coltype=='VARCHAR2':
                 coltype = ischema_names.get(coltype, OracleString)(length)
             else:
-                coltype = ischema_names.get(coltype)
+                coltype = re.sub(r'\(\d+\)', '', coltype)
+                try:
+                    coltype = ischema_names[coltype]
+                except KeyError:
+                    raise exceptions.AssertionError("Cant get coltype for type '%s'" % coltype)
                
             colargs = []
             if default is not None:

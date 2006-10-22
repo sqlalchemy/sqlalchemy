@@ -1281,8 +1281,8 @@ class TableClause(FromClause):
         super(TableClause, self).__init__(name)
         self.name = self.fullname = name
         self._columns = ColumnCollection()
-        self._foreign_keys = util.Set()
-        self._primary_key = util.Set()
+        self._foreign_keys = util.OrderedSet()
+        self._primary_key = ColumnCollection()
         for c in columns:
             self.append_column(c)
         self._oid_column = _ColumnClause('oid', self, _is_oid=True)

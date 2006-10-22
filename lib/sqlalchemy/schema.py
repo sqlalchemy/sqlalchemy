@@ -378,7 +378,7 @@ class Column(SchemaItem, sql._ColumnClause):
         self.autoincrement = kwargs.pop('autoincrement', True)
         self.constraints = util.Set()
         self.__originating_column = self
-        self._foreign_keys = util.Set()
+        self._foreign_keys = util.OrderedSet()
         if len(kwargs):
             raise exceptions.ArgumentError("Unknown arguments passed to Column: " + repr(kwargs.keys()))
 
@@ -697,7 +697,7 @@ class ForeignKeyConstraint(Constraint):
         super(ForeignKeyConstraint, self).__init__(name)
         self.__colnames = columns
         self.__refcolnames = refcolumns
-        self.elements = util.Set()
+        self.elements = util.OrderedSet()
         self.onupdate = onupdate
         self.ondelete = ondelete
         if self.name is None and use_alter:

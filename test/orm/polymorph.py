@@ -34,13 +34,13 @@ class MultipleTableTest(testbase.PersistTest):
         
         # a table to store companies
         companies = Table('companies', metadata, 
-           Column('company_id', Integer, primary_key=True),
+           Column('company_id', Integer, Sequence('company_id_seq', optional=True), primary_key=True),
            Column('name', String(50)))
 
         # we will define an inheritance relationship between the table "people" and "engineers",
         # and a second inheritance relationship between the table "people" and "managers"
         people = Table('people', metadata, 
-           Column('person_id', Integer, primary_key=True),
+           Column('person_id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
            Column('company_id', Integer, ForeignKey('companies.company_id')),
            Column('name', String(50)),
            Column('type', String(30)))

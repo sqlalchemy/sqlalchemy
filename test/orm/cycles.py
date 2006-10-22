@@ -25,12 +25,12 @@ class SelfReferentialTest(AssertMixin):
         global t1, t2, metadata
         metadata = BoundMetaData(testbase.db)
         t1 = Table('t1', metadata, 
-            Column('c1', Integer, primary_key=True),
+            Column('c1', Integer, Sequence('t1c1_id_seq', optional=True), primary_key=True),
             Column('parent_c1', Integer, ForeignKey('t1.c1')),
             Column('data', String(20))
         )
         t2 = Table('t2', metadata,
-            Column('c1', Integer, primary_key=True),
+            Column('c1', Integer, Sequence('t2c1_id_seq', optional=True), primary_key=True),
             Column('c1id', Integer, ForeignKey('t1.c1')),
             Column('data', String(20))
         )
@@ -101,11 +101,11 @@ class BiDirectionalOneToManyTest(AssertMixin):
         global t1, t2, metadata
         metadata = BoundMetaData(testbase.db)
         t1 = Table('t1', metadata, 
-            Column('c1', Integer, primary_key=True),
+            Column('c1', Integer, Sequence('t1c1_id_seq', optional=True), primary_key=True),
             Column('c2', Integer, ForeignKey('t2.c1'))
         )
         t2 = Table('t2', metadata,
-            Column('c1', Integer, primary_key=True),
+            Column('c1', Integer, Sequence('t2c1_id_seq', optional=True), primary_key=True),
             Column('c2', Integer)
         )
         metadata.create_all()
@@ -144,29 +144,24 @@ class BiDirectionalOneToManyTest2(AssertMixin):
         global t1, t2, t3, metadata
         metadata = BoundMetaData(testbase.db)
         t1 = Table('t1', metadata, 
-            Column('c1', Integer, primary_key=True),
+            Column('c1', Integer, Sequence('t1c1_id_seq', optional=True), primary_key=True),
             Column('c2', Integer, ForeignKey('t2.c1')),
         )
         t2 = Table('t2', metadata,
-            Column('c1', Integer, primary_key=True),
-            Column('c2', Integer),
+            Column('c1', Integer, Sequence('t2c1_id_seq', optional=True), primary_key=True),
+            Column('c2', Integer, ForeignKey('t1.c1', use_alter=True, name='t1c1_fq')),
         )
-        t2.create()
-        t1.create()
-        t2.c.c2.append_foreign_key(ForeignKey('t1.c1'))
         t3 = Table('t1_data', metadata, 
-            Column('c1', Integer, primary_key=True),
+            Column('c1', Integer, Sequence('t1dc1_id_seq', optional=True), primary_key=True),
             Column('t1id', Integer, ForeignKey('t1.c1')),
             Column('data', String(20)))
-        t3.create()
+        metadata.create_all()
         
     def tearDown(self):
         clear_mappers()
 
     def tearDownAll(self):
-        t3.drop()
-        t1.drop()
-        t2.drop()
+        metadata.drop_all()
         
     def testcycle(self):
         class C1(object):pass
@@ -503,7 +498,7 @@ class SelfReferentialPostUpdateTest(AssertMixin):
         global metadata, node_table
         metadata = BoundMetaData(testbase.db)
         node_table = Table('node', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, Sequence('nodeid_id_seq', optional=True), primary_key=True),
             Column('path', String(50), nullable=False),
             Column('parent_id', Integer, ForeignKey('node.id'), nullable=True),
             Column('prev_sibling_id', Integer, ForeignKey('node.id'), nullable=True),
