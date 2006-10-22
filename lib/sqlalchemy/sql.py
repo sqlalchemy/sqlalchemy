@@ -1233,11 +1233,11 @@ legal_characters = util.Set(string.ascii_letters + string.digits + '_')
 class _ColumnClause(ColumnElement):
     """represents a textual column clause in a SQL statement.  May or may not
     be bound to an underlying Selectable."""
-    def __init__(self, text, selectable=None, type=None, hidden=False):
+    def __init__(self, text, selectable=None, type=None, _is_oid=False):
         self.key = self.name = text
         self.table = selectable
         self.type = sqltypes.to_instance(type)
-        self.hidden = hidden
+        self._is_oid = _is_oid
         self.__label = None
     def _get_label(self):
         if self.__label is None:
@@ -1266,9 +1266,9 @@ class _ColumnClause(ColumnElement):
     def _bind_param(self, obj):
         return _BindParamClause(self._label, obj, shortname = self.name, type=self.type)
     def _make_proxy(self, selectable, name = None):
-        c = _ColumnClause(name or self.name, selectable, hidden=self.hidden, type=self.type)
+        c = _ColumnClause(name or self.name, selectable, _is_oid=self._is_oid, type=self.type)
         c.orig_set = self.orig_set
-        if not self.hidden:
+        if not self._is_oid:
             selectable.columns[c.name] = c
         return c
     def _compare_type(self, obj):
@@ -1285,7 +1285,7 @@ class TableClause(FromClause):
         self._primary_key = util.Set()
         for c in columns:
             self.append_column(c)
-        self._oid_column = _ColumnClause('oid', self, hidden=True)
+        self._oid_column = _ColumnClause('oid', self, _is_oid=True)
 
     def named_with_column(self):
         return True
