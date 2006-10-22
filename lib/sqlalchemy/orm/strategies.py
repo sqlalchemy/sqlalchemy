@@ -6,7 +6,7 @@
 
 """sqlalchemy.orm.interfaces.LoaderStrategy implementations, and related MapperOptions."""
 
-from sqlalchemy import sql, schema, util, attributes, exceptions, sql_util, logging
+from sqlalchemy import sql, schema, util, exceptions, sql_util, logging
 import mapper, query
 from interfaces import *
 import session as sessionlib

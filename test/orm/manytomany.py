@@ -1,7 +1,6 @@
 import testbase
 from sqlalchemy import *
 import string
-import sqlalchemy.attributes as attr
 
 class Place(object):
     '''represents a place'''

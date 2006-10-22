@@ -1,7 +1,6 @@
 import testbase
 from sqlalchemy import *
 import string
-import sqlalchemy.attributes as attr
 import sys
 
 class Principal( object ):
