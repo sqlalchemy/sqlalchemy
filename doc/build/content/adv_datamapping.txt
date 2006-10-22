@@ -586,25 +586,6 @@ example:
     # select from the alternate mapper
     session.query(User, entity_name='alt').select()
 
-### Circular Mapping {@name=circular}
-
-Oftentimes it is necessary for two mappers to be related to each other.  With a datamodel that consists of Users that store Addresses, you might have an Address object and want to access the "user" attribute on it, or have a User object and want to get the list of Address objects.  The easiest way to do this is via the `backref` keyword described in [datamapping_relations_backreferences](rel:datamapping_relations_backreferences).  Although even when backreferences are used, it is sometimes necessary to explicitly specify the relations on both mappers pointing to each other.
-To achieve this involves creating the first mapper by itself, then creating the second mapper referencing the first, then adding references to the first mapper to reference the second:
-
-    {python}
-    usermapper = mapper(User, users)
-    mapper(Address, addresses_table, properties={
-        'user':relation(User)
-    })
-
-    usermapper.add_property('addresses', relation(Address))
-
-Note that with a circular relationship as above, you cannot declare both relationships as "eager" relationships, since that produces a circular query situation which will generate a recursion exception.  So what if you want to load an Address and its User eagerly?  Just use eager options:
-
-    {python}
-    eagerquery = session.query(Address).options(eagerload('user'))
-    s = eagerquery.select(Address.c.address_id==12)
-
 ### Self Referential Mappers {@name=recursive}
 
 A self-referential mapper is a mapper that is designed to operate with an *adjacency list* table.  This is a table that contains one or more foreign keys back to itself, and is usually used to create hierarchical tree structures.  SQLAlchemy's default model of saving items based on table dependencies is not sufficient in this case, as an adjacency list table introduces dependencies between individual rows.  Fortunately, SQLAlchemy will automatically detect a self-referential mapper and do the extra lifting to make it work.  
