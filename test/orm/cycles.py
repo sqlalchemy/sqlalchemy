@@ -106,25 +106,23 @@ class BiDirectionalOneToManyTest(AssertMixin):
         )
         t2 = Table('t2', metadata,
             Column('c1', Integer, Sequence('t2c1_id_seq', optional=True), primary_key=True),
-            Column('c2', Integer)
+            Column('c2', Integer, ForeignKey('t1.c1', use_alter=True, name='t1c1_fk'))
         )
         metadata.create_all()
-        t2.c.c2.append_foreign_key(ForeignKey('t1.c1'))
     def tearDownAll(self):
-        t1.drop()
-        t2.drop()
-        #metadata.drop_all()
+        metadata.drop_all()
     def tearDown(self):
         clear_mappers()
     def testcycle(self):
         class C1(object):pass
         class C2(object):pass
         
-        m2 = mapper(C2, t2)
-        m1 = mapper(C1, t1, properties = {
-            'c2s' : relation(m2, primaryjoin=t1.c.c2==t2.c.c1, uselist=True)
+        m2 = mapper(C2, t2, properties={
+            'c1s': relation(C1, primaryjoin=t2.c.c1==t1.c.c2, uselist=True)
         })
-        m2.add_property('c1s', relation(m1, primaryjoin=t2.c.c2==t1.c.c1, uselist=True))
+        m1 = mapper(C1, t1, properties = {
+            'c2s' : relation(C2, primaryjoin=t1.c.c1==t2.c.c2, uselist=True)
+        })
         a = C1()
         b = C2()
         c = C1()
@@ -170,12 +168,13 @@ class BiDirectionalOneToManyTest2(AssertMixin):
             def __init__(self, data=None):
                 self.data = data
                 
-        m2 = mapper(C2, t2)
+        m2 = mapper(C2, t2, properties={
+            'c1s': relation(C1, primaryjoin=t2.c.c1==t1.c.c2, uselist=True)
+        })
         m1 = mapper(C1, t1, properties = {
-            'c2s' : relation(m2, primaryjoin=t1.c.c2==t2.c.c1, uselist=True),
+            'c2s' : relation(C2, primaryjoin=t1.c.c1==t2.c.c2, uselist=True),
             'data' : relation(mapper(C1Data, t3))
         })
-        m2.add_property('c1s', relation(m1, primaryjoin=t2.c.c2==t1.c.c1, uselist=True))
         
         a = C1()
         b = C2()

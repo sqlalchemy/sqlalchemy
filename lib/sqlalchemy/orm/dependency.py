@@ -155,8 +155,6 @@ class OneToManyDP(DependencyProcessor):
             # head object is being deleted, and we manage its list of child objects
             # the child objects have to have their foreign key to the parent set to NULL
             if self.post_update:
-                # TODO: post_update instructions should be established in this step as well
-                # (and executed in the regular traversal)
                 pass
             elif self.cascade.delete_orphan:
                 for obj in deplist:
@@ -232,8 +230,6 @@ class ManyToOneDP(DependencyProcessor):
                         
     def preprocess_dependencies(self, task, deplist, uowcommit, delete = False):
         #print self.mapper.mapped_table.name + " " + self.key + " " + repr(len(deplist)) + " PRE process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
-        # TODO: post_update instructions should be established in this step as well
-        # (and executed in the regular traversal)
         if self.post_update:
             return
         if delete:
@@ -306,8 +302,7 @@ class ManyToManyDP(DependencyProcessor):
                     secondary_delete.append(associationrow)
         if len(secondary_delete):
             secondary_delete.sort()
-            # TODO: precompile the delete/insert queries and store them as instance variables
-            # on the PropertyLoader
+            # TODO: precompile the delete/insert queries?
             statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key) for c in self.secondary.c if c.key in associationrow]))
             connection.execute(statement, secondary_delete)
         if len(secondary_insert):
