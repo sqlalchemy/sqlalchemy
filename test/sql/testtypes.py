@@ -136,6 +136,7 @@ class UnicodeTest(AssertMixin):
     def tearDownAll(self):
         unicode_table.drop()
     def testbasic(self):
+        assert unicode_table.c.unicode_data.type.length == 250
         rawdata = 'Alors vous imaginez ma surprise, au lever du jour, quand une dr\xc3\xb4le de petit voix m\xe2\x80\x99a r\xc3\xa9veill\xc3\xa9. Elle disait: \xc2\xab S\xe2\x80\x99il vous pla\xc3\xaet\xe2\x80\xa6 dessine-moi un mouton! \xc2\xbb\n'
         unicodedata = rawdata.decode('utf-8')
         unicode_table.insert().execute(unicode_data=unicodedata, plain_data=rawdata)

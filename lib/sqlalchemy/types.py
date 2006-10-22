@@ -86,6 +86,9 @@ class TypeDecorator(AbstractType):
             tt.impl = typedesc
             self.impl_dict[dialect] = tt
             return tt
+    def __getattr__(self, key):
+        """proxy all other undefined accessors to the underlying implementation."""
+        return getattr(self.impl, key)
     def get_col_spec(self):
         return self.impl.get_col_spec()
     def convert_bind_param(self, value, dialect):
