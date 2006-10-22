@@ -16,13 +16,13 @@ SQLAlchemy's unit of work includes these functions:
 * an Identity Map, which is a dictionary storing the one and only instance of an object for a particular table/primary key combination.  This allows many parts of an application to get a handle to a particular object without any chance of modifications going to two different places.
 * The sole interface to the unit of work is provided via the `Session` object.  Transactional capability, which rides on top of the transactions provided by `Engine` objects, is provided by the `SessionTransaction` object.
 * Thread-locally scoped Session behavior is available as an option, which allows new objects to be automatically added to the Session corresponding to by the *default Session context*.  Without a default Session context, an application must explicitly create a Session manually as well as add new objects to it.  The default Session context, disabled by default, can also be plugged in with other user-defined schemes, which may also take into account the specific class being dealt with for a particular operation.
-* The Session object in SQLAlchemy 0.2 borrows conceptually from that of [Hibernate](http://www.hibernate.org), a leading ORM for Java that is largely based on [JSR-220](http://jcp.org/aboutJava/communityprocess/pfd/jsr220/index.html).  SQLAlchemy, under no obligation to conform to EJB specifications, is in general very different from Hibernate, providing a different paradigm for producing queries, a SQL API that is useable independently of the ORM, and of course Pythonic configuration as opposed to XML; however, JSR-220/Hibernate makes some pretty good suggestions with regards to the mechanisms of persistence.
+* The Session object in SQLAlchemy 0.2 borrows conceptually from that of [Hibernate](http://www.hibernate.org), a leading ORM for Java that was a great influence on the creation of the [JSR-220](http://jcp.org/aboutJava/communityprocess/pfd/jsr220/index.html) specification.  SQLAlchemy, under no obligation to conform to EJB specifications, is in general very different from Hibernate, providing a different paradigm for producing queries, a SQL API that is useable independently of the ORM, and of course Pythonic configuration as opposed to XML; however, JSR-220/Hibernate makes some pretty good suggestions with regards to the mechanisms of persistence.
 
 ### Object States {@name=states}
 
 When dealing with mapped instances with regards to Sessions, an instance may be *attached* or *unattached* to a particular Session.  An instance also may or may not correspond to an actual row in the database.  The product of these two binary conditions yields us four general states a particular instance can have within the perspective of the Session:
 
-* *Transient* - a transient instance exists within memory only and is not associated with any Session.  It also has no database identity and does not have a corresponding record in the database.  When a new instance of a class is constructed, and no default session context exists with which to automatically attach the new instance, it is a transient instance.  The instance can then be saved to a particular session in which case it becomes a *pending* instance.  If a default session context exists, new instances are added to that Session by default and therefore become *pending* instances immediately.  
+* *Transient* - a transient instance exists within memory only and is not associated with any Session.  It also has no database identity and does not have a corresponding record in the database.  When a new instance of a class is constructed, and no default session context exists with which to automatically attach the new instance, it is a transient instance.  The instance can then be saved to a particular session in which case it becomes a *pending* instance.  If a default session context exists, new instances are added to that Session by default and therefore become *pending* instances immediately.
 
 * *Pending* - a pending instance is a Session-attached object that has not yet been assigned a database identity.  When the Session is flushed (i.e. changes are persisted to the database), a pending instance becomes persistent.
 
@@ -59,28 +59,18 @@ The session to which an object is attached can be acquired via the `object_sessi
     {python}
     session = object_session(obj)
 
-It is possible to install a default "threadlocal" session context by importing a *mod* called `sqlalchemy.mods.threadlocal`.  This mod creates a familiar SA 0.1 keyword `objectstore` in the `sqlalchemy` namespace.  The `objectstore` may be used directly like a session; all session actions performed on `sqlalchemy.objectstore` will be *proxied* to the thread-local Session:
+Session Facts:
 
-    {python}
-    # install 'threadlocal' mod (only need to call this once per application)
-    import sqlalchemy.mods.threadlocal
-
-    # then 'objectstore' is available within the 'sqlalchemy' namespace
-    from sqlalchemy import objectstore
-
-    # flush the current thread-local session using the objectstore directly
-    objectstore.flush()
-    
-    # which is the same as this (assuming we are still on the same thread):
-    session = objectstore.session
-    session.flush()
+ * the Session object is **not threadsafe**.  For thread-local management of Sessions, the recommended approch is to use the [plugins_sessioncontext](rel:plugins_sessioncontext) extension module.
 
 We will now cover some of the key concepts used by Sessions and its underlying Unit of Work.
 
 ### Introduction to the Identity Map {@name=identitymap}    
 
-A primary concept of the Session's underlying Unit of Work is that it is keeping track of all persistent instances; recall that a persistent instance has a database identity and is attached to a Session.  In particular, the Unit of Work must insure that only *one* copy of a particular persistent instance exists within the Session at any given time.   The UOW accomplishes this task using a dictionary known as an *Identity Map*.  When a `Query` is used to issue `select` or `get` requests to the database, it will in nearly all cases result in an actual SQL execution to the database, and a corresponding traversal of rows received from that execution.  However, when the underlying mapper *instantiates* objects corresponding to the result set rows it receives, it will check the session's identity map first before instantating a new object, and return the same instance already present in the identity map if it already exists, essentially *ignoring* the object state represented by that row.  There are several ways to override this behavior and truly refresh an already-loaded instance which are described later, but the main idea is that once your instance is loaded into a particular Session, it will *never change* its state without your explicit approval, regardless of what the database says about it.  
-    
+A primary concept of the Session's underlying Unit of Work is that it is keeps track of all persistent instances; recall that a persistent instance has a database identity and is attached to a Session.  In particular, the Unit of Work must insure that only *one* copy of a particular persistent instance exists within the Session at any given time.   The UOW accomplishes this task using a dictionary known as an *Identity Map*.
+
+When a `Query` is used to issue `select` or `get` requests to the database, it will in nearly all cases result in an actual SQL execution to the database, and a corresponding traversal of rows received from that execution.  However, when the underlying mapper actually *creates* objects corresponding to the result set rows it receives, it will check the session's identity map first before instantating a new object, and return the same instance already present in the identity map if it already exists, essentially *ignoring* the object state represented by that row.  There are several ways to override this behavior and truly refresh an already-loaded instance which are described later, but the main idea is that once your instance is loaded into a particular Session, it will *never change* its state without your explicit approval, regardless of what the database says about it.
+
 For example; below, two separate calls to load an instance with database identity "15" are issued, and the results assigned to two separate variables.   However, since the same `Session` was used, the two instances are the same instance:
 
     {python}
@@ -93,7 +83,7 @@ For example; below, two separate calls to load an instance with database identit
     >>> obj1 is obj2
     True
     
-The Identity Map is an instance of `weakref.WeakValueDictionary`, so that when an in-memory object falls out of scope, it will be removed automatically.  However, this may not be instant if there are circular references upon the object.  To guarantee that an instance is removed from the identity map before removing references to it, use the `expunge()` method, described later, to remove it.  
+The Identity Map is an instance of `weakref.WeakValueDictionary`, so that when an in-memory object falls out of scope, it will be removed automatically.  However, this may not be instant if there are circular references upon the object.  To guarantee that an instance is removed from the identity map before removing references to it, use the `expunge()` method, described later, to remove it.
 
 The Session supports an iterator interface in order to see all objects in the identity map:
 
@@ -119,14 +109,14 @@ The identity of each object instance is available via the `_instance_key` proper
     >>> obj._instance_key 
     (<class 'test.tables.User'>, (7,))
     
-At the moment that an object is assigned this key within a `flush()` operation, it is also added to the session's identity map.  
-    
+At the moment that an object is assigned this key within a `flush()` operation, it is also added to the session's identity map.
+
 The `get()` method on `Query`, which retrieves an object based on primary key identity, also checks in the Session's identity map first to save a database round-trip if possible.  In the case of an object lazy-loading a single child object, the `get()` method is used as well, so scalar-based lazy loads may in some cases not query the database; this is particularly important for backreference relationships as it can save a lot of queries.
 
 ### Whats Changed ? {@name=changed}    
 
 The next concept is that in addition to the `Session` storing a record of all objects loaded or saved, it also stores lists of all *newly created* (i.e. pending) objects and lists of all persistent objects that have been marked as *deleted*.  These lists are used when a `flush()` call is issued to save all changes.  During a flush operation, it also scans its list of persistent instances for changes which are marked as dirty.
-    
+
 These records are all tracked by a collection of `Set` objects (which are a SQLAlchemy-specific instance called a `HashSet`) that are also viewable off the `Session`:
 
     {python}
@@ -331,7 +321,7 @@ This method is useful for bringing in objects which may have been restored from 
     myobj = session.merge(myobj)
 
 Note that `merge()` *does not* associate the given instance with the Session; it remains detached (or attached to whatever Session it was already attached to).
-        
+
 ### Cascade rules {@name=cascade}
 
 Feature Status: [Alpha Implementation][alpha_implementation] 
@@ -381,6 +371,10 @@ The `create_transaction()` method creates a new SessionTransaction object but do
 
 Note that while SessionTransaction is capable of tracking multiple transactions across multiple databases, it currently is in no way a fully functioning two-phase commit engine; generally, when dealing with multiple databases simultaneously, there is the distinct possibility that a transaction can succeed on the first database and fail on the second, which for some applications may be an invalid state.  If this is an issue, its best to either refrain from spanning transactions across databases, or to look into some of the available technologies in this area, such as [Zope](http://www.zope.org) which offers a two-phase commit engine; some users have already created their own SQLAlchemy/Zope hybrid implementations to deal with scenarios like these.
 
+SessionTransaction Facts:
+
+ * SessionTransaction, like its parent Session object, is **not threadsafe**.
+ 
 #### Using SQL with SessionTransaction {@name=sql}
 
 The SessionTransaction can interact with direct SQL queries in two general ways.  Either specific `Connection` objects can be associated with the `SessionTransaction`, which are then useable both for direct SQL as well as within `flush()` operations performed by the `SessionTransaction`, or via accessing the `Connection` object automatically referenced within the `SessionTransaction`.

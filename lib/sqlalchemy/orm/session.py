@@ -9,7 +9,13 @@ import unitofwork, query
 import weakref
 import sqlalchemy
 
+
 class SessionTransaction(object):
+    """represents a Session-level Transaction.  This corresponds to one or
+    more sqlalchemy.engine.Transaction instances behind the scenes, with one
+    Transaction per Engine in use.
+    
+    the SessionTransaction object is **not** threadsafe."""
     def __init__(self, session, parent=None, autoflush=True):
         self.session = session
         self.connections = {}
@@ -63,7 +69,10 @@ class SessionTransaction(object):
         self.session.transaction = None
 
 class Session(object):
-    """encapsulates a set of objects being operated upon within an object-relational operation."""
+    """encapsulates a set of objects being operated upon within an object-relational operation.
+    
+    The Session object is **not** threadsafe.  For thread-management of Sessions, see the
+    sqlalchemy.ext.sessioncontext module."""
     def __init__(self, bind_to=None, hash_key=None, import_session=None, echo_uow=False):
         if import_session is not None:
             self.uow = unitofwork.UnitOfWork(identity_map=import_session.uow.identity_map)

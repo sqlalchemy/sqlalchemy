@@ -188,7 +188,9 @@ class Connectable(object):
 class Connection(Connectable):
     """represents a single DBAPI connection returned from the underlying connection pool.  Provides
     execution support for string-based SQL statements as well as ClauseElement, Compiled and DefaultGenerator objects.
-    provides a begin method to return Transaction objects."""
+    provides a begin method to return Transaction objects.
+    
+    The Connection object is **not** threadsafe."""
     def __init__(self, engine, connection=None, close_with_result=False):
         self.__engine = engine
         self.__connection = connection or engine.raw_connection()
@@ -363,7 +365,9 @@ class Connection(Connectable):
         return self._execute_raw(statement, parameters)
 
 class Transaction(object):
-    """represents a Transaction in progress"""
+    """represents a Transaction in progress.
+    
+    the Transaction object is **not** threadsafe."""
     def __init__(self, connection, parent):
         self.__connection = connection
         self.__parent = parent or self
