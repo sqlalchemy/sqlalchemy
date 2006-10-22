@@ -4,8 +4,10 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import util
+from sqlalchemy import util
+import util as orm_util
 import weakref
+from sqlalchemy import logging
 
 class InstrumentedAttribute(object):
     """a property object that instruments attribute access on object instances.  All methods correspond to 
@@ -182,6 +184,7 @@ class InstrumentedAttribute(object):
                 if callable_ is not None:
                     if passive:
                         return InstrumentedAttribute.PASSIVE_NORESULT
+                    self.logger.debug("Executing lazy callable on %s.%s" % (orm_util.instance_str(obj), self.key))
                     values = callable_()
                     l = InstrumentedList(self, obj, self._adapt_list(values), init=False)
                     
@@ -203,6 +206,7 @@ class InstrumentedAttribute(object):
                 if callable_ is not None:
                     if passive:
                         return InstrumentedAttribute.PASSIVE_NORESULT
+                    self.logger.debug("Executing lazy callable on %s.%s" % (orm_util.instance_str(obj), self.key))
                     value = callable_()
                     obj.__dict__[self.key] = value
 
@@ -302,6 +306,7 @@ class InstrumentedAttribute(object):
             self.sethasparent(value, False)
         for ext in self.extensions:
             ext.delete(event or self, obj, value)
+InstrumentedAttribute.logger = logging.class_logger(InstrumentedAttribute)
                 
 class InstrumentedList(object):
     """instruments a list-based attribute.  all mutator operations (i.e. append, remove, etc.) will fire off events to the 

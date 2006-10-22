@@ -14,8 +14,9 @@ an "identity map" pattern.  The Unit of Work then maintains lists of objects tha
 dirty, or deleted and provides the capability to flush all those changes at once.
 """
 
-from sqlalchemy import attributes, util, logging, topological
+from sqlalchemy import util, logging, topological
 import sqlalchemy
+import attributes
 from sqlalchemy.exceptions import *
 import StringIO
 import weakref

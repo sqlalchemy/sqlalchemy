@@ -103,6 +103,8 @@ class TreeLoader(MapperExtension):
             if isnew or populate_existing:
                 parentnode = selectcontext.identity_map[mapper.identity_key(instance.parent_id)]
                 parentnode.children.append_without_event(instance)
+        # fire off lazy loader before the instance is part of the session
+        instance.children
         return False
             
 class TreeData(object):
@@ -116,9 +118,6 @@ class TreeData(object):
 print "\n\n\n----------------------------"
 print "Creating Tree Table:"
 print "----------------------------"
-
-import logging
-logging.getLogger('sqlalchemy.orm').setLevel(logging.DEBUG)
 
 metadata.create_all()
 

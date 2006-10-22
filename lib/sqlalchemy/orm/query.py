@@ -54,6 +54,9 @@ class Query(object):
         
         The ident argument is a scalar or tuple of primary key column values
         in the order of the table def's primary key columns."""
+        ret = self.extension.get(self, ident, **kwargs)
+        if ret is not mapper.EXT_PASS:
+            return ret
         key = self.mapper.identity_key(ident)
         return self._get(key, ident, **kwargs)
 
@@ -63,6 +66,9 @@ class Query(object):
         If not found, raises an exception.  The method will *remove all pending changes* to the object
         already existing in the Session.  The ident argument is a scalar or tuple of primary
         key column values in the order of the table def's primary key columns."""
+        ret = self.extension.load(self, ident, **kwargs)
+        if ret is not mapper.EXT_PASS:
+            return ret
         key = self.mapper.identity_key(ident)
         instance = self._get(key, ident, reload=True, **kwargs)
         if instance is None:
@@ -83,6 +89,9 @@ class Query(object):
 
         e.g.   u = usermapper.get_by(user_name = 'fred')
         """
+        ret = self.extension.get_by(self, *args, **params)
+        if ret is not mapper.EXT_PASS:
+            return ret
         x = self.select_whereclause(self.join_by(*args, **params), limit=1)
         if x:
             return x[0]

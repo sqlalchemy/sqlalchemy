@@ -1,3 +1,4 @@
+"""a plugin that emulates 0.1 Session behavior."""
 
 import sqlalchemy.orm.objectstore as objectstore
 import sqlalchemy.orm.unitofwork as unitofwork

@@ -21,7 +21,7 @@ mapper_registry = weakref.WeakKeyDictionary()
 # a list of MapperExtensions that will be installed in all mappers by default
 global_extensions = []
 
-# a constant returned by _getattrbycolumn to indicate
+# a constant returned by get_attr_by_column to indicate
 # this mapper is not handling an attribute for a particular
 # column
 NO_ATTRIBUTE = object()
@@ -289,10 +289,6 @@ class Mapper(object):
     def _compile_extensions(self):
         """goes through the global_extensions list as well as the list of MapperExtensions
         specified for this Mapper and creates a linked list of those extensions."""
-        # uber-pendantic style of making mapper chain, as various testbase/
-        # threadlocal/assignmapper combinations keep putting dupes etc. in the list
-        # TODO: do something that isnt 21 lines....
-
         extlist = util.Set()
         for ext_class in global_extensions:
             if isinstance(ext_class, MapperExtension):
@@ -307,7 +303,7 @@ class Mapper(object):
 
         self.extension = _ExtensionCarrier()
         for ext in extlist:
-            self.extension.elements.append(ext)
+            self.extension.append(ext)
         
     def _compile_inheritance(self):
         """determines if this Mapper inherits from another mapper, and if so calculates the mapped_table
@@ -744,7 +740,7 @@ class Mapper(object):
 
     def primary_key_from_instance(self, instance):
         """return the list of primary key values for the given instance."""
-        return [self._getattrbycolumn(instance, column) for column in self.pks_by_table[self.mapped_table]]
+        return [self.get_attr_by_column(instance, column) for column in self.pks_by_table[self.mapped_table]]
 
     def instance_key(self, instance):
         """deprecated.  a synonym for identity_key_from_instance."""
@@ -773,21 +769,27 @@ class Mapper(object):
                 raise exceptions.InvalidRequestError("No column %s.%s is configured on mapper %s..." % (column.table.name, column.name, str(self)))
         return prop[0]
         
-    def _getattrbycolumn(self, obj, column, raiseerror=True):
+    def get_attr_by_column(self, obj, column, raiseerror=True):
+        """return an instance attribute using a Column as the key."""
         prop = self._getpropbycolumn(column, raiseerror)
         if prop is None:
             return NO_ATTRIBUTE
         #self.__log_debug("get column attribute '%s' from instance %s" % (column.key, mapperutil.instance_str(obj)))
         return prop.getattr(obj)
 
-    def _setattrbycolumn(self, obj, column, value):
+    def set_attr_by_column(self, obj, column, value):
+        """set the value of an instance attribute using a Column as the key."""
         self.columntoproperty[column][0].setattr(obj, value)
     
     def save_obj(self, objects, uowtransaction, postupdate=False, post_update_cols=None, single=False):
-        """save a list of objects.
+        """issue INSERT and/or UPDATE statements for a list of objects.
+
+        this is called within the context of a UOWTransaction during a flush operation.
         
-        this method is called within a unit of work flush() process.  It saves objects that are mapped not just
-        by this mapper, but inherited mappers as well, so that insert ordering of polymorphic objects is maintained."""
+        save_obj issues SQL statements not just for instances mapped directly by this mapper, but
+        for instances mapped by all inheriting mappers as well.  This is to maintain proper insert
+        ordering among a polymorphic chain of instances. Therefore save_obj is typically 
+        called only on a "base mapper", or a mapper which does not inherit from any other mapper."""
         
         self.__log_debug("save_obj() start, " + (single and "non-batched" or "batched"))
         
@@ -848,7 +850,7 @@ class Mapper(object):
                 for col in table.columns:
                     if col is mapper.version_id_col:
                         if not isinsert:
-                            params[col._label] = mapper._getattrbycolumn(obj, col)
+                            params[col._label] = mapper.get_attr_by_column(obj, col)
                             params[col.key] = params[col._label] + 1
                         else:
                             params[col.key] = 1
@@ -857,14 +859,14 @@ class Mapper(object):
                         if not isinsert:
                             # doing an UPDATE?  put primary key values as "WHERE" parameters
                             # matching the bindparam we are creating below, i.e. "<tablename>_<colname>"
-                            params[col._label] = mapper._getattrbycolumn(obj, col)
+                            params[col._label] = mapper.get_attr_by_column(obj, col)
                         else:
                             # doing an INSERT, primary key col ? 
                             # if the primary key values are not populated,
                             # leave them out of the INSERT altogether, since PostGres doesn't want
                             # them to be present for SERIAL to take effect.  A SQLEngine that uses
                             # explicit sequences will put them back in if they are needed
-                            value = mapper._getattrbycolumn(obj, col)
+                            value = mapper.get_attr_by_column(obj, col)
                             if value is not None:
                                 params[col.key] = value
                     elif mapper.polymorphic_on is not None and mapper.polymorphic_on.shares_lineage(col):
@@ -882,7 +884,7 @@ class Mapper(object):
                             if post_update_cols is not None and col not in post_update_cols:
                                 continue
                             elif is_row_switch:
-                                params[col.key] = self._getattrbycolumn(obj, col)
+                                params[col.key] = self.get_attr_by_column(obj, col)
                                 hasdata = True
                                 continue
                             prop = mapper._getpropbycolumn(col, False)
@@ -901,7 +903,7 @@ class Mapper(object):
                             # default.  if its None and theres no default, we still might
                             # not want to put it in the col list but SQLIte doesnt seem to like that
                             # if theres no columns at all
-                            value = mapper._getattrbycolumn(obj, col, False)
+                            value = mapper.get_attr_by_column(obj, col, False)
                             if value is NO_ATTRIBUTE:
                                 continue
                             if col.default is None or value is not None:
@@ -955,8 +957,8 @@ class Mapper(object):
                     if primary_key is not None:
                         i = 0
                         for col in mapper.pks_by_table[table]:
-                            if mapper._getattrbycolumn(obj, col) is None and len(primary_key) > i:
-                                mapper._setattrbycolumn(obj, col, primary_key[i])
+                            if mapper.get_attr_by_column(obj, col) is None and len(primary_key) > i:
+                                mapper.set_attr_by_column(obj, col, primary_key[i])
                             i+=1
                     mapper._postfetch(connection, table, obj, c, c.last_inserted_params())
                     
@@ -987,26 +989,29 @@ class Mapper(object):
         if resultproxy.lastrow_has_defaults():
             clause = sql.and_()
             for p in self.pks_by_table[table]:
-                clause.clauses.append(p == self._getattrbycolumn(obj, p))
+                clause.clauses.append(p == self.get_attr_by_column(obj, p))
             row = connection.execute(table.select(clause), None).fetchone()
             for c in table.c:
-                if self._getattrbycolumn(obj, c, False) is None:
-                    self._setattrbycolumn(obj, c, row[c])
+                if self.get_attr_by_column(obj, c, False) is None:
+                    self.set_attr_by_column(obj, c, row[c])
         else:
             for c in table.c:
                 if c.primary_key or not params.has_key(c.name):
                     continue
-                v = self._getattrbycolumn(obj, c, False)
+                v = self.get_attr_by_column(obj, c, False)
                 if v is NO_ATTRIBUTE:
                     continue
                 elif v != params.get_original(c.name):
-                    self._setattrbycolumn(obj, c, params.get_original(c.name))
+                    self.set_attr_by_column(obj, c, params.get_original(c.name))
 
     def delete_obj(self, objects, uowtransaction):
-        """called by a UnitOfWork object to delete objects, which involves a
-        DELETE statement for each table used by this mapper, for each object in the list."""
+        """issue DELETE statements for a list of objects.
+        
+        this is called within the context of a UOWTransaction during a flush operation."""
+
+        self.__log_debug("delete_obj() start")
+
         connection = uowtransaction.transaction.connection(self)
-        #print "DELETE_OBJ MAPPER", self.class_.__name__, objects
 
         [self.extension.before_delete(self, connection, obj) for obj in objects]
         deleted_objects = util.Set()
@@ -1021,9 +1026,9 @@ class Mapper(object):
                 else:
                     delete.append(params)
                 for col in self.pks_by_table[table]:
-                    params[col.key] = self._getattrbycolumn(obj, col)
+                    params[col.key] = self.get_attr_by_column(obj, col)
                 if self.version_id_col is not None:
-                    params[self.version_id_col.key] = self._getattrbycolumn(obj, self.version_id_col)
+                    params[self.version_id_col.key] = self.get_attr_by_column(obj, self.version_id_col)
                 deleted_objects.add(obj)
             if len(delete):
                 def comparator(a, b):
@@ -1123,8 +1128,8 @@ class Mapper(object):
             instance = context.session._get(identitykey)
             self.__log_debug("_instance(): using existing instance %s identity %s" % (mapperutil.instance_str(instance), str(identitykey)))
             isnew = False
-            if context.version_check and self.version_id_col is not None and self._getattrbycolumn(instance, self.version_id_col) != row[self.version_id_col]:
-                raise exceptions.ConcurrentModificationError("Instance '%s' version of %s does not match %s" % (instance, self._getattrbycolumn(instance, self.version_id_col), row[self.version_id_col]))
+            if context.version_check and self.version_id_col is not None and self.get_attr_by_column(instance, self.version_id_col) != row[self.version_id_col]:
+                raise exceptions.ConcurrentModificationError("Instance '%s' version of %s does not match %s" % (instance, self.get_attr_by_column(instance, self.version_id_col), row[self.version_id_col]))
                         
             if populate_existing or context.session.is_expired(instance, unexpire=True):
                 if not context.identity_map.has_key(identitykey):
@@ -1186,8 +1191,11 @@ class Mapper(object):
         return obj
 
     def translate_row(self, tomapper, row):
-        """attempts to take a row and translate its values to a row that can
-        be understood by another mapper."""
+        """translate the column keys of a row into a new or proxied row that
+        can be understood by another mapper.
+
+        This can be used in conjunction with populate_instance to populate
+        an instance using an alternate mapper."""
         newrow = util.DictDecorator(row)
         for c in tomapper.mapped_table.c:
             c2 = self.mapped_table.corresponding_column(c, keys_ok=True, raiseerr=True)
@@ -1195,9 +1203,11 @@ class Mapper(object):
                 newrow[c] = row[c2]
         return newrow
         
-    def populate_instance(self, selectcontext, instance, row, identitykey, isnew, frommapper=None):
-        if frommapper is not None:
-            row = frommapper.translate_row(self, row)
+    def populate_instance(self, selectcontext, instance, row, identitykey, isnew):
+        """populate an instance from a result row.
+        
+        This method iterates through the list of MapperProperty objects attached to this Mapper
+        and calls each properties execute() method."""
         for prop in self.__props.values():
             prop.execute(selectcontext, instance, row, identitykey, isnew)
 
@@ -1212,6 +1222,24 @@ class MapperExtension(object):
         """retrieve a contextual Session instance with which to register a new object. 
         
         Note: this is not called if a session is provided with the __init__ params (i.e. _sa_session)"""
+        return EXT_PASS
+    def load(self, query, *args, **kwargs):
+        """override the load method of the Query object.
+
+        the return value of this method is used as the result of query.load() if the
+        value is anything other than EXT_PASS."""
+        return EXT_PASS
+    def get(self, query, *args, **kwargs):
+        """override the get method of the Query object.
+
+        the return value of this method is used as the result of query.get() if the
+        value is anything other than EXT_PASS."""
+        return EXT_PASS
+    def get_by(self, query, *args, **kwargs):
+        """override the get_by method of the Query object.
+
+        the return value of this method is used as the result of query.get_by() if the
+        value is anything other than EXT_PASS."""
         return EXT_PASS
     def select_by(self, query, *args, **kwargs):
         """override the select_by method of the Query object.
@@ -1271,14 +1299,7 @@ class MapperExtension(object):
         as relationships to other classes).  If this method returns EXT_PASS, instance population
         will proceed normally.  If any other value or None is returned, instance population
         will not proceed, giving this extension an opportunity to populate the instance itself, 
-        if desired..
-        
-        A common usage of this method is to have population performed by an alternate mapper.  This can
-        be acheived via the populate_instance() call on Mapper.
-        
-            def populate_instance(self, mapper, selectcontext, instance, row, identitykey, isnew):
-                othermapper.populate_instance(selectcontext, instance, row, identitykey, isnew, frommapper=mapper)
-                return None
+        if desired.
         """
         return EXT_PASS
     def before_insert(self, mapper, connection, instance):
@@ -1304,41 +1325,24 @@ class MapperExtension(object):
 
 class _ExtensionCarrier(MapperExtension):
     def __init__(self):
-        self.elements = []
+        self.__elements = []
+        self.__callables = {}
     def insert(self, extension):
         """insert a MapperExtension at the beginning of this ExtensionCarrier's list."""
-        self.elements.insert(0, extension)
+        self.__elements.insert(0, extension)
     def append(self, extension):
         """append a MapperExtension at the end of this ExtensionCarrier's list."""
-        self.elements.append(extension)
-    # TODO: shrink down this approach using __getattribute__ or similar
-    def get_session(self):
-        return self._do('get_session')
-    def select_by(self, *args, **kwargs):
-        return self._do('select_by', *args, **kwargs)
-    def select(self, *args, **kwargs):
-        return self._do('select', *args, **kwargs)
-    def create_instance(self, *args, **kwargs):
-        return self._do('create_instance', *args, **kwargs)
-    def append_result(self, *args, **kwargs):
-        return self._do('append_result', *args, **kwargs)
-    def populate_instance(self, *args, **kwargs):
-        return self._do('populate_instance', *args, **kwargs)
-    def before_insert(self, *args, **kwargs):
-        return self._do('before_insert', *args, **kwargs)
-    def before_update(self, *args, **kwargs):
-        return self._do('before_update', *args, **kwargs)
-    def after_update(self, *args, **kwargs):
-        return self._do('after_update', *args, **kwargs)
-    def after_insert(self, *args, **kwargs):
-        return self._do('after_insert', *args, **kwargs)
-    def before_delete(self, *args, **kwargs):
-        return self._do('before_delete', *args, **kwargs)
-    def after_delete(self, *args, **kwargs):
-        return self._do('after_delete', *args, **kwargs)
-        
+        self.__elements.append(extension)
+    def __getattribute__(self, key):
+        if key in MapperExtension.__dict__:
+            try:
+                return self.__callables[key]
+            except KeyError:
+                return self.__callables.setdefault(key, lambda *args, **kwargs:self._do(key, *args, **kwargs))
+        else:
+            return super(_ExtensionCarrier, self).__getattribute__(key)
     def _do(self, funcname, *args, **kwargs):
-        for elem in self.elements:
+        for elem in self.__elements:
             if elem is self:
                 raise exceptions.AssertionError("ExtensionCarrier set to itself")
             ret = getattr(elem, funcname)(*args, **kwargs)
@@ -1346,7 +1350,7 @@ class _ExtensionCarrier(MapperExtension):
                 return ret
         else:
             return EXT_PASS
-            
+    
 class ExtensionOption(MapperExtension):
     def __init__(self, ext):
         self.ext = ext

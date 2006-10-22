@@ -4,6 +4,8 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+"""sqlalchemy.orm.interfaces.LoaderStrategy implementations, and related MapperOptions."""
+
 from sqlalchemy import sql, schema, util, attributes, exceptions, sql_util, logging
 import mapper, query
 from interfaces import *
@@ -11,7 +13,6 @@ import session as sessionlib
 import util as mapperutil
 import sets, random
 
-"""sqlalchemy.orm.interfaces.LoaderStrategy implementations, and related MapperOptions."""
 
 class ColumnLoader(LoaderStrategy):
     def init(self):
@@ -73,7 +74,7 @@ class DeferredColumnLoader(LoaderStrategy):
 
             clause = sql.and_()
             for primary_key in pk:
-                attr = self.parent._getattrbycolumn(instance, primary_key)
+                attr = self.parent.get_attr_by_column(instance, primary_key)
                 if not attr:
                     return None
                 clause.clauses.append(primary_key == attr)
@@ -178,7 +179,7 @@ class LazyLoader(AbstractRelationLoader):
                 return None
             #print "setting up loader, lazywhere", str(self.lazywhere), "binds", self.lazybinds
             for col, bind in self.lazybinds.iteritems():
-                params[bind.key] = self.parent._getattrbycolumn(instance, col)
+                params[bind.key] = self.parent.get_attr_by_column(instance, col)
                 if params[bind.key] is None:
                     allparams = False
                     break

@@ -16,11 +16,14 @@ class ConnectionProvider(object):
         raise NotImplementedError()
 
 class Dialect(sql.AbstractDialect):
-    """Adds behavior to the execution of queries to provide 
-    support for column defaults, differences between paramstyles, quirks between post-execution behavior, 
-    and a general consistentization of the behavior of various DBAPIs. 
+    """Defines the behavior of a specific database/DBAPI.
+
+    Any aspect of metadata defintion, SQL query generation, execution, result-set handling,
+    or anything else which varies between databases is defined under the general category of 
+    the Dialect.  The Dialect acts as a factory for other database-specific object implementations 
+    including ExecutionContext, Compiled, DefaultGenerator, and TypeEngine.
     
-    The Dialect should also implement the following two attributes:
+    All Dialects implement the following attributes:
 
     positional - True if the paramstyle for this Dialect is positional
 

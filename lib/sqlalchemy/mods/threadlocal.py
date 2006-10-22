@@ -1,11 +1,3 @@
-from sqlalchemy import util, engine, mapper
-from sqlalchemy.ext.sessioncontext import SessionContext
-import sqlalchemy.ext.assignmapper as assignmapper
-from sqlalchemy.orm.mapper import global_extensions
-from sqlalchemy.orm.session import Session
-import sqlalchemy
-import sys, types
-
 """this plugin installs thread-local behavior at the Engine and Session level.
 
 The default Engine strategy will be "threadlocal", producing TLocalEngine instances for create_engine by default.
@@ -19,6 +11,15 @@ which call this method on the thread-local session.
 Note: this mod creates a global, thread-local session context named sqlalchemy.objectstore. All mappers created
 while this mod is installed will reference this global context when creating new mapped object instances.
 """
+
+from sqlalchemy import util, engine, mapper
+from sqlalchemy.ext.sessioncontext import SessionContext
+import sqlalchemy.ext.assignmapper as assignmapper
+from sqlalchemy.orm.mapper import global_extensions
+from sqlalchemy.orm.session import Session
+import sqlalchemy
+import sys, types
+
 
 __all__ = ['Objectstore', 'assign_mapper']
 

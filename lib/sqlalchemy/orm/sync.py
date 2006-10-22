@@ -132,7 +132,7 @@ class SyncRule(object):
         if clearkeys or source is None:
             value = None
         else:
-            value = self.source_mapper._getattrbycolumn(source, self.source_column)
+            value = self.source_mapper.get_attr_by_column(source, self.source_column)
         if isinstance(dest, dict):
             dest[self.dest_column.key] = value
         else:
@@ -141,7 +141,7 @@ class SyncRule(object):
                 
             if logging.is_debug_enabled(self.logger):
                 self.logger.debug("execute() instances: %s(%s)->%s(%s) ('%s')" % (mapperutil.instance_str(source), str(self.source_column), mapperutil.instance_str(dest), str(self.dest_column), value))
-            self.dest_mapper._setattrbycolumn(dest, self.dest_column, value)
+            self.dest_mapper.set_attr_by_column(dest, self.dest_column, value)
 
 SyncRule.logger = logging.class_logger(SyncRule)
             

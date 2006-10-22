@@ -9,10 +9,11 @@ well as relationships.  the objects rely upon the LoaderStrategy objects in the 
 module to handle load operations.  PropertyLoader also relies upon the dependency.py module
 to handle flush-time dependency sorting and processing."""
 
-from sqlalchemy import sql, schema, util, attributes, exceptions, sql_util, logging
+from sqlalchemy import sql, schema, util, exceptions, sql_util, logging
 import mapper
 import sync
 import strategies
+import attributes
 import session as sessionlib
 import dependency
 import util as mapperutil

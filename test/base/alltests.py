@@ -4,7 +4,6 @@ import unittest
 def suite():
     modules_to_test = (
         # core utilities
-        'base.attributes', 
         'base.dependency',
         )
     alltests = unittest.TestSuite()

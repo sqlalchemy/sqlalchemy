@@ -1,6 +1,6 @@
 from testbase import PersistTest
 import sqlalchemy.util as util
-import sqlalchemy.attributes as attributes
+import sqlalchemy.orm.attributes as attributes
 import unittest, sys, os
 import pickle
 
