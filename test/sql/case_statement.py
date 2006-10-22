@@ -9,7 +9,7 @@ class CaseTest(testbase.PersistTest):
         global info_table
         info_table = Table('infos', testbase.db,
         	Column('pk', Integer, primary_key=True),
-        	Column('info', String))
+        	Column('info', String(30)))
 
         info_table.create()
 
