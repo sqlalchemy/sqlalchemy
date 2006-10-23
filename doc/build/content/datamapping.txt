@@ -743,24 +743,27 @@ Many to Many can also be done with an association object, that adds additional i
     class KeywordAssociation(object):
         pass
         
-    mapper(User, users_table)
-    mapper(Keyword, keywords_table)
-    
+    # Article mapper, relates to Keyword via KeywordAssociation
+    mapper(Article, articles_table, properties={
+        'keywords':relation(KeywordAssociation, lazy=False, cascade="all, delete-orphan")
+        }
+    )
+
     # mapper for KeywordAssociation
     # specify "primary key" columns manually
     mapper(KeywordAssociation, itemkeywords_table,
-        primary_key = [itemkeywords_table.c.article_id, itemkeywords_table.c.keyword_id],
+        primary_key=[itemkeywords_table.c.article_id, itemkeywords_table.c.keyword_id],
         properties={
-            'keyword' : relation(Keyword, lazy = False), 
-            'user' : relation(User, lazy = False) 
+            'keyword' : relation(Keyword, lazy=False), 
+            'user' : relation(User, lazy=False) 
         }
     )
+
+    # user mapper
+    mapper(User, users_table)
     
-    # Article mapper, relates to Keyword via KeywordAssociation
-    mapper(Article, articles_table, properties={
-        'keywords':relation(KeywordAssociation, lazy=False)
-        }
-    )
+    # keyword mapper
+    mapper(Keyword, keywords_table)
     
     session = create_session(bind_to=engine)
     # select by keyword
