@@ -1,3 +1,8 @@
+SQLALCHEMY UNIT TESTS
+----------------------
+
+SETUP
+-----
 To run unit tests (assuming unix-style commandline, adjust as needed for windows):
 
 Python 2.4 or greater is required since the unit tests use decorators.
@@ -9,37 +14,42 @@ Set up the PYTHONPATH:
     export PYTHONPATH=./test/
 
 The unittest framework will automatically prepend './lib/' to sys.path.  this forces the local 
-version to run, bypassing any setuptools-installed installations (a PYTHONPATH setting, referencing
-a local directory of python scripts, does not override setuptools-installed eggs anymore, unfortunately.
-refer comments on this to distutils-SIG).
+version of SQLAlchemy to be used, bypassing any setuptools-installed installations 
+(setuptools places .egg files ahead of plain directories, even if on PYTHONPATH, unfortunately).
 
+RUNNING ALL TESTS
+-----------------
 To run all tests:
 
     python test/alltests.py
 
+COMMAND LINE OPTIONS
+--------------------
 Help is available via:
 
     python test/alltests.py --help
 
-    usage: alltests.py [options] files...
+    usage: alltests.py [options] [tests...]
     
     options:
       -h, --help            show this help message and exit
       --dburi=DBURI         database uri (overrides --db)
       --db=DB               prefab database uri (sqlite, sqlite_file, postgres,
-    			mysql, oracle, oracle8, mssql)
+                            mysql, oracle, oracle8, mssql)
       --mockpool            use mock pool
-      --verbose             full debug echoing
+      --verbose             enable stdout echoing/printing
       --log-info=LOG_INFO   turn on info logging for <LOG> (multiple OK)
       --log-debug=LOG_DEBUG
                             turn on debug logging for <LOG> (multiple OK)
-      --quiet               be totally quiet
+      --quiet               suppress unittest output
       --nothreadlocal       dont use thread-local mod
       --enginestrategy=ENGINESTRATEGY
-    			engine strategy (plain or threadlocal, defaults to SA
-    			default)
-    
+                engine strategy (plain or threadlocal, defaults to SA
+                default)
+      --coverage            Dump a full coverage report after running    
 
+RUNNING INDIVIDUAL TESTS
+-------------------------
 Any unittest module can be run directly from the module file (same commandline options):
 
     python test/orm/mapper.py
@@ -48,9 +58,26 @@ Additionally, to run a speciic test within the module, specify it as ClassName.m
 
     python test/orm/mapper.py MapperTest.testget
 
+CONFIGURING LOGGING
+---------------------
 Logging is now available via Python's logging package.  Any area of SQLAlchemy can be logged 
 through the unittest interface, such as:
 
 Log mapper configuration, connection pool checkouts, and SQL statement execution:
 
     python test/orm/unitofwork.py --log-info=sqlalchemy.orm.mapper --log-debug=sqlalchemy.pool --log-info=sqlalchemy.engine
+
+BUILT-IN COVERAGE REPORTING
+------------------------------
+Coverage is now integrated through the coverage.py module, included in the './test/' directory.  Running the test suite with
+the --coverage switch will generate a local file ".coverage" containing coverage details, and a report will be printed
+to standard output with an overview of the coverage gathered from the last unittest run (the file is deleted between runs).
+
+After the suite has been run with --coverage, an annotated version of any source file can be generated
+marking statements that are executed with > and statements that are missed with !, by running the coverage.py
+utility with the "-a" (annotate) option, such as: 
+
+    python ./test/coverage.py -a ./lib/sqlalchemy/sql.py
+
+which will create a new annotated file ./lib/sqlalchemy/sql.py,cover .  Pretty cool !
+
