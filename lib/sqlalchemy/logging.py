@@ -29,6 +29,9 @@ import sys
 # py2.5 absolute imports will fix....
 logging = __import__('logging')
 
+# turn off logging at the root sqlalchemy level
+logging.getLogger('sqlalchemy').setLevel(logging.ERROR)
+
 default_enabled = False
 def default_logging(name):
     global default_enabled
@@ -37,7 +40,6 @@ def default_logging(name):
     if not default_enabled:
         default_enabled = True
         rootlogger = logging.getLogger('sqlalchemy')
-        rootlogger.setLevel(logging.NOTSET)
         handler = logging.StreamHandler(sys.stdout)
         handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s %(message)s'))
         rootlogger.addHandler(handler)
