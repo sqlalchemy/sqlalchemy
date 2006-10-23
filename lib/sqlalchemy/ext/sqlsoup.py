@@ -8,19 +8,23 @@ to declare table or mapper classes ahead of time.
 Suppose we have a database with users, books, and loans tables
 (corresponding to the PyWebOff dataset, if you're curious).
 For testing purposes, we'll create this db as follows:
+
     >>> from sqlalchemy import create_engine
     >>> e = create_engine('sqlite:///:memory:')
     >>> for sql in _testsql: e.execute(sql) #doctest: +ELLIPSIS
     <...
 
 Creating a SqlSoup gateway is just like creating an SqlAlchemy engine:
+
     >>> from sqlalchemy.ext.sqlsoup import SqlSoup
     >>> db = SqlSoup('sqlite:///:memory:')
 
 or, you can re-use an existing metadata:
+
     >>> db = SqlSoup(BoundMetaData(e))
 
 You can optionally specify a schema within the database for your SqlSoup:
+
     # >>> db.schema = myschemaname
 
 
@@ -28,21 +32,25 @@ Loading objects
 ===============
 
 Loading objects is as easy as this:
+
     >>> users = db.users.select()
     >>> users.sort()
     >>> users
     [MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0), MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)]
 
 Of course, letting the database do the sort is better (".c" is short for ".columns"):
+
     >>> db.users.select(order_by=[db.users.c.name])
     [MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1), MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0)]
 
 Field access is intuitive:
+
     >>> users[0].email
     u'student@example.edu'
 
 Of course, you don't want to load all users very often.  Let's add a WHERE clause.
 Let's also switch the order_by to DESC while we're at it.
+
     >>> from sqlalchemy import or_, and_, desc
 	>>> where = or_(db.users.c.name=='Bhargan Basepair', db.users.c.email=='student@example.edu')
     >>> db.users.select(where, order_by=[desc(db.users.c.name)])
@@ -50,6 +58,7 @@ Let's also switch the order_by to DESC while we're at it.
 
 You can also use the select...by methods if you're querying on a single column.
 This allows using keyword arguments as column names:
+
     >>> db.users.selectone_by(name='Bhargan Basepair')
     MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)
 
@@ -61,13 +70,14 @@ All the SqlAlchemy Query select variants are available.
 Here's a quick summary of these methods:
 
 - get(PK): load a single object identified by its primary key (either a scalar, or a tuple)
-- select(Clause, **kwargs): perform a select restricted by the Clause argument; returns a list of objects.  The most common clause argument takes the form "db.tablename.c.columname == value."  The most common optional argument is order_by.
-- select_by(**params): the *_by selects allow using bare column names.  (columname=value)This feels more natural to most Python programmers; the downside is you can't specify order_by or other select options.
+- select(Clause, \*\*kwargs): perform a select restricted by the Clause argument; returns a list of objects.  The most common clause argument takes the form "db.tablename.c.columname == value."  The most common optional argument is order_by.
+- select_by(\*\*params): select methods ending with _by allow using bare column names.  (columname=value)  This feels more natural to most Python programmers; the downside is you can't specify order_by or other select options.
 - selectfirst, selectfirst_by: returns only the first object found; equivalent to select(...)[0] or select_by(...)[0], except None is returned if no rows are selected.
 - selectone, selectone_by: like selectfirst or selectfirst_by, but raises if less or more than one object is selected.
 - count, count_by: returns an integer count of the rows selected.
 
 See the SqlAlchemy documentation for details:
+
 - http://www.sqlalchemy.org/docs/datamapping.myt#datamapping_query for general info and examples,
 - http://www.sqlalchemy.org/docs/sqlconstruction.myt for details on constructing WHERE clauses.
 
@@ -76,6 +86,7 @@ Modifying objects
 =================
 
 Modifying objects is intuitive:
+
     >>> user = _
     >>> user.email = 'basepair+nospam@example.edu'
     >>> db.flush()
@@ -86,6 +97,7 @@ statement when you flush.)
 
 
 To finish covering the basics, let's insert a new loan, then delete it:
+
     >>> book_id = db.books.selectfirst(db.books.c.title=='Regional Variation in Moss').id
     >>> db.loans.insert(book_id=book_id, user_name=user.name)
     MappedLoans(book_id=2,user_name='Bhargan Basepair',loan_date=None)
@@ -100,6 +112,7 @@ this time using the loans table's delete method.  (For SQLAlchemy experts:
 note that no flush() call is required since this
 delete acts at the SQL level, not at the Mapper level.)  The same where-clause construction rules
 apply here as to the select methods.
+
     >>> db.loans.insert(book_id=book_id, user_name=user.name)
     MappedLoans(book_id=2,user_name='Bhargan Basepair',loan_date=None)
     >>> db.flush()
@@ -121,18 +134,21 @@ more efficient to have the database perform the necessary join.  (Here
 we do not have "a lot of data," but hopefully the concept is still clear.)
 SQLAlchemy is smart enough to recognize that loans has a foreign key
 to users, and uses that as the join condition automatically.
+
     >>> join1 = db.join(db.users, db.loans, isouter=True)
     >>> join1.select_by(name='Joe Student')
     [MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
 
 You can compose arbitrarily complex joins by combining Join objects with
 tables or other joins.
+
     >>> join2 = db.join(join1, db.books)
     >>> join2.select()
     [MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0),id=1,title='Mustards I Have Known',published_year='1989',authors='Jones')]
 
 If you join tables that have an identical column name, wrap your join with "with_labels",
 and all the columns will be prefixed with their table name:
+
     >>> db.with_labels(join1).select()
     [MappedUsersLoansJoin(users_name='Joe Student',users_email='student@example.edu',users_password='student',users_classname=None,users_admin=0,loans_book_id=1,loans_user_name='Joe Student',loans_loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
 
