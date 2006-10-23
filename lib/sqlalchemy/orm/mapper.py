@@ -1134,8 +1134,8 @@ class Mapper(object):
             if populate_existing or context.session.is_expired(instance, unexpire=True):
                 if not context.identity_map.has_key(identitykey):
                     context.identity_map[identitykey] = instance
-                for prop in self.__props.values():
-                    prop.execute(context, instance, row, identitykey, True)
+		if self.extension.populate_instance(self, context, row, instance, identitykey, True) is EXT_PASS:
+		    self.populate_instance(context, instance, row, identitykey, True)
             if self.extension.append_result(self, context, row, instance, identitykey, result, isnew) is EXT_PASS:
                 if result is not None:
                     result.append(instance)
