@@ -28,45 +28,21 @@ proxies = {}
 
 def manage(module, **params):
     """given a DBAPI2 module and pool management parameters, returns a proxy for the module
-    that will automatically pool connections.  Options are delivered to an underlying DBProxy
-    object.
+    that will automatically pool connections, creating new connection pools for each 
+    distinct set of connection arguments sent to the decorated module's connect() function.
 
     Arguments:
     module : a DBAPI2 database module.
+
+    poolclass=QueuePool : the class used by the pool module to provide pooling.
     
     Options:
-    echo=False : if set to True, connections being pulled and retrieved from/to the pool will
-    be logged to the standard output, as well as pool sizing information.
-
-    use_threadlocal=True : if set to True, repeated calls to connect() within the same
-    application thread will be guaranteed to return the same connection object, if one has
-    already been retrieved from the pool and has not been returned yet. This allows code to
-    retrieve a connection from the pool, and then while still holding on to that connection,
-    to call other functions which also ask the pool for a connection of the same arguments;
-    those functions will act upon the same connection that the calling method is using.
-
-    poolclass=QueuePool : the default class used by the pool module to provide pooling.
-    QueuePool uses the Python Queue.Queue class to maintain a list of available connections.
-
-    pool_size=5 : used by QueuePool - the size of the pool to be maintained. This is the
-    largest number of connections that will be kept persistently in the pool. Note that the
-    pool begins with no connections; once this number of connections is requested, that
-    number of connections will remain.
-
-    max_overflow=10 : the maximum overflow size of the pool. When the number of checked-out
-    connections reaches the size set in pool_size, additional connections will be returned up
-    to this limit. When those additional connections are returned to the pool, they are
-    disconnected and discarded. It follows then that the total number of simultaneous
-    connections the pool will allow is pool_size + max_overflow, and the total number of
-    "sleeping" connections the pool will allow is pool_size. max_overflow can be set to -1 to
-    indicate no overflow limit; no limit will be placed on the total number of concurrent
-    connections.
-    
+    See Pool for options.
     """
     try:
         return proxies[module]
     except KeyError:
-        return proxies.setdefault(module, DBProxy(module, **params))    
+        return proxies.setdefault(module, _DBProxy(module, **params))    
 
 def clear_managers():
     """removes all current DBAPI2 managers.  all pools and connections are disposed."""
@@ -75,7 +51,49 @@ def clear_managers():
     proxies.clear()
     
 class Pool(object):
-    def __init__(self, creator, recycle=-1, echo=None, use_threadlocal = True, auto_close_cursors=True, disallow_open_cursors=False):
+    """Base Pool class.  This is an abstract class, which is implemented by various subclasses
+    including:
+    
+        QueuePool  -          pools multiple connections using Queue.Queue
+    
+        SingletonThreadPool - stores a single connection per execution thread
+    
+        NullPool -            doesnt do any pooling; opens and closes connections
+    
+        AssertionPool -       stores only one connection, and asserts that only one connection is checked out at a time.
+    
+    the main argument, "creator", is a callable function that returns a newly connected DBAPI connection
+    object.
+    
+    Options that are understood by Pool are:
+    
+    echo=False : if set to True, connections being pulled and retrieved from/to the pool will
+    be logged to the standard output, as well as pool sizing information.  Echoing can also
+    be achieved by enabling logging for the "sqlalchemy.pool" namespace.
+
+    use_threadlocal=True : if set to True, repeated calls to connect() within the same
+    application thread will be guaranteed to return the same connection object, if one has
+    already been retrieved from the pool and has not been returned yet. This allows code to
+    retrieve a connection from the pool, and then while still holding on to that connection,
+    to call other functions which also ask the pool for a connection of the same arguments;
+    those functions will act upon the same connection that the calling method is using.
+
+    recycle=-1 : if set to non -1, a number of seconds between connection recycling, which
+    means upon checkout, if this timeout is surpassed the connection will be closed and replaced
+    with a newly opened connection.
+    
+    auto_close_cursors = True : cursors, returned by connection.cursor(), are tracked and are 
+    automatically closed when the connection is returned to the pool.  some DBAPIs like MySQLDB
+    become unstable if cursors remain open.
+    
+    disallow_open_cursors = False : if auto_close_cursors is False, and disallow_open_cursors is True,
+    will raise an exception if an open cursor is detected upon connection checkin.
+    
+    If auto_close_cursors and disallow_open_cursors are both False, then no cursor processing
+    occurs upon checkin.
+    
+    """
+    def __init__(self, creator, recycle=-1, echo=None, use_threadlocal=False, auto_close_cursors=True, disallow_open_cursors=False):
         self.logger = logging.instance_logger(self)
         self._threadconns = weakref.WeakValueDictionary()
         self._creator = creator
@@ -245,8 +263,15 @@ class _CursorFairy(object):
         return getattr(self.cursor, key)
 
 class SingletonThreadPool(Pool):
-    """Maintains one connection per each thread, never moving to another thread.  this is
-    used for SQLite."""
+    """Maintains one connection per each thread, never moving a connection to a thread
+    other than the one which it was created in.
+    
+    this is used for SQLite, which both does not handle multithreading by default,
+    and also requires a singleton connection if a :memory: database is being used.
+    
+    options are the same as those of Pool, as well as:
+    
+    pool_size=5 - the number of threads in which to maintain connections at once."""
     def __init__(self, creator, pool_size=5, **params):
         Pool.__init__(self, creator, **params)
         self._conns = {}
@@ -293,7 +318,26 @@ class SingletonThreadPool(Pool):
             return c
     
 class QueuePool(Pool):
-    """uses Queue.Queue to maintain a fixed-size list of connections."""
+    """uses Queue.Queue to maintain a fixed-size list of connections.
+    
+    Arguments include all those used by the base Pool class, as well as:
+    
+    pool_size=5 : the size of the pool to be maintained. This is the
+    largest number of connections that will be kept persistently in the pool. Note that the
+    pool begins with no connections; once this number of connections is requested, that
+    number of connections will remain.
+
+    max_overflow=10 : the maximum overflow size of the pool. When the number of checked-out
+    connections reaches the size set in pool_size, additional connections will be returned up
+    to this limit. When those additional connections are returned to the pool, they are
+    disconnected and discarded. It follows then that the total number of simultaneous
+    connections the pool will allow is pool_size + max_overflow, and the total number of
+    "sleeping" connections the pool will allow is pool_size. max_overflow can be set to -1 to
+    indicate no overflow limit; no limit will be placed on the total number of concurrent
+    connections.
+    
+    timeout=30 : the number of seconds to wait before giving up on returning a connection
+    """
     def __init__(self, creator, pool_size = 5, max_overflow = 10, timeout=30, **params):
         Pool.__init__(self, creator, **params)
         self._pool = Queue.Queue(pool_size)
@@ -339,11 +383,55 @@ class QueuePool(Pool):
     
     def checkedout(self):
         return self._pool.maxsize - self._pool.qsize() + self._overflow
-        
 
-class DBProxy(object):
+class NullPool(Pool):
+    """a Pool implementation which does not pool connections; instead
+    it literally opens and closes the underlying DBAPI connection per each connection open/close."""
+    def status(self):
+        return "NullPool"
+
+    def do_return_conn(self, conn):
+       conn.close()
+
+    def do_return_invalid(self, conn):
+       pass
+
+    def do_get(self):
+        return self.create_connection()        
+
+class AssertionPool(Pool):
+    """a Pool implementation which will raise an exception
+    if more than one connection is checked out at a time.  Useful for debugging
+    code that is using more connections than desired.
+    
+    TODO: modify this to handle an arbitrary connection count."""
+    def __init__(self, creator, **params):
+        Pool.__init__(self, creator, **params)
+        self.connection = _ConnectionRecord(self)
+        self._conn = self.connection
+
+    def status(self):
+        return "AssertionPool"
+
+    def create_connection(self):
+        raise "Invalid"
+
+    def do_return_conn(self, conn):
+        assert conn is self._conn and self.connection is None
+        self.connection = conn
+
+    def do_return_invalid(self, conn):
+        raise "Invalid"
+
+    def do_get(self):
+        assert self.connection is not None
+        c = self.connection
+        self.connection = None
+        return c
+        
+class _DBProxy(object):
     """proxies a DBAPI2 connect() call to a pooled connection keyed to the specific connect
-    parameters."""
+    parameters. other attributes are proxied through via __getattr__."""
     
     def __init__(self, module, poolclass = QueuePool, **params):
         """
@@ -362,7 +450,10 @@ class DBProxy(object):
 
     def __del__(self):
         self.close()
-            
+    
+    def __getattr__(self, key):
+        return getattr(self.module, key)
+                
     def get_pool(self, *args, **params):
         key = self._serialize(*args, **params)
         try:

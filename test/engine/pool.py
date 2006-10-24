@@ -33,7 +33,7 @@ class PoolTest(PersistTest):
         pool.clear_managers()
 
     def testmanager(self):
-        manager = pool.manage(mock_dbapi)
+        manager = pool.manage(mock_dbapi, use_threadlocal=True)
         
         connection = manager.connect('foo.db')
         connection2 = manager.connect('foo.db')

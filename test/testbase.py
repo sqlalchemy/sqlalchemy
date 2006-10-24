@@ -41,7 +41,7 @@ def parse_argv():
     parser = optparse.OptionParser(usage = "usage: %prog [options] [tests...]")
     parser.add_option("--dburi", action="store", dest="dburi", help="database uri (overrides --db)")
     parser.add_option("--db", action="store", dest="db", default="sqlite", help="prefab database uri (sqlite, sqlite_file, postgres, mysql, oracle, oracle8, mssql, firebird)")
-    parser.add_option("--mockpool", action="store_true", dest="mockpool", help="use mock pool")
+    parser.add_option("--mockpool", action="store_true", dest="mockpool", help="use mock pool (asserts only one connection used)")
     parser.add_option("--verbose", action="store_true", dest="verbose", help="enable stdout echoing/printing")
     parser.add_option("--quiet", action="store_true", dest="quiet", help="suppress unittest output")
     parser.add_option("--log-info", action="append", dest="log_info", help="turn on info logging for <LOG> (multiple OK)")
@@ -98,7 +98,7 @@ def parse_argv():
     if options.enginestrategy is not None:
         opts['strategy'] = options.enginestrategy    
     if options.mockpool:
-        db = engine.create_engine(db_uri, default_ordering=True, poolclass=MockPool, **opts)
+        db = engine.create_engine(db_uri, default_ordering=True, poolclass=pool.AssertionPool, **opts)
     else:
         db = engine.create_engine(db_uri, default_ordering=True, **opts)
     db = EngineAssert(db)
@@ -160,32 +160,7 @@ class PersistTest(unittest.TestCase):
         """overridden to not return docstrings"""
         return None
 
-class MockPool(pool.Pool):
-    """this pool is hardcore about only one connection being used at a time."""
-    def __init__(self, creator, **params):
-        pool.Pool.__init__(self, creator, **params)
-        self.connection = pool._ConnectionRecord(self)
-        self._conn = self.connection
-        
-    def status(self):
-        return "MockPool"
 
-    def create_connection(self):
-        raise "Invalid"
-
-    def do_return_conn(self, conn):
-        assert conn is self._conn and self.connection is None
-        self.connection = conn
-
-    def do_return_invalid(self, conn):
-        pass
-        raise "Invalid"
-
-    def do_get(self):
-        assert self.connection is not None
-        c = self.connection
-        self.connection = None
-        return c
 
 class AssertMixin(PersistTest):
     """given a list-based structure of keys/properties which represent information within an object structure, and

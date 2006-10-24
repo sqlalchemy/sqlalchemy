@@ -1,5 +1,7 @@
 0.3.1
 - adjustments to reworked eager query generation
+- some new Pool utility classes, updated docs
+- "use_threadlocal" on Pool defaults to False (same as create_engine)
 
 0.3.0
 - General:
