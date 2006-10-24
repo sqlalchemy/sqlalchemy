@@ -36,6 +36,7 @@ class DependencyProcessor(object):
         self.is_backref = prop.is_backref
         self.post_update = prop.post_update
         self.foreignkey = prop.foreignkey
+        self.passive_deletes = prop.passive_deletes
         self.key = prop.key
 
         self._compile_synchronizers()
