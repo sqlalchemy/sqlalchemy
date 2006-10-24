@@ -314,7 +314,10 @@ class MySQLDialect(ansisql.ANSIDialect):
         if not case_sensitive:
             table.name = table.name.lower()
             table.metadata.tables[table.name]= table
-        c = connection.execute("describe " + table.name, {})
+        try:
+            c = connection.execute("describe " + table.name, {})
+        except:
+            raise exceptions.NoSuchTableError(table.name)
         found_table = False
         while True:
             row = c.fetchone()

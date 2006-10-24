@@ -5,6 +5,7 @@
 - the "delete" cascade will load in all child objects, if they were not
 loaded already.  this can be turned off (i.e. the old behavior) by setting 
 passive_deletes=True on a relation().
+- MySQL catches exception on "describe" and reports as NoSuchTableError
 
 0.3.0
 - General:
