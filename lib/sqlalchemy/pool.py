@@ -130,6 +130,7 @@ class _ConnectionRecord(object):
         self.__pool = pool
         self.connection = self.__connect()
     def close(self):
+        self.__pool.log("Closing connection %s" % repr(self.connection))
         self.connection.close()
     def invalidate(self):
         self.__pool.log("Invalidate connection %s" % repr(self.connection))
