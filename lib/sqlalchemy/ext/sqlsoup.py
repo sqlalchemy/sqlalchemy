@@ -95,7 +95,6 @@ Modifying objects is intuitive:
 multiple updates to a single object will be turned into a single UPDATE
 statement when you flush.)
 
-
 To finish covering the basics, let's insert a new loan, then delete it:
 
     >>> book_id = db.books.selectfirst(db.books.c.title=='Regional Variation in Moss').id
@@ -139,6 +138,14 @@ to users, and uses that as the join condition automatically.
     >>> join1.select_by(name='Joe Student')
     [MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
 
+If you're unfortunate enough to be using MySQL with the default MyISAM
+storage engine, you'll have to specify the join condition manually,
+since MyISAM does not store foreign keys.  Here's the same join again,
+with the join condition explicitly specified:
+
+    >>> db.join(db.users, db.loans, db.users.c.name==db.loans.c.user_name, isouter=True)
+    <class 'sqlalchemy.ext.sqlsoup.MappedJoin'>
+
 You can compose arbitrarily complex joins by combining Join objects with
 tables or other joins.
 
@@ -156,9 +163,9 @@ and all the columns will be prefixed with their table name:
 Advanced Use
 ============
 
-You can access the SqlSoup's engine attribute to compose SQL directly.
-The engine's <b>execute</b> method corresponds
-to the one of a DBAPI cursor, and returns a ResultProxy that has <b>fetch</b> methods
+You can access the SqlSoup's ``engine`` attribute to compose SQL directly.
+The engine's ``execute`` method corresponds
+to the one of a DBAPI cursor, and returns a ``ResultProxy`` that has ``fetch`` methods
 you would also see on a cursor.
 
     >>> rp = db.engine.execute('select name, email from users order by name')
