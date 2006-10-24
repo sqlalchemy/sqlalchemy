@@ -400,11 +400,11 @@ class EagerLoader(AbstractRelationLoader):
         else:
             localparent = parentmapper
         
-        if self in context.recursion_stack:
+        if self.mapper in context.recursion_stack:
             return
         else:
-            context.recursion_stack.add(self)
-            
+            context.recursion_stack.add(self.parent)
+
         statement = context.statement
         
         if hasattr(statement, '_outerjoin'):

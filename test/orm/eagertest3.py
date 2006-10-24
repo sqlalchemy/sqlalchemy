@@ -145,6 +145,59 @@ class EagerTest(AssertMixin):
         print result
         assert result == [u'3 Some Category']
 
+class EagerTest2(AssertMixin):
+    def setUpAll(self):
+        global metadata, middle, left, right
+        metadata = BoundMetaData(testbase.db)
+        middle = Table('middle', metadata,
+            Column('id', Integer, primary_key = True),
+            Column('data', String(50)),
+        )
+
+        left = Table('left', metadata,
+            Column('id', Integer, ForeignKey(middle.c.id), primary_key=True),
+            Column('tag', String(50), primary_key=True),
+        )
+
+        right = Table('right', metadata,
+            Column('id', Integer, ForeignKey(middle.c.id), primary_key=True),
+            Column('tag', String(50), primary_key=True),
+        )
+        metadata.create_all()
+    def tearDownAll(self):
+        metadata.drop_all()
+    def tearDown(self):
+        for t in metadata.table_iterator(reverse=True):
+            t.delete().execute()
+    def testeagerterminate(self):
+        """test that eager query generation does not include the same mapper's table twice.
+        
+        or, that bi-directional eager loads dont include each other in eager query generation."""
+        class Middle(object):
+            def __init__(self, data): self.data = data
+        class Left(object):
+            def __init__(self, data): self.tag = data
+        class Right(object):
+            def __init__(self, data): self.tag = data
+
+        # set up bi-directional eager loads
+        mapper(Left, left)
+        mapper(Right, right)
+        mapper(Middle, middle, properties = {
+            'left': relation(Left, lazy=False, backref=backref('middle',lazy=False)),
+            'right': relation(Right, lazy=False, backref=backref('middle', lazy=False)),
+            }
+        )
+        session = create_session(bind_to=testbase.db)
+        p = Middle('test1')
+        p.left.append(Left('tag1'))
+        p.right.append(Right('tag2'))
+        session.save(p)
+        session.flush()
+        session.clear()
+        obj = session.query(Left).get_by(tag='tag1')
+        print obj.middle.right[0]
+        
         
 if __name__ == "__main__":    
     testbase.main()

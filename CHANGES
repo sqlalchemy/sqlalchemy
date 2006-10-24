@@ -1,3 +1,6 @@
+0.3.1
+- adjustments to reworked eager query generation
+
 0.3.0
 - General:
     - logging is now implemented via standard python "logging" module.
