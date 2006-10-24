@@ -26,8 +26,6 @@ except:
 
 proxies = {}
 
-ERROR_ON_RETURN = False
-
 def manage(module, **params):
     """given a DBAPI2 module and pool management parameters, returns a proxy for the module
     that will automatically pool connections, creating new connection pools for each 
@@ -246,11 +244,6 @@ class _ConnectionFairy(object):
                 # damn mysql -- (todo look for NotSupportedError)
                 pass
         if self._connection_record is not None:
-            global ERROR_ON_RETURN
-            if ERROR_ON_RETURN:
-                ERROR_ON_RETURN=False
-                raise "hi"
-                
             if self.__pool.echo:
                 self.__pool.log("Connection %s being returned to pool" % repr(self.connection))
             self.__pool.return_conn(self)
