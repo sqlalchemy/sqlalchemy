@@ -8,10 +8,10 @@
 """bridges the PropertyLoader (i.e. a relation()) and the UOWTransaction 
 together to allow processing of scalar- and list-based dependencies at flush time."""
 
-import sync
-from sync import ONETOMANY,MANYTOONE,MANYTOMANY
+from sqlalchemy.orm import sync
+from sqlalchemy.orm.sync import ONETOMANY,MANYTOONE,MANYTOMANY
 from sqlalchemy import sql, util
-import session as sessionlib
+from sqlalchemy.orm import session as sessionlib
 
 def create_dependency_processor(prop):
     types = {

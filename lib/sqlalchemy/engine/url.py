@@ -1,7 +1,7 @@
 import re
 import cgi
 import urllib
-import sqlalchemy.exceptions as exceptions
+from sqlalchemy import exceptions
 
 """provides the URL object as well as the make_url parsing function."""
 

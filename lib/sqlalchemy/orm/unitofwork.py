@@ -15,8 +15,8 @@ dirty, or deleted and provides the capability to flush all those changes at once
 """
 
 from sqlalchemy import util, logging, topological
-import sqlalchemy
-import attributes
+from sqlalchemy.orm import attributes
+from sqlalchemy.orm.mapper import object_mapper, class_mapper
 from sqlalchemy.exceptions import *
 import StringIO
 import weakref
@@ -842,12 +842,6 @@ class UOWExecutor(object):
 
 class DependencySorter(topological.QueueDependencySorter):
     pass
-
-def object_mapper(obj):
-    return sqlalchemy.object_mapper(obj)
-
-def class_mapper(class_):
-    return sqlalchemy.class_mapper(class_)
 
 attribute_manager = UOWAttributeManager()
 

@@ -8,17 +8,16 @@
 the mapper package provides object-relational functionality, building upon the schema and sql
 packages and tying operations to class properties and constructors.
 """
-from sqlalchemy import sql, schema, engine, util, exceptions
-from mapper import *
-from mapper import mapper_registry
-import mapper as mapperlib
-from query import Query
-from util import polymorphic_union
-import properties, strategies
-from session import Session as create_session
+from sqlalchemy import exceptions
+from sqlalchemy.orm.mapper import *
+from sqlalchemy.orm.mapper import mapper_registry, ExtensionOption
+from sqlalchemy.orm.query import Query
+from sqlalchemy.orm.util import polymorphic_union
+from sqlalchemy.orm import properties, strategies
+from sqlalchemy.orm.session import Session as create_session
 
 __all__ = ['relation', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer', 'extension', 
-        'mapper', 'clear_mappers', 'clear_mapper', 'sql', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query', 
+        'mapper', 'clear_mappers', 'clear_mapper', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query', 
         'cascade_mappers', 'polymorphic_union', 'create_session', 'synonym', 'contains_eager', 'EXT_PASS'
         ]
 
@@ -78,7 +77,7 @@ def extension(ext):
     beginning of the list of extensions that will be called in the context of the Query.
     
     used with query.options()."""
-    return mapperlib.ExtensionOption(ext)
+    return ExtensionOption(ext)
     
 def eagerload(name):
     """return a MapperOption that will convert the property of the given name

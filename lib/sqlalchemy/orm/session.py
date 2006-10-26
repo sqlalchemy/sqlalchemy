@@ -5,7 +5,9 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from sqlalchemy import util, exceptions, sql
-import unitofwork, query
+from sqlalchemy.orm import unitofwork, query
+from sqlalchemy.orm.mapper import object_mapper as _object_mapper
+from sqlalchemy.orm.mapper import class_mapper as _class_mapper
 import weakref
 import sqlalchemy
 
@@ -429,11 +431,6 @@ class Session(object):
         """deprecated; a synynom for merge()"""
         return self.merge(*args, **kwargs)
 
-def _object_mapper(obj):
-    return sqlalchemy.orm.object_mapper(obj)
-
-def _class_mapper(class_, **kwargs):
-    return sqlalchemy.orm.class_mapper(class_, **kwargs)
 
 # this is the AttributeManager instance used to provide attribute behavior on objects.
 # to all the "global variable police" out there:  its a stateless object.
@@ -453,4 +450,5 @@ def object_session(obj):
     return None
 
 unitofwork.object_session = object_session
-
+from sqlalchemy.orm import mapper
+mapper.attribute_manager = attribute_manager

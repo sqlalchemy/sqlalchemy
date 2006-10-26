@@ -32,7 +32,7 @@ realized this characteristic of the algorithm.
 """
 import string, StringIO
 from sets import *
-import sqlalchemy.util as util
+from sqlalchemy import util
 from sqlalchemy.exceptions import *
 
 class QueueDependencySorter(object):

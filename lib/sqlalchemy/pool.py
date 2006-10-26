@@ -17,7 +17,7 @@ except:
     import pickle
     
 from sqlalchemy import util, exceptions, logging
-import sqlalchemy.queue as Queue
+from sqlalchemy import queue as Queue
 
 try:
     import thread

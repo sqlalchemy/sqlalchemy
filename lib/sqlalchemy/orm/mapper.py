@@ -6,11 +6,9 @@
 
 from sqlalchemy import sql, schema, util, exceptions, logging
 from sqlalchemy import sql_util as sqlutil
-import util as mapperutil
-import sync
-from interfaces import MapperProperty, MapperOption, OperationContext
-import query as querylib
-import session as sessionlib
+from sqlalchemy.orm import util as mapperutil
+from sqlalchemy.orm import sync
+from sqlalchemy.orm.interfaces import MapperProperty, MapperOption, OperationContext
 import weakref
 
 __all__ = ['Mapper', 'MapperExtension', 'class_mapper', 'object_mapper', 'EXT_PASS']
@@ -516,7 +514,7 @@ class Mapper(object):
         if not self.non_primary and (mapper_registry.has_key(self.class_key)):
              raise exceptions.ArgumentError("Class '%s' already has a primary mapper defined with entity name '%s'.  Use non_primary=True to create a non primary Mapper, or to create a new primary mapper, remove this mapper first via sqlalchemy.orm.clear_mapper(mapper), or preferably sqlalchemy.orm.clear_mappers() to clear all mappers." % (self.class_, self.entity_name))
 
-        sessionlib.attribute_manager.reset_class_managed(self.class_)
+        attribute_manager.reset_class_managed(self.class_)
     
         oldinit = self.class_.__init__
         def init(self, *args, **kwargs):
@@ -527,7 +525,7 @@ class Mapper(object):
 
                 # this gets the AttributeManager to do some pre-initialization,
                 # in order to save on KeyErrors later on
-                sessionlib.attribute_manager.init_attr(self)
+                attribute_manager.init_attr(self)
 
             if kwargs.has_key('_sa_session'):
                 session = kwargs.pop('_sa_session')
@@ -714,7 +712,8 @@ class Mapper(object):
     
     def instances(self, cursor, session, *mappers, **kwargs):
         """return a list of mapped instances corresponding to the rows in a given ResultProxy."""
-        return querylib.Query(self, session).instances(cursor, *mappers, **kwargs)
+        import sqlalchemy.orm.query
+        return sqlalchemy.orm.Query(self, session).instances(cursor, *mappers, **kwargs)
 
     def identity_key_from_row(self, row):
         """return an identity-map key for use in storing/retrieving an item from the identity map.
@@ -1186,7 +1185,7 @@ class Mapper(object):
         
         # this gets the AttributeManager to do some pre-initialization,
         # in order to save on KeyErrors later on
-        sessionlib.attribute_manager.init_attr(obj)
+        attribute_manager.init_attr(obj)
 
         return obj
 

@@ -14,7 +14,7 @@ import sqlalchemy.schema as schema
 import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
 import sqlalchemy.exceptions as exceptions
-import information_schema as ischema
+from sqlalchemy.databases import information_schema as ischema
 from sqlalchemy import * 
 import re
 

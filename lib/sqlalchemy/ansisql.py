@@ -8,7 +8,7 @@
 in the sql module."""
 
 from sqlalchemy import schema, sql, engine, util, sql_util
-import sqlalchemy.engine.default as default
+from  sqlalchemy.engine import default
 import string, re, sets, weakref
 
 ANSI_FUNCS = sets.ImmutableSet([

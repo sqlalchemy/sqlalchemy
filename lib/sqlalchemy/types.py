@@ -11,8 +11,7 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'NullTypeEngine',
         'SMALLINT', 'DATE', 'TIME'
             ]
 
-import sqlalchemy.util as util
-import sqlalchemy.exceptions as exceptions
+from sqlalchemy import util, exceptions
 try:
     import cPickle as pickle
 except:

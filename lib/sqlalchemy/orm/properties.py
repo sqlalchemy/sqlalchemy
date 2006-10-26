@@ -10,15 +10,11 @@ module to handle load operations.  PropertyLoader also relies upon the dependenc
 to handle flush-time dependency sorting and processing."""
 
 from sqlalchemy import sql, schema, util, exceptions, sql_util, logging
-import mapper
-import sync
-import strategies
-import attributes
-import session as sessionlib
-import dependency
-import util as mapperutil
+from sqlalchemy.orm import mapper, sync, strategies, attributes, dependency
+from sqlalchemy.orm import session as sessionlib
+from sqlalchemy.orm import util as mapperutil
 import sets, random
-from interfaces import *
+from sqlalchemy.orm.interfaces import *
 
 
 class SynonymProperty(MapperProperty):

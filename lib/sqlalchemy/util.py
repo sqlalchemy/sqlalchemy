@@ -11,7 +11,7 @@ except ImportError:
     import dummy_thread as thread
     import dummy_threading as threading
 
-from exceptions import *
+from sqlalchemy.exceptions import *
 import __builtin__
 
 try:

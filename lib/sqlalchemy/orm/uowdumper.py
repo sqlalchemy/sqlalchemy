@@ -1,4 +1,4 @@
-import unitofwork
+from sqlalchemy.orm import unitofwork
 
 """dumps out a string representation of a UOWTask structure"""
 

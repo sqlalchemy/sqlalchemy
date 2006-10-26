@@ -4,9 +4,9 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from types import *
-from sql import *
-from schema import *
+from sqlalchemy.types import *
+from sqlalchemy.sql import *
+from sqlalchemy.schema import *
 from sqlalchemy.orm import *
 
 from sqlalchemy.engine import create_engine

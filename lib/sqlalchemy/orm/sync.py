@@ -6,11 +6,9 @@
 
 
 
-import sqlalchemy.sql as sql
-import sqlalchemy.schema as schema
-import sqlalchemy.exceptions as exceptions
+from sqlalchemy import sql, schema, exceptions
 from sqlalchemy import logging
-import util as mapperutil
+from sqlalchemy.orm import util as mapperutil
 
 """contains the ClauseSynchronizer class, which is used to map attributes between two objects
 in a manner corresponding to a SQL clause that compares column values."""

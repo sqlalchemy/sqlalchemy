@@ -4,11 +4,9 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import session as sessionlib
 from sqlalchemy import sql, util, exceptions, sql_util, logging
-
-import mapper
-from interfaces import OperationContext
+from sqlalchemy.orm import mapper
+from sqlalchemy.orm.interfaces import OperationContext
 
 __all__ = ['Query', 'QueryContext', 'SelectionContext']
 

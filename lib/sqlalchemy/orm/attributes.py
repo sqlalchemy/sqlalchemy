@@ -5,9 +5,9 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from sqlalchemy import util
-import util as orm_util
-import weakref
+from sqlalchemy.orm import util as orm_util
 from sqlalchemy import logging
+import weakref
 
 class InstrumentedAttribute(object):
     """a property object that instruments attribute access on object instances.  All methods correspond to 

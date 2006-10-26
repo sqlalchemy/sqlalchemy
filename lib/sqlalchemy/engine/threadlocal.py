@@ -1,6 +1,6 @@
 from sqlalchemy import schema, exceptions, util, sql, types
 import StringIO, sys, re
-import base, default
+from sqlalchemy.engine import base, default
 
 """provides a thread-local transactional wrapper around the basic ComposedSQLEngine.  multiple calls to engine.connect()
 will return the same connection for the same thread. also provides begin/commit methods on the engine itself

@@ -4,8 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import sqlalchemy.util as util
-import sqlalchemy.sql as sql
+from sqlalchemy import sql, util
 
 class CascadeOptions(object):
     """keeps track of the options sent to relation().cascade"""
