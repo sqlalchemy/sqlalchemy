@@ -346,9 +346,9 @@ def runTests(suite):
     sys.stdout = Logger()    
     runner = unittest.TextTestRunner(verbosity = quiet and 1 or 2)
     if with_coverage:
-        cover(lambda:runner.run(suite))
+        return cover(lambda:runner.run(suite))
     else:
-        runner.run(suite)
+        return runner.run(suite)
 
 def covered_files():
     for rec in os.walk(os.path.dirname(sqlalchemy.__file__)):                          
@@ -364,7 +364,7 @@ def cover(callable_):
     coverage_client.erase()
     coverage_client.start()
     try:
-        callable_()
+        return callable_()
     finally:
         global echo
         echo=True
@@ -379,6 +379,7 @@ def main():
     else:
         suite = unittest.TestLoader().loadTestsFromModule(__import__('__main__'))
 
-    runTests(suite)
+    result = runTests(suite)
+    sys.exit(not result.wasSuccessful())
 
 
