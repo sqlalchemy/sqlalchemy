@@ -315,6 +315,9 @@ class Mapper(object):
                 self.inherits = self.inherits._do_compile()
             if not issubclass(self.class_, self.inherits.class_):
                 raise exceptions.ArgumentError("Class '%s' does not inherit from '%s'" % (self.class_.__name__, self.inherits.class_.__name__))
+            if self._is_primary_mapper() != self.inherits._is_primary_mapper():
+                np = self._is_primary_mapper() and "primary" or "non-primary"
+                raise exceptions.ArgumentError("Inheritance of %s mapper for class '%s' is only allowed from a %s mapper" % (np, self.class_.__name__, np))
             # inherit_condition is optional.
             if self.local_table is None:
                 self.local_table = self.inherits.local_table
