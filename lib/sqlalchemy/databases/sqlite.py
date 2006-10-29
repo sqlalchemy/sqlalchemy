@@ -85,6 +85,8 @@ class SLBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "BOOLEAN"
     def convert_bind_param(self, value, dialect):
+        if value is None:
+            return None
         return value and 1 or 0
     def convert_result_value(self, value, dialect):
         if value is None:

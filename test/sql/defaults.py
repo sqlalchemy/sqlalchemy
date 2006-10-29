@@ -63,7 +63,10 @@ class DefaultTest(PersistTest):
             Column('col5', deftype, PassiveDefault(def2)),
             
             # preexecute + update timestamp
-            Column('col6', Date, default=currenttime, onupdate=currenttime)
+            Column('col6', Date, default=currenttime, onupdate=currenttime),
+            
+            Column('boolcol1', Boolean, default=True),
+            Column('boolcol2', Boolean, default=False)
         )
         t.create()
 
@@ -93,7 +96,7 @@ class DefaultTest(PersistTest):
         ctexec = currenttime.scalar()
         self.echo("Currenttime "+ repr(ctexec))
         l = t.select().execute()
-        self.assert_(l.fetchall() == [(51, 'imthedefault', f, ts, ts, ctexec), (52, 'imthedefault', f, ts, ts, ctexec), (53, 'imthedefault', f, ts, ts, ctexec)])
+        self.assert_(l.fetchall() == [(51, 'imthedefault', f, ts, ts, ctexec, True, False), (52, 'imthedefault', f, ts, ts, ctexec, True, False), (53, 'imthedefault', f, ts, ts, ctexec, True, False)])
 
     def testinsertvalues(self):
         t.insert(values={'col3':50}).execute()
@@ -109,7 +112,7 @@ class DefaultTest(PersistTest):
         self.echo("Currenttime "+ repr(ctexec))
         l = t.select(t.c.col1==pk).execute()
         l = l.fetchone()
-        self.assert_(l == (pk, 'im the update', f2, None, None, ctexec))
+        self.assert_(l == (pk, 'im the update', f2, None, None, ctexec, True, False))
         # mysql/other db's return 0 or 1 for count(1)
         self.assert_(14 <= f2 <= 15)
 
