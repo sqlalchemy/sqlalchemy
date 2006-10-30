@@ -7,6 +7,7 @@ loaded already.  this can be turned off (i.e. the old behavior) by setting
 passive_deletes=True on a relation().
 - MySQL catches exception on "describe" and reports as NoSuchTableError
 - further fixes to sqlite booleans, weren't working as defaults
+- fix to postgres sequence quoting when using schemas
 
 0.3.0
 - General:
