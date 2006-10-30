@@ -2,7 +2,7 @@ from testbase import PersistTest, AssertMixin
 import testbase
 import pickleable
 from sqlalchemy import *
-import string,datetime, re, sys
+import string,datetime, re, sys, os
 import sqlalchemy.engine.url as url
 
 import sqlalchemy.types
@@ -190,10 +190,10 @@ class BinaryTest(AssertMixin):
         testobj1 = pickleable.Foo('im foo 1')
         testobj2 = pickleable.Foo('im foo 2')
 
-        stream1 =self.get_module_stream('sqlalchemy.sql')
-        stream2 =self.get_module_stream('sqlalchemy.schema')
-        binary_table.insert().execute(primary_id=1, misc='sql.pyc',    data=stream1, data_slice=stream1[0:100], pickled=testobj1)
-        binary_table.insert().execute(primary_id=2, misc='schema.pyc', data=stream2, data_slice=stream2[0:99], pickled=testobj2)
+        stream1 =self.load_stream('binary_data_one.dat')
+        stream2 =self.load_stream('binary_data_two.dat')
+        binary_table.insert().execute(primary_id=1, misc='binary_data_one.dat',    data=stream1, data_slice=stream1[0:100], pickled=testobj1)
+        binary_table.insert().execute(primary_id=2, misc='binary_data_two.dat', data=stream2, data_slice=stream2[0:99], pickled=testobj2)
         l = binary_table.select().execute().fetchall()
         print len(stream1), len(l[0]['data']), len(l[0]['data_slice'])
         self.assert_(list(stream1) == list(l[0]['data']))
@@ -202,14 +202,10 @@ class BinaryTest(AssertMixin):
         self.assert_(testobj1 == l[0]['pickled'])
         self.assert_(testobj2 == l[1]['pickled'])
 
-    def get_module_stream(self, name):
-        mod = __import__(name)
-        for token in name.split('.')[1:]:
-            mod = getattr(mod, token)
-        f = mod.__file__
-        f = re.sub('\.py$', '\.pyc', f)
+    def load_stream(self, name):
+        f = os.path.join(os.path.dirname(testbase.__file__), name)
         # put a number less than the typical MySQL default BLOB size
-        return file(f).read(59473)
+        return file(f).read(12579)
         
 class DateTest(AssertMixin):
     def setUpAll(self):
