@@ -212,6 +212,11 @@ Boring tests here.  Nothing of real expository value.
     Traceback (most recent call last):
     ...
     NoSuchTableError: nosuchtable
+
+    >>> years_with_count.insert(published_year='2007', n=1)
+    Traceback (most recent call last):
+    ...
+    InvalidRequestError: SQLSoup can only modify mapped Tables (found: Alias)
 """
 
 from sqlalchemy import *
@@ -282,17 +287,25 @@ class PKNotFoundError(SQLAlchemyError): pass
 
 # metaclass is necessary to expose class methods with getattr, e.g.
 # we want to pass db.users.select through to users._mapper.select
+def _ddl_check(cls):
+    if not isinstance(cls._table, Table):
+        msg = 'SQLSoup can only modify mapped Tables (found: %s)' \
+              % cls._table.__class__.__name__
+        raise InvalidRequestError(msg)
 class TableClassType(type):
     def insert(cls, **kwargs):
+        _ddl_check(cls)
         o = cls()
         o.__dict__.update(kwargs)
         return o
-    def _selectable(cls):
-        return cls._table
     def delete(cls, *args, **kwargs):
+        _ddl_check(cls)
         cls._table.delete(*args, **kwargs).execute()
     def update(cls, whereclause=None, values=None, **kwargs):
+        _ddl_check(cls)
         cls._table.update(whereclause, values).execute(**kwargs)
+    def _selectable(cls):
+        return cls._table
     def __getattr__(cls, attr):
         if attr == '_query':
             # called during mapper init
