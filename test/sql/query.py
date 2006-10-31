@@ -50,7 +50,12 @@ class QueryTest(PersistTest):
         for row in r:
             l.append(row)
         self.assert_(len(l) == 3)
-    
+   
+    def test_compiled_execute(self):
+        s = select([self.users], self.users.c.user_id==bindparam('id')).compile()
+        c = testbase.db.connect()
+        print repr(c.execute(s, id=7).fetchall())
+ 
     def test_global_metadata(self):
         t1 = Table('table1', Column('col1', Integer, primary_key=True),
             Column('col2', String(20)))

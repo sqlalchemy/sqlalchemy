@@ -8,6 +8,7 @@ passive_deletes=True on a relation().
 - MySQL catches exception on "describe" and reports as NoSuchTableError
 - further fixes to sqlite booleans, weren't working as defaults
 - fix to postgres sequence quoting when using schemas
+- fixed direct execution of Compiled objects
 
 0.3.0
 - General:

@@ -299,7 +299,7 @@ class Connection(Connectable):
     # poor man's multimethod/generic function thingy
     executors = {
         sql.ClauseElement : execute_clauseelement,
-        sql.Compiled : execute_compiled,
+        sql.ClauseVisitor : execute_compiled,
         schema.SchemaItem:execute_default,
         str.__mro__[-2] : execute_text
     }
