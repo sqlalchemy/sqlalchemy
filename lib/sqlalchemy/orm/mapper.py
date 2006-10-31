@@ -160,6 +160,7 @@ class Mapper(object):
         # "polymorphic identity" of the row, which indicates which Mapper should be used
         # to construct a new object instance from that row.
         self.polymorphic_on = polymorphic_on
+        self._eager_loaders = util.Set()
         
         # our 'polymorphic identity', a string name that when located in a result set row
         # indicates this Mapper should be used to construct the object instance for that row.
@@ -711,7 +712,7 @@ class Mapper(object):
     
     def has_eager(self):
         """return True if one of the properties attached to this Mapper is eager loading"""
-        return getattr(self, '_has_eager', False)
+        return len(self._eager_loaders) > 0
     
     def instances(self, cursor, session, *mappers, **kwargs):
         """return a list of mapped instances corresponding to the rows in a given ResultProxy."""

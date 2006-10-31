@@ -289,7 +289,7 @@ class EagerLoader(AbstractRelationLoader):
         super(EagerLoader, self).init()
         if self.parent.isa(self.mapper):
             raise exceptions.ArgumentError("Error creating eager relationship '%s' on parent class '%s' to child class '%s': Cant use eager loading on a self referential relationship." % (self.key, repr(self.parent.class_), repr(self.mapper.class_)))
-        self.parent._has_eager = True
+        self.parent._eager_loaders.add(self.parent_property)
 
         self.clauses = {}
         self.clauses_by_lead_mapper = {}
@@ -518,6 +518,13 @@ class EagerLazyOption(StrategizedOption):
     def __init__(self, key, lazy=True):
         super(EagerLazyOption, self).__init__(key)
         self.lazy = lazy
+    def process_query_property(self, context, prop):
+        if self.lazy:
+            if prop in context.eager_loaders:
+                context.eager_loaders.remove(prop)
+        else:
+            context.eager_loaders.add(prop)
+        super(EagerLazyOption, self).process_query_property(context, prop)
     def get_strategy_class(self):
         if self.lazy:
             return LazyLoader

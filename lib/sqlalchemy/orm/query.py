@@ -374,7 +374,7 @@ class Query(object):
         generated query as a subquery inside of a larger eager-loading query.  this is used
         with keywords like distinct, limit and offset and the mapper defines eager loads."""
         return (
-            self.mapper.has_eager()
+            len(querycontext.eager_loaders) > 0
             and self._nestable(**querycontext.select_args())
         )
 
@@ -473,6 +473,7 @@ class QueryContext(OperationContext):
         self.distinct = kwargs.pop('distinct', False)
         self.limit = kwargs.pop('limit', None)
         self.offset = kwargs.pop('offset', None)
+        self.eager_loaders = util.Set([x for x in query.mapper._eager_loaders])
         self.statement = None
         super(QueryContext, self).__init__(query.mapper, query.with_options, **kwargs)
     def select_args(self):

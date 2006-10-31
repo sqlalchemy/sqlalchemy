@@ -382,6 +382,30 @@ class MapperTest(MapperSuperTest):
             self.assert_result(l, User, *user_address_result)
         self.assert_sql_count(db, go, 0)
 
+    def testeageroptionswithlimit(self):
+        sess = create_session()
+        mapper(User, users, properties = dict(
+            addresses = relation(mapper(Address, addresses), lazy = True)
+        ))
+        u = sess.query(User).options(eagerload('addresses')).get_by(user_id=8)
+
+        def go():
+            assert u.user_id == 8
+            assert len(u.addresses) == 3
+        self.assert_sql_count(db, go, 0)
+
+    def testlazyoptionswithlimit(self):
+        sess = create_session()
+        mapper(User, users, properties = dict(
+            addresses = relation(mapper(Address, addresses), lazy = False)
+        ))
+        u = sess.query(User).options(lazyload('addresses')).get_by(user_id=8)
+
+        def go():
+            assert u.user_id == 8
+            assert len(u.addresses) == 3
+        self.assert_sql_count(db, go, 1)
+
     def testeagerdegrade(self):
         """tests that an eager relation automatically degrades to a lazy relation if eager columns are not available"""
         sess = create_session()

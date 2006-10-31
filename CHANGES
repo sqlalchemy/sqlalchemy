@@ -9,6 +9,9 @@ passive_deletes=True on a relation().
 - further fixes to sqlite booleans, weren't working as defaults
 - fix to postgres sequence quoting when using schemas
 - fixed direct execution of Compiled objects
+- fixed bug where eagerload() (nor lazyload()) option didn't properly
+instruct the Query whether or not to use "nesting" when producing a
+LIMIT query.
 
 0.3.0
 - General:
