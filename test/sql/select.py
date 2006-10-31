@@ -314,6 +314,11 @@ WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid =
         s.append_from("table1")
         self.runtest(s, "SELECT column1, column2 FROM table1 WHERE column1=12 AND column2=19 ORDER BY column1")
 
+    def testtextcolumns(self):
+        self.runtest(
+            select(["column1", "column2"], from_obj=[table1]).alias('somealias').select(),
+            "SELECT somealias.column1, somealias.column2 FROM (SELECT column1, column2 FROM mytable) AS somealias"
+        )
     def testtextbinds(self):
         self.runtest(
             text("select * from foo where lala=:bar and hoho=:whee"), 
