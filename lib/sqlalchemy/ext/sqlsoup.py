@@ -52,7 +52,7 @@ Of course, you don't want to load all users very often.  Let's add a WHERE claus
 Let's also switch the order_by to DESC while we're at it.
 
     >>> from sqlalchemy import or_, and_, desc
-	>>> where = or_(db.users.c.name=='Bhargan Basepair', db.users.c.email=='student@example.edu')
+    >>> where = or_(db.users.c.name=='Bhargan Basepair', db.users.c.email=='student@example.edu')
     >>> db.users.select(where, order_by=[desc(db.users.c.name)])
     [MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0), MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)]
 
@@ -147,14 +147,14 @@ with the join condition explicitly specified:
     <class 'sqlalchemy.ext.sqlsoup.MappedJoin'>
 
 You can compose arbitrarily complex joins by combining Join objects with
-tables or other joins.
+tables or other joins.  Here we combine our first join with the books table:
 
     >>> join2 = db.join(join1, db.books)
     >>> join2.select()
     [MappedJoin(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0,book_id=1,user_name='Joe Student',loan_date=datetime.datetime(2006, 7, 12, 0, 0),id=1,title='Mustards I Have Known',published_year='1989',authors='Jones')]
 
 If you join tables that have an identical column name, wrap your join with "with_labels",
-and all the columns will be prefixed with their table name:
+to disambiguate columns with their table name:
 
     >>> db.with_labels(join1).select()
     [MappedUsersLoansJoin(users_name='Joe Student',users_email='student@example.edu',users_password='student',users_classname=None,users_admin=0,loans_book_id=1,loans_user_name='Joe Student',loans_loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
@@ -162,6 +162,25 @@ and all the columns will be prefixed with their table name:
 
 Advanced Use
 ============
+
+Mapping arbitrary Selectables
+-----------------------------
+
+SqlSoup can map any SQLAlchemy Selectable with the map method.  Let's map a Select object that uses an aggregate function; we'll use the SQLAlchemy Table that SqlSoup introspected as the basis.  (Since we're not mapping to a simple table or join, we need to tell SQLAlchemy how to find the "primary key," which just needs to be unique within the select, and not necessarily correspond to a "real" PK in the database.)
+
+    >>> from sqlalchemy import select, func
+    >>> b = db.books._table
+    >>> s = select([b.c.published_year, func.count('*').label('n')], from_obj=[b], group_by=[b.c.published_year])
+    >>> s = s.alias('years_with_count')
+    >>> years_with_count = db.map(s, primary_key=[s.c.published_year])
+    >>> years_with_count.select_by(published_year='1989')
+    [MappedBooks(published_year='1989',n=1)]
+    
+Obviously if we just wanted to get a list of counts associated with book years once, raw SQL is going to be less work.  The advantage of mapping a Select is reusability, both standalone and in Joins.  (And if you go to full SQLAlchemy, you can perform mappings like this directly to your object models.)
+
+
+Raw SQL
+-------
 
 You can access the SqlSoup's ``engine`` attribute to compose SQL directly.
 The engine's ``execute`` method corresponds
@@ -292,7 +311,9 @@ def _selectable_name(selectable):
     if isinstance(selectable, sql.Alias):
         return _selectable_name(selectable.selectable)
     elif isinstance(selectable, sql.Select):
-        return ''.join([_selectable_name(s) for s in selectable._froms])
+        # sometimes a Select has itself in _froms
+        nonrecursive_froms = [s for s in selectable._froms if s is not selectable]
+        return ''.join([_selectable_name(s) for s in nonrecursive_froms])
     elif isinstance(selectable, schema.Table):
         return selectable.name.capitalize()
     else:
@@ -301,7 +322,7 @@ def _selectable_name(selectable):
             x = x[1:]
         return x
 
-def class_for_table(selectable):
+def class_for_table(selectable, **mapper_kwargs):
     if not hasattr(selectable, '_selectable') \
     or selectable._selectable() != selectable:
         raise 'class_for_table requires a selectable as its argument'
@@ -332,7 +353,8 @@ def class_for_table(selectable):
     klass._mapper = mapper(klass,
                            selectable,
                            extension=objectstore.mapper_extension,
-                           allow_null_pks=_is_outer_join(selectable))
+                           allow_null_pks=_is_outer_join(selectable),
+                           **mapper_kwargs)
     klass._query = Query(klass._mapper)
     return klass
 
@@ -362,19 +384,19 @@ class SqlSoup:
         objectstore.get_session().flush()
     def rollback(self):
         objectstore.clear()
-    def _map(self, selectable):
+    def map(self, selectable, **kwargs):
         try:
             t = self._cache[selectable]
         except KeyError:
-            t = class_for_table(selectable)
+            t = class_for_table(selectable, **kwargs)
             self._cache[selectable] = t
         return t
     def with_labels(self, item):
         # TODO give meaningful aliases
-        return self._map(item._selectable().select(use_labels=True).alias('foo'))
+        return self.map(item._selectable().select(use_labels=True).alias('foo'))
     def join(self, *args, **kwargs):
         j = join(*args, **kwargs)
-        return self._map(j)
+        return self.map(j)
     def __getattr__(self, attr):
         try:
             t = self._cache[attr]
