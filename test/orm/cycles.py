@@ -7,11 +7,9 @@ import testbase
 from tables import *
 import tables
 
-# TODO: need assertion conditions in this suite
+"""test cyclical mapper relationships.  Many of the assertions are provided
+via running with postgres, which is strict about foreign keys."""
 
-
-"""test cyclical mapper relationships.  No assertions yet, but run it with postgres and the 
-foreign key checks alone will usually not work if something is wrong"""
 class Tester(object):
     def __init__(self, data=None):
         self.data = data
@@ -54,6 +52,31 @@ class SelfReferentialTest(AssertMixin):
         sess.flush()
         sess.delete(a)
         sess.flush()
+    
+    def testmanytooneonly(self):
+        """test that the circular dependency sort can assemble a many-to-one dependency processor
+        when only the object on the "many" side is actually in the list of modified objects.
+        this requires that the circular sort add the other side of the relation into the UOWTransaction
+        so that the dependency operation can be tacked onto it.
+        
+        This also affects inheritance relationships since they rely upon circular sort as well.
+        """
+        class C1(Tester):
+            pass
+        mapper(C1, t1, properties={
+            'parent':relation(C1, primaryjoin=t1.c.parent_c1==t1.c.c1, foreignkey=t1.c.c1)
+        })
+        sess = create_session()
+        c1 = C1()
+        sess.save(c1)
+        sess.flush()
+        sess.clear()
+        c1 = sess.query(C1).get(c1.c1)
+        c2 = C1()
+        c2.parent = c1
+        sess.save(c2)
+        sess.flush()
+        assert c2.parent_c1==c1.c1
         
     def testcycle(self):
         class C1(Tester):
@@ -95,6 +118,68 @@ class SelfReferentialTest(AssertMixin):
             assert False
         except exceptions.ArgumentError:
             assert True
+            
+class InheritTestOne(AssertMixin):
+    def setUpAll(self):
+        global parent, child1, child2, meta
+        meta = BoundMetaData(testbase.db)
+        parent = Table("parent", meta,
+            Column("id", Integer, primary_key=True),
+            Column("parent_data", String(50)),
+            Column("type", String(10))
+            )
+
+        child1 = Table("child1", meta,
+            Column("id", Integer, ForeignKey("parent.id"), primary_key=True),
+            Column("child1_data", String(50))
+            )
+
+        child2 = Table("child2", meta,
+            Column("id", Integer, ForeignKey("parent.id"), primary_key=True),
+            Column("child1_id", Integer, ForeignKey("child1.id"), nullable=False),
+            Column("child2_data", String(50))
+            )
+        meta.create_all()
+    def tearDownAll(self):
+        meta.drop_all()
+    def testmanytooneonly(self):
+        """test similar to SelfReferentialTest.testmanytooneonly"""
+        class Parent(object):
+                pass
+
+        mapper(Parent, parent)
+
+        class Child1(Parent):
+                pass
+
+        mapper(Child1, child1, inherits=Parent)
+
+        class Child2(Parent):
+                pass
+
+        mapper(Child2, child2, properties={
+                        "child1": relation(Child1,
+                                primaryjoin=child2.c.child1_id==child1.c.id,
+                        )
+                },inherits=Parent)
+
+        session = create_session()
+
+        c1 = Child1()
+        c1.child1_data = "qwerty"
+        session.save(c1)
+        session.flush()
+        session.clear()
+
+        c1 = session.query(Child1).get_by(child1_data="qwerty")
+        c2 = Child2()
+        c2.child1 = c1
+        c2.child2_data = "asdfgh"
+        session.save(c2)
+        # the flush will fail if the UOW does not set up a many-to-one DP 
+        # attached to a task corresponding to c1, since "child1_id" is not nullable
+        session.flush()
+        
 class BiDirectionalOneToManyTest(AssertMixin):
     """tests two mappers with a one-to-many relation to each other."""
     def setUpAll(self):

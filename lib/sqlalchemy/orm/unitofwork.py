@@ -286,7 +286,8 @@ class UOWTransaction(object):
         # when the task from "mapper" executes, take the objects from the task corresponding
         # to "mapperfrom"'s list of save/delete objects, and send them to "processor"
         # for dependency processing
-        #print "registerprocessor", str(mapper), repr(processor.key), str(mapperfrom)
+        
+        #print "registerprocessor", str(mapper), repr(processor), repr(processor.key), str(mapperfrom)
         
         # correct for primary mapper (the mapper offcially associated with the class)
         mapper = mapper.primary_mapper()
@@ -589,15 +590,11 @@ class UOWTask(object):
                 for taskelement in task.get_elements(polymorphic=False):
                     obj = taskelement.obj
                     object_to_original_task[obj] = task
-                    #print "OBJ", repr(obj), "TASK", repr(task)
 
                     for dep in deps_by_targettask.get(task, []):
                         # is this dependency involved in one of the cycles ?
-                        #print "DEP iterate", dep.processor.key, dep.processor.parent, dep.processor.mapper
                         if not dependency_in_cycles(dep):
-                            #print "NOT IN CYCLE"
                             continue
-                        #print "DEP", dep.processor.key    
                         (processor, targettask) = (dep.processor, dep.targettask)
                         isdelete = taskelement.isdelete
 
@@ -611,13 +608,26 @@ class UOWTask(object):
                         childlist = childlist.added_items() + childlist.unchanged_items() + childlist.deleted_items()
 
                         for o in childlist:
-                            if o is None or not childtask.contains_object(o, polymorphic=True):
+
+                            # other object is None.  this can occur if the relationship is many-to-one
+                            # or one-to-one, and None was set.  the "removed" object will be picked
+                            # up in this iteration via the deleted_items() part of the collection.
+                            if o is None:
                                 continue
-                            #print "parent/child", obj, o
+
+                            # the other object is not in the UOWTransaction !  but if we are many-to-one,
+                            # we need a task in order to attach dependency operations, so establish a "listonly"
+                            # task
+                            if not childtask.contains_object(o, polymorphic=True):
+                                childtask.append(o, listonly=True)
+                                object_to_original_task[o] = childtask
+
+                            # create a tuple representing the "parent/child"
                             whosdep = dep.whose_dependent_on_who(obj, o)
-                            #print "WHOSEDEP", dep.processor.key, dep.processor.direction, whosdep
                             if whosdep is not None:
+                                # append the tuple to the partial ordering.
                                 tuples.append(whosdep)
+
                                 # create a UOWDependencyProcessor representing this pair of objects.
                                 # append it to a UOWTask
                                 if whosdep[0] is obj:
@@ -637,7 +647,6 @@ class UOWTask(object):
         # create a tree of UOWTasks corresponding to the tree of object instances
         # created by the DependencySorter
         def make_task_tree(node, parenttask, nexttasks):
-            #print "MAKETASKTREE", node.item, parenttask
             originating_task = object_to_original_task[node.item]
             t = nexttasks.get(originating_task, None)
             if t is None:

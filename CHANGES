@@ -12,6 +12,11 @@ passive_deletes=True on a relation().
 - fixed bug where eagerload() (nor lazyload()) option didn't properly
 instruct the Query whether or not to use "nesting" when producing a
 LIMIT query.
+- fixed bug in circular dependency sorting at flush time; if object A
+contained a cyclical many-to-one relationship to object B, and object B 
+was just attached to object A, *but* object B itself wasnt changed,
+the many-to-one synchronize of B's primary key attribute to A's foreign key
+attribute wouldnt occur.  [ticket:360]
 
 0.3.0
 - General:
