@@ -430,13 +430,11 @@ SqlSoup creates mapped classes on the fly from tables, which are automatically r
     >>> from sqlalchemy.ext.sqlsoup import SqlSoup
     >>> soup = SqlSoup('sqlite:///')
 
-    >>> users = soup.users.select()
-    >>> users.sort()
-    >>> users
-    [Class_Users(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1),
-     Class_Users(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0)]
+    >>> db.users.select(order_by=[db.users.c.name])
+    [MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1),
+     MappedUsers(name='Joe Student',email='student@example.edu',password='student',classname=None,admin=0)]
 
-Read more about SqlSoup on [Jonathan Ellis' Blog](http://spyced.blogspot.com/2006/04/introducing-sqlsoup.html).
+Full SqlSoup documentation is on the [SQLAlchemy Wiki](http://www.sqlalchemy.org/trac/wiki/SqlSoup).
 
 ### ProxyEngine
 

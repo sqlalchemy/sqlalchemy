@@ -156,8 +156,8 @@ tables or other joins.  Here we combine our first join with the books table:
 If you join tables that have an identical column name, wrap your join with "with_labels",
 to disambiguate columns with their table name:
 
-    >>> db.with_labels(join1).select()
-    [MappedUsersLoansJoin(users_name='Joe Student',users_email='student@example.edu',users_password='student',users_classname=None,users_admin=0,loans_book_id=1,loans_user_name='Joe Student',loans_loan_date=datetime.datetime(2006, 7, 12, 0, 0))]
+    >>> db.with_labels(join1).c.keys()
+    ['users_name', 'users_email', 'users_password', 'users_classname', 'users_admin', 'loans_book_id', 'loans_user_name', 'loans_loan_date']
 
 
 Advanced Use
