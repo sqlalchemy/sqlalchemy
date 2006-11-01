@@ -1,10 +1,9 @@
-from sqlalchemy import *
-import sqlalchemy.util as util
-import string, sys, time
-
 """a more advanced example of basic_tree.py.  treenodes can now reference their "root" node, and
 introduces a new selection method which selects an entire tree of nodes at once, taking 
 advantage of a custom MapperExtension to assemble incoming nodes into their correct structure."""
+
+from sqlalchemy import *
+from sqlalchemy.util import OrderedDict
 
 engine = create_engine('sqlite:///:memory:', echo=True)
 
@@ -29,7 +28,7 @@ treedata = Table(
 )
 
 
-class NodeList(util.OrderedDict):
+class NodeList(OrderedDict):
     """subclasses OrderedDict to allow usage as a list-based property."""
     def append(self, node):
         self[node.name] = node
@@ -75,7 +74,7 @@ class TreeNode(object):
     def _getstring(self, level, expand = False):
         s = ('  ' * level) + "%s (%s,%s,%s, %d): %s" % (self.name, self.id,self.parent_id,self.root_id, id(self), repr(self.data)) + '\n'
         if expand:
-            s += string.join([n._getstring(level+1, True) for n in self.children.values()], '')
+            s += ''.join([n._getstring(level+1, True) for n in self.children.values()])
         return s
     def print_nodes(self):
         return self._getstring(0, True)
@@ -132,7 +131,7 @@ mapper(TreeNode, trees, properties=dict(
     children=relation(TreeNode, primaryjoin=trees.c.parent_node_id==trees.c.node_id, lazy=None, uselist=True, cascade="delete,save-update", collection_class=NodeList),
     data=relation(mapper(TreeData, treedata, properties=dict(id=treedata.c.data_id)), cascade="delete,delete-orphan,save-update", lazy=False)
     
-), extension = TreeLoader()).compile()
+), extension = TreeLoader())
 
 
 session = create_session()
@@ -159,7 +158,7 @@ print "----------------------------"
 
 session.save(node)
 session.flush()
-#sys.exit()
+
 print "\n\n\n----------------------------"
 print "Tree After Save:"
 print "----------------------------"
