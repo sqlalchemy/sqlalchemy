@@ -1354,7 +1354,7 @@ class _ExtensionCarrier(MapperExtension):
         else:
             return EXT_PASS
     
-class ExtensionOption(MapperExtension):
+class ExtensionOption(MapperOption):
     def __init__(self, ext):
         self.ext = ext
     def process_query(self, query):
