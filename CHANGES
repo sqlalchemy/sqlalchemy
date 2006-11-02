@@ -17,6 +17,8 @@ contained a cyclical many-to-one relationship to object B, and object B
 was just attached to object A, *but* object B itself wasnt changed,
 the many-to-one synchronize of B's primary key attribute to A's foreign key
 attribute wouldnt occur.  [ticket:360]
+- implemented from_obj argument for query.count, improves count function
+on selectresults [ticket:325]
 
 0.3.0
 - General:

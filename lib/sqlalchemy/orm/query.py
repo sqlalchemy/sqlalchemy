@@ -255,10 +255,19 @@ class Query(object):
 
     def count(self, whereclause=None, params=None, **kwargs):
         """given a WHERE criterion, create a SELECT COUNT statement, execute and return the resulting count value."""
+
+        from_obj = kwargs.pop('from_obj', [])
+        alltables = []
+        for l in [sql_util.TableFinder(x) for x in from_obj]:
+            alltables += l
+            
+        if self.table not in alltables:
+            from_obj.append(self.table)
+
         if self._nestable(**kwargs):
-            s = self.table.select(whereclause, **kwargs).alias('getcount').count()
+            s = sql.select([self.table], whereclause, **kwargs).alias('getcount').count()
         else:
-            s = self.table.count(whereclause)
+            s = sql.select([sql.func.count(list(self.table.primary_key)[0])], whereclause, from_obj=from_obj, **kwargs)
         return self.session.scalar(self.mapper, s, params=params)
 
     def select_statement(self, statement, **params):

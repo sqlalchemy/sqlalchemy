@@ -155,6 +155,17 @@ class RelationsTest(AssertMixin):
         x = query.outerjoin_to('orders').outerjoin_to('items').select(or_(tables.Order.c.order_id==None,tables.Item.c.item_id==2))
         print x.compile()
         self.assert_result(list(x), tables.User, *tables.user_result[1:3])
+    def test_outerjointo_count(self):
+        """test the join_to and outerjoin_to functions on SelectResults"""
+        mapper(tables.User, tables.users, properties={
+            'orders':relation(mapper(tables.Order, tables.orders, properties={
+                'items':relation(mapper(tables.Item, tables.orderitems))
+            }))
+        })
+        session = create_session()
+        query = SelectResults(session.query(tables.User))
+        x = query.outerjoin_to('orders').outerjoin_to('items').select(or_(tables.Order.c.order_id==None,tables.Item.c.item_id==2)).count()
+        assert x==2
     def test_from(self):
         mapper(tables.User, tables.users, properties={
             'orders':relation(mapper(tables.Order, tables.orders, properties={
