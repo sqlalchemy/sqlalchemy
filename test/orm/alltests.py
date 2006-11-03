@@ -27,6 +27,7 @@ def suite():
         'orm.inheritance',
         'orm.inheritance2',
         'orm.inheritance3',
+        'orm.single',
         'orm.polymorph'        
         )
     alltests = unittest.TestSuite()

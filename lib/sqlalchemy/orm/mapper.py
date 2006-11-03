@@ -595,13 +595,17 @@ class Mapper(object):
             m = m.inherits
     
     def polymorphic_iterator(self):
-        m = self.base_mapper()
+        """iterates through the collection including this mapper and all descendant mappers.
+        
+        this includes not just the immediately inheriting mappers but all their inheriting mappers as well.
+        
+        To iterate through an entire hierarchy, use mapper.base_mapper().polymorphic_iterator()."""
         def iterate(m):
             yield m
             for mapper in m._inheriting_mappers:
                 for x in iterate(mapper):
                     yield x
-        return iterate(m)
+        return iterate(self)
                 
     def add_properties(self, dict_of_properties):
         """adds the given dictionary of properties to this mapper, using add_property."""
@@ -831,7 +835,7 @@ class Mapper(object):
         updated_objects = util.Set()
         
         table_to_mapper = {}
-        for mapper in self.polymorphic_iterator():
+        for mapper in self.base_mapper().polymorphic_iterator():
             for t in mapper.tables:
                 table_to_mapper.setdefault(t, mapper)
 

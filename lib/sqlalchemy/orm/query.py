@@ -414,7 +414,7 @@ class Query(object):
             raise exceptions.ArgumentError("Unknown lockmode '%s'" % lockmode)
         
         if self.mapper.single and self.mapper.polymorphic_on is not None and self.mapper.polymorphic_identity is not None:
-            whereclause = sql.and_(whereclause, self.mapper.polymorphic_on==self.mapper.polymorphic_identity)
+            whereclause = sql.and_(whereclause, self.mapper.polymorphic_on.in_(*[m.polymorphic_identity for m in self.mapper.polymorphic_iterator()]))
         
         alltables = []
         for l in [sql_util.TableFinder(x) for x in from_obj]:
