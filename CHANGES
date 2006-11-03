@@ -19,6 +19,11 @@ the many-to-one synchronize of B's primary key attribute to A's foreign key
 attribute wouldnt occur.  [ticket:360]
 - implemented from_obj argument for query.count, improves count function
 on selectresults [ticket:325]
+- added an assertion within the "cascade" step of ORM relationships to check
+that the class of object attached to a parent object is appropriate
+(i.e. if A.items stores B objects, raise an error if a C is appended to A.items)
+- new extension sqlalchemy.ext.associationproxy, provides transparent "association object"
+mappings.  new example examples/association/proxied_association.py illustrates.
 
 0.3.0
 - General:

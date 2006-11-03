@@ -1,5 +1,5 @@
 from sqlalchemy import *
-import sys, sets
+import sets
 
 # this example illustrates a polymorphic load of two classes, where each class has a very 
 # different set of properties
@@ -83,7 +83,6 @@ session.save(c)
 
 print session.new
 session.flush()
-#sys.exit()
 session.clear()
 
 c = session.query(Company).get(1)

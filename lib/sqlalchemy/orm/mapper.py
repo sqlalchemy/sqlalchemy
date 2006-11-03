@@ -11,7 +11,7 @@ from sqlalchemy.orm import sync
 from sqlalchemy.orm.interfaces import MapperProperty, MapperOption, OperationContext
 import weakref
 
-__all__ = ['Mapper', 'MapperExtension', 'class_mapper', 'object_mapper', 'EXT_PASS']
+__all__ = ['Mapper', 'MapperExtension', 'class_mapper', 'object_mapper', 'EXT_PASS', 'mapper_registry', 'ExtensionOption']
 
 # a dictionary mapping classes to their primary mappers
 mapper_registry = weakref.WeakKeyDictionary()

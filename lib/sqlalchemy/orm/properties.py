@@ -128,6 +128,8 @@ class PropertyLoader(StrategizedProperty):
         mapper = self.mapper.primary_mapper()
         for c in childlist.added_items() + childlist.deleted_items() + childlist.unchanged_items():
             if c is not None and c not in recursive:
+                if not isinstance(c, self.mapper.class_):
+                    raise exceptions.AssertionError("Attribute '%s' on class '%s' doesn't handle objects of type '%s'" % (self.key, str(self.parent.class_), str(c.__class__)))
                 recursive.add(c)
                 yield c
                 for c2 in mapper.cascade_iterator(type, c, recursive):
@@ -141,6 +143,8 @@ class PropertyLoader(StrategizedProperty):
         passive = type != 'delete' or self.passive_deletes
         for c in sessionlib.attribute_manager.get_as_list(object, self.key, passive=passive):
             if c is not None and c not in recursive:
+                if not isinstance(c, self.mapper.class_):
+                    raise exceptions.AssertionError("Attribute '%s' on class '%s' doesn't handle objects of type '%s'" % (self.key, str(self.parent.class_), str(c.__class__)))
                 recursive.add(c)
                 callable_(c, mapper.entity_name)
                 mapper.cascade_callable(type, c, callable_, recursive)

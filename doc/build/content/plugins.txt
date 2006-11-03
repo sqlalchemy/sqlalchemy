@@ -287,6 +287,86 @@ It should be noted that the `flush()` method on the instance need not be called.
     # commit all changes
     ctx.current.flush()
 
+### associationproxy
+
+**Author:** Mike Bayer<br/>
+**Version:** 0.3.1 or greater
+
+`associationproxy` is used to create a transparent proxy to the associated object in an association relationship, thereby decreasing the verbosity of the pattern in cases where explicit access to the association object is not required.  The association relationship pattern is a richer form of a many-to-many relationship, which is described in [datamapping_association](rel:datamapping_association).  It is strongly recommended to fully understand the association object pattern in its explicit form before using this extension; see the examples in the SQLAlchemy distribution under the directory `examples/association/`.
+
+When dealing with association relationships, the **association object** refers to the object that maps to a row in the association table (i.e. the many-to-many table), while the **associated object** refers to the "endpoint" of the association, i.e. the ultimate object referenced by the parent.  The proxy can return collections of objects attached to association objects, and can also create new association objects given only the associated object.  An example using the Keyword mapping described in the data mapping documentation is as follows:
+
+    {python}
+    from sqlalchemy.ext.associationproxy import AssociationProxy
+    
+    class User(object):
+        pass
+
+    class Keyword(object):
+        def __init__(self, name):
+            self.keyword_name = name
+
+    class Article(object):
+        # create "keywords" proxied association.
+        # the collection is called 'keyword_associations', the endpoint
+        # attribute of each association object is called 'keyword'.  the 
+        # class itself of the association object will be figured out automatically  .
+        keywords = AssociationProxy('keyword_associations', 'keyword')
+
+    class KeywordAssociation(object):
+        pass
+
+    # create mappers normally
+    # note that we set up 'keyword_associations' on Article,
+    # and 'keyword' on KeywordAssociation.
+    mapper(Article, articles_table, properties={
+        'keyword_associations':relation(KeywordAssociation, lazy=False, cascade="all, delete-orphan")
+        }
+    )
+    mapper(KeywordAssociation, itemkeywords_table,
+        primary_key=[itemkeywords_table.c.article_id, itemkeywords_table.c.keyword_id],
+        properties={
+            'keyword' : relation(Keyword, lazy=False), 
+            'user' : relation(User, lazy=False) 
+        }
+    )
+    mapper(User, users_table)
+    mapper(Keyword, keywords_table)
+
+    # now, Keywords can be attached to an Article directly;
+    # KeywordAssociation will be created by the AssociationProxy, and have the 
+    # 'keyword' attribute set to the new Keyword.
+    # note that these KeywordAssociation objects will not have a User attached to them.
+    article = Article()
+    article.keywords.append(Keyword('blue'))
+    article.keywords.append(Keyword('red'))
+    session.save(article)
+    session.flush()
+    
+    # the "keywords" collection also returns the underlying Keyword objects
+    article = session.query(Article).get_by(id=12)
+    for k in article.keywords:
+        print "Keyword:", k.keyword_name
+
+    # the original 'keyword_associations' relation exists normally with no awareness of the proxy
+    article.keyword_associations.append(KeywordAssociation())
+    print [ka for ka in article.keyword_associations]
+    
+Note that the above operations on the `keywords` collection are proxying operations to and from the `keyword_associations` collection, which exists normally and can be accessed directly.  `AssociationProxy` will also detect if the collection is list or scalar based and will configure the proxied property to act the same way.
+
+For the common case where the association object's creation needs to be specified by the application, `AssociationProxy` takes an optional callable `creator()` which takes a single associated object as an argument, and returns a new association object.
+
+    {python}
+    def create_keyword_association(keyword):
+        ka = KeywordAssociation()
+        ka.keyword = keyword
+        return ka
+        
+    class Article(object):
+        # create "keywords" proxied association
+        keywords = AssociationProxy('keyword_associations', 'keyword', creator=create_keyword_association)
+    
+
 ### threadlocal
 
 **Author:**  Mike Bayer and Daniel Miller

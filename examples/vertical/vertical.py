@@ -1,11 +1,10 @@
-from sqlalchemy import *
-import datetime
-import sys
-
 """this example illustrates a "vertical table".  an object is stored with individual attributes 
 represented in distinct database rows.  This allows objects to be created with dynamically changing
 fields that are all persisted in a normalized fashion."""
-            
+
+from sqlalchemy import *
+import datetime
+
 e = BoundMetaData('sqlite://', echo=True)
 
 # this table represents Entity objects.  each Entity gets a row in this table,

@@ -10,7 +10,7 @@ packages and tying operations to class properties and constructors.
 """
 from sqlalchemy import exceptions
 from sqlalchemy.orm.mapper import *
-from sqlalchemy.orm.mapper import mapper_registry, ExtensionOption
+from sqlalchemy.orm import mapper as mapperlib
 from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.util import polymorphic_union
 from sqlalchemy.orm import properties, strategies

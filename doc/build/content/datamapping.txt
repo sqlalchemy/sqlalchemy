@@ -700,7 +700,7 @@ The `relation` function handles a basic many-to-many relationship when you speci
 
 ### Association Object {@name=association}
 
-Many to Many can also be done with an association object, that adds additional information about how two items are related.  In this pattern, the "secondary" option is no longer used; instead, the association object becomes a mapped entity itself, mapped to the association table.  If the association table has no explicit primary key columns defined, you also have to tell the mapper what columns will compose its "primary key", which are typically the two (or more) columns involved in the association.  Also, the relation between the parent and association mapping is typically set up with a cascade of `all, delete-orphan`.  This is to insure that when an association object is removed from its parent collection, it is deleted (otherwise, the unit of work tries to null out one of the foreign key columns, which raises an error condition since that column is also part of its "primary key").
+Many to Many can also be done with an association object, that adds additional information about how two items are related.  In this pattern, the "secondary" option to `relation()` is no longer used; instead, the association object becomes a mapped entity itself, mapped to the association table.  If the association table has no explicit primary key columns defined, you also have to tell the mapper what columns will compose its "primary key", which are typically the two (or more) columns involved in the association.  Also, the relation between the parent and association mapping is typically set up with a cascade of `all, delete-orphan`.  This is to insure that when an association object is removed from its parent collection, it is deleted (otherwise, the unit of work tries to null out one of the foreign key columns, which raises an error condition since that column is also part of its "primary key").
 
     {python}
     from sqlalchemy import *
@@ -812,5 +812,6 @@ Keep in mind that the association object works a little differently from a plain
     
     session.flush()
 
+SQLAlchemy includes an extension module which can be used in some cases to decrease the explicitness of the association object pattern; this extension is described in [plugins_associationproxy](rel:plugins_associationproxy).
 
     
