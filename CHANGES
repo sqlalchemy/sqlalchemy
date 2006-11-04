@@ -26,6 +26,8 @@ that the class of object attached to a parent object is appropriate
 mappings.  new example examples/association/proxied_association.py illustrates.
 - improvement to single table inheritance to load full hierarchies beneath 
 the target class
+- fix to subtle condition in topological sort where a node could appear twice,
+for [ticket:362]
 
 0.3.0
 - General:

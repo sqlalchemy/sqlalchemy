@@ -133,8 +133,9 @@ class QueueDependencySorter(object):
                         lead.cycles.add(edge[1])
                         if n is not None:
                             queue.append(n)
-                            if n is not lead:
-                                n._cyclical = True
+                    for n in lead.cycles:
+                        if n is not lead:
+                            n._cyclical = True
                     # loop through cycle
                     # remove edges from the edge dictionary
                     # install the cycled nodes in the "cycle" list of one of the nodes
