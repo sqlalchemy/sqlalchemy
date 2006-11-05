@@ -179,9 +179,6 @@ class Table(SchemaItem, sql.TableClause):
         autoload=False : the Columns for this table should be reflected from the database.  Usually
         there will be no Column objects in the constructor if this property is set.
         
-        redefine=False : if this Table has already been defined in the application, clear out its columns
-        and redefine with new arguments.
-        
         mustexist=False : indicates that this Table must already have been defined elsewhere in the application,
         else an exception is raised.
         
