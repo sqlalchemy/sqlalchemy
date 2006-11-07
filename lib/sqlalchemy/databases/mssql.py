@@ -237,8 +237,8 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
             for c in compiled.statement.table.c:
                 if hasattr(c,'sequence'):
                     self.HASIDENT = True
-                    if engine.dialect.auto_identity_insert and isinstance(parameters, list):
-                        if parameters[0].has_key(c.name):
+                    if engine.dialect.auto_identity_insert:
+                        if  isinstance(parameters, list) and parameters[0].has_key(c.name):
                             self.IINSERT = True
                         elif parameters.has_key(c.name):
                             self.IINSERT = True
@@ -261,7 +261,9 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
             self.HASIDENT = False
 
 
-class MSSQLDialect(ansisql.ANSIDialect):            
+
+
+class MSSQLDialect(ansisql.ANSIDialect):
     def __init__(self, module=None, auto_identity_insert=False, **params):
         self.module = module or dbmodule
         self.auto_identity_insert = auto_identity_insert
