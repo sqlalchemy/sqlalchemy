@@ -72,7 +72,7 @@ If SQLAlchemy's database connector is aware of a particular query argument, it m
 `create_engine` also takes an argument `connect_args` which is an additional dictionary that will be passed to `connect()`.  This can be used when arguments of a type other than string are required, and SQLAlchemy's database connector has no type conversion logic present for that parameter:
 
     {python}
-    db = create_engine('postgres://scott:tiger@localhost/test', create_args = {'argument1':17, 'argument2':'bar'})
+    db = create_engine('postgres://scott:tiger@localhost/test', connect_args = {'argument1':17, 'argument2':'bar'})
 
 The most customizable connection method of all is to pass a `creator` argument, which specifies a callable that returns a DBAPI connection:
 
