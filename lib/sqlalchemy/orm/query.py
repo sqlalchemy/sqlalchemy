@@ -267,7 +267,8 @@ class Query(object):
         if self._nestable(**kwargs):
             s = sql.select([self.table], whereclause, **kwargs).alias('getcount').count()
         else:
-            s = sql.select([sql.func.count(list(self.table.primary_key)[0])], whereclause, from_obj=from_obj, **kwargs)
+            primary_key = self.mapper.pks_by_table[self.table]
+            s = sql.select([sql.func.count(list(primary_key)[0])], whereclause, from_obj=from_obj, **kwargs)
         return self.session.scalar(self.mapper, s, params=params)
 
     def select_statement(self, statement, **params):
