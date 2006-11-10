@@ -35,7 +35,7 @@ metadata.create_all()
 class Order(object):
     def __init__(self, customer_name):
         self.customer_name = customer_name
-    items = AssociationProxy('itemassociations', 'item', creator=lambda x:OrderItem(x))
+    items = AssociationProxy('itemassociations', 'item', creator=lambda x, **kw:OrderItem(x, **kw))
     
 class Item(object):
     def __init__(self, description, price):
@@ -79,6 +79,9 @@ order.itemassociations.append(OrderItem(item('MySQL Crowbar'), 10.99))
 order.items.append(item('SA Mug'))
 order.items.append(item('SA Hat'))
 
+# now append one more item, overriding the price
+order.items.append(item('SA T-Shirt'), price=2.99)
+
 session.save(order)
 session.flush()
 
@@ -95,6 +98,10 @@ print [(item.description, item.price) for item in order.items]
 
 # print customers who bought 'MySQL Crowbar' on sale
 result = SelectResults(session.query(Order)).join_to('item').select(and_(items.c.description=='MySQL Crowbar', items.c.price>orderitems.c.price))
+print [order.customer_name for order in result]
+
+# print customers who got the special T-shirt discount
+result = SelectResults(session.query(Order)).join_to('item').select(and_(items.c.description=='SA T-Shirt', items.c.price>orderitems.c.price))
 print [order.customer_name for order in result]
 
 

@@ -42,11 +42,11 @@ class AssociationProxy(object):
             return self._uselist
     cls = property(_get_class)
     uselist = property(_get_uselist)
-    def create(self, target):
+    def create(self, target, **kw):
         if self.creator is not None:
-            return self.creator(target)
+            return self.creator(target, **kw)
         else:
-            assoc = self.cls()
+            assoc = self.cls(**kw)
             setattr(assoc, self.attr, target)
             return assoc
     def __get__(self, obj, owner):
@@ -79,8 +79,8 @@ class _AssociationList(object):
         """create a new AssociationList."""
         self.proxy = proxy
         self.parent = parent
-    def append(self, item):
-        a = self.proxy.create(item)
+    def append(self, item, **kw):
+        a = self.proxy.create(item, **kw)
         getattr(self.parent, self.proxy.targetcollection).append(a)
     def __iter__(self):
         return iter([getattr(x, self.proxy.attr) for x in getattr(self.parent, self.proxy.targetcollection)])
