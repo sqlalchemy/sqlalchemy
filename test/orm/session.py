@@ -165,11 +165,71 @@ class CascadingOrphanDeletionTest(AssertMixin):
         try:
             s.flush()
             assert False
-        except exceptions.FlushError:
+        except exceptions.FlushError, e:
+            print e
             assert True
 
         assert item.id is None
         assert attr.id is None
 
+class DoubleOrphanTest(testbase.AssertMixin):
+    def setUpAll(self):
+        global metadata, address_table, businesses, homes
+        metadata = BoundMetaData(testbase.db)
+        address_table = Table('addresses', metadata,
+            Column('address_id', Integer, primary_key=True),
+            Column('street', String(30)),
+        )
+
+        homes = Table('homes', metadata,
+            Column('home_id', Integer, primary_key=True),
+            Column('description', String(30)),
+            Column('address_id', Integer, ForeignKey('addresses.address_id'), nullable=False),
+        )
+
+        businesses = Table('businesses', metadata,
+            Column('business_id', Integer, primary_key=True, key="id"),
+            Column('description', String(30), key="description"),
+            Column('address_id', Integer, ForeignKey('addresses.address_id'), nullable=False),
+        )
+        metadata.create_all()
+    def tearDown(self):
+        clear_mappers()
+    def tearDownAll(self):
+        metadata.drop_all()
+    def test_non_orphan(self):
+        class Address(object):pass
+        class Home(object):pass
+        class Business(object):pass
+        mapper(Address, address_table)
+        mapper(Home, homes, properties={'address':relation(Address, cascade="all,delete-orphan")})
+        mapper(Business, businesses, properties={'address':relation(Address, cascade="all,delete-orphan")})
+        
+        session = create_session()
+        a1 = Address()
+        a2 = Address()
+        h1 = Home()
+        b1 = Business()
+        h1.address = a1
+        b1.address = a2
+        [session.save(x) for x in [h1,b1]]
+        session.flush()
+    def test_orphan(self):
+        class Address(object):pass
+        class Home(object):pass
+        class Business(object):pass
+        mapper(Address, address_table)
+        mapper(Home, homes, properties={'address':relation(Address, cascade="all,delete-orphan")})
+        mapper(Business, businesses, properties={'address':relation(Address, cascade="all,delete-orphan")})
+        
+        session = create_session()
+        a1 = Address()
+        session.save(a1)
+        try:
+            session.flush()
+            assert False
+        except exceptions.FlushError, e:
+            assert True
+        
 if __name__ == "__main__":    
     testbase.main()

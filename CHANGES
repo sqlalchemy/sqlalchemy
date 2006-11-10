@@ -28,6 +28,8 @@ mappings.  new example examples/association/proxied_association.py illustrates.
 the target class
 - fix to subtle condition in topological sort where a node could appear twice,
 for [ticket:362]
+- "delete-orphan" for a certain type can be set on more than one parent class;
+the instance is an "orphan" only if its not attached to *any* of those parents
 
 0.3.0
 - General:

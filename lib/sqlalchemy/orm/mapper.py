@@ -220,12 +220,20 @@ class Mapper(object):
     def _is_orphan(self, obj):
         optimistic = has_identity(obj)
         for (key,klass) in self.delete_orphans:
-            if not getattr(klass, key).hasparent(obj, optimistic=optimistic):
-                if not has_identity(obj):
-                    raise exceptions.FlushError("instance %s is an unsaved, pending instance and is an orphan (is not attached to any parent '%s' instance via that classes' '%s' attribute)" % (obj, klass.__name__, key))
-                return True
+            if getattr(klass, key).hasparent(obj, optimistic=optimistic):
+               return False
         else:
-            return False
+            if len(self.delete_orphans):
+                if not has_identity(obj):
+                    raise exceptions.FlushError("instance %s is an unsaved, pending instance and is an orphan (is not attached to %s)" %
+                    (
+                        obj, 
+                        ", nor ".join(["any parent '%s' instance via that classes' '%s' attribute" % (klass.__name__, key) for (key,klass) in self.delete_orphans])
+                    ))
+                else:
+                    return True
+            else:
+                return False
             
     def _get_props(self):
         self.compile()

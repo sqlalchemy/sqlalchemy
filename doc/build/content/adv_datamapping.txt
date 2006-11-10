@@ -179,7 +179,7 @@ Many to many relationships can be customized by one or both of `primaryjoin` and
         pass
     mapper(Keyword, keywords_table)
     mapper(User, users_table, properties={
-        'keywords':relation(Keyword, secondary=userkeywords_table
+        'keywords':relation(Keyword, secondary=userkeywords_table,
             primaryjoin=users_table.c.user_id==userkeywords_table.c.user_id,
             secondaryjoin=userkeywords_table.c.keyword_id==keywords_table.c.keyword_id
             )

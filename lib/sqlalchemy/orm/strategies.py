@@ -470,7 +470,6 @@ class EagerLoader(AbstractRelationLoader):
                 else:
                     decorated_row = decorator(row)
             else:
-                # AliasedClauses, keyed to the lead mapper used in the query
                 clauses = self.clauses_by_lead_mapper[selectcontext.mapper]
                 decorated_row = clauses._decorate_row(row)
             # check for identity key
@@ -481,36 +480,36 @@ class EagerLoader(AbstractRelationLoader):
             self.parent_property._get_strategy(LazyLoader).process_row(selectcontext, instance, row, identitykey, isnew)
             return
             
-        if not self.uselist:
-            self.logger.debug("eagerload scalar instance on %s" % mapperutil.attribute_str(instance, self.key))
-            if isnew:
-                # set a scalar object instance directly on the parent object, 
-                # bypassing SmartProperty event handlers.
-                instance.__dict__[self.key] = self.mapper._instance(selectcontext, decorated_row, None)
+        # TODO: recursion check a speed hit...?  try to get a "termination point" into the AliasedClauses
+        # or EagerRowAdapter ?
+        selectcontext.recursion_stack.add(self)
+        try:
+            if not self.uselist:
+                self.logger.debug("eagerload scalar instance on %s" % mapperutil.attribute_str(instance, self.key))
+                if isnew:
+                    # set a scalar object instance directly on the parent object, 
+                    # bypassing SmartProperty event handlers.
+                    instance.__dict__[self.key] = self.mapper._instance(selectcontext, decorated_row, None)
+                else:
+                    # call _instance on the row, even though the object has been created,
+                    # so that we further descend into properties
+                    self.mapper._instance(selectcontext, decorated_row, None)
             else:
-                # call _instance on the row, even though the object has been created,
-                # so that we further descend into properties
-                self.mapper._instance(selectcontext, decorated_row, None)
-        else:
-            if isnew:
-                self.logger.debug("initialize UniqueAppender on %s" % mapperutil.attribute_str(instance, self.key))
-                # call the SmartProperty's initialize() method to create a new, blank list
-                l = getattr(instance.__class__, self.key).initialize(instance)
+                if isnew:
+                    self.logger.debug("initialize UniqueAppender on %s" % mapperutil.attribute_str(instance, self.key))
+                    # call the SmartProperty's initialize() method to create a new, blank list
+                    l = getattr(instance.__class__, self.key).initialize(instance)
                 
-                # create an appender object which will add set-like semantics to the list
-                appender = util.UniqueAppender(l.data)
+                    # create an appender object which will add set-like semantics to the list
+                    appender = util.UniqueAppender(l.data)
                 
-                # store it in the "scratch" area, which is local to this load operation.
-                selectcontext.attributes[(instance, self.key)] = appender
-            result_list = selectcontext.attributes[(instance, self.key)]
-            self.logger.debug("eagerload list instance on %s" % mapperutil.attribute_str(instance, self.key))
-            # TODO: recursion check a speed hit...?  try to get a "termination point" into the AliasedClauses
-            # or EagerRowAdapter ?
-            selectcontext.recursion_stack.add(self)
-            try:
+                    # store it in the "scratch" area, which is local to this load operation.
+                    selectcontext.attributes[(instance, self.key)] = appender
+                result_list = selectcontext.attributes[(instance, self.key)]
+                self.logger.debug("eagerload list instance on %s" % mapperutil.attribute_str(instance, self.key))
                 self.mapper._instance(selectcontext, decorated_row, result_list)
-            finally:
-                selectcontext.recursion_stack.remove(self)
+        finally:
+            selectcontext.recursion_stack.remove(self)
 
 EagerLoader.logger = logging.class_logger(EagerLoader)
 
