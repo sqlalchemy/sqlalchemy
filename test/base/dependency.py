@@ -10,7 +10,7 @@ class DependencySorter(topological.QueueDependencySorter):pass
     
         
 class DependencySortTest(PersistTest):
-    def assert_sort(self, tuples, node):
+    def assert_sort(self, tuples, node, collection=None):
         print str(node)
         def assert_tuple(tuple, node):
             if node.cycles:
@@ -29,15 +29,20 @@ class DependencySortTest(PersistTest):
         for tuple in tuples:
             assert_tuple(list(tuple), node)
 
+        if collection is None:
+            collection = []
         items = util.Set()
         def assert_unique(node):
             for item in [n.item for n in node.cycles or [node,]]:
                 assert item not in items
                 items.add(item)
+                if item in collection:
+                    collection.remove(item)
             for c in node.children:
                 assert_unique(c)
         assert_unique(node)
-      
+        assert len(collection) == 0
+        
     def testsort(self):
         rootnode = 'root'
         node2 = 'node2'
@@ -77,7 +82,7 @@ class DependencySortTest(PersistTest):
             (node6, node2)
         ]
         head = DependencySorter(tuples, [node7]).sort()
-        self.assert_sort(tuples, head)
+        self.assert_sort(tuples, head, [node7])
 
     def testsort3(self):
         ['Mapper|Keyword|keywords,Mapper|IKAssociation|itemkeywords', 'Mapper|Item|items,Mapper|IKAssociation|itemkeywords']
