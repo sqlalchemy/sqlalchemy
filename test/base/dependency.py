@@ -1,23 +1,17 @@
 from testbase import PersistTest
 import sqlalchemy.topological as topological
 import unittest, sys, os
-
+from sqlalchemy import util
 
 # TODO:  need assertion conditions in this suite
 
 
 class DependencySorter(topological.QueueDependencySorter):pass
     
-class thingy(object):
-    def __init__(self, name):
-        self.name = name
-    def __repr__(self):
-        return "thingy(%d, %s)" % (id(self), self.name)
-    def __str__(self):
-        return repr(self)
         
 class DependencySortTest(PersistTest):
     def assert_sort(self, tuples, node):
+        print str(node)
         def assert_tuple(tuple, node):
             if node.cycles:
                 cycles = [i.item for i in node.cycles]
@@ -34,17 +28,26 @@ class DependencySortTest(PersistTest):
         
         for tuple in tuples:
             assert_tuple(list(tuple), node)
-                    
+
+        items = util.Set()
+        def assert_unique(node):
+            for item in [n.item for n in node.cycles or [node,]]:
+                assert item not in items
+                items.add(item)
+            for c in node.children:
+                assert_unique(c)
+        assert_unique(node)
+      
     def testsort(self):
-        rootnode = thingy('root')
-        node2 = thingy('node2')
-        node3 = thingy('node3')
-        node4 = thingy('node4')
-        subnode1 = thingy('subnode1')
-        subnode2 = thingy('subnode2')
-        subnode3 = thingy('subnode3')
-        subnode4 = thingy('subnode4')
-        subsubnode1 = thingy('subsubnode1')
+        rootnode = 'root'
+        node2 = 'node2'
+        node3 = 'node3'
+        node4 = 'node4'
+        subnode1 = 'subnode1'
+        subnode2 = 'subnode2'
+        subnode3 = 'subnode3'
+        subnode4 = 'subnode4'
+        subsubnode1 = 'subsubnode1'
         tuples = [
             (subnode3, subsubnode1),
             (node2, subnode1),
@@ -57,16 +60,15 @@ class DependencySortTest(PersistTest):
         ]
         head = DependencySorter(tuples, []).sort()
         self.assert_sort(tuples, head)
-        print "\n" + str(head)
 
     def testsort2(self):
-        node1 = thingy('node1')
-        node2 = thingy('node2')
-        node3 = thingy('node3')
-        node4 = thingy('node4')
-        node5 = thingy('node5')
-        node6 = thingy('node6')
-        node7 = thingy('node7')
+        node1 = 'node1'
+        node2 = 'node2'
+        node3 = 'node3'
+        node4 = 'node4'
+        node5 = 'node5'
+        node6 = 'node6'
+        node7 = 'node7'
         tuples = [
             (node1, node2),
             (node3, node4),
@@ -76,13 +78,12 @@ class DependencySortTest(PersistTest):
         ]
         head = DependencySorter(tuples, [node7]).sort()
         self.assert_sort(tuples, head)
-        print "\n" + str(head)
 
     def testsort3(self):
         ['Mapper|Keyword|keywords,Mapper|IKAssociation|itemkeywords', 'Mapper|Item|items,Mapper|IKAssociation|itemkeywords']
-        node1 = thingy('keywords')
-        node2 = thingy('itemkeyowrds')
-        node3 = thingy('items')
+        node1 = 'keywords'
+        node2 = 'itemkeyowrds'
+        node3 = 'items'
         tuples = [
             (node1, node2),
             (node3, node2),
@@ -99,10 +100,10 @@ class DependencySortTest(PersistTest):
         print "\n" + str(head3)
 
     def testsort4(self):
-        node1 = thingy('keywords')
-        node2 = thingy('itemkeyowrds')
-        node3 = thingy('items')
-        node4 = thingy('hoho')
+        node1 = 'keywords'
+        node2 = 'itemkeyowrds'
+        node3 = 'items'
+        node4 = 'hoho'
         tuples = [
             (node1, node2),
             (node4, node1),
@@ -111,19 +112,13 @@ class DependencySortTest(PersistTest):
         ]
         head = DependencySorter(tuples, []).sort()
         self.assert_sort(tuples, head)
-        print "\n" + str(head)
 
     def testsort5(self):
         # this one, depenending on the weather, 
-#    thingy(5780972, node4)  (idself=5781292, idparent=None)
-#     thingy(5780876, node1)  (idself=5781068, idparent=5781292)
-#      thingy(5780908, node2)  (idself=5781164, idparent=5781068)
-#       thingy(5780940, node3)  (idself=5781228, idparent=5781164)
-   
-        node1 = thingy('node1') #thingy('00B94190')
-        node2 = thingy('node2') #thingy('00B94990')
-        node3 = thingy('node3') #thingy('00B9A9B0')
-        node4 = thingy('node4') #thingy('00B4F210')
+        node1 = 'node1' #'00B94190'
+        node2 = 'node2' #'00B94990'
+        node3 = 'node3' #'00B9A9B0'
+        node4 = 'node4' #'00B4F210'
         tuples = [
             (node4, node1),
             (node1, node2),
@@ -140,14 +135,13 @@ class DependencySortTest(PersistTest):
         ]
         head = DependencySorter(tuples, allitems).sort()
         self.assert_sort(tuples, head)
-        print "\n" + str(head)
 
     def testcircular(self):
-        node1 = thingy('node1')
-        node2 = thingy('node2')
-        node3 = thingy('node3')
-        node4 = thingy('node4')
-        node5 = thingy('node5')
+        node1 = 'node1'
+        node2 = 'node2'
+        node3 = 'node3'
+        node4 = 'node4'
+        node5 = 'node5'
         tuples = [
             (node4, node5),
             (node5, node4),
@@ -158,15 +152,14 @@ class DependencySortTest(PersistTest):
         ]
         head = DependencySorter(tuples, []).sort(allow_all_cycles=True)
         self.assert_sort(tuples, head)
-        print "\n" + str(head)
         
     def testcircular2(self):
         # this condition was arising from ticket:362
         # and was not treated properly by topological sort
-        node1 = thingy('node1')
-        node2 = thingy('node2')
-        node3 = thingy('node3')
-        node4 = thingy('node4')
+        node1 = 'node1'
+        node2 = 'node2'
+        node3 = 'node3'
+        node4 = 'node4'
         tuples = [
             (node1, node2),
             (node3, node1),
@@ -176,7 +169,15 @@ class DependencySortTest(PersistTest):
         ]
         head = DependencySorter(tuples, []).sort(allow_all_cycles=True)
         self.assert_sort(tuples, head)
-        print "\n" + str(head)
+    
+    def testcircular3(self):
+        nodes = {}
+        tuples = [('Question', 'Issue'), ('ProviderService', 'Issue'), ('Provider', 'Question'), ('Question', 'Provider'), ('ProviderService', 'Question'), ('Provider', 'ProviderService'), ('Question', 'Answer'), ('Issue', 'Question')]
+        head = DependencySorter(tuples, []).sort(allow_all_cycles=True)
+        self.assert_sort(tuples, head)
         
+            
+            
+            
 if __name__ == "__main__":
     unittest.main()

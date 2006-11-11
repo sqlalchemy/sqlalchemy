@@ -119,26 +119,25 @@ class QueueDependencySorter(object):
         cycles = {}
         output = []
         while len(edges) > 0:
-            #print self._dump_edges(edges)
             if len(queue) == 0:
                 # edges remain but no edgeless nodes to remove; this indicates
                 # a cycle
                 if allow_all_cycles:
-                    cycle = self._find_cycle(edges)
-                    lead = cycle[0][0]
-                    lead.cycles = Set()
-                    for edge in cycle:
-                        n = self._remove_edge(edges, edge)
-                        lead.cycles.add(edge[0])
-                        lead.cycles.add(edge[1])
-                        if n is not None:
-                            queue.append(n)
-                    for n in lead.cycles:
-                        if n is not lead:
-                            n._cyclical = True
-                    # loop through cycle
-                    # remove edges from the edge dictionary
-                    # install the cycled nodes in the "cycle" list of one of the nodes
+                    for cycle in self._find_cycles(edges):
+                        lead = cycle[0][0]
+                        lead.cycles = Set()
+                        for edge in cycle:
+                            n = self._remove_edge(edges, edge)
+                            lead.cycles.add(edge[0])
+                            lead.cycles.add(edge[1])
+                            if n is not None:
+                                queue.append(n)
+                        for n in lead.cycles:
+                            if n is not lead:
+                                n._cyclical = True
+                                for k in list(edges[n]):
+                                    self._add_edge(edges, (lead,k))
+                                    self._remove_edge(edges, (n,k))
                     continue
                 else:
                     # long cycles not allowed
@@ -207,33 +206,49 @@ class QueueDependencySorter(object):
         del parentnode.dependencies[childnode]
         if len(childnode.edges) == 0:
             return childnode
-        
-    def _find_cycle(self, edges):
-        """given a structure of edges, locates a cycle in the strucure and returns 
-        as a list of tuples representing edges involved in the cycle."""
-        seen = Set()
-        cycled_edges = []
-        def traverse(d, parent=None):
-            for key in d.keys():
-                if not edges.has_key(key):
+    
+    def _find_cycles(self, edges):
+        involved_in_cycles = util.Set()
+        cycles = {}
+        def traverse(node, goal=None, cycle=None):
+            if goal is None:
+                goal = node
+                cycle = []
+            elif node is goal:
+                return True
+                
+            for key in edges[node].keys():
+                if key in cycle:
                     continue
-                if key in seen:
-                    if parent is not None:
-                        cycled_edges.append((parent, key))
-                    return key
-                seen.add(key)
-                x = traverse(edges[key], parent=key)
-                if x is None:
-                    seen.remove(key)
-                else:
-                    if parent is not None:
-                        cycled_edges.append((parent, key))
-                    return x
-            else:
-                return None
-        s = traverse(edges)
-        if s is None:
-            return None
-        else:
-            return cycled_edges
+                cycle.append(key)
+                if traverse(key, goal, cycle):
+                    #print "adding cycle", list(cycle)
+                    cycset = util.Set(cycle)
+                    for x in cycle:
+                        involved_in_cycles.add(x)
+                        if cycles.has_key(x):
+                            existing_set = cycles[x]
+                            [existing_set.add(y) for y in cycset]
+                            for y in existing_set:
+                                cycles[y] = existing_set
+                            cycset = existing_set
+                        else:
+                            cycles[x] = cycset
+                cycle.pop()
+                    
+        for parent in edges.keys():
+            traverse(parent)
+
+        for cycle in dict((id(s), s) for s in cycles.values()).values():
+            edgecollection = []
+            for edge in self.edge_iterator(edges):
+                if edge[0] in cycle and edge[1] in cycle:
+                    edgecollection.append(edge)
+            yield edgecollection
+    
+    def edge_iterator(self, edges):
+        for key in edges.keys():
+            for value in edges[key].keys():
+                yield (key, value)
+                    
 
