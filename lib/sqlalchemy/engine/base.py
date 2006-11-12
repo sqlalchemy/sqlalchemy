@@ -396,7 +396,7 @@ class Engine(sql.Executor, Connectable):
     Connects a ConnectionProvider, a Dialect and a CompilerFactory together to 
     provide a default implementation of SchemaEngine.
     """
-    def __init__(self, connection_provider, dialect, echo=None, **kwargs):
+    def __init__(self, connection_provider, dialect, echo=None):
         self.connection_provider = connection_provider
         self.dialect=dialect
         self.echo = echo

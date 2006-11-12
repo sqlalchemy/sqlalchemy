@@ -98,9 +98,9 @@ def parse_argv():
     if options.enginestrategy is not None:
         opts['strategy'] = options.enginestrategy    
     if options.mockpool:
-        db = engine.create_engine(db_uri, default_ordering=True, poolclass=pool.AssertionPool, **opts)
+        db = engine.create_engine(db_uri, poolclass=pool.AssertionPool, **opts)
     else:
-        db = engine.create_engine(db_uri, default_ordering=True, **opts)
+        db = engine.create_engine(db_uri, **opts)
     db = EngineAssert(db)
 
     import logging

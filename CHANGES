@@ -30,6 +30,10 @@ the target class
 for [ticket:362]
 - "delete-orphan" for a certain type can be set on more than one parent class;
 the instance is an "orphan" only if its not attached to *any* of those parents
+- create_engine() reworked to be strict about incoming **kwargs.  all keyword
+arguments must be consumed by one of the dialect, connection pool, and engine
+constructors, else a TypeError is thrown which describes the full set of
+invalid kwargs in relation to the selected dialect/pool/engine configuration.
 
 0.3.0
 - General:

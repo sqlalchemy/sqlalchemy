@@ -67,6 +67,75 @@ class CreateEngineTest(PersistTest):
         e = create_engine('postgres://', pool_recycle=472, module=dbapi)
         assert e.connection_provider._pool._recycle == 472
         
+    def testbadargs(self):
+        # good arg, use MockDBAPI to prevent oracle import errors
+        e = create_engine('oracle://', use_ansi=True, module=MockDBAPI())
+
+        # bad arg
+        try:
+            e = create_engine('postgres://', use_ansi=True, module=MockDBAPI())
+            assert False
+        except TypeError:
+            assert True
+        
+        # bad arg
+        try:
+            e = create_engine('oracle://', lala=5, use_ansi=True, module=MockDBAPI())
+            assert False
+        except TypeError:
+            assert True
+            
+        try:
+            e = create_engine('postgres://', lala=5, module=MockDBAPI())
+            assert False
+        except TypeError:
+            assert True
+        
+        try:
+            e = create_engine('sqlite://', lala=5)
+            assert False
+        except TypeError:
+            assert True
+
+        try:
+            e = create_engine('mysql://', use_unicode=True)
+            assert False
+        except TypeError:
+            assert True
+
+        try:
+            # sqlite uses SingletonThreadPool which doesnt have max_overflow
+            e = create_engine('sqlite://', max_overflow=5)
+            assert False
+        except TypeError:
+            assert True
+            
+        e = create_engine('sqlite://', echo=True)
+        e = create_engine('mysql://', module=MockDBAPI(), connect_args={'use_unicode':True}, convert_unicode=True)
+        
+        e = create_engine('sqlite://', connect_args={'use_unicode':True}, convert_unicode=True)
+        try:
+            c = e.connect()
+            assert False
+        except exceptions.DBAPIError:
+            assert True
+            
+    def testpoolargs(self):
+        """test that connection pool args make it thru"""
+        e = create_engine('postgres://', creator=None, pool_recycle=-1, echo_pool=None, auto_close_cursors=False, disallow_open_cursors=True, module=MockDBAPI())
+        assert e.connection_provider._pool.auto_close_cursors is False
+        assert e.connection_provider._pool.disallow_open_cursors is True
+
+        # these args work for QueuePool
+        e = create_engine('postgres://', max_overflow=8, pool_timeout=60, poolclass=pool.QueuePool, module=MockDBAPI())
+
+        try:
+            # but not SingletonThreadPool
+            e = create_engine('sqlite://', max_overflow=8, pool_timeout=60, poolclass=pool.SingletonThreadPool)
+            assert False
+        except TypeError:
+            assert True
+
 class MockDBAPI(object):
     def __init__(self, **kwargs):
         self.kwargs = kwargs

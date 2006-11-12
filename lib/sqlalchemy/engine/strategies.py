@@ -6,6 +6,8 @@ this can be accomplished via a mod; see the sqlalchemy/mods package for details.
 
 
 from sqlalchemy.engine import base, default, threadlocal, url
+from sqlalchemy import util, exceptions
+from sqlalchemy import pool as poollib
 
 strategies = {}
 
@@ -22,29 +24,74 @@ class EngineStrategy(object):
         raise NotImplementedError()
 
 class DefaultEngineStrategy(EngineStrategy):
-    def create(self, name_or_url, **kwargs):    
+    def create(self, name_or_url, **kwargs):
+        # create url.URL object
         u = url.make_url(name_or_url)
+        
+        # get module from sqlalchemy.databases
         module = u.get_module()
 
-        dialect = module.dialect(**kwargs)
+        dialect_args = {}
+        # consume dialect arguments from kwargs
+        for k in util.get_cls_kwargs(module.dialect):
+            if k in kwargs:
+                dialect_args[k] = kwargs.pop(k)
+                
+        # create dialect
+        dialect = module.dialect(**dialect_args)
 
-        poolargs = {}
-        for key in (('echo_pool', 'echo'), ('pool_size', 'pool_size'), ('max_overflow', 'max_overflow'), ('poolclass', 'poolclass'), ('pool_timeout','timeout'), ('pool', 'pool'), ('pool_recycle','recycle'),('connect_args', 'connect_args'), ('creator', 'creator')):
-           if kwargs.has_key(key[0]):
-               poolargs[key[1]] = kwargs[key[0]]
-        poolclass = getattr(module, 'poolclass', None)
-        if poolclass is not None:
-           poolargs.setdefault('poolclass', poolclass)
-        poolargs['use_threadlocal'] = self.pool_threadlocal()
-        provider = self.get_pool_provider(dialect, u, **poolargs)
+        # assemble connection arguments
+        (cargs, cparams) = dialect.create_connect_args(u)
+        cparams.update(kwargs.pop('connect_args', {}))
 
-        return self.get_engine(provider, dialect, **kwargs)
+        # look for existing pool or create
+        pool = kwargs.pop('pool', None)
+        if pool is None:
+            dbapi = kwargs.pop('module', dialect.dbapi())
+            if dbapi is None:
+                raise exceptions.InvalidRequestError("Cant get DBAPI module for dialect '%s'" % dialect)
+            def connect():
+                try:
+                    return dbapi.connect(*cargs, **cparams)
+                except Exception, e:
+                    raise exceptions.DBAPIError("Connection failed", e)
+            creator = kwargs.pop('creator', connect)
+
+            poolclass = kwargs.pop('poolclass', getattr(module, 'poolclass', poollib.QueuePool))
+            pool_args = {}
+            # consume pool arguments from kwargs, translating a few of the arguments
+            for k in util.get_cls_kwargs(poolclass):
+                tk = {'echo':'echo_pool', 'timeout':'pool_timeout', 'recycle':'pool_recycle'}.get(k, k)
+                if tk in kwargs:
+                    pool_args[k] = kwargs.pop(tk)
+            pool_args['use_threadlocal'] = self.pool_threadlocal()
+            pool = poolclass(creator, **pool_args)
+        else:
+            if isinstance(pool, poollib.DBProxy):
+                pool = pool.get_pool(*cargs, **cparams)
+            else:
+                pool = pool
+
+        provider = self.get_pool_provider(pool)
+
+        # create engine.
+        engineclass = self.get_engine_cls()
+        engine_args = {}
+        for k in util.get_cls_kwargs(engineclass):
+            if k in kwargs:
+                engine_args[k] = kwargs.pop(k)
+                
+        # all kwargs should be consumed
+        if len(kwargs):
+            raise TypeError("Invalid argument(s) %s sent to create_engine(), using configuration %s/%s/%s.  Please check that the keyword arguments are appropriate for this combination of components." % (','.join(["'%s'" % k for k in kwargs]), dialect.__class__.__name__, pool.__class__.__name__, engineclass.__name__))
+            
+        return engineclass(provider, dialect, **engine_args)
 
     def pool_threadlocal(self):
         raise NotImplementedError()
-    def get_pool_provider(self, dialect, url, **kwargs):
+    def get_pool_provider(self, pool):
         raise NotImplementedError()
-    def get_engine(self, provider, dialect, **kwargs):
+    def get_engine_cls(self):
         raise NotImplementedError()
            
 class PlainEngineStrategy(DefaultEngineStrategy):
@@ -52,10 +99,10 @@ class PlainEngineStrategy(DefaultEngineStrategy):
         DefaultEngineStrategy.__init__(self, 'plain')
     def pool_threadlocal(self):
         return False
-    def get_pool_provider(self, dialect, url, **poolargs):
-        return default.PoolConnectionProvider(dialect, url, **poolargs)
-    def get_engine(self, provider, dialect, **kwargs):
-        return base.Engine(provider, dialect, **kwargs)
+    def get_pool_provider(self, pool):
+        return default.PoolConnectionProvider(pool)
+    def get_engine_cls(self):
+        return base.Engine
 PlainEngineStrategy()
 
 class ThreadLocalEngineStrategy(DefaultEngineStrategy):
@@ -63,10 +110,10 @@ class ThreadLocalEngineStrategy(DefaultEngineStrategy):
         DefaultEngineStrategy.__init__(self, 'threadlocal')
     def pool_threadlocal(self):
         return True
-    def get_pool_provider(self, dialect, url, **poolargs):
-        return threadlocal.TLocalConnectionProvider(dialect, url, **poolargs)
-    def get_engine(self, provider, dialect, **kwargs):
-        return threadlocal.TLEngine(provider, dialect, **kwargs)
+    def get_pool_provider(self, pool):
+        return threadlocal.TLocalConnectionProvider(pool)
+    def get_engine_cls(self):
+        return threadlocal.TLEngine
 ThreadLocalEngineStrategy()
 
 
