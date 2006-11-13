@@ -1,39 +1,45 @@
 0.3.1
-- adjustments to reworked eager query generation
-- some new Pool utility classes, updated docs
-- "use_threadlocal" on Pool defaults to False (same as create_engine)
-- the "delete" cascade will load in all child objects, if they were not
+- Engine/Pool:
+  - some new Pool utility classes, updated docs
+  - "use_threadlocal" on Pool defaults to False (same as create_engine)
+  - fixed direct execution of Compiled objects
+  - create_engine() reworked to be strict about incoming **kwargs.  all keyword
+arguments must be consumed by one of the dialect, connection pool, and engine
+constructors, else a TypeError is thrown which describes the full set of
+invalid kwargs in relation to the selected dialect/pool/engine configuration.
+- Databases/Types:
+  - MySQL catches exception on "describe" and reports as NoSuchTableError
+  - further fixes to sqlite booleans, weren't working as defaults
+  - fix to postgres sequence quoting when using schemas
+- ORM:
+  - the "delete" cascade will load in all child objects, if they were not
 loaded already.  this can be turned off (i.e. the old behavior) by setting 
 passive_deletes=True on a relation().
-- MySQL catches exception on "describe" and reports as NoSuchTableError
-- further fixes to sqlite booleans, weren't working as defaults
-- fix to postgres sequence quoting when using schemas
-- fixed direct execution of Compiled objects
-- fixed bug where eagerload() (nor lazyload()) option didn't properly
+  - adjustments to reworked eager query generation to not fail on circular
+eager-loaded relationships (like backrefs)
+  - fixed bug where eagerload() (nor lazyload()) option didn't properly
 instruct the Query whether or not to use "nesting" when producing a
 LIMIT query.
-- fixed bug in circular dependency sorting at flush time; if object A
+  - fixed bug in circular dependency sorting at flush time; if object A
 contained a cyclical many-to-one relationship to object B, and object B 
 was just attached to object A, *but* object B itself wasnt changed,
 the many-to-one synchronize of B's primary key attribute to A's foreign key
 attribute wouldnt occur.  [ticket:360]
-- implemented from_obj argument for query.count, improves count function
+  - implemented from_obj argument for query.count, improves count function
 on selectresults [ticket:325]
-- added an assertion within the "cascade" step of ORM relationships to check
+  - added an assertion within the "cascade" step of ORM relationships to check
 that the class of object attached to a parent object is appropriate
 (i.e. if A.items stores B objects, raise an error if a C is appended to A.items)
-- new extension sqlalchemy.ext.associationproxy, provides transparent "association object"
-mappings.  new example examples/association/proxied_association.py illustrates.
-- improvement to single table inheritance to load full hierarchies beneath 
+  - new extension sqlalchemy.ext.associationproxy, provides transparent 
+"association object" mappings.  new example 
+examples/association/proxied_association.py illustrates.
+  - improvement to single table inheritance to load full hierarchies beneath 
 the target class
-- fix to subtle condition in topological sort where a node could appear twice,
+  - fix to subtle condition in topological sort where a node could appear twice,
 for [ticket:362]
-- "delete-orphan" for a certain type can be set on more than one parent class;
+  - additional rework to topological sort, refactoring, for [ticket:365]
+  - "delete-orphan" for a certain type can be set on more than one parent class;
 the instance is an "orphan" only if its not attached to *any* of those parents
-- create_engine() reworked to be strict about incoming **kwargs.  all keyword
-arguments must be consumed by one of the dialect, connection pool, and engine
-constructors, else a TypeError is thrown which describes the full set of
-invalid kwargs in relation to the selected dialect/pool/engine configuration.
 
 0.3.0
 - General:
