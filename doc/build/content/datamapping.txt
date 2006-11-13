@@ -406,7 +406,8 @@ When using mappers that have relationships to other mappers, the need to specify
 When specifying columns to the `select` method of `Query`, if the columns are attached to a table other than the mapped table, that table is automatically added to the "FROM" clause of the query.  This is the same behavior that occurs when creating a non-ORM `select` object.  Using this feature, joins can be created when querying:
 
     {python}
-    {sql}l = session.query(User).select(and_(users.c.user_id==addresses.c.user_id, addresses.c.street=='123 Green Street'))
+    {sql}l = session.query(User).select(and_(users.c.user_id==addresses.c.user_id, 
+                 addresses.c.street=='123 Green Street'))
     SELECT users.user_id AS users_user_id, 
     users.user_name AS users_user_name, users.password AS users_password
     FROM users, addresses 
@@ -432,7 +433,8 @@ The above join will return all rows of the `users` table, even those that do not
 Another way to specify joins more explicitly is to use the `from_obj` parameter of `select()`.  This allows you to explicitly place elements in the FROM clause of the query, which could include lists of tables and/or `Join` constructs:
 
     {python}
-    {sql}l = session.query(User).select(addresses.c.street=='123 Green Street', from_obj=[users.join(addresses)])
+    {sql}l = session.query(User).select(addresses.c.street=='123 Green Street', 
+                    from_obj=[users.join(addresses)])
     SELECT users.user_id AS users_user_id, 
     users.user_name AS users_user_name, users.password AS users_password
     FROM users JOIN addresses ON users.user_id=addresses.user_id
@@ -512,6 +514,12 @@ Note that the `from_obj` parameter of `select()`, described previously, allows f
 
 #### Eager Loading {@name=eagerload}
 
+Eager Loading describes the loading of parent and child objects across a relation using a single query.  The purpose of eager loading is strictly one of performance enhancement; eager loading has **no impact** on the results of a query, except that when traversing child objects within the results, lazy loaders will not need to issue separate queries to load those child objects.
+
+Eager Loading is enabled on a per-relationship basis, either as the default
+for a particular relationship, or for a single query using query options,
+described later.
+
 With just a single parameter `lazy=False` specified to the relation object, the parent and child SQL queries can be joined together.
 
     {python}
@@ -538,7 +546,7 @@ With just a single parameter `lazy=False` specified to the relation object, the 
 
 Above, a pretty ambitious query is generated just by specifying that the User should be loaded with its child Addresses in one query.  When the mapper processes the results, it uses an *Identity Map* to keep track of objects that were already loaded, based on their primary key identity.  Through this method, the redundant rows produced by the join are organized into the distinct object instances they represent.
         
-The generation of this query is also immune to the effects of additional joins being specified in the original query.  To use our select_by example above, joining against the "addresses" table to locate users with a certain street results in this behavior:
+Recall that eager loading has no impact on the results of the query.  What if our query included our own join criterion?  The eager loading query accomodates this using aliases, and is immune to the effects of additional joins being specified in the original query.  To use our select_by example above, joining against the "addresses" table to locate users with a certain street results in this behavior:
 
     {python}
     {sql}users = session.query(User).select_by(street='123 Green Street')
@@ -554,7 +562,7 @@ The generation of this query is also immune to the effects of additional joins b
     WHERE addresses.street = :addresses_street AND users.user_id = addresses.user_id ORDER BY users.oid, addresses_6ca7.oid
     {'addresses_street': '123 Green Street'}
                     
-The join implied by passing the "street" parameter is stated as an *additional* join between the `addresses` and `users` tables.  Also, since the eager join is "aliasized", no name conflict occurs.
+The join implied by passing the "street" parameter is separate from the join produced by the eager join, which is "aliasized" to prevent conflicts.
     
 #### Using Options to Change the Loading Strategy {@name=options}
 
