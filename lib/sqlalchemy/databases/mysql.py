@@ -315,7 +315,7 @@ class MySQLDialect(ansisql.ANSIDialect):
             table.name = table.name.lower()
             table.metadata.tables[table.name]= table
         try:
-            c = connection.execute("describe " + table.name, {})
+            c = connection.execute("describe " + table.fullname, {})
         except:
             raise exceptions.NoSuchTableError(table.name)
         found_table = False
@@ -376,7 +376,7 @@ class MySQLDialect(ansisql.ANSIDialect):
         KEY `par_ind` (`parent_id`),
         CONSTRAINT `child_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `parent` (`id`) ON DELETE CASCADE\n) TYPE=InnoDB
         """
-        c = connection.execute("SHOW CREATE TABLE " + table.name, {})
+        c = connection.execute("SHOW CREATE TABLE " + table.fullname, {})
         desc_fetched = c.fetchone()[1]
 
         # this can come back as unicode if use_unicode=1 in the mysql connection
