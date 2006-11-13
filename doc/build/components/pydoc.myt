@@ -25,14 +25,15 @@ else:
 </%init>
 
 <&|formatting.myt:section, toc=toc, path=obj.toc_path, description=htmldescription &>
-
 <&|formatting.myt:formatplain&><% obj.doc %></&>
 
 % if not obj.isclass and obj.functions:
 
+<&|formatting.myt:section, toc=toc, path=obj.mod_path &>
 %   for func in obj.functions:
     <& SELF:function_doc, func=func &>
 %
+</&>
 
 % else:
 

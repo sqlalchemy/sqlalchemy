@@ -57,8 +57,9 @@ def create_docstring_toc(data, root):
         obj.toc_path = toc.path
 
         if not obj.isclass and obj.functions:
-            TOCElement("docstrings", name="modfunc", description="Module Functions", parent=toc)
-
+            functoc = TOCElement("docstrings", name="modfunc", description="Module Functions", parent=toc)
+            obj.mod_path = functoc.path
+            
         if obj.classes:
             for class_ in obj.classes:
                 create_obj_toc(class_, toc)
