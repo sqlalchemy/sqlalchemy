@@ -264,6 +264,34 @@ class MutableTypesTest(UnitOfWorkTest):
         assert f3.data != f1.data
         assert f3.data == pickleable.Bar(4, 19)
 
+    def testmutablechanges(self):
+        """test that mutable changes are detected or not detected correctly"""
+        class Foo(object):pass
+        mapper(Foo, table)
+        f1 = Foo()
+        f1.data = pickleable.Bar(4,5)
+        f1.value = unicode('hi')
+        ctx.current.flush()
+        def go():
+            ctx.current.flush()
+        self.assert_sql_count(db, go, 0)
+        f1.value = unicode('someothervalue')
+        self.assert_sql(db, lambda: ctx.current.flush(), [
+            (
+                "UPDATE mutabletest SET value=:value WHERE mutabletest.id = :mutabletest_id",
+                {'mutabletest_id': 1, 'value': u'someothervalue'}
+            ),
+        ])
+        f1.value = unicode('hi')
+        f1.data.x = 9
+        self.assert_sql(db, lambda: ctx.current.flush(), [
+            (
+                "UPDATE mutabletest SET data=:data, value=:value WHERE mutabletest.id = :mutabletest_id",
+                {'mutabletest_id': 1, 'value': u'hi', 'data':f1.data}
+            ),
+        ])
+        
+        
     def testnocomparison(self):
         """test that types marked as MutableType get changes detected on them when the type has no __eq__ method"""
         class Foo(object):pass
