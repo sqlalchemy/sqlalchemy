@@ -67,7 +67,7 @@ class DefaultEngineStrategy(EngineStrategy):
             pool_args['use_threadlocal'] = self.pool_threadlocal()
             pool = poolclass(creator, **pool_args)
         else:
-            if isinstance(pool, poollib.DBProxy):
+            if isinstance(pool, poollib._DBProxy):
                 pool = pool.get_pool(*cargs, **cparams)
             else:
                 pool = pool

@@ -389,7 +389,6 @@ class Column(SchemaItem, sql._ColumnClause):
                 return self.table.name + "." + self.name
             else:
                 return self.name
-            return self.name
         else:
             return self.name
     

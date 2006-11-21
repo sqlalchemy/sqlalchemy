@@ -279,7 +279,7 @@ class MutableTypesTest(UnitOfWorkTest):
         self.assert_sql(db, lambda: ctx.current.flush(), [
             (
                 "UPDATE mutabletest SET value=:value WHERE mutabletest.id = :mutabletest_id",
-                {'mutabletest_id': 1, 'value': u'someothervalue'}
+                {'mutabletest_id': f1.id, 'value': u'someothervalue'}
             ),
         ])
         f1.value = unicode('hi')
@@ -287,7 +287,7 @@ class MutableTypesTest(UnitOfWorkTest):
         self.assert_sql(db, lambda: ctx.current.flush(), [
             (
                 "UPDATE mutabletest SET data=:data, value=:value WHERE mutabletest.id = :mutabletest_id",
-                {'mutabletest_id': 1, 'value': u'hi', 'data':f1.data}
+                {'mutabletest_id': f1.id, 'value': u'hi', 'data':f1.data}
             ),
         ])
         
