@@ -107,8 +107,8 @@ constraintSQL = """SELECT
   ac.constraint_type,
   LOWER(loc.column_name) AS local_column,
   LOWER(rem.table_name) AS remote_table,
-  LOWER(rem.column_name) AS remote_column
-  LOWER(rem.owner) AS remote_owner,
+  LOWER(rem.column_name) AS remote_column,
+  LOWER(rem.owner) AS remote_owner
 FROM all_constraints ac,
   all_cons_columns loc,
   all_cons_columns rem
