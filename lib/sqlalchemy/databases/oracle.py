@@ -108,6 +108,7 @@ constraintSQL = """SELECT
   LOWER(loc.column_name) AS local_column,
   LOWER(rem.table_name) AS remote_table,
   LOWER(rem.column_name) AS remote_column
+  LOWER(rem.owner) AS remote_owner,
 FROM all_constraints ac,
   all_cons_columns loc,
   all_cons_columns rem
@@ -272,7 +273,7 @@ class OracleDialect(ansisql.ANSIDialect):
             if row is None:
                 break
             #print "ROW:" , row                
-            (cons_name, cons_type, local_column, remote_table, remote_column) = row
+            (cons_name, cons_type, local_column, remote_table, remote_column, remote_owner) = row
             if cons_type == 'P':
                 table.primary_key.add(table.c[local_column])
             elif cons_type == 'R':
@@ -282,7 +283,7 @@ class OracleDialect(ansisql.ANSIDialect):
                    fk = ([], [])
                    fks[cons_name] = fk
                 refspec = ".".join([remote_table, remote_column])
-                schema.Table(remote_table, table.metadata, autoload=True, autoload_with=connection)
+                schema.Table(remote_table, table.metadata, autoload=True, autoload_with=connection, owner=remote_owner)
                 if local_column not in fk[0]:
                     fk[0].append(local_column)
                 if refspec not in fk[1]:
