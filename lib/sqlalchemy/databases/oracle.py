@@ -97,7 +97,9 @@ ischema_names = {
     'NUMBER' : OracleNumeric,
     'BLOB' : OracleBinary,
     'CLOB' : OracleText,
-    'TIMESTAMP' : OracleTimestamp
+    'TIMESTAMP' : OracleTimestamp,
+    'FLOAT' : OracleNumeric,
+    'DOUBLE PRECISION' : OracleNumeric,
 }
 
 constraintSQL = """SELECT
