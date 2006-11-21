@@ -108,7 +108,7 @@ class ColumnsTest(AssertMixin):
                                    'float_column': 'float_column NUMERIC(25, 2)'
                                  }
 
-        if not db.name=='sqlite':
+        if not db.name=='sqlite' and not db.name=='oracle':
             expectedResults['float_column'] = 'float_column FLOAT(25)'
     
         print db.engine.__module__

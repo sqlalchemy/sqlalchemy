@@ -51,6 +51,9 @@ class OracleText(sqltypes.TEXT):
 class OracleString(sqltypes.String):
     def get_col_spec(self):
         return "VARCHAR(%(length)s)" % {'length' : self.length}
+class OracleRaw(sqltypes.Binary):
+    def get_col_spec(self):
+        return "RAW(%(length)s)" % {'length' : self.length}
 class OracleChar(sqltypes.CHAR):
     def get_col_spec(self):
         return "CHAR(%(length)s)" % {'length' : self.length}
@@ -98,6 +101,7 @@ ischema_names = {
     'BLOB' : OracleBinary,
     'CLOB' : OracleText,
     'TIMESTAMP' : OracleTimestamp,
+    'RAW' : OracleRaw,
     'FLOAT' : OracleNumeric,
     'DOUBLE PRECISION' : OracleNumeric,
 }
