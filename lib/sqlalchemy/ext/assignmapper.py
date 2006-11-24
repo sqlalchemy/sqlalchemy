@@ -34,3 +34,4 @@ def assign_mapper(ctx, class_, *args, **kwargs):
         monkeypatch_query_method(ctx, class_, name)
     for name in ['flush', 'delete', 'expire', 'refresh', 'expunge', 'merge', 'save', 'update', 'save_or_update']:
         monkeypatch_objectstore_method(ctx, class_, name)
+    return m
