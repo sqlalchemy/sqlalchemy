@@ -324,9 +324,7 @@ def _selectable_name(selectable):
     if isinstance(selectable, sql.Alias):
         return _selectable_name(selectable.selectable)
     elif isinstance(selectable, sql.Select):
-        # sometimes a Select has itself in _froms
-        nonrecursive_froms = [s for s in selectable._froms if s is not selectable]
-        return ''.join([_selectable_name(s) for s in nonrecursive_froms])
+        return ''.join([_selectable_name(s) for s in selectable.froms])
     elif isinstance(selectable, schema.Table):
         return selectable.name.capitalize()
     else:

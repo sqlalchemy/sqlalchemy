@@ -261,6 +261,100 @@ class QueryTest(PersistTest):
             r.close()
         finally:
             shadowed.drop()
+
+class CompoundTest(PersistTest):
+    """test compound statements like UNION, INTERSECT, particularly their ability to nest on
+    different databases."""
+    def setUpAll(self):
+        global metadata, t1, t2, t3
+        metadata = BoundMetaData(testbase.db)
+        t1 = Table('t1', metadata, 
+            Column('col1', Integer, primary_key=True),
+            Column('col2', String(30)),
+            Column('col3', String(40)),
+            Column('col4', String(30))
+            )
+        t2 = Table('t2', metadata, 
+            Column('col1', Integer, primary_key=True),
+            Column('col2', String(30)),
+            Column('col3', String(40)),
+            Column('col4', String(30)))
+        t3 = Table('t3', metadata, 
+            Column('col1', Integer, primary_key=True),
+            Column('col2', String(30)),
+            Column('col3', String(40)),
+            Column('col4', String(30)))
+        metadata.create_all()
+        
+        t1.insert().execute([
+            dict(col2="t1col2r1", col3="aaa", col4="aaa"),
+            dict(col2="t1col2r2", col3="bbb", col4="bbb"),
+            dict(col2="t1col2r3", col3="ccc", col4="ccc"),
+        ])
+        t2.insert().execute([
+            dict(col2="t2col2r1", col3="aaa", col4="bbb"),
+            dict(col2="t2col2r2", col3="bbb", col4="ccc"),
+            dict(col2="t2col2r3", col3="ccc", col4="aaa"),
+        ])
+        t3.insert().execute([
+            dict(col2="t3col2r1", col3="aaa", col4="ccc"),
+            dict(col2="t3col2r2", col3="bbb", col4="aaa"),
+            dict(col2="t3col2r3", col3="ccc", col4="bbb"),
+        ])
+        
+    def tearDownAll(self):
+        metadata.drop_all()
+        
+    def test_union(self):
+        (s1, s2) = (
+                    select([t1.c.col3, t1.c.col4], t1.c.col2.in_("t1col2r1", "t1col2r2")),
+            select([t2.c.col3, t2.c.col4], t2.c.col2.in_("t2col2r2", "t2col2r3"))
+        )        
+        u = union(s1, s2)
+        assert u.execute().fetchall() == [('aaa', 'aaa'), ('bbb', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
+        assert u.alias('bar').select().execute().fetchall() == [('aaa', 'aaa'), ('bbb', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
+        
+    @testbase.unsupported('mysql')
+    def test_intersect(self):
+        i = intersect(
+            select([t2.c.col3, t2.c.col4]),
+            select([t2.c.col3, t2.c.col4], t2.c.col4==t3.c.col3)
+        )
+        assert i.execute().fetchall() == [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
+        assert i.alias('bar').select().execute().fetchall() == [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
+
+    @testbase.unsupported('mysql')
+    def test_except_style1(self):
+        e = except_(union(
+            select([t1.c.col3, t1.c.col4]),
+            select([t2.c.col3, t2.c.col4]),
+            select([t3.c.col3, t3.c.col4]),
+        parens=True), select([t2.c.col3, t2.c.col4]))
+        assert e.alias('bar').select().execute().fetchall() == [('aaa', 'aaa'), ('aaa', 'ccc'), ('bbb', 'aaa'), ('bbb', 'bbb'), ('ccc', 'bbb'), ('ccc', 'ccc')]
+
+    @testbase.unsupported('mysql')
+    def test_except_style2(self):
+        e = except_(union(
+            select([t1.c.col3, t1.c.col4]),
+            select([t2.c.col3, t2.c.col4]),
+            select([t3.c.col3, t3.c.col4]),
+        ).alias('foo').select(), select([t2.c.col3, t2.c.col4]))
+        assert e.execute().fetchall() == [('aaa', 'aaa'), ('aaa', 'ccc'), ('bbb', 'aaa'), ('bbb', 'bbb'), ('ccc', 'bbb'), ('ccc', 'ccc')]
+        assert e.alias('bar').select().execute().fetchall() == [('aaa', 'aaa'), ('aaa', 'ccc'), ('bbb', 'aaa'), ('bbb', 'bbb'), ('ccc', 'bbb'), ('ccc', 'ccc')]
+
+    @testbase.unsupported('mysql')
+    def test_composite(self):
+        u = intersect(
+            select([t2.c.col3, t2.c.col4]),
+            union(
+                select([t1.c.col3, t1.c.col4]),
+                select([t2.c.col3, t2.c.col4]),
+                select([t3.c.col3, t3.c.col4]),
+            ).alias('foo').select()
+        )
+        assert u.execute().fetchall() == [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
+        assert u.alias('foo').select().execute().fetchall() == [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
+
         
 if __name__ == "__main__":
     testbase.main()        

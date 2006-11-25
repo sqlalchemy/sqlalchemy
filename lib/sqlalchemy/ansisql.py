@@ -302,7 +302,7 @@ class ANSICompiler(sql.Compiled):
         self.select_stack.append(select)
         for c in select._raw_columns:
             # TODO: make this polymorphic?
-            if isinstance(c, sql.Select) and c._scalar:
+            if isinstance(c, sql.Select) and c.is_scalar:
                 c.accept_visitor(self)
                 inner_columns[self.get_str(c)] = c
                 continue
@@ -319,7 +319,7 @@ class ANSICompiler(sql.Compiled):
                     inner_columns[co._label] = l
                 # TODO: figure this out, a ColumnClause with a select as a parent
                 # is different from any other kind of parent
-                elif select.issubquery and isinstance(co, sql._ColumnClause) and co.table is not None and not isinstance(co.table, sql.Select):
+                elif select.is_subquery and isinstance(co, sql._ColumnClause) and co.table is not None and not isinstance(co.table, sql.Select):
                     # SQLite doesnt like selecting from a subquery where the column
                     # names look like table.colname, so add a label synonomous with
                     # the column name

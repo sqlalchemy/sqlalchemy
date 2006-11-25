@@ -10,6 +10,7 @@ import sqlalchemy.ext.activemapper as activemapper
 
 class testcase(testbase.PersistTest):
     def setUpAll(self):
+        sqlalchemy.clear_mappers()
         global Person, Preferences, Address
         
         class Person(ActiveMapper):

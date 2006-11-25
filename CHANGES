@@ -1,3 +1,7 @@
+0.3.2
+- added keywords for EXCEPT, INTERSECT, EXCEPT ALL, INTERSECT ALL
+[ticket:247]
+
 0.3.1
 - Engine/Pool:
   - some new Pool utility classes, updated docs

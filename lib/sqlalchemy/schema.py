@@ -241,7 +241,7 @@ class Table(SchemaItem, sql.TableClause):
         [repr(self.name)] + [repr(self.metadata)] +
         [repr(x) for x in self.columns] +
         ["%s=%s" % (k, repr(getattr(self, k))) for k in ['schema']]
-       , ',\n')
+       , ',')
     
     def __str__(self):
         return _get_table_key(self.name, self.schema)
@@ -401,10 +401,22 @@ class Column(SchemaItem, sql._ColumnClause):
         fk._set_parent(self)
             
     def __repr__(self):
-       return "Column(%s)" % string.join(
+        kwarg = []
+        if self.key != self.name:
+            kwarg.append('key')
+        if self._primary_key:
+            kwarg.append('primary_key')
+        if not self.nullable:
+            kwarg.append('nullable')
+        if self.onupdate:
+            kwarg.append('onupdate')
+        if self.default:
+            kwarg.append('default')
+        return "Column(%s)" % string.join(
         [repr(self.name)] + [repr(self.type)] +
         [repr(x) for x in self.foreign_keys if x is not None] +
-        ["%s=%s" % (k, repr(getattr(self, k))) for k in ['key', 'primary_key', 'nullable', 'default', 'onupdate']]
+        [repr(x) for x in self.constraints] +
+        ["%s=%s" % (k, repr(getattr(self, k))) for k in kwarg]
        , ',')
         
     def _get_parent(self):

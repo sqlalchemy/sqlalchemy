@@ -12,6 +12,7 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'NullTypeEngine',
             ]
 
 from sqlalchemy import util, exceptions
+import inspect
 try:
     import cPickle as pickle
 except:
@@ -37,7 +38,9 @@ class AbstractType(object):
         
         this can be useful for calling setinputsizes(), for example."""
         return None
-            
+    def __repr__(self):
+        return "%s(%s)" % (self.__class__.__name__, ",".join(["%s=%s" % (k, getattr(self, k)) for k in inspect.getargspec(self.__init__)[0][1:]]))
+        
 class TypeEngine(AbstractType):
     def __init__(self, *args, **params):
         pass
