@@ -11,6 +11,7 @@ import sqlalchemy.ext.activemapper as activemapper
 class testcase(testbase.PersistTest):
     def setUpAll(self):
         sqlalchemy.clear_mappers()
+        objectstore.clear()
         global Person, Preferences, Address
         
         class Person(ActiveMapper):
@@ -260,6 +261,8 @@ class testcase(testbase.PersistTest):
 
 class testmanytomany(testbase.PersistTest):
      def setUpAll(self):
+         sqlalchemy.clear_mappers()
+         objectstore.clear()
          global secondarytable, foo, baz
          secondarytable = Table("secondarytable",
              activemapper.metadata,
@@ -315,6 +318,8 @@ class testmanytomany(testbase.PersistTest):
         
 class testselfreferential(testbase.PersistTest):
     def setUpAll(self):
+        sqlalchemy.clear_mappers()
+        objectstore.clear()
         global TreeNode
         class TreeNode(activemapper.ActiveMapper):
             class mapping:

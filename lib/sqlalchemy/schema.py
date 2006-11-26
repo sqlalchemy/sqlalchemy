@@ -14,7 +14,7 @@ structure with its own clause-specific objects as well as the visitor interface,
 the schema package "plugs in" to the SQL package.
 
 """
-from sqlalchemy import sql, types, exceptions,util
+from sqlalchemy import sql, types, exceptions,util, databases
 import sqlalchemy
 import copy, re, string
 
@@ -125,7 +125,7 @@ class _TableSingleton(type):
             table = metadata.tables[key]
             if len(args):
                 if not useexisting:
-                    raise exceptions.ArgumentError("Table '%s.%s' is already defined for this MetaData instance." % (schema, name))
+                    raise exceptions.ArgumentError("Table '%s' is already defined for this MetaData instance." % key)
             return table
         except KeyError:
             if mustexist:
@@ -183,8 +183,7 @@ class Table(SchemaItem, sql.TableClause):
         else an exception is raised.
         
         useexisting=False : indicates that if this Table was already defined elsewhere in the application, disregard
-        the rest of the constructor arguments.  If this flag and the "redefine" flag are not set, constructing 
-        the same table twice will result in an exception.
+        the rest of the constructor arguments.  
         
         owner=None : optional owning user of this table.  useful for databases such as Oracle to aid in table
         reflection.
@@ -207,8 +206,8 @@ class Table(SchemaItem, sql.TableClause):
         self.indexes = util.Set()
         self.constraints = util.Set()
         self.primary_key = PrimaryKeyConstraint()
-        self.quote = kwargs.get('quote', False)
-        self.quote_schema = kwargs.get('quote_schema', False)
+        self.quote = kwargs.pop('quote', False)
+        self.quote_schema = kwargs.pop('quote_schema', False)
         if self.schema is not None:
             self.fullname = "%s.%s" % (self.schema, self.name)
         else:
@@ -217,8 +216,13 @@ class Table(SchemaItem, sql.TableClause):
 
         self._set_casing_strategy(name, kwargs)
         self._set_casing_strategy(self.schema or '', kwargs, keyname='case_sensitive_schema')
+        
+        if len([k for k in kwargs if not re.match(r'^(?:%s)_' % '|'.join(databases.__all__), k)]):
+            raise TypeError("Invalid argument(s) for Table: %s" % repr(kwargs.keys()))
+        
+        # store extra kwargs, which should only contain db-specific options
         self.kwargs = kwargs
-
+        
     def _get_case_sensitive_schema(self):
         try:
             return getattr(self, '_case_sensitive_schema')

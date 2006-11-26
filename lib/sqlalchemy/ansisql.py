@@ -70,19 +70,63 @@ class ANSICompiler(sql.Compiled):
         actual compilation, as in the case of an INSERT where the actual columns
         inserted will correspond to the keys present in the parameters."""
         sql.Compiled.__init__(self, dialect, statement, parameters, **kwargs)
+        
+        # a dictionary of bind parameter keys to _BindParamClause instances.
         self.binds = {}
-        self.froms = {}
-        self.wheres = {}
+
+        # a dictionary which stores the string representation for every ClauseElement
+        # processed by this compiler.
         self.strings = {}
+        
+        # a dictionary which stores the string representation for ClauseElements
+        # processed by this compiler, which are to be used in the FROM clause
+        # of a select.  items are often placed in "froms" as well as "strings"
+        # and sometimes with different representations.
+        self.froms = {}
+        
+        # slightly hacky.  maps FROM clauses to WHERE clauses, and used in select 
+        # generation to modify the WHERE clause of the select.  currently a hack
+        # used by the oracle module.
+        self.wheres = {}
+        
+        # when the compiler visits a SELECT statement, the clause object is appended
+        # to this stack.  various visit operations will check this stack to determine
+        # additional choices (TODO: it seems to be all typemap stuff.  shouldnt this only
+        # apply to the topmost-level SELECT statement ?)
         self.select_stack = []
+        
+        # a dictionary of result-set column names (strings) to TypeEngine instances,
+        # which will be passed to a ResultProxy and used for resultset-level value conversion
         self.typemap = {}
+        
+        # True if this compiled represents an INSERT
         self.isinsert = False
+        
+        # True if this compiled represents an UPDATE
         self.isupdate = False
+        
+        # default formatting style for bind parameters
         self.bindtemplate = ":%s"
+        
+        # paramstyle from the dialect (comes from DBAPI)
         self.paramstyle = dialect.paramstyle
+        
+        # true if the paramstyle is positional
         self.positional = dialect.positional
+        
+        # a list of the compiled's bind parameter names, used to help
+        # formulate a positional argument list
         self.positiontup = []
+        
+        # an ANSIIdentifierPreparer that formats the quoting of identifiers
         self.preparer = dialect.identifier_preparer
+        
+        # for UPDATE and INSERT statements, a set of columns whos values are being set
+        # from a SQL expression (i.e., not one of the bind parameter values).  if present,
+        # default-value logic in the Dialect knows not to fire off column defaults
+        # and also knows postfetching will be needed to get the values represented by these
+        # parameters.
+        self.inline_params = None
         
     def after_compile(self):
         # this re will search for params like :param
@@ -295,13 +339,10 @@ class ANSICompiler(sql.Compiled):
     def visit_select(self, select):
         
         # the actual list of columns to print in the SELECT column list.
-        # its an ordered dictionary to insure that the actual labeled column name
-        # is unique.
         inner_columns = util.OrderedDict()
 
         self.select_stack.append(select)
         for c in select._raw_columns:
-            # TODO: make this polymorphic?
             if isinstance(c, sql.Select) and c.is_scalar:
                 c.accept_visitor(self)
                 inner_columns[self.get_str(c)] = c
@@ -431,7 +472,6 @@ class ANSICompiler(sql.Compiled):
         self.strings[table] = ""
 
     def visit_join(self, join):
-        # TODO: ppl are going to want RIGHT, FULL OUTER and NATURAL joins.
         righttext = self.get_from_text(join.right)
         if join.right._group_parenthesized():
             righttext = "(" + righttext + ")"
@@ -488,13 +528,15 @@ class ANSICompiler(sql.Compiled):
         self.isinsert = True
         colparams = self._get_colparams(insert_stmt, default_params)
 
-        def create_param(p):
+        self.inline_params = util.Set()
+        def create_param(col, p):
             if isinstance(p, sql._BindParamClause):
                 self.binds[p.key] = p
                 if p.shortname is not None:
                     self.binds[p.shortname] = p
                 return self.bindparam_string(p.key)
             else:
+                self.inline_params.add(col)
                 p.accept_visitor(self)
                 if isinstance(p, sql.ClauseElement) and not isinstance(p, sql.ColumnElement):
                     return "(" + self.get_str(p) + ")"
@@ -502,7 +544,7 @@ class ANSICompiler(sql.Compiled):
                     return self.get_str(p)
 
         text = ("INSERT INTO " + self.preparer.format_table(insert_stmt.table) + " (" + string.join([self.preparer.format_column(c[0]) for c in colparams], ', ') + ")" +
-         " VALUES (" + string.join([create_param(c[1]) for c in colparams], ', ') + ")")
+         " VALUES (" + string.join([create_param(*c) for c in colparams], ', ') + ")")
 
         self.strings[insert_stmt] = text
 
@@ -520,19 +562,22 @@ class ANSICompiler(sql.Compiled):
 
         self.isupdate = True
         colparams = self._get_colparams(update_stmt, default_params)
-        def create_param(p):
+
+        self.inline_params = util.Set()
+        def create_param(col, p):
             if isinstance(p, sql._BindParamClause):
                 self.binds[p.key] = p
                 self.binds[p.shortname] = p
                 return self.bindparam_string(p.key)
             else:
                 p.accept_visitor(self)
+                self.inline_params.add(col)
                 if isinstance(p, sql.ClauseElement) and not isinstance(p, sql.ColumnElement):
                     return "(" + self.get_str(p) + ")"
                 else:
                     return self.get_str(p)
                 
-        text = "UPDATE " + self.preparer.format_table(update_stmt.table) + " SET " + string.join(["%s=%s" % (self.preparer.format_column(c[0]), create_param(c[1])) for c in colparams], ', ')
+        text = "UPDATE " + self.preparer.format_table(update_stmt.table) + " SET " + string.join(["%s=%s" % (self.preparer.format_column(c[0]), create_param(*c)) for c in colparams], ', ')
         
         if update_stmt.whereclause:
             text += " WHERE " + self.get_str(update_stmt.whereclause)
@@ -541,55 +586,51 @@ class ANSICompiler(sql.Compiled):
 
 
     def _get_colparams(self, stmt, default_params):
-        """determines the VALUES or SET clause for an INSERT or UPDATE
-        clause based on the arguments specified to this ANSICompiler object
-        (i.e., the execute() or compile() method clause object):
+        """organize UPDATE/INSERT SET/VALUES parameters into a list of tuples, 
+        each tuple containing the Column and a ClauseElement representing the
+        value to be set (usually a _BindParamClause, but could also be other
+        SQL expressions.)
 
-        insert(mytable).execute(col1='foo', col2='bar')
-        mytable.update().execute(col2='foo', col3='bar')
-
-        in the above examples, the insert() and update() methods have no "values" sent to them
-        at all, so compiling them with no arguments would yield an insert for all table columns,
-        or an update with no SET clauses.  but the parameters sent indicate a set of per-compilation
-        arguments that result in a differently compiled INSERT or UPDATE object compared to the
-        original.  The "values" parameter to the insert/update is figured as well if present,
-        but the incoming "parameters" sent here take precedence.
+        the list of tuples will determine the columns that are actually rendered
+        into the SET/VALUES clause of the rendered UPDATE/INSERT statement.  It will
+        also determine how to generate the list/dictionary of bind parameters at 
+        execution time (i.e. get_params()).
+        
+        this list takes into account the "values" keyword specified to the statement,
+        the parameters sent to this Compiled instance, and the default bind parameter
+        values corresponding to the dialect's behavior for otherwise unspecified 
+        primary key columns.
         """
-        # case one: no parameters in the statement, no parameters in the 
-        # compiled params - just return binds for all the table columns
+        # no parameters in the statement, no parameters in the 
+        # compiled params - return binds for all columns
         if self.parameters is None and stmt.parameters is None:
             return [(c, sql.bindparam(c.key, type=c.type)) for c in stmt.table.columns]
 
+        def to_col(key):
+            if not isinstance(key, sql._ColumnClause):
+                return stmt.table.columns.get(str(key), key)
+            else:
+                return key
+                
         # if we have statement parameters - set defaults in the 
         # compiled params
         if self.parameters is None:
             parameters = {}
         else:
-            parameters = self.parameters.copy()
+            parameters = dict([(to_col(k), v) for k, v in self.parameters.iteritems()])
 
         if stmt.parameters is not None:
             for k, v in stmt.parameters.iteritems():
-                parameters.setdefault(k, v)
+                parameters.setdefault(to_col(k), v)
 
         for k, v in default_params.iteritems():
-            parameters.setdefault(k, v)
-            
-        # now go thru compiled params, get the Column object for each key
-        d = {}
-        for key, value in parameters.iteritems():
-            if isinstance(key, sql._ColumnClause):
-                d[key] = value
-            else:
-                try:
-                    d[stmt.table.columns[str(key)]] = value
-                except KeyError:
-                    pass
+            parameters.setdefault(to_col(k), v)
 
         # create a list of column assignment clauses as tuples
         values = []
         for c in stmt.table.columns:
-            if d.has_key(c):
-                value = d[c]
+            if parameters.has_key(c):
+                value = parameters[c]
                 if sql._is_literal(value):
                     value = sql.bindparam(c.key, value, type=c.type)
                 values.append((c, value))

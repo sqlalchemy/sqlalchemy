@@ -175,6 +175,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         visit_update methods that add the appropriate column clauses to the statement when its 
         being compiled, so that these parameters can be bound to the statement."""
         if compiled is None: return
+        
         if getattr(compiled, "isinsert", False):
             if isinstance(parameters, list):
                 plist = parameters
@@ -185,8 +186,20 @@ class DefaultExecutionContext(base.ExecutionContext):
             for param in plist:
                 last_inserted_ids = []
                 need_lastrowid=False
+                # check the "default" status of each column in the table
                 for c in compiled.statement.table.c:
-                    if not param.has_key(c.key) or param[c.key] is None:
+                    # check if it will be populated by a SQL clause - we'll need that
+                    # after execution.
+                    if c in compiled.inline_params:
+                        self._lastrow_has_defaults = True
+                        if c.primary_key:
+                            need_lastrowid = True
+                    # check if its not present at all.  see if theres a default
+                    # and fire it off, and add to bind parameters.  if 
+                    # its a pk, add the value to our last_inserted_ids list,
+                    # or, if its a SQL-side default, dont do any of that, but we'll need 
+                    # the SQL-generated value after execution.
+                    elif not param.has_key(c.key) or param[c.key] is None:
                         if isinstance(c.default, schema.PassiveDefault):
                             self._lastrow_has_defaults = True
                         newid = drunner.get_column_default(c)
@@ -196,13 +209,14 @@ class DefaultExecutionContext(base.ExecutionContext):
                                 last_inserted_ids.append(param[c.key])
                         elif c.primary_key:
                             need_lastrowid = True
+                    # its an explicitly passed pk value - add it to 
+                    # our last_inserted_ids list.
                     elif c.primary_key:
                         last_inserted_ids.append(param[c.key])
                 if need_lastrowid:
                     self._last_inserted_ids = None
                 else:
                     self._last_inserted_ids = last_inserted_ids
-                #print "LAST INSERTED PARAMS", param
                 self._last_inserted_params = param
         elif getattr(compiled, 'isupdate', False):
             if isinstance(parameters, list):
@@ -212,8 +226,15 @@ class DefaultExecutionContext(base.ExecutionContext):
             drunner = self.dialect.defaultrunner(engine, proxy)
             self._lastrow_has_defaults = False
             for param in plist:
+                # check the "onupdate" status of each column in the table 
                 for c in compiled.statement.table.c:
-                    if c.onupdate is not None and (not param.has_key(c.key) or param[c.key] is None):
+                    # it will be populated by a SQL clause - we'll need that
+                    # after execution.
+                    if c in compiled.inline_params:
+                        pass
+                    # its not in the bind parameters, and theres an "onupdate" defined for the column;
+                    # execute it and add to bind params
+                    elif c.onupdate is not None and (not param.has_key(c.key) or param[c.key] is None):
                         value = drunner.get_column_onupdate(c)
                         if value is not None:
                             param[c.key] = value

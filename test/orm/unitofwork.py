@@ -1341,32 +1341,27 @@ class SaveTest2(UnitOfWorkTest):
     def setUp(self):
         ctx.current.clear()
         clear_mappers()
-        self.users = Table('users', db,
+        global meta, users, addresses
+        meta = BoundMetaData(db)
+        users = Table('users', meta,
             Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key = True),
             Column('user_name', String(20)),
-            redefine=True
         )
 
-        self.addresses = Table('email_addresses', db,
+        addresses = Table('email_addresses', meta,
             Column('address_id', Integer, Sequence('address_id_seq', optional=True), primary_key = True),
-            Column('rel_user_id', Integer, ForeignKey(self.users.c.user_id)),
+            Column('rel_user_id', Integer, ForeignKey(users.c.user_id)),
             Column('email_address', String(20)),
-            redefine=True
         )
-        x = sql.join(self.users, self.addresses)
-#        raise repr(self.users) + repr(self.users.primary_key)
-#        raise repr(self.addresses) + repr(self.addresses.foreign_keys)
-        self.users.create()
-        self.addresses.create()
+        meta.create_all()
 
     def tearDown(self):
-        self.addresses.drop()
-        self.users.drop()
+        meta.drop_all()
         UnitOfWorkTest.tearDown(self)
     
     def testbackwardsnonmatch(self):
-        m = mapper(Address, self.addresses, properties = dict(
-            user = relation(mapper(User, self.users), lazy = True, uselist = False)
+        m = mapper(Address, addresses, properties = dict(
+            user = relation(mapper(User, users), lazy = True, uselist = False)
         ))
         data = [
             {'user_name' : 'thesub' , 'email_address' : 'bar@foo.com'},

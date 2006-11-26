@@ -5,18 +5,17 @@ import unittest, sys, datetime
 import sqlalchemy.databases.sqlite as sqllite
 
 import tables
-db = testbase.db
 from sqlalchemy import *
 from sqlalchemy.engine import ResultProxy, RowProxy
 
 class QueryTest(PersistTest):
     
     def setUpAll(self):
-        global users
-        users = Table('query_users', db,
+        global users, metadata
+        metadata = BoundMetaData(testbase.db)
+        users = Table('query_users', metadata,
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20)),
-            redefine = True
         )
         users.create()
     
@@ -71,16 +70,16 @@ class QueryTest(PersistTest):
             default_metadata.drop_all()
             default_metadata.clear()
  
+    @testbase.supported('postgres')
     def testpassiveoverride(self):
         """primarily for postgres, tests that when we get a primary key column back 
         from reflecting a table which has a default value on it, we pre-execute
         that PassiveDefault upon insert, even though PassiveDefault says 
         "let the database execute this", because in postgres we must have all the primary
         key values in memory before insert; otherwise we cant locate the just inserted row."""
-        if db.engine.name != 'postgres':
-            return
         try:
-            db.execute("""
+            meta = BoundMetaData(testbase.db)
+            testbase.db.execute("""
              CREATE TABLE speedy_users
              (
                  speedy_user_id   SERIAL     PRIMARY KEY,
@@ -90,19 +89,17 @@ class QueryTest(PersistTest):
              );
             """, None)
             
-            t = Table("speedy_users", db, autoload=True)
+            t = Table("speedy_users", meta, autoload=True)
             t.insert().execute(user_name='user', user_password='lala')
             l = t.select().execute().fetchall()
-            print l
             self.assert_(l == [(1, 'user', 'lala')])
         finally:
-            db.execute("drop table speedy_users", None)
+            testbase.db.execute("drop table speedy_users", None)
 
+    @testbase.supported('postgres')
     def testschema(self):
-        if not db.engine.__module__.endswith('postgres'):
-            return 
-            
-        test_table = Table('my_table', db,
+        meta1 = BoundMetaData(testbase.db)
+        test_table = Table('my_table', meta1,
                     Column('id', Integer, primary_key=True),
                     Column('data', String(20), nullable=False),
                     schema='alt_schema'
@@ -112,9 +109,8 @@ class QueryTest(PersistTest):
             # plain insert
             test_table.insert().execute(data='test')
 
-            # try with a PassiveDefault
-            test_table.deregister()
-            test_table = Table('my_table', db, autoload=True, redefine=True, schema='alt_schema')
+            meta2 = BoundMetaData(testbase.db)
+            test_table = Table('my_table', meta2, autoload=True, schema='alt_schema')
             test_table.insert().execute(data='test')
 
         finally:
@@ -187,10 +183,10 @@ class QueryTest(PersistTest):
         r = self.users.select().execute().fetchone()
         self.assertEqual(len(r), 2)
         r.close()
-        r = db.execute('select user_name, user_id from query_users', {}).fetchone()
+        r = testbase.db.execute('select user_name, user_id from query_users', {}).fetchone()
         self.assertEqual(len(r), 2)
         r.close()
-        r = db.execute('select user_name from query_users', {}).fetchone()
+        r = testbase.db.execute('select user_name from query_users', {}).fetchone()
         self.assertEqual(len(r), 1)
         r.close()
     
@@ -200,6 +196,56 @@ class QueryTest(PersistTest):
         z = testbase.db.func.current_date().scalar()
         assert x == y == z
 
+    def test_update_functions(self):
+        """test sending functions and SQL expressions to the VALUES and SET clauses of INSERT/UPDATE instances,
+        and that column-level defaults get overridden"""
+        meta = BoundMetaData(testbase.db)
+        t = Table('t1', meta,
+            Column('id', Integer, primary_key=True),
+            Column('value', Integer)
+        )
+        t2 = Table('t2', meta,
+            Column('id', Integer, primary_key=True),
+            Column('value', Integer, default="7"),
+            Column('stuff', String(20), onupdate="thisisstuff")
+        )
+        meta.create_all()
+        try:
+            t.insert().execute(value=func.length("one"))
+            assert t.select().execute().fetchone()['value'] == 3
+            t.update().execute(value=func.length("asfda"))
+            assert t.select().execute().fetchone()['value'] == 5
+
+            r = t.insert(values=dict(value=func.length("sfsaafsda"))).execute()
+            id = r.last_inserted_ids()[0]
+            assert t.select(t.c.id==id).execute().fetchone()['value'] == 9
+            t.update(values={t.c.value:func.length("asdf")}).execute()
+            assert t.select().execute().fetchone()['value'] == 4
+
+            t2.insert().execute()
+            t2.insert().execute(value=func.length("one"))
+            t2.insert().execute(value=func.length("asfda") + -19, stuff="hi")
+
+            assert select([t2.c.value, t2.c.stuff]).execute().fetchall() == [(7,None), (3,None), (-14,"hi")]
+            
+            t2.update().execute(value=func.length("asdsafasd"), stuff="some stuff")
+            assert select([t2.c.value, t2.c.stuff]).execute().fetchall() == [(9,"some stuff"), (9,"some stuff"), (9,"some stuff")]
+            
+            t2.delete().execute()
+            
+            t2.insert(values=dict(value=func.length("one") + 8)).execute()
+            assert t2.select().execute().fetchone()['value'] == 11
+            
+            t2.update(values=dict(value=func.length("asfda"))).execute()
+            assert select([t2.c.value, t2.c.stuff]).execute().fetchone() == (5, "thisisstuff")
+
+            t2.update(values={t2.c.value:func.length("asfdaasdf"), t2.c.stuff:"foo"}).execute()
+            print "HI", select([t2.c.value, t2.c.stuff]).execute().fetchone()
+            assert select([t2.c.value, t2.c.stuff]).execute().fetchone() == (9, "foo")
+            
+        finally:
+            meta.drop_all()
+            
     @testbase.supported('postgres')
     def test_functions_with_cols(self):
         x = testbase.db.func.current_date().execute().scalar()
@@ -226,7 +272,7 @@ class QueryTest(PersistTest):
     def test_column_order_with_text_query(self):
         # should return values in query order
         self.users.insert().execute(user_id=1, user_name='foo')
-        r = db.execute('select user_name, user_id from query_users', {}).fetchone()
+        r = testbase.db.execute('select user_name, user_id from query_users', {}).fetchone()
         self.assertEqual(r[0], 'foo')
         self.assertEqual(r[1], 1)
         self.assertEqual(r.keys(), ['user_name', 'user_id'])
@@ -234,14 +280,14 @@ class QueryTest(PersistTest):
        
     @testbase.unsupported('oracle', 'firebird') 
     def test_column_accessor_shadow(self):
-        shadowed = Table('test_shadowed', db,
+        meta = BoundMetaData(testbase.db)
+        shadowed = Table('test_shadowed', meta,
                          Column('shadow_id', INT, primary_key = True),
                          Column('shadow_name', VARCHAR(20)),
                          Column('parent', VARCHAR(20)),
                          Column('row', VARCHAR(40)),
                          Column('__parent', VARCHAR(20)),
                          Column('__row', VARCHAR(20)),
-            redefine = True
         )
         shadowed.create()
         try:
