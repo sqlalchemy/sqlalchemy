@@ -1494,6 +1494,9 @@ class Select(_SelectBaseMixin, FromClause):
 
         self._raw_columns.append(column)
 
+        if self.is_scalar and not hasattr(self, 'type'):
+            self.type = column.type
+
         # if the column is a Select statement itself, 
         # accept visitor
         column.accept_visitor(self.__correlator)
@@ -1502,7 +1505,17 @@ class Select(_SelectBaseMixin, FromClause):
         for f in column._get_from_objects():
             f.accept_visitor(self.__correlator)
         self._process_froms(column, False)
-
+    def _make_proxy(self, selectable, name):
+        if self.is_scalar:
+            return self._raw_columns[0]._make_proxy(selectable, name)
+        else:
+            raise exceptions.InvalidRequestError("Not a scalar select statement")
+    def label(self, name):
+        if not self.is_scalar:
+            raise exceptions.InvalidRequestError("Not a scalar select statement")
+        else:
+            return label(name, self)
+            
     def _exportable_columns(self):
         return self._raw_columns
     def _proxy_column(self, column):

@@ -1,6 +1,8 @@
 0.3.2
 - added keywords for EXCEPT, INTERSECT, EXCEPT ALL, INTERSECT ALL
 [ticket:247]
+- added label() function to Select class, when scalar=True is used
+to create a scalar subquery.
 
 0.3.1
 - Engine/Pool:
