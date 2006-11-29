@@ -367,8 +367,8 @@ class Session(object):
             return
         if not hasattr(object, '_instance_key'):
             raise exceptions.InvalidRequestError("Instance '%s' is not persisted" % repr(object))
-        self._register_persistent(object)
-    
+        self._attach(object)
+
     def _register_pending(self, obj):
         self._attach(obj)
         self.uow.register_new(obj)

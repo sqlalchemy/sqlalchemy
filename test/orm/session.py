@@ -61,6 +61,38 @@ class SessionTest(AssertMixin):
             tran.close()
         finally:
             c.close()
+            
+    def test_update(self):
+        """test that the update() method functions and doesnet blow away changes"""
+        tables.delete()
+        s = create_session()
+        class User(object):pass
+        mapper(User, users)
+        
+        # save user
+        s.save(User())
+        s.flush()
+        user = s.query(User).selectone()
+        s.expunge(user)
+        assert user not in s
+        
+        # modify outside of session, assert changes remain/get saved
+        user.user_name = "fred"
+        s.update(user)
+        assert user in s
+        assert user in s.dirty
+        s.flush()
+        s.clear()
+        user = s.query(User).selectone()
+        assert user.user_name == 'fred'
+        
+        # insure its not dirty if no changes occur
+        s.clear()
+        assert user not in s
+        s.update(user)
+        assert user in s
+        assert user not in s.dirty
+        
         
 class OrphanDeletionTest(AssertMixin):
 

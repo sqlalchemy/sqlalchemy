@@ -5,6 +5,7 @@
 to create a scalar subquery.
 - added extra check to "stop" cascading on save/update/save-update if
 an instance is detected to be already in the session.
+- fix to session.update() to preserve "dirty" status of incoming object
 
 0.3.1
 - Engine/Pool:
