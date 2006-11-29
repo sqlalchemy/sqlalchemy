@@ -545,10 +545,12 @@ class _CompareMixin(object):
         elif _is_literal(other[0]):
             return self._compare('IN', ClauseList(parens=True, *[self._bind_param(o) for o in other]), negate='NOT IN')
         else:
-            # assume *other is a list of selects.
-            # so put them in a UNION.  if theres only one, you just get one SELECT 
-            # statement out of it.
-            return self._compare('IN', union(parens=True, *other), negate='NOT IN')
+            # assume *other is a single select.
+            # originally, this assumed possibly multiple selects and created a UNION, 
+            # but we are now forcing explictness if a UNION is desired.
+            if len(other) > 1:
+                raise exceptions.InvalidRequestException("in() function accepts only multiple literal values, or a single selectable as an argument")
+            return self._compare('IN', other[0], negate='NOT IN')
     def startswith(self, other):
         return self._compare('LIKE', other + "%")
     def endswith(self, other):
@@ -1366,6 +1368,7 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
 
         self.selects = selects
 
+        # some DBs do not like ORDER BY in the inner queries of a UNION, etc.
         for s in selects:
             s.group_by(None)
             s.order_by(None)

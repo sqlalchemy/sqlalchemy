@@ -572,6 +572,18 @@ FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable
 
         self.runtest(select([table1], ~table1.c.myid.in_(select([table2.c.otherid]))),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid NOT IN (SELECT myothertable.otherid AS otherid FROM myothertable)")
+        
+        # test that putting a select in an IN clause does not blow away its ORDER BY clause
+        self.runtest(
+            select([table1, table2], 
+                table2.c.otherid.in_(
+                    select([table2.c.otherid], order_by=[table2.c.othername], limit=10, correlate=False)
+                ),
+                from_obj=[table1.join(table2, table1.c.myid==table2.c.otherid)], order_by=[table1.c.myid]
+            ),
+            "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername FROM mytable JOIN myothertable ON mytable.myid = myothertable.otherid WHERE myothertable.otherid IN (SELECT myothertable.otherid AS otherid FROM myothertable ORDER BY myothertable.othername  LIMIT 10) ORDER BY mytable.myid"
+        )
+        
     
     def testlateargs(self):
         """tests that a SELECT clause will have extra "WHERE" clauses added to it at compile time if extra arguments

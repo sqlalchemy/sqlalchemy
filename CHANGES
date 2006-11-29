@@ -6,6 +6,9 @@ to create a scalar subquery.
 - added extra check to "stop" cascading on save/update/save-update if
 an instance is detected to be already in the session.
 - fix to session.update() to preserve "dirty" status of incoming object
+- sending a selectable to an IN no longer creates a "union" out of multiple
+selects; only one selectable to an IN is allowed now (make a union yourself
+if union is needed; explicit better than implicit, dont guess, etc.)
 
 0.3.1
 - Engine/Pool:
