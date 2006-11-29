@@ -18,9 +18,9 @@ class MapperProperty(object):
         """called when the mapper receives a row.  instance is the parent instance
         corresponding to the row. """
         raise NotImplementedError()
-    def cascade_iterator(self, type, object, recursive=None):
+    def cascade_iterator(self, type, object, recursive=None, halt_on=None):
         return []
-    def cascade_callable(self, type, object, callable_, recursive=None):
+    def cascade_callable(self, type, object, callable_, recursive=None, halt_on=None):
         return []
     def get_criterion(self, query, key, value):
         """Returns a WHERE clause suitable for this MapperProperty corresponding to the 

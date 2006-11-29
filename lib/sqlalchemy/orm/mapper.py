@@ -1082,7 +1082,7 @@ class Mapper(object):
         for prop in self.__props.values():
             prop.register_dependencies(uowcommit, *args, **kwargs)
     
-    def cascade_iterator(self, type, object, recursive=None):
+    def cascade_iterator(self, type, object, recursive=None, halt_on=None):
         """iterate each element in an object graph, for all relations taht meet the given cascade rule.
         
         type - the name of the cascade rule (i.e. save-update, delete, etc.)
@@ -1094,10 +1094,10 @@ class Mapper(object):
         if recursive is None:
             recursive=util.Set()
         for prop in self.__props.values():
-            for c in prop.cascade_iterator(type, object, recursive):
+            for c in prop.cascade_iterator(type, object, recursive, halt_on=halt_on):
                 yield c
 
-    def cascade_callable(self, type, object, callable_, recursive=None):
+    def cascade_callable(self, type, object, callable_, recursive=None, halt_on=None):
         """execute a callable for each element in an object graph, for all relations that meet the given cascade rule.
         
         type - the name of the cascade rule (i.e. save-update, delete, etc.)
@@ -1111,7 +1111,7 @@ class Mapper(object):
         if recursive is None:
             recursive=util.Set()
         for prop in self.__props.values():
-            prop.cascade_callable(type, object, callable_, recursive)
+            prop.cascade_callable(type, object, callable_, recursive, halt_on=halt_on)
             
 
     def get_select_mapper(self):

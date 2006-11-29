@@ -19,7 +19,8 @@ class CascadeOptions(object):
         #self.refresh_expire = "refresh-expire" in values or "all" in values
     def __contains__(self, item):
         return getattr(self, item.replace("-", "_"), False)
-    
+    def __repr__(self):
+        return "CascadeOptions(arg=%s)" % repr(",".join([x for x in ['delete', 'save_update', 'merge', 'expunge', 'delete_orphan'] if getattr(self, x, False) is True]))
 
 def polymorphic_union(table_map, typecolname, aliasname='p_union'):
     """create a UNION statement used by a polymorphic mapper.

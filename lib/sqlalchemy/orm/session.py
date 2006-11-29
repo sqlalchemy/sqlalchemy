@@ -287,7 +287,7 @@ class Session(object):
         instance.
         """
         self._save_impl(object, entity_name=entity_name)
-        _object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e))
+        _object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e), halt_on=lambda c:c in self)
 
     def update(self, object, entity_name=None):
         """Bring the given detached (saved) instance into this Session.
@@ -298,7 +298,7 @@ class Session(object):
         This operation cascades the "save_or_update" method to associated instances if the relation is mapped 
         with cascade="save-update"."""
         self._update_impl(object, entity_name=entity_name)
-        _object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e))
+        _object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e), halt_on=lambda c:c in self)
 
     def save_or_update(self, object, entity_name=None):
         """save or update the given object into this Session.
@@ -306,7 +306,7 @@ class Session(object):
         The presence of an '_instance_key' attribute on the instance determines whether to
         save() or update() the instance."""
         self._save_or_update_impl(object, entity_name=entity_name)
-        _object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e))
+        _object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e), halt_on=lambda c:c in self)
     
     def _save_or_update_impl(self, object, entity_name=None):
         key = getattr(object, '_instance_key', None)

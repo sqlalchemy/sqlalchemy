@@ -118,7 +118,7 @@ class PropertyLoader(StrategizedProperty):
     def __str__(self):
         return self.__class__.__name__ + " " + str(self.parent) + "->" + self.key + "->" + str(self.mapper)
         
-    def cascade_iterator(self, type, object, recursive):
+    def cascade_iterator(self, type, object, recursive, halt_on=None):
         if not type in self.cascade:
             return
         passive = type != 'delete' or self.passive_deletes
@@ -127,7 +127,7 @@ class PropertyLoader(StrategizedProperty):
             return
         mapper = self.mapper.primary_mapper()
         for c in childlist.added_items() + childlist.deleted_items() + childlist.unchanged_items():
-            if c is not None and c not in recursive:
+            if c is not None and c not in recursive and (halt_on is None or not halt_on(c)):
                 if not isinstance(c, self.mapper.class_):
                     raise exceptions.AssertionError("Attribute '%s' on class '%s' doesn't handle objects of type '%s'" % (self.key, str(self.parent.class_), str(c.__class__)))
                 recursive.add(c)
@@ -135,14 +135,14 @@ class PropertyLoader(StrategizedProperty):
                 for c2 in mapper.cascade_iterator(type, c, recursive):
                     yield c2
 
-    def cascade_callable(self, type, object, callable_, recursive):
+    def cascade_callable(self, type, object, callable_, recursive, halt_on=None):
         if not type in self.cascade:
             return
         
         mapper = self.mapper.primary_mapper()
         passive = type != 'delete' or self.passive_deletes
         for c in sessionlib.attribute_manager.get_as_list(object, self.key, passive=passive):
-            if c is not None and c not in recursive:
+            if c is not None and c not in recursive and (halt_on is None or not halt_on(c)):
                 if not isinstance(c, self.mapper.class_):
                     raise exceptions.AssertionError("Attribute '%s' on class '%s' doesn't handle objects of type '%s'" % (self.key, str(self.parent.class_), str(c.__class__)))
                 recursive.add(c)
