@@ -624,7 +624,7 @@ class ResultProxy(object):
         try:
             self._convert_key(key)
             return True
-        except exceptions.KeyError:
+        except KeyError:
             return False
         
     def _get_col(self, row, key):
