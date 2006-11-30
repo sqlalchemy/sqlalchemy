@@ -9,7 +9,7 @@ an instance is detected to be already in the session.
 - sending a selectable to an IN no longer creates a "union" out of multiple
 selects; only one selectable to an IN is allowed now (make a union yourself
 if union is needed; explicit better than implicit, dont guess, etc.)
-
+- improved support for disabling save-update cascade via cascade="none" etc.
 0.3.1
 - Engine/Pool:
   - some new Pool utility classes, updated docs

@@ -101,7 +101,14 @@ class UnitOfWork(object):
         if (hasattr(obj, '_instance_key') and not self.identity_map.has_key(obj._instance_key)) or \
             (not hasattr(obj, '_instance_key') and obj not in self.new):
             raise InvalidRequestError("Instance '%s' is not attached or pending within this session" % repr(obj))
-
+    
+    def _is_valid(self, obj):
+        if (hasattr(obj, '_instance_key') and not self.identity_map.has_key(obj._instance_key)) or \
+            (not hasattr(obj, '_instance_key') and obj not in self.new):
+            return False
+        else:
+            return True
+        
     def register_attribute(self, class_, key, uselist, **kwargs):
         attribute_manager.register_attribute(class_, key, uselist, **kwargs)
 
@@ -219,9 +226,9 @@ class UOWTransaction(object):
         registration is entered for the object."""
         #print "REGISTER", repr(obj), repr(getattr(obj, '_instance_key', None)), str(isdelete), str(listonly)
         
-        # things can get really confusing if theres duplicate instances floating around,
-        # so make sure everything is OK
-        self.uow._validate_obj(obj)
+        # if object is not in the overall session, do nothing
+        if not self.uow._is_valid(obj):
+            return
             
         mapper = object_mapper(obj)
         self.mappers.add(mapper)
