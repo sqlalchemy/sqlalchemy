@@ -293,7 +293,7 @@ class EagerLoader(AbstractRelationLoader):
 
         self.clauses = {}
         self.clauses_by_lead_mapper = {}
-        
+        self.__should_log_debug = logging.is_debug_enabled(self.logger)
     class AliasedClauses(object):
         """defines a set of join conditions and table aliases which are aliased on a randomly-generated
         alias name, corresponding to the connection of an optional parent AliasedClauses object and a 
@@ -476,7 +476,8 @@ class EagerLoader(AbstractRelationLoader):
             identity_key = self.mapper.identity_key_from_row(decorated_row)
         except KeyError:
             # else degrade to a lazy loader
-            self.logger.debug("degrade to lazy loader on %s" % mapperutil.attribute_str(instance, self.key))
+            if self.__should_log_debug:
+                self.logger.debug("degrade to lazy loader on %s" % mapperutil.attribute_str(instance, self.key))
             self.parent_property._get_strategy(LazyLoader).process_row(selectcontext, instance, row, identitykey, isnew)
             return
             
@@ -485,7 +486,8 @@ class EagerLoader(AbstractRelationLoader):
         selectcontext.recursion_stack.add(self)
         try:
             if not self.uselist:
-                self.logger.debug("eagerload scalar instance on %s" % mapperutil.attribute_str(instance, self.key))
+                if self.__should_log_debug:
+                    self.logger.debug("eagerload scalar instance on %s" % mapperutil.attribute_str(instance, self.key))
                 if isnew:
                     # set a scalar object instance directly on the parent object, 
                     # bypassing SmartProperty event handlers.
@@ -496,7 +498,8 @@ class EagerLoader(AbstractRelationLoader):
                     self.mapper._instance(selectcontext, decorated_row, None)
             else:
                 if isnew:
-                    self.logger.debug("initialize UniqueAppender on %s" % mapperutil.attribute_str(instance, self.key))
+                    if self.__should_log_debug:
+                        self.logger.debug("initialize UniqueAppender on %s" % mapperutil.attribute_str(instance, self.key))
                     # call the SmartProperty's initialize() method to create a new, blank list
                     l = getattr(instance.__class__, self.key).initialize(instance)
                 
@@ -506,7 +509,8 @@ class EagerLoader(AbstractRelationLoader):
                     # store it in the "scratch" area, which is local to this load operation.
                     selectcontext.attributes[(instance, self.key)] = appender
                 result_list = selectcontext.attributes[(instance, self.key)]
-                self.logger.debug("eagerload list instance on %s" % mapperutil.attribute_str(instance, self.key))
+                if self.__should_log_debug:
+                    self.logger.debug("eagerload list instance on %s" % mapperutil.attribute_str(instance, self.key))
                 self.mapper._instance(selectcontext, decorated_row, result_list)
         finally:
             selectcontext.recursion_stack.remove(self)
