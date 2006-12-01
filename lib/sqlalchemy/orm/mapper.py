@@ -204,6 +204,7 @@ class Mapper(object):
         # mapper.
         self._compile_class()
 
+        self.__should_log_debug = logging.is_debug_enabled(self.logger)
         self.__log("constructed")
         
         # uncomment to compile at construction time (the old way)
@@ -806,7 +807,8 @@ class Mapper(object):
         ordering among a polymorphic chain of instances. Therefore save_obj is typically 
         called only on a "base mapper", or a mapper which does not inherit from any other mapper."""
         
-        self.__log_debug("save_obj() start, " + (single and "non-batched" or "batched"))
+        if self.__should_log_debug:
+            self.__log_debug("save_obj() start, " + (single and "non-batched" or "batched"))
         
         # if batch=false, call save_obj separately for each object
         if not single and not self.batch:
@@ -836,7 +838,8 @@ class Mapper(object):
                 existing = uowtransaction.uow.identity_map[instance_key]
                 if not uowtransaction.is_deleted(existing):
                     raise exceptions.FlushError("New instance %s with identity key %s conflicts with persistent instance %s" % (mapperutil.instance_str(obj), str(instance_key), mapperutil.instance_str(existing)))
-                self.__log_debug("detected row switch for identity %s.  will update %s, remove %s from transaction" % (instance_key, mapperutil.instance_str(obj), mapperutil.instance_str(existing)))
+                if self.__should_log_debug:
+                    self.__log_debug("detected row switch for identity %s.  will update %s, remove %s from transaction" % (instance_key, mapperutil.instance_str(obj), mapperutil.instance_str(existing)))
                 uowtransaction.unregister_object(existing)
             
         inserted_objects = util.Set()
@@ -857,7 +860,8 @@ class Mapper(object):
                 if table not in mapper.tables or not mapper._has_pks(table):
                     continue
                 instance_key = mapper.instance_key(obj)
-                self.__log_debug("save_obj() table '%s' instance %s identity %s" % (table.name, mapperutil.instance_str(obj), str(instance_key)))
+                if self.__should_log_debug:
+                    self.__log_debug("save_obj() table '%s' instance %s identity %s" % (table.name, mapperutil.instance_str(obj), str(instance_key)))
 
                 isinsert = not instance_key in uowtransaction.uow.identity_map and not postupdate and not has_identity(obj)
                 params = {}
@@ -886,7 +890,8 @@ class Mapper(object):
                                 params[col.key] = value
                     elif mapper.polymorphic_on is not None and mapper.polymorphic_on.shares_lineage(col):
                         if isinsert:
-                            self.__log_debug("Using polymorphic identity '%s' for insert column '%s'" % (mapper.polymorphic_identity, col.key))
+                            if self.__should_log_debug:
+                                self.__log_debug("Using polymorphic identity '%s' for insert column '%s'" % (mapper.polymorphic_identity, col.key))
                             value = mapper.polymorphic_identity
                             if col.default is None or value is not None:
                                 params[col.key] = value
@@ -1024,7 +1029,8 @@ class Mapper(object):
         
         this is called within the context of a UOWTransaction during a flush operation."""
 
-        self.__log_debug("delete_obj() start")
+        if self.__should_log_debug:
+            self.__log_debug("delete_obj() start")
 
         connection = uowtransaction.transaction.connection(self)
 
@@ -1141,7 +1147,8 @@ class Mapper(object):
         identitykey = self.identity_key_from_row(row)
         if context.session.has_key(identitykey):
             instance = context.session._get(identitykey)
-            self.__log_debug("_instance(): using existing instance %s identity %s" % (mapperutil.instance_str(instance), str(identitykey)))
+            if self.__should_log_debug:
+                self.__log_debug("_instance(): using existing instance %s identity %s" % (mapperutil.instance_str(instance), str(identitykey)))
             isnew = False
             if context.version_check and self.version_id_col is not None and self.get_attr_by_column(instance, self.version_id_col) != row[self.version_id_col]:
                 raise exceptions.ConcurrentModificationError("Instance '%s' version of %s does not match %s" % (instance, self.get_attr_by_column(instance, self.version_id_col), row[self.version_id_col]))
@@ -1156,7 +1163,8 @@ class Mapper(object):
                     result.append(instance)
             return instance
         else:
-            self.__log_debug("_instance(): identity key %s not in session" % str(identitykey) + repr([mapperutil.instance_str(x) for x in context.session]))
+            if self.__should_log_debug:
+                self.__log_debug("_instance(): identity key %s not in session" % str(identitykey) + repr([mapperutil.instance_str(x) for x in context.session]))
         # look in result-local identitymap for it.
         exists = context.identity_map.has_key(identitykey)      
         if not exists:
@@ -1179,7 +1187,8 @@ class Mapper(object):
             instance = self.extension.create_instance(self, context, row, self.class_)
             if instance is EXT_PASS:
                 instance = self._create_instance(context.session)
-            self.__log_debug("_instance(): created new instance %s identity %s" % (mapperutil.instance_str(instance), str(identitykey)))
+            if self.__should_log_debug:
+                self.__log_debug("_instance(): created new instance %s identity %s" % (mapperutil.instance_str(instance), str(identitykey)))
             context.identity_map[identitykey] = instance
             isnew = True
         else:

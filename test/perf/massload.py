@@ -1,14 +1,15 @@
 from testbase import PersistTest, AssertMixin
 import unittest, sys, os
 from sqlalchemy import *
-import sqlalchemy.attributes as attributes
+import sqlalchemy.orm.attributes as attributes
 import StringIO
 import testbase
 import gc
+import time
 
 db = testbase.db
 
-NUM = 25000
+NUM = 2500
 
 """
 we are testing session.expunge() here, also that the attributes and unitofwork packages dont keep dereferenced
@@ -18,18 +19,14 @@ for best results, dont run with sqlite :memory: database, and keep an eye on top
 
 class LoadTest(AssertMixin):
     def setUpAll(self):
-        db.echo = False
-        global items
-        items = Table('items', db, 
+        global items, meta
+        meta = BoundMetaData(db)
+        items = Table('items', meta, 
             Column('item_id', Integer, primary_key=True),
             Column('value', String(100)))
         items.create()
-        db.echo = testbase.echo
     def tearDownAll(self):
-        db.echo = False
         items.drop()
-        items.deregister()
-        db.echo = testbase.echo
     def setUp(self):
         objectstore.clear()
         clear_mappers()
@@ -44,6 +41,7 @@ class LoadTest(AssertMixin):
             
         m = mapper(Item, items)
         sess = create_session()
+        now = time.time()
         query = sess.query(Item)
         for x in range (1,NUM/100):
             # this is not needed with cpython which clears non-circular refs immediately
@@ -61,6 +59,8 @@ class LoadTest(AssertMixin):
             #print len(objectstore.get_session().dirty)
             #print len(objectstore.get_session().identity_map)
             #objectstore.expunge(*l)
-
+        total = time.time() -now
+        print "total time ", total
+        
 if __name__ == "__main__":
     testbase.main()        

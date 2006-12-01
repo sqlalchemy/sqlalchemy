@@ -845,7 +845,7 @@ class SaveTest(UnitOfWorkTest):
         """tests moving a child from one parent to the other, then deleting the first parent, properly
         updates the child with the new parent.  this tests the 'trackparent' option in the attributes module."""
         m = mapper(User, users, properties = dict(
-            addresses = relation(mapper(Address, addresses), lazy = True, private = False)
+            addresses = relation(mapper(Address, addresses), lazy = True)
         ))
         u1 = User()
         u1.user_name = 'user1'
