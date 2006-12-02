@@ -147,6 +147,22 @@ class SelfReferentialNoPKTest(AssertMixin):
         s.clear()
         t = s.query(TT).get_by(id=t1.id)
         assert t.children[0].parent_uuid == t1.uuid
+    def testlazyclause(self):
+        class TT(object):
+            def __init__(self):
+                self.uuid = hex(id(self))
+        mapper(TT, table, properties={'children':relation(TT, remote_side=[table.c.parent_uuid], backref=backref('parent', remote_side=[table.c.uuid]))})
+        s = create_session()
+        t1 = TT()
+        t2 = TT()
+        t1.children.append(t2)
+        s.save(t1)
+        s.flush()
+        s.clear()
+
+        t = s.query(TT).get_by(id=t2.id)
+        assert t.uuid == t2.uuid
+        assert t.parent.uuid == t1.uuid
         
 class InheritTestOne(AssertMixin):
     def setUpAll(self):
