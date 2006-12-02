@@ -10,6 +10,13 @@ an instance is detected to be already in the session.
 selects; only one selectable to an IN is allowed now (make a union yourself
 if union is needed; explicit better than implicit, dont guess, etc.)
 - improved support for disabling save-update cascade via cascade="none" etc.
+- added "remote_side" argument to relation(), used only with self-referential
+mappers to force the direction of the parent/child relationship.  replaces
+the usage of the "foreignkey" parameter for "switching" the direction;
+while "foreignkey" can still be used to "switch" the direction of a parent/
+child relationship, this usage is deprecated; "foreignkey" should always 
+indicate the actual foreign key columns from now on.
+
 0.3.1
 - Engine/Pool:
   - some new Pool utility classes, updated docs

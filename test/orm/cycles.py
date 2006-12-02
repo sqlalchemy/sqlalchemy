@@ -118,7 +118,36 @@ class SelfReferentialTest(AssertMixin):
             assert False
         except exceptions.ArgumentError:
             assert True
-            
+
+class SelfReferentialNoPKTest(AssertMixin):
+    def setUpAll(self):
+        global table, meta
+        meta = BoundMetaData(testbase.db)
+        table = Table('item', meta,
+           Column('id', Integer, primary_key=True),
+           Column('uuid', String(32), unique=True, nullable=False),
+           Column('parent_uuid', String(32), ForeignKey('item.uuid'), nullable=True),
+        )
+        meta.create_all()
+    def tearDown(self):
+        table.delete().execute()
+    def tearDownAll(self):
+        meta.drop_all()
+    def testbasic(self):
+        class TT(object):
+            def __init__(self):
+                self.uuid = hex(id(self))
+        mapper(TT, table, properties={'children':relation(TT, remote_side=[table.c.parent_uuid], backref=backref('parent', remote_side=[table.c.uuid]))})
+        s = create_session()
+        t1 = TT()
+        t1.children.append(TT())
+        t1.children.append(TT())
+        s.save(t1)
+        s.flush()
+        s.clear()
+        t = s.query(TT).get_by(id=t1.id)
+        assert t.children[0].parent_uuid == t1.uuid
+        
 class InheritTestOne(AssertMixin):
     def setUpAll(self):
         global parent, child1, child2, meta

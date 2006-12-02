@@ -116,7 +116,8 @@ class _EdgeCollection(object):
                 yield (parent, child)
     def __str__(self):
         return repr(list(self))
-        
+    def __repr__(self):
+        return repr(list(self))
         
 class QueueDependencySorter(object):
     """topological sort adapted from wikipedia's article on the subject.  it creates a straight-line

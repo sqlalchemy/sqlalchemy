@@ -68,7 +68,7 @@ mapper.ColumnProperty = ColumnProperty
 class PropertyLoader(StrategizedProperty):
     """describes an object property that holds a single item or list of items that correspond
     to a related database table."""
-    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, association=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False, cascade=None, viewonly=False, lazy=True, collection_class=None, passive_deletes=False):
+    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, association=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False, cascade=None, viewonly=False, lazy=True, collection_class=None, passive_deletes=False, remote_side=None):
         self.uselist = uselist
         self.argument = argument
         self.secondary = secondary
@@ -81,6 +81,7 @@ class PropertyLoader(StrategizedProperty):
         self.foreignkey = util.to_set(foreignkey)
         self.collection_class = collection_class
         self.passive_deletes = passive_deletes
+        self.remote_side = util.to_set(remote_side)
         
         if cascade is not None:
             self.cascade = mapperutil.CascadeOptions(cascade)
@@ -238,11 +239,18 @@ class PropertyLoader(StrategizedProperty):
             # for a self referential mapper, if the "foreignkey" is a single or composite primary key,
             # then we are "many to one", since the remote site of the relationship identifies a singular entity.
             # otherwise we are "one to many".
-            for f in self.foreignkey:
-                if not f.primary_key:
-                    return sync.ONETOMANY
+            if self.remote_side is not None and len(self.remote_side):
+                for f in self.foreignkey:
+                    if f in self.remote_side:
+                        return sync.ONETOMANY
+                else:
+                    return sync.MANYTOONE
             else:
-                return sync.MANYTOONE
+                for f in self.foreignkey:
+                    if not f.primary_key:
+                        return sync.ONETOMANY
+                else:
+                    return sync.MANYTOONE
         elif len([c for c in self.foreignkey if self.mapper.unjoined_table.corresponding_column(c, False) is not None]):
             return sync.ONETOMANY
         elif len([c for c in self.foreignkey if self.parent.unjoined_table.corresponding_column(c, False) is not None]):

@@ -51,8 +51,14 @@ class ClauseSynchronizer(object):
                     elif binary.right.primary_key:
                         source_column = binary.right
                         dest_column = binary.left
+                    elif binary.left in foreignkey:
+                        dest_column = binary.left
+                        source_column = binary.right
+                    elif binary.right in foreignkey:
+                        dest_column = binary.right
+                        source_column = binary.left
                     else:
-                        raise exceptions.ArgumentError("Can't locate a primary key column in self-referential equality clause '%s'" % str(binary))
+                        raise exceptions.ArgumentError("Can't figure out which column is source/dest in join clause '%s'" % str(binary))
                 # for other relationships we are more flexible
                 # and go off the 'foreignkey' property
                 elif binary.left in foreignkey:
