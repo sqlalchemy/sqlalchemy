@@ -43,7 +43,6 @@ class DateTimeMixin(object):
     def _cvt(self, value, dialect, fmt):
         if value is None:
             return None
-        parts = value.split('.')
         try:
             (value, microsecond) = value.split('.')
             microsecond = int(microsecond)
