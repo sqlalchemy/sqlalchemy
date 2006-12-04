@@ -25,17 +25,17 @@ class InstrumentedAttribute(object):
         self.mutable_scalars = mutable_scalars
         if copy_function is None:
             if uselist:
-                self._copyfunc = lambda x: [y for y in x]
+                self.copy = lambda x:[y for y in x]
             else:
                 # scalar values are assumed to be immutable unless a copy function
                 # is passed
-                self._copyfunc = lambda x: x
+                self.copy = lambda x:x
         else:
-            self._copyfunc = copy_function
+            self.copy = lambda x:copy_function(x)
         if compare_function is None:
-            self._compare_function = lambda x,y: x == y
+            self.is_equal = lambda x,y: x == y
         else:
-            self._compare_function = compare_function
+            self.is_equal = compare_function
         self.extensions = util.to_list(extension or [])
 
     def __set__(self, obj, value):
@@ -47,11 +47,6 @@ class InstrumentedAttribute(object):
             return self
         return self.get(obj)
 
-    def is_equal(self, x, y):
-        return self._compare_function(x, y)
-    def copy(self, value):
-        return self._copyfunc(value)
-    
     def check_mutable_modified(self, obj):
         if self.mutable_scalars:
             h = self.get_history(obj, passive=True)

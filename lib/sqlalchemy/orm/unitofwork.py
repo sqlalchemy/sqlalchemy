@@ -116,17 +116,13 @@ class UnitOfWork(object):
         attribute_manager.set_callable(obj, key, func, uselist, **kwargs)
     
     def register_clean(self, obj):
-        try:
+        if obj in self.new:
             self.new.remove(obj)
-        except KeyError:
-            pass
         if not hasattr(obj, '_instance_key'):
             mapper = object_mapper(obj)
             obj._instance_key = mapper.instance_key(obj)
-        try:
+        if hasattr(obj, '_sa_insert_order'):
             delattr(obj, '_sa_insert_order')
-        except AttributeError:
-            pass
         self.identity_map[obj._instance_key] = obj
         attribute_manager.commit(obj)
         

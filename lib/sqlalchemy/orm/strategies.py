@@ -18,6 +18,8 @@ class ColumnLoader(LoaderStrategy):
     def init(self):
         super(ColumnLoader, self).init()
         self.columns = self.parent_property.columns
+        self._should_log_debug = logging.is_debug_enabled(self.logger)
+        
     def setup_query(self, context, eagertable=None, **kwargs):
         for c in self.columns:
             if eagertable is not None:
@@ -27,11 +29,13 @@ class ColumnLoader(LoaderStrategy):
 
     def init_class_attribute(self):
         self.logger.info("register managed attribute %s on class %s" % (self.key, self.parent.class_.__name__))
-        sessionlib.attribute_manager.register_attribute(self.parent.class_, self.key, uselist=False, copy_function=lambda x: self.columns[0].type.copy_value(x), compare_function=lambda x,y:self.columns[0].type.compare_values(x,y), mutable_scalars=self.columns[0].type.is_mutable())
+        coltype = self.columns[0].type
+        sessionlib.attribute_manager.register_attribute(self.parent.class_, self.key, uselist=False, copy_function=coltype.copy_value, compare_function=coltype.compare_values, mutable_scalars=self.columns[0].type.is_mutable())
 
     def process_row(self, selectcontext, instance, row, identitykey, isnew):
         if isnew:
-            self.logger.debug("populating %s with %s/%s" % (mapperutil.attribute_str(instance, self.key), row.__class__.__name__, self.columns[0].key))
+            if self._should_log_debug:
+                self.logger.debug("populating %s with %s/%s" % (mapperutil.attribute_str(instance, self.key), row.__class__.__name__, self.columns[0].key))
             instance.__dict__[self.key] = row[self.columns[0]]
         
 ColumnLoader.logger = logging.class_logger(ColumnLoader)
@@ -43,6 +47,7 @@ class DeferredColumnLoader(LoaderStrategy):
         super(DeferredColumnLoader, self).init()
         self.columns = self.parent_property.columns
         self.group = self.parent_property.group
+        self._should_log_debug = logging.is_debug_enabled(self.logger)
 
     def init_class_attribute(self):
         self.logger.info("register managed attribute %s on class %s" % (self.key, self.parent.class_.__name__))
@@ -66,7 +71,8 @@ class DeferredColumnLoader(LoaderStrategy):
             if prop is not self.parent_property:
                 return prop._get_strategy(DeferredColumnLoader).setup_loader(instance)
         def lazyload():
-            self.logger.debug("deferred load %s group %s" % (mapperutil.attribute_str(instance, self.key), str(self.group)))
+            if self._should_log_debug:
+                self.logger.debug("deferred load %s group %s" % (mapperutil.attribute_str(instance, self.key), str(self.group)))
             try:
                 pk = self.parent.pks_by_table[self.columns[0].table]
             except KeyError:
@@ -130,6 +136,7 @@ class AbstractRelationLoader(LoaderStrategy):
         self.attributeext = self.parent_property.attributeext
         self.order_by = self.parent_property.order_by
         self.remote_side = self.parent_property.remote_side
+        self._should_log_debug = logging.is_debug_enabled(self.logger)
         
     def _init_instance_attribute(self, instance, callable_=None):
         return sessionlib.attribute_manager.init_instance_attribute(instance, self.key, self.uselist, cascade=self.cascade,  trackparent=True, callable_=callable_)
@@ -144,7 +151,8 @@ class NoLoader(AbstractRelationLoader):
     def process_row(self, selectcontext, instance, row, identitykey, isnew):
         if isnew:
             if not self.is_default or len(selectcontext.options):
-                self.logger.debug("set instance-level no loader on %s" % mapperutil.attribute_str(instance, self.key))
+                if self._should_log_debug:
+                    self.logger.debug("set instance-level no loader on %s" % mapperutil.attribute_str(instance, self.key))
                 self._init_instance_attribute(instance)
 
 NoLoader.logger = logging.class_logger(NoLoader)
@@ -297,7 +305,7 @@ class EagerLoader(AbstractRelationLoader):
 
         self.clauses = {}
         self.clauses_by_lead_mapper = {}
-        self.__should_log_debug = logging.is_debug_enabled(self.logger)
+
     class AliasedClauses(object):
         """defines a set of join conditions and table aliases which are aliased on a randomly-generated
         alias name, corresponding to the connection of an optional parent AliasedClauses object and a 
@@ -480,7 +488,7 @@ class EagerLoader(AbstractRelationLoader):
             identity_key = self.mapper.identity_key_from_row(decorated_row)
         except KeyError:
             # else degrade to a lazy loader
-            if self.__should_log_debug:
+            if self._should_log_debug:
                 self.logger.debug("degrade to lazy loader on %s" % mapperutil.attribute_str(instance, self.key))
             self.parent_property._get_strategy(LazyLoader).process_row(selectcontext, instance, row, identitykey, isnew)
             return
@@ -490,7 +498,7 @@ class EagerLoader(AbstractRelationLoader):
         selectcontext.recursion_stack.add(self)
         try:
             if not self.uselist:
-                if self.__should_log_debug:
+                if self._should_log_debug:
                     self.logger.debug("eagerload scalar instance on %s" % mapperutil.attribute_str(instance, self.key))
                 if isnew:
                     # set a scalar object instance directly on the parent object, 
@@ -502,7 +510,7 @@ class EagerLoader(AbstractRelationLoader):
                     self.mapper._instance(selectcontext, decorated_row, None)
             else:
                 if isnew:
-                    if self.__should_log_debug:
+                    if self._should_log_debug:
                         self.logger.debug("initialize UniqueAppender on %s" % mapperutil.attribute_str(instance, self.key))
                     # call the SmartProperty's initialize() method to create a new, blank list
                     l = getattr(instance.__class__, self.key).initialize(instance)
@@ -513,7 +521,7 @@ class EagerLoader(AbstractRelationLoader):
                     # store it in the "scratch" area, which is local to this load operation.
                     selectcontext.attributes[(instance, self.key)] = appender
                 result_list = selectcontext.attributes[(instance, self.key)]
-                if self.__should_log_debug:
+                if self._should_log_debug:
                     self.logger.debug("eagerload list instance on %s" % mapperutil.attribute_str(instance, self.key))
                 self.mapper._instance(selectcontext, decorated_row, result_list)
         finally:
