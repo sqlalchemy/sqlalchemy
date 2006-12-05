@@ -306,6 +306,8 @@ class BackRef(object):
             sj = self.kwargs.pop('secondaryjoin', None)
             # the backref property is set on the primary mapper
             parent = prop.parent.primary_mapper()
+            self.kwargs.setdefault('viewonly', prop.viewonly)
+            self.kwargs.setdefault('post_update', prop.post_update)
             relation = PropertyLoader(parent, prop.secondary, pj, sj, backref=prop.key, is_backref=True, **self.kwargs)
             mapper._compile_property(self.key, relation);
         elif not isinstance(mapper.props[self.key], PropertyLoader):

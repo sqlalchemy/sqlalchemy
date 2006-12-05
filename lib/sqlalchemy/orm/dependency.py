@@ -115,10 +115,11 @@ class DependencyProcessor(object):
 class OneToManyDP(DependencyProcessor):
     def register_dependencies(self, uowcommit):
         if self.post_update:
-            stub = MapperStub(self.parent, self.mapper, self.key)
-            uowcommit.register_dependency(self.mapper, stub)
-            uowcommit.register_dependency(self.parent, stub)
-            uowcommit.register_processor(stub, self, self.parent)
+            if not self.is_backref:
+                stub = MapperStub(self.parent, self.mapper, self.key)
+                uowcommit.register_dependency(self.mapper, stub)
+                uowcommit.register_dependency(self.parent, stub)
+                uowcommit.register_processor(stub, self, self.parent)
         else:
             uowcommit.register_dependency(self.parent, self.mapper)
             uowcommit.register_processor(self.parent, self, self.parent)
@@ -204,10 +205,11 @@ class OneToManyDP(DependencyProcessor):
 class ManyToOneDP(DependencyProcessor):
     def register_dependencies(self, uowcommit):
         if self.post_update:
-            stub = MapperStub(self.parent, self.mapper, self.key)
-            uowcommit.register_dependency(self.mapper, stub)
-            uowcommit.register_dependency(self.parent, stub)
-            uowcommit.register_processor(stub, self, self.parent)
+            if not self.is_backref:
+                stub = MapperStub(self.parent, self.mapper, self.key)
+                uowcommit.register_dependency(self.mapper, stub)
+                uowcommit.register_dependency(self.parent, stub)
+                uowcommit.register_processor(stub, self, self.parent)
         else:
             uowcommit.register_dependency(self.mapper, self.parent)
             uowcommit.register_processor(self.mapper, self, self.parent)
