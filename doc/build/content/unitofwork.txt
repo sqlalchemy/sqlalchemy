@@ -117,7 +117,7 @@ The `get()` method on `Query`, which retrieves an object based on primary key id
 
 The next concept is that in addition to the `Session` storing a record of all objects loaded or saved, it also stores lists of all *newly created* (i.e. pending) objects and lists of all persistent objects that have been marked as *deleted*.  These lists are used when a `flush()` call is issued to save all changes.  During a flush operation, it also scans its list of persistent instances for changes which are marked as dirty.
 
-These records are all tracked by a collection of `Set` objects (which are a SQLAlchemy-specific instance called a `HashSet`) that are also viewable off the `Session`:
+These records are all tracked by collection functions that are also viewable off the `Session` as properties:
 
     {python}
     # pending objects recently added to the Session
@@ -129,8 +129,10 @@ These records are all tracked by a collection of `Set` objects (which are a SQLA
 
     # persistent objects that have been marked as deleted via session.delete(obj)
     session.deleted
-    
-Unlike the identity map, the `new`, `dirty`, and `deleted` lists are *not weak referencing.*  This means if you abandon all references to new or modified objects within a session, *they are still present* and will be saved on the next flush operation, unless they are removed from the Session explicitly (more on that later).  The `new` list may change in a future release to be weak-referencing, however for the `deleted` list, one can see that its quite natural for a an object marked as deleted to have no references in the application, yet a DELETE operation is still required.
+
+As of the 0.3 series, the `new` and `deleted` lists are actual `Set` objects, and are therefore *not weak referencing*.  Elements that are in the `dirty` collection are, however, and have to be maintained in the current scope else they will be garbage collected(this is a slightly suboptimal behavior introduced in the 0.3 series which may be improved in a future release).  
+
+As for objects inside of `new` and `deleted`, if you abandon all references to new or modified objects within a session, *they are still present* in either of those two lists, and will be saved on the next flush operation, unless they are removed from the Session explicitly (more on that later).  The `new` list may change in a future release to be weak-referencing, however for the `deleted` list, one can see that its quite natural for a an object marked as deleted to have no references in the application, yet a DELETE operation is still required.
 
 ### The Session API {@name=api}
 
