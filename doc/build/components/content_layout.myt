@@ -9,7 +9,7 @@
 </%init>
 
 <A name="<% current.path %>"></a>
-<& nav.myt:topnav, item=current, extension=extension &>
+<& nav.myt:topnav, item=current, extension=extension, onepage=True &>
 <div class="sectioncontent">
 % m.call_next(toc=toc, extension=extension)
 </div>

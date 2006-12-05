@@ -80,7 +80,7 @@ def create_toc(filename, tree, tocroot):
 
             level[0] = taglevel
 
-            tag = et.Element("MYGHTY:formatting.myt:section", path=literal(current[0].path), toc="toc")
+            tag = et.Element("MYGHTY:formatting.myt:section", path=literal(current[0].path), toc="toc", onepage="onepage")
             tag.text = (node.tail or "") + '\n'
             tag.tail = '\n'
             tag[:] = content
@@ -123,9 +123,9 @@ def process_rel_href(tree):
             (bold, path) = m.group(1,2)
             text = a.text
             if text == path:
-                tag = et.Element("MYGHTY:nav.myt:toclink", path=literal(path), toc="toc", extension="extension")
+                tag = et.Element("MYGHTY:nav.myt:toclink", path=literal(path), toc="toc", extension="extension", onepage="onepage")
             else:
-                tag = et.Element("MYGHTY:nav.myt:toclink", path=literal(path), description=literal(text), toc="toc", extension="extension")
+                tag = et.Element("MYGHTY:nav.myt:toclink", path=literal(path), description=literal(text), toc="toc", extension="extension", onepage="onepage")
             a_parent = parent[a]
             if bold:
                 bold = et.Element('strong')
@@ -207,6 +207,7 @@ def header(toc, title, filename):
 <%%args>
     toc
     extension
+    onepage=False
 </%%args>
 <%%attr>
     title='%s - %s'

@@ -11,6 +11,7 @@
     toc
     path
     description=None
+    onepage=False
 </%args>
 <%init>
     item = toc.get_by_path(path)
@@ -36,13 +37,13 @@
     <% content %>
     </div>
 
-% if item.depth > 1:
+% if onepage or item.depth > 1:
 %   if (item.next and item.next.depth >= item.depth):
     <a href="#<% item.get_page_root().path %>" class="toclink">back to section top</a>
 %
 % else:
     <a href="#<% item.get_page_root().path %>" class="toclink">back to section top</a>
-    <& nav.myt:pagenav, item=item &>
+    <& nav.myt:pagenav, item=item, onepage=onepage &>
 % 
 </div>
 

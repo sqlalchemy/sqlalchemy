@@ -8,6 +8,7 @@ import time
 
 toc_by_file = {}
 toc_by_path = {}
+filenames = []
 
 class TOCElement(object):
     def __init__(self, filename, name, description, parent=None, version=None, last_updated=None, doctitle=None, **kwargs):
@@ -18,6 +19,7 @@ class TOCElement(object):
         self.content = None
         self.toc_by_path = toc_by_path
         self.toc_by_file = toc_by_file
+        self.filenames = filenames
         self.last_updated = time.time()
         self.version = version
         self.doctitle = doctitle
@@ -31,7 +33,8 @@ class TOCElement(object):
         self.is_top = (self.parent is not None and self.parent.filename != self.filename) or self.parent is None
         if self.is_top:
             toc_by_file[self.filename] = self
-
+            if self.filename:
+                filenames.append(self.filename)
         self.root = self.parent or self
 
         self.content = None
@@ -53,12 +56,15 @@ class TOCElement(object):
     def get_by_file(self, filename):
         return self.toc_by_file[filename]
 
-    def get_link(self, extension='html', anchor=True):
-        if anchor:
-            return "%s.%s#%s" % (self.filename, extension, self.path) 
+    def get_link(self, extension='html', anchor=True, usefilename=True):
+        if usefilename:
+            if anchor:
+                return "%s.%s#%s" % (self.filename, extension, self.path) 
+            else:
+                return "%s.%s" % (self.filename, extension)
         else:
-            return "%s.%s" % (self.filename, extension)
-
+            return "#%s" % (self.path) 
+                
     def _create_path(self):
         elem = self
         tokens = []

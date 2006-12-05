@@ -5,11 +5,12 @@ individual hyperlinks as well as navigational toolbars and table-of-content list
     <%args>
     item
     anchor=True
+    usefilename=True
     </%args>
     <%args scope="request">
         extension='myt'
     </%args>
-    <a href="<% item.get_link(extension=extension, anchor=anchor) %>"><% item.description %></a>
+    <a href="<% item.get_link(extension=extension, anchor=anchor, usefilename=usefilename) %>"><% item.description %></a>
 </%method>
 
 <%method toclink trim="both">
@@ -18,6 +19,7 @@ individual hyperlinks as well as navigational toolbars and table-of-content list
         path
         description=None
         extension
+        usefilename=True
     </%args>
     <%init>
         item = toc.get_by_path(path)
@@ -28,7 +30,7 @@ individual hyperlinks as well as navigational toolbars and table-of-content list
                 description = path
     </%init>
 % if item:
-    <a href="<% item.get_link(extension=extension) %>"><% description %></a>
+    <a href="<% item.get_link(extension=extension, usefilename=usefilename) %>"><% description %></a>
 % else:
     <b><% description %></b>
 %
@@ -48,6 +50,7 @@ individual hyperlinks as well as navigational toolbars and table-of-content list
 	<%args>
 		item
 		extension
+		onepage=False
 	</%args>
 <div class="topnav">
 
@@ -75,7 +78,7 @@ Next: <& itemlink, item=item.next, anchor=False &>
 <div class="topnavmain">
 	<div class="topnavheader"><% item.description %></div>
 	<div class="topnavitems">
-	<& toc.myt:printtoc, root=item, current=None, full=True, extension=extension, anchor_toplevel=True &>
+	<& toc.myt:printtoc, root=item, current=None, full=True, extension=extension, anchor_toplevel=True, onepage=False &>
 	</div>
 </div>
 
@@ -85,12 +88,13 @@ Next: <& itemlink, item=item.next, anchor=False &>
 <%method pagenav>
 <%args>
     item
+    onepage=False
 </%args>
 <div class="sectionnavblock">
 <div class="sectionnav">
 
 %       if item.previous is not None:
-        Previous: <& itemlink, item=item.previous &>
+        Previous: <& itemlink, item=item.previous, usefilename=not onepage &>
 %       # end if
 
 %       if item.next is not None:
@@ -98,7 +102,7 @@ Next: <& itemlink, item=item.next, anchor=False &>
                 |
 %               # end if
 
-        Next: <& itemlink, item=item.next &>
+        Next: <& itemlink, item=item.next, usefilename=not onepage &>
 %       # end if
 
 </div>

@@ -30,6 +30,7 @@ root = toc.TOCElement('', 'root', '', version=version, doctitle=title)
 
 shutil.copy('./content/index.myt', './output/index.myt')
 shutil.copy('./content/docstrings.myt', './output/docstrings.myt')
+shutil.copy('./content/documentation.myt', './output/documentation.myt')
 
 read_markdown.parse_markdown_files(root, files)
 docstrings = gen_docstrings.make_all_docs()
@@ -56,6 +57,7 @@ def genfile(name, toc):
 try:
     for filename in files:
         genfile(filename, root)
+    genfile("documentation", root)
 except exception.Error, e:
     sys.stderr.write(e.textformat())
 

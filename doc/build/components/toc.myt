@@ -4,6 +4,7 @@
 	<%args>
 		toc
 		extension
+		onepage=False
 	</%args>
 	
 	
@@ -16,7 +17,7 @@
 	<br/><br/>
 	
 	<div style="margin-left:50px;">
-	<& printtoc, root = toc, current = None, full = False, children=False, extension=extension, anchor_toplevel=False &>
+	<& printtoc, root = toc, current = None, full = False, children=False, extension=extension, anchor_toplevel=False, onepage=onepage &>
 	</div>
 
 	</div>
@@ -30,7 +31,7 @@
 	<br/><br/>
 
 	<div style="margin-left:50px;">
-	<& printtoc, root = toc, current = None, full = True, children=True, extension=extension, anchor_toplevel=False &>
+	<& printtoc, root = toc, current = None, full = True, children=True, extension=extension, anchor_toplevel=False, onepage=onepage &>
 	</div>
 
 	</div>
@@ -45,11 +46,12 @@
     children = True
     extension
     anchor_toplevel=False
+    onepage=False
 </%args>
 
 <ul class="toc_list">
 % for i in root.children:
-    <& printtocelement, item=i, bold = (i == current), full = full, children=children, extension=extension, anchor_toplevel=anchor_toplevel &>
+    <& printtocelement, item=i, bold = (i == current), full = full, children=children, extension=extension, anchor_toplevel=anchor_toplevel,onepage=onepage &>
 %
 </ul>
 </%method>
@@ -63,14 +65,15 @@
         children = True
         extension
         anchor_toplevel
+        onepage=False
     </%args>
     
-        <li><A style="<% bold and "font-weight:bold;" or "" %>" href="<% item.get_link(extension=extension, anchor=anchor_toplevel) %>"><% item.description %></a></li>
+        <li><A style="<% bold and "font-weight:bold;" or "" %>" href="<% item.get_link(extension=extension, anchor=anchor_toplevel, usefilename=not onepage) %>"><% item.description %></a></li>
     
 % if children:  
     <ul class="small_toc_list">
 %   for i in item.children:
-        <& printsmtocelem, item=i, children=full, extension=extension &>
+        <& printsmtocelem, item=i, children=full, extension=extension, onepage=onepage &>
 %
     </ul>
 %
@@ -81,13 +84,14 @@
         item
         children = False
         extension
+        onepage=False
     </%args>    
-    <li><A href="<% item.get_link(extension=extension) %>"><% item.description %></a></li>
+    <li><A href="<% item.get_link(extension=extension, usefilename=not onepage) %>"><% item.description %></a></li>
 
 % if children:
     <ul class="small_toc_list">
 %   for i in item.children:
-        <& printsmtocelem, item = i, extension=extension &>
+        <& printsmtocelem, item = i, extension=extension, onepage=onepage, children=children &>
 %
     </ul>
 %
