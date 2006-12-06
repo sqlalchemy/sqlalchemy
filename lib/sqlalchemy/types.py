@@ -12,19 +12,20 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'NullTypeEngine',
             ]
 
 from sqlalchemy import util, exceptions
-import inspect
+import inspect, weakref
 try:
     import cPickle as pickle
 except:
     import pickle
 
+_impl_cache = weakref.WeakKeyDictionary()
+
 class AbstractType(object):
     def _get_impl_dict(self):
         try:
-            return self._impl_dict
-        except AttributeError:
-            self._impl_dict = {}
-            return self._impl_dict
+            return _impl_cache[self]
+        except KeyError:
+            return _impl_cache.setdefault(self, {})
     impl_dict = property(_get_impl_dict)
 
     def copy_value(self, value):
