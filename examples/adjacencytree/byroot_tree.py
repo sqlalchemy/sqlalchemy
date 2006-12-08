@@ -127,7 +127,7 @@ mapper(TreeNode, trees, properties=dict(
     name=trees.c.node_name,
     parent_id=trees.c.parent_node_id,
     root_id=trees.c.root_node_id,
-    root=relation(TreeNode, primaryjoin=trees.c.root_node_id==trees.c.node_id, foreignkey=trees.c.node_id, lazy=None, uselist=False),
+    root=relation(TreeNode, primaryjoin=trees.c.root_node_id==trees.c.node_id, remote_side=trees.c.node_id, lazy=None, uselist=False),
     children=relation(TreeNode, primaryjoin=trees.c.parent_node_id==trees.c.node_id, lazy=None, uselist=True, cascade="delete,save-update", collection_class=NodeList),
     data=relation(mapper(TreeData, treedata, properties=dict(id=treedata.c.data_id)), cascade="delete,delete-orphan,save-update", lazy=False)
     

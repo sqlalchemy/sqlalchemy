@@ -43,7 +43,7 @@ class SelfReferentialTest(AssertMixin):
             pass
         m1 = mapper(C1, t1, properties = {
             'c1s':relation(C1, cascade="all"),
-            'parent':relation(C1, primaryjoin=t1.c.parent_c1==t1.c.c1, foreignkey=t1.c.c1, lazy=True, uselist=False)
+            'parent':relation(C1, primaryjoin=t1.c.parent_c1==t1.c.c1, remote_side=t1.c.c1, lazy=True, uselist=False)
         })
         a = C1('head c1')
         a.c1s.append(C1('another c1'))
@@ -64,7 +64,7 @@ class SelfReferentialTest(AssertMixin):
         class C1(Tester):
             pass
         mapper(C1, t1, properties={
-            'parent':relation(C1, primaryjoin=t1.c.parent_c1==t1.c.c1, foreignkey=t1.c.c1)
+            'parent':relation(C1, primaryjoin=t1.c.parent_c1==t1.c.c1, remote_side=t1.c.c1)
         })
         sess = create_session()
         c1 = C1()
@@ -365,8 +365,8 @@ class OneToManyManyToOneTest(AssertMixin):
 
         Ball.mapper = mapper(Ball, ball)
         Person.mapper = mapper(Person, person, properties= dict(
-         balls = relation(Ball.mapper, primaryjoin=ball.c.person_id==person.c.id, foreignkey=ball.c.person_id),
-         favorateBall = relation(Ball.mapper, primaryjoin=person.c.favorite_ball_id==ball.c.id, foreignkey=person.c.favorite_ball_id),
+         balls = relation(Ball.mapper, primaryjoin=ball.c.person_id==person.c.id, remote_side=ball.c.person_id),
+         favorateBall = relation(Ball.mapper, primaryjoin=person.c.favorite_ball_id==ball.c.id, remote_side=person.c.favorite_ball_id),
          )
         )
 
@@ -392,8 +392,8 @@ class OneToManyManyToOneTest(AssertMixin):
 
         Ball.mapper = mapper(Ball, ball)
         Person.mapper = mapper(Person, person, properties= dict(
-         balls = relation(Ball.mapper, primaryjoin=ball.c.person_id==person.c.id, foreignkey=ball.c.person_id, post_update=False, private=True),
-         favorateBall = relation(Ball.mapper, primaryjoin=person.c.favorite_ball_id==ball.c.id, foreignkey=person.c.favorite_ball_id, post_update=True),
+         balls = relation(Ball.mapper, primaryjoin=ball.c.person_id==person.c.id, remote_side=ball.c.person_id, post_update=False, private=True),
+         favorateBall = relation(Ball.mapper, primaryjoin=person.c.favorite_ball_id==ball.c.id, remote_side=person.c.favorite_ball_id, post_update=True),
          )
         )
 
@@ -496,8 +496,8 @@ class OneToManyManyToOneTest(AssertMixin):
 
         Ball.mapper = mapper(Ball, ball)
         Person.mapper = mapper(Person, person, properties= dict(
-         balls = relation(Ball.mapper, primaryjoin=ball.c.person_id==person.c.id, foreignkey=ball.c.person_id, private=True, post_update=True, backref='person'),
-         favorateBall = relation(Ball.mapper, primaryjoin=person.c.favorite_ball_id==ball.c.id, foreignkey=person.c.favorite_ball_id),
+         balls = relation(Ball.mapper, primaryjoin=ball.c.person_id==person.c.id, remote_side=ball.c.person_id, private=True, post_update=True, backref='person'),
+         favorateBall = relation(Ball.mapper, primaryjoin=person.c.favorite_ball_id==ball.c.id, remote_side=person.c.favorite_ball_id),
          )
         )
 
@@ -651,19 +651,19 @@ class SelfReferentialPostUpdateTest(AssertMixin):
                 primaryjoin=node_table.c.id==node_table.c.parent_id,
                 lazy=True,
                 cascade="all",
-                backref=backref("parent", primaryjoin=node_table.c.parent_id==node_table.c.id, foreignkey=node_table.c.id)
+                backref=backref("parent", primaryjoin=node_table.c.parent_id==node_table.c.id, remote_side=node_table.c.id)
             ),
             'prev_sibling': relation(
                 Node,
                 primaryjoin=node_table.c.prev_sibling_id==node_table.c.id,
-                foreignkey=node_table.c.id,
+                remote_side=node_table.c.id,
                 lazy=True,
                 uselist=False
             ),
             'next_sibling': relation(
                 Node,
                 primaryjoin=node_table.c.next_sibling_id==node_table.c.id,
-                foreignkey=node_table.c.id,
+                remote_side=node_table.c.id,
                 lazy=True,
                 uselist=False,
                 post_update=True

@@ -260,7 +260,8 @@ Keyword options to the `relation` function include:
 * secondary - for a many-to-many relationship, specifies the intermediary table.
 * primaryjoin - a ClauseElement that will be used as the primary join of this child object against the parent object, or in a many-to-many relationship the join of the primary object to the association table.  By default, this value is computed based on the foreign key relationships of the parent and child tables (or association table).
 * secondaryjoin - a ClauseElement that will be used as the join of an association table to the child object.  By default, this value is computed based on the foreign key relationships of the association and child tables.
-* foreignkey - a single Column, or list of Columns, specifying which column(s) in this relationship are "foreign", i.e. which column refers to the remote object.  This value is automatically determined in most cases from the primary join condition, by looking at which column in the join condition contains a `ForeignKey` pointing to the other column in an equality expression.  Specifying it here can override the normal foreign key properties of the join condition, which is useful for self-referential table relationships, join conditions where a `ForeignKey` is not present, or where the same column might appear on both sides of the join condition.
+* remote_side - used for self-referential relationships, indicates the column or list of columns that form the "remote side" of the relationship.
+* foreignkey - deprecated.  As of 0.3.2, use remote_side to indicate the direction of self-referential relationships.  For ForeignKey specification, this field is only partially functional (i.e. does not work for many-to-many relationships).  a new field "foreign_keys" will be added in a future release to implement this functionality.
 * uselist - a boolean that indicates if this property should be loaded as a list or a scalar.  In most cases, this value is determined based on the type and direction of the relationship - one to many forms a list, many to one forms a scalar, many to many is a list.  If a scalar is desired where normally a list would be present, such as a bi-directional one-to-one relationship, set uselist to False.
 * private - setting `private=True` is the equivalent of setting `cascade="all, delete-orphan"`, and indicates the lifecycle of child objects should be contained within that of the parent.   See the example in [datamapping_relations_cycle](rel:datamapping_relations_lifecycle).
 * backref - indicates the name of a property to be placed on the related mapper's class that will handle this relationship in the other direction, including synchronizing the object attributes on both sides of the relation.  Can also point to a `backref()` construct for more configurability.  See [datamapping_relations_backreferences](rel:datamapping_relations_backreferences).
@@ -645,18 +646,18 @@ A self-referential mapper where there is more than one relationship on the table
                             TreeNode, 
                             primaryjoin=trees.c.parent_node_id==trees.c.node_id
                             cascade="all",
-                            backref=backref("parent", foreignkey=trees.c.node_id)
+                            backref=backref("parent", remote_side=[trees.c.node_id])
                          ),
             'root' : relation(
                     TreeNode,
                     primaryjoin=trees.c.root_node_id=trees.c.node_id, 
-                    foreignkey=trees.c.node_id,
+                    remote_side=[trees.c.node_id],
                     uselist=False
                 )
             }
         )
         
-The "root" property on a TreeNode is a many-to-one relationship.  By default, a self-referential mapper declares relationships as one-to-many, so the extra parameter `foreignkey`, pointing to a column or list of columns on the remote side of a relationship, is needed to indicate a "many-to-one" self-referring relationship.
+The "root" property on a TreeNode is a many-to-one relationship.  By default, a self-referential mapper declares relationships as one-to-many, so the extra parameter `remote_side`, pointing to a column or list of columns on the remote side of a relationship, is needed to indicate a "many-to-one" self-referring relationship (note the previous keyword argument `foreignkey` is deprecated).
 Both TreeNode examples above are available in functional form in the `examples/adjacencytree` directory of the distribution.    
 
 ### Result-Set Mapping {@name=resultset}

@@ -19,7 +19,7 @@ table.create()
 
 mapper(Tree, table,
               properties={
-                'childs':relation(Tree, foreignkey=table.c.father_id, primaryjoin=table.c.father_id==table.c.id,  backref=backref('father', foreignkey=table.c.id))},
+                'childs':relation(Tree, remote_side=table.c.father_id, primaryjoin=table.c.father_id==table.c.id,  backref=backref('father', remote_side=table.c.id))},
             )
 
 root = Tree('root')
