@@ -10,6 +10,8 @@
 MySQL synchronization errors [ticket:387]
 - added keywords for EXCEPT, INTERSECT, EXCEPT ALL, INTERSECT ALL
 [ticket:247]
+- assign_mapper in assignmapper extension returns the created mapper
+[changeset:2110]
 - added label() function to Select class, when scalar=True is used
 to create a scalar subquery.
 - fix to session.update() to preserve "dirty" status of incoming object
