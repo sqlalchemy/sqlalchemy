@@ -20,6 +20,8 @@ class MockConnection(object):
         mcid += 1
     def close(self):
         pass
+    def rollback(self):
+        pass
     def cursor(self):
         return MockCursor()
 class MockCursor(object):
@@ -170,7 +172,6 @@ class PoolTest(PersistTest):
         c1 = p.connect()
         c_id = c1.connection.id
         c1.close(); c1=None
-
         c1 = p.connect()
         assert c1.connection.id == c_id
         c1.invalidate()

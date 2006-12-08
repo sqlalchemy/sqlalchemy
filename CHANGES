@@ -6,6 +6,8 @@
   could be unnecessarily cascaded on the save/update cascade
 - MySQL detects errors 2006 (server has gone away) and 2014
 (commands out of sync) and invalidates the connection on which it occured.
+- fix to connection pool _close() to properly clean up, fixes
+MySQL synchronization errors [ticket:387]
 - added keywords for EXCEPT, INTERSECT, EXCEPT ALL, INTERSECT ALL
 [ticket:247]
 - added label() function to Select class, when scalar=True is used

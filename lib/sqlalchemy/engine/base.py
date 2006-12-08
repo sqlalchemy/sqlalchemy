@@ -594,7 +594,7 @@ class ResultProxy(object):
             self.cursor.close()
             if self.connection.should_close_with_result and self.dialect.supports_autoclose_results:
                 self.connection.close()
-    
+
     def _convert_key(self, key):
         """given a key, which could be a ColumnElement, string, etc., matches it to the 
         appropriate key we got from the result set's metadata; then cache it locally for quick re-access."""

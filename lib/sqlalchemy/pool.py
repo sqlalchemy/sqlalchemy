@@ -10,7 +10,7 @@ on a thread local basis.  Also provides a DBAPI2 transparency layer so that pool
 be managed automatically, based on module type and connect arguments,
  simply by calling regular DBAPI connect() methods."""
 
-import weakref, string, time, sys
+import weakref, string, time, sys, traceback
 try:
     import cPickle as pickle
 except:
@@ -187,7 +187,7 @@ class _ConnectionFairy(object):
     """proxies a DBAPI connection object and provides return-on-dereference support"""
     def __init__(self, pool):
         self._threadfairy = _ThreadFairy(self)
-        self.cursors = {}
+        self._cursors = {}
         self.__pool = pool
         self.__counter = 0
         try:
@@ -204,7 +204,7 @@ class _ConnectionFairy(object):
             raise exceptions.InvalidRequestError("This connection is closed")
         self._connection_record.invalidate()
         self.connection = None
-        self.cursors = None
+        self._cursors = None
         self._close()
     def cursor(self, *args, **kwargs):
         try:
@@ -220,8 +220,8 @@ class _ConnectionFairy(object):
         self.__counter +=1
         return self    
     def close_open_cursors(self):
-        if self.cursors is not None:
-            for c in list(self.cursors):
+        if self._cursors is not None:
+            for c in list(self._cursors):
                 c.close()
     def close(self):
         self.__counter -=1
@@ -230,37 +230,39 @@ class _ConnectionFairy(object):
     def __del__(self):
         self._close()
     def _close(self):
-        if self.cursors is not None:
+        if self._cursors is not None:
             # cursors should be closed before connection is returned to the pool.  some dbapis like
             # mysql have real issues if they are not.
             if self.__pool.auto_close_cursors:
                 self.close_open_cursors()
             elif self.__pool.disallow_open_cursors:
-                if len(self.cursors):
-                    raise exceptions.InvalidRequestError("This connection still has %d open cursors" % len(self.cursors))
+                if len(self._cursors):
+                    raise exceptions.InvalidRequestError("This connection still has %d open cursors" % len(self._cursors))
         if self.connection is not None:
             try:
                 self.connection.rollback()
             except:
-                # damn mysql -- (todo look for NotSupportedError)
-                pass
+                if self._connection_record is not None:
+                    self._connection_record.invalidate()
         if self._connection_record is not None:
             if self.__pool.echo:
                 self.__pool.log("Connection %s being returned to pool" % repr(self.connection))
             self.__pool.return_conn(self)
+        self.connection = None
         self._connection_record = None
         self._threadfairy = None
-            
+        self._cursors = None
+        
 class _CursorFairy(object):
     def __init__(self, parent, cursor):
         self.__parent = parent
-        self.__parent.cursors[self]=True
+        self.__parent._cursors[self]=True
         self.cursor = cursor
     def invalidate(self):
         self.__parent.invalidate()
     def close(self):
-        if self in self.__parent.cursors:
-            del self.__parent.cursors[self]
+        if self in self.__parent._cursors:
+            del self.__parent._cursors[self]
             self.cursor.close()
     def __getattr__(self, key):
         return getattr(self.cursor, key)
