@@ -187,7 +187,7 @@ class _ConnectionFairy(object):
     """proxies a DBAPI connection object and provides return-on-dereference support"""
     def __init__(self, pool):
         self._threadfairy = _ThreadFairy(self)
-        self._cursors = {}
+        self._cursors = weakref.WeakKeyDictionary()
         self.__pool = pool
         self.__counter = 0
         try:
