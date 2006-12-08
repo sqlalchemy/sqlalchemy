@@ -1,4 +1,7 @@
 0.3.2
+- major connection pool bug fixed.  fixes MySQL out of sync
+errors, will also prevent transactions getting rolled back
+accidentally [ticket:387]
 - major speed enhancements vs. 0.3.1 
   - made conditional dozens of debug log calls that were 
   time-intensive to generate log messages
@@ -6,8 +9,6 @@
   could be unnecessarily cascaded on the save/update cascade
 - MySQL detects errors 2006 (server has gone away) and 2014
 (commands out of sync) and invalidates the connection on which it occured.
-- fix to connection pool _close() to properly clean up, fixes
-MySQL synchronization errors [ticket:387]
 - added keywords for EXCEPT, INTERSECT, EXCEPT ALL, INTERSECT ALL
 [ticket:247]
 - assign_mapper in assignmapper extension returns the created mapper
