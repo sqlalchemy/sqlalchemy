@@ -110,7 +110,7 @@ class OrderedProperties(object):
         self.__data[key] = object
     def __getattr__(self, key):
         try:
-            return self.__data[key]
+            return self.__dict__['_OrderedProperties__data'][key]
         except KeyError:
             raise AttributeError(key)
     def __contains__(self, key):
