@@ -289,6 +289,22 @@ class MySQLDialect(ansisql.ANSIDialect):
     def preparer(self):
         return MySQLIdentifierPreparer(self)
 
+    def do_executemany(self, cursor, statement, parameters, **kwargs):
+        try:
+            cursor.executemany(statement, parameters)
+        except mysql.OperationalError, o:
+            if o.args[0] == 2006 or o.args[0] == 2014:
+                cursor.invalidate()
+                raise o
+    def do_execute(self, cursor, statement, parameters, **kwargs):
+        try:
+            cursor.execute(statement, parameters)
+        except mysql.OperationalError, o:
+            if o.args[0] == 2006 or o.args[0] == 2014:
+                cursor.invalidate()
+                raise o
+            
+
     def do_rollback(self, connection):
         # some versions of MySQL just dont support rollback() at all....
         try:
