@@ -609,8 +609,19 @@ class AttributeHistory(object):
         
 class AttributeManager(object):
     """allows the instrumentation of object attributes.  AttributeManager is stateless, but can be
-    overridden by subclasses to redefine some of its factory operations."""
+    overridden by subclasses to redefine some of its factory operations. Also be aware AttributeManager
+    will cache attributes for a given class, allowing not to determine those for each objects (used
+    in managed_attributes() and noninherited_managed_attributes()). This cache is cleared for a given class
+    while calling register_attribute(), and can be cleared using clear_attribute_cache()"""
 
+    def __init__(self):
+        # will cache attributes, indexed by class objects
+        self._inherited_attribute_cache = weakref.WeakKeyDictionary()
+        self._noninherited_attribute_cache = weakref.WeakKeyDictionary()
+
+    def clear_attribute_cache(self):
+        self._attribute_cache.clear()
+    
     def rollback(self, *obj):
         """retrieves the committed history for each object in the given list, and rolls back the attributes
         each instance to their original value."""
@@ -636,24 +647,28 @@ class AttributeManager(object):
         for o in obj:
             o._state['original'] = CommittedState(self, o)
             o._state['modified'] = False
-            
+
     def managed_attributes(self, class_):
         """returns an iterator of all InstrumentedAttribute objects associated with the given class."""
-        if not isinstance(class_, type):
-            raise repr(class_) + " is not a type"
-        for key in dir(class_):
-            value = getattr(class_, key, None)
-            if isinstance(value, InstrumentedAttribute):
-                yield value
+        try:
+            return self._inherited_attribute_cache[class_]
+        except KeyError:
+            if not isinstance(class_, type):
+                raise TypeError(repr(class_) + " is not a type")
+            inherited = [v for v in [getattr(class_, key, None) for key in dir(class_)] if isinstance(v, InstrumentedAttribute)]
+            self._inherited_attribute_cache[class_] = inherited
+            return inherited
 
     def noninherited_managed_attributes(self, class_):
-        if not isinstance(class_, type):
-            raise repr(class_) + " is not a type"
-        for key in list(class_.__dict__):
-            value = getattr(class_, key, None)
-            if isinstance(value, InstrumentedAttribute):
-                yield value
-                
+        try:
+            return self._noninherited_attribute_cache[class_]
+        except KeyError:
+            if not isinstance(class_, type):
+                raise TypeError(repr(class_) + " is not a type")
+            noninherited = [v for v in [getattr(class_, key, None) for key in list(class_.__dict__)] if isinstance(v, InstrumentedAttribute)]
+            self._noninherited_attribute_cache[class_] = noninherited
+            return noninherited
+
     def is_modified(self, object):
         for attr in self.managed_attributes(object.__class__):
             if attr.check_mutable_modified(object):
@@ -714,7 +729,9 @@ class AttributeManager(object):
         """removes all InstrumentedAttribute property objects from the given class."""
         for attr in self.noninherited_managed_attributes(class_):
             delattr(class_, attr.key)
-
+        self._inherited_attribute_cache.pop(class_,None)
+        self._noninherited_attribute_cache.pop(class_,None)
+        
     def is_class_managed(self, class_, key):
         """returns True if the given key correponds to an instrumented property on the given class."""
         return hasattr(class_, key) and isinstance(getattr(class_, key), InstrumentedAttribute)
@@ -733,6 +750,11 @@ class AttributeManager(object):
     def register_attribute(self, class_, key, uselist, callable_=None, **kwargs):
         """registers an attribute at the class level to be instrumented for all instances
         of the class."""
+        # firt invalidate the cache for the given class 
+        # (will be reconstituted as needed, while getting managed attributes)
+        self._inherited_attribute_cache.pop(class_,None)
+        self._noninherited_attribute_cache.pop(class_,None)
+        
         #print self, "register attribute", key, "for class", class_
         if not hasattr(class_, '_state'):
             def _get_state(self):
