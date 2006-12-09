@@ -13,6 +13,7 @@ back to 0.2.8 levels
 to have it be weak referencing, use create_session(weak_identity_map=True)
 - MySQL detects errors 2006 (server has gone away) and 2014
 (commands out of sync) and invalidates the connection on which it occured.
+- MySQL bool type fix: [ticket:307]
 - postgres reflection fixes: [ticket:349] [ticket:382]
 - added keywords for EXCEPT, INTERSECT, EXCEPT ALL, INTERSECT ALL
 [ticket:247]

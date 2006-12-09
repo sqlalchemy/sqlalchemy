@@ -207,6 +207,7 @@ colspecs = {
 }
 
 ischema_names = {
+    'boolean':MSBoolean,
     'bigint' : MSBigInteger,
     'int' : MSInteger,
     'mediumint' : MSInteger,
