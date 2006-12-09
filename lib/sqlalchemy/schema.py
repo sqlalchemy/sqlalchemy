@@ -315,6 +315,11 @@ class Column(SchemaItem, sql._ColumnClause):
         type: the TypeEngine for this column.
         This can be any subclass of types.AbstractType, including the database-agnostic types defined 
         in the types module, database-specific types defined within specific database modules, or user-defined types.
+
+        type: the TypeEngine for this column. This can be any subclass of types.AbstractType, including 
+        the database-agnostic types defined in the types module, database-specific types defined within 
+        specific database modules, or user-defined types. If the column contains a ForeignKey, 
+        the type can also be None, in which case the type assigned will be that of the referenced column.
         
         *args: Constraint, ForeignKey, ColumnDefault and Sequence objects should be added as list values.
         
