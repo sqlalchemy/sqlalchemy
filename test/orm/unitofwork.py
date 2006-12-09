@@ -709,7 +709,19 @@ class SaveTest(UnitOfWorkTest):
         u = User()
         u.user_id=42
         ctx.current.flush()
-        
+    
+    def test_dont_update_blanks(self):
+        mapper(User, users)
+        u = User()
+        u.user_name = ""
+        ctx.current.flush()
+        ctx.current.clear()
+        u = ctx.current.query(User).get(u.user_id)
+        u.user_name = ""
+        def go():
+            ctx.current.flush()
+        self.assert_sql_count(db, go, 0)
+
     def testmultitable(self):
         """tests a save of an object where each instance spans two tables. also tests
         redefinition of the keynames for the column properties."""

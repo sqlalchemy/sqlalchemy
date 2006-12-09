@@ -91,6 +91,23 @@ class SessionTest(AssertMixin):
         s.update(user)
         assert user in s
         assert user not in s.dirty
+    
+    def test_strong_ref(self):
+        """test that the session is strong-referencing"""
+        tables.delete()
+        s = create_session()
+        class User(object):pass
+        mapper(User, users)
+        
+        # save user
+        s.save(User())
+        s.flush()
+        user = s.query(User).selectone()
+        user = None
+        print s.identity_map
+        import gc
+        gc.collect()
+        assert len(s.identity_map) == 1
         
     def test_no_save_cascade(self):
         mapper(Address, addresses)

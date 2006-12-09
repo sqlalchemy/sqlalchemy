@@ -426,7 +426,7 @@ class Session(object):
     dirty = property(lambda s:s.uow.locate_dirty(), doc="a Set of all objects marked as 'dirty' within this Session")
     deleted = property(lambda s:s.uow.deleted, doc="a Set of all objects marked as 'deleted' within this Session")
     new = property(lambda s:s.uow.new, doc="a Set of all objects marked as 'new' within this Session.")
-    identity_map = property(lambda s:s.uow.identity_map, doc="a WeakValueDictionary consisting of all objects within this Session keyed to their _instance_key value.")
+    identity_map = property(lambda s:s.uow.identity_map, doc="a dictionary consisting of all objects within this Session keyed to their _instance_key value.")
             
     def import_instance(self, *args, **kwargs):
         """deprecated; a synynom for merge()"""
