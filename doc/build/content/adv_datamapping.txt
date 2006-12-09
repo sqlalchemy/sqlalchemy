@@ -662,32 +662,32 @@ Both TreeNode examples above are available in functional form in the `examples/a
 
 ### Result-Set Mapping {@name=resultset}
 
-Take any result set and feed it into a mapper to produce objects.  Multiple mappers can be combined to retrieve unrelated objects from the same row in one step.  The `instances` method on mapper takes a ResultProxy object, which is the result type generated from SQLEngine, and delivers object instances.
+Take any result set and feed it into a Query to produce objects.  Multiple mappers can be combined to retrieve unrelated objects from the same row in one step.  The `instances` method on Query takes a ResultProxy object, which is the result type generated from SQLEngine, and delivers object instances.  (note: this method has been moved off of Mapper, where it is deprecated).
 
     {python}
     class User(object):
         pass
 
-    User.mapper = mapper(User, users_table)
+    mapper(User, users_table)
     
     # select users
     c = users_table.select().execute()
 
     # get objects
-    userlist = User.mapper.instances(c)
+    userlist = session.query(User).instances(c)
     
     {python}
     # define a second class/mapper
     class Address(object):
         pass
         
-    Address.mapper = mapper(Address, addresses_table)
+    mapper(Address, addresses_table)
 
     # select users and addresses in one query
     s = select([users_table, addresses_table], users_table.c.user_id==addresses_table.c.user_id)
 
     # execute it, and process the results with the User mapper, chained to the Address mapper
-    r = User.mapper.instances(s.execute(), Address.mapper)
+    r = session.query(User).instances(s.execute(), class_mapper(Address))
     
     # result rows are an array of objects, one for each mapper used
     for entry in r:
