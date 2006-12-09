@@ -34,10 +34,16 @@ except:
 
 class PGNumeric(sqltypes.Numeric):
     def get_col_spec(self):
-        return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
+        if not self.precision:
+            return "NUMERIC"
+        else:
+            return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
 class PGFloat(sqltypes.Float):
     def get_col_spec(self):
-        return "FLOAT(%(precision)s)" % {'precision': self.precision}
+        if not self.precision:
+            return "FLOAT"
+        else:
+            return "FLOAT(%(precision)s)" % {'precision': self.precision}
 class PGInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
@@ -345,24 +351,29 @@ class PGDialect(ansisql.ANSIDialect):
                 try:
                     charlen = re.search('\(([\d,]+)\)',row['format_type']).group(1)
                 except:
-                    charlen = None
+                    charlen = False
     
-                numericprec = None
-                numericscale = None
+                numericprec = False
+                numericscale = False
                 default = row['default']
                 if attype == 'numeric':
-                    numericprec, numericscale = charlen.split(',')
-                    charlen = None
+                    if charlen is False:
+                        numericprec, numericscale = (None, None)
+                    else:
+                        numericprec, numericscale = charlen.split(',')
+                    charlen = False
                 if attype == 'double precision':
                     numericprec, numericscale = (53, None)
-                    charlen = None
+                    charlen = False
                 if attype == 'integer':
                     numericprec, numericscale = (32, 0)
-                    charlen = None
+                    charlen = False
 
                 args = []
                 for a in (charlen, numericprec, numericscale):
-                    if a is not None:
+                    if a is None:
+                        args.append(None)
+                    elif a is not False:
                         args.append(int(a))
 
                 kwargs = {}
@@ -421,22 +432,15 @@ class PGDialect(ansisql.ANSIDialect):
                 if row is None:
                     break
 
-                identifier = '(?:[a-z_][a-z0-9_$]+|"(?:[^"]|"")+")'
-                identifier_group = '%s(?:, %s)*' % (identifier, identifier)
-                identifiers = '(%s)(?:, (%s))*' % (identifier, identifier)
-                f = re.compile(identifiers)
-                # FOREIGN KEY (mail_user_id,"Mail_User_ID2") REFERENCES "mYschema".euro_user(user_id,"User_ID2")
-                foreign_key_pattern = 'FOREIGN KEY \((%s)\) REFERENCES (?:(%s)\.)?(%s)\((%s)\)' % (identifier_group, identifier, identifier, identifier_group)
-                p = re.compile(foreign_key_pattern)
-                
-                m = p.search(row['condef'])
+                foreign_key_pattern = 'FOREIGN KEY \((.*?)\) REFERENCES (?:(.*?)\.)?(.*?)\((.*?)\)'
+                m = re.search(foreign_key_pattern, row['condef'])
                 (constrained_columns, referred_schema, referred_table, referred_columns) = m.groups() 
                 
-                constrained_columns = [preparer._unquote_identifier(x) for x in f.search(constrained_columns).groups() if x]
+                constrained_columns = [preparer._unquote_identifier(x) for x in re.split(r'\s*,\s*', constrained_columns)]
                 if referred_schema:
                     referred_schema = preparer._unquote_identifier(referred_schema)
                 referred_table = preparer._unquote_identifier(referred_table)
-                referred_columns = [preparer._unquote_identifier(x) for x in f.search(referred_columns).groups() if x]
+                referred_columns = [preparer._unquote_identifier(x) for x in re.split(r'\s*,\s', referred_columns)]
                 
                 refspec = []
                 if referred_schema is not None:

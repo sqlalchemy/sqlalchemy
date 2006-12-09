@@ -29,7 +29,10 @@ class MSNumeric(sqltypes.Numeric):
         self.zerofill = 'zerofill' in kw
         super(MSNumeric, self).__init__(precision, length)
     def get_col_spec(self):
-        return kw_colspec(self, "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length})
+        if self.precision is None:
+            return kw_colspec(self, "NUMERIC")
+        else:
+            return kw_colspec(self, "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length})
 class MSDecimal(MSNumeric):
     def get_col_spec(self):
         if self.precision is not None and self.length is not None:

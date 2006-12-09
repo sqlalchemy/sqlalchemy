@@ -49,6 +49,7 @@ class ReflectionTest(PersistTest):
             Column('test_passivedefault2', Integer, PassiveDefault("5")),
             Column('test_passivedefault3', deftype2, PassiveDefault(defval2)),
             Column('test9', Binary(100)),
+            Column('test_numeric', Numeric(None, None)),
             mysql_engine='InnoDB'
         )
 
@@ -58,7 +59,8 @@ class ReflectionTest(PersistTest):
             Column('email_address', String(20)),
             mysql_engine='InnoDB'
         )
-
+        meta.drop_all()
+        
         users.create()
         addresses.create()
 
@@ -169,7 +171,6 @@ class ReflectionTest(PersistTest):
                 autoload=True)
             u2 = Table('users', meta2, autoload=True)
 
-            print "ITS", list(a2.primary_key)
             assert list(a2.primary_key) == [a2.c.id]
             assert list(u2.primary_key) == [u2.c.id]
             assert u2.join(a2).onclause == u2.c.id==a2.c.id
@@ -304,6 +305,7 @@ class ReflectionTest(PersistTest):
             'multi', meta, 
             Column('multi_id', Integer, primary_key=True),
             Column('multi_rev', Integer, primary_key=True),
+            Column('multi_hoho', Integer, primary_key=True),
             Column('name', String(50), nullable=False),
             Column('val', String(100)),
             mysql_engine='InnoDB'
@@ -312,10 +314,12 @@ class ReflectionTest(PersistTest):
             Column('id', Integer, primary_key=True),
             Column('foo', Integer),
             Column('bar', Integer),
+            Column('lala', Integer),
             Column('data', String(50)),
-            ForeignKeyConstraint(['foo', 'bar'], ['multi.multi_id', 'multi.multi_rev']),
+            ForeignKeyConstraint(['foo', 'bar', 'lala'], ['multi.multi_id', 'multi.multi_rev', 'multi.multi_hoho']),
             mysql_engine='InnoDB'
         )
+        assert table.c.multi_hoho
         meta.create_all()
         meta.clear()
         
@@ -327,11 +331,10 @@ class ReflectionTest(PersistTest):
             print table2
             j = join(table, table2)
             print str(j.onclause)
-            self.assert_(and_(table.c.multi_id==table2.c.foo, table.c.multi_rev==table2.c.bar).compare(j.onclause))
+            self.assert_(and_(table.c.multi_id==table2.c.foo, table.c.multi_rev==table2.c.bar, table.c.multi_hoho==table2.c.lala).compare(j.onclause))
 
         finally:
-            pass
-#            meta.drop_all()
+            meta.drop_all()
 
     def testcheckfirst(self):
         meta = BoundMetaData(testbase.db)

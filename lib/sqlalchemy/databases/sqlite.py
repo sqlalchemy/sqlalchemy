@@ -27,7 +27,10 @@ except ImportError:
 
 class SLNumeric(sqltypes.Numeric):
     def get_col_spec(self):
-        return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
+        if self.precision is None:
+            return "NUMERIC"
+        else:
+            return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
 class SLInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
