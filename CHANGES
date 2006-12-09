@@ -7,6 +7,8 @@ accidentally [ticket:387]
   time-intensive to generate log messages
   - fixed bug in cascade rules whereby the entire object graph
   could be unnecessarily cascaded on the save/update cascade
+- identity map in Session is by default *no longer weak referencing*.
+to have it be weak referencing, use create_session(weak_identity_map=True)
 - MySQL detects errors 2006 (server has gone away) and 2014
 (commands out of sync) and invalidates the connection on which it occured.
 - added keywords for EXCEPT, INTERSECT, EXCEPT ALL, INTERSECT ALL

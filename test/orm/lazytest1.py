@@ -69,10 +69,10 @@ class LazyTest(AssertMixin):
         mapper(Relation, rel_table, properties={
         
             'datas': relation(Data,
-            	primaryjoin=and_(rel_table.c.info_pk==Data.c.info_pk,
-            	Data.c.timeval >= rel_table.c.start,
-            	Data.c.timeval <= rel_table.c.finish),
-            	foreignkey=Data.c.info_pk)
+            	primaryjoin=and_(rel_table.c.info_pk==data_table.c.info_pk,
+            	data_table.c.timeval >= rel_table.c.start,
+            	data_table.c.timeval <= rel_table.c.finish),
+            	foreignkey=data_table.c.info_pk)
         	}
         	
     	)

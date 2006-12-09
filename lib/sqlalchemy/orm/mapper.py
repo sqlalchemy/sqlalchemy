@@ -178,8 +178,8 @@ class Mapper(object):
             members of the object are accessed."""
             def _get_data(s):
                 self.compile()
-                return s.__dict__['_OrderedProperties__data']
-            _OrderedProperties__data = property(_get_data)
+                return s.__dict__['_data']
+            _data = property(_get_data)
                 
         self.columns = LOrderedProp()
         self.c = self.columns

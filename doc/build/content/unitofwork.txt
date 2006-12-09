@@ -83,7 +83,7 @@ For example; below, two separate calls to load an instance with database identit
     >>> obj1 is obj2
     True
     
-The Identity Map is an instance of `weakref.WeakValueDictionary`, so that when an in-memory object falls out of scope, it will be removed automatically.  However, this may not be instant if there are circular references upon the object.  To guarantee that an instance is removed from the identity map before removing references to it, use the `expunge()` method, described later, to remove it.
+The Identity Map is an instance of `dict` by default.  (This is new as of version 0.3.2).  As an option, you can specify the flag `weak_identity_map=True` to the `create_session` function so that it will use a `weakref.WeakValueDictionary`, so that when an in-memory object falls out of scope, it will be removed automatically, thereby providing some automatic management of memory.   However, this may not be instant if there are circular references upon the object.  To guarantee that an instance is removed from the identity map before removing references to it, use the `expunge()` method, described later, to remove it.  Additionally, note that an object that has changes marked on it (i.e. "dirty") can still fall out of scope when using `weak_identity_map`.
 
 The Session supports an iterator interface in order to see all objects in the identity map:
 
@@ -124,15 +124,15 @@ These records are all tracked by collection functions that are also viewable off
     session.new
     
     # persistent objects which currently have changes detected
-    # (this Set is now created on the fly each time the property is called)
+    # (this collection is now created on the fly each time the property is called)
     session.dirty
 
     # persistent objects that have been marked as deleted via session.delete(obj)
     session.deleted
 
-As of the 0.3 series, the `new` and `deleted` lists are actual `Set` objects, and are therefore *not weak referencing*.  Elements that are in the `dirty` collection are, however, and have to be maintained in the current scope else they will be garbage collected(this is a slightly suboptimal behavior introduced in the 0.3 series which may be improved in a future release).  
+Note that if a session is created with the `weak_identity_map` flag, an item which is marked as "dirty" will be silently removed from the session if the item falls out of scope in the user application.  This is because the unit of work does not look for "dirty" changes except for within a flush operation (or any time the session.dirty collection is accessed). 
 
-As for objects inside of `new` and `deleted`, if you abandon all references to new or modified objects within a session, *they are still present* in either of those two lists, and will be saved on the next flush operation, unless they are removed from the Session explicitly (more on that later).  The `new` list may change in a future release to be weak-referencing, however for the `deleted` list, one can see that its quite natural for a an object marked as deleted to have no references in the application, yet a DELETE operation is still required.
+As for objects inside of `new` and `deleted`, if you abandon all references to new or modified objects within a session, *they are still present* in either of those two lists, and will be saved on the next flush operation, unless they are removed from the Session explicitly (more on that later).  
 
 ### The Session API {@name=api}
 

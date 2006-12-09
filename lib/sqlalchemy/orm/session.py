@@ -75,15 +75,16 @@ class Session(object):
     
     The Session object is **not** threadsafe.  For thread-management of Sessions, see the
     sqlalchemy.ext.sessioncontext module."""
-    def __init__(self, bind_to=None, hash_key=None, import_session=None, echo_uow=False):
+    def __init__(self, bind_to=None, hash_key=None, import_session=None, echo_uow=False, weak_identity_map=False):
         if import_session is not None:
-            self.uow = unitofwork.UnitOfWork(identity_map=import_session.uow.identity_map)
+            self.uow = unitofwork.UnitOfWork(identity_map=import_session.uow.identity_map, weak_identity_map=weak_identity_map)
         else:
-            self.uow = unitofwork.UnitOfWork()
+            self.uow = unitofwork.UnitOfWork(weak_identity_map=weak_identity_map)
         
         self.bind_to = bind_to
         self.binds = {}
         self.echo_uow = echo_uow
+        self.weak_identity_map = weak_identity_map
         self.transaction = None
         if hash_key is None:
             self.hash_key = id(self)
@@ -147,7 +148,7 @@ class Session(object):
         for instance in self:
             self._unattach(instance)
         echo = self.uow.echo
-        self.uow = unitofwork.UnitOfWork()
+        self.uow = unitofwork.UnitOfWork(weak_identity_map=self.weak_identity_map)
         self.uow.echo = echo
             
     def mapper(self, class_, entity_name=None):

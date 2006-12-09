@@ -73,11 +73,14 @@ class UnitOfWork(object):
     """main UOW object which stores lists of dirty/new/deleted objects.  
     provides top-level "flush" functionality as well as the transaction 
     boundaries with the SQLEngine(s) involved in a write operation."""
-    def __init__(self, identity_map=None):
+    def __init__(self, identity_map=None, weak_identity_map=False):
         if identity_map is not None:
             self.identity_map = identity_map
         else:
-            self.identity_map = weakref.WeakValueDictionary()
+            if weak_identity_map:
+                self.identity_map = weakref.WeakValueDictionary()
+            else:
+                self.identity_map = {}
             
         self.new = util.Set() #OrderedSet()
         self.deleted = util.Set()
