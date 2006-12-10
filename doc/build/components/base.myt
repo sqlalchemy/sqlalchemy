@@ -27,7 +27,14 @@ out for a different one</%doc>
 
 <div class="docheader">
 
+
 <h1><% toc.root.doctitle %></h1>
+
+<div class="multipage">
+<a href="index.<% extension %>">Multiple Pages</a> |
+<a href="documentation.<% extension %>">One Page</a>
+</div>
+
 <div class="">Version: <% version %>   Last Updated: <% time.strftime('%x %X', time.localtime(last_updated)) %></div>
 </div>
 
