@@ -11,6 +11,7 @@ back to 0.2.8 levels
   - various speedups in attributes module
 - identity map in Session is by default *no longer weak referencing*.
 to have it be weak referencing, use create_session(weak_identity_map=True)
+fixes [ticket:388]
 - MySQL detects errors 2006 (server has gone away) and 2014
 (commands out of sync) and invalidates the connection on which it occured.
 - MySQL bool type fix: [ticket:307]
@@ -20,20 +21,21 @@ to have it be weak referencing, use create_session(weak_identity_map=True)
 - assign_mapper in assignmapper extension returns the created mapper
 [changeset:2110]
 - added label() function to Select class, when scalar=True is used
-to create a scalar subquery.
+to create a scalar subquery 
+i.e. "select x, y, (select max(foo) from table) AS foomax from table"
 - added onupdate and ondelete keyword arguments to ForeignKey; propigate
 to underlying ForeignKeyConstraint if present.  (dont propigate in the
 other direction, however)
 - fix to session.update() to preserve "dirty" status of incoming object
-- sending a selectable to an IN no longer creates a "union" out of multiple
-selects; only one selectable to an IN is allowed now (make a union yourself
-if union is needed; explicit better than implicit, dont guess, etc.)
+- sending a selectable to an IN via the in_() function no longer creates 
+a "union" out of multiple selects; only one selectable to a the in_() function
+is allowed now (make a union yourself if union is needed)
 - improved support for disabling save-update cascade via cascade="none" etc.
 - added "remote_side" argument to relation(), used only with self-referential
 mappers to force the direction of the parent/child relationship.  replaces
 the usage of the "foreignkey" parameter for "switching" the direction.
 "foreignkey" argument is deprecated for all uses and will eventually
-be replaced by an argument dedicated to ForeignKey specification;
+be replaced by an argument dedicated to ForeignKey specification on mappers.
 
 0.3.1
 - Engine/Pool:

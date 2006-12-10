@@ -7,7 +7,7 @@ SQLAlchemy has a variety of extensions and "mods" available which provide extra 
 
 **Author:**  Daniel Miller
 
-This plugin is used to instantiate and manage Session objects.  As of SQLAlchemy 0.2 it is the preferred way to provide thread-local session functionality to an application.  It provides several services:
+This plugin is used to instantiate and manage Session objects.  It is the preferred way to provide thread-local session functionality to an application.  It provides several services:
 
 * serves as a factory to create sessions of a particular configuration.  This factory may either call `create_session()` with a particular set of arguments, or instantiate a different implementation of `Session` if one is available.
 * for the `Session` objects it creates, provides the ability to maintain a single `Session` per distinct application thread.  The `Session` returned by a `SessionContext` is called the *contextual session.*   Providing at least a thread-local context to sessions is important because the `Session` object is not threadsafe, and is intended to be used with localized sets of data, as opposed to a single session being used application wide.
@@ -211,7 +211,7 @@ Configuration of SelectResults may be per-Query, per Mapper, or per application:
     # globally configure all Mappers to return SelectResults, using the "selectresults" mod
     import sqlalchemy.mods.selectresults
 
-SelectResults greatly enhances querying and is highly recommended.  For example, heres an example of constructing a query using a combination of joins and outerjoins (requires 0.2.9 or above):
+SelectResults greatly enhances querying and is highly recommended.  For example, heres an example of constructing a query using a combination of joins and outerjoins:
 
     {python}
     mapper(User, users_table, properties={
@@ -371,7 +371,7 @@ For the common case where the association object's creation needs to be specifie
 
 **Author:**  Mike Bayer and Daniel Miller
 
-`threadlocal` is an extension that was created primarily to provide backwards compatibility with the SQLAlchemy 0.1 series.  It uses three features which SQLAlchemy 0.2 and above provide as distinct features:  `SessionContext`, `assign_mapper`, and the `TLEngine`, which is the `Engine` used with the threadlocal `create_engine()` strategy.  It is **strongly** recommended that these three features are understood individually before using threadlocal.
+`threadlocal` is an extension that was created primarily to provide backwards compatibility with the older SQLAlchemy 0.1 series.  It uses three features which SQLAlchemy 0.2 and above provide as distinct features:  `SessionContext`, `assign_mapper`, and the `TLEngine`, which is the `Engine` used with the threadlocal `create_engine()` strategy.  It is **strongly** recommended that these three features are understood individually before using threadlocal.
 
 In SQLAlchemy 0.1, users never dealt with explcit connections and didn't have a very explicit `Session` interface, instead relying upon a more magical global object called `objectstore`.  The `objectstore` idea was wildly popular with about half of SA's users, and completely unpopular with the other half.  The threadlocal mod basically brings back `objectstore`, which is in fact just a `SessionContext` where you can call `Session` methods directly off of it, instead of saying `context.current`.  For `threadlocal` to faithfully produce 0.1 behavior, it is invoked as a *mod* which globally installs the objectstore's mapper extension, such that all `Mapper`s will automatically assign all new instances of mapped classes to the objectstore's contextual `Session`.  Additionally, it also changes the default engine strategy used by `create_engine` to be the "threadlocal" strategy, which in normal practice does not affect much. 
 

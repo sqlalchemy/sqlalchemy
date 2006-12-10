@@ -24,7 +24,7 @@ files = [
     ]
 
 title='SQLAlchemy 0.3 Documentation'
-version = '0.3.1'
+version = '0.3.2'
 
 root = toc.TOCElement('', 'root', '', version=version, doctitle=title)
 

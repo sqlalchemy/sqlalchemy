@@ -12,7 +12,7 @@ The `Mapper`'s role is to perform SQL operations upon the database, associating 
 
 When a `Mapper` is created to associate a `Table` object with a class, all of the columns defined in the `Table` object are associated with the class via property accessors, which add overriding functionality to the normal process of setting and getting object attributes.  These property accessors keep track of changes to object attributes; these changes will be stored to the database when the application "flushes" the current state of objects (known as a *Unit of Work*).
 
-Two objects provide the primary interface for interacting with Mappers and the "unit of work" in SA 0.2, which are the `Query` object and the `Session` object.  `Query` deals with selecting objects from the database, whereas `Session` provides a context for loaded objects and the ability to communicate changes on those objects back to the database.
+Two objects provide the primary interface for interacting with Mappers and the "unit of work", which are the `Query` object and the `Session` object.  `Query` deals with selecting objects from the database, whereas `Session` provides a context for loaded objects and the ability to communicate changes on those objects back to the database.
 
 The primary method on `Query` for loading objects is its `select()` method, which has similar arguments to a `sqlalchemy.sql.Select` object.  But this select method executes automatically and returns results, instead of awaiting an execute() call.  Instead of returning a cursor-like object, it returns an array of objects.
 
