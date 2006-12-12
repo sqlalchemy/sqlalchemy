@@ -1558,7 +1558,7 @@ class Select(_SelectBaseMixin, FromClause):
         
     def append_from(self, fromclause):
         if type(fromclause) == str:
-            fromclause = _TextClause(fromclause)
+            fromclause = FromClause(fromclause)
         fromclause.accept_visitor(self.__correlator)
         self._process_froms(fromclause, True)
         

@@ -1,3 +1,5 @@
+- string-based FROM clauses fixed, i.e. select(..., from_obj=["sometext"])
+
 0.3.2
 - major connection pool bug fixed.  fixes MySQL out of sync
 errors, will also prevent transactions getting rolled back
