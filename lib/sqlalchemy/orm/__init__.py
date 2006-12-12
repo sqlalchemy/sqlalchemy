@@ -15,10 +15,11 @@ from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.util import polymorphic_union
 from sqlalchemy.orm import properties, strategies
 from sqlalchemy.orm.session import Session as create_session
+from sqlalchemy.orm.session import object_session
 
 __all__ = ['relation', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer', 'extension', 
         'mapper', 'clear_mappers', 'clear_mapper', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query', 
-        'cascade_mappers', 'polymorphic_union', 'create_session', 'synonym', 'contains_eager', 'EXT_PASS'
+        'cascade_mappers', 'polymorphic_union', 'create_session', 'synonym', 'contains_eager', 'EXT_PASS', 'object_session'
         ]
 
 def relation(*args, **kwargs):

@@ -147,7 +147,7 @@ class AbstractRelationLoader(LoaderStrategy):
 
 class NoLoader(AbstractRelationLoader):
     def init_class_attribute(self):
-        self.parent_property._get_strategy(LazyLoader).init_class_attribute()
+        self._register_attribute(self.parent.class_)
     def process_row(self, selectcontext, instance, row, identitykey, isnew):
         if isnew:
             if not self.is_default or len(selectcontext.options):

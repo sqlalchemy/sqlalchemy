@@ -701,7 +701,41 @@ class DeferredTest(MapperSuperTest):
         self.assert_sql_count(db, go, 0)
         self.assert_(item.item_name == 'item 4')
     
-    
+
+class NoLoadTest(MapperSuperTest):
+    def testbasic(self):
+        """tests a basic one-to-many lazy load"""
+        m = mapper(User, users, properties = dict(
+            addresses = relation(mapper(Address, addresses), lazy=None)
+        ))
+        q = create_session().query(m)
+        l = [None]
+        def go():
+            x = q.select(users.c.user_id == 7)
+            x[0].addresses
+            l[0] = x
+        self.assert_sql_count(testbase.db, go, 1)
+            
+        self.assert_result(l[0], User,
+            {'user_id' : 7, 'addresses' : (Address, [])},
+            )
+    def testoptions(self):
+        m = mapper(User, users, properties = dict(
+            addresses = relation(mapper(Address, addresses), lazy=None)
+        ))
+        q = create_session().query(m).options(lazyload('addresses'))
+        l = [None]
+        def go():
+            x = q.select(users.c.user_id == 7)
+            x[0].addresses
+            l[0] = x
+        self.assert_sql_count(testbase.db, go, 2)
+            
+        self.assert_result(l[0], User,
+            {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
+            )
+
+
 class LazyTest(MapperSuperTest):
 
     def testbasic(self):
