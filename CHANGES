@@ -2,7 +2,10 @@
 - fixes to passive_deletes flag, lazy=None (noload) flag
 - added example/docs for dealing with large collections
 - added object_session() method to sqlalchemy namespace
-
+- fixed QueuePool bug whereby its better able to reconnect to a database
+that was not reachable (thanks to Sébastien Lelong), also fixed dispose()
+method
+ 
 0.3.2
 - major connection pool bug fixed.  fixes MySQL out of sync
 errors, will also prevent transactions getting rolled back

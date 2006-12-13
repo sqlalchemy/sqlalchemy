@@ -363,8 +363,9 @@ class QueuePool(Pool):
         except Queue.Empty:
             if self._max_overflow > -1 and self._overflow >= self._max_overflow:
                 raise exceptions.TimeoutError("QueuePool limit of size %d overflow %d reached, connection timed out" % (self.size(), self.overflow()))
+            con = self.create_connection()
             self._overflow += 1
-            return self.create_connection()
+            return con
 
     def dispose(self):
         while True:
@@ -373,6 +374,9 @@ class QueuePool(Pool):
                 conn.close()
             except Queue.Empty:
                 break
+        
+        self._overflow = 0 - self.size()
+        self.log("Pool disposed. " + self.status())
 
     def status(self):
         tup = (self.size(), self.checkedin(), self.overflow(), self.checkedout())
