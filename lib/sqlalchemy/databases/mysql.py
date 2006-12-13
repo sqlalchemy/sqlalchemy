@@ -13,6 +13,7 @@ import sqlalchemy.exceptions as exceptions
 
 try:
     import MySQLdb as mysql
+    import MySQLdb.constants.CLIENT as CLIENT_FLAGS
 except:
     mysql = None
 
@@ -270,6 +271,11 @@ class MySQLDialect(ansisql.ANSIDialect):
         coercetype('use_unicode', bool)   # this could break SA Unicode type
         coercetype('charset', str)        # this could break SA Unicode type
         # TODO: what about options like "ssl", "cursorclass" and "conv" ?
+
+        client_flag = opts.get('client_flag', 0)
+        client_flag |= CLIENT_FLAGS.FOUND_ROWS
+        opts['client_flag'] = client_flag
+
         return [[], opts]
 
     def create_execution_context(self):
@@ -279,7 +285,7 @@ class MySQLDialect(ansisql.ANSIDialect):
         return sqltypes.adapt_type(typeobj, colspecs)
 
     def supports_sane_rowcount(self):
-        return False
+        return True
 
     def compiler(self, statement, bindparams, **kwargs):
         return MySQLCompiler(self, statement, bindparams, **kwargs)

@@ -100,7 +100,7 @@ class VersioningTest(UnitOfWorkTest):
         version_table.delete().execute()
         UnitOfWorkTest.tearDown(self)
     
-    @testbase.unsupported('mysql', 'mssql')
+    @testbase.unsupported('mssql')
     def testbasic(self):
         s = create_session()
         class Foo(object):pass

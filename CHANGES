@@ -5,6 +5,7 @@
 - fixed QueuePool bug whereby its better able to reconnect to a database
 that was not reachable (thanks to Sébastien Lelong), also fixed dispose()
 method
+- patch that makes MySQL rowcount work correctly! [ticket:396]
  
 0.3.2
 - major connection pool bug fixed.  fixes MySQL out of sync

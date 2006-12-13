@@ -960,7 +960,7 @@ class Mapper(object):
                     mapper._postfetch(connection, table, obj, c, c.last_updated_params())
 
                     updated_objects.add(obj)
-                    rows += c.cursor.rowcount
+                    rows += c.rowcount
 
                 if c.supports_sane_rowcount() and rows != len(update):
                     raise exceptions.ConcurrentModificationError("Updated rowcount %d does not match number of objects updated %d" % (rows, len(update)))
