@@ -51,6 +51,24 @@ class TransactionTest(testbase.PersistTest):
         assert len(result.fetchall()) == 0
         connection.close()
 
+    def testraise(self):
+        connection = testbase.db.connect()
+        
+        transaction = connection.begin()
+        try:
+            connection.execute(users.insert(), user_id=1, user_name='user1')
+            connection.execute(users.insert(), user_id=2, user_name='user2')
+            connection.execute(users.insert(), user_id=1, user_name='user3')
+            transaction.commit()
+            assert False
+        except Exception , e:
+            print "Exception: ", e
+            transaction.rollback()
+        
+        result = connection.execute("select * from query_users")
+        assert len(result.fetchall()) == 0
+        connection.close()
+        
     def testnestedrollback(self):
         connection = testbase.db.connect()
         
