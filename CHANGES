@@ -1,3 +1,5 @@
+- added "BIGSERIAL" support for postgres table with PGBigInteger/autoincrement
+
 0.3.3
 - string-based FROM clauses fixed, i.e. select(..., from_obj=["sometext"])
 - fixes to passive_deletes flag, lazy=None (noload) flag
