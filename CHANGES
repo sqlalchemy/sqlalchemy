@@ -7,7 +7,8 @@
 that was not reachable (thanks to Sébastien Lelong), also fixed dispose()
 method
 - patch that makes MySQL rowcount work correctly! [ticket:396]
-- fix to MySQL catch of 2006/20014 errors
+- fix to MySQL catch of 2006/2014 errors to properly re-raise OperationalError
+exception
 
 0.3.2
 - major connection pool bug fixed.  fixes MySQL out of sync
