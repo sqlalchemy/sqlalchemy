@@ -307,14 +307,14 @@ class MySQLDialect(ansisql.ANSIDialect):
         except mysql.OperationalError, o:
             if o.args[0] == 2006 or o.args[0] == 2014:
                 cursor.invalidate()
-                raise o
+            raise o
     def do_execute(self, cursor, statement, parameters, **kwargs):
         try:
             cursor.execute(statement, parameters)
         except mysql.OperationalError, o:
             if o.args[0] == 2006 or o.args[0] == 2014:
                 cursor.invalidate()
-                raise o
+            raise o
             
 
     def do_rollback(self, connection):

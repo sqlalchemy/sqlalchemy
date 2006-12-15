@@ -253,8 +253,6 @@ Deferred columns can be placed into groups so that they load together:
 
 #### Working with Large Collections
 
-(requires some bugfixes released as of version 0.3.3)
-
 SQLAlchemy relations are generally simplistic; the lazy loader loads in the full list of child objects when accessed, and the eager load builds a query that loads the full list of child objects.  Additionally, when you are deleting a parent object, SQLAlchemy insures that it has loaded the full list of child objects so that it can mark them as deleted as well (or to update their parent foreign key to NULL).  It does not issue an en-masse "delete from table where parent_id=?" type of statement in such a scenario.  This is because the child objects themselves may also have further dependencies, and additionally may also exist in the current session in which case SA needs to know their identity so that their state can be properly updated.
 
 So there are several techniques that can be used individually or combined together to address these issues, in the context of a large collection where you normally would not want to load the full list of relationships:
