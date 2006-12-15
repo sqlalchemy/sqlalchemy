@@ -50,7 +50,7 @@ class PGInteger(sqltypes.Integer):
 class PGSmallInteger(sqltypes.Smallinteger):
     def get_col_spec(self):
         return "SMALLINT"
-class PGBigInteger(sqltypes.Integer):
+class PGBigInteger(PGInteger):
     def get_col_spec(self):
         return "BIGINT"
 class PG2DateTime(sqltypes.DateTime):
