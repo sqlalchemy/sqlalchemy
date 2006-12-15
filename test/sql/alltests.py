@@ -15,6 +15,7 @@ def suite():
         # assorted round-trip tests
         'sql.query',
         'sql.quote',
+        'sql.rowcount',
         
         # defaults, sequences (postgres/oracle)
         'sql.defaults',
