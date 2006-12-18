@@ -58,8 +58,7 @@ except:
         import pymssql as dbmodule
         connect = dbmodule.connect
         # pymmsql doesn't have a Binary method.  we use string
-        # updated: since v.74 binary support is fixed; restriction removed
-        # dbmodule.Binary = lambda st: str(st)
+        dbmodule.Binary = lambda st: str(st)
         def make_connect_string(keys):
             if keys.get('port'):
                 # pymssql expects port as host:port, not a separate arg
@@ -177,10 +176,6 @@ class MSBoolean(sqltypes.Boolean):
             return None
         else:
             return value and True or False
-        
-class MSPickle(sqltypes.PickleType):
-    def get_col_spec(self):
-        return "IMAGE"
         
 colspecs = {
     sqltypes.Integer : MSInteger,
