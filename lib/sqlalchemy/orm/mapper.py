@@ -1187,6 +1187,8 @@ class Mapper(object):
             instance = self.extension.create_instance(self, context, row, self.class_)
             if instance is EXT_PASS:
                 instance = self._create_instance(context.session)
+            else:
+                instance._entity_name = self.entity_name
             if self.__should_log_debug:
                 self.__log_debug("_instance(): created new instance %s identity %s" % (mapperutil.instance_str(instance), str(identitykey)))
             context.identity_map[identitykey] = instance
@@ -1398,7 +1400,8 @@ def has_identity(object):
     return hasattr(object, '_instance_key')
     
 def has_mapper(object):
-    """returns True if the given object has a mapper association"""
+    """return True if the given object has had a mapper association set up, either through loading,
+    or via insertion in a session."""
     return hasattr(object, '_entity_name')
 
 

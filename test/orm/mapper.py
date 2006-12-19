@@ -760,7 +760,20 @@ class LazyTest(MapperSuperTest):
         self.assert_result([u], User,
             {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
             )
-
+    
+    def testcreateinstance(self):
+        class Ext(MapperExtension):
+            def create_instance(self, *args, **kwargs):
+                return User()
+        m = mapper(Address, addresses)
+        m = mapper(User, users, extension=Ext(), properties = dict(
+            addresses = relation(Address, lazy=True),
+        ))
+        
+        q = create_session().query(m)
+        l = q.select();
+        self.assert_result(l, User, *user_address_result)
+        
     def testorderby(self):
         m = mapper(Address, addresses)
 
