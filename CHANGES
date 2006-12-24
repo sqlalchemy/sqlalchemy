@@ -1,6 +1,8 @@
 - added "BIGSERIAL" support for postgres table with PGBigInteger/autoincrement
 - fix to MapperExtension create_instance so that entity_name properly associated
 with new instance
+- fixes to postgres reflection to better handle when schema names are present;
+thanks to jason (at) ncsmags.com [ticket:402]
 
 0.3.3
 - string-based FROM clauses fixed, i.e. select(..., from_obj=["sometext"])

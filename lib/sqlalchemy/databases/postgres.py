@@ -310,9 +310,9 @@ class PGDialect(ansisql.ANSIDialect):
         else:
             preparer = self.identifier_preparer
             if table.schema is not None:
-                current_schema = table.schema
+                schema_where_clause = "n.nspname = :schema"
             else:
-                current_schema = connection.default_schema_name()
+                schema_where_clause = "pg_catalog.pg_table_is_visible(c.oid)"
     
             ## information schema in pg suffers from too many permissions' restrictions
             ## let us find out at the pg way what is needed...
@@ -323,39 +323,38 @@ class PGDialect(ansisql.ANSIDialect):
                   (SELECT substring(d.adsrc for 128) FROM pg_catalog.pg_attrdef d
                    WHERE d.adrelid = a.attrelid AND d.adnum = a.attnum AND a.atthasdef)
                   AS DEFAULT,
-                  a.attnotnull, a.attnum
+                  a.attnotnull, a.attnum, a.attrelid as table_oid
                 FROM pg_catalog.pg_attribute a
                 WHERE a.attrelid = (
                     SELECT c.oid
                     FROM pg_catalog.pg_class c
                          LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-                    WHERE (n.nspname = :schema OR pg_catalog.pg_table_is_visible(c.oid))
-                          AND c.relname = :table_name AND (c.relkind = 'r' OR c.relkind = 'v')
+                         WHERE (%s)
+                         AND c.relname = :table_name AND c.relkind in ('r','v')
                 ) AND a.attnum > 0 AND NOT a.attisdropped
                 ORDER BY a.attnum
-            """
+            """ % schema_where_clause
     
-            s = text(SQL_COLS )
-            c = connection.execute(s, table_name=table.name, schema=current_schema)
-            found_table = False
-            while True:
-                row = c.fetchone()
-                if row is None:
-                    break
-                found_table = True
-                name = row['attname']
-                ## strip (30) from character varying(30)
-                attype = re.search('([^\(]+)', row['format_type']).group(1)
-    
-                nullable = row['attnotnull'] == False
+            s = text(SQL_COLS)
+            c = connection.execute(s, table_name=table.name, 
+                                      schema=table.schema)
+            rows = c.fetchall()
+            
+            if not rows: 
+                raise exceptions.NoSuchTableError(table.name)
+                
+            for name, format_type, default, notnull, attnum, table_oid in rows:
+                ## strip (30) from character varying(30)                
+                attype = re.search('([^\(]+)', format_type).group(1)
+                nullable = not notnull
+                
                 try:
-                    charlen = re.search('\(([\d,]+)\)',row['format_type']).group(1)
+                    charlen = re.search('\(([\d,]+)\)', format_type).group(1)
                 except:
                     charlen = False
     
                 numericprec = False
                 numericscale = False
-                default = row['default']
                 if attype == 'numeric':
                     if charlen is False:
                         numericprec, numericscale = (None, None)
@@ -363,7 +362,7 @@ class PGDialect(ansisql.ANSIDialect):
                         numericprec, numericscale = charlen.split(',')
                     charlen = False
                 if attype == 'double precision':
-                    numericprec, numericscale = (53, None)
+                    numericprec, numericscale = (53, False)
                     charlen = False
                 if attype == 'integer':
                     numericprec, numericscale = (32, 0)
@@ -390,24 +389,18 @@ class PGDialect(ansisql.ANSIDialect):
                 table.append_column(schema.Column(name, coltype, nullable=nullable, *colargs))
     
     
-            if not found_table:
-                raise exceptions.NoSuchTableError(table.name)
-    
             # Primary keys
             PK_SQL = """
               SELECT attname FROM pg_attribute 
               WHERE attrelid = (
-                 SELECT indexrelid FROM  pg_index i, pg_class c, pg_namespace n
-                 WHERE n.nspname = :schema AND c.relname = :table_name 
-                 AND c.oid = i.indrelid AND n.oid = c.relnamespace
-                 AND i.indisprimary = 't' ) ;
+                 SELECT indexrelid FROM pg_index i
+                 WHERE i.indrelid = :table
+                 AND i.indisprimary = 't')
+              ORDER BY attnum
             """ 
             t = text(PK_SQL)
-            c = connection.execute(t, table_name=table.name, schema=current_schema)
-            while True:
-                row = c.fetchone()
-                if row is None:
-                    break
+            c = connection.execute(t, table=table_oid)
+            for row in c.fetchall(): 
                 pk = row[0]
                 table.primary_key.add(table.c[pk])
     
@@ -415,27 +408,15 @@ class PGDialect(ansisql.ANSIDialect):
             FK_SQL = """
               SELECT conname, pg_catalog.pg_get_constraintdef(oid, true) as condef 
               FROM  pg_catalog.pg_constraint r 
-              WHERE r.conrelid = (
-                  SELECT c.oid FROM pg_catalog.pg_class c 
-                               LEFT JOIN pg_catalog.pg_namespace n
-                               ON n.oid = c.relnamespace 
-                  WHERE c.relname = :table_name 
-                    AND pg_catalog.pg_table_is_visible(c.oid)) 
-                    AND r.contype = 'f' ORDER BY 1
-    
+              WHERE r.conrelid = :table AND r.contype = 'f' 
+              ORDER BY 1
             """
             
             t = text(FK_SQL)
-            c = connection.execute(t, table_name=table.name)
-            while True:
-                row = c.fetchone()
-                if row is None:
-                    break
-
-                foreign_key_pattern = 'FOREIGN KEY \((.*?)\) REFERENCES (?:(.*?)\.)?(.*?)\((.*?)\)'
-                m = re.search(foreign_key_pattern, row['condef'])
-                (constrained_columns, referred_schema, referred_table, referred_columns) = m.groups() 
-                
+            c = connection.execute(t, table=table_oid)
+            for conname, condef in c.fetchall():
+                m = re.search('FOREIGN KEY \((.*?)\) REFERENCES (?:(.*?)\.)?(.*?)\((.*?)\)', condef).groups()
+                (constrained_columns, referred_schema, referred_table, referred_columns) = m
                 constrained_columns = [preparer._unquote_identifier(x) for x in re.split(r'\s*,\s*', constrained_columns)]
                 if referred_schema:
                     referred_schema = preparer._unquote_identifier(referred_schema)
@@ -453,7 +434,7 @@ class PGDialect(ansisql.ANSIDialect):
                     for column in referred_columns:
                         refspec.append(".".join([referred_table, column]))
                 
-                table.append_constraint(ForeignKeyConstraint(constrained_columns, refspec, row['conname']))
+                table.append_constraint(ForeignKeyConstraint(constrained_columns, refspec, conname))
 
 class PGCompiler(ansisql.ANSICompiler):
         
