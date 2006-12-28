@@ -1352,25 +1352,44 @@ class MapperExtension(object):
 class _ExtensionCarrier(MapperExtension):
     def __init__(self):
         self.__elements = []
-        self.__callables = {}
     def insert(self, extension):
         """insert a MapperExtension at the beginning of this ExtensionCarrier's list."""
         self.__elements.insert(0, extension)
     def append(self, extension):
         """append a MapperExtension at the end of this ExtensionCarrier's list."""
         self.__elements.append(extension)
-    def __getattribute__(self, key):
-        if key in MapperExtension.__dict__:
-            try:
-                return self.__callables[key]
-            except KeyError:
-                return self.__callables.setdefault(key, lambda *args, **kwargs:self._do(key, *args, **kwargs))
-        else:
-            return super(_ExtensionCarrier, self).__getattribute__(key)
+    def get_session(self, *args, **kwargs):
+        return self._do('get_session', *args, **kwargs)
+    def load(self, *args, **kwargs):
+        return self._do('load', *args, **kwargs)
+    def get(self, *args, **kwargs):
+        return self._do('get', *args, **kwargs)
+    def get_by(self, *args, **kwargs):
+        return self._do('get_by', *args, **kwargs)
+    def select_by(self, *args, **kwargs):
+        return self._do('select_by', *args, **kwargs)
+    def select(self, *args, **kwargs):
+        return self._do('select', *args, **kwargs)
+    def create_instance(self, *args, **kwargs):
+        return self._do('create_instance', *args, **kwargs)
+    def append_result(self, *args, **kwargs):
+        return self._do('append_result', *args, **kwargs)
+    def populate_instance(self, *args, **kwargs):
+        return self._do('populate_instance', *args, **kwargs)
+    def before_insert(self, *args, **kwargs):
+        return self._do('before_insert', *args, **kwargs)
+    def before_update(self, *args, **kwargs):
+        return self._do('before_update', *args, **kwargs)
+    def after_update(self, *args, **kwargs):
+        return self._do('after_update', *args, **kwargs)
+    def after_insert(self, *args, **kwargs):
+        return self._do('after_insert', *args, **kwargs)
+    def before_delete(self, *args, **kwargs):
+        return self._do('before_delete', *args, **kwargs)
+    def after_delete(self, *args, **kwargs):
+        return self._do('after_delete', *args, **kwargs)
     def _do(self, funcname, *args, **kwargs):
         for elem in self.__elements:
-            if elem is self:
-                raise exceptions.AssertionError("ExtensionCarrier set to itself")
             ret = getattr(elem, funcname)(*args, **kwargs)
             if ret is not EXT_PASS:
                 return ret

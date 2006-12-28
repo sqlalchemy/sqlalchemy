@@ -758,11 +758,9 @@ class AttributeManager(object):
         #print self, "register attribute", key, "for class", class_
         if not hasattr(class_, '_state'):
             def _get_state(self):
-                try:
-                    return self.__sa_attr_state
-                except AttributeError:
-                    self.__sa_attr_state = {}
-                    return self.__sa_attr_state
+                if not hasattr(self, '_sa_attr_state'):
+                    self._sa_attr_state = {}
+                return self._sa_attr_state
             class_._state = property(_get_state)
         
         typecallable = kwargs.pop('typecallable', None)

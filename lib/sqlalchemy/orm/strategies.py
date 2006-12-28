@@ -463,31 +463,55 @@ class EagerLoader(AbstractRelationLoader):
         for value in self.mapper.props.values():
             value.setup(context, eagertable=clauses.eagertarget, parentclauses=clauses, parentmapper=self.mapper)
 
+    def _create_row_processor(self, selectcontext, row):
+        """create a 'row processing' function that will apply eager aliasing to the row.
+        
+        also check that an identity key can be retrieved from the row, else return None."""
+        # check for a user-defined decorator in the SelectContext (which was set up by the contains_eager() option)
+        if selectcontext.attributes.has_key((EagerLoader, self.parent_property)):
+            # custom row decoration function, placed in the selectcontext by the 
+            # contains_eager() mapper option
+            decorator = selectcontext.attributes[(EagerLoader, self.parent_property)]
+            if decorator is None:
+                decorator = lambda row: row
+        else:
+            try:
+                # decorate the row according to the stored AliasedClauses for this eager load
+                clauses = self.clauses_by_lead_mapper[selectcontext.mapper]
+                decorator = clauses._row_decorator
+            except KeyError:
+                # no stored AliasedClauses: eager loading was not set up in the query and
+                # AliasedClauses never got initialized
+                return None
+
+        try:
+            decorated_row = decorator(row)
+            # check for identity key
+            identity_key = self.mapper.identity_key_from_row(decorated_row)
+            # and its good
+            return decorator
+        except KeyError:
+            # no identity key - dont return a row processor, will cause a degrade to lazy
+            return None
+
     def process_row(self, selectcontext, instance, row, identitykey, isnew):
         """receive a row.  tell our mapper to look for a new object instance in the row, and attach
         it to a list on the parent instance."""
-
         if self in selectcontext.recursion_stack:
             return
         
         try:
-            # decorate the row according to the stored AliasedClauses for this eager load,
-            # or look for a user-defined decorator in the SelectContext (which was set up by the contains_eager() option)
-            if selectcontext.attributes.has_key((EagerLoader, self.parent_property)):
-                # custom row decoration function, placed in the selectcontext by the 
-                # contains_eager() mapper option
-                decorator = selectcontext.attributes[(EagerLoader, self.parent_property)]
-                if decorator is None:
-                    decorated_row = row
-                else:
-                    decorated_row = decorator(row)
-            else:
-                clauses = self.clauses_by_lead_mapper[selectcontext.mapper]
-                decorated_row = clauses._decorate_row(row)
-            # check for identity key
-            identity_key = self.mapper.identity_key_from_row(decorated_row)
+            # check for row processor
+            row_processor = selectcontext.attributes[id(self)]
         except KeyError:
-            # else degrade to a lazy loader
+            # create a row processor function and cache it in the context
+            row_processor = self._create_row_processor(selectcontext, row)
+            selectcontext.attributes[id(self)] = row_processor
+            
+        if row_processor is not None:
+            decorated_row = row_processor(row)
+        else:
+            # row_processor was None: degrade to a lazy loader
             if self._should_log_debug:
                 self.logger.debug("degrade to lazy loader on %s" % mapperutil.attribute_str(instance, self.key))
             self.parent_property._get_strategy(LazyLoader).process_row(selectcontext, instance, row, identitykey, isnew)

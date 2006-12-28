@@ -61,11 +61,18 @@ class StrategizedProperty(MapperProperty):
     There is a single default strategy selected, and alternate strategies can be selected
     at selection time through the usage of StrategizedOption objects."""
     def _get_context_strategy(self, context):
-        return self._get_strategy(context.attributes.get((LoaderStrategy, self), self.strategy.__class__))
+        try:
+            return context.attributes[id(self)]
+        except KeyError:
+            # cache the located strategy per StrategizedProperty in the given context for faster re-lookup
+            ctx_strategy = self._get_strategy(context.attributes.get((LoaderStrategy, self), self.strategy.__class__))
+            context.attributes[id(self)] = ctx_strategy
+            return ctx_strategy
     def _get_strategy(self, cls):
         try:
             return self._all_strategies[cls]
         except KeyError:
+            # cache the located strategy per class for faster re-lookup
             strategy = cls(self)
             strategy.init()
             strategy.is_default = False
