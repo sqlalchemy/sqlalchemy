@@ -1460,14 +1460,17 @@ class Select(_SelectBaseMixin, FromClause):
         if columns is not None:
             for c in columns:
                 self.append_column(c)
-            
+
+        for f in from_obj:
+            self.append_from(f)
+
+        # whereclauses must be appended after the columns/FROM, since it affects
+        # the correlation of subqueries.  see test/sql/select.py SelectTest.testwheresubquery
         if whereclause is not None:
             self.append_whereclause(whereclause)
         if having is not None:
             self.append_having(having)
             
-        for f in from_obj:
-            self.append_from(f)
     
     class _CorrelatedVisitor(ClauseVisitor):
         """visits a clause, locates any Select clauses, and tells them that they should

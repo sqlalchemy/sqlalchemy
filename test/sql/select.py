@@ -149,6 +149,14 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             select([users, s.c.street], from_obj=[s]),
             """SELECT users.user_id, users.user_name, users.password, s.street FROM users, (SELECT addresses.street AS street FROM addresses WHERE addresses.user_id = users.user_id) AS s""")
         
+        # test constructing the outer query via append_column(), which occurs in the ORM's Query object
+        s = select([], exists([1], table2.c.otherid==table1.c.myid), from_obj=[table1])
+        s.append_column(table1)
+        self.runtest(
+            s,
+            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE EXISTS (SELECT 1 FROM myothertable WHERE myothertable.otherid = mytable.myid)"
+        )
+        
     def testcolumnsubquery(self):
         s = select([table1.c.myid], scalar=True, correlate=False)
         self.runtest(select([table1, s]), "SELECT mytable.myid, mytable.name, mytable.description, (SELECT mytable.myid AS myid FROM mytable) FROM mytable")
