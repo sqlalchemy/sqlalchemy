@@ -94,7 +94,7 @@ class Mapper(object):
         information was loaded from the database.
         
         version_id_col - a Column which must have an integer type that will be used to keep a running "version id" of
-        mapped entities in the database.  this is used during save operations to insure that no other thread or process
+        mapped entities in the database.  this is used during save operations to ensure that no other thread or process
         has updated the instance during the lifetime of the entity, else a ConcurrentModificationError exception is thrown.
         
         polymorphic_on - used with mappers in an inheritance relationship, a Column which will identify the class/mapper

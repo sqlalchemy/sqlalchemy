@@ -67,7 +67,7 @@ We will now cover some of the key concepts used by Sessions and its underlying U
 
 ### Introduction to the Identity Map {@name=identitymap}    
 
-A primary concept of the Session's underlying Unit of Work is that it is keeps track of all persistent instances; recall that a persistent instance has a database identity and is attached to a Session.  In particular, the Unit of Work must insure that only *one* copy of a particular persistent instance exists within the Session at any given time.   The UOW accomplishes this task using a dictionary known as an *Identity Map*.
+A primary concept of the Session's underlying Unit of Work is that it is keeps track of all persistent instances; recall that a persistent instance has a database identity and is attached to a Session.  In particular, the Unit of Work must ensure that only *one* copy of a particular persistent instance exists within the Session at any given time.   The UOW accomplishes this task using a dictionary known as an *Identity Map*.
 
 When a `Query` is used to issue `select` or `get` requests to the database, it will in nearly all cases result in an actual SQL execution to the database, and a corresponding traversal of rows received from that execution.  However, when the underlying mapper actually *creates* objects corresponding to the result set rows it receives, it will check the session's identity map first before instantating a new object, and return the same instance already present in the identity map if it already exists, essentially *ignoring* the object state represented by that row.  There are several ways to override this behavior and truly refresh an already-loaded instance which are described later, but the main idea is that once your instance is loaded into a particular Session, it will *never change* its state without your explicit approval, regardless of what the database says about it.
 
@@ -223,7 +223,7 @@ The primary guideline for dealing with `flush()` is, the developer is responsibl
         
 #### close() {@name=close}
 
-This method first calls `clear()`, removing all objects from this `Session`, and then insures that any transactional resources are closed.
+This method first calls `clear()`, removing all objects from this `Session`, and then ensures that any transactional resources are closed.
 
 #### delete() {@name=delete}
 

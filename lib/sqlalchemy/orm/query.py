@@ -235,7 +235,7 @@ class Query(object):
 
         For more advanced usage, arg can also be a Select statement object, which
         will be executed and its resulting rowset used to build new object instances.  
-        in this case, the developer must insure that an adequate set of columns exists in the 
+        in this case, the developer must ensure that an adequate set of columns exists in the 
         rowset with which to build new object instances."""
 
         ret = self.extension.select(self, arg=arg, **kwargs)
@@ -455,7 +455,7 @@ class Query(object):
             if order_by:
                 statement.order_by(*util.to_list(order_by))
             # for a DISTINCT query, you need the columns explicitly specified in order
-            # to use it in "order_by".  insure they are in the column criterion (particularly oid).
+            # to use it in "order_by".  ensure they are in the column criterion (particularly oid).
             # TODO: this should be done at the SQL level not the mapper level
             if kwargs.get('distinct', False) and order_by:
                 [statement.append_column(c) for c in util.to_list(order_by)]

@@ -70,7 +70,7 @@ class DependencyProcessor(object):
         raise NotImplementedError()
 
     def preprocess_dependencies(self, task, deplist, uowcommit, delete = False):
-        """used before the flushes' topological sort to traverse through related objects and insure every 
+        """used before the flushes' topological sort to traverse through related objects and ensure every 
         instance which will require save/update/delete is properly added to the UOWTransaction."""
         raise NotImplementedError()
 

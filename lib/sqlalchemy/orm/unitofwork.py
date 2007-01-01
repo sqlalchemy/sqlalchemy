@@ -305,7 +305,7 @@ class UOWTransaction(object):
         task.dependencies.add(up)
 
     def execute(self):
-        # insure that we have a UOWTask for every mapper that will be involved 
+        # ensure that we have a UOWTask for every mapper that will be involved 
         # in the topological sort
         [self.get_task_by_mapper(m) for m in self._get_noninheriting_mappers()]
         
