@@ -6,7 +6,7 @@
 
 from sqlalchemy import sql, util, exceptions
 
-all_cascades = util.Set(["delete", "delete-orphan", "all", "merge", "expunge", "save-update", "refresh-expire"])
+all_cascades = util.Set(["delete", "delete-orphan", "all", "merge", "expunge", "save-update", "refresh-expire", "none"])
 class CascadeOptions(object):
     """keeps track of the options sent to relation().cascade"""
     def __init__(self, arg=""):
