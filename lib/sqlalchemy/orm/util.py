@@ -4,8 +4,9 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy import sql, util
+from sqlalchemy import sql, util, exceptions
 
+all_cascades = util.Set(["delete", "delete-orphan", "all", "merge", "expunge", "save-update", "refresh-expire"])
 class CascadeOptions(object):
     """keeps track of the options sent to relation().cascade"""
     def __init__(self, arg=""):
@@ -17,6 +18,11 @@ class CascadeOptions(object):
         self.expunge = "expunge" in values or "all" in values
         # refresh_expire not really implemented as of yet
         #self.refresh_expire = "refresh-expire" in values or "all" in values
+        
+        for x in values:
+            if x not in all_cascades:
+                raise exceptions.ArgumentError("Invalid cascade option '%s'" % x)
+                
     def __contains__(self, item):
         return getattr(self, item.replace("-", "_"), False)
     def __repr__(self):

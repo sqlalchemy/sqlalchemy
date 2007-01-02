@@ -64,6 +64,14 @@ class MapperTest(MapperSuperTest):
         except exceptions.ArgumentError:
             pass
 
+    def testbadcascade(self):
+        mapper(Address, addresses)
+        try:
+            mapper(User, users, properties={'addresses':relation(Address, cascade="fake, all, delete-orphan")})
+            assert False
+        except exceptions.ArgumentError, e:
+            assert str(e) == "Invalid cascade option 'fake'"
+        
     def testcolumnprefix(self):
         mapper(User, users, column_prefix='_')
         s = create_session()
