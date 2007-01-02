@@ -113,7 +113,22 @@ class MapperTest(MapperSuperTest):
         # get the attribute, it refreshes
         self.assert_(u.user_name == 'jack')
         self.assert_(a not in u.addresses)
+    
+    def testrefreshwitheager(self):
+        """test that a refresh/expire operation loads rows properly and sends correct "isnew" state to eager loaders"""
+        mapper(User, users, properties={'addresses':relation(mapper(Address, addresses), lazy=False)})
+        s = create_session()
+        u = s.get(User, 8)
+        assert len(u.addresses) == 3
+        s.refresh(u)
+        assert len(u.addresses) == 3
 
+        s = create_session()
+        u = s.get(User, 8)
+        assert len(u.addresses) == 3
+        s.expire(u)
+        assert len(u.addresses) == 3
+        
     def testbadconstructor(self):
         """test that if the construction of a mapped class fails, the instnace does not get placed in the session"""
         class Foo(object):
