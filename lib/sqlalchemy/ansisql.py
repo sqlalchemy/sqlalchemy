@@ -701,8 +701,12 @@ class ANSISchemaGenerator(ANSISchemaBase):
                 first_pk = True
             for constraint in column.constraints:
                 constraint.accept_schema_visitor(self, traverse=False)
-                
-        for constraint in table.constraints:
+
+        # On some DB order is significant: visit PK first, then the
+        # other constraints (engine.ReflectionTest.testbasic failed on FB2)
+        if len(table.primary_key):
+            table.primary_key.accept_schema_visitor(self, traverse=False)
+        for constraint in [c for c in table.constraints if c is not table.primary_key]:
             constraint.accept_schema_visitor(self, traverse=False)
 
         self.append("\n)%s\n\n" % self.post_create_table(table))
