@@ -17,6 +17,9 @@ non-ambiguous.
 item lists [ticket:407]
 - order of constraint creation puts primary key first before all other constraints;
 required for firebird, not a bad idea for others [ticket:408]
+- Firebird fix to autoload multifield foreign keys [ticket:409]
+- Firebird NUMERIC type properly handles a type without precision [ticket:409]
+
 
 0.3.3
 - string-based FROM clauses fixed, i.e. select(..., from_obj=["sometext"])
