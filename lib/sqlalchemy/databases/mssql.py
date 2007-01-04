@@ -266,7 +266,8 @@ class MSSQLDialect(ansisql.ANSIDialect):
         self.module = module or dbmodule
         self.auto_identity_insert = auto_identity_insert
         ansisql.ANSIDialect.__init__(self, **params)
-
+        set_default_schema_name("dbo")
+        
     def create_connect_args(self, url):
         opts = url.translate_connect_args(['host', 'database', 'user', 'password', 'port'])
         opts.update(url.query)
@@ -300,8 +301,11 @@ class MSSQLDialect(ansisql.ANSIDialect):
         return MSSQLIdentifierPreparer(self)
 
     def get_default_schema_name(self):
-        return "dbo"
-        
+        return self.schema_name
+
+    def set_default_schema_name(self, schema_name):
+        self.schema_name = schema_name
+
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
             
