@@ -716,10 +716,55 @@ class SelfReferentialPostUpdateTest(AssertMixin):
                 lambda ctx:{'next_sibling_id':stories.id, 'node_id':about.id}
             ),
             (
+                "UPDATE node SET next_sibling_id=:next_sibling_id WHERE node.id = :node_id",
+                lambda ctx:{'next_sibling_id':None, 'node_id':cats.id}
+            ),
+            (
                 "DELETE FROM node WHERE node.id = :id",
                 lambda ctx:[{'id':cats.id}]
             ),
         ])
+
+class SelfReferentialPostUpdateTest2(AssertMixin):
+    def setUpAll(self):
+        global metadata, a_table
+        metadata = BoundMetaData(testbase.db)
+        a_table = Table("a", metadata,
+                Column("id", Integer(), primary_key=True),
+                Column("fui", String()),
+                Column("b", Integer(), ForeignKey("a.id")),
+            )
+        a_table.create()
+    def tearDownAll(self):
+        a_table.drop()
+    def testbasic(self):
+        """test that post_update remembers to be involved in update operations as well, 
+        since it replaces the normal dependency processing completely [ticket:413]"""
+        class a(object): 
+            def __init__(self, fui):
+                self.fui = fui
+
+        mapper(a, a_table, properties={
+            'foo': relation(a, remote_side=[a_table.c.id], post_update=True),
+        })
+
+        session = create_session()
+
+        f1 = a("f1")
+        session.save(f1)
+        session.flush()
+
+        f2 = a("f2")
+        f2.foo = f1
+        # at this point f1 is already inserted.  but we need post_update
+        # to fire off anyway
+        session.save(f2)
+        session.flush()
+        
+        session.clear()
+        f1 = session.query(a).get(f1.id)
+        f2 = session.query(a).get(f2.id)
+        assert f2.foo is f1
         
 if __name__ == "__main__":
     testbase.main()        

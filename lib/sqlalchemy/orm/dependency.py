@@ -108,7 +108,7 @@ class DependencyProcessor(object):
         given related object list contains INSERTs or DELETEs."""
         if obj is not None and self.post_update:
             for x in related:
-                if x is not None and (uowcommit.is_deleted(x) or not hasattr(x, '_instance_key')):
+                if x is not None:
                     uowcommit.register_object(obj, postupdate=True, post_update_cols=self.syncrules.dest_columns())
                     break
 
