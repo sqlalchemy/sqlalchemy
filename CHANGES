@@ -21,6 +21,9 @@ required for firebird, not a bad idea for others [ticket:408]
 - Firebird NUMERIC type properly handles a type without precision [ticket:409]
 - fix to post_update to insure rows are updated even for non insert/delete scenarios
 [ticket:413]
+- default "timezone" setting is now False.  this corresponds to Python's datetime
+behavior as well as Postgres' timestamp/time types (which is the only timezone-sensitive
+dialect at the moment) [ticket:414]
 
 0.3.3
 - string-based FROM clauses fixed, i.e. select(..., from_obj=["sometext"])

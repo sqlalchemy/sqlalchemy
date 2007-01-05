@@ -221,7 +221,7 @@ class Float(Numeric):
 
 class DateTime(TypeEngine):
     """implements a type for datetime.datetime() objects"""
-    def __init__(self, timezone=True):
+    def __init__(self, timezone=False):
         self.timezone = timezone
     def adapt(self, impltype):
         return impltype(timezone=self.timezone)
@@ -235,7 +235,7 @@ class Date(TypeEngine):
 
 class Time(TypeEngine):
     """implements a type for datetime.time() objects"""
-    def __init__(self, timezone=True):
+    def __init__(self, timezone=False):
         self.timezone = timezone
     def adapt(self, impltype):
         return impltype(timezone=self.timezone)
