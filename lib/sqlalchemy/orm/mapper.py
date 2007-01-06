@@ -841,7 +841,10 @@ class Mapper(object):
                 if self.__should_log_debug:
                     self.__log_debug("detected row switch for identity %s.  will update %s, remove %s from transaction" % (instance_key, mapperutil.instance_str(obj), mapperutil.instance_str(existing)))
                 uowtransaction.unregister_object(existing)
-            
+            if has_identity(obj):
+                if obj._instance_key != instance_key:
+                    raise exceptions.FlushError("Can't change the identity of instance %s in session (existing identity: %s; new identity: %s)" % (mapperutil.instance_str(obj), obj._instance_key, instance_key))
+                
         inserted_objects = util.Set()
         updated_objects = util.Set()
         

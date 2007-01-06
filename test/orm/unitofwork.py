@@ -3,6 +3,7 @@ from sqlalchemy import *
 import testbase
 import pickleable
 from sqlalchemy.orm.mapper import global_extensions
+from sqlalchemy.orm import util as ormutil
 from sqlalchemy.ext.sessioncontext import SessionContext
 import sqlalchemy.ext.assignmapper as assignmapper
 from tables import *
@@ -403,6 +404,24 @@ class PKTest(UnitOfWorkTest):
         e.data = 'some more data'
         ctx.current.flush()
 
+    def testpksimmutable(self):
+        class Entry(object):
+            pass
+        mapper(Entry, table)
+        e = Entry()
+        e.multi_id=5
+        e.multi_rev=5
+        e.name='somename'
+        ctx.current.flush()
+        e.multi_rev=6
+        e.name = 'someothername'
+        try:
+            ctx.current.flush()
+            assert False
+        except exceptions.FlushError, fe:
+            assert str(fe) == "Can't change the identity of instance Entry@%s in session (existing identity: (%s, (5, 5), None); new identity: (%s, (5, 6), None))" % (hex(id(e)), repr(e.__class__), repr(e.__class__))
+            
+            
 class ForeignPKTest(UnitOfWorkTest):
     """tests mapper detection of the relationship direction when parent/child tables are joined on their
     primary keys"""
