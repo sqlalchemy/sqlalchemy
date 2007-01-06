@@ -26,6 +26,9 @@ NO_ATTRIBUTE = object()
 
 # returned by a MapperExtension method to indicate a "do nothing" response
 EXT_PASS = object()
+              
+# lock used to synchronize the "mapper compile" step
+_COMPILE_MUTEX = util.threading.Lock()
                 
 class Mapper(object):
     """Defines the correlation of class attributes to database table columns.
@@ -248,16 +251,22 @@ class Mapper(object):
         this is the 'external' version of the method which is not reentrant."""
         if self.__is_compiled:
             return self
+        _COMPILE_MUTEX.acquire()
+        try:
+            # double-check inside mutex
+            if self.__is_compiled:
+                return self
+            self._compile_all()
         
-        self._compile_all()
-        
-        # if we're not primary, compile us
-        if self.non_primary:
-            self._do_compile()
-            self._initialize_properties()
+            # if we're not primary, compile us
+            if self.non_primary:
+                self._do_compile()
+                self._initialize_properties()
                 
-        return self
-    
+            return self
+        finally:
+            _COMPILE_MUTEX.release()
+            
     def _compile_all(self):
         # compile all primary mappers
         for mapper in mapper_registry.values():

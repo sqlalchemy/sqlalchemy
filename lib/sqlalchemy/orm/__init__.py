@@ -18,7 +18,7 @@ from sqlalchemy.orm.session import Session as create_session
 from sqlalchemy.orm.session import object_session
 
 __all__ = ['relation', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer', 'extension', 
-        'mapper', 'clear_mappers', 'clear_mapper', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query', 
+        'mapper', 'clear_mappers', 'compile_mappers', 'clear_mapper', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query', 
         'cascade_mappers', 'polymorphic_union', 'create_session', 'synonym', 'contains_eager', 'EXT_PASS', 'object_session'
         ]
 
@@ -59,7 +59,15 @@ def synonym(name, proxy=False):
     
     Used with the 'properties' dictionary sent to mapper()."""
     return properties.SynonymProperty(name, proxy=proxy)
+
+def compile_mappers():
+    """compile all mappers that have been defined.  
     
+    this is equivalent to calling compile() on any individual mapper."""
+    if not len(mapper_registry):
+        return
+    mapper_registry.values()[0].compile()
+        
 def clear_mappers():
     """remove all mappers that have been created thus far.  
     
