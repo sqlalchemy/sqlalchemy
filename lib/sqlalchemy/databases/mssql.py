@@ -266,7 +266,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
         self.module = module or dbmodule
         self.auto_identity_insert = auto_identity_insert
         ansisql.ANSIDialect.__init__(self, **params)
-        set_default_schema_name("dbo")
+        self.set_default_schema_name("dbo")
         
     def create_connect_args(self, url):
         opts = url.translate_connect_args(['host', 'database', 'user', 'password', 'port'])
