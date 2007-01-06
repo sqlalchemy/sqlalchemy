@@ -36,6 +36,10 @@ SQLAlchemy's Advantages:
     * Self-referential tables and mappers are supported. Adjacency list structures can be created, saved, and deleted with proper cascading, with no extra programming.
     * Data mapping can be used in a row-based manner. Any bizarre hyper-optimized query that you or your DBA can cook up, you can run in SQLAlchemy, and as long as it returns the expected columns within a rowset, you can get your objects from it. For a rowset that contains more than one kind of object per row, multiple mappers can be chained together to return multiple object instance lists from a single database round trip.
     * The type system allows pre- and post- processing of data, both at the bind parameter and the result set level. User-defined types can be freely mixed with built-in types. Generic types as well as SQL-specific types are available.
+
+SVN version:
+<http://svn.sqlalchemy.org/sqlalchemy/trunk#egg=SQLAlchemy-dev>
+
 """,
     classifiers = [
         "Development Status :: 4 - Beta",
