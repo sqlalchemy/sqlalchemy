@@ -251,6 +251,13 @@ Deferred columns can be placed into groups so that they load together:
         'photo3' : deferred(book_excerpts.c.photo3, group='photos')
     })
 
+You can defer or undefer columns at the `Query` level with the `options` method:
+
+    {python}
+    query = session.query(Book)
+    query.options(defer('summary')).select()
+    query.options(undefer('excerpt')).select()
+
 #### Working with Large Collections
 
 SQLAlchemy relations are generally simplistic; the lazy loader loads in the full list of child objects when accessed, and the eager load builds a query that loads the full list of child objects.  Additionally, when you are deleting a parent object, SQLAlchemy ensures that it has loaded the full list of child objects so that it can mark them as deleted as well (or to update their parent foreign key to NULL).  It does not issue an en-masse "delete from table where parent_id=?" type of statement in such a scenario.  This is because the child objects themselves may also have further dependencies, and additionally may also exist in the current session in which case SA needs to know their identity so that their state can be properly updated.
