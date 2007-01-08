@@ -562,7 +562,7 @@ class _CompareMixin(object):
     def between(self, cleft, cright):
         return _BooleanExpression(self, and_(self._check_literal(cleft), self._check_literal(cright)), 'BETWEEN')
     def op(self, operator):
-        return lambda other: self._compare(operator, other)
+        return lambda other: self._operate(operator, other)
     # and here come the math operators:
     def __add__(self, other):
         return self._operate('+', other)

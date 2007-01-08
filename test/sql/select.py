@@ -220,6 +220,12 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             literal("a") + literal("b") * literal("c"), ":literal + (:liter_1 * :liter_2)"
         )
 
+        # test the op() function, also that its results are further usable in expressions
+        self.runtest(
+            table1.select(table1.c.myid.op('hoho')(12)==14),
+            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE (mytable.myid hoho :mytable_myid) = :literal"
+        )
+
     def testunicodestartswith(self):
         string = u"hi \xf6 \xf5"
         self.runtest(
