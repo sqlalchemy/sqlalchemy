@@ -1154,7 +1154,7 @@ class EagerTest(MapperSuperTest):
             )
 
     def testdouble(self):
-        """tests eager loading with two relations simulatneously, from the same table.  """
+        """tests eager loading with two relations simultaneously, from the same table.  """
         openorders = alias(orders, 'openorders')
         closedorders = alias(orders, 'closedorders')
         ordermapper = mapper(Order, orders)
@@ -1180,6 +1180,31 @@ class EagerTest(MapperSuperTest):
                 'addresses' : (Address, []),
                 'open_orders' : (Order, [{'order_id' : 4}]),
                 'closed_orders' : (Order, [{'order_id' : 2}])
+            }
+            )
+
+    def testdoublewithscalar(self):
+        """tests eager loading with two relations from the same table, with one of them joining to the parent User.  the other is the primary mapper.  doesn't re-test addresses relation."""
+        max_orders_by_user = select([func.max(orders.c.order_id).label('order_id')], group_by=[orders.c.user_id]).alias('max_orders_by_user')
+        max_orders = orders.select(orders.c.order_id==max_orders_by_user.c.order_id).alias('max_orders')
+        m = mapper(User, users, properties={
+               'orders':relation(mapper(Order, orders), backref='user', lazy=False),
+               'max_order':relation(mapper(Order, max_orders, non_primary=True), lazy=False, uselist=False)
+               })
+        q = create_session().query(m)
+        l = q.select()
+        self.assert_result(l, User,
+            {'user_id' : 7, 
+                'orders' : (Order, [{'order_id' : 1}, {'order_id' : 3},{'order_id' : 5},]),
+                'max_order' : (Order, {'order_id' : 5})
+            },
+            {'user_id' : 8, 
+                'orders' : (Order, []),
+                'max_order' : None,
+            },
+            {'user_id' : 9, 
+                'orders' : (Order, [{'order_id' : 2},{'order_id' : 4}]),
+                'max_order' : (Order, {'order_id' : 4})
             }
             )
 
