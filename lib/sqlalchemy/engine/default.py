@@ -64,6 +64,8 @@ class DefaultDialect(base.Dialect):
         cursor.execute(statement, parameters)
     def defaultrunner(self, engine, proxy):
         return base.DefaultRunner(engine, proxy)
+    def create_cursor(self, connection):
+        return connection.cursor()
         
     def _set_paramstyle(self, style):
         self._paramstyle = style

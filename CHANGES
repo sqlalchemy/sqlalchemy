@@ -5,6 +5,9 @@
   completely illiterate, but its definitely sub-optimal to "ensure" which is
   non-ambiguous.
 - sql:
+  - postgres no longer uses client-side cursors, uses more efficient server side 
+  cursors via apparently undocumented psycopg2 behavior recently discovered on the 
+  mailing list.  disable it via create_engine('postgres://', client_side_cursors=True)
   - added "BIGSERIAL" support for postgres table with PGBigInteger/autoincrement
   - fixes to postgres reflection to better handle when schema names are present;
   thanks to jason (at) ncsmags.com [ticket:402]

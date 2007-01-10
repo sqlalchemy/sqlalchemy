@@ -191,7 +191,6 @@ def descriptor():
     ]}
 
 class PGExecutionContext(default.DefaultExecutionContext):
-
     def post_exec(self, engine, proxy, compiled, parameters, **kwargs):
         if getattr(compiled, "isinsert", False) and self.last_inserted_ids is None:
             if not engine.dialect.use_oids:
@@ -208,8 +207,9 @@ class PGExecutionContext(default.DefaultExecutionContext):
                 self._last_inserted_ids = [v for v in row]
     
 class PGDialect(ansisql.ANSIDialect):
-    def __init__(self, module=None, use_oids=False, use_information_schema=False, **params):
+    def __init__(self, module=None, use_oids=False, use_information_schema=False, client_side_cursors=False, **params):
         self.use_oids = use_oids
+        self.client_side_cursors = client_side_cursors
         if module is None:
             #if psycopg is None:
             #    raise exceptions.ArgumentError("Couldnt locate psycopg1 or psycopg2: specify postgres module argument")
@@ -240,6 +240,15 @@ class PGDialect(ansisql.ANSIDialect):
         opts.update(url.query)
         return ([], opts)
 
+    def create_cursor(self, connection):
+        if self.client_side_cursors:
+            return connection.cursor()
+        else:
+            # use server-side cursors:
+            # http://lists.initd.org/pipermail/psycopg/2007-January/005251.html
+            return connection.cursor('x')
+
+
     def create_execution_context(self):
         return PGExecutionContext(self)
 
@@ -248,7 +257,7 @@ class PGDialect(ansisql.ANSIDialect):
             return sqltypes.adapt_type(typeobj, pg2_colspecs)
         else:
             return sqltypes.adapt_type(typeobj, pg1_colspecs)
-
+        
     def compiler(self, statement, bindparams, **kwargs):
         return PGCompiler(self, statement, bindparams, **kwargs)
     def schemagenerator(self, *args, **kwargs):

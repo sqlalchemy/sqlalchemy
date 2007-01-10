@@ -113,6 +113,9 @@ class Dialect(sql.AbstractDialect):
         raise NotImplementedError()
     def do_execute(self, cursor, statement, parameters):
         raise NotImplementedError()
+    def create_cursor(self, connection):
+        """return a new cursor generated from the given connection"""
+        raise NotImplementedError()
     def compile(self, clauseelement, parameters=None):
         """compile the given ClauseElement using this Dialect.
         
@@ -279,7 +282,7 @@ class Connection(Connectable):
         return self.execute_compiled(elem.compile(engine=self.__engine, parameters=param), *multiparams, **params)
     def execute_compiled(self, compiled, *multiparams, **params):
         """executes a sql.Compiled object."""
-        cursor = self.connection.cursor()
+        cursor = self.__engine.dialect.create_cursor(self.connection)
         parameters = [compiled.get_params(**m) for m in self._params_to_listofdicts(*multiparams, **params)]
         if len(parameters) == 1:
             parameters = parameters[0]
@@ -319,7 +322,7 @@ class Connection(Connectable):
         return callable_(self)
     def _execute_raw(self, statement, parameters=None, cursor=None, context=None, **kwargs):
         if cursor is None:
-            cursor = self.connection.cursor()
+            cursor = self.__engine.dialect.create_cursor(self.connection)
         try:
             self.__engine.logger.info(statement)
             self.__engine.logger.info(repr(parameters))
