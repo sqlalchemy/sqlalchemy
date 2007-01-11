@@ -676,6 +676,19 @@ class ResultProxy(object):
         self.close()
         return l
             
+    def fetchmany(self, size=None):
+        """fetch many rows, juts like DBAPI cursor.fetchmany(size=cursor.arraysize)"""
+        if size is None:
+            rows = self.cursor.fetchmany()
+        else:
+            rows = self.cursor.fetchmany(size=size)
+        l = []
+        for row in rows:
+            l.append(RowProxy(self, row))
+        if len(l) == 0:
+            self.close()
+        return l
+        
     def fetchone(self):
         """fetch one row, just like DBAPI cursor.fetchone()."""
         row = self.cursor.fetchone()
