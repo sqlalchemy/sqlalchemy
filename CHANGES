@@ -43,7 +43,7 @@ with new instance
   - invalid options sent to 'cascade' string will raise an exception [ticket:406]
   - fixed bug in mapper refresh/expire whereby eager loaders didnt properly re-populate
   item lists [ticket:407]
-  - fix to post_update to insure rows are updated even for non insert/delete scenarios
+  - fix to post_update to ensure rows are updated even for non insert/delete scenarios
   [ticket:413]
   - added an error message if you actually try to modify primary key values on an entity
   and then flush it.  
@@ -647,7 +647,7 @@ engine.commit(), which nest fully with connection.begin()/trans.commit().
 added about six unittests.
 - major "duh" in pool.Pool, forgot to put back the WeakValueDictionary.
 unittest which was supposed to check for this was also silently missing
-it.  fixed unittest to insure that ConnectionFairy properly falls out
+it.  fixed unittest to ensure that ConnectionFairy properly falls out
 of scope.
 - placeholder dispose() method added to SingletonThreadPool, doesnt 
 do anything yet
@@ -707,7 +707,7 @@ helps their usage with polymorphic mappers
 - improvements and fixes to topological sort algorithm, as well as more
 unit tests
 - tutorial page added to docs which also can be run with a custom doctest
-runner to insure its properly working.  docs generally overhauled to 
+runner to ensure its properly working.  docs generally overhauled to 
 deal with new code patterns
 - many more fixes, refactorings.
 - migration guide is available on the Wiki at 
