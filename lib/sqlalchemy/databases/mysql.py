@@ -422,10 +422,10 @@ class MySQLDialect(ansisql.ANSIDialect):
             if match:
                 tabletype = match.group('ttype')
 
-        fkpat = r'CONSTRAINT `(?P<name>.+?)` FOREIGN KEY \((?P<columns>.+?)\) REFERENCES `(?P<reftable>.+?)` \((?P<refcols>.+?)\)'
+        fkpat = r'''CONSTRAINT [`"'](?P<name>.+?)[`"'] FOREIGN KEY \((?P<columns>.+?)\) REFERENCES [`"'](?P<reftable>.+?)[`"'] \((?P<refcols>.+?)\)'''
         for match in re.finditer(fkpat, desc):
-            columns = re.findall(r'`(.+?)`', match.group('columns'))
-            refcols = [match.group('reftable') + "." + x for x in re.findall(r'`(.+?)`', match.group('refcols'))]
+            columns = re.findall(r'''[`"'](.+?)[`"']''', match.group('columns'))
+            refcols = [match.group('reftable') + "." + x for x in re.findall(r'''[`"'](.+?)[`"']''', match.group('refcols'))]
             schema.Table(match.group('reftable'), table.metadata, autoload=True, autoload_with=connection)
             constraint = schema.ForeignKeyConstraint(columns, refcols, name=match.group('name'))
             table.append_constraint(constraint)
