@@ -5,15 +5,7 @@
   completely illiterate, but its definitely sub-optimal to "ensure" which is
   non-ambiguous.
 - sql:
-  - postgres no longer uses client-side cursors, uses more efficient server side 
-  cursors via apparently undocumented psycopg2 behavior recently discovered on the 
-  mailing list.  disable it via create_engine('postgres://', client_side_cursors=True)
-  - mysql is inconsistent with what kinds of quotes it uses in foreign keys during a
-  SHOW CREATE TABLE, reflection updated to accomodate for all three styles [ticket:420]
   - added "fetchmany()" support to ResultProxy
-  - added "BIGSERIAL" support for postgres table with PGBigInteger/autoincrement
-  - fixes to postgres reflection to better handle when schema names are present;
-  thanks to jason (at) ncsmags.com [ticket:402]
   - fix to correlation of subqueries when the column list of the select statement
   is constructed with individual calls to append_column(); this fixes an ORM
   bug whereby nested select statements were not getting correlated with the 
@@ -24,6 +16,16 @@
   - the "op()" function is now treated as an "operation", rather than a "comparison".
   the difference is, an operation produces a BinaryExpression from which further operations
   can occur whereas comparison produces the more restrictive BooleanExpression
+- postgres
+  - postgres no longer uses client-side cursors, uses more efficient server side 
+    cursors via apparently undocumented psycopg2 behavior recently discovered on the 
+    mailing list.  disable it via create_engine('postgres://', client_side_cursors=True)
+  - added "BIGSERIAL" support for postgres table with PGBigInteger/autoincrement
+  - fixes to postgres reflection to better handle when schema names are present;
+    thanks to jason (at) ncsmags.com [ticket:402]
+- mysql
+  - mysql is inconsistent with what kinds of quotes it uses in foreign keys during a
+  SHOW CREATE TABLE, reflection updated to accomodate for all three styles [ticket:420]
 - firebird:
   - order of constraint creation puts primary key first before all other constraints;
   required for firebird, not a bad idea for others [ticket:408]
@@ -36,6 +38,7 @@
   initial compilation step does modify internal state significantly, and this step usually
   occurs not at module-level initialization time (unless you call compile()) but at first-request 
   time
+  - basic idea of "session.merge()" actually implemented.  needs more testing.
   - added "compile_mappers()" function as a shortcut to compiling all mappers
   - fix to MapperExtension create_instance so that entity_name properly associated
 with new instance
@@ -46,7 +49,7 @@ with new instance
   - fix to post_update to ensure rows are updated even for non insert/delete scenarios
   [ticket:413]
   - added an error message if you actually try to modify primary key values on an entity
-  and then flush it.  
+  and then flush it [ticket:412]
 
 0.3.3
 - string-based FROM clauses fixed, i.e. select(..., from_obj=["sometext"])

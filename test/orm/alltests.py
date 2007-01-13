@@ -16,6 +16,7 @@ def suite():
         'orm.cascade',
         'orm.relationships',
         'orm.association',
+        'orm.merge',
         
         'orm.cycles',
         'orm.poly_linked_list',

@@ -39,6 +39,8 @@ class SynonymProperty(MapperProperty):
                     return s
                 return getattr(obj, self.name)
         setattr(self.parent.class_, self.key, SynonymProp())
+    def merge(self, session, source, dest):
+        pass
         
 class ColumnProperty(StrategizedProperty):
     """describes an object attribute that corresponds to a table column."""
@@ -60,6 +62,8 @@ class ColumnProperty(StrategizedProperty):
         setattr(object, self.key, value)
     def get_history(self, obj, passive=False):
         return sessionlib.attribute_manager.get_history(obj, self.key, passive=passive)
+    def merge(self, session, source, dest):
+        setattr(dest, self.key, getattr(source, self.key, None))
         
 ColumnProperty.logger = logging.class_logger(ColumnProperty)
         
@@ -118,6 +122,20 @@ class PropertyLoader(StrategizedProperty):
             
     def __str__(self):
         return self.__class__.__name__ + " " + str(self.parent) + "->" + self.key + "->" + str(self.mapper)
+
+    def merge(self, session, source, dest):
+        if not "merge" in self.cascade:
+            return
+        childlist = sessionlib.attribute_manager.get_history(source, self.key, passive=True)
+        if childlist is None:
+            return
+        if self.uselist:
+            # sets a blank list according to the correct list class
+            dest_list = getattr(self.parent.class_, self.key).initialize(dest)
+            for current in list(childlist):
+                dest_list.append(session.merge(current))
+        else:
+            setattr(dest, self.key, session.merge(current))
         
     def cascade_iterator(self, type, object, recursive, halt_on=None):
         if not type in self.cascade:

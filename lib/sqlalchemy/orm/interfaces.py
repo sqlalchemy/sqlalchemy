@@ -55,7 +55,10 @@ class MapperProperty(object):
         This flag is used to indicate that the MapperProperty can define attribute instrumentation
         for the class at the class level (as opposed to the individual instance level.)"""
         return self.parent._is_primary_mapper()
-
+    def merge(self, session, source, dest):
+        """merges the attribute represented by this MapperProperty from source to destination object"""
+        raise NotImplementedError()
+        
 class StrategizedProperty(MapperProperty):
     """a MapperProperty which uses selectable strategies to affect loading behavior.
     There is a single default strategy selected, and alternate strategies can be selected

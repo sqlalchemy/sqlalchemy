@@ -324,29 +324,27 @@ class Session(object):
             self.uow.register_deleted(c)
 
     def merge(self, object, entity_name=None):
-        """merge the object into a newly loaded or existing instance from this Session.
+        """copy the state of the given object onto the persistent object with the same identifier. 
         
-        note: this method is currently not completely implemented."""
-        instance = None
-        for obj in [object] + list(_object_mapper(object).cascade_iterator('merge', object)):
-            key = getattr(obj, '_instance_key', None)
-            if key is None:
-                mapper = _object_mapper(object)
-                ident = mapper.identity(object)
-                for k in ident:
-                    if k is None:
-                        raise exceptions.InvalidRequestError("Instance '%s' does not have a full set of identity values, and does not represent a saved entity in the database.  Use the add() method to add unsaved instances to this Session." % repr(obj))
-                key = mapper.identity_key(ident)
-            u = self.uow
-            if u.identity_map.has_key(key):
-                # TODO: copy the state of the given object into this one.  tricky !
-                inst = u.identity_map[key]
+        If there is no persistent instance currently associated with the session, it will be loaded. 
+        Return the persistent instance. If the given instance is unsaved, save a copy of and return it as 
+        a newly persistent instance. The given instance does not become associated with the session. 
+        This operation cascades to associated instances if the association is mapped with cascade="merge".
+        """
+        mapper = _object_mapper(object)
+        key = getattr(object, '_instance_key', None)
+        if key is None:
+            merged = mapper._create_instance(self)
+        else:
+            if key in self.identity_map:
+                merged = self.identity_map[key]
             else:
-                inst = self.get(object.__class__, key[1])
-            if obj is object:
-                instance = inst
-                
-        return instance
+                merged = self.get(mapper.class_, key[1])
+        for prop in mapper.props.values():
+            prop.merge(self, object, merged)
+        if key is None:
+            self.save(merged)
+        return merged
                     
     def _save_impl(self, object, **kwargs):
         if hasattr(object, '_instance_key'):
