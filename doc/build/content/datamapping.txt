@@ -200,6 +200,8 @@ The mapped class can also specify whatever methods and/or constructor it wants:
     >>> u
     User id 1 name 'john' password 'foo'
 
+Note that the **__init__() method is not called when the instance is loaded**.  This is so that classes can define operations that are specific to their initial construction which are not re-called when the object is restored from the database, and is similar in concept to how Python's `pickle` module calls `__new__()` when deserializing instances.  To allow `__init__()` to be called at object load time, or to define any other sort of on-load operation, create a `MapperExtension` which supplies the `create_instance()` method (see [advdatamapping_extending](rel:advdatamapping_extending), as well as the example in the FAQ).
+
 SQLAlchemy will only put modified object attributes columns into the UPDATE statements generated upon flush.  This is to conserve database traffic and also to successfully interact with a "deferred" attribute, which is a mapped object attribute against the mapper's primary table that isnt loaded until referenced by the application.
 
 ### Defining and Using Relationships {@name=relations}
