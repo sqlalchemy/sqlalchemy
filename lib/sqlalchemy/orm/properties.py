@@ -93,7 +93,7 @@ class PropertyLoader(StrategizedProperty):
             if private:
                 self.cascade = mapperutil.CascadeOptions("all, delete-orphan")
             else:
-                self.cascade = mapperutil.CascadeOptions("save-update")
+                self.cascade = mapperutil.CascadeOptions("save-update, merge")
 
         self.association = association
         self.order_by = order_by

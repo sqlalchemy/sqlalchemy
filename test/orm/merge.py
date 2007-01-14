@@ -60,7 +60,7 @@ class MergeTest(AssertMixin):
     def test_saved_cascade(self):
         """test merge of a persistent entity with two child persistent entities."""
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses), cascade="all")
+            'addresses':relation(mapper(Address, addresses))
         })
         sess = create_session()
         
@@ -99,6 +99,40 @@ class MergeTest(AssertMixin):
         sess.clear()
         u = sess.query(User).get(7)
         self.assert_result([u], User, {'user_id':7, 'user_name':'fred2', 'addresses':(Address, [{'email_address':'foo@bar.com'}, {'email_address':'hoho@lalala.com'}])})
+
+    def test_saved_cascade_2(self):
+        """tests a more involved merge"""
+        mapper(Order, orders, properties={
+            'items':relation(mapper(Item, orderitems))
+        })
+        
+        mapper(User, users, properties={
+            'addresses':relation(mapper(Address, addresses)),
+            'orders':relation(Order)
+        })
+        
+        sess = create_session()
+        u = User()
+        u.user_name='fred'
+        o = Order()
+        i1 = Item()
+        i1.item_name='item 1'
+        i2 = Item()
+        i2.item_name = 'item 2'
+        o.description = 'order description'
+        o.items.append(i1)
+        o.items.append(i2)
+        u.orders.append(o)
+        
+        sess.save(u)
+        sess.flush()
+        
+        sess2 = create_session()
+        u2 = sess2.query(User).get(u.user_id)
+        u.orders[0].items[1].item_name = 'item 2 modified'
+        sess2.merge(u)
+        assert u2.orders[0].items[1].item_name == 'item 2 modified'
+        
         
 if __name__ == "__main__":    
     testbase.main()
