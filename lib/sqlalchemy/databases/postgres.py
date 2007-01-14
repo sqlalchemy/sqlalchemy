@@ -207,9 +207,9 @@ class PGExecutionContext(default.DefaultExecutionContext):
                 self._last_inserted_ids = [v for v in row]
     
 class PGDialect(ansisql.ANSIDialect):
-    def __init__(self, module=None, use_oids=False, use_information_schema=False, client_side_cursors=False, **params):
+    def __init__(self, module=None, use_oids=False, use_information_schema=False, server_side_cursors=False, **params):
         self.use_oids = use_oids
-        self.client_side_cursors = client_side_cursors
+        self.server_side_cursors = server_side_cursors
         if module is None:
             #if psycopg is None:
             #    raise exceptions.ArgumentError("Couldnt locate psycopg1 or psycopg2: specify postgres module argument")
@@ -241,13 +241,12 @@ class PGDialect(ansisql.ANSIDialect):
         return ([], opts)
 
     def create_cursor(self, connection):
-        if self.client_side_cursors:
-            return connection.cursor()
-        else:
+        if self.server_side_cursors:
             # use server-side cursors:
             # http://lists.initd.org/pipermail/psycopg/2007-January/005251.html
             return connection.cursor('x')
-
+        else:
+            return connection.cursor()
 
     def create_execution_context(self):
         return PGExecutionContext(self)

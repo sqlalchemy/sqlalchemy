@@ -82,6 +82,12 @@ class TypeDecorator(AbstractType):
         try:
             return self.impl_dict[dialect]
         except:
+            # see if the dialect has an adaptation of the TypeDecorator itself
+            adapted_decorator = dialect.type_descriptor(self)
+            if adapted_decorator is not self:
+                result = adapted_decorator.dialect_impl(dialect)
+                self.impl_dict[dialect] = result
+                return result
             typedesc = dialect.type_descriptor(self.impl)
             tt = self.copy()
             if not isinstance(tt, self.__class__):
@@ -138,7 +144,8 @@ def adapt_type(typeobj, colspecs):
         except KeyError:
             pass
     else:
-        # couldnt adapt...raise exception ?
+        # couldnt adapt - so just return the type itself
+        # (it may be a user-defined type)
         return typeobj
     # if we adapted the given generic type to a database-specific type, 
     # but it turns out the originally given "generic" type

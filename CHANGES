@@ -16,14 +16,23 @@
   - the "op()" function is now treated as an "operation", rather than a "comparison".
   the difference is, an operation produces a BinaryExpression from which further operations
   can occur whereas comparison produces the more restrictive BooleanExpression
-- postgres
-  - postgres no longer uses client-side cursors, uses more efficient server side 
-    cursors via apparently undocumented psycopg2 behavior recently discovered on the 
-    mailing list.  disable it via create_engine('postgres://', client_side_cursors=True)
+  - type system slightly modified to support TypeDecorators that can be overridden by the dialect
+  (ok, thats not very clear, it allows the mssql tweak below to be possible)
+- mssql:
+  - added an NVarchar type (produces NVARCHAR), also MSUnicode which provides Unicode-translation
+  for the NVarchar regardless of dialect convert_unicode setting.
+- postgres:
+  - postgres has an optional "server_side_cursors=True" flag which will utilize
+    server side cursors.  these are appropriate for fetching only partial results 
+    and are necessary for working with very large unbounded result sets.
+    While we'd like this to be the default behavior, different environments seem
+    to have different results and the causes have not been isolated so we are leaving 
+    the feature off by default for now.  Uses an apparently undocumented psycopg2 
+    behavior recently discovered on the psycopg mailing list.  
   - added "BIGSERIAL" support for postgres table with PGBigInteger/autoincrement
   - fixes to postgres reflection to better handle when schema names are present;
     thanks to jason (at) ncsmags.com [ticket:402]
-- mysql
+- mysql:
   - mysql is inconsistent with what kinds of quotes it uses in foreign keys during a
   SHOW CREATE TABLE, reflection updated to accomodate for all three styles [ticket:420]
 - firebird:

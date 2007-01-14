@@ -146,9 +146,13 @@ class MSText(sqltypes.TEXT):
 class MSString(sqltypes.String):
     def get_col_spec(self):
         return "VARCHAR(%(length)s)" % {'length' : self.length}
-class MSUnicode(sqltypes.Unicode):
+class MSNVarchar(MSString):
+    """NVARCHAR string, does unicode conversion if dialect.convert_encoding is true"""
     def get_col_spec(self):
         return "NVARCHAR(%(length)s)" % {'length' : self.length}
+class MSUnicode(sqltypes.Unicode):
+    """Unicode subclass, does unicode conversion in all cases, uses NVARCHAR impl"""
+    impl = MSNVarchar
 class MSChar(sqltypes.CHAR):
     def get_col_spec(self):
         return "CHAR(%(length)s)" % {'length' : self.length}
@@ -257,8 +261,6 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
                 self._last_inserted_ids = [int(row[0])]
                 # print "LAST ROW ID", self._last_inserted_ids
             self.HASIDENT = False
-
-
 
 
 class MSSQLDialect(ansisql.ANSIDialect):
@@ -546,7 +548,7 @@ class MSSQLCompiler(ansisql.ANSICompiler):
 class MSSQLSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column) + " " + column.type.engine_impl(self.engine).get_col_spec()
-
+        
         # install a IDENTITY Sequence if we have an implicit IDENTITY column
         if column.primary_key and column.autoincrement and isinstance(column.type, sqltypes.Integer) and not column.foreign_key:
             if column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional):
@@ -583,7 +585,7 @@ class MSSQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
         #TODO: determin MSSQL's case folding rules
         return value
 
-if dbmodule.__name__ == 'adodbapi':
+if dbmodule and dbmodule.__name__ == 'adodbapi':
 	dialect = MSSQLDialect
 else:
 	dialect = PyMSSQLDialect

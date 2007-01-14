@@ -81,3 +81,8 @@ utility with the "-a" (annotate) option, such as:
 
 which will create a new annotated file ./lib/sqlalchemy/sql.py,cover .  Pretty cool !
 
+TIPS
+----
+When running the tests on postgres, postgres gets slower and slower each time you run the tests.  
+This seems to be related to the constant creation/dropping of tables.  Running a "VACUUM FULL" 
+on the database will speed it up again.

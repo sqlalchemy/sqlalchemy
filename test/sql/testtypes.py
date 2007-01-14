@@ -60,7 +60,20 @@ class AdaptTest(PersistTest):
         assert (t1.impl.length == 20)
         assert isinstance(t2.impl, TEXT)
         assert t2.impl.length is None
-        
+
+
+    def testdialecttypedecorators(self):
+        """test that a a Dialect can provide a dialect-specific subclass of a TypeDecorator subclass."""
+        import sqlalchemy.databases.mssql as mssql
+        dialect = mssql.MSSQLDialect()
+        # run the test twice to insure the caching step works too
+        for x in range(0, 1):
+            col = Column('', Unicode(length=10))
+            dialect_type = col.type.dialect_impl(dialect)
+            assert isinstance(dialect_type, mssql.MSUnicode)
+            assert dialect_type.get_col_spec() == 'NVARCHAR(10)'
+            assert isinstance(dialect_type.impl, mssql.MSString)
+            
 class OverrideTest(PersistTest):
     """tests user-defined types, including a full type as well as a TypeDecorator"""
 
@@ -166,6 +179,7 @@ class UnicodeTest(AssertMixin):
             self.assert_(isinstance(x['plain_data'], unicode) and x['plain_data'] == unicodedata)
         finally:
             db.engine.dialect.convert_unicode = prev_unicode
+    
 
 
 class BinaryTest(AssertMixin):
