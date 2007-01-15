@@ -16,6 +16,7 @@
   - the "op()" function is now treated as an "operation", rather than a "comparison".
   the difference is, an operation produces a BinaryExpression from which further operations
   can occur whereas comparison produces the more restrictive BooleanExpression
+  - trying to redefine a reflected primary key column as non-primary key raises an error
   - type system slightly modified to support TypeDecorators that can be overridden by the dialect
   (ok, thats not very clear, it allows the mssql tweak below to be possible)
 - mssql:
