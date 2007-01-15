@@ -126,7 +126,7 @@ class Query(object):
 
         for key, value in params.iteritems():
             (keys, prop) = self._locate_prop(key)
-            c = (prop.columns[0]==value) & self.join_via(keys)
+            c = prop.compare(value) & self.join_via(keys)
             if clause is None:
                 clause =  c
             else:                

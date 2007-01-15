@@ -676,6 +676,9 @@ class ColumnCollection(util.OrderedProperties):
     
     overrides the __eq__() method to produce SQL clauses between sets of
     correlated columns."""
+    def __init__(self, *cols):
+        super(ColumnCollection, self).__init__()
+        [self.add(c) for c in cols]
     def add(self, column):
         """add a column to this collection.
         

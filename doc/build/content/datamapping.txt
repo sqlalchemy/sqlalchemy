@@ -474,6 +474,18 @@ All keyword arguments sent to `select_by` are used to create query criterion.  T
 
 Note that the `select_by` method, while it primarily uses keyword arguments, also can accomodate `ClauseElement` objects positionally; recall that a `ClauseElement` is genearated when producing a comparison off of a `Column` expression, such as `users.c.name=='ed'`.  When using `ClauseElements` with `select_by`, these clauses are passed directly to the generated SQL and are **not** used to further locate join criterion.  If criterion is being constructed with these kinds of expressions, consider using the `select()` method which is better designed to accomodate these expressions.
 
+As of SA 0.3.4, `select_by()` and related functions can compare not only column-based attributes to column-based values, but also relations to object instances:
+
+    {python}
+    # get an instance of Address
+    someaddress = session.query(Address).get_by(street='123 Green Street')
+    
+    # look for User instances which have the 
+    # "someaddress" instance in their "addresses" collection
+    l = session.query(User).select_by(addresses=someaddress)
+
+Where above, the comparison denoted by `addresses=someaddress` is constructed by comparing all the primary key columns in the `Address` mapper to each corresponding primary key value in the `someaddress` entity.  In other words, its equivalent to saying `select_by(address_id=someaddress.address_id)` ([Alpha API][alpha_api]).
+
 #### Generating Join Criterion Using join\_to, join\_via {@name=jointo}
 
 Feature Status: [Alpha API][alpha_api] 

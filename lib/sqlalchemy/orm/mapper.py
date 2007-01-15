@@ -441,7 +441,7 @@ class Mapper(object):
 
         if len(self.pks_by_table[self.mapped_table]) == 0:
             raise exceptions.ArgumentError("Could not assemble any primary key columns for mapped table '%s'" % (self.mapped_table.name))
-
+        self.primary_key = self.pks_by_table[self.mapped_table]
 
     def _compile_properties(self):
         """inspects the properties dictionary sent to the Mapper's constructor as well as the mapped_table, and creates
@@ -799,7 +799,7 @@ class Mapper(object):
         prop = self._getpropbycolumn(column, raiseerror)
         if prop is None:
             return NO_ATTRIBUTE
-        #self.__log_debug("get column attribute '%s' from instance %s" % (column.key, mapperutil.instance_str(obj)))
+        #print "get column attribute '%s' from instance %s" % (column.key, mapperutil.instance_str(obj))
         return prop.getattr(obj)
 
     def set_attr_by_column(self, obj, column, value):

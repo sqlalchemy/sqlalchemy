@@ -42,6 +42,9 @@
   - Firebird fix to autoload multifield foreign keys [ticket:409]
   - Firebird NUMERIC type properly handles a type without precision [ticket:409]
 - orm:
+  - poked the first hole in the can of worms: saying query.select_by(somerelationname=someinstance)
+  will create the join of the primary key columns represented by "somerelationname"'s mapper to the
+  actual primary key in "someinstance".
   - added a mutex to the mapper compilation step.  ive been reluctant to add any kind
   of threading anything to SA but this is one spot that its its really needed since mappers
   are typically "global", and while their state does not change during normal operation, the 

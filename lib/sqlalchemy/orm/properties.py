@@ -57,13 +57,15 @@ class ColumnProperty(StrategizedProperty):
         else:
             return strategies.ColumnLoader(self)
     def getattr(self, object):
-        return getattr(object, self.key, None)
+        return getattr(object, self.key)
     def setattr(self, object, value):
         setattr(object, self.key, value)
     def get_history(self, obj, passive=False):
         return sessionlib.attribute_manager.get_history(obj, self.key, passive=passive)
     def merge(self, session, source, dest):
         setattr(dest, self.key, getattr(source, self.key, None))
+    def compare(self, value):
+        return self.columns[0] == value
         
 ColumnProperty.logger = logging.class_logger(ColumnProperty)
         
@@ -109,6 +111,9 @@ class PropertyLoader(StrategizedProperty):
         else:
             self.backref = backref
         self.is_backref = is_backref
+    
+    def compare(self, value):
+        return sql.and_(*[x==y for (x, y) in zip(self.mapper.primary_key, self.mapper.primary_key_from_instance(value))])
         
     private = property(lambda s:s.cascade.delete_orphan)
 

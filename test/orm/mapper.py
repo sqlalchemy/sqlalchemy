@@ -285,7 +285,8 @@ class MapperTest(MapperSuperTest):
             }))
         })
 
-        q = create_session().query(m)
+        sess = create_session()
+        q = sess.query(m)
 
         l = q.select((orderitems.c.item_name=='item 4') & q.join_via(['orders', 'items']))
         self.assert_result(l, User, user_result[0])
@@ -298,7 +299,19 @@ class MapperTest(MapperSuperTest):
 
         l = q.select((orderitems.c.item_name=='item 4') & q.join_to('items'))
         self.assert_result(l, User, user_result[0])
+
+        # test comparing to an object instance
+        item = sess.query(Item).get_by(item_name='item 4')
+        l = q.select_by(items=item)
+        self.assert_result(l, User, user_result[0])
     
+        try:
+            # this should raise AttributeError
+            l = q.select_by(items=5)
+            assert False
+        except AttributeError:
+            assert True
+        
     def testcustomjoin(self):
         """test that the from_obj parameter to query.select() can be used
         to totally replace the FROM parameters of the generated query."""

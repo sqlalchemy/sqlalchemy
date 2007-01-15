@@ -58,6 +58,10 @@ class MapperProperty(object):
     def merge(self, session, source, dest):
         """merges the attribute represented by this MapperProperty from source to destination object"""
         raise NotImplementedError()
+    def compare(self, value):
+        """returns a compare operation for the columns represented by this MapperProperty to the given value,
+        which may be a column value or an instance."""
+        raise NotImplementedError()
         
 class StrategizedProperty(MapperProperty):
     """a MapperProperty which uses selectable strategies to affect loading behavior.
