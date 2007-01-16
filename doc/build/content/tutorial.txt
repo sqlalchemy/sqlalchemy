@@ -26,18 +26,19 @@ Otherwise, you can install from the distribution using the `setup.py` script:
 
 ### Installing a Database API {@name=dbms}
 
-SQLAlchemy is designed to operate with a [DBAPI][DBAPI] implementation built for a particular database, and includes support for the most popular databases. If you have one of the [supported DBAPI implementations][supported dbms], you can proceed to the following section. Otherwise [SQLite][] is an easy-to-use database to get started with, which works with plain files or in-memory databases.
+SQLAlchemy is designed to operate with a [DBAPI][DBAPI] implementation built for a particular database, and includes support for the most popular databases. If you have one of the [supported DBAPI implementations][rel:dbengine_supported], you can proceed to the following section. Otherwise [SQLite][] is an easy-to-use database to get started with, which works with plain files or in-memory databases.
 
 [DBAPI]: http://www.python.org/doc/peps/pep-0249/
 
-To work with SQLite, you'll need:
+SQLite is included with [Python 2.5][rel:http://www.python.org/download/releases/2.5/].
+
+If you are working with Python 2.3 or 2.4, SQLite and the Python API for SQLite can be installed from the following packages:
 
   * [pysqlite][] - Python interface for SQLite
-  * SQLite library 
+  * [SQLite library] [http://sqlite.org]
 
 Note that the SQLite library download is not required with Windows, as the Windows Pysqlite library already includes it linked in.  Pysqlite and SQLite can also be installed on Linux or FreeBSD via pre-made [packages][pysqlite packages] or [from sources][pysqlite].
 
-[supported dbms]: rel:dbengine_establishing
 [sqlite]: http://sqlite.org/
 [pysqlite]: http://pysqlite.org/
 [pysqlite packages]: http://initd.org/tracker/pysqlite/wiki/PysqlitePackages
@@ -52,6 +53,8 @@ SQLAlchemy provides the entire namespace of everything you'll need under the mod
     {python}
     >>> from sqlalchemy import *
 
+Note that importing using the `*` operator pulls all the names from `sqlalchemy` into the local module namespace, which in a real application can produce name conflicts.  Therefore its recommended in practice to either import the individual symbols desired (i.e. `from sqlalchemy import Table, Column`) or to import under a distinct namespace (i.e. `import sqlalchemy as sa`).
+
 ### Connecting to the Database
 
 After our imports, the next thing we need is a handle to the desired database, represented by an `Engine` object.  This object handles the business of managing connections and dealing with the specifics of a particular database.  Below, we will make a SQLite connection to a file-based database called "tutorial.db".
@@ -59,17 +62,27 @@ After our imports, the next thing we need is a handle to the desired database, r
     {python}
     >>> db = create_engine('sqlite:///tutorial.db')
     
+Technically, the above statement did not make an actual connection to the sqlite database just yet.  As soon as we begine working with the engine, it will start creating connections.  In the case of SQLite, the `tutorial.db` file will actually be created at that point.
 
 For full information on creating database engines, including those for SQLite and others, see [dbengine](rel:dbengine).
+
+SQLAlchemy is Two Libraries in One {@name=twoinone}
+----------------------------------------------------
+
+A central concept of SQLAlchemy is that it actually contains two distinct areas of functionality, one of which builds upon the other.  One is a **SQL Construction Language** and the other is an **Object Relational Mapper** ("ORM" for short).  The SQL construction language allows you to construct objects called `ClauseElements` which represent SQL expressions.  These ClauseElements can then be executed against any database, where they are **compiled** into strings that are appropriate for the target database, and return an object called a `ResultProxy`, which is essentially a result set object that acts very much like a deluxe version of the dbapi `cursor` object.
+
+The Object Relational Mapper (ORM) is a set of tools completely distinct from the SQL Construction Language which serve the purpose of mapping Python object instances into database rows, providing a rich selection interface with which to retrieve instances from tables as well as a comprehensive solution to persisting changes on those instances back into the database.  When working with the ORM, its underlying workings as well as its public API make extensive use of the SQL Construction Language, however the general theory of operation is slightly different.  Instead of working with database rows directly, you work with your own user-defined classes and object instances.  Additionally, the method of issuing queries to the database is different, as the ORM handles the job of generating most of the SQL required, and instead requires more information about what kind of classes you'd like to load and where you'd like to put them.
+
+Where SA is somewhat unique, more powerful, and slightly more complicated is that the two areas of functionality can be mixed together in many ways.  A key strategy to working with SA effectively is to have a solid awareness of these two distinct toolsets, and which concepts of SA belong to each - even some publications have confused the SQL Construction Language with the ORM.  The key difference between the two is that when you're working with result sets its the SQL Construction Language, and when working with your own classes its the Object Relational Mapper.
+
+This tutorial will first focus on the basic configuration that is common to using both the SQL Construction Language as well as the ORM, which is to declare information about your database called *table metadata*.  This will be followed by some basic constructed SQL examples, and then into basic usage of the ORM utilizing the same data we established in the SQL construction examples.
 
 Working with Database Objects {@name=schemasql}
 -----------------------------------------------
 
-A core philosophy of SQLAlchemy is that tables and domain classes are different beasts.  For this reason, SQLAlchemy provides constructs that represent tables by themselves (known as *table metadata*).  So we will begin by constructing table metadata objects and performing SQL operations with them directly.  Later, we will look into SQLAlchemy's Object Relational Mapper (ORM), which provides an additional layer of abstraction onto table metadata, allowing us to load and save objects of any arbitrary Python class.
-
 ### Defining Metadata, Binding to Engines {@name=metadata}
 
-Firstly, your Tables have to belong to a collection called `MetaData`.  We will create a handy form of `MetaData` that automatically connects to our `Engine` (connecting a schema object to an Engine is called *binding*):
+Configuring SQLAlchemy for your database consists of creating objects called `Tables`, each of which represent an actual table in the database.  A collection of `Table` objects resides in a `MetaData` object which is essentially a table collection.  We will create a handy form of `MetaData` that automatically connects to our `Engine` (connecting a schema object to an Engine is called *binding*):
 
     {python}
     >>> metadata = BoundMetaData(db)
