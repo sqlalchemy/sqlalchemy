@@ -418,6 +418,7 @@ When our User object contains relationships to other kinds of information, such 
 
 To illustrate this relationship, we will start with a new mapper configuration.  Since our `User` class has a mapper assigned to it, we want to discard it and start over again.  So we issue the `clear_mappers()` function first, which removes all mapping associations from classes:
 
+    {python}
     >>> clear_mappers()
     
 When removing mappers, it is usually best to remove all mappings at the same time, since mappers usually have relationships to each other which will become invalid if only part of the mapper collection is removed.  In practice, a particular mapping setup will usually remain throughout the lifetime of an application.  Clearing out the mappers and making new ones is a practice that is generally limited to writing mapper unit tests and experimenting from the console.
@@ -436,6 +437,7 @@ Next, we want to create a class/mapping that corresponds to the `email_addresses
     
 We then create a mapper for the `User` class which contains a relationship to the `Address` class using the `relation()` function:
 
+    {python}
     >>> mapper(User, users_table, properties={ # doctest: +ELLIPSIS
     ...    'addresses':relation(Address)
     ... })
