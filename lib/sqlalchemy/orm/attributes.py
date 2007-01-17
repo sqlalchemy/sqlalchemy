@@ -210,7 +210,7 @@ class InstrumentedAttribute(object):
                     orig = state.get('original', None)
                     if orig is not None:
                         orig.commit_attribute(self, obj)
-                    return obj.__dict__[self.key]
+                    return value
                 else:
                     # note that we arent raising AttributeErrors, just returning None.
                     # this might be a good thing to be changeable by options.
