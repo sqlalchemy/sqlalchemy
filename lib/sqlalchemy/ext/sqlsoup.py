@@ -163,6 +163,21 @@ to disambiguate columns with their table name:
 Advanced Use
 ============
 
+Accessing the Session
+---------------------
+
+SqlSoup uses a SessionContext to provide thread-local sessions.  You can
+get a reference to the current one like this:
+
+    >>> from sqlalchemy.ext.sqlsoup import objectstore
+    >>> session = objectstore.current
+
+Now you have access to all the standard session-based SA features, such
+as transactions.  (SqlSoup's flush() is normally transactionalized, but
+you can perform manual transaction management if you need a transaction
+to span multiple flushes.)
+
+
 Mapping arbitrary Selectables
 -----------------------------
 
@@ -336,7 +351,7 @@ def _selectable_name(selectable):
 def class_for_table(selectable, **mapper_kwargs):
     if not hasattr(selectable, '_selectable') \
     or selectable._selectable() != selectable:
-        raise 'class_for_table requires a selectable as its argument'
+        raise ArgumentError('class_for_table requires a selectable as its argument')
     mapname = 'Mapped' + _selectable_name(selectable)
     klass = TableClassType(mapname, (object,), {})
     def __cmp__(self, o):
