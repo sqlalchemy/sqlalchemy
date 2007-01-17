@@ -18,7 +18,7 @@ This command will download the latest version of SQLAlchemy from the [Python Che
 
 [setuptools]: http://peak.telecommunity.com/DevCenter/setuptools
 [install setuptools]: http://peak.telecommunity.com/DevCenter/EasyInstall#installation-instructions
-[cheese]: http://cheeseshop.python.org/pypi
+[cheese]: http://cheeseshop.python.org/pypi/SQLAlchemy
 
 Otherwise, you can install from the distribution using the `setup.py` script:
 
@@ -26,16 +26,14 @@ Otherwise, you can install from the distribution using the `setup.py` script:
 
 ### Installing a Database API {@name=dbms}
 
-SQLAlchemy is designed to operate with a [DBAPI][DBAPI] implementation built for a particular database, and includes support for the most popular databases. If you have one of the [supported DBAPI implementations][rel:dbengine_supported], you can proceed to the following section. Otherwise [SQLite][] is an easy-to-use database to get started with, which works with plain files or in-memory databases.
+SQLAlchemy is designed to operate with a [DBAPI](http://www.python.org/doc/peps/pep-0249/) implementation built for a particular database, and includes support for the most popular databases. If you have one of the [supported DBAPI implementations](rel:dbengine_supported), you can proceed to the following section. Otherwise [SQLite][] is an easy-to-use database to get started with, which works with plain files or in-memory databases.
 
-[DBAPI]: http://www.python.org/doc/peps/pep-0249/
-
-SQLite is included with [Python 2.5][rel:http://www.python.org/download/releases/2.5/].
+SQLite is included with Python 2.5 and greater.
 
 If you are working with Python 2.3 or 2.4, SQLite and the Python API for SQLite can be installed from the following packages:
 
   * [pysqlite][] - Python interface for SQLite
-  * [SQLite library] [http://sqlite.org]
+  * [SQLite library](http://sqlite.org)
 
 Note that the SQLite library download is not required with Windows, as the Windows Pysqlite library already includes it linked in.  Pysqlite and SQLite can also be installed on Linux or FreeBSD via pre-made [packages][pysqlite packages] or [from sources][pysqlite].
 
@@ -48,7 +46,7 @@ Getting Started {@name=gettingstarted}
 
 ### Imports
 
-SQLAlchemy provides the entire namespace of everything you'll need under the module name `sqlalchemy`.  For the purposes of this tutorial, we will import its full list of symbols into our own local namespace.  
+To start connecting to databases and begin issuing queries, we want to import the base of SQLAlchemy's functionality, which is provided under the module name of `sqlalchemy`.  For the purposes of this tutorial, we will import its full list of symbols into our own local namespace.  
 
     {python}
     >>> from sqlalchemy import *
@@ -62,20 +60,22 @@ After our imports, the next thing we need is a handle to the desired database, r
     {python}
     >>> db = create_engine('sqlite:///tutorial.db')
     
-Technically, the above statement did not make an actual connection to the sqlite database just yet.  As soon as we begine working with the engine, it will start creating connections.  In the case of SQLite, the `tutorial.db` file will actually be created at that point.
+Technically, the above statement did not make an actual connection to the sqlite database just yet.  As soon as we begine working with the engine, it will start creating connections.  In the case of SQLite, the `tutorial.db` file will actually be created at the moment it is first used, if the file does not exist already.
 
 For full information on creating database engines, including those for SQLite and others, see [dbengine](rel:dbengine).
 
 SQLAlchemy is Two Libraries in One {@name=twoinone}
 ----------------------------------------------------
 
+Now that the basics of installing SQLAlchemy and connecting to our database are established, we can start getting in to actually doing something.  But first, a little bit of explanation is required.
+
 A central concept of SQLAlchemy is that it actually contains two distinct areas of functionality, one of which builds upon the other.  One is a **SQL Construction Language** and the other is an **Object Relational Mapper** ("ORM" for short).  The SQL construction language allows you to construct objects called `ClauseElements` which represent SQL expressions.  These ClauseElements can then be executed against any database, where they are **compiled** into strings that are appropriate for the target database, and return an object called a `ResultProxy`, which is essentially a result set object that acts very much like a deluxe version of the dbapi `cursor` object.
 
-The Object Relational Mapper (ORM) is a set of tools completely distinct from the SQL Construction Language which serve the purpose of mapping Python object instances into database rows, providing a rich selection interface with which to retrieve instances from tables as well as a comprehensive solution to persisting changes on those instances back into the database.  When working with the ORM, its underlying workings as well as its public API make extensive use of the SQL Construction Language, however the general theory of operation is slightly different.  Instead of working with database rows directly, you work with your own user-defined classes and object instances.  Additionally, the method of issuing queries to the database is different, as the ORM handles the job of generating most of the SQL required, and instead requires more information about what kind of classes you'd like to load and where you'd like to put them.
+The Object Relational Mapper (ORM) is a set of tools completely distinct from the SQL Construction Language which serve the purpose of mapping Python object instances into database rows, providing a rich selection interface with which to retrieve instances from tables as well as a comprehensive solution to persisting changes on those instances back into the database.  When working with the ORM, its underlying workings as well as its public API make extensive use of the SQL Construction Language, however the general theory of operation is slightly different.  Instead of working with database rows directly, you work with your own user-defined classes and object instances.  Additionally, the method of issuing queries to the database is different, as the ORM handles the job of generating most of the SQL required, and instead requires more information about what kind of class instances you'd like to load and where you'd like to put them.
 
-Where SA is somewhat unique, more powerful, and slightly more complicated is that the two areas of functionality can be mixed together in many ways.  A key strategy to working with SA effectively is to have a solid awareness of these two distinct toolsets, and which concepts of SA belong to each - even some publications have confused the SQL Construction Language with the ORM.  The key difference between the two is that when you're working with result sets its the SQL Construction Language, and when working with your own classes its the Object Relational Mapper.
+Where SA is somewhat unique, more powerful, and slightly more complicated is that the two areas of functionality can be mixed together in many ways.  A key strategy to working with SA effectively is to have a solid awareness of these two distinct toolsets, and which concepts of SA belong to each - even some publications have confused the SQL Construction Language with the ORM.  The key difference between the two is that when you're working with cursor-like result sets its the SQL Construction Language, and when working with collections of your own class instances its the Object Relational Mapper.
 
-This tutorial will first focus on the basic configuration that is common to using both the SQL Construction Language as well as the ORM, which is to declare information about your database called *table metadata*.  This will be followed by some basic constructed SQL examples, and then into basic usage of the ORM utilizing the same data we established in the SQL construction examples.
+This tutorial will first focus on the basic configuration that is common to using both the SQL Construction Language as well as the ORM, which is to declare information about your database called **table metadata**.  This will be followed by some constructed SQL examples, and then into usage of the ORM utilizing the same data we established in the SQL construction examples.
 
 Working with Database Objects {@name=schemasql}
 -----------------------------------------------
@@ -92,9 +92,9 @@ An equivalent operation is to create the `BoundMetaData` object directly with an
     {python}
     >>> metadata = BoundMetaData('sqlite:///tutorial.db')
 
-Now, when we tell "metadata" about the tables in our database, we can issue CREATE statements for those tables, as well as create and execute SQL statements derived from them, without needing to open or close any connections; that will be all done automatically.  Note that this feature is **entirely optional**.  SQLAlchemy includes full support for explicit Connections used with schema and SQL constructs that are entirely unbound to any Engine.
+Now, when we tell "metadata" about the tables in our database, we can issue CREATE statements for those tables, as well as execute SQL statements derived from them, without needing to open or close any connections; that will be all done automatically.
 
-For the purposes of this tutorial, we will stick with "bound" objects, as it makes the code simpler and easier to read.  
+Note that SQLALchemy fully supports the usage of explicit Connection objects for all SQL operations, which may be in conjunction with plain `MetaData` objects that are entirely unbound to any Engine, providing a more decoupled pattern that allows finer-grained control of connections than the "bound" approach this tutorial will present.  For the purposes of this tutorial, we will stick with "bound" objects, as it allows us to focus more on SA's general concepts, leaving explicit connection management as a more advanced topic.
 
 ### Creating a Table {@name=table_creating}
 
@@ -127,7 +127,7 @@ Alternatively, the `users` table might already exist (such as, if you're running
     >>> list(users_table.columns)[0].name
     'user_id'
 
-Documentation on table metadata is available in [metadata](rel:metadata).
+Loading a table's columns from the database is called **reflection**.  Documentation on table metadata, including reflection, is available in [metadata](rel:metadata).
 
 ### Inserting Rows
 
@@ -137,18 +137,21 @@ Inserting is achieved via the `insert()` method, which defines a *clause object*
     >>> i = users_table.insert()
     >>> i # doctest:+ELLIPSIS
     <sqlalchemy.sql._Insert object at 0x...>
+    >>> # the string form of the Insert object is a generic SQL representation
     >>> print i
     INSERT INTO users (user_id, user_name, password) VALUES (?, ?, ?)
 
 Since we created this insert statement object from the `users` table which is bound to our `Engine`, the statement itself is also bound to the `Engine`, and supports executing itself.  The `execute()` method of the clause object will *compile* the object into a string according to the underlying *dialect* of the Engine to which the statement is bound, and will then execute the resulting statement.  
 
     {python}
+    >>> # insert a single row
     >>> i.execute(user_name='Mary', password='secure') # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
     INSERT INTO users (user_name, password) VALUES (?, ?)
     ['Mary', 'secure']
     COMMIT
     <sqlalchemy.engine.base.ResultProxy object at 0x...>
 
+    >>> # insert multiple rows simultaneously
     >>> i.execute({'user_name':'Tom'}, {'user_name':'Fred'}, {'user_name':'Harry'}) # doctest:+ELLIPSIS,+NORMALIZE_WHITESPACE
     INSERT INTO users (user_name) VALUES (?)
     [['Tom'], ['Fred'], ['Harry']]
@@ -156,7 +159,7 @@ Since we created this insert statement object from the `users` table which is bo
     <sqlalchemy.engine.base.ResultProxy object at 0x...>
 
 
-Note that the `VALUES` clause of each `INSERT` statement was automatically adjusted to correspond to the parameters sent to the `execute()` method.  This is because the compilation step of a `ClauseElement` takes into account not just the constructed SQL object and the specifics of the type of database being used, but the execution parameters sent along as well.  
+Note that the `VALUES` clause of each `INSERT` statement was automatically adjusted to correspond to the parameters sent to the `execute()` method.  This is because the compilation step of a `ClauseElement` takes into account not just the constructed SQL object and the specifics of the type of database being used, but the execution parameters sent along as well.
 
 When constructing clause objects, SQLAlchemy will bind all literal values into bind parameters.  On the construction side, bind parameters are always treated as named parameters.  At compilation time, SQLAlchemy will convert them into their proper format, based on the paramstyle of the underlying DBAPI.  This works equally well for all named and positional bind parameter formats described in the DBAPI specification.
 
@@ -279,7 +282,14 @@ The `join` method is also a standalone function in the `sqlalchemy` namespace.  
 Working with Object Mappers {@name=orm}
 -----------------------------------------------
 
-Now that we have a little bit of Table and SQL operations covered, lets look into SQLAlchemy's ORM (object relational mapper).  With the ORM, you associate Tables (and other *Selectable* units, like queries and table aliases) with Python classes, into units called *Mappers*.  Then you can execute queries that return lists of object instances, instead of result sets.  The object instances themselves are associated with an object called a *Session*, which automatically tracks changes on each object and supports a "save all at once" operation called a *flush*.
+Now that we have a little bit of Table and SQL operations covered, lets look into SQLAlchemy's ORM (object relational mapper).  With the ORM, you associate Tables (and other *Selectable* units, like queries and table aliases) with Python classes, into units called **Mappers**.  Then you can execute queries that return lists of object instances, instead of result sets.  The object instances themselves are associated with an object called a **Session**, which automatically tracks changes on each object and supports a "save all at once" operation called a **flush**.
+
+To start, we will import the names necessary to use SQLAlchemy's ORM, again using `import *` for simplicities sake, even though we all know that in real life we should be importing individual names via "`from sqlalchemy.orm import symbol1, symbol2, ...`" or "`import sqlalchemy.orm as orm`":
+
+    {python}
+    >>> from sqlalchemy.orm import *
+    
+It should be noted that the above step is technically not needed when working with the 0.3 series of SQLAlchemy; all symbols from the `orm` package are also included in the `sqlalchemy` package.  However, a future release (most likely the 0.4 series) will make the separate `orm` import required in order to use the object relational mapper, so its a good practice for now.
 
 ### Creating a Mapper {@name=mapper}
 
@@ -294,18 +304,19 @@ A Mapper is usually created once per Python class, and at its core primarily mea
 The class is a new style class (i.e. it extends `object`) and does not require a constructor (although one may be provided if desired).  We just have one `__repr__` method on it which will display basic information about the User.  Note that the `__repr__` method references the instance variables `user_name` and `password` which otherwise aren't defined.  While we are free to explicitly define these attributes and treat them normally, this is optional; as SQLAlchemy's `Mapper` construct will manage them for us, since their names correspond to the names of columns in the `users` table.  Lets create a mapper, and observe that these attributes are now defined:
 
     {python}
-    >>> usermapper = mapper(User, users_table)
+    >>> mapper(User, users_table) # doctest: +ELLIPSIS
+    <sqlalchemy.orm.mapper.Mapper object at 0x...>
     >>> u1 = User()
     >>> print u1.user_name
     None
     >>> print u1.password
     None
     
-The `mapper` function returns a new instance of `Mapper`.  As it is the first Mapper we have created for the `User` class, it is known as the classes' *primary mapper*.  We generally don't need to hold onto the `usermapper` instance variable; SA's ORM can automatically locate this Mapper when it deals with the class, or instances of that class.  
+The `mapper` function returns a new instance of `Mapper`.  As it is the first Mapper we have created for the `User` class, it is known as the classes' *primary mapper*.  We generally don't need to hold onto the return value of the `mapper` function; SA can automatically locate this Mapper as needed when it deals with the `User` class.  
 
 ### Obtaining a Session {@name=session}
 
-After you create a Mapper, all operations with that Mapper require the usage of an important object called a `Session`.  All objects loaded or saved by the Mapper must be *attached* to a `Session` object, which represents a kind of "workspace" of objects that are loaded into memory.  A particular object instance can only be attached to one `Session` at a time.
+After you create a Mapper, all operations with that Mapper require the usage of an important object called a `Session`.  All objects loaded or saved by the Mapper must be *attached* to a `Session` object, which represents a kind of "workspace" of objects that are loaded into memory.  A particular object instance can only be attached to one `Session` at a time (but of course can be moved around or detached altogether).
 
 By default, you have to create a `Session` object explicitly before you can load or save objects.  Theres several ways to manage sessions, but the most straightforward is to just create one, which we will do by saying, `create_session()`:
 
@@ -315,8 +326,8 @@ By default, you have to create a `Session` object explicitly before you can load
     <sqlalchemy.orm.session.Session object at 0x...>
 
 ### The Query Object {@name=query}
-    
-The Session has all kinds of methods on it to retrieve and store objects, and also to view their current status.  The Session also provides an easy interface which can be used to query the database, by giving you an instance to a `Query` object corresponding to a particular Python class:
+
+The Session has all kinds of methods on it to manage and inspect its collection of objects.  The Session also provides an easy interface which can be used to query the database, by giving you an instance to a `Query` object corresponding to a particular Python class:
 
     {python}
     >>> query = session.query(User)
@@ -327,7 +338,7 @@ The Session has all kinds of methods on it to retrieve and store objects, and al
     ['Harry']
     [User(u'Harry',None)]
     
-All querying for objects is performed via an instance of `Query`.  The various `select` methods on an instance of `Mapper` also use an underlying `Query` object to perform the operation.  A `Query` is always bound to a specific `Session`.  
+All querying for objects is performed via an instance of `Query`.  The various `select` methods on an instance of `Mapper` also use an underlying `Query` object to perform the operation.  A `Query` is always bound to a specific `Session`.
 
 Lets turn off the database echoing for a moment, and try out a few methods on `Query`.  Methods that end with the suffix `_by` primarily take keyword arguments which correspond to properties on the object.  Other methods take `ClauseElement` objects, which are constructed by using `Column` objects inside of Python expressions, in the same way as we did with our SQL select example in the previous section of this tutorial.  Using `ClauseElement` structures to query objects is more verbose but more flexible:
 
@@ -403,9 +414,15 @@ Then to send all of our changes to the database, we `flush()` the Session.  Lets
 
 ### Relationships
 
-When our User object contains relationships to other kinds of information, such as a list of email addresses, we can indicate this by using a function when creating the `Mapper` called `relation()`.  While there is a lot you can do with relations, we'll cover a simple one here.  First, recall that our `users` table has a foreign key relationship to another table called `email_addresses`.   A single row in `email_addresses` has a column `user_id` that references a row in the `users` table; since many rows in the `email_addresses` table can reference a single row in `users`, this is called a *one to many* relationship.
+When our User object contains relationships to other kinds of information, such as a list of email addresses, we can indicate this by using a function when creating the `Mapper` called `relation()`.  While there is a lot you can do with relations, we'll cover a simple one here.  First, recall that our `users` table has a foreign key relationship to another table called `email_addresses`.  A single row in `email_addresses` has a column `user_id` that references a row in the `users` table; since many rows in the `email_addresses` table can reference a single row in `users`, this is called a *one to many* relationship.
 
-First, deal with the `email_addresses` table by itself.  We will create a new class `Address` which represents a single row in the `email_addresses` table, and a corresponding `Mapper` which will associate the `Address` class with the `email_addresses` table:
+To illustrate this relationship, we will start with a new mapper configuration.  Since our `User` class has a mapper assigned to it, we want to discard it and start over again.  So we issue the `clear_mappers()` function first, which removes all mapping associations from classes:
+
+    >>> clear_mappers()
+    
+When removing mappers, it is usually best to remove all mappings at the same time, since mappers usually have relationships to each other which will become invalid if only part of the mapper collection is removed.  In practice, a particular mapping setup will usually remain throughout the lifetime of an application.  Clearing out the mappers and making new ones is a practice that is generally limited to writing mapper unit tests and experimenting from the console.
+    
+Next, we want to create a class/mapping that corresponds to the `email_addresses` table.  We will create a new class `Address` which represents a single row in the `email_addresses` table, and a corresponding `Mapper` which will associate the `Address` class with the `email_addresses` table:
 
     {python}
     >>> class Address(object):
@@ -417,14 +434,18 @@ First, deal with the `email_addresses` table by itself.  We will create a new cl
     >>> mapper(Address, email_addresses_table) # doctest: +ELLIPSIS
     <sqlalchemy.orm.mapper.Mapper object at 0x...>
     
-Next, we associate the `User` and `Address` classes together by creating a relation using `relation()`, and then adding that relation to the `User` mapper, using the `add_property` function:
+We then create a mapper for the `User` class which contains a relationship to the `Address` class using the `relation()` function:
 
-    {python}
-    >>> usermapper.add_property('addresses', relation(Address))
+    >>> mapper(User, users_table, properties={ # doctest: +ELLIPSIS
+    ...    'addresses':relation(Address)
+    ... })
+    <sqlalchemy.orm.mapper.Mapper object at 0x...>
 
-The `relation()` function takes either a class or a Mapper as its first argument, and has many options to further control its behavior.  The 'User' mapper has now placed additional property on each `User` instance called `addresses`.  SQLAlchemy will automatically determine that this relationship is a one-to-many relationship, and will subsequently create `addresses` as a list.  When a new `User` is created, this list will begin as empty.
+The `relation()` function takes either a class or a Mapper as its first argument, and has many options to further control its behavior.  When this mapping relationship is used, each new `User` instance will contain an attribute called `addresses`.  SQLAlchemy will automatically determine that this relationship is a one-to-many relationship, and will subsequently create `addresses` as a list.  When a new `User` is created, this list will begin as empty.
 
-Lets see what we get for the email addresses already in the database.  Since we have made a change to the mapper's configuration, its best that we clear out our `Session`, which is currently holding onto every `User` object we have already loaded:
+The order in which the mapping definitions for `User` and `Address` is created is *not significant*.  When the `mapper()` function is called, it creates an *uncompiled* mapping record corresponding to the given class/table combination.  When the mappers are first used, the entire collection of mappers created up until that point will be compiled, which involves the establishment of class instrumentation as well as the resolution of all mapping relationships.  
+
+Lets try out this new mapping configuration, and see what we get for the email addresses already in the database.  Since we have made a new mapping configuration, its best that we clear out our `Session`, which is currently holding onto every `User` object we have already loaded:
 
     {python}
     >>> session.clear()
@@ -454,6 +475,8 @@ Adding to the list is just as easy.  New `Address` objects will be detected and 
     INSERT INTO email_addresses (email_address, user_id) VALUES (?, ?)
     ['mary2@gmail.com', 1]
     COMMIT
+
+
 
 Main documentation for using mappers:  [datamapping](rel:datamapping)
 

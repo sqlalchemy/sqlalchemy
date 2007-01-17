@@ -19,11 +19,11 @@ Underneath the public-facing API of `Engine`, several components are provided by
 
 ### Supported Databases {@name=supported}
 
-Engines exist for SQLite, Postgres, MySQL, and Oracle, using the Pysqlite, Psycopg2 (Psycopg1 will work to some degree but its typing model is not supported...install Psycopg2!), MySQLDB, and cx_Oracle modules.  There is also preliminary support for MS-SQL using adodbapi or pymssql, as well as Firebird.   For each engine, a distinct Python module exists in the `sqlalchemy.databases` package, which provides implementations of some of the objects mentioned in the previous section.
+Engines exist for SQLite, Postgres, MySQL, and Oracle, using the Pysqlite, Psycopg2 (Psycopg1 will work to a limited degree, but it is **not supported**), MySQLDB, and cx_Oracle modules.  There is also preliminary support for MS-SQL using adodbapi or pymssql, as well as Firebird.   For each engine, a distinct Python module exists in the `sqlalchemy.databases` package, which provides implementations of some of the objects mentioned in the previous section.
 
 Downloads for each DBAPI at the time of this writing are as follows:
 
-* Postgres:  [psycopg2](http://www.initd.org/tracker/psycopg)
+* Postgres:  [psycopg2](http://www.initd.org/tracker/psycopg/wiki/PsycopgTwo)
 * SQLite:  [pysqlite](http://initd.org/tracker/pysqlite)
 * MySQL:   [MySQLDB](http://sourceforge.net/projects/mysql-python)
 * Oracle:  [cx_Oracle](http://www.cxtools.net/default.aspx?nav=home)
