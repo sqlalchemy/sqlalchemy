@@ -23,6 +23,7 @@
   - added an NVarchar type (produces NVARCHAR), also MSUnicode which provides Unicode-translation
   for the NVarchar regardless of dialect convert_unicode setting.
 - postgres:
+  - fix to the initial checkfirst for tables to take current schema into account [ticket:424]
   - postgres has an optional "server_side_cursors=True" flag which will utilize
     server side cursors.  these are appropriate for fetching only partial results 
     and are necessary for working with very large unbounded result sets.
