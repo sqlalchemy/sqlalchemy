@@ -274,12 +274,17 @@ class PropertyLoader(StrategizedProperty):
                         return sync.ONETOMANY
                 else:
                     return sync.MANYTOONE
-        elif len([c for c in self.foreignkey if self.mapper.unjoined_table.corresponding_column(c, False) is not None]):
-            return sync.ONETOMANY
-        elif len([c for c in self.foreignkey if self.parent.unjoined_table.corresponding_column(c, False) is not None]):
-            return sync.MANYTOONE
         else:
-            raise exceptions.ArgumentError("Cant determine relation direction for '%s' in mapper '%s' with primary join\n '%s'" %(self.key, str(self.mapper), str(self.primaryjoin)))
+            onetomany = len([c for c in self.foreignkey if self.mapper.unjoined_table.corresponding_column(c, False) is not None])
+            manytoone = len([c for c in self.foreignkey if self.parent.unjoined_table.corresponding_column(c, False) is not None])
+            if not onetomany and not manytoone:
+                raise exceptions.ArgumentError("Cant determine relation direction for '%s' on mapper '%s' with primary join '%s' - foreign key columns are not present in neither the parent nor the child's mapped tables" %(self.key, str(self.parent), str(self.primaryjoin)))
+            elif onetomany and manytoone:
+                raise exceptions.ArgumentError("Cant determine relation direction for '%s' on mapper '%s' with primary join '%s' - foreign key columns are present in both the parent and the child's mapped tables.  Specify 'foreignkey' argument." %(self.key, str(self.parent), str(self.primaryjoin)))
+            elif onetomany:
+                return sync.ONETOMANY
+            elif manytoone:
+                return sync.MANYTOONE
             
     def _find_dependent(self):
         """searches through the primary join condition to determine which side
@@ -298,7 +303,7 @@ class PropertyLoader(StrategizedProperty):
         visitor = mapperutil.BinaryVisitor(foo)
         self.primaryjoin.accept_visitor(visitor)
         if len(foreignkeys) == 0:
-            raise exceptions.ArgumentError("On relation '%s', can't figure out which side is the foreign key for join condition '%s'.  Specify the 'foreignkey' argument to the relation." % (self.key, str(self.primaryjoin)))
+            raise exceptions.ArgumentError("Cant determine relation direction for '%s' on mapper '%s' with primary join '%s' - no foreign key relationship is expressed within the join condition.  Specify 'foreignkey' argument." %(self.key, str(self.parent), str(self.primaryjoin)))
         self.foreignkey = foreignkeys
         
     def get_join(self):
