@@ -169,5 +169,55 @@ class M2OCascadeTest(testbase.AssertMixin):
         jack.pref = None
         ctx.current.flush()
 
+class M2MCascadeTest(testbase.AssertMixin):
+    def setUpAll(self):
+        global metadata, a, b, atob
+        metadata = BoundMetaData(testbase.db)
+        a = Table('a', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30))
+            )
+        b = Table('b', metadata,     
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30))
+            )
+        atob = Table('atob', metadata, 
+            Column('aid', Integer, ForeignKey('a.id')),
+            Column('bid', Integer, ForeignKey('b.id'))
+            
+            )
+        metadata.create_all()
+        
+    def tearDownAll(self):
+        metadata.drop_all()
+    @testbase.supported('')
+    def testdeleteorphan(self):
+        class A(object):
+            def __init__(self, data):
+                self.data = data
+        class B(object):
+            def __init__(self, data):
+                self.data = data
+        
+        mapper(A, a, properties={
+            # if no backref here, delete-orphan fails
+            'bs':relation(B, secondary=atob, cascade="all, delete-orphan")
+        })
+        mapper(B, b)
+        
+        sess = create_session()
+        a1 = A('a1')
+        b1 = B('b1')
+        a1.bs.append(b1)
+        sess.save(a1)
+        sess.flush()
+        
+        a1.bs.remove(b1)
+        sess.flush()
+        assert atob.count().scalar() ==0
+        assert b.count().scalar() == 0
+        assert a.count().scalar() == 1
+        
+        
 if __name__ == "__main__":
     testbase.main()        
