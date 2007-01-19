@@ -121,7 +121,10 @@ sq2.sq_myothertable_otherid, sq2.sq_myothertable_othername FROM \
 (SELECT sq.mytable_myid AS sq_mytable_myid, sq.mytable_name AS sq_mytable_name, \
 sq.mytable_description AS sq_mytable_description, sq.myothertable_otherid AS sq_myothertable_otherid, \
 sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") AS sq) AS sq2")
-
+    
+    def testdontovercorrelate(self):
+        self.runtest(select([table1], from_obj=[table1, table1.select()]), """SELECT mytable.myid, mytable.name, mytable.description FROM mytable, (SELECT mytable.myid AS myid, mytable.name AS name, mytable.description AS description FROM mytable)""")
+        
     def testwheresubquery(self):
         # TODO: this tests that you dont get a "SELECT column" without a FROM but its not working yet.
         #self.runtest(

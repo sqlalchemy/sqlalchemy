@@ -1580,7 +1580,13 @@ class Select(_SelectBaseMixin, FromClause):
         else:
             return None
 
-    froms = property(lambda self: self.__froms.difference(self.__hide_froms).difference(self.__correlated), doc="""a collection containing all elements of the FROM clause""")
+    def _calc_froms(self):
+        f = self.__froms.difference(self.__hide_froms)
+        if (len(f) > 1):
+            return f.difference(self.__correlated)
+        else:
+            return f
+    froms = property(_calc_froms, doc="""a collection containing all elements of the FROM clause""")
 
     def accept_visitor(self, visitor):
         for f in self.froms:
