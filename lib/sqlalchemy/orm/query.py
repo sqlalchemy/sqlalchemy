@@ -241,12 +241,10 @@ class Query(object):
         ret = self.extension.select(self, arg=arg, **kwargs)
         if ret is not mapper.EXT_PASS:
             return ret
-        try:
-            s = arg._selectable()
-        except AttributeError:
-            return self.select_whereclause(whereclause=arg, **kwargs)
+        if isinstance(arg, sql.FromClause):
+            return self.select_statement(arg, **kwargs)
         else:
-            return self.select_statement(s, **kwargs)
+            return self.select_whereclause(whereclause=arg, **kwargs)
 
     def select_whereclause(self, whereclause=None, params=None, **kwargs):
         """given a WHERE criterion, create a SELECT statement, execute and return the resulting instances."""

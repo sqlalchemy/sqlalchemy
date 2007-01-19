@@ -1076,8 +1076,14 @@ class _BinaryClause(ClauseElement):
             self.left.compare(other.left) and self.right.compare(other.right)
         )
 
-class _BooleanExpression(_BinaryClause):
-    """represents a boolean expression, which is only useable in WHERE criterion."""
+class _BinaryExpression(_BinaryClause, ColumnElement):
+    """represents a binary expression, which can be in a WHERE criterion or in the column list 
+    of a SELECT.  By adding "ColumnElement" to its inherited list, it becomes a Selectable
+    unit which can be placed in the column list of a SELECT."""
+    pass
+
+class _BooleanExpression(_BinaryExpression):
+    """represents a boolean expression."""
     def __init__(self, *args, **kwargs):
         self.negate = kwargs.pop('negate', None)
         super(_BooleanExpression, self).__init__(*args, **kwargs)
@@ -1086,13 +1092,6 @@ class _BooleanExpression(_BinaryClause):
             return _BooleanExpression(self.left, self.right, self.negate, negate=self.operator, type=self.type)
         else:
             return super(_BooleanExpression, self)._negate()
-        
-class _BinaryExpression(_BinaryClause, ColumnElement):
-    """represents a binary expression, which can be in a WHERE criterion or in the column list 
-    of a SELECT.  By adding "ColumnElement" to its inherited list, it becomes a Selectable
-    unit which can be placed in the column list of a SELECT."""
-    pass
-    
         
 class Join(FromClause):
     def __init__(self, left, right, onclause=None, isouter = False):
