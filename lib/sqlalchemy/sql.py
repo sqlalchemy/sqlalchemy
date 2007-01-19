@@ -274,6 +274,8 @@ class _FunctionGateway(object):
     """returns a callable based on an attribute name, which then returns a _Function 
     object with that name."""
     def __getattr__(self, name):
+        if name[-1] == '_':
+            name = name[0:-1]
         return getattr(_FunctionGenerator(), name)
 func = _FunctionGateway()
 
