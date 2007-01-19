@@ -320,7 +320,16 @@ class ManyToManyDP(DependencyProcessor):
             connection.execute(statement, secondary_insert)
 
     def preprocess_dependencies(self, task, deplist, uowcommit, delete = False):
-        pass
+        #print self.mapper.mapped_table.name + " " + self.key + " " + repr(len(deplist)) + " preprocess_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
+        if not delete:
+            for obj in deplist:
+                childlist = self.get_object_dependencies(obj, uowcommit, passive=True)
+                if childlist is not None:
+                    for child in childlist.deleted_items():
+                        if self.cascade.delete_orphan and childlist.hasparent(child) is False:
+                            uowcommit.register_object(child, isdelete=True)
+                            for c in self.mapper.cascade_iterator('delete', child):
+                                uowcommit.register_object(c, isdelete=True)
     def _synchronize(self, obj, child, associationrow, clearkeys):
         dest = associationrow
         source = None

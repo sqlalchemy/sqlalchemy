@@ -52,6 +52,8 @@
   - some deeper error checking when compiling relations, to detect an ambiguous "primaryjoin"
   in the case that both sides of the relationship have foreign key references in the primary
   join condition
+  - fixed bug where delete-orphan basically didn't work with many-to-many relationships [ticket:427],
+  backref presence generally hid the symptom
   - added a mutex to the mapper compilation step.  ive been reluctant to add any kind
   of threading anything to SA but this is one spot that its its really needed since mappers
   are typically "global", and while their state does not change during normal operation, the 

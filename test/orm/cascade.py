@@ -190,7 +190,7 @@ class M2MCascadeTest(testbase.AssertMixin):
         
     def tearDownAll(self):
         metadata.drop_all()
-    @testbase.supported('')
+
     def testdeleteorphan(self):
         class A(object):
             def __init__(self, data):
@@ -200,7 +200,7 @@ class M2MCascadeTest(testbase.AssertMixin):
                 self.data = data
         
         mapper(A, a, properties={
-            # if no backref here, delete-orphan fails
+            # if no backref here, delete-orphan failed until [ticket:427] was fixed
             'bs':relation(B, secondary=atob, cascade="all, delete-orphan")
         })
         mapper(B, b)
@@ -217,7 +217,32 @@ class M2MCascadeTest(testbase.AssertMixin):
         assert atob.count().scalar() ==0
         assert b.count().scalar() == 0
         assert a.count().scalar() == 1
+    
+    def testcascadedelete(self):
+        class A(object):
+            def __init__(self, data):
+                self.data = data
+        class B(object):
+            def __init__(self, data):
+                self.data = data
         
+        mapper(A, a, properties={
+            'bs':relation(B, secondary=atob, cascade="all, delete-orphan")
+        })
+        mapper(B, b)
+        
+        sess = create_session()
+        a1 = A('a1')
+        b1 = B('b1')
+        a1.bs.append(b1)
+        sess.save(a1)
+        sess.flush()
+        
+        sess.delete(a1)
+        sess.flush()
+        assert atob.count().scalar() ==0
+        assert b.count().scalar() == 0
+        assert a.count().scalar() == 0
         
 if __name__ == "__main__":
     testbase.main()        
