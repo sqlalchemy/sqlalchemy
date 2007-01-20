@@ -274,8 +274,8 @@ class PropertyLoader(StrategizedProperty):
                 else:
                     return sync.MANYTOONE
         else:
-            onetomany = len([c for c in self.foreignkey if self.mapper.unjoined_table.corresponding_column(c, False) is not None])
-            manytoone = len([c for c in self.foreignkey if self.parent.unjoined_table.corresponding_column(c, False) is not None])
+            onetomany = len([c for c in self.foreignkey if self.mapper.unjoined_table.corresponding_column(c, False, require_exact=True) is not None])
+            manytoone = len([c for c in self.foreignkey if self.parent.unjoined_table.corresponding_column(c, False, require_exact=True) is not None])
             if not onetomany and not manytoone:
                 raise exceptions.ArgumentError("Cant determine relation direction for '%s' on mapper '%s' with primary join '%s' - foreign key columns are not present in neither the parent nor the child's mapped tables" %(self.key, str(self.parent), str(self.primaryjoin)))
             elif onetomany and manytoone:

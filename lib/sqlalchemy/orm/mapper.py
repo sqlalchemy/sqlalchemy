@@ -462,7 +462,7 @@ class Mapper(object):
 
         if self.inherits is not None:
             for key, prop in self.inherits.__props.iteritems():
-                if not self.__props.has_key(key):
+                if not self.__props.has_key(key) and (not self.concrete or not isinstance(prop, ColumnProperty)):
                     prop.adapt_to_inherited(key, self)
 
         # load properties from the main table object,
@@ -516,6 +516,8 @@ class Mapper(object):
         the columns of select_table should encompass all the columns of the mapped_table either directly
         or through proxying relationships."""
         if self.select_table is not self.mapped_table:
+            if self.polymorphic_identity is None:
+                raise exceptions.ArgumentError("Could not locate a polymorphic_identity field for mapper '%s'.  This field is required for polymorphic mappers" % str(self))
             props = {}
             if self.properties is not None:
                 for key, prop in self.properties.iteritems():

@@ -248,7 +248,7 @@ class LazyLoader(AbstractRelationLoader):
         binds = {}
         reverse = {}
         def column_in_table(table, column):
-            return table.corresponding_column(column, raiseerr=False, keys_ok=False) is not None
+            return table.corresponding_column(column, raiseerr=False, keys_ok=False, require_exact=True) is not None
 
         if remote_side is None or len(remote_side) == 0:
             remote_side = foreignkey

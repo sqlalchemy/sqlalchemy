@@ -728,9 +728,17 @@ class FromClause(Selectable):
         if not hasattr(self, '_oid_column'):
             self._oid_column = self._locate_oid_column()
         return self._oid_column
-    def corresponding_column(self, column, raiseerr=True, keys_ok=False):
+    def corresponding_column(self, column, raiseerr=True, keys_ok=False, require_exact=False):
         """given a ColumnElement, return the ColumnElement object from this 
         Selectable which corresponds to that original Column via a proxy relationship."""
+        if require_exact:
+            if self.columns.get(column.key) is column:
+                return column
+            else:
+                if not raiseerr:
+                    return None
+                else:
+                    raise exceptions.InvalidRequestError("Column instance '%s' is not directly present in table '%s'" % (str(column), str(column.table)))
         for c in column.orig_set:
             try:
                 return self.original_columns[c]
