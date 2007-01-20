@@ -55,6 +55,7 @@
   - some deeper error checking when compiling relations, to detect an ambiguous "primaryjoin"
   in the case that both sides of the relationship have foreign key references in the primary
   join condition
+  - fix to "proxy=True" behavior on synonym()
   - fixed bug where delete-orphan basically didn't work with many-to-many relationships [ticket:427],
   backref presence generally hid the symptom
   - added a mutex to the mapper compilation step.  ive been reluctant to add any kind

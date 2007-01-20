@@ -396,6 +396,12 @@ class MapperTest(MapperSuperTest):
         
         u = sess.query(User).get_by(uname='jack')
         self.assert_result(u.adlist, Address, *(user_address_result[0]['addresses'][1]))
+
+        assert u not in sess.dirty
+        u.uname = "some user name"
+        assert u.uname == "some user name"
+        assert u.user_name == "some user name"
+        assert u in sess.dirty
     
     def testextensionoptions(self):
         sess  = create_session()

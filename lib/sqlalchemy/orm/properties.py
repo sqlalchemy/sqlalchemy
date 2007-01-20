@@ -31,7 +31,6 @@ class SynonymProperty(MapperProperty):
         class SynonymProp(object):
             def __set__(s, obj, value):
                 setattr(obj, self.name, value)
-                self.set(None, obj, value)
             def __delete__(s, obj):
                 delattr(obj, self.name)
             def __get__(s, obj, owner):
