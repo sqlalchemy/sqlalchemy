@@ -462,8 +462,8 @@ class Mapper(object):
 
         if self.inherits is not None:
             for key, prop in self.inherits.__props.iteritems():
-                if not self.__props.has_key(key) and (not self.concrete or not isinstance(prop, ColumnProperty)):
-                    prop.adapt_to_inherited(key, self)
+                if not self.__props.has_key(key):
+                    self._adapt_inherited_property(key, prop)
 
         # load properties from the main table object,
         # not overriding those set up in the 'properties' argument
@@ -665,6 +665,11 @@ class Mapper(object):
         else:
             return None
 
+    def _adapt_inherited_property(self, key, prop):
+        if not self.concrete:
+            self._compile_property(key, prop, init=False, setparent=False)
+        # TODO: concrete properties dont adapt at all right now....will require copies of relations() etc.
+        
     def _compile_property(self, key, prop, init=True, skipmissing=False, setparent=True):
         """add a MapperProperty to this or another Mapper, including configuration of the property.
         
@@ -685,9 +690,7 @@ class Mapper(object):
             prop.set_parent(self)
             
         if isinstance(prop, ColumnProperty):
-            col = self.select_table.corresponding_column(prop.columns[0], keys_ok=True, raiseerr=False)
-            if col is None:
-                col = prop.columns[0]
+            col = self.select_table.corresponding_column(prop.columns[0], keys_ok=False, raiseerr=True)
             self.columns[key] = col
             for col in prop.columns:
                 proplist = self.columntoproperty.setdefault(col, [])
@@ -697,7 +700,7 @@ class Mapper(object):
             prop.init(key, self)
 
         for mapper in self._inheriting_mappers:
-            prop.adapt_to_inherited(key, mapper)
+            mapper._adapt_inherited_property(key, prop)
 
     def __str__(self):
         return "Mapper|" + self.class_.__name__ + "|" + (self.entity_name is not None and "/%s" % self.entity_name or "") + (self.local_table and self.local_table.name or str(self.local_table)) + (not self._is_primary_mapper() and "|non-primary" or "")

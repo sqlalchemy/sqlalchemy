@@ -37,10 +37,6 @@ class MapperProperty(object):
         mappers, establish instrumented class attributes"""
         self.key = key
         self.do_init()
-    def adapt_to_inherited(self, key, newparent):
-        """adapt this MapperProperty to a new parent, assuming the new parent is an inheriting
-        descendant of the old parent.  """
-        newparent._compile_property(key, self, init=False, setparent=False)
     def do_init(self):
         """template method for subclasses"""
         pass
