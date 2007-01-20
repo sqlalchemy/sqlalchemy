@@ -477,11 +477,12 @@ class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
         return colspec
 
     def post_create_table(self, table):
-        mysql_engine = table.kwargs.get('mysql_engine', None)
-        if mysql_engine is not None:
-            return " TYPE=%s" % mysql_engine
-        else:
-            return ""
+        args = ""
+        for k in table.kwargs:
+            if k.startswith('mysql_'):
+                opt = k[6:]
+                args += " %s=%s" % (opt.upper(), table.kwargs[k])
+        return args
 
 class MySQLSchemaDropper(ansisql.ANSISchemaDropper):
     def visit_index(self, index):

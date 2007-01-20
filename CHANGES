@@ -43,6 +43,9 @@
 - mysql:
   - mysql is inconsistent with what kinds of quotes it uses in foreign keys during a
   SHOW CREATE TABLE, reflection updated to accomodate for all three styles [ticket:420]
+  - mysql table create options work on a generic passthru now, i.e. Table(..., mysql_engine='InnoDB',
+  mysql_collate="latin1_german2_ci", mysql_auto_increment="5", mysql_<somearg>...), 
+  helps [ticket:418]
 - firebird:
   - order of constraint creation puts primary key first before all other constraints;
   required for firebird, not a bad idea for others [ticket:408]
