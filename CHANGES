@@ -79,7 +79,9 @@ with new instance
   [ticket:413]
   - added an error message if you actually try to modify primary key values on an entity
   and then flush it [ticket:412]
-
+- extensions
+  - added "validate=False" argument to assign_mapper, if True will insure that only mapped
+  attributes are named [ticket:426]
 0.3.3
 - string-based FROM clauses fixed, i.e. select(..., from_obj=["sometext"])
 - fixes to passive_deletes flag, lazy=None (noload) flag
