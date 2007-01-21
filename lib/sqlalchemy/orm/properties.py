@@ -38,7 +38,7 @@ class SynonymProperty(MapperProperty):
                     return s
                 return getattr(obj, self.name)
         setattr(self.parent.class_, self.key, SynonymProp())
-    def merge(self, session, source, dest):
+    def merge(self, session, source, dest, _recursive):
         pass
         
 class ColumnProperty(StrategizedProperty):
@@ -61,7 +61,7 @@ class ColumnProperty(StrategizedProperty):
         setattr(object, self.key, value)
     def get_history(self, obj, passive=False):
         return sessionlib.attribute_manager.get_history(obj, self.key, passive=passive)
-    def merge(self, session, source, dest):
+    def merge(self, session, source, dest, _recursive):
         setattr(dest, self.key, getattr(source, self.key, None))
     def compare(self, value):
         return self.columns[0] == value
@@ -127,20 +127,26 @@ class PropertyLoader(StrategizedProperty):
     def __str__(self):
         return self.__class__.__name__ + " " + str(self.parent) + "->" + self.key + "->" + str(self.mapper)
 
-    def merge(self, session, source, dest):
-        if not "merge" in self.cascade:
+    def merge(self, session, source, dest, _recursive):
+        if not "merge" in self.cascade or source in _recursive:
             return
-        childlist = sessionlib.attribute_manager.get_history(source, self.key, passive=True)
-        if childlist is None:
-            return
-        if self.uselist:
-            # sets a blank list according to the correct list class
-            dest_list = getattr(self.parent.class_, self.key).initialize(dest)
-            for current in list(childlist):
-                dest_list.append(session.merge(current))
-        else:
-            setattr(dest, self.key, session.merge(current))
-        
+        _recursive.add(source)
+        try:
+            childlist = sessionlib.attribute_manager.get_history(source, self.key, passive=True)
+            if childlist is None:
+                return
+            if self.uselist:
+                # sets a blank list according to the correct list class
+                dest_list = getattr(self.parent.class_, self.key).initialize(dest)
+                for current in list(childlist):
+                    dest_list.append(session.merge(current, _recursive=_recursive))
+            else:
+                current = list(childlist)[0]
+                if current is not None:
+                    setattr(dest, self.key, session.merge(current, _recursive=_recursive))
+        finally:
+            _recursive.remove(source)
+            
     def cascade_iterator(self, type, object, recursive, halt_on=None):
         if not type in self.cascade:
             return

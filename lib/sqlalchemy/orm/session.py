@@ -323,7 +323,7 @@ class Session(object):
         for c in [object] + list(_object_mapper(object).cascade_iterator('delete', object)):
             self.uow.register_deleted(c)
 
-    def merge(self, object, entity_name=None):
+    def merge(self, object, entity_name=None, _recursive=None):
         """copy the state of the given object onto the persistent object with the same identifier. 
         
         If there is no persistent instance currently associated with the session, it will be loaded. 
@@ -331,6 +331,8 @@ class Session(object):
         a newly persistent instance. The given instance does not become associated with the session. 
         This operation cascades to associated instances if the association is mapped with cascade="merge".
         """
+        if _recursive is None:
+            _recursive = util.Set()
         mapper = _object_mapper(object)
         key = getattr(object, '_instance_key', None)
         if key is None:
@@ -341,7 +343,7 @@ class Session(object):
             else:
                 merged = self.get(mapper.class_, key[1])
         for prop in mapper.props.values():
-            prop.merge(self, object, merged)
+            prop.merge(self, object, merged, _recursive)
         if key is None:
             self.save(merged)
         return merged

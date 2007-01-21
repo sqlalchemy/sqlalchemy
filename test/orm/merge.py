@@ -60,7 +60,7 @@ class MergeTest(AssertMixin):
     def test_saved_cascade(self):
         """test merge of a persistent entity with two child persistent entities."""
         mapper(User, users, properties={
-            'addresses':relation(mapper(Address, addresses))
+            'addresses':relation(mapper(Address, addresses), backref='user')
         })
         sess = create_session()
         
@@ -108,7 +108,7 @@ class MergeTest(AssertMixin):
         
         mapper(User, users, properties={
             'addresses':relation(mapper(Address, addresses)),
-            'orders':relation(Order)
+            'orders':relation(Order, backref='customer')
         })
         
         sess = create_session()
@@ -132,6 +132,12 @@ class MergeTest(AssertMixin):
         u.orders[0].items[1].item_name = 'item 2 modified'
         sess2.merge(u)
         assert u2.orders[0].items[1].item_name == 'item 2 modified'
+
+        sess2 = create_session()
+        o2 = sess2.query(Order).get(o.order_id)
+        o.customer.user_name = 'also fred'
+        sess2.merge(o)
+        assert o2.customer.user_name == 'also fred'
         
         
 if __name__ == "__main__":    
