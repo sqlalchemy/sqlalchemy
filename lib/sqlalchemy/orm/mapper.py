@@ -691,7 +691,12 @@ class Mapper(object):
             prop.set_parent(self)
             
         if isinstance(prop, ColumnProperty):
-            col = self.select_table.corresponding_column(prop.columns[0], keys_ok=False, raiseerr=True)
+            # relate the mapper's "select table" to the given ColumnProperty
+            col = self.select_table.corresponding_column(prop.columns[0], keys_ok=True, raiseerr=False)
+            # col might not be present! the selectable given to the mapper need not include "deferred"
+            # columns (included in zblog tests)
+            if col is None:
+                col = prop.columns[0]
             self.columns[key] = col
             for col in prop.columns:
                 proplist = self.columntoproperty.setdefault(col, [])
