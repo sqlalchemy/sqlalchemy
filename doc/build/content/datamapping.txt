@@ -446,7 +446,7 @@ Another way to specify joins more explicitly is to use the `from_obj` parameter 
 
 In the above example, the `join` function by default creates a natural join between the two tables, so we were able to avoid having to specify the join condition between `users` and `addresses` explicitly.
 
-#### Creating Joins Using selectby() {@name=relselectby}
+#### Creating Joins Using select\_by() {@name=relselectby}
 
 Another way that joins can be created is by using the `select_by` method of `Query`, which has the ability to create joins across relationships automatically.  This method is in many circumstances more convenient than, but not as flexible as, the more SQL-level approach using the `select()` method described in the previous section.
 
