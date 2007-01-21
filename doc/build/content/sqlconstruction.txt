@@ -170,7 +170,7 @@ Labels are also generated in such a way as to never go beyond 30 characters.  Mo
 
     {python title="use_labels Generates Abbreviated Labels"}
     long_named_table = users.alias('this_is_the_person_table')
-    {sql}c = select([person], use_labels=True).execute()  
+    {sql}c = select([long_named_table], use_labels=True).execute()  
     SELECT this_is_the_person_table.user_id AS this_is_the_person_table_b36c, 
     this_is_the_person_table.user_name AS this_is_the_person_table_f76a, 
     this_is_the_person_table.password AS this_is_the_person_table_1e7c

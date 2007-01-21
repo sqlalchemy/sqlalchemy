@@ -78,22 +78,6 @@
 	padding: 5px 0px 0px 0px;
 }
 
-.code {
-	font-family: courier, "courier new", serif;
-	font-size:12px;
-	background-color: #f0f0f0;	
-	padding:2px 2px 2px 10px;
-	margin: 5px 5px 5px 5px;
-}
-
-.sliding_code {
-	font-family: courier, "courier new", serif;
-	font-size:12px;
-	background-color: #f0f0f0;	
-	padding:2px 2px 2px 10px;
-	margin: 5px 5px 5px 5px;
-	overflow:auto;
-}
 
 .codetitle {
 	font-family: verdana, sans-serif;
@@ -235,6 +219,16 @@ h3, .sectionheadertext {
 	padding:4px 4px 4px 4px;
 	background-color: #f0f0f0;	
 	border: solid 1px #ccc;
+}
+
+.sliding_code {
+	font-family: courier, "courier new", serif;
+	font-size:12px;
+	background-color: #f0f0f0;	
+	border: solid 1px #ccc;
+	padding:2px 2px 2px 10px;
+	margin: 5px 5px 5px 5px;
+	overflow:auto;
 }
 
 .code {

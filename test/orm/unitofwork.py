@@ -464,6 +464,61 @@ class ForeignPKTest(UnitOfWorkTest):
         p.sites.append(ps)
         ctx.current.flush()
         assert people.count(people.c.person=='im the key').scalar() == peoplesites.count(peoplesites.c.person=='im the key').scalar() == 1
+
+class PassiveDeletesTest(UnitOfWorkTest):
+    def setUpAll(self):
+        UnitOfWorkTest.setUpAll(self)
+        global metadata, mytable,myothertable
+        metadata = BoundMetaData(testbase.db)
+        mytable = Table('mytable', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)),
+            mysql_engine='InnoDB'
+            )
+
+        myothertable = Table('myothertable', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('parent_id', Integer),
+            Column('data', String(30)),
+            ForeignKeyConstraint(['parent_id'],['mytable.id'], ondelete="CASCADE"),
+            mysql_engine='InnoDB'
+            )
+
+        metadata.create_all()
+    def tearDownAll(self):
+        metadata.drop_all()
+        UnitOfWorkTest.tearDownAll(self)
+
+    @testbase.unsupported('sqlite')
+    def testbasic(self):
+        class MyClass(object):
+            pass
+        class MyOtherClass(object):
+            pass
+        
+        mapper(MyOtherClass, myothertable)
+
+        mapper(MyClass, mytable, properties={
+            'children':relation(MyOtherClass, passive_deletes=True, cascade="all")
+        })
+
+        sess = ctx.current
+        mc = MyClass()
+        mc.children.append(MyOtherClass())
+        mc.children.append(MyOtherClass())
+        mc.children.append(MyOtherClass())
+        mc.children.append(MyOtherClass())
+        sess.save(mc)
+        sess.flush()
+        sess.clear()
+        assert myothertable.count().scalar() == 4
+        mc = sess.query(MyClass).get(mc.id)
+        sess.delete(mc)
+        sess.flush()
+        assert mytable.count().scalar() == 0
+        assert myothertable.count().scalar() == 0
+        
+
         
 class PrivateAttrTest(UnitOfWorkTest):
     """tests various things to do with private=True mappers"""
@@ -908,7 +963,8 @@ class SaveTest(UnitOfWorkTest):
         ctx.current.delete(u)
         ctx.current.flush()
         self.assert_(a.address_id is not None and a.user_id is None and not ctx.current.identity_map.has_key(u._instance_key) and ctx.current.identity_map.has_key(a._instance_key))
-        
+    
+    
     def testbackwardsonetoone(self):
         # test 'backwards'
 #        m = mapper(Address, addresses, properties = dict(

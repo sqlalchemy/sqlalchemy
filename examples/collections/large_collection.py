@@ -5,12 +5,14 @@ meta = BoundMetaData('sqlite://', echo=True)
 
 org_table = Table('organizations', meta, 
     Column('org_id', Integer, primary_key=True),
-    Column('org_name', String(50), nullable=False, key='name'))
+    Column('org_name', String(50), nullable=False, key='name'),
+    mysql_engine='InnoDB')
     
 member_table = Table('members', meta,
     Column('member_id', Integer, primary_key=True),
     Column('member_name', String(50), nullable=False, key='name'),
-    Column('org_id', Integer, ForeignKey('organizations.org_id')))
+    Column('org_id', Integer, ForeignKey('organizations.org_id')), 
+    mysql_engine='InnoDB')
 meta.create_all()    
     
 class Organization(object):

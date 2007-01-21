@@ -87,8 +87,8 @@ class Mapper(object):
         order_by - a single Column or list of Columns for which selection operations should use as the default
         ordering for entities.  Defaults to the OID/ROWID of the table if any, or the first primary key column of the table.
         
-        allow_column_override - if True, allows association relationships to be set up which override the usage of 
-        a column that is on the table (based on key/attribute name).
+        allow_column_override - if True, allows the usage of a `relation()` which has the same name as a column in the mapped table.
+        The table column will no longer be mapped.
         
         entity_name - a name to be associated with the class, to allow alternate mappings for a single class.
         

@@ -234,6 +234,8 @@ Within the `MetaData` collection, this table will be identified by the combinati
         Column('lala', String(40)),
         ForeignKeyConstraint(['lala'],['hoho.lala'], onupdate="CASCADE", ondelete="CASCADE"))
 
+Note that these clauses are not supported on SQLite, and require `InnoDB` tables when used with MySQL.  They may also not be supported on other databases.
+
 #### Enabling Table / Column Quoting {@name=quoting}
 
 Feature Status: [Alpha Implementation][alpha_implementation] 

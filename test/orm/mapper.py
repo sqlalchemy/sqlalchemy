@@ -1010,6 +1010,27 @@ class EagerTest(MapperSuperTest):
             l = q.options(contains_eager('addresses')).instances(selectquery.execute())
             self.assert_result(l, User, *user_address_result)
         self.assert_sql_count(testbase.db, go, 1)
+
+    def testcustomeagerwithdecorator(self):
+        mapper(User, users, properties={
+            'addresses':relation(Address, lazy=False)
+        })
+        mapper(Address, addresses)
+
+        adalias = addresses.alias('adalias')
+        selectquery = users.outerjoin(adalias).select(use_labels=True)
+        def decorate(row):
+            d = {}
+            for c in addresses.columns:
+                d[c] = row[adalias.corresponding_column(c)]
+            return d
+            
+        q = create_session().query(User)
+
+        def go():
+            l = q.options(contains_eager('addresses', decorator=decorate)).instances(selectquery.execute())
+            self.assert_result(l, User, *user_address_result)
+        self.assert_sql_count(testbase.db, go, 1)
         
     def testorderby_desc(self):
         m = mapper(Address, addresses)
