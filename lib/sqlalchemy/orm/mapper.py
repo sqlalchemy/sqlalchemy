@@ -681,9 +681,10 @@ class Mapper(object):
         self.__log("_compile_property(%s, %s)" % (key, prop.__class__.__name__))
 
         if not isinstance(prop, MapperProperty):
-            prop = self._create_prop_from_column(prop, skipmissing=skipmissing)
-            if prop is None:
-                raise exceptions.ArgumentError("'%s' is not an instance of MapperProperty or Column" % repr(prop))
+            col = self._create_prop_from_column(prop, skipmissing=skipmissing)
+            if col is None:
+                raise exceptions.ArgumentError("%s=%r is not an instance of MapperProperty or Column" % (key, prop))
+            prop = col
 
         self.__props[key] = prop
         if setparent:
