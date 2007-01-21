@@ -139,6 +139,28 @@ class MergeTest(AssertMixin):
         sess2.merge(o)
         assert o2.customer.user_name == 'also fred'
         
+    def test_saved_cascade_3(self):
+            """test merge of a persistent entity with one_to_one relationship"""
+            mapper(User, users, properties={
+                'address':relation(mapper(Address, addresses),uselist = False)
+            })
+            sess = create_session()
+            u = User()
+            u.user_id = 7
+            u.user_name = "fred"
+            a1 = Address()
+            a1.email_address='foo@bar.com'
+            u.address = a1
+
+            sess.save(u)
+            sess.flush()
+
+            sess2 = create_session()
+            u2 = sess2.query(User).get(7)
+            u2.user_name = 'fred2'
+            u2.address.email_address = 'hoho@lalala.com'
+
+            u3 = sess.merge(u2)
         
 if __name__ == "__main__":    
     testbase.main()
