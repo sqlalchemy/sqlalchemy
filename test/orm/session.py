@@ -38,6 +38,22 @@ class SessionTest(AssertMixin):
         s.user_name = 'some other user'
         s.flush()
 
+    def test_transaction(self):
+        class User(object):pass
+        mapper(User, users)
+        sess = create_session()
+        transaction = sess.create_transaction()
+        try:
+            u = User()
+            sess.save(u)
+            sess.flush()
+            sess.delete(u)
+            sess.save(User())
+            sess.flush()
+            transaction.commit()
+        except:
+            transaction.rollback()
+        
     def test_close_two(self):
         c = testbase.db.connect()
         try:
