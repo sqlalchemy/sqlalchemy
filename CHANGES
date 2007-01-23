@@ -85,6 +85,7 @@ with new instance
 - extensions
   - added "validate=False" argument to assign_mapper, if True will insure that only mapped
   attributes are named [ticket:426]
+  - assign_mapper gets "options", "instances" functions added  (i.e. MyClass.instances())
 0.3.3
 - string-based FROM clauses fixed, i.e. select(..., from_obj=["sometext"])
 - fixes to passive_deletes flag, lazy=None (noload) flag
