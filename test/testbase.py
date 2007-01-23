@@ -73,7 +73,7 @@ def parse_argv():
             db_uri = 'oracle://scott:tiger@127.0.0.1:1521'
         elif DBTYPE == 'oracle8':
             db_uri = 'oracle://scott:tiger@127.0.0.1:1521'
-            opts = {'use_ansi':False}
+            opts = {'use_ansi':False, 'auto_setinputsizes':True}
         elif DBTYPE == 'mssql':
             db_uri = 'mssql://scott:tiger@SQUAWK\\SQLEXPRESS/test'
         elif DBTYPE == 'firebird':

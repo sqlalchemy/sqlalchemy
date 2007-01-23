@@ -52,6 +52,10 @@
   required for firebird, not a bad idea for others [ticket:408]
   - Firebird fix to autoload multifield foreign keys [ticket:409]
   - Firebird NUMERIC type properly handles a type without precision [ticket:409]
+- oracle:
+  - *slight* support for binary, but still need to figure out how to insert reasonably large
+  values (over 4K).  requires auto_setinputsizes=True sent to create_engine(), rows must
+  be fully fetched individually, etc.
 - orm:
   - poked the first hole in the can of worms: saying query.select_by(somerelationname=someinstance)
   will create the join of the primary key columns represented by "somerelationname"'s mapper to the

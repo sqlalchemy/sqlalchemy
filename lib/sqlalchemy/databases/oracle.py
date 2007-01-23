@@ -62,11 +62,15 @@ class OracleBinary(sqltypes.Binary):
         return dbapi.BINARY
     def get_col_spec(self):
         return "BLOB"
-class OracleLongBinary(sqltypes.Binary):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.LONG_BINARY
-    def get_col_spec(self):
-        return "LONGBLOB"
+    def convert_bind_param(self, value, dialect):
+        # this is RAWTOHEX
+        return ''.join(["%.2X" % ord(c) for c in value])
+    def convert_result_value(self, value, dialect):
+        if value is None:
+            return None
+        else:
+            return value.read()
+
 class OracleBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "SMALLINT"
