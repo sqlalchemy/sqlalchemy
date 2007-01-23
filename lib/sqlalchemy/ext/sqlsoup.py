@@ -106,18 +106,19 @@ To finish covering the basics, let's insert a new loan, then delete it:
     >>> db.delete(loan)
     >>> db.flush()
 
-You can also delete rows that have not been loaded as objects.  Let's do our insert/delete cycle once more,
-this time using the loans table's delete method.  (For SQLAlchemy experts:
-note that no flush() call is required since this
-delete acts at the SQL level, not at the Mapper level.)  The same where-clause construction rules
-apply here as to the select methods.
+You can also delete rows that have not been loaded as objects. Let's do our
+insert/delete cycle once more, this time using the loans table's delete
+method. (For SQLAlchemy experts: note that no flush() call is required since
+this delete acts at the SQL level, not at the Mapper level.) The same
+where-clause construction rules apply here as to the select methods.
 
     >>> db.loans.insert(book_id=book_id, user_name=user.name)
     MappedLoans(book_id=2,user_name='Bhargan Basepair',loan_date=None)
     >>> db.flush()
     >>> db.loans.delete(db.loans.c.book_id==2)
 
-You can similarly update multiple rows at once.  This will change the book_id to 1 in all loans whose book_id is 2:
+You can similarly update multiple rows at once. This will change the book_id
+to 1 in all loans whose book_id is 2:
 
     >>> db.loans.update(db.loans.c.book_id==2, book_id=1)
     >>> db.loans.select_by(db.loans.c.book_id==1)
@@ -159,8 +160,8 @@ to disambiguate columns with their table name:
     >>> db.with_labels(join1).c.keys()
     ['users_name', 'users_email', 'users_password', 'users_classname', 'users_admin', 'loans_book_id', 'loans_user_name', 'loans_loan_date']
 
-You can disambiguate just one table in a join by applying labels to that table, 
-and joining on the returned object:
+You can also join directly to a labeled object:
+
     >>> labeled_loans = db.with_labels(db.loans)
     >>> db.join(db.users, labeled_loans, isouter=True).c.keys()
     ['name', 'email', 'password', 'classname', 'admin', 'loans_book_id', 'loans_user_name', 'loans_loan_date']
