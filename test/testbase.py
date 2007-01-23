@@ -15,6 +15,7 @@ import optparse
 db = None
 metadata = None
 db_uri = None
+db_opts = {}
 echo = True
 
 # redefine sys.stdout so all those print statements go to the echo func
@@ -32,7 +33,7 @@ def echo_text(text):
 def parse_argv():
     # we are using the unittest main runner, so we are just popping out the 
     # arguments we need instead of using our own getopt type of thing
-    global db, db_uri, metadata
+    global db, db_uri, db_opts, metadata
     
     DBTYPE = 'sqlite'
     PROXY = False
@@ -55,11 +56,13 @@ def parse_argv():
     
     if options.dburi:
         db_uri = param = options.dburi
+        DBTYPE = db_uri[:db_uri.index(':')]
     elif options.db:
         DBTYPE = param = options.db
 
-
-    opts = {} 
+    if DBTYPE == 'mssql':
+        db_opts['auto_identity_insert'] = True    
+    
     if (None == db_uri):
         if DBTYPE == 'sqlite':
             db_uri = 'sqlite:///:memory:'
@@ -73,7 +76,7 @@ def parse_argv():
             db_uri = 'oracle://scott:tiger@127.0.0.1:1521'
         elif DBTYPE == 'oracle8':
             db_uri = 'oracle://scott:tiger@127.0.0.1:1521'
-            opts = {'use_ansi':False, 'auto_setinputsizes':True}
+            db_opts = {'use_ansi':False, 'auto_setinputsizes':True}
         elif DBTYPE == 'mssql':
             db_uri = 'mssql://scott:tiger@SQUAWK\\SQLEXPRESS/test'
         elif DBTYPE == 'firebird':
@@ -96,11 +99,11 @@ def parse_argv():
     with_coverage = options.coverage
     
     if options.enginestrategy is not None:
-        opts['strategy'] = options.enginestrategy    
+        db_opts['strategy'] = options.enginestrategy    
     if options.mockpool:
-        db = engine.create_engine(db_uri, poolclass=pool.AssertionPool, **opts)
+        db = engine.create_engine(db_uri, poolclass=pool.AssertionPool, **db_opts)
     else:
-        db = engine.create_engine(db_uri, **opts)
+        db = engine.create_engine(db_uri, **db_opts)
     db = EngineAssert(db)
 
     import logging

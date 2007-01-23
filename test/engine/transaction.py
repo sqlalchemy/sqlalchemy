@@ -144,7 +144,7 @@ class AutoRollbackTest(testbase.PersistTest):
 class TLTransactionTest(testbase.PersistTest):
     def setUpAll(self):
         global users, metadata, tlengine
-        tlengine = create_engine(testbase.db_uri, strategy='threadlocal')
+        tlengine = create_engine(testbase.db_uri, strategy='threadlocal', **testbase.db_opts)
         metadata = MetaData()
         users = Table('query_users', metadata,
             Column('user_id', INT, primary_key = True),
