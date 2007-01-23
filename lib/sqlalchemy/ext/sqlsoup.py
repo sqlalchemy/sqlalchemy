@@ -181,7 +181,12 @@ to span multiple flushes.)
 Mapping arbitrary Selectables
 -----------------------------
 
-SqlSoup can map any SQLAlchemy Selectable with the map method.  Let's map a Select object that uses an aggregate function; we'll use the SQLAlchemy Table that SqlSoup introspected as the basis.  (Since we're not mapping to a simple table or join, we need to tell SQLAlchemy how to find the "primary key," which just needs to be unique within the select, and not necessarily correspond to a "real" PK in the database.)
+SqlSoup can map any SQLAlchemy Selectable with the map method. Let's map a
+Select object that uses an aggregate function; we'll use the SQLAlchemy Table
+that SqlSoup introspected as the basis. (Since we're not mapping to a simple
+table or join, we need to tell SQLAlchemy how to find the "primary key," which
+just needs to be unique within the select, and not necessarily correspond to a
+"real" PK in the database.)
 
     >>> from sqlalchemy import select, func
     >>> b = db.books._table
@@ -232,6 +237,15 @@ Boring tests here.  Nothing of real expository value.
     Traceback (most recent call last):
     ...
     InvalidRequestError: SQLSoup can only modify mapped Tables (found: Alias)
+
+    [tests clear()]
+    >>> db.loans.count()
+    1
+    >>> _ = db.loans.insert(book_id=1, user_name='Bhargan Basepair')
+    >>> db.clear()
+    >>> db.flush()
+    >>> db.loans.count()
+    1
 """
 
 from sqlalchemy import *
@@ -302,23 +316,17 @@ class PKNotFoundError(SQLAlchemyError): pass
 
 # metaclass is necessary to expose class methods with getattr, e.g.
 # we want to pass db.users.select through to users._mapper.select
-def _ddl_check(cls):
-    if not isinstance(cls._table, Table):
-        msg = 'SQLSoup can only modify mapped Tables (found: %s)' \
-              % cls._table.__class__.__name__
-        raise InvalidRequestError(msg)
-class TableClassType(type):
+def _ddl_error(cls):
+    msg = 'SQLSoup can only modify mapped Tables (found: %s)' \
+          % cls._table.__class__.__name__
+    raise InvalidRequestError(msg)
+class SelectableClassType(type):
     def insert(cls, **kwargs):
-        _ddl_check(cls)
-        o = cls()
-        o.__dict__.update(kwargs)
-        return o
+        _ddl_error(cls)
     def delete(cls, *args, **kwargs):
-        _ddl_check(cls)
-        cls._table.delete(*args, **kwargs).execute()
+        _ddl_error(cls)
     def update(cls, whereclause=None, values=None, **kwargs):
-        _ddl_check(cls)
-        cls._table.update(whereclause, values).execute(**kwargs)
+        _ddl_error(cls)
     def _selectable(cls):
         return cls._table
     def __getattr__(cls, attr):
@@ -326,6 +334,15 @@ class TableClassType(type):
             # called during mapper init
             raise AttributeError()
         return getattr(cls._query, attr)
+class TableClassType(SelectableClassType):
+    def insert(cls, **kwargs):
+        o = cls()
+        o.__dict__.update(kwargs)
+        return o
+    def delete(cls, *args, **kwargs):
+        cls._table.delete(*args, **kwargs).execute()
+    def update(cls, whereclause=None, values=None, **kwargs):
+        cls._table.update(whereclause, values).execute(**kwargs)
             
 
 def _is_outer_join(selectable):
@@ -353,7 +370,10 @@ def class_for_table(selectable, **mapper_kwargs):
     or selectable._selectable() != selectable:
         raise ArgumentError('class_for_table requires a selectable as its argument')
     mapname = 'Mapped' + _selectable_name(selectable)
-    klass = TableClassType(mapname, (object,), {})
+    if isinstance(selectable, Table):
+        klass = TableClassType(mapname, (object,), {})
+    else:
+        klass = SelectableClassType(mapname, (object,), {})
     def __cmp__(self, o):
         L = self.__class__.c.keys()
         L.sort()
@@ -408,7 +428,7 @@ class SqlSoup:
         objectstore.delete(*args, **kwargs)
     def flush(self):
         objectstore.get_session().flush()
-    def rollback(self):
+    def clear(self):
         objectstore.clear()
     def map(self, selectable, **kwargs):
         try:
