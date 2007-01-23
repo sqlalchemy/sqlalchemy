@@ -62,6 +62,25 @@ class PolymorphicCircularTest(testbase.PersistTest):
             def __repr__(self):
                 return "%s(%d, %s)" % (self.__class__.__name__, self.id, repr(str(self.data)))
             
+        try:
+            # this is how the mapping used to work.  insure that this raises an error now
+            table1_mapper = mapper(Table1, table1,
+                                   select_table=join,
+                                   polymorphic_on=join.c.type,
+                                   polymorphic_identity='table1',
+                                   properties={
+                                    'next': relation(Table1, 
+                                        backref=backref('prev', primaryjoin=join.c.id==join.c.related_id, foreignkey=join.c.id, uselist=False), 
+                                        uselist=False, lazy=False, primaryjoin=join.c.id==join.c.related_id),
+                                    'data':relation(mapper(Data, data), lazy=False)
+                                    }
+                            )
+            table1_mapper.compile()
+            assert False
+        except:
+            assert True
+            clear_mappers()
+            
         # currently, all of these "eager" relationships degrade to lazy relationships
         # due to the polymorphic load.
         table1_mapper = mapper(Table1, table1,
@@ -69,12 +88,14 @@ class PolymorphicCircularTest(testbase.PersistTest):
                                polymorphic_on=join.c.type,
                                polymorphic_identity='table1',
                                properties={
-                                'next': relation(Table1, 
-                                    backref=backref('prev', primaryjoin=join.c.id==join.c.related_id, foreignkey=join.c.id, uselist=False), 
-                                    uselist=False, lazy=False, primaryjoin=join.c.id==join.c.related_id),
-                                'data':relation(mapper(Data, data), lazy=False)
+                               'next': relation(Table1, 
+                                   backref=backref('prev', primaryjoin=table1.c.id==table1.c.related_id, remote_side=table1.c.id, uselist=False), 
+                                   uselist=False, lazy=False, primaryjoin=table1.c.id==table1.c.related_id),
+                               'data':relation(mapper(Data, data), lazy=False)
                                 }
                         )
+        
+
 
         table1b_mapper = mapper(Table1B, inherits=table1_mapper, polymorphic_identity='table1b')
 

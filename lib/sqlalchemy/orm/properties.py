@@ -193,8 +193,9 @@ class PropertyLoader(StrategizedProperty):
         else:
             raise exceptions.ArgumentError("relation '%s' expects a class or a mapper argument (received: %s)" % (self.key, type(self.argument)))
             
-        self.mapper = self.mapper.get_select_mapper()._check_compile()
-            
+        # insure the "select_mapper", if different from the regular target mapper, is compiled.
+        self.mapper.get_select_mapper()._check_compile()
+           
         if self.association is not None:
             if isinstance(self.association, type):
                 self.association = mapper.class_mapper(self.association, compile=False)._check_compile()
@@ -220,6 +221,19 @@ class PropertyLoader(StrategizedProperty):
                     self.primaryjoin = sql.join(self.parent.unjoined_table, self.target).onclause
         except exceptions.ArgumentError, e:
             raise exceptions.ArgumentError("Error determining primary and/or secondary join for relationship '%s' between mappers '%s' and '%s'.  If the underlying error cannot be corrected, you should specify the 'primaryjoin' (and 'secondaryjoin', if there is an association table present) keyword arguments to the relation() function (or for backrefs, by specifying the backref using the backref() function with keyword arguments) to explicitly specify the join conditions.  Nested error is \"%s\"" % (self.key, self.parent, self.mapper, str(e)))
+
+        # if using polymorphic mapping, the join conditions must be agasint the base tables of the mappers,
+        # as the loader strategies expect to be working with those now (they will adapt the join conditions
+        # to the "polymorphic" selectable as needed).  since this is an API change, put an explicit check/
+        # error message in case its the "old" way.
+        if self.mapper.select_table is not self.mapper.mapped_table:
+            vis = sql_util.ColumnsInClause(self.mapper.select_table)
+            self.primaryjoin.accept_visitor(vis)
+            if self.secondaryjoin:
+                self.secondaryjoin.accept_visitor(vis)
+            if vis.result:
+                raise exceptions.ArgumentError("In relationship '%s' between mappers '%s' and '%s', primary and secondary join conditions must not include columns from the polymorphic 'select_table' argument as of SA release 0.3.4.  Construct join conditions using the base tables of the related mappers." % (self.key, self.parent, self.mapper))
+
         # if the foreign key wasnt specified and theres no assocaition table, try to figure
         # out who is dependent on who. we dont need all the foreign keys represented in the join,
         # just one of them.
@@ -280,10 +294,10 @@ class PropertyLoader(StrategizedProperty):
                 else:
                     return sync.MANYTOONE
         else:
-            onetomany = len([c for c in self.foreignkey if self.mapper.unjoined_table.corresponding_column(c, False, require_exact=True) is not None])
-            manytoone = len([c for c in self.foreignkey if self.parent.unjoined_table.corresponding_column(c, False, require_exact=True) is not None])
+            onetomany = len([c for c in self.foreignkey if self.mapper.unjoined_table.corresponding_column(c, False) is not None])
+            manytoone = len([c for c in self.foreignkey if self.parent.unjoined_table.corresponding_column(c, False) is not None])
             if not onetomany and not manytoone:
-                raise exceptions.ArgumentError("Cant determine relation direction for '%s' on mapper '%s' with primary join '%s' - foreign key columns are not present in neither the parent nor the child's mapped tables" %(self.key, str(self.parent), str(self.primaryjoin)))
+                raise exceptions.ArgumentError("Cant determine relation direction for '%s' on mapper '%s' with primary join '%s' - foreign key columns are not present in neither the parent nor the child's mapped tables" %(self.key, str(self.parent), str(self.primaryjoin)) +  str(self.foreignkey))
             elif onetomany and manytoone:
                 raise exceptions.ArgumentError("Cant determine relation direction for '%s' on mapper '%s' with primary join '%s' - foreign key columns are present in both the parent and the child's mapped tables.  Specify 'foreignkey' argument." %(self.key, str(self.parent), str(self.primaryjoin)))
             elif onetomany:

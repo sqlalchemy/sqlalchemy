@@ -55,10 +55,13 @@
   - poked the first hole in the can of worms: saying query.select_by(somerelationname=someinstance)
   will create the join of the primary key columns represented by "somerelationname"'s mapper to the
   actual primary key in "someinstance".
-  - some deeper error checking when compiling relations, to detect an ambiguous "primaryjoin"
-  in the case that both sides of the relationship have foreign key references in the primary
-  join condition.  also tightened down conditions used to locate "relation direction", associating
-  the "foreignkey" of the relationship with the "primaryjoin"
+  - reworked how relations interact with "polymorphic" mappers, i.e. mappers that have a select_table
+  as well as polymorphic flags.  better determination of proper join conditions, interaction with user-
+  defined join conditions, and support for self-referential polymorphic mappers.
+  - related to polymorphic mapping relations, some deeper error checking when compiling relations, 
+  to detect an ambiguous "primaryjoin" in the case that both sides of the relationship have foreign key 
+  references in the primary join condition.  also tightened down conditions used to locate "relation direction", 
+  associating the "foreignkey" of the relationship with the "primaryjoin"
   - a little bit of improvement to the concept of a "concrete" inheritance mapping, though that concept
   is not well fleshed out yet (added test case to support concrete mappers on top of a polymorphic base).
   - fix to "proxy=True" behavior on synonym()

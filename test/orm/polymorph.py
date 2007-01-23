@@ -84,6 +84,22 @@ class MultipleTableTest(testbase.PersistTest):
         self.do_test(True, True, False)
     def test_t_t_t(self):
         self.do_test(True, True, True)
+    def test_f_f_f_t(self):
+        self.do_test(False, False, False, True)
+    def test_f_f_t_t(self):
+        self.do_test(False, False, True, True)
+    def test_f_t_f_t(self):
+        self.do_test(False, True, False, True)
+    def test_f_t_t_t(self):
+        self.do_test(False, True, True, True)
+    def test_t_f_f_t(self):
+        self.do_test(True, False, False, True)
+    def test_t_f_t_t(self):
+        self.do_test(True, False, True, True)
+    def test_t_t_f_t(self):
+        self.do_test(True, True, False, True)
+    def test_t_t_t_t(self):
+        self.do_test(True, True, True, True)
         
     def testcompile(self):
         person_join = polymorphic_union( {
@@ -147,7 +163,7 @@ class MultipleTableTest(testbase.PersistTest):
         except exceptions.ArgumentError:
             assert True
         
-    def do_test(self, include_base=False, lazy_relation=True, redefine_colprop=False):
+    def do_test(self, include_base=False, lazy_relation=True, redefine_colprop=False, use_literal_join=False):
         """tests the polymorph.py example, with several options:
         
         include_base - whether or not to include the base 'person' type in the union.
@@ -177,10 +193,19 @@ class MultipleTableTest(testbase.PersistTest):
         mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
         mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
 
-        mapper(Company, companies, properties={
-            'employees': relation(Person, lazy=lazy_relation, private=True, backref='company')
-        })
-
+        if use_literal_join:
+            mapper(Company, companies, properties={
+                'employees': relation(Person, lazy=lazy_relation, primaryjoin=people.c.company_id==companies.c.company_id, private=True, 
+                backref="company"
+                )
+            })
+        else:
+            mapper(Company, companies, properties={
+                'employees': relation(Person, lazy=lazy_relation, private=True, 
+                backref="company"
+                )
+            })
+            
         if redefine_colprop:
             person_attribute_name = 'person_name'
         else:

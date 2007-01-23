@@ -99,7 +99,7 @@ class RelationTest2(testbase.AssertMixin):
         for t in metadata.table_iterator(reverse=True):
             t.delete().execute()
 
-    def testbasic(self):
+    def testrelationonsubclass(self):
         class Person(AttrSettable):
             pass
         class Manager(Person):
@@ -115,7 +115,7 @@ class RelationTest2(testbase.AssertMixin):
               properties={
                 'colleague':relation(Person, primaryjoin=managers.c.manager_id==people.c.person_id, uselist=False)
         })
-        
+        class_mapper(Person).compile()
         sess = create_session()
         p = Person(name='person1')
         m = Manager(name='manager1')
@@ -129,6 +129,69 @@ class RelationTest2(testbase.AssertMixin):
         print p
         print m
         assert m.colleague is p
+
+class RelationTest3(testbase.AssertMixin):
+    """test self-referential relationships on polymorphic mappers"""
+    def setUpAll(self):
+        global people, managers, metadata
+        metadata = BoundMetaData(testbase.db)
+
+        people = Table('people', metadata, 
+           Column('person_id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
+           Column('colleague_id', Integer, ForeignKey('people.person_id')),
+           Column('name', String(50)),
+           Column('type', String(30)))
+
+        managers = Table('managers', metadata, 
+           Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
+           Column('status', String(30)),
+           )
+
+        metadata.create_all()
+
+    def tearDownAll(self):
+        metadata.drop_all()
+
+    def tearDown(self):
+        clear_mappers()
+        for t in metadata.table_iterator(reverse=True):
+            t.delete().execute()
+
+    def testrelationonbaseclass(self):
+        class Person(AttrSettable):
+            pass
+        class Manager(Person):
+            pass
+
+        poly_union = polymorphic_union({
+            'manager':managers.join(people, people.c.person_id==managers.c.person_id),
+            'person':people.select(people.c.type=='person')
+        }, None)
+
+        mapper(Person, people, select_table=poly_union, polymorphic_identity='person', polymorphic_on=people.c.type,
+              properties={
+                'colleagues':relation(Person, primaryjoin=people.c.colleague_id==people.c.person_id, 
+                    remote_side=people.c.person_id, uselist=True)
+                }        
+        )
+        mapper(Manager, managers, inherits=Person, inherit_condition=people.c.person_id==managers.c.person_id, polymorphic_identity='manager')
+
+        sess = create_session()
+        p = Person(name='person1')
+        p2 = Person(name='person2')
+        m = Manager(name='manager1')
+        p.colleagues.append(p2)
+        m.colleagues.append(p2)
+        sess.save(m)
+        sess.save(p)
+        sess.flush()
+        
+        sess.clear()
+        p = sess.query(Person).get(p.person_id)
+        p2 = sess.query(Person).get(p2.person_id)
+        print p, p2, p.colleagues
+        assert len(p.colleagues) == 1
+        assert p.colleagues == [p2]
 
 if __name__ == "__main__":    
     testbase.main()
