@@ -159,6 +159,12 @@ to disambiguate columns with their table name:
     >>> db.with_labels(join1).c.keys()
     ['users_name', 'users_email', 'users_password', 'users_classname', 'users_admin', 'loans_book_id', 'loans_user_name', 'loans_loan_date']
 
+You can disambiguate just one table in a join by applying labels to that table, 
+and joining on the returned object:
+    >>> labeled_loans = db.with_labels(db.loans)
+    >>> db.join(db.users, labeled_loans, isouter=True).c.keys()
+    ['name', 'email', 'password', 'classname', 'admin', 'loans_book_id', 'loans_user_name', 'loans_loan_date']
+
 
 Advanced Use
 ============
@@ -196,7 +202,10 @@ just needs to be unique within the select, and not necessarily correspond to a
     >>> years_with_count.select_by(published_year='1989')
     [MappedBooks(published_year='1989',n=1)]
     
-Obviously if we just wanted to get a list of counts associated with book years once, raw SQL is going to be less work.  The advantage of mapping a Select is reusability, both standalone and in Joins.  (And if you go to full SQLAlchemy, you can perform mappings like this directly to your object models.)
+Obviously if we just wanted to get a list of counts associated with book years
+once, raw SQL is going to be less work. The advantage of mapping a Select is
+reusability, both standalone and in Joins. (And if you go to full SQLAlchemy,
+you can perform mappings like this directly to your object models.)
 
 
 Raw SQL
