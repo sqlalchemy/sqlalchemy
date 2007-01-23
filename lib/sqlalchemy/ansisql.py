@@ -99,6 +99,9 @@ class ANSICompiler(sql.Compiled):
         # which will be passed to a ResultProxy and used for resultset-level value conversion
         self.typemap = {}
         
+        # a dictionary of select columns mapped to their name or key
+        self.columns = {}
+        
         # True if this compiled represents an INSERT
         self.isinsert = False
         
@@ -207,6 +210,7 @@ class ANSICompiler(sql.Compiled):
             # if we are within a visit to a Select, set up the "typemap"
             # for this column which is used to translate result set values
             self.typemap.setdefault(column.name.lower(), column.type)
+            self.columns.setdefault(column.key, column)
         if column.table is None or not column.table.named_with_column():
             self.strings[column] = self.preparer.format_column(column)
         else:

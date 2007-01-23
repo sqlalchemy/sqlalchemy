@@ -6,6 +6,7 @@
   non-ambiguous.
 - sql:
   - added "fetchmany()" support to ResultProxy
+  - added support for column "key" attribute to be useable in row[<key>]/row.<key>
   - changed "BooleanExpression" to subclass from "BinaryExpression", so that boolean
   expressions can also follow column-clause behaviors (i.e. label(), etc).
   - trailing underscores are trimmed from func.<xxx> calls, such as func.if_()

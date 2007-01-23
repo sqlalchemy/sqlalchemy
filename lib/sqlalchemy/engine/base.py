@@ -297,7 +297,7 @@ class Connection(Connectable):
         context.pre_exec(self.__engine, proxy, compiled, parameters)
         proxy(str(compiled), parameters)
         context.post_exec(self.__engine, proxy, compiled, parameters)
-        return ResultProxy(self.__engine, self, cursor, context, typemap=compiled.typemap)
+        return ResultProxy(self.__engine, self, cursor, context, typemap=compiled.typemap, columns=compiled.columns)
         
     # poor man's multimethod/generic function thingy
     executors = {
@@ -545,13 +545,14 @@ class ResultProxy(object):
         def convert_result_value(self, arg, engine):
             raise exceptions.InvalidRequestError("Ambiguous column name '%s' in result set! try 'use_labels' option on select statement." % (self.key))
     
-    def __init__(self, engine, connection, cursor, executioncontext=None, typemap=None):
+    def __init__(self, engine, connection, cursor, executioncontext=None, typemap=None, columns=None):
         """ResultProxy objects are constructed via the execute() method on SQLEngine."""
         self.connection = connection
         self.dialect = engine.dialect
         self.cursor = cursor
         self.engine = engine
         self.closed = False
+        self.columns = columns
         if executioncontext is not None:
             self.__executioncontext = executioncontext
             self.rowcount = executioncontext.get_rowcount(cursor)
@@ -611,15 +612,26 @@ class ResultProxy(object):
                     try:
                         rec = self.props[key.key.lower()]
                     except KeyError:
-#                        rec = self.props[key.name.lower()]
                         try:
                             rec = self.props[key.name.lower()]
                         except KeyError:
                             raise exceptions.NoSuchColumnError("Could not locate column in row for column '%s'" % str(key))
             elif isinstance(key, str):
-                rec = self.props[key.lower()]
+                try:
+                    rec = self.props[key.lower()]
+                except KeyError:
+                    try:
+                        if self.columns is not None:
+                            rec = self._convert_key(self.columns[key])
+                        else:
+                            raise
+                    except KeyError:
+                        raise exceptions.NoSuchColumnError("Could not locate column in row for column '%s'" % str(key))
             else:
-                rec = self.props[key]
+                try:
+                    rec = self.props[key]
+                except KeyError:
+                    raise exceptions.NoSuchColumnError("Could not locate column in row for column '%s'" % str(key))
             self.__key_cache[key] = rec
             return rec
             
