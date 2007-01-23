@@ -58,8 +58,15 @@ class OracleChar(sqltypes.CHAR):
     def get_col_spec(self):
         return "CHAR(%(length)s)" % {'length' : self.length}
 class OracleBinary(sqltypes.Binary):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.BINARY
     def get_col_spec(self):
         return "BLOB"
+class OracleLongBinary(sqltypes.Binary):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.LONG_BINARY
+    def get_col_spec(self):
+        return "LONGBLOB"
 class OracleBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "SMALLINT"
