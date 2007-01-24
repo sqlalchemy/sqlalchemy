@@ -426,7 +426,7 @@ These are specified as keyword arguments:
     {sql}c = users.select(limit=10, offset=20).execute()
     SELECT users.user_id, users.user_name, users.password FROM users LIMIT 10 OFFSET 20
         
-The Oracle driver does not support LIMIT and OFFSET directly, but instead wraps the generated query into a subquery and uses the "rownum" variable to control the rows selected (this is somewhat experimental).
+The Oracle driver does not support LIMIT and OFFSET directly, but instead wraps the generated query into a subquery and uses the "rownum" variable to control the rows selected (this is somewhat experimental).  Similarly, the Firebird and MSSQL drivers convert LIMIT into queries using FIRST and TOP, respectively.
 
 ### Inner and Outer Joins {@name=join}
 
