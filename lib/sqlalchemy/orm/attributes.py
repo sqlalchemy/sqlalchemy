@@ -6,7 +6,7 @@
 
 from sqlalchemy import util
 from sqlalchemy.orm import util as orm_util
-from sqlalchemy import logging
+from sqlalchemy import logging, exceptions
 import weakref
 
 class InstrumentedAttribute(object):
@@ -331,6 +331,8 @@ class InstrumentedList(object):
         elif hasattr(self.data, 'add'):
             self._data_appender = self.data.add
             self._clear_data = self._clear_set
+        else:
+            raise exceptions.ArgumentError("Collection type " + repr(type(self.data)) + " has no append() or add() method")
         if isinstance(self.data, dict):
             self._clear_data = self._clear_dict
             
