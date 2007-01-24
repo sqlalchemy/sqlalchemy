@@ -165,7 +165,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
     
-    def oid_column_name(self):
+    def oid_column_name(self, column):
         return "oid"
 
     def dbapi(self):

@@ -41,7 +41,7 @@ class DefaultDialect(base.Dialect):
         if type(typeobj) is type:
             typeobj = typeobj()
         return typeobj
-    def oid_column_name(self):
+    def oid_column_name(self, column):
         return None
     def supports_sane_rowcount(self):
         return True

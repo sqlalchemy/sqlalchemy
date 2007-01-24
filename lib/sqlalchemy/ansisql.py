@@ -215,7 +215,7 @@ class ANSICompiler(sql.Compiled):
             self.strings[column] = self.preparer.format_column(column)
         else:
             if column.table.oid_column is column:
-                n = self.dialect.oid_column_name()
+                n = self.dialect.oid_column_name(column)
                 if n is not None:
                     self.strings[column] = "%s.%s" % (self.preparer.format_table(column.table, use_schema=False), n)
                 elif len(column.table.primary_key) != 0:

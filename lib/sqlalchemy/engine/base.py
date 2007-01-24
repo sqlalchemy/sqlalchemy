@@ -52,8 +52,13 @@ class Dialect(sql.AbstractDialect):
         which comes from the types module.  Subclasses will usually use the adapt_type()
         method in the types module to make this job easy."""
         raise NotImplementedError()
-    def oid_column_name(self):
-        """returns the oid column name for this dialect, or None if the dialect cant/wont support OID/ROWID."""
+    def oid_column_name(self, column):
+        """return the oid column name for this dialect, or None if the dialect cant/wont support OID/ROWID.
+        
+        the Column instance which represents OID for the query being compiled is passed, so that the dialect
+        can inspect the column and its parent selectable to determine if OID/ROWID is not selected for a particular
+        selectable (i.e. oracle doesnt support ROWID for UNION, GROUP BY, DISTINCT, etc.)
+        """
         raise NotImplementedError()
     def supports_sane_rowcount(self):
         """Provided to indicate when MySQL is being used, which does not have standard behavior

@@ -279,7 +279,7 @@ class PGDialect(ansisql.ANSIDialect):
         else:
             return self.context.last_inserted_ids
 
-    def oid_column_name(self):
+    def oid_column_name(self, column):
         if self.use_oids:
             return "oid"
         else:

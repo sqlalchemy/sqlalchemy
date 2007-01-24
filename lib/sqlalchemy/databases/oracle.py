@@ -192,8 +192,11 @@ class OracleDialect(ansisql.ANSIDialect):
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
 
-    def oid_column_name(self):
-        return "rowid"
+    def oid_column_name(self, column):
+        if not isinstance(column.table, sql.TableClause) and not isinstance(column.table, sql.Select):
+            return None
+        else:
+            return "rowid"
 
     def create_execution_context(self):
         return OracleExecutionContext(self)
