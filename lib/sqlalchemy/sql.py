@@ -732,7 +732,7 @@ class FromClause(Selectable):
         """given a ColumnElement, return the ColumnElement object from this 
         Selectable which corresponds to that original Column via a proxy relationship."""
         if require_exact:
-            if self.columns.get(column.key) is column:
+            if self.columns.get(column.name) is column:
                 return column
             else:
                 if not raiseerr:
@@ -747,7 +747,7 @@ class FromClause(Selectable):
         else:
             if keys_ok:
                 try:
-                    return self.c[column.key]
+                    return self.c[column.name]
                 except KeyError:
                     pass
             if not raiseerr:

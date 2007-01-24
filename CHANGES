@@ -1,10 +1,16 @@
 0.3.5
+- orm:
+  - adjustments to the recent polymorphic relationship refactorings, specifically
+  for many-to-one relationships to polymorphic unions that did not contain the 
+  base table [ticket:439].  the lazy/eager clause adaption to the selectable
+  will match up on straight column names (i.e. its a more liberal policy)
 - oracle:
   - when returning "rowid" as the ORDER BY column or in use with ROW_NUMBER OVER,
   oracle dialect checks the selectable its being applied to and will switch to 
   table PK if not applicable, i.e. for a UNION.  checking for DISTINCT, GROUP BY
   (other places that rowid is invalid) still a TODO.  allows polymorphic mappings
   to function, [ticket:436]
+
 0.3.4
 - general:
   - global "insure"->"ensure" change. in US english "insure" is actually

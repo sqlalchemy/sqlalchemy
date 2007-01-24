@@ -139,11 +139,11 @@ class ClauseAdapter(sql.ClauseVisitor):
         self.selectable = selectable
     def visit_binary(self, binary):
         if isinstance(binary.left, sql.ColumnElement):
-            col = self.selectable.corresponding_column(binary.left, raiseerr=False, keys_ok=False)
+            col = self.selectable.corresponding_column(binary.left, raiseerr=False, keys_ok=True)
             if col is not None:
                 binary.left = col
         if isinstance(binary.right, sql.ColumnElement):
-            col = self.selectable.corresponding_column(binary.right, raiseerr=False, keys_ok=False)
+            col = self.selectable.corresponding_column(binary.right, raiseerr=False, keys_ok=True)
             if col is not None:
                 binary.right = col
 

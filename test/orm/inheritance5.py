@@ -193,6 +193,114 @@ class RelationTest3(testbase.AssertMixin):
         assert len(p.colleagues) == 1
         assert p.colleagues == [p2]
 
+class RelationTest4(testbase.AssertMixin):
+    def setUpAll(self):
+        global metadata, people, engineers, managers, cars
+        metadata = BoundMetaData(testbase.db)
+        people = Table('people', metadata, 
+           Column('person_id', Integer, primary_key=True),
+           Column('name', String(50)))
+
+        engineers = Table('engineers', metadata, 
+           Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
+           Column('status', String(30)))
+
+        managers = Table('managers', metadata, 
+           Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
+           Column('longer_status', String(70)))
+
+        cars = Table('cars', metadata, 
+           Column('car_id', Integer, primary_key=True),
+           Column('owner', Integer, ForeignKey('people.person_id')))
+        metadata.create_all()
+    def tearDownAll(self):
+        metadata.drop_all()
+    def tearDown(self):
+        clear_mappers()
+        for t in metadata.table_iterator(reverse=True):
+            t.delete().execute()
+    
+    def testmanytoonepolymorphic(self):
+        """in this test, the polymorphic union is between two subclasses, but does not include the base table by itself
+         in the union.  however, the primaryjoin condition is going to be against the base table, and its a many-to-one
+         relationship (unlike the test in polymorph.py) so the column in the base table is explicit.  Can the ClauseAdapter
+         figure out how to alias the primaryjoin to the polymorphic union ?"""
+        # class definitions
+        class Person(object):
+            def __init__(self, **kwargs):
+                for key, value in kwargs.iteritems():
+                    setattr(self, key, value)
+            def __repr__(self):
+                return "Ordinary person %s" % self.name
+        class Engineer(Person):
+            def __repr__(self):
+                return "Engineer %s, status %s" % (self.name, self.status)
+        class Manager(Person):
+            def __repr__(self):
+                return "Manager %s, status %s" % (self.name, self.longer_status)
+        class Car(object):
+            def __init__(self, **kwargs):
+                for key, value in kwargs.iteritems():
+                    setattr(self, key, value)
+            def __repr__(self):
+                return "Car number %d" % self.car_id
+
+        # create a union that represents both types of joins.  
+        employee_join = polymorphic_union(
+            {
+                'engineer':people.join(engineers),
+                'manager':people.join(managers),
+            }, "type", 'employee_join')
+            
+        person_mapper   = mapper(Person, people, select_table=employee_join,polymorphic_on=employee_join.c.type, polymorphic_identity='person')
+        engineer_mapper = mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
+        manager_mapper  = mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
+        car_mapper      = mapper(Car, cars, properties= {'employee':relation(person_mapper)})
+        
+        # so the primaryjoin is "people.c.person_id==cars.c.owner".  the "lazy" clause will be
+        # "people.c.person_id=?".  the employee_join is two selects union'ed together, one of which 
+        # will contain employee.c.person_id the other contains manager.c.person_id.  people.c.person_id is not explicitly in 
+        # either column clause in this case.  we can modify polymorphic_union to always put the "base" column in which would fix this,
+        # but im not sure if that really fixes the issue in all cases and its too far from the problem.
+        # instead, when the primaryjoin is adapted to point to the polymorphic union and is targeting employee_join.c.person_id, 
+        # it has to use not just straight column correspondence but also "keys_ok=True", meaning it will link up to any column 
+        # with the name "person_id", as opposed to columns that descend directly from people.c.person_id.  polymorphic unions
+        # require the cols all match up on column name which then determine the top selectable names, so matching by name is OK.
+
+        session = create_session()
+
+        # creating 5 managers named from M1 to E5
+        for i in range(1,5):
+            session.save(Manager(name="M%d" % i,longer_status="YYYYYYYYY"))
+        # creating 5 engineers named from E1 to E5
+        for i in range(1,5):
+            session.save(Engineer(name="E%d" % i,status="X"))
+
+        session.flush()
+
+        engineer4 = session.query(Engineer).selectfirst_by(name="E4")
+
+        car1 = Car(owner=engineer4.person_id)
+        session.save(car1)
+        session.flush()
+
+        session.clear()
+        
+        car1 = session.query(Car).get(car1.car_id)
+        usingGet = session.query(person_mapper).get(car1.owner)
+        usingProperty = car1.employee
+
+        # All print should output the same person (engineer E4)
+        assert str(engineer4) == "Engineer E4, status X"
+        assert str(usingGet) == "Engineer E4, status X"
+        assert str(usingProperty) == "Engineer E4, status X"
+
+        session.clear()
+        
+        # and now for the lightning round, eager !
+        car1 = session.query(Car).options(eagerload('employee')).get(car1.car_id)
+        assert str(car1.employee) == "Engineer E4, status X"
+
 if __name__ == "__main__":    
     testbase.main()
         

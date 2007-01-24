@@ -299,11 +299,14 @@ class LazyLoader(AbstractRelationLoader):
         
         if secondaryjoin is not None:
             secondaryjoin = secondaryjoin.copy_container()
-            secondaryjoin.accept_visitor(sql_util.ClauseAdapter(select_table))
+            if self.loads_polymorphic:
+                secondaryjoin.accept_visitor(sql_util.ClauseAdapter(select_table))
             lazywhere = sql.and_(lazywhere, secondaryjoin)
         else:
-            lazywhere.accept_visitor(sql_util.ClauseAdapter(select_table))
-            
+            if self.loads_polymorphic:
+                lazywhere.accept_visitor(sql_util.ClauseAdapter(select_table))
+        
+        print "LAZY CLAUSE", self.key, str(select_table), str(lazywhere)    
         LazyLoader.logger.info("create_lazy_clause " + str(lazywhere))
         return (lazywhere, binds, reverse)
 
