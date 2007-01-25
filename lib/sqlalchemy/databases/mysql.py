@@ -10,6 +10,7 @@ from sqlalchemy import sql,engine,schema,ansisql
 from sqlalchemy.engine import default
 import sqlalchemy.types as sqltypes
 import sqlalchemy.exceptions as exceptions
+from array import array
 
 try:
     import MySQLdb as mysql
@@ -338,7 +339,11 @@ class MySQLDialect(ansisql.ANSIDialect):
 
     def reflecttable(self, connection, table):
         # reference:  http://dev.mysql.com/doc/refman/5.0/en/name-case-sensitivity.html
-        case_sensitive = int(connection.execute("show variables like 'lower_case_table_names'").fetchone()[1]) == 0
+        cs = connection.execute("show variables like 'lower_case_table_names'").fetchone()[1]
+        if isinstance(cs, array):
+            cs = cs.tostring()
+        case_sensitive = int(cs) == 0
+        
         if not case_sensitive:
             table.name = table.name.lower()
             table.metadata.tables[table.name]= table

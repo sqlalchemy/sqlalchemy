@@ -10,6 +10,9 @@
   table PK if not applicable, i.e. for a UNION.  checking for DISTINCT, GROUP BY
   (other places that rowid is invalid) still a TODO.  allows polymorphic mappings
   to function, [ticket:436]
+- mysql:
+  - fix to reflection on older DB's that might return array() type for 
+  "show variables like" statements
 
 0.3.4
 - general:
