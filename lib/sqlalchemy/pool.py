@@ -16,7 +16,7 @@ try:
 except:
     import pickle
     
-from sqlalchemy import util, exceptions, logging
+from sqlalchemy import exceptions, logging
 from sqlalchemy import queue as Queue
 
 try:
