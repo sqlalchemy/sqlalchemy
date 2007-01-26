@@ -306,7 +306,6 @@ class LazyLoader(AbstractRelationLoader):
             if self.loads_polymorphic:
                 lazywhere.accept_visitor(sql_util.ClauseAdapter(select_table))
         
-        print "LAZY CLAUSE", self.key, str(select_table), str(lazywhere)    
         LazyLoader.logger.info("create_lazy_clause " + str(lazywhere))
         return (lazywhere, binds, reverse)
 
