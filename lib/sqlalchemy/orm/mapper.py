@@ -1149,19 +1149,19 @@ class Mapper(object):
         this mapper is the same mapper as 'self' unless the select_table argument was specified for this mapper."""
         return self.__surrogate_mapper or self
         
-    def _instance(self, context, row, result = None):
+    def _instance(self, context, row, result = None, skip_polymorphic=False):
         """pulls an object instance from the given row and appends it to the given result
         list. if the instance already exists in the given identity map, its not added.  in
         either case, executes all the property loaders on the instance to also process extra
         information in the row."""
 
-        if self.polymorphic_on is not None:
+        if not skip_polymorphic and self.polymorphic_on is not None:
             discriminator = row[self.polymorphic_on]
             if discriminator is not None:
                 mapper = self.polymorphic_map[discriminator]
                 if mapper is not self:
                     row = self.translate_row(mapper, row)
-                    return mapper._instance(context, row, result=result)
+                    return mapper._instance(context, row, result=result, skip_polymorphic=True)
         
         # look in main identity map.  if its there, we dont do anything to it,
         # including modifying any of its related items lists, as its already
