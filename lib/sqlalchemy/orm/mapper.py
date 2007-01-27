@@ -1157,10 +1157,11 @@ class Mapper(object):
 
         if self.polymorphic_on is not None:
             discriminator = row[self.polymorphic_on]
-            mapper = self.polymorphic_map[discriminator]
-            if mapper is not self:
-                row = self.translate_row(mapper, row)
-                return mapper._instance(context, row, result=result)
+            if discriminator is not None:
+                mapper = self.polymorphic_map[discriminator]
+                if mapper is not self:
+                    row = self.translate_row(mapper, row)
+                    return mapper._instance(context, row, result=result)
         
         # look in main identity map.  if its there, we dont do anything to it,
         # including modifying any of its related items lists, as its already

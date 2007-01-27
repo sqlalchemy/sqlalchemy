@@ -4,6 +4,8 @@
   for many-to-one relationships to polymorphic unions that did not contain the 
   base table [ticket:439].  the lazy/eager clause adaption to the selectable
   will match up on straight column names (i.e. its a more liberal policy)
+  - eager relation to an inheriting mapper wont fail if no rows returned for
+  the relationship.
 - oracle:
   - when returning "rowid" as the ORDER BY column or in use with ROW_NUMBER OVER,
   oracle dialect checks the selectable its being applied to and will switch to 

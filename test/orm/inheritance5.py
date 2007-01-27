@@ -301,6 +301,74 @@ class RelationTest4(testbase.AssertMixin):
         car1 = session.query(Car).options(eagerload('employee')).get(car1.car_id)
         assert str(car1.employee) == "Engineer E4, status X"
 
+class RelationTest5(testbase.AssertMixin):
+    def setUpAll(self):
+        global metadata, people, engineers, managers, cars
+        metadata = BoundMetaData(testbase.db)
+        people = Table('people', metadata, 
+           Column('person_id', Integer, primary_key=True),
+           Column('name', String(50)),
+           Column('type', String(50)))
+
+        engineers = Table('engineers', metadata, 
+           Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
+           Column('status', String(30)))
+
+        managers = Table('managers', metadata, 
+           Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
+           Column('longer_status', String(70)))
+
+        cars = Table('cars', metadata, 
+           Column('car_id', Integer, primary_key=True),
+           Column('owner', Integer, ForeignKey('people.person_id')))
+        metadata.create_all()
+    def tearDownAll(self):
+        metadata.drop_all()
+    def tearDown(self):
+        clear_mappers()
+        for t in metadata.table_iterator(reverse=True):
+            t.delete().execute()
+    
+    def testeagerempty(self):
+        """an easy one...test parent object with child relation to an inheriting mapper, using eager loads,
+        works when there are no child objects present"""
+        class Person(object):
+            def __init__(self, **kwargs):
+                for key, value in kwargs.iteritems():
+                    setattr(self, key, value)
+            def __repr__(self):
+                return "Ordinary person %s" % self.name
+        class Engineer(Person):
+            def __repr__(self):
+                return "Engineer %s, status %s" % (self.name, self.status)
+        class Manager(Person):
+            def __repr__(self):
+                return "Manager %s, status %s" % (self.name, self.longer_status)
+        class Car(object):
+            def __init__(self, **kwargs):
+                for key, value in kwargs.iteritems():
+                    setattr(self, key, value)
+            def __repr__(self):
+                return "Car number %d" % self.car_id
+
+        person_mapper   = mapper(Person, people, polymorphic_on=people.c.type, polymorphic_identity='person')
+        engineer_mapper = mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
+        manager_mapper  = mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
+        car_mapper      = mapper(Car, cars, properties= {'manager':relation(manager_mapper, lazy=False)})
+
+        sess = create_session()
+        car1 = Car()
+        car2 = Car()
+        car2.manager = Manager()
+        sess.save(car1)
+        sess.save(car2)
+        sess.flush()
+        sess.clear()
+        
+        carlist = sess.query(Car).select()
+        assert carlist[0].manager is None
+        assert carlist[1].manager.person_id == car2.manager.person_id
+        
 if __name__ == "__main__":    
     testbase.main()
         
