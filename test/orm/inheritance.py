@@ -14,15 +14,14 @@ class User( Principal ):
 class Group( Principal ):
     pass
 
-class InheritTest(testbase.AssertMixin):
+class InheritTest(testbase.ORMTest):
     """deals with inheritance and many-to-many relationships"""
-    def setUpAll(self):
+    def define_tables(self, metadata):
         global principals
         global users
         global groups
         global user_group_map
-        global metadata
-        metadata = BoundMetaData(testbase.db)
+
         principals = Table(
             'principals',
             metadata,
@@ -57,14 +56,6 @@ class InheritTest(testbase.AssertMixin):
 
             )
 
-        metadata.create_all()
-        
-    def tearDownAll(self):
-        metadata.drop_all()
-
-    def setUp(self):
-        clear_mappers()
-        
     def testbasic(self):
         mapper( Principal, principals )
         mapper( 
@@ -87,11 +78,10 @@ class InheritTest(testbase.AssertMixin):
         sess.flush()
         # TODO: put an assertion
         
-class InheritTest2(testbase.AssertMixin):
+class InheritTest2(testbase.ORMTest):
     """deals with inheritance and many-to-many relationships"""
-    def setUpAll(self):
-        global foo, bar, foo_bar, metadata
-        metadata = BoundMetaData(testbase.db)
+    def define_tables(self, metadata):
+        global foo, bar, foo_bar
         foo = Table('foo', metadata,
             Column('id', Integer, Sequence('foo_id_seq'), primary_key=True),
             Column('data', String(20)),
@@ -105,9 +95,6 @@ class InheritTest2(testbase.AssertMixin):
         foo_bar = Table('foo_bar', metadata,
             Column('foo_id', Integer, ForeignKey('foo.id')),
             Column('bar_id', Integer, ForeignKey('bar.bid')))
-        metadata.create_all()
-    def tearDownAll(self):
-        metadata.drop_all()
 
     def testbasic(self):
         class Foo(object): 
@@ -147,11 +134,11 @@ class InheritTest2(testbase.AssertMixin):
             {'id':b.id, 'data':'barfoo', 'foos':(Foo, [{'id':f1.id,'data':'subfoo1'}, {'id':f2.id,'data':'subfoo2'}])},
             )
 
-class InheritTest3(testbase.AssertMixin):
+class InheritTest3(testbase.ORMTest):
     """deals with inheritance and many-to-many relationships"""
-    def setUpAll(self):
-        global foo, bar, blub, bar_foo, blub_bar, blub_foo,metadata
-        metadata = BoundMetaData(testbase.db)
+    def define_tables(self, metadata):
+        global foo, bar, blub, bar_foo, blub_bar, blub_foo
+
         # the 'data' columns are to appease SQLite which cant handle a blank INSERT
         foo = Table('foo', metadata,
             Column('id', Integer, Sequence('foo_seq'), primary_key=True),
@@ -176,13 +163,6 @@ class InheritTest3(testbase.AssertMixin):
         blub_foo = Table('blub_foo', metadata,
             Column('blub_id', Integer, ForeignKey('blub.id')),
             Column('foo_id', Integer, ForeignKey('foo.id')))
-        metadata.create_all()
-    def tearDownAll(self):
-        metadata.drop_all()
-
-    def tearDown(self):
-        for table in metadata.table_iterator():
-            table.delete().execute()
             
     def testbasic(self):
         class Foo(object):
@@ -253,11 +233,10 @@ class InheritTest3(testbase.AssertMixin):
         self.echo(x)
         self.assert_(repr(x) == compare)
         
-class InheritTest4(testbase.AssertMixin):
+class InheritTest4(testbase.ORMTest):
     """deals with inheritance and one-to-many relationships"""
-    def setUpAll(self):
-        global foo, bar, blub, metadata
-        metadata = BoundMetaData(testbase.db)
+    def define_tables(self, metadata):
+        global foo, bar, blub
         # the 'data' columns are to appease SQLite which cant handle a blank INSERT
         foo = Table('foo', metadata,
             Column('id', Integer, Sequence('foo_seq'), primary_key=True),
@@ -271,13 +250,6 @@ class InheritTest4(testbase.AssertMixin):
             Column('id', Integer, ForeignKey('bar.id'), primary_key=True),
             Column('foo_id', Integer, ForeignKey('foo.id'), nullable=False),
             Column('data', String(20)))
-        metadata.create_all()
-    def tearDownAll(self):
-        metadata.drop_all()
-
-    def tearDown(self):
-        for table in metadata.table_iterator():
-            table.delete().execute()
 
     def testbasic(self):
         class Foo(object):
@@ -316,12 +288,11 @@ class InheritTest4(testbase.AssertMixin):
         self.assert_(compare == result)
         self.assert_(l[0].parent_foo.data == 'foo #1' and l[1].parent_foo.data == 'foo #1')
 
-class InheritTest5(testbase.AssertMixin):
+class InheritTest5(testbase.ORMTest):
     """testing that construction of inheriting mappers works regardless of when extra properties
     are added to the superclass mapper"""
-    def setUpAll(self):
-        global content_type, content, product, metadata
-        metadata = BoundMetaData(testbase.db)
+    def define_tables(self, metadata):
+        global content_type, content, product
         content_type = Table('content_type', metadata, 
             Column('id', Integer, primary_key=True)
             )
@@ -332,10 +303,6 @@ class InheritTest5(testbase.AssertMixin):
         product = Table('product', metadata, 
             Column('id', Integer, ForeignKey('content.id'), primary_key=True)
         )
-    def tearDownAll(self):
-        pass
-    def tearDown(self):
-        pass
 
     def testbasic(self):
         class ContentType(object): pass
@@ -366,12 +333,11 @@ class InheritTest5(testbase.AssertMixin):
         p.contenttype = ContentType()
         # TODO: assertion ??
         
-class InheritTest6(testbase.AssertMixin):
+class InheritTest6(testbase.ORMTest):
     """tests eager load/lazy load of child items off inheritance mappers, tests that
     LazyLoader constructs the right query condition."""
-    def setUpAll(self):
-        global foo, bar, bar_foo, metadata
-        metadata=BoundMetaData(testbase.db)
+    def define_tables(self, metadata):
+        global foo, bar, bar_foo
         foo = Table('foo', metadata, Column('id', Integer, Sequence('foo_seq'), primary_key=True),
         Column('data', String(30)))
         bar = Table('bar', metadata, Column('id', Integer, ForeignKey('foo.id'), primary_key=True),
@@ -381,10 +347,7 @@ class InheritTest6(testbase.AssertMixin):
         Column('bar_id', Integer, ForeignKey('bar.id')),
         Column('foo_id', Integer, ForeignKey('foo.id'))
         )
-        metadata.create_all()
-    def tearDownAll(self):
-        metadata.drop_all()
-        
+
     def testbasic(self):
         class Foo(object): pass
         class Bar(Foo): pass
@@ -413,11 +376,10 @@ class InheritTest6(testbase.AssertMixin):
         self.assert_(len(q.selectfirst().eager) == 1)
 
 
-class InheritTest7(testbase.AssertMixin):
+class InheritTest7(testbase.ORMTest):
     """test dependency sorting among inheriting mappers"""
-    def setUpAll(self):
-        global users, roles, user_roles, admins, metadata
-        metadata=BoundMetaData(testbase.db)
+    def define_tables(self, metadata):
+        global users, roles, user_roles, admins
         users = Table('users', metadata,
             Column('id', Integer, primary_key=True),
             Column('email', String(128)),
@@ -438,12 +400,6 @@ class InheritTest7(testbase.AssertMixin):
             Column('id', Integer, primary_key=True),
             Column('user_id', Integer, ForeignKey('users.id'))
         )
-        metadata.create_all()
-    def tearDownAll(self):
-        metadata.drop_all()
-    def tearDown(self):
-        for t in metadata.table_iterator(reverse=True):
-            t.delete().execute()
             
     def testone(self):
         class User(object):pass

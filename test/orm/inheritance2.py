@@ -2,12 +2,11 @@ import testbase
 from sqlalchemy import *
 from datetime import datetime
 
-class InheritTest(testbase.AssertMixin):
+class InheritTest(testbase.ORMTest):
     """tests some various inheritance round trips involving a particular set of polymorphic inheritance relationships"""
-    def setUpAll(self):
-        global metadata, products_table, specification_table, documents_table
+    def define_tables(self, metadata):
+        global products_table, specification_table, documents_table
         global Product, Detail, Assembly, SpecLine, Document, RasterDocument
-        metadata = BoundMetaData(testbase.db)
 
         products_table = Table('products', metadata,
            Column('product_id', Integer, primary_key=True),
@@ -37,8 +36,6 @@ class InheritTest(testbase.AssertMixin):
             Column('size', Integer, default=0),
             )
             
-        metadata.create_all()
-
         class Product(object):
             def __init__(self, name, mark=''):
                 self.name = name
@@ -76,14 +73,6 @@ class InheritTest(testbase.AssertMixin):
                 
         class RasterDocument(Document): 
             pass
-
-    def tearDown(self):
-        clear_mappers()
-        for t in metadata.table_iterator(reverse=True):
-            t.delete().execute()
-            
-    def tearDownAll(self):
-        metadata.drop_all()
 
     def testone(self):
         product_mapper = mapper(Product, products_table,

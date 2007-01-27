@@ -25,10 +25,8 @@ class Transition(object):
     def __repr__(self):
         return object.__repr__(self)+ " " + repr(self.inputs) + " " + repr(self.outputs)
         
-class M2MTest(testbase.AssertMixin):
-    def setUpAll(self):
-        global metadata
-        metadata = testbase.metadata
+class M2MTest(testbase.ORMTest):
+    def define_tables(self, metadata):
         global place
         place = Table('place', metadata,
             Column('place_id', Integer, Sequence('pid_seq', optional=True), primary_key=True),
@@ -67,22 +65,6 @@ class M2MTest(testbase.AssertMixin):
             Column('pl1_id', Integer, ForeignKey('place.place_id')),
             Column('pl2_id', Integer, ForeignKey('place.place_id')),
             )
-        metadata.create_all()
-
-    def tearDownAll(self):
-        metadata.drop_all()
-        clear_mappers()
-        #testbase.db.tables.clear()
-        
-    def setUp(self):
-        clear_mappers()
-
-    def tearDown(self):
-        place_place.delete().execute()
-        place_input.delete().execute()
-        place_output.delete().execute()
-        transition.delete().execute()
-        place.delete().execute()
 
     def testcircular(self):
         """tests a many-to-many relationship from a table to itself."""
@@ -194,9 +176,8 @@ class M2MTest(testbase.AssertMixin):
         self.assert_result([t1], Transition, {'outputs': (Place, [{'name':'place3'}, {'name':'place1'}])})
         self.assert_result([p2], Place, {'inputs': (Transition, [{'name':'transition1'},{'name':'transition2'}])})
 
-class M2MTest2(testbase.AssertMixin):        
-    def setUpAll(self):
-        metadata = testbase.metadata
+class M2MTest2(testbase.ORMTest):
+    def define_tables(self, metadata):
         global studentTbl
         studentTbl = Table('student', metadata, Column('name', String(20), primary_key=True))
         global courseTbl
@@ -205,19 +186,6 @@ class M2MTest2(testbase.AssertMixin):
         enrolTbl = Table('enrol', metadata,
             Column('student_id', String(20), ForeignKey('student.name'),primary_key=True),
             Column('course_id', String(20), ForeignKey('course.name'), primary_key=True))
-        metadata.create_all()
-
-    def tearDownAll(self):
-        metadata.drop_all()
-        clear_mappers()
-        
-    def setUp(self):
-        clear_mappers()
-
-    def tearDown(self):
-        enrolTbl.delete().execute()
-        courseTbl.delete().execute()
-        studentTbl.delete().execute()
 
     def testcircular(self): 
         class Student(object):
@@ -249,9 +217,8 @@ class M2MTest2(testbase.AssertMixin):
         del s.courses[1]
         self.assert_(len(s.courses) == 2)
         
-class M2MTest3(testbase.AssertMixin):    
-    def setUpAll(self):
-        metadata = testbase.metadata
+class M2MTest3(testbase.ORMTest):
+    def define_tables(self, metadata):
         global c, c2a1, c2a2, b, a
         c = Table('c', metadata, 
             Column('c1', Integer, primary_key = True),
@@ -278,15 +245,6 @@ class M2MTest3(testbase.AssertMixin):
             Column('a1', Integer, ForeignKey('a.a1')),
             Column('b2', Boolean)
         )
-        metadata.create_all()
-        
-    def tearDownAll(self):
-        b.drop()
-        c2a2.drop()
-        c2a1.drop()
-        a.drop()
-        c.drop()
-        clear_mappers()
         
     def testbasic(self):
         class C(object):pass

@@ -64,13 +64,11 @@ class MagazinePage(Page):
 class ClassifiedPage(MagazinePage):
     pass
 
-class InheritTest(testbase.AssertMixin):
+class InheritTest(testbase.ORMTest):
     """tests a large polymorphic relationship"""
-    def setUpAll(self):
-        global metadata, publication_table, issue_table, location_table, location_name_table, magazine_table, \
+    def define_tables(self, metadata):
+        global publication_table, issue_table, location_table, location_name_table, magazine_table, \
         page_table, magazine_page_table, classified_page_table, page_size_table
-        
-        metadata = BoundMetaData(testbase.db)
 
         zerodefault = {} #{'default':0}
         publication_table = Table('publication', metadata,
@@ -118,8 +116,6 @@ class InheritTest(testbase.AssertMixin):
             Column('name', String(45), default=''),
         )
 
-        metadata.create_all()
-        
         publication_mapper = mapper(Publication, publication_table)
 
         issue_mapper = mapper(Issue, issue_table, properties = {
@@ -163,14 +159,6 @@ class InheritTest(testbase.AssertMixin):
 
         classified_page_mapper = mapper(ClassifiedPage, classified_page_table, inherits=magazine_page_mapper, polymorphic_identity='c')
 
-    def tearDown(self):
-        for t in metadata.table_iterator(reverse=True):
-            t.delete().execute()
-
-    def tearDownAll(self):
-        metadata.drop_all()
-        clear_mappers()
-        
     def testone(self):
         session = create_session()
 

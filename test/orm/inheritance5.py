@@ -8,11 +8,10 @@ class AttrSettable(object):
         return self.__class__.__name__ + ' ' + ','.join(["%s=%s" % (k,v) for k, v in self.__dict__.iteritems() if k[0] != '_'])
 
 
-class RelationTest1(testbase.PersistTest):
+class RelationTest1(testbase.ORMTest):
     """test self-referential relationships on polymorphic mappers"""
-    def setUpAll(self):
-        global people, managers, metadata
-        metadata = BoundMetaData(testbase.db)
+    def define_tables(self, metadata):
+        global people, managers
 
         people = Table('people', metadata, 
            Column('person_id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
@@ -25,17 +24,6 @@ class RelationTest1(testbase.PersistTest):
            Column('status', String(30)),
            Column('manager_name', String(50))
            )
-
-        metadata.create_all()
-
-    def tearDownAll(self):
-        metadata.drop_all()
-
-    def tearDown(self):
-        clear_mappers()
-        people.update().execute(manager_id=None)
-        for t in metadata.table_iterator(reverse=True):
-            t.delete().execute()
 
     def testbasic(self):
         class Person(AttrSettable):
@@ -72,12 +60,10 @@ class RelationTest1(testbase.PersistTest):
         print p, m, p.manager
         assert p.manager is m
             
-class RelationTest2(testbase.AssertMixin):
+class RelationTest2(testbase.ORMTest):
     """test self-referential relationships on polymorphic mappers"""
-    def setUpAll(self):
-        global people, managers, metadata
-        metadata = BoundMetaData(testbase.db)
-
+    def define_tables(self, metadata):
+        global people, managers
         people = Table('people', metadata, 
            Column('person_id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
            Column('name', String(50)),
@@ -88,16 +74,6 @@ class RelationTest2(testbase.AssertMixin):
            Column('manager_id', Integer, ForeignKey('people.person_id')),
            Column('status', String(30)),
            )
-
-        metadata.create_all()
-
-    def tearDownAll(self):
-        metadata.drop_all()
-
-    def tearDown(self):
-        clear_mappers()
-        for t in metadata.table_iterator(reverse=True):
-            t.delete().execute()
 
     def testrelationonsubclass(self):
         class Person(AttrSettable):
@@ -130,12 +106,10 @@ class RelationTest2(testbase.AssertMixin):
         print m
         assert m.colleague is p
 
-class RelationTest3(testbase.AssertMixin):
+class RelationTest3(testbase.ORMTest):
     """test self-referential relationships on polymorphic mappers"""
-    def setUpAll(self):
-        global people, managers, metadata
-        metadata = BoundMetaData(testbase.db)
-
+    def define_tables(self, metadata):
+        global people, managers
         people = Table('people', metadata, 
            Column('person_id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
            Column('colleague_id', Integer, ForeignKey('people.person_id')),
@@ -146,16 +120,6 @@ class RelationTest3(testbase.AssertMixin):
            Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
            Column('status', String(30)),
            )
-
-        metadata.create_all()
-
-    def tearDownAll(self):
-        metadata.drop_all()
-
-    def tearDown(self):
-        clear_mappers()
-        for t in metadata.table_iterator(reverse=True):
-            t.delete().execute()
 
     def testrelationonbaseclass(self):
         class Person(AttrSettable):
@@ -193,10 +157,9 @@ class RelationTest3(testbase.AssertMixin):
         assert len(p.colleagues) == 1
         assert p.colleagues == [p2]
 
-class RelationTest4(testbase.AssertMixin):
-    def setUpAll(self):
-        global metadata, people, engineers, managers, cars
-        metadata = BoundMetaData(testbase.db)
+class RelationTest4(testbase.ORMTest):
+    def define_tables(self, metadata):
+        global people, engineers, managers, cars
         people = Table('people', metadata, 
            Column('person_id', Integer, primary_key=True),
            Column('name', String(50)))
@@ -212,13 +175,6 @@ class RelationTest4(testbase.AssertMixin):
         cars = Table('cars', metadata, 
            Column('car_id', Integer, primary_key=True),
            Column('owner', Integer, ForeignKey('people.person_id')))
-        metadata.create_all()
-    def tearDownAll(self):
-        metadata.drop_all()
-    def tearDown(self):
-        clear_mappers()
-        for t in metadata.table_iterator(reverse=True):
-            t.delete().execute()
     
     def testmanytoonepolymorphic(self):
         """in this test, the polymorphic union is between two subclasses, but does not include the base table by itself
@@ -301,10 +257,9 @@ class RelationTest4(testbase.AssertMixin):
         car1 = session.query(Car).options(eagerload('employee')).get(car1.car_id)
         assert str(car1.employee) == "Engineer E4, status X"
 
-class RelationTest5(testbase.AssertMixin):
-    def setUpAll(self):
-        global metadata, people, engineers, managers, cars
-        metadata = BoundMetaData(testbase.db)
+class RelationTest5(testbase.ORMTest):
+    def define_tables(self, metadata):
+        global people, engineers, managers, cars
         people = Table('people', metadata, 
            Column('person_id', Integer, primary_key=True),
            Column('name', String(50)),
@@ -321,13 +276,6 @@ class RelationTest5(testbase.AssertMixin):
         cars = Table('cars', metadata, 
            Column('car_id', Integer, primary_key=True),
            Column('owner', Integer, ForeignKey('people.person_id')))
-        metadata.create_all()
-    def tearDownAll(self):
-        metadata.drop_all()
-    def tearDown(self):
-        clear_mappers()
-        for t in metadata.table_iterator(reverse=True):
-            t.delete().execute()
     
     def testeagerempty(self):
         """an easy one...test parent object with child relation to an inheriting mapper, using eager loads,
@@ -368,6 +316,76 @@ class RelationTest5(testbase.AssertMixin):
         carlist = sess.query(Car).select()
         assert carlist[0].manager is None
         assert carlist[1].manager.person_id == car2.manager.person_id
+
+class MultiLevelTest(testbase.ORMTest):
+    def define_tables(self, metadata):
+        global table_Employee, table_Engineer, table_Manager
+        table_Employee = Table( 'Employee', metadata,
+            Column( 'name', type= String, ),
+            Column( 'id', primary_key= True, type= Integer, ),
+            Column( 'atype', type= String, ),
+        )
+
+        table_Engineer = Table( 'Engineer', metadata,
+            Column( 'machine', type= String, ),
+            Column( 'id', Integer, ForeignKey( 'Employee.id', ), primary_key= True, ),
+        )
+
+        table_Manager = Table( 'Manager', metadata,
+            Column( 'duties', type= String, ),
+            Column( 'id', Integer, ForeignKey( 'Engineer.id', ), primary_key= True, ),
+        )
+    def test_threelevels(self):
+        class Employee( object):
+            def set( me, **kargs):
+                for k,v in kargs.iteritems(): setattr( me, k, v)
+                return me
+            def __str__(me): return str(me.__class__.__name__)+':'+str(me.name)
+            __repr__ = __str__
+        class Engineer( Employee): pass
+        class Manager( Engineer): pass
+        pu_Employee = polymorphic_union( {
+                    'Manager':  table_Employee.join( table_Engineer).join( table_Manager),
+                    'Engineer': select([table_Employee, table_Engineer.c.machine], table_Employee.c.atype == 'Engineer', from_obj=[table_Employee.join(table_Engineer)]),
+                    'Employee': table_Employee.select( table_Employee.c.atype == 'Employee'),
+                }, None, 'pu_employee', )
+        
+        mapper_Employee = mapper( Employee, table_Employee,
+                    polymorphic_identity= 'Employee',
+                    polymorphic_on= pu_Employee.c.atype,
+                    select_table= pu_Employee,
+                )
+
+        pu_Engineer = polymorphic_union( {
+                    'Manager':  table_Employee.join( table_Engineer).join( table_Manager),
+                    'Engineer': select([table_Employee, table_Engineer.c.machine], table_Employee.c.atype == 'Engineer', from_obj=[table_Employee.join(table_Engineer)]),
+                }, None, 'pu_engineer', )
+        mapper_Engineer = mapper( Engineer, table_Engineer,
+                    inherit_condition= table_Engineer.c.id == table_Employee.c.id,
+                    inherits= mapper_Employee,
+                    polymorphic_identity= 'Engineer',
+                    polymorphic_on= pu_Engineer.c.atype,
+                    select_table= pu_Engineer,
+                )
+
+        mapper_Manager = mapper( Manager, table_Manager,
+                    inherit_condition= table_Manager.c.id == table_Engineer.c.id,
+                    inherits= mapper_Engineer,
+                    polymorphic_identity= 'Manager',
+                )
+
+        a = Employee().set( name= 'one')
+        b = Engineer().set( egn= 'two', machine= 'any')
+        c = Manager().set( name= 'head', machine= 'fast', duties= 'many')
+
+        session = create_session()
+        session.save(a)
+        session.save(b)
+        session.save(c)
+        session.flush()
+        assert set(session.query(Employee).select()) == set([a,b,c])
+        assert set(session.query( Engineer).select()) == set([b,c])
+        assert session.query( Manager).select() == [c]
         
 if __name__ == "__main__":    
     testbase.main()

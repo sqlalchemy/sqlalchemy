@@ -10,7 +10,8 @@ import sqlalchemy.pool as pool
 import re
 import sqlalchemy
 import optparse
-
+from sqlalchemy.schema import BoundMetaData
+from sqlalchemy.orm import clear_mappers
 
 db = None
 metadata = None
@@ -202,6 +203,24 @@ class AssertMixin(PersistTest):
             callable_()
         finally:
             self.assert_(db.sql_count == count, "desired statement count %d does not match %d" % (count, db.sql_count))
+
+class ORMTest(AssertMixin):
+    def setUpAll(self):
+        global metadata
+        metadata = BoundMetaData(db)
+        self.define_tables(metadata)
+        metadata.create_all()
+    def define_tables(self, metadata):
+        raise NotImplementedError()
+    def get_metadata(self):
+        return metadata
+    def tearDownAll(self):
+        metadata.drop_all()
+    def tearDown(self):
+        clear_mappers()
+        for t in metadata.table_iterator(reverse=True):
+            t.delete().execute().close()
+
 
 class EngineAssert(proxy.BaseProxyEngine):
     """decorates a SQLEngine object to match the incoming queries against a set of assertions."""

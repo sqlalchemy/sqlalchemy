@@ -1,10 +1,9 @@
 from sqlalchemy import *
 import testbase
 
-class ConcreteTest1(testbase.AssertMixin):
-    def setUpAll(self):
-        global managers_table, engineers_table, metadata
-        metadata = BoundMetaData(testbase.db)
+class ConcreteTest1(testbase.ORMTest):
+    def define_tables(self, metadata):
+        global managers_table, engineers_table
         managers_table = Table('managers', metadata, 
             Column('employee_id', Integer, primary_key=True),
             Column('name', String(50)),
@@ -17,10 +16,6 @@ class ConcreteTest1(testbase.AssertMixin):
             Column('engineer_info', String(50)),
         )
 
-        metadata.create_all()
-    def tearDownAll(self):
-        metadata.drop_all()
-        
     def testbasic(self):
         class Employee(object):
             def __init__(self, name):
