@@ -66,7 +66,7 @@ class MultipleTableTest(testbase.PersistTest):
     def tearDown(self):
         clear_mappers()
         for t in metadata.table_iterator(reverse=True):
-            t.delete().execute()
+            t.delete().execute().close()
 
     def test_f_f_f(self):
         self.do_test(False, False, False)
