@@ -369,7 +369,7 @@ For relations, the "order_by" property can also be specified to all forms of rel
     
     # eager load with ordering - the ORDER BY clauses of parent/child will be organized properly
     mapper = mapper(User, users_table, properties = {
-        'addresses' : relation(mapper(Address, addresses_table), order_by=desc(addresses_table.c.email_address), eager=True)
+        'addresses' : relation(mapper(Address, addresses_table), order_by=desc(addresses_table.c.email_address), lazy=False)
     }, order_by=users_table.c.user_id)
     
 ### Limiting Rows {@name=limits}
