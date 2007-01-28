@@ -1,12 +1,10 @@
 import testbase
 from sqlalchemy import *
 
-class PolymorphicCircularTest(testbase.PersistTest):
-    def setUpAll(self):
-        global metadata
+class PolymorphicCircularTest(testbase.ORMTest):
+    keep_mappers = True
+    def define_tables(self, metadata):
         global Table1, Table1B, Table2, Table3,  Data
-        metadata = BoundMetaData(testbase.db)
-
         table1 = Table('table1', metadata,
                        Column('id', Integer, primary_key=True),
                        Column('related_id', Integer, ForeignKey('table1.id'), nullable=True),
@@ -28,8 +26,6 @@ class PolymorphicCircularTest(testbase.PersistTest):
             Column('data', String(30))
             )
             
-        metadata.create_all()
-
         join = polymorphic_union(
             {
             'table3' : table1.join(table3),
@@ -61,7 +57,7 @@ class PolymorphicCircularTest(testbase.PersistTest):
                 self.data = data
             def __repr__(self):
                 return "%s(%d, %s)" % (self.__class__.__name__, self.id, repr(str(self.data)))
-            
+                
         try:
             # this is how the mapping used to work.  insure that this raises an error now
             table1_mapper = mapper(Table1, table1,
@@ -71,8 +67,8 @@ class PolymorphicCircularTest(testbase.PersistTest):
                                    properties={
                                     'next': relation(Table1, 
                                         backref=backref('prev', primaryjoin=join.c.id==join.c.related_id, foreignkey=join.c.id, uselist=False), 
-                                        uselist=False, lazy=False, primaryjoin=join.c.id==join.c.related_id),
-                                    'data':relation(mapper(Data, data), lazy=False)
+                                        uselist=False, primaryjoin=join.c.id==join.c.related_id),
+                                    'data':relation(mapper(Data, data), lazy=lazy)
                                     }
                             )
             table1_mapper.compile()
@@ -81,8 +77,11 @@ class PolymorphicCircularTest(testbase.PersistTest):
             assert True
             clear_mappers()
             
-        # currently, all of these "eager" relationships degrade to lazy relationships
+        # currently, the "eager" relationships degrade to lazy relationships
         # due to the polymorphic load.
+        # the "next" relation used to have a "lazy=False" on it, but the EagerLoader raises the "self-referential" 
+        # exception now.  since eager loading would never work for that relation anyway, its better that the user
+        # gets an exception instead of it silently not eager loading.
         table1_mapper = mapper(Table1, table1,
                                select_table=join,
                                polymorphic_on=join.c.type,
@@ -90,12 +89,10 @@ class PolymorphicCircularTest(testbase.PersistTest):
                                properties={
                                'next': relation(Table1, 
                                    backref=backref('prev', primaryjoin=table1.c.id==table1.c.related_id, remote_side=table1.c.id, uselist=False), 
-                                   uselist=False, lazy=False, primaryjoin=table1.c.id==table1.c.related_id),
+                                   uselist=False, primaryjoin=table1.c.id==table1.c.related_id),
                                'data':relation(mapper(Data, data), lazy=False)
                                 }
                         )
-        
-
 
         table1b_mapper = mapper(Table1B, inherits=table1_mapper, polymorphic_identity='table1b')
 
@@ -104,13 +101,6 @@ class PolymorphicCircularTest(testbase.PersistTest):
                                polymorphic_identity='table2')
 
         table3_mapper = mapper(Table3, table3, inherits=table1_mapper, polymorphic_identity='table3')
-    def tearDown(self):
-        for t in metadata.table_iterator(reverse=True):
-            t.delete().execute()
-            
-    def tearDownAll(self):
-        clear_mappers()
-        metadata.drop_all()
 
     def testone(self):
         self.do_testlist([Table1, Table2, Table1, Table2])
@@ -188,9 +178,9 @@ class PolymorphicCircularTest(testbase.PersistTest):
         backwards = repr(assertlist)
         
         # everything should match !
-        print original
-        print backwards
-        print forwards
+        print "ORIGNAL", original
+        print "BACKWARDS",backwards
+        print "FORWARDS", forwards
         assert original == forwards == backwards
 
 if __name__ == '__main__':

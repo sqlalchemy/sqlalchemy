@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from sqlalchemy import sql, util, exceptions, sql_util, logging
-from sqlalchemy.orm import mapper
+from sqlalchemy.orm import mapper, class_mapper
 from sqlalchemy.orm.interfaces import OperationContext
 
 __all__ = ['Query', 'QueryContext', 'SelectionContext']
@@ -18,7 +18,7 @@ class Query(object):
         else:
             self.mapper = class_or_mapper.compile()
         self.with_options = with_options or []
-        self.mapper = self.mapper.get_select_mapper().compile()
+        self.select_mapper = self.mapper.get_select_mapper().compile()
         self.always_refresh = kwargs.pop('always_refresh', self.mapper.always_refresh)
         self.order_by = kwargs.pop('order_by', self.mapper.order_by)
         self.lockmode = lockmode
@@ -26,10 +26,11 @@ class Query(object):
         if extension is not None:
             self.extension.append(extension)
         self.extension.append(self.mapper.extension)
+        self.is_polymorphic = self.mapper is not self.select_mapper
         self._session = session
         if not hasattr(self.mapper, '_get_clause'):
             _get_clause = sql.and_()
-            for primary_key in self.mapper.pks_by_table[self.table]:
+            for primary_key in self.primary_key_columns:
                 _get_clause.clauses.append(primary_key == sql.bindparam(primary_key._label, type=primary_key.type))
             self.mapper._get_clause = _get_clause
         self._get_clause = self.mapper._get_clause
@@ -44,7 +45,8 @@ class Query(object):
             return self.mapper.get_session()
         else:
             return self._session
-    table = property(lambda s:s.mapper.select_table)
+    table = property(lambda s:s.select_mapper.mapped_table)
+    primary_key_columns = property(lambda s:s.select_mapper.pks_by_table[s.select_mapper.mapped_table])
     session = property(_get_session)
     
     def get(self, ident, **kwargs):
@@ -117,6 +119,10 @@ class Query(object):
 
     def join_by(self, *args, **params):
         """return a ClauseElement representing the WHERE clause that would normally be sent to select_whereclause() by select_by()."""
+        return self._join_by(args, params)
+
+    def _join_by(self, args, params, start=None):
+        """return a ClauseElement representing the WHERE clause that would normally be sent to select_whereclause() by select_by()."""
         clause = None
         for arg in args:
             if clause is None:
@@ -125,7 +131,7 @@ class Query(object):
                 clause &= arg
 
         for key, value in params.iteritems():
-            (keys, prop) = self._locate_prop(key)
+            (keys, prop) = self._locate_prop(key, start=start)
             c = prop.compare(value) & self.join_via(keys)
             if clause is None:
                 clause =  c
@@ -265,7 +271,7 @@ class Query(object):
         if self._nestable(**kwargs):
             s = sql.select([self.table], whereclause, **kwargs).alias('getcount').count()
         else:
-            primary_key = self.mapper.pks_by_table[self.table]
+            primary_key = self.primary_key_columns
             s = sql.select([sql.func.count(list(primary_key)[0])], whereclause, from_obj=from_obj, **kwargs)
         return self.session.scalar(self.mapper, s, params=params)
 
@@ -317,7 +323,7 @@ class Query(object):
 
         session = self.session
         
-        context = SelectionContext(self.mapper, session, with_options=self.with_options, **kwargs)
+        context = SelectionContext(self.select_mapper, session, with_options=self.with_options, **kwargs)
 
         result = util.UniqueAppender([])
         if mappers:
@@ -326,7 +332,7 @@ class Query(object):
                 otherresults.append(util.UniqueAppender([]))
 
         for row in cursor.fetchall():
-            self.mapper._instance(context, row, result)
+            self.select_mapper._instance(context, row, result)
             i = 0
             for m in mappers:
                 m._instance(context, row, otherresults[i])
@@ -356,7 +362,7 @@ class Query(object):
             ident = util.to_list(ident)
         i = 0
         params = {}
-        for primary_key in self.mapper.pks_by_table[self.table]:
+        for primary_key in self.primary_key_columns:
             params[primary_key._label] = ident[i]
             # if there are not enough elements in the given identifier, then 
             # use the previous identifier repeatedly.  this is a workaround for the issue 
@@ -392,6 +398,16 @@ class Query(object):
         
     def compile(self, whereclause = None, **kwargs):
         """given a WHERE criterion, produce a ClauseElement-based statement suitable for usage in the execute() method."""
+        
+        if whereclause is not None and self.is_polymorphic:
+            # adapt the given WHERECLAUSE to adjust instances of this query's mapped table to be that of our select_table,
+            # which may be the "polymorphic" selectable used by our mapper.
+            print "PolYMORPHIC YES"
+            print "WHERECLAUSE", str(whereclause)
+            print "OUR TABLE", str(self.table)
+            whereclause.accept_visitor(sql_util.ClauseAdapter(self.table))
+            print "AND NOW ITS", str(whereclause)
+        
         context = kwargs.pop('query_context', None)
         if context is None:
             context = QueryContext(self, kwargs)
@@ -412,8 +428,8 @@ class Query(object):
         except KeyError:
             raise exceptions.ArgumentError("Unknown lockmode '%s'" % lockmode)
         
-        if self.mapper.single and self.mapper.polymorphic_on is not None and self.mapper.polymorphic_identity is not None:
-            whereclause = sql.and_(whereclause, self.mapper.polymorphic_on.in_(*[m.polymorphic_identity for m in self.mapper.polymorphic_iterator()]))
+        if self.select_mapper.single and self.select_mapper.polymorphic_on is not None and self.select_mapper.polymorphic_identity is not None:
+            whereclause = sql.and_(whereclause, self.select_mapper.polymorphic_on.in_(*[m.polymorphic_identity for m in self.select_mapper.polymorphic_iterator()]))
         
         alltables = []
         for l in [sql_util.TableFinder(x) for x in from_obj]:
@@ -460,7 +476,9 @@ class Query(object):
 
         context.statement = statement
         # give all the attached properties a chance to modify the query
-        for value in self.mapper.props.values():
+        # TODO: doing this off the select_mapper.  if its the polymorphic mapper, then
+        # it has no relations() on it.  should we compile those too into the query ?  (i.e. eagerloads)
+        for value in self.select_mapper.props.values():
             value.setup(context) 
         
         return statement

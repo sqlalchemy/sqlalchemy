@@ -173,7 +173,7 @@ class RelationTest2(testbase.PersistTest):
         assert sess.query(Employee).get([c1.company_id, 3]).reports_to.name == 'emp1'
         assert sess.query(Employee).get([c2.company_id, 3]).reports_to.name == 'emp5'
 
-    def testimplict(self):
+    def testimplicit(self):
         """test with mappers that have the most minimal arguments"""
         class Company(object):
             pass

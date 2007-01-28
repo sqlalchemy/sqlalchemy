@@ -234,10 +234,24 @@ class MultipleTableTest(testbase.PersistTest):
         print "\n"
 
         
-        dilbert = session.query(Person).selectfirst(person_join.c.name=='dilbert')
+        # test selecting from the query, using the base mapped table (people) as the selection criterion.
+        # in the case of the polymorphic Person query, the "people" selectable should be adapted to be "person_join"
+        dilbert = session.query(Person).selectfirst(people.c.name=='dilbert')
         dilbert2 = session.query(Engineer).selectfirst(people.c.name=='dilbert')
         assert dilbert is dilbert2
 
+        # test selecting from the query, joining against an alias of the base "people" table.  test that
+        # the "palias" alias does *not* get sucked up into the "person_join" conversion.
+        palias = people.alias("palias")
+        session.query(Person).selectfirst((palias.c.name=='dilbert') & (palias.c.person_id==people.c.person_id))
+        dilbert2 = session.query(Engineer).selectfirst((palias.c.name=='dilbert') & (palias.c.person_id==people.c.person_id))
+        assert dilbert is dilbert2
+
+        session.query(Person).selectfirst((engineers.c.engineer_name=="engineer1") & (engineers.c.person_id==people.c.person_id))
+        dilbert2 = session.query(Engineer).selectfirst(engineers.c.engineer_name=="engineer1")
+        assert dilbert is dilbert2
+        
+        
         dilbert.engineer_name = 'hes dibert!'
 
         session.flush()

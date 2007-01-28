@@ -205,6 +205,8 @@ class AssertMixin(PersistTest):
             self.assert_(db.sql_count == count, "desired statement count %d does not match %d" % (count, db.sql_count))
 
 class ORMTest(AssertMixin):
+    keep_mappers = False
+    keep_data = False
     def setUpAll(self):
         global metadata
         metadata = BoundMetaData(db)
@@ -217,10 +219,11 @@ class ORMTest(AssertMixin):
     def tearDownAll(self):
         metadata.drop_all()
     def tearDown(self):
-        clear_mappers()
-        for t in metadata.table_iterator(reverse=True):
-            t.delete().execute().close()
-
+        if not self.keep_mappers:
+            clear_mappers()
+        if not self.keep_data:
+            for t in metadata.table_iterator(reverse=True):
+                t.delete().execute().close()
 
 class EngineAssert(proxy.BaseProxyEngine):
     """decorates a SQLEngine object to match the incoming queries against a set of assertions."""

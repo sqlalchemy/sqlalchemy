@@ -201,6 +201,9 @@ class PropertyLoader(StrategizedProperty):
                 self.association = mapper.class_mapper(self.association, compile=False)._check_compile()
         
         self.target = self.mapper.mapped_table
+        self.select_mapper = self.mapper.get_select_mapper()
+        self.select_table = self.mapper.select_table
+        self.loads_polymorphic = self.target is not self.select_table
 
         if self.cascade.delete_orphan:
             if self.parent.class_ is self.mapper.class_:
@@ -226,7 +229,7 @@ class PropertyLoader(StrategizedProperty):
         # as the loader strategies expect to be working with those now (they will adapt the join conditions
         # to the "polymorphic" selectable as needed).  since this is an API change, put an explicit check/
         # error message in case its the "old" way.
-        if self.mapper.select_table is not self.mapper.mapped_table:
+        if self.loads_polymorphic:
             vis = sql_util.ColumnsInClause(self.mapper.select_table)
             self.primaryjoin.accept_visitor(vis)
             if self.secondaryjoin:
@@ -234,6 +237,7 @@ class PropertyLoader(StrategizedProperty):
             if vis.result:
                 raise exceptions.ArgumentError("In relationship '%s' between mappers '%s' and '%s', primary and secondary join conditions must not include columns from the polymorphic 'select_table' argument as of SA release 0.3.4.  Construct join conditions using the base tables of the related mappers." % (self.key, self.parent, self.mapper))
 
+            
         # if the foreign key wasnt specified and theres no assocaition table, try to figure
         # out who is dependent on who. we dont need all the foreign keys represented in the join,
         # just one of them.
@@ -247,6 +251,52 @@ class PropertyLoader(StrategizedProperty):
         if self.direction is None:
             self.direction = self._get_direction()
         
+        #print "DIRECTION IS ", self.direction, sync.ONETOMANY, sync.MANYTOONE
+        #print "FKEY IS", self.foreignkey
+
+        # get ready to create "polymorphic" primary/secondary join clauses.
+        # these clauses represent the same join between parent/child tables that the primary
+        # and secondary join clauses represent, except they reference ColumnElements that are specifically
+        # in the "polymorphic" selectables.  these are used to construct joins for both Query as well as
+        # eager loading, and also are used to calculate "lazy loading" clauses.
+        
+        # as we will be using the polymorphic selectables (i.e. select_table argument to Mapper) to figure this out, 
+        # first create maps of all the "equivalent" columns, since polymorphic selectables will often munge
+        # several "equivalent" columns (such as parent/child fk cols) into just one column.
+        parent_equivalents = self.parent._get_inherited_column_equivalents()
+        target_equivalents = self.mapper._get_inherited_column_equivalents()
+        
+        # if the target mapper loads polymorphically, adapt the clauses to the target's selectable
+        if self.loads_polymorphic:
+            if self.secondaryjoin:
+                self.polymorphic_secondaryjoin = self.secondaryjoin.copy_container()
+                self.polymorphic_secondaryjoin.accept_visitor(sql_util.ClauseAdapter(self.mapper.select_table))
+                self.polymorphic_primaryjoin = self.primaryjoin.copy_container()
+            else:
+                self.polymorphic_primaryjoin = self.primaryjoin.copy_container()
+                if self.direction is sync.ONETOMANY:
+                    self.polymorphic_primaryjoin.accept_visitor(sql_util.ClauseAdapter(self.mapper.select_table, include=self.foreignkey, equivalents=target_equivalents))
+                elif self.direction is sync.MANYTOONE:
+                    self.polymorphic_primaryjoin.accept_visitor(sql_util.ClauseAdapter(self.mapper.select_table, exclude=self.foreignkey, equivalents=target_equivalents))
+                    
+                self.polymorphic_secondaryjoin = None
+        else:
+            self.polymorphic_primaryjoin = self.primaryjoin.copy_container()
+            self.polymorphic_secondaryjoin = self.secondaryjoin and self.secondaryjoin.copy_container() or None
+
+        # if the parent mapper loads polymorphically, adapt the clauses to the parent's selectable
+        if self.parent.select_table is not self.parent.mapped_table:
+            if self.direction is sync.ONETOMANY:
+                self.polymorphic_primaryjoin.accept_visitor(sql_util.ClauseAdapter(self.parent.select_table, exclude=self.foreignkey, equivalents=parent_equivalents))
+            elif self.direction is sync.MANYTOONE:
+                self.polymorphic_primaryjoin.accept_visitor(sql_util.ClauseAdapter(self.parent.select_table, include=self.foreignkey, equivalents=parent_equivalents))
+            elif self.secondaryjoin:
+                self.polymorphic_primaryjoin.accept_visitor(sql_util.ClauseAdapter(self.parent.select_table, exclude=self.foreignkey, equivalents=parent_equivalents))
+
+        #print "KEY", self.key, "PARENT", str(self.parent)
+        #print "KEY", self.key, "REG PRIMARY JOIN", str(self.primaryjoin)
+        #print "KEY", self.key, "POLY PRIMARY JOIN", str(self.polymorphic_primaryjoin)
+                
         if self.uselist is None and self.direction == sync.MANYTOONE:
             self.uselist = False
 
@@ -326,10 +376,10 @@ class PropertyLoader(StrategizedProperty):
         self.foreignkey = foreignkeys
         
     def get_join(self):
-        if self.secondaryjoin is not None:
-            return self.primaryjoin & self.secondaryjoin
+        if self.polymorphic_secondaryjoin is not None:
+            return self.polymorphic_primaryjoin & self.polymorphic_secondaryjoin
         else:
-            return self.primaryjoin
+            return self.polymorphic_primaryjoin
 
     def register_dependencies(self, uowcommit):
         if not self.viewonly:

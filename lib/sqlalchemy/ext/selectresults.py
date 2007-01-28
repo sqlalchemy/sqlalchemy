@@ -71,7 +71,10 @@ class SelectResults(object):
 
     def select(self, clause):
         return self.filter(clause)
-        
+    
+    def select_by(self, *args, **kwargs):
+        return self.filter(self._query._join_by(args, kwargs, start=self._joinpoint[1]))
+            
     def order_by(self, order_by):
         """apply an ORDER BY to the query."""
         new = self.clone()
@@ -131,9 +134,12 @@ class SelectResults(object):
         for key in keys:
             prop = mapper.props[key]
             if outerjoin:
-                clause = clause.outerjoin(prop.mapper.mapped_table, prop.get_join())
+                clause = clause.outerjoin(prop.select_table, prop.get_join())
             else:
-                clause = clause.join(prop.mapper.mapped_table, prop.get_join())
+                clause = clause.join(prop.select_table, prop.get_join())
+                print "SELECT_TABLE", prop.select_table
+                print "JOIN", prop.get_join()
+                print "CLAUSE", str(clause), "DONE CLAUSE"
             mapper = prop.mapper
         return (clause, mapper)
         

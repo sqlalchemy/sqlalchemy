@@ -1,12 +1,18 @@
 0.3.5
 - orm:
-  - adjustments to the recent polymorphic relationship refactorings, specifically
-  for many-to-one relationships to polymorphic unions that did not contain the 
-  base table [ticket:439].  the lazy/eager clause adaption to the selectable
-  will match up on straight column names (i.e. its a more liberal policy)
+  - further rework of the recent polymorphic relationship refactorings, as well
+  as the mechanics of relationships overall.  Allows more accurate ORM behavior
+  with relationships from/to/between polymorphic mappers, as well as their usage
+  with Query, SelectResults.  tickets include [ticket:439], [ticket:441].
+  relationship mechanics are still a work in progress, more to come !
   - eager relation to an inheriting mapper wont fail if no rows returned for
   the relationship.
-  - fix for multi-level polymorphic mappers
+  - eager loading is slightly more strict about detecting "self-referential"
+  relationships, specifically between polymorphic mappers.
+  - the value of "case_sensitive" defaults to True now, regardless of the casing
+    of the identifier, unless specifically set to False. this is because the
+    object might be label'ed as something else which does contain mixed case, and
+    propigating "case_sensitive=False" breaks that.
 - oracle:
   - when returning "rowid" as the ORDER BY column or in use with ROW_NUMBER OVER,
   oracle dialect checks the selectable its being applied to and will switch to 

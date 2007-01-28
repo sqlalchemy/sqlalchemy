@@ -65,8 +65,7 @@ class SchemaItem(object):
         a local non-None value overrides all others.  after that, the parent item
         (i.e. Column for a Sequence, Table for a Column, MetaData for a Table) is
         searched for a non-None setting, traversing each parent until none are found.
-        finally, case_sensitive is set to True if and only if the name of this item
-        is not all lowercase.
+        finally, case_sensitive is set to True as a default.
         """
         local = getattr(self, '_%s_setting' % keyname, None)
         if local is not None:
@@ -78,7 +77,7 @@ class SchemaItem(object):
                 parentval = getattr(parent, '_case_sensitive_setting', None)
                 if parentval is not None:
                     return parentval
-        return name is not None and name.lower() != name
+        return True 
     def _get_case_sensitive(self):
         try:
             return self.__case_sensitive
@@ -194,11 +193,9 @@ class Table(SchemaItem, sql.TableClause):
         quote_schema=False : indicates that the Namespace identifier must be properly escaped and quoted before being sent 
         to the database. This flag overrides all other quoting behavior.
         
-        case_sensitive=True : indicates that the identifier should be interpreted by the database in the natural case for identifiers.
-        Mixed case is not sufficient to cause this identifier to be quoted; it must contain an illegal character.
+        case_sensitive=True : indicates quoting should be used if the identifier needs it.
         
-        case_sensitive_schema=True : indicates that the identifier should be interpreted by the database in the natural case for identifiers.
-        Mixed case is not sufficient to cause this identifier to be quoted; it must contain an illegal character.
+        case_sensitive_schema=True : indicates quoting should be used if the identifier needs it.
         """
         super(Table, self).__init__(name)
         self._metadata = metadata
@@ -365,8 +362,7 @@ class Column(SchemaItem, sql._ColumnClause):
         to the database.  This flag should normally not be required as dialects can auto-detect conditions where quoting
         is required.
 
-        case_sensitive=True : indicates that the identifier should be interpreted by the database in the natural case for identifiers.
-        Mixed case is not sufficient to cause this identifier to be quoted; it must contain an illegal character.
+        case_sensitive=True : indicates quoting should be used if the identifier needs it.
         """
         name = str(name) # in case of incoming unicode        
         super(Column, self).__init__(name, None, type)

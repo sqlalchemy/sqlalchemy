@@ -125,20 +125,8 @@ class DeferredOption(StrategizedOption):
 class AbstractRelationLoader(LoaderStrategy):
     def init(self):
         super(AbstractRelationLoader, self).init()
-        self.primaryjoin = self.parent_property.primaryjoin
-        self.secondaryjoin = self.parent_property.secondaryjoin
-        self.secondary = self.parent_property.secondary
-        self.foreignkey = self.parent_property.foreignkey
-        self.mapper = self.parent_property.mapper
-        self.select_mapper = self.mapper.get_select_mapper()
-        self.target = self.parent_property.target
-        self.select_table = self.parent_property.mapper.select_table
-        self.loads_polymorphic = self.target is not self.select_table
-        self.uselist = self.parent_property.uselist
-        self.cascade = self.parent_property.cascade
-        self.attributeext = self.parent_property.attributeext
-        self.order_by = self.parent_property.order_by
-        self.remote_side = self.parent_property.remote_side
+        for attr in ['primaryjoin', 'secondaryjoin', 'secondary', 'foreignkey', 'mapper', 'select_mapper', 'target', 'select_table', 'loads_polymorphic', 'uselist', 'cascade', 'attributeext', 'order_by', 'remote_side', 'polymorphic_primaryjoin', 'polymorphic_secondaryjoin', 'direction']:
+            setattr(self, attr, getattr(self.parent_property, attr))
         self._should_log_debug = logging.is_debug_enabled(self.logger)
         
     def _init_instance_attribute(self, instance, callable_=None):
@@ -163,7 +151,14 @@ NoLoader.logger = logging.class_logger(NoLoader)
 class LazyLoader(AbstractRelationLoader):
     def init(self):
         super(LazyLoader, self).init()
-        (self.lazywhere, self.lazybinds, self.lazyreverse) = self._create_lazy_clause(self.parent.unjoined_table, self.primaryjoin, self.secondaryjoin, self.foreignkey, self.remote_side, self.mapper.select_table)
+        (self.lazywhere, self.lazybinds, self.lazyreverse) = self._create_lazy_clause(
+            self.parent.select_table, 
+            self.mapper.select_table,
+            self.polymorphic_primaryjoin, 
+            self.polymorphic_secondaryjoin, 
+            self.foreignkey, 
+            self.remote_side)
+
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
         self.use_get = not self.uselist and query.Query(self.mapper)._get_clause.compare(self.lazywhere)
@@ -210,7 +205,7 @@ class LazyLoader(AbstractRelationLoader):
             # to possibly save a DB round trip
             if self.use_get:
                 ident = []
-                for primary_key in self.mapper.pks_by_table[self.mapper.mapped_table]:
+                for primary_key in self.select_mapper.pks_by_table[self.select_mapper.mapped_table]:
                     bind = self.lazyreverse[primary_key]
                     ident.append(params[bind.key])
                 return session.query(self.mapper).get(ident)
@@ -247,11 +242,49 @@ class LazyLoader(AbstractRelationLoader):
                 # to load data into it.
                 sessionlib.attribute_manager.reset_instance_attribute(instance, self.key)
 
-    def _create_lazy_clause(self, table, primaryjoin, secondaryjoin, foreignkey, remote_side, select_table):
+    def _create_lazy_clause(self, parenttable, targettable, primaryjoin, secondaryjoin, foreignkey, remote_side):
         binds = {}
         reverse = {}
-        def column_in_table(table, column):
-            return table.corresponding_column(column, raiseerr=False, keys_ok=False) is not None
+
+        #print "PARENTTABLE", parenttable, "TARGETTABLE", targettable
+
+        def should_bind(targetcol, othercol):
+            # determine if the given target column is part of the parent table
+            # portion of the join condition, in which case it gets converted
+            # to a bind param.
+            
+            # contains_column will return if this column is exactly in the table, with no
+            # proxying relationships.  the table can be either the column's actual parent table,
+            # or a Join object containing the table.  for a Select, Alias, or Union, the column
+            # needs to be the actual ColumnElement exported by that selectable, not the "originating" column.
+            inparent = parenttable.c.contains_column(targetcol)
+            
+            # check if its also in the target table.  if this is a many-to-many relationship, 
+            # then we dont care about target table presence
+            intarget = secondaryjoin is None and targettable.c.contains_column(targetcol)
+            
+            if inparent and not intarget:
+                # its in the parent and not the target, return true.
+                return True
+            elif inparent and intarget:
+                # its in both.  hmm.
+                if parenttable is not targettable:
+                    # the column is in both tables, but the two tables are different.  
+                    # this corresponds to a table relating to a Join which also contains that table.
+                    # such as tableA.c.col1 == tableB.c.col2, tables are tableA and tableA.join(tableB)
+                    # in which case we only accept that the parenttable is the "base" table, not the "joined" table
+                    return targetcol.table is parenttable
+                else:
+                    # parent/target are the same table, i.e. circular reference.
+                    # we have to rely on the "remote_side" argument
+                    # and/or foreignkey collection.
+                    # technically we can use this for the non-circular refs as well except that "remote_side" is usually
+                    # only calculated for self-referential relationships at the moment.
+                    # TODO: have PropertyLoader calculate remote_side completely ?  this would involve moving most of the
+                    # "should_bind()" logic to PropertyLoader.  remote_side could also then be accurately used by sync.py.
+                    if col_in_collection(othercol, remote_side):
+                        return True
+            return False
 
         if remote_side is None or len(remote_side) == 0:
             remote_side = foreignkey
@@ -280,14 +313,15 @@ class LazyLoader(AbstractRelationLoader):
             rightcol = find_column_in_expr(binary.right)
             if leftcol is None or rightcol is None:
                 return
-            circular = leftcol.table is rightcol.table
-            if ((not circular and column_in_table(table, leftcol)) or (circular and col_in_collection(rightcol, remote_side))):
+            if should_bind(leftcol, rightcol):
                 col = leftcol
                 binary.left = binds.setdefault(leftcol,
                         sql.bindparam(bind_label(), None, shortname=leftcol.name, type=binary.right.type))
                 reverse[rightcol] = binds[col]
 
-            if (leftcol is not rightcol) and ((not circular and column_in_table(table, rightcol)) or (circular and col_in_collection(leftcol, remote_side))):
+            # the "left is not right" compare is to handle part of a join clause that is "table.c.col1==table.c.col1",
+            # which can happen in rare cases
+            if leftcol is not rightcol and should_bind(rightcol, leftcol):
                 col = rightcol
                 binary.right = binds.setdefault(rightcol,
                         sql.bindparam(bind_label(), None, shortname=rightcol.name, type=binary.left.type))
@@ -299,13 +333,9 @@ class LazyLoader(AbstractRelationLoader):
         
         if secondaryjoin is not None:
             secondaryjoin = secondaryjoin.copy_container()
-            if self.loads_polymorphic:
-                secondaryjoin.accept_visitor(sql_util.ClauseAdapter(select_table))
             lazywhere = sql.and_(lazywhere, secondaryjoin)
-        else:
-            if self.loads_polymorphic:
-                lazywhere.accept_visitor(sql_util.ClauseAdapter(select_table))
-        
+ 
+        #print "LAZYCLAUSE", str(lazywhere)
         LazyLoader.logger.info("create_lazy_clause " + str(lazywhere))
         return (lazywhere, binds, reverse)
 
@@ -317,7 +347,7 @@ class EagerLoader(AbstractRelationLoader):
     """loads related objects inline with a parent query."""
     def init(self):
         super(EagerLoader, self).init()
-        if self.parent.isa(self.select_mapper):
+        if self.parent.isa(self.mapper):
             raise exceptions.ArgumentError("Error creating eager relationship '%s' on parent class '%s' to child class '%s': Cant use eager loading on a self referential relationship." % (self.key, repr(self.parent.class_), repr(self.mapper.class_)))
         self.parent._eager_loaders.add(self.parent_property)
 
@@ -364,16 +394,12 @@ class EagerLoader(AbstractRelationLoader):
                         eagerloader.target:self.eagertarget,
                         eagerloader.secondary:self.eagersecondary
                         })
-                self.eagersecondaryjoin = eagerloader.secondaryjoin.copy_container()
-                if eagerloader.loads_polymorphic:
-                    self.eagersecondaryjoin.accept_visitor(sql_util.ClauseAdapter(eagerloader.select_table))
+                self.eagersecondaryjoin = eagerloader.polymorphic_secondaryjoin.copy_container()
                 self.eagersecondaryjoin.accept_visitor(self.aliasizer)
-                self.eagerprimary = eagerloader.primaryjoin.copy_container()
+                self.eagerprimary = eagerloader.polymorphic_primaryjoin.copy_container()
                 self.eagerprimary.accept_visitor(self.aliasizer)
             else:
-                self.eagerprimary = eagerloader.primaryjoin.copy_container()
-                if eagerloader.loads_polymorphic:
-                    self.eagerprimary.accept_visitor(sql_util.ClauseAdapter(eagerloader.select_table))
+                self.eagerprimary = eagerloader.polymorphic_primaryjoin.copy_container()
                 self.aliasizer = sql_util.Aliasizer(self.target, aliases={self.target:self.eagertarget})
                 self.eagerprimary.accept_visitor(self.aliasizer)
 

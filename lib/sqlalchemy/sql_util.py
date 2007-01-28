@@ -135,17 +135,31 @@ class ClauseAdapter(sql.ClauseVisitor):
         s.c.col1 == table2.c.col1
     
     """
-    def __init__(self, selectable):
+    def __init__(self, selectable, include=None, exclude=None, equivalents=None):
         self.selectable = selectable
+        self.include = include
+        self.exclude = exclude
+        self.equivalents = equivalents
+    def include_col(self, col):
+        if not isinstance(col, sql.ColumnElement):
+            return None
+        if self.include is not None:
+            if col not in self.include:
+                return None
+        if self.exclude is not None:
+            if col in self.exclude:
+                return None
+        newcol = self.selectable.corresponding_column(col, raiseerr=False, keys_ok=False)
+        if newcol is None and self.equivalents is not None and col in self.equivalents:
+            newcol = self.selectable.corresponding_column(self.equivalents[col], raiseerr=False, keys_ok=False)
+        return newcol
     def visit_binary(self, binary):
-        if isinstance(binary.left, sql.ColumnElement):
-            col = self.selectable.corresponding_column(binary.left, raiseerr=False, keys_ok=True)
-            if col is not None:
-                binary.left = col
-        if isinstance(binary.right, sql.ColumnElement):
-            col = self.selectable.corresponding_column(binary.right, raiseerr=False, keys_ok=True)
-            if col is not None:
-                binary.right = col
+        col = self.include_col(binary.left)
+        if col is not None:
+            binary.left = col
+        col = self.include_col(binary.right)
+        if col is not None:
+            binary.right = col
 
 class ColumnsInClause(sql.ClauseVisitor):
     """given a selectable, visits clauses and determines if any columns from the clause are in the selectable"""

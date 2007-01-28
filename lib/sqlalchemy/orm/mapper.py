@@ -500,8 +500,9 @@ class Mapper(object):
 
 
     def _initialize_properties(self):
-        """calls the init() method on all MapperProperties attached to this mapper.  this will incur the
-        compilation of related mappers."""
+        """calls the init() method on all MapperProperties attached to this mapper.  this happens
+        after all mappers have completed compiling everything else up until this point, so that all
+        dependencies are fully available."""
         self.__log("_initialize_properties() started")
         l = [(key, prop) for key, prop in self.__props.iteritems()]
         for key, prop in l:
@@ -514,7 +515,8 @@ class Mapper(object):
         """if the 'select_table' keyword argument was specified, 
         set up a second "surrogate mapper" that will be used for select operations.
         the columns of select_table should encompass all the columns of the mapped_table either directly
-        or through proxying relationships."""
+        or through proxying relationships. Currently, non-column properties are *not* copied.  this implies
+        that a polymorphic mapper cant do any eager loading right now."""
         if self.select_table is not self.mapped_table:
             if self.polymorphic_identity is None:
                 raise exceptions.ArgumentError("Could not locate a polymorphic_identity field for mapper '%s'.  This field is required for polymorphic mappers" % str(self))
@@ -531,7 +533,7 @@ class Mapper(object):
         """if this mapper is to be a primary mapper (i.e. the non_primary flag is not set),
         associate this Mapper with the given class_ and entity name.  subsequent
         calls to class_mapper() for the class_/entity name combination will return this 
-        mapper.  also decorates the __init__ method on the mapped class to include auto-session attachment logic."""
+        mapper.  also decorates the __init__ method on the mapped class to include optional auto-session attachment logic."""
         if self.non_primary:
             return
         
@@ -626,7 +628,24 @@ class Mapper(object):
                 for x in iterate(mapper):
                     yield x
         return iterate(self)
-                
+    
+    def _get_inherited_column_equivalents(self):
+        """return a map of all 'equivalent' columns, based on traversing the full set of inherit_conditions across
+        all inheriting mappers and determining column pairs that are equated to one another.
+        
+        this is used when relating columns to those of a polymorphic selectable, as the selectable usually only contains
+        one of two columns that are equated to one another."""
+        result = {}
+        def visit_binary(binary):
+            if binary.operator == '=':
+                result[binary.left] = binary.right
+                result[binary.right] = binary.left
+        vis = mapperutil.BinaryVisitor(visit_binary)
+        for mapper in self.polymorphic_iterator():
+            if mapper.inherit_condition is not None:
+                mapper.inherit_condition.accept_visitor(vis)
+        return result
+            
     def add_properties(self, dict_of_properties):
         """adds the given dictionary of properties to this mapper, using add_property."""
         for key, value in dict_of_properties.iteritems():
@@ -755,8 +774,8 @@ class Mapper(object):
     def identity_key_from_row(self, row):
         """return an identity-map key for use in storing/retrieving an item from the identity map.
 
-        row - a sqlalchemy.dbengine.RowProxy instance or other map corresponding result-set
-        column names to their values within a row.
+        row - a sqlalchemy.engine.base.RowProxy instance or a dictionary corresponding result-set
+        ColumnElement instances to their values within a row.
         """
         return (self.class_, tuple([row[column] for column in self.pks_by_table[self.mapped_table]]), self.entity_name)
         
