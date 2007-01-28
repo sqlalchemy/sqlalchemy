@@ -137,9 +137,6 @@ class SelectResults(object):
                 clause = clause.outerjoin(prop.select_table, prop.get_join())
             else:
                 clause = clause.join(prop.select_table, prop.get_join())
-                print "SELECT_TABLE", prop.select_table
-                print "JOIN", prop.get_join()
-                print "CLAUSE", str(clause), "DONE CLAUSE"
             mapper = prop.mapper
         return (clause, mapper)
         

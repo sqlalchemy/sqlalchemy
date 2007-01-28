@@ -402,11 +402,7 @@ class Query(object):
         if whereclause is not None and self.is_polymorphic:
             # adapt the given WHERECLAUSE to adjust instances of this query's mapped table to be that of our select_table,
             # which may be the "polymorphic" selectable used by our mapper.
-            print "PolYMORPHIC YES"
-            print "WHERECLAUSE", str(whereclause)
-            print "OUR TABLE", str(self.table)
             whereclause.accept_visitor(sql_util.ClauseAdapter(self.table))
-            print "AND NOW ITS", str(whereclause)
         
         context = kwargs.pop('query_context', None)
         if context is None:
