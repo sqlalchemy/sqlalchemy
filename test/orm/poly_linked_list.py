@@ -68,7 +68,7 @@ class PolymorphicCircularTest(testbase.ORMTest):
                                     'next': relation(Table1, 
                                         backref=backref('prev', primaryjoin=join.c.id==join.c.related_id, foreignkey=join.c.id, uselist=False), 
                                         uselist=False, primaryjoin=join.c.id==join.c.related_id),
-                                    'data':relation(mapper(Data, data), lazy=lazy)
+                                    'data':relation(mapper(Data, data))
                                     }
                             )
             table1_mapper.compile()
