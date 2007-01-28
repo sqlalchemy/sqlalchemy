@@ -396,6 +396,12 @@ class PGDialect(ansisql.ANSIDialect):
                 coltype = coltype(*args, **kwargs)
                 colargs= []
                 if default is not None:
+                    match = re.search(r"""(nextval\(')([^']+)('.*$)""", default)
+                    if match is not None:
+                        # the default is related to a Sequence
+                        sch = table.schema
+                        if '.' not in match.group(2) and sch is not None:
+                            default = match.group(1) + sch + '.' + match.group(2) + match.group(3)
                     colargs.append(PassiveDefault(sql.text(default)))
                 table.append_column(schema.Column(name, coltype, nullable=nullable, *colargs))
     

@@ -22,6 +22,8 @@
 - mysql:
   - fix to reflection on older DB's that might return array() type for 
   "show variables like" statements
+- postgres:
+  - better reflection of sequences for alternate-schema Tables [ticket:442]
 
 0.3.4
 - general:
