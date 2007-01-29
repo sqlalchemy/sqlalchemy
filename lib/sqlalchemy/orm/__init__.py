@@ -15,7 +15,7 @@ from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.util import polymorphic_union
 from sqlalchemy.orm import properties, strategies
 from sqlalchemy.orm.session import Session as create_session
-from sqlalchemy.orm.session import object_session
+from sqlalchemy.orm.session import object_session, attribute_manager
 
 __all__ = ['relation', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer', 'extension', 
         'mapper', 'clear_mappers', 'compile_mappers', 'clear_mapper', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query', 
@@ -72,6 +72,8 @@ def clear_mappers():
     """remove all mappers that have been created thus far.  
     
     when new mappers are created, they will be assigned to their classes as their primary mapper."""
+    for mapper in mapper_registry.values():
+        attribute_manager.reset_class_managed(mapper.class_)
     mapper_registry.clear()
     mapperlib.ClassKey.instances.clear()
     
