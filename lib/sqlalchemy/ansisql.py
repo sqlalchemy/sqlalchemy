@@ -942,7 +942,7 @@ class ANSIIdentifierPreparer(object):
         else:
             # literal textual elements get stuck into ColumnClause alot, which shouldnt get quoted
             if use_table:
-                return column.table.name + "." + column.name
+                return self.format_table(column.table, use_schema=False) + "." + column.name
             else:
                 return column.name
             

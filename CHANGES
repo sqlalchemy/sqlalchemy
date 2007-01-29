@@ -1,4 +1,10 @@
 0.3.5
+- sql:
+  - the value of "case_sensitive" defaults to True now, regardless of the casing
+    of the identifier, unless specifically set to False. this is because the
+    object might be label'ed as something else which does contain mixed case, and
+    propigating "case_sensitive=False" breaks that.  Other fixes to quoting
+    when using labels and "fake" column objects
 - orm:
   - further rework of the recent polymorphic relationship refactorings, as well
   as the mechanics of relationships overall.  Allows more accurate ORM behavior
@@ -9,10 +15,6 @@
   the relationship.
   - eager loading is slightly more strict about detecting "self-referential"
   relationships, specifically between polymorphic mappers.
-  - the value of "case_sensitive" defaults to True now, regardless of the casing
-    of the identifier, unless specifically set to False. this is because the
-    object might be label'ed as something else which does contain mixed case, and
-    propigating "case_sensitive=False" breaks that.
 - oracle:
   - when returning "rowid" as the ORDER BY column or in use with ROW_NUMBER OVER,
   oracle dialect checks the selectable its being applied to and will switch to 

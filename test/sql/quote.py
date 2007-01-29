@@ -96,6 +96,10 @@ class QuoteTest(PersistTest):
             Column("col1", Integer))
         x = select([table.c.col1.label("ImATable_col1")]).alias("SomeAlias")
         assert str(select([x.c.ImATable_col1])) == '''SELECT "SomeAlias"."ImATable_col1" \nFROM (SELECT "ImATable".col1 AS "ImATable_col1" \nFROM "ImATable") AS "SomeAlias"'''
+
+        x = select([sql.column("'foo'").label("somelabel")], from_obj=[table]).alias("AnAlias")
+        x = x.select()
+        assert str(x) == '''SELECT "AnAlias".somelabel \nFROM (SELECT 'foo' AS somelabel \nFROM "ImATable") AS "AnAlias"'''
         
     def testlabelsnocase(self):
         metadata = MetaData()
