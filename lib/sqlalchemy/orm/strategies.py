@@ -73,6 +73,10 @@ class DeferredColumnLoader(LoaderStrategy):
         def lazyload():
             if self._should_log_debug:
                 self.logger.debug("deferred load %s group %s" % (mapperutil.attribute_str(instance, self.key), str(self.group)))
+
+            if not mapper.has_identity(instance):
+                return None
+
             try:
                 pk = self.parent.pks_by_table[self.columns[0].table]
             except KeyError:

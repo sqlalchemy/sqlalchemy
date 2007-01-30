@@ -659,7 +659,36 @@ class DeferredTest(MapperSuperTest):
             ("SELECT orders.order_id AS orders_order_id, orders.user_id AS orders_user_id, orders.isopen AS orders_isopen FROM orders ORDER BY %s" % orderby, {}),
             ("SELECT orders.description AS orders_description FROM orders WHERE orders.order_id = :orders_order_id", {'orders_order_id':3})
         ])
-    
+
+    def testunsaved(self):
+        """test that deferred loading doesnt kick in when just PK cols are set"""
+        m = mapper(Order, orders, properties={
+            'description':deferred(orders.c.description)
+        })
+        
+        sess = create_session()
+        o = Order()
+        sess.save(o)
+        o.order_id = 7
+        def go():
+            o.description = "some description"
+        self.assert_sql_count(testbase.db, go, 0)
+
+    def testunsavedgroup(self):
+        """test that deferred loading doesnt kick in when just PK cols are set"""
+        m = mapper(Order, orders, properties={
+            'description':deferred(orders.c.description, group='primary'),
+            'opened':deferred(orders.c.isopen, group='primary')
+        })
+
+        sess = create_session()
+        o = Order()
+        sess.save(o)
+        o.order_id = 7
+        def go():
+            o.description = "some description"
+        self.assert_sql_count(testbase.db, go, 0)
+        
     def testsave(self):
         m = mapper(Order, orders, properties={
             'description':deferred(orders.c.description)
