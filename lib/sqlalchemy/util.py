@@ -49,6 +49,10 @@ def reversed(seq):
 
 class ArgSingleton(type):
     instances = {}
+    def dispose_static(self, *args):
+        hashkey = (self, args)
+        #if hashkey in ArgSingleton.instances:
+        del ArgSingleton.instances[hashkey]
     def __call__(self, *args):
         hashkey = (self, args)
         try:

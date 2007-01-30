@@ -74,8 +74,10 @@ def clear_mappers():
     when new mappers are created, they will be assigned to their classes as their primary mapper."""
     for mapper in mapper_registry.values():
         attribute_manager.reset_class_managed(mapper.class_)
+        mapper.class_key.dispose()
+        if hasattr(mapper.class_, 'c'):
+            del mapper.class_.c
     mapper_registry.clear()
-    mapperlib.ClassKey.instances.clear()
     
 def clear_mapper(m):
     """remove the given mapper from the storage of mappers.  
@@ -83,7 +85,11 @@ def clear_mapper(m):
     when a new mapper is created for the previous mapper's class, it will be used as that classes' 
     new primary mapper."""
     del mapper_registry[m.class_key]
-
+    attribute_manager.reset_class_managed(m.class_)
+    if hasattr(m.class_, 'c'):
+        del m.class_.c
+    m.class_key.dispose()
+    
 def extension(ext):
     """return a MapperOption that will insert the given MapperExtension to the 
     beginning of the list of extensions that will be called in the context of the Query.

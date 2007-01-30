@@ -17,6 +17,7 @@ def suite():
         'orm.relationships',
         'orm.association',
         'orm.merge',
+        'orm.memusage',
         
         'orm.cycles',
         'orm.poly_linked_list',

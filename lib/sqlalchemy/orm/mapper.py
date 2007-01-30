@@ -1458,7 +1458,9 @@ class ClassKey(object):
         return self is other
     def __repr__(self):
         return "ClassKey(%s, %s)" % (repr(self.class_), repr(self.entity_name))
-
+    def dispose(self):
+        type(self).dispose_static(self.class_, self.entity_name)
+        
 def has_identity(object):
     return hasattr(object, '_instance_key')
     
