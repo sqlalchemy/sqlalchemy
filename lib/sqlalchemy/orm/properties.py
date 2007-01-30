@@ -151,11 +151,8 @@ class PropertyLoader(StrategizedProperty):
         if not type in self.cascade:
             return
         passive = type != 'delete' or self.passive_deletes
-        childlist = sessionlib.attribute_manager.get_history(object, self.key, passive=passive)
-        if childlist is None:
-            return
         mapper = self.mapper.primary_mapper()
-        for c in childlist.added_items() + childlist.deleted_items() + childlist.unchanged_items():
+        for c in sessionlib.attribute_manager.get_as_list(object, self.key, passive=passive):
             if c is not None and c not in recursive and (halt_on is None or not halt_on(c)):
                 if not isinstance(c, self.mapper.class_):
                     raise exceptions.AssertionError("Attribute '%s' on class '%s' doesn't handle objects of type '%s'" % (self.key, str(self.parent.class_), str(c.__class__)))

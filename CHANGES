@@ -15,6 +15,8 @@
   the relationship.
   - eager loading is slightly more strict about detecting "self-referential"
   relationships, specifically between polymorphic mappers.
+  - fixed bug where cascade operations incorrectly included deleted collection
+  items in the cascade [ticket:445]
 - oracle:
   - when returning "rowid" as the ORDER BY column or in use with ROW_NUMBER OVER,
   oracle dialect checks the selectable its being applied to and will switch to 
