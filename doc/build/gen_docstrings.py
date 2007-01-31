@@ -2,6 +2,7 @@ from toc import TOCElement
 import docstring
 
 import sqlalchemy.schema as schema
+import sqlalchemy.types as types
 import sqlalchemy.engine as engine
 import sqlalchemy.engine.strategies as strategies
 import sqlalchemy.sql as sql
@@ -22,6 +23,7 @@ def make_all_docs():
     objects = [
         make_doc(obj=sql),
         make_doc(obj=schema),
+        make_doc(obj=types),
         make_doc(obj=engine),
         make_doc(obj=engine.url),
         make_doc(obj=orm, classes=[orm.MapperExtension]),
