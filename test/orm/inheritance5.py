@@ -435,6 +435,49 @@ class RelationTest5(testbase.ORMTest):
         assert carlist[0].manager is None
         assert carlist[1].manager.person_id == car2.manager.person_id
 
+class RelationTest6(testbase.ORMTest):
+    """test self-referential relationships on a single joined-table inheritance mapper"""
+    def define_tables(self, metadata):
+        global people, managers, data
+        people = Table('people', metadata, 
+           Column('person_id', Integer, Sequence('person_id_seq', optional=True), primary_key=True),
+           Column('name', String(50)),
+           )
+
+        managers = Table('managers', metadata, 
+           Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
+           Column('colleague_id', Integer, ForeignKey('managers.person_id')),
+           Column('status', String(30)),
+           )
+
+    def testbasic(self):
+        class Person(AttrSettable):
+            pass
+        class Manager(Person):
+            pass
+
+        mapper(Person, people)
+        # relationship is from people.join(managers) -> people.join(managers).  self referential logic
+        # needs to be used to figure out the lazy clause, meaning create_lazy_clause must go from parent.mapped_table
+        # to parent.mapped_table
+        mapper(Manager, managers, inherits=Person, inherit_condition=people.c.person_id==managers.c.person_id,
+              properties={
+                'colleague':relation(Manager, primaryjoin=managers.c.colleague_id==managers.c.person_id, lazy=True, uselist=False)
+             }
+        )
+
+        sess = create_session()
+        m = Manager(name='manager1')
+        m2 =Manager(name='manager2')
+        m.colleague = m2
+        sess.save(m)
+        sess.flush()
+
+        sess.clear()
+        m = sess.query(Manager).get(m.person_id)
+        m2 = sess.query(Manager).get(m2.person_id)
+        assert m.colleague is m2
+
 class SelectResultsTest(testbase.AssertMixin):
     def setUpAll(self):
         #  cars---owned by---  people (abstract) --- has a --- status
