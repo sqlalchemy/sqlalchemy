@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy import sql, util, exceptions, sql_util, logging
+from sqlalchemy import sql, util, exceptions, sql_util, logging, schema
 from sqlalchemy.orm import mapper, class_mapper
 from sqlalchemy.orm.interfaces import OperationContext
 
@@ -34,7 +34,7 @@ class Query(object):
                 _get_clause.clauses.append(primary_key == sql.bindparam(primary_key._label, type=primary_key.type))
             self.mapper._get_clause = _get_clause
         self._get_clause = self.mapper._get_clause
-        for opt in self.with_options:
+        for opt in util.flatten_iterator(self.with_options):
             opt.process_query(self)
     
     def _insert_extension(self, ext):
@@ -440,7 +440,8 @@ class Query(object):
             if order_by:
                 order_by = util.to_list(order_by) or []
                 cf = sql_util.ColumnFinder()
-                [o.accept_visitor(cf) for o in order_by]
+                for o in order_by:
+                    o.accept_visitor(cf)
             else:
                 cf = []
                 
@@ -449,17 +450,11 @@ class Query(object):
                 s2.order_by(*util.to_list(order_by))
             s3 = s2.alias('tbl_row_count')
             crit = s3.primary_key==self.table.primary_key
-            statement = sql.select([], crit, from_obj=[self.table], use_labels=True, for_update=for_update)
+            statement = sql.select([], crit, use_labels=True, for_update=for_update)
             # now for the order by, convert the columns to their corresponding columns
             # in the "rowcount" query, and tack that new order by onto the "rowcount" query
             if order_by:
-                class Aliasizer(sql_util.Aliasizer):
-                    def get_alias(self, table):
-                        return s3
-                order_by = [o.copy_container() for o in order_by]
-                aliasizer = Aliasizer(*[t for t in sql_util.TableFinder(s3)])
-                [o.accept_visitor(aliasizer) for  o in order_by]
-                statement.order_by(*util.to_list(order_by))
+                statement.order_by(*sql_util.ClauseAdapter(s3).copy_and_process(order_by))
         else:
             statement = sql.select([], whereclause, from_obj=from_obj, use_labels=True, for_update=for_update, **context.select_args())
             if order_by:

@@ -2,6 +2,7 @@ from testbase import PersistTest, AssertMixin
 import testbase
 from sqlalchemy import *
 from sqlalchemy.ext.selectresults import SelectResults
+import random
 
 class EagerTest(AssertMixin):
     def setUpAll(self):
@@ -197,7 +198,74 @@ class EagerTest2(AssertMixin):
         session.clear()
         obj = session.query(Left).get_by(tag='tag1')
         print obj.middle.right[0]
+
+class EagerTest3(testbase.ORMTest):
+    """test eager loading combined with nested SELECT statements, functions, and aggregates"""
+    def define_tables(self, metadata):
+        global datas, foo, stats
+        datas=Table( 'datas',metadata,
+         Column ( 'id', Integer, primary_key=True,nullable=False ),
+         Column ( 'a', Integer , nullable=False ) )
+
+        foo=Table('foo',metadata,
+         Column ( 'data_id', Integer, ForeignKey('datas.id'),nullable=False,primary_key=True ),
+         Column ( 'bar', Integer ) )
+
+        stats=Table('stats',metadata,
+        Column ( 'id', Integer, primary_key=True, nullable=False ),
+        Column ( 'data_id', Integer, ForeignKey('datas.id')),
+        Column ( 'somedata', Integer, nullable=False ))
         
+    def test_nesting_with_functions(self):
+        class Data(object): pass
+        class Foo(object):pass
+        class Stat(object): pass
+
+        Data.mapper=mapper(Data,datas)
+        Foo.mapper=mapper(Foo,foo,properties={'data':relation(Data,backref=backref('foo',uselist=False))})
+        Stat.mapper=mapper(Stat,stats,properties={'data':relation(Data)})
+
+        s=create_session()
+        data = []
+        for x in range(5):
+            d=Data()
+            d.a=x
+            s.save(d)
+            data.append(d)
+            
+        for x in range(10):
+            rid=random.randint(0,len(data) - 1)
+            somedata=random.randint(1,50000)
+            stat=Stat()
+            stat.data = data[rid]
+            stat.somedata=somedata
+            s.save(stat)
+
+        s.flush()
+
+        arb_data=select(
+            [stats.c.data_id,func.max(stats.c.somedata).label('max')],
+            stats.c.data_id<=25,
+            group_by=[stats.c.data_id]).alias('arb')
+        
+        arb_result = arb_data.execute().fetchall()
+        # order the result list descending based on 'max'
+        arb_result.sort(lambda a, b:cmp(b['max'],a['max']))
+        # extract just the "data_id" from it
+        arb_result = [row['data_id'] for row in arb_result]
+        
+        # now query for Data objects using that above select, adding the 
+        # "order by max desc" separately
+        q=s.query(Data).options(eagerload('foo')).select(
+            from_obj=[datas.join(arb_data,arb_data.c.data_id==datas.c.id)],
+            order_by=[desc(arb_data.c.max)],limit=10)
+        
+        # extract "data_id" from the list of result objects
+        verify_result = [d.id for d in q]
+        
+        # assert equality including ordering (may break if the DB "ORDER BY" and python's sort() used differing
+        # algorithms and there are repeated 'somedata' values in the list)
+        assert verify_result == arb_result
         
 if __name__ == "__main__":    
     testbase.main()

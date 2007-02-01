@@ -35,6 +35,16 @@ def to_set(x):
     else:
         return x
 
+def flatten_iterator(x):
+    """given an iterator of which further sub-elements may also be iterators,
+    flatten the sub-elements into a single iterator."""
+    for elem in x:
+        if hasattr(elem, '__iter__'):
+            for y in flatten_iterator(elem):
+                yield y
+        else:
+            yield elem
+            
 def reversed(seq):
     try:
         return __builtin__.reversed(seq)

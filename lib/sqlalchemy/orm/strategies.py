@@ -419,15 +419,11 @@ class EagerLoader(AbstractRelationLoader):
 
         def _aliasize_orderby(self, orderby, copy=True):
             if copy:
-                orderby = [o.copy_container() for o in util.to_list(orderby)]
+                return self.aliasizer.copy_and_process(util.to_list(orderby))
             else:
                 orderby = util.to_list(orderby)
-            for i in range(0, len(orderby)):
-                if isinstance(orderby[i], schema.Column):
-                    orderby[i] = self.eagertarget.corresponding_column(orderby[i])
-                else:
-                    orderby[i].accept_visitor(self.aliasizer)
-            return orderby
+                self.aliasizer.process_list(orderby)
+                return orderby
 
         def _create_decorator_row(self):
             class EagerRowAdapter(object):

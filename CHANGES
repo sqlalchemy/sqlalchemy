@@ -15,6 +15,9 @@
   the relationship.
   - eager loading is slightly more strict about detecting "self-referential"
   relationships, specifically between polymorphic mappers.
+  - improved support for complex queries embedded into "where" criterion
+  for query.select() [ticket:449]
+  - contains_eager('foo') automatically implies eagerload('foo')
   - fixed bug where cascade operations incorrectly included deleted collection
   items in the cascade [ticket:445]
   - fix to deferred so that load operation doesnt mistakenly occur when only

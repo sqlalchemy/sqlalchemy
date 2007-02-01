@@ -124,8 +124,8 @@ def contains_eager(key, decorator=None):
     a custom row decorator.  
     
     used when feeding SQL result sets directly into
-    query.instances()."""
-    return strategies.RowDecorateOption(key, decorator=decorator)
+    query.instances().  Also bundles an EagerLazyOption to turn on eager loading in case it isnt already."""
+    return (strategies.EagerLazyOption(key, lazy=False), strategies.RowDecorateOption(key, decorator=decorator))
     
 def defer(name):
     """return a MapperOption that will convert the column property of the given 

@@ -101,7 +101,7 @@ class OperationContext(object):
         self.options = options
         self.attributes = {}
         self.recursion_stack = util.Set()
-        for opt in options:
+        for opt in util.flatten_iterator(options):
             self.accept_option(opt)
     def accept_option(self, opt):
         pass

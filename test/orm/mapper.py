@@ -1028,7 +1028,9 @@ class EagerTest(MapperSuperTest):
 
     def testcustomeagerquery(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, lazy=False)
+            # setting lazy=True - the contains_eager() option below
+            # should imply eagerload()
+            'addresses':relation(Address, lazy=True)
         })
         mapper(Address, addresses)
         

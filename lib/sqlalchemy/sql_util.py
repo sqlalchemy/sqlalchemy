@@ -78,8 +78,53 @@ class ColumnFinder(sql.ClauseVisitor):
         self.columns.add(c)
     def __iter__(self):
         return iter(self.columns)
-            
-class Aliasizer(sql.ClauseVisitor):
+
+class ColumnsInClause(sql.ClauseVisitor):
+    """given a selectable, visits clauses and determines if any columns from the clause are in the selectable"""
+    def __init__(self, selectable):
+        self.selectable = selectable
+        self.result = False
+    def visit_column(self, column):
+        if self.selectable.c.get(column.key) is column:
+            self.result = True
+
+class AbstractClauseProcessor(sql.ClauseVisitor):
+    """traverses a clause and attempts to convert the contents of container elements
+    to a converted element.  the conversion operation is defined by subclasses."""
+    def convert_element(self, elem):
+        """define the 'conversion' method for this AbstractClauseProcessor"""
+        raise NotImplementedError()
+    def copy_and_process(self, list_):
+        """copy the container elements in the given list to a new list and
+        process the new list."""
+        list_ = [o.copy_container() for o in list_]
+        self.process_list(list_)
+        return list_
+
+    def process_list(self, list_):
+        """process all elements of the given list in-place"""
+        for i in range(0, len(list_)):
+            elem = self.convert_element(list_[i])
+            if elem is not None:
+                list_[i] = elem
+            else:
+                list_[i].accept_visitor(self)
+    def visit_compound(self, compound):
+        self.visit_clauselist(compound)
+    def visit_clauselist(self, clist):
+        for i in range(0, len(clist.clauses)):
+            n = self.convert_element(clist.clauses[i])
+            if n is not None:
+                clist.clauses[i] = n
+    def visit_binary(self, binary):
+        elem = self.convert_element(binary.left)
+        if elem is not None:
+            binary.left = elem
+        elem = self.convert_element(binary.right)
+        if elem is not None:
+            binary.right = elem
+                
+class Aliasizer(AbstractClauseProcessor):
     """converts a table instance within an expression to be an alias of that table."""
     def __init__(self, *tables, **kwargs):
         self.tables = {}
@@ -95,21 +140,13 @@ class Aliasizer(sql.ClauseVisitor):
         self.binary = None
     def get_alias(self, table):
         return self.aliases[table]
-    def visit_compound(self, compound):
-        self.visit_clauselist(compound)
-    def visit_clauselist(self, clist):
-        for i in range(0, len(clist.clauses)):
-            if isinstance(clist.clauses[i], schema.Column) and self.tables.has_key(clist.clauses[i].table):
-                orig = clist.clauses[i]
-                clist.clauses[i] = self.get_alias(clist.clauses[i].table).corresponding_column(clist.clauses[i])
-    def visit_binary(self, binary):
-        if isinstance(binary.left, schema.Column) and self.tables.has_key(binary.left.table):
-            binary.left = self.get_alias(binary.left.table).corresponding_column(binary.left)
-        if isinstance(binary.right, schema.Column) and self.tables.has_key(binary.right.table):
-            binary.right = self.get_alias(binary.right.table).corresponding_column(binary.right)
+    def convert_element(self, elem):
+        if isinstance(elem, sql.ColumnElement) and hasattr(elem, 'table') and self.tables.has_key(elem.table):
+            return self.get_alias(elem.table).corresponding_column(elem)
+        else:
+            return None
 
-
-class ClauseAdapter(sql.ClauseVisitor):
+class ClauseAdapter(AbstractClauseProcessor):
     """given a clause (like as in a WHERE criterion), locates columns which 'correspond' to a given selectable, 
     and changes those columns to be that of the selectable.
     
@@ -140,7 +177,8 @@ class ClauseAdapter(sql.ClauseVisitor):
         self.include = include
         self.exclude = exclude
         self.equivalents = equivalents
-    def include_col(self, col):
+        
+    def convert_element(self, col):
         if not isinstance(col, sql.ColumnElement):
             return None
         if self.include is not None:
@@ -153,19 +191,4 @@ class ClauseAdapter(sql.ClauseVisitor):
         if newcol is None and self.equivalents is not None and col in self.equivalents:
             newcol = self.selectable.corresponding_column(self.equivalents[col], raiseerr=False, keys_ok=False)
         return newcol
-    def visit_binary(self, binary):
-        col = self.include_col(binary.left)
-        if col is not None:
-            binary.left = col
-        col = self.include_col(binary.right)
-        if col is not None:
-            binary.right = col
-
-class ColumnsInClause(sql.ClauseVisitor):
-    """given a selectable, visits clauses and determines if any columns from the clause are in the selectable"""
-    def __init__(self, selectable):
-        self.selectable = selectable
-        self.result = False
-    def visit_column(self, column):
-        if self.selectable.c.get(column.key) is column:
-            self.result = True
+    
