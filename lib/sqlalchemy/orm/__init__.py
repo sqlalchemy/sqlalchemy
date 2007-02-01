@@ -9,6 +9,7 @@ the mapper package provides object-relational functionality, building upon the s
 packages and tying operations to class properties and constructors.
 """
 from sqlalchemy import exceptions
+from sqlalchemy import util as sautil
 from sqlalchemy.orm.mapper import *
 from sqlalchemy.orm import mapper as mapperlib
 from sqlalchemy.orm.query import Query
@@ -74,10 +75,10 @@ def clear_mappers():
     when new mappers are created, they will be assigned to their classes as their primary mapper."""
     for mapper in mapper_registry.values():
         attribute_manager.reset_class_managed(mapper.class_)
-        mapper.class_key.dispose()
         if hasattr(mapper.class_, 'c'):
             del mapper.class_.c
     mapper_registry.clear()
+    sautil.ArgSingleton.instances.clear()
     
 def clear_mapper(m):
     """remove the given mapper from the storage of mappers.  

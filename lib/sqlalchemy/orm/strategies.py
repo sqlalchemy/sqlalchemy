@@ -156,7 +156,7 @@ class LazyLoader(AbstractRelationLoader):
     def init(self):
         super(LazyLoader, self).init()
         (self.lazywhere, self.lazybinds, self.lazyreverse) = self._create_lazy_clause(
-            self.parent.local_table, 
+            self.parent.mapped_table, 
             self.mapper.select_table,
             self.polymorphic_primaryjoin, 
             self.polymorphic_secondaryjoin, 
@@ -250,7 +250,7 @@ class LazyLoader(AbstractRelationLoader):
         binds = {}
         reverse = {}
 
-        #print "PARENTTABLE", parenttable, "TARGETTABLE", targettable
+        #print "PARENTTABLE", parenttable, "TARGETTABLE", targettable, "PJ", primaryjoin
 
         def should_bind(targetcol, othercol):
             # determine if the given target column is part of the parent table
