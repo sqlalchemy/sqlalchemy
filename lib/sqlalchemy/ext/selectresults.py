@@ -134,9 +134,9 @@ class SelectResults(object):
         for key in keys:
             prop = mapper.props[key]
             if outerjoin:
-                clause = clause.outerjoin(prop.select_table, prop.get_join())
+                clause = clause.outerjoin(prop.select_table, prop.get_join(mapper))
             else:
-                clause = clause.join(prop.select_table, prop.get_join())
+                clause = clause.join(prop.select_table, prop.get_join(mapper))
             mapper = prop.mapper
         return (clause, mapper)
         

@@ -87,6 +87,7 @@ class PropertyLoader(StrategizedProperty):
         self.collection_class = collection_class
         self.passive_deletes = passive_deletes
         self.remote_side = util.to_set(remote_side)
+        self._parent_join_cache = {}
         
         if cascade is not None:
             self.cascade = mapperutil.CascadeOptions(cascade)
@@ -260,7 +261,6 @@ class PropertyLoader(StrategizedProperty):
         # as we will be using the polymorphic selectables (i.e. select_table argument to Mapper) to figure this out, 
         # first create maps of all the "equivalent" columns, since polymorphic selectables will often munge
         # several "equivalent" columns (such as parent/child fk cols) into just one column.
-        parent_equivalents = self.parent._get_inherited_column_equivalents()
         target_equivalents = self.mapper._get_inherited_column_equivalents()
         
         # if the target mapper loads polymorphically, adapt the clauses to the target's selectable
@@ -281,15 +281,7 @@ class PropertyLoader(StrategizedProperty):
             self.polymorphic_primaryjoin = self.primaryjoin.copy_container()
             self.polymorphic_secondaryjoin = self.secondaryjoin and self.secondaryjoin.copy_container() or None
 
-        # if the parent mapper loads polymorphically, adapt the clauses to the parent's selectable
-        if self.parent.select_table is not self.parent.mapped_table:
-            if self.direction is sync.ONETOMANY:
-                self.polymorphic_primaryjoin.accept_visitor(sql_util.ClauseAdapter(self.parent.select_table, exclude=self.foreignkey, equivalents=parent_equivalents))
-            elif self.direction is sync.MANYTOONE:
-                self.polymorphic_primaryjoin.accept_visitor(sql_util.ClauseAdapter(self.parent.select_table, include=self.foreignkey, equivalents=parent_equivalents))
-            elif self.secondaryjoin:
-                self.polymorphic_primaryjoin.accept_visitor(sql_util.ClauseAdapter(self.parent.select_table, exclude=self.foreignkey, equivalents=parent_equivalents))
-
+            
         #print "KEY", self.key, "PARENT", str(self.parent)
         #print "KEY", self.key, "REG PRIMARY JOIN", str(self.primaryjoin)
         #print "KEY", self.key, "POLY PRIMARY JOIN", str(self.polymorphic_primaryjoin)
@@ -372,12 +364,30 @@ class PropertyLoader(StrategizedProperty):
             raise exceptions.ArgumentError("Cant determine relation direction for '%s' on mapper '%s' with primary join '%s' - no foreign key relationship is expressed within the join condition.  Specify 'foreignkey' argument." %(self.key, str(self.parent), str(self.primaryjoin)))
         self.foreignkey = foreignkeys
         
-    def get_join(self):
-        if self.polymorphic_secondaryjoin is not None:
-            return self.polymorphic_primaryjoin & self.polymorphic_secondaryjoin
-        else:
-            return self.polymorphic_primaryjoin
+    def get_join(self, parent):
+        try:
+            return self._parent_join_cache[parent]
+        except KeyError:
+            parent_equivalents = parent._get_inherited_column_equivalents()
+            primaryjoin = self.polymorphic_primaryjoin.copy_container()
+            if self.secondaryjoin is not None:
+                secondaryjoin = self.polymorphic_secondaryjoin.copy_container()
+            else:
+                secondaryjoin = None
+            if self.direction is sync.ONETOMANY:
+                primaryjoin.accept_visitor(sql_util.ClauseAdapter(parent.select_table, exclude=self.foreignkey, equivalents=parent_equivalents))
+            elif self.direction is sync.MANYTOONE:
+                primaryjoin.accept_visitor(sql_util.ClauseAdapter(parent.select_table, include=self.foreignkey, equivalents=parent_equivalents))
+            elif self.secondaryjoin:
+                primaryjoin.accept_visitor(sql_util.ClauseAdapter(parent.select_table, exclude=self.foreignkey, equivalents=parent_equivalents))
 
+            if secondaryjoin is not None:
+                j = primaryjoin & secondaryjoin
+            else:
+                j = primaryjoin
+            self._parent_join_cache[parent] = j
+            return j
+            
     def register_dependencies(self, uowcommit):
         if not self.viewonly:
             self._dependency_processor.register_dependencies(uowcommit)

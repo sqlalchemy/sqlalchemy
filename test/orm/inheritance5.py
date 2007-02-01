@@ -546,14 +546,13 @@ class SelectResultsTest(testbase.AssertMixin):
         session.save(car2)
         session.flush()
 
-#        for activeCars in SelectResults(session.query(Car)).join_to('status').select(status.c.name=="active"):
-#            print activeCars
-        for activePerson in  SelectResults(session.query(Person)).join_to('status').select(status.c.name=="active"):
-            print activePerson
-#        for activePerson in  SelectResults(session.query(Person)).join_to('status').select_by(name="active"):
-#            print activePerson
-
-
+        # test these twice because theres caching involved
+        for x in range(0, 2):
+            r = SelectResults(session.query(Person)).select_by(people.c.name.like('%2')).join_to('status').select_by(name="active")
+            assert str(list(r)) == "[Manager M2, category YYYYYYYYY, status Status active, Engineer E2, field X, status Status active]"
+            r = SelectResults(session.query(Engineer)).join_to('status').select(people.c.name.in_('E2', 'E3', 'E4', 'M4', 'M2', 'M1') & (status.c.name=="active"))
+            assert str(list(r)) == "[Engineer E2, field X, status Status active, Engineer E3, field X, status Status active]"
+        
 class MultiLevelTest(testbase.ORMTest):
     def define_tables(self, metadata):
         global table_Employee, table_Engineer, table_Manager

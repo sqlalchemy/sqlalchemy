@@ -186,9 +186,9 @@ class Query(object):
         for key in keys:
             prop = mapper.props[key]
             if clause is None:
-                clause = prop.get_join()
+                clause = prop.get_join(mapper)
             else:
-                clause &= prop.get_join()
+                clause &= prop.get_join(mapper)
             mapper = prop.mapper
 
         return clause

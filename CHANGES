@@ -9,7 +9,7 @@
   - further rework of the recent polymorphic relationship refactorings, as well
   as the mechanics of relationships overall.  Allows more accurate ORM behavior
   with relationships from/to/between polymorphic mappers, as well as their usage
-  with Query, SelectResults.  tickets include [ticket:439], [ticket:441].
+  with Query, SelectResults.  tickets include [ticket:439], [ticket:441], [ticket:448].
   relationship mechanics are still a work in progress, more to come !
   - eager relation to an inheriting mapper wont fail if no rows returned for
   the relationship.

@@ -156,7 +156,7 @@ class LazyLoader(AbstractRelationLoader):
     def init(self):
         super(LazyLoader, self).init()
         (self.lazywhere, self.lazybinds, self.lazyreverse) = self._create_lazy_clause(
-            self.parent.select_table, 
+            self.parent.local_table, 
             self.mapper.select_table,
             self.polymorphic_primaryjoin, 
             self.polymorphic_secondaryjoin, 
