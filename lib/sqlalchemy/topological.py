@@ -165,7 +165,6 @@ class QueueDependencySorter(object):
                 # edges remain but no edgeless nodes to remove; this indicates
                 # a cycle
                 if allow_all_cycles:
-                    x = self._find_cycles(edges)
                     for cycle in self._find_cycles(edges):
                         lead = cycle[0][0]
                         lead.cycles = util.Set()
