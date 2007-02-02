@@ -349,6 +349,11 @@ class OracleCompiler(ansisql.ANSICompiler):
             self._outertable = None
 
         self.visit_compound(self.wheres[join])
+
+    def visit_insert_sequence(self, column, sequence, parameters):
+        """this is the 'sequence' equivalent to ANSICompiler's 'visit_insert_column_default' which ensures
+        that the column is present in the generated column list"""
+        parameters.setdefault(column.key, None)
        
     def visit_alias(self, alias):
 	"""oracle doesnt like 'FROM table AS alias'.  is the AS standard SQL??"""

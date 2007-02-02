@@ -31,11 +31,13 @@
   table PK if not applicable, i.e. for a UNION.  checking for DISTINCT, GROUP BY
   (other places that rowid is invalid) still a TODO.  allows polymorphic mappings
   to function, [ticket:436]
+  - sequences on a non-pk column will properly fire off on INSERT
 - mysql:
   - fix to reflection on older DB's that might return array() type for 
   "show variables like" statements
 - postgres:
   - better reflection of sequences for alternate-schema Tables [ticket:442]
+  - sequences on a non-pk column will properly fire off on INSERT
 
 0.3.4
 - general:

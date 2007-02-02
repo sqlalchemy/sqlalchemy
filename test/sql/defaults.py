@@ -161,15 +161,30 @@ class AutoIncrementTest(PersistTest):
 class SequenceTest(PersistTest):
     @testbase.supported('postgres', 'oracle')
     def setUpAll(self):
-        global cartitems
-        cartitems = Table("cartitems", db, 
+        global cartitems, sometable, metadata
+        metadata = BoundMetaData(testbase.db)
+        cartitems = Table("cartitems", metadata, 
             Column("cart_id", Integer, Sequence('cart_id_seq'), primary_key=True),
             Column("description", String(40)),
             Column("createdate", DateTime())
         )
+        sometable = Table( 'Manager', metadata,
+               Column( 'obj_id', Integer, Sequence('obj_id_seq'), ),
+               Column( 'name', type= String, ),
+               Column( 'id', Integer, primary_key= True, ),
+           )
         
-        cartitems.create()
+        metadata.create_all()
     
+    def testseqnonpk(self):
+        """test sequences fire off as defaults on non-pk columns"""
+        sometable.insert().execute(name="somename")
+        sometable.insert().execute(name="someother")
+        assert sometable.select().execute().fetchall() == [
+            (1, "somename", 1),
+            (2, "someother", 2),
+        ]
+        
     @testbase.supported('postgres', 'oracle')
     def testsequence(self):
         cartitems.insert().execute(description='hi')
@@ -196,7 +211,7 @@ class SequenceTest(PersistTest):
         
     @testbase.supported('postgres', 'oracle')
     def tearDownAll(self): 
-        cartitems.drop()
+        metadata.drop_all()
 
 if __name__ == "__main__":
     testbase.main()
