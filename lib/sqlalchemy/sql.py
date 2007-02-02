@@ -387,7 +387,8 @@ class Compiled(ClauseVisitor):
         self.statement = statement
         self.parameters = parameters
         self.engine = engine
-    
+        self.can_execute = statement.supports_execution()
+        
     def compile(self):
         self.statement.accept_visitor(self)
         self.after_compile()
@@ -439,6 +440,10 @@ class ClauseElement(object):
         """accept a ClauseVisitor and call the appropriate visit_xxx method."""
         raise NotImplementedError(repr(self))
 
+    def supports_execution(self):
+        """return True if this clause element represents a complete executable statement"""
+        return False
+        
     def copy_container(self):
         """return a copy of this ClauseElement, iff this ClauseElement contains other ClauseElements.  
         
@@ -888,7 +893,9 @@ class _TextClause(ClauseElement):
         visitor.visit_textclause(self)
     def _get_from_objects(self):
         return []
-
+    def supports_execution(self):
+        return True
+        
 class _Null(ColumnElement):
     """represents the NULL keyword in a SQL statement. public contstructor is the
     null() function."""
@@ -1193,7 +1200,8 @@ class Alias(FromClause):
             alias = alias + "_" + hex(random.randint(0, 65535))[2:]
         self.name = alias
         self.case_sensitive = getattr(baseselectable, "case_sensitive", alias.lower() != alias)
-        
+    def supports_execution(self):
+        return self.original.supports_execution()    
     def _locate_oid_column(self):
         if self.selectable.oid_column is not None:
             return self.selectable.oid_column._make_proxy(self)
@@ -1346,6 +1354,8 @@ class TableClause(FromClause):
 
 class _SelectBaseMixin(object):
     """base class for Select and CompoundSelects"""
+    def supports_execution(self):
+        return True
     def order_by(self, *clauses):
         if len(clauses) == 1 and clauses[0] is None:
             self.order_by_clause = ClauseList()
@@ -1644,6 +1654,8 @@ class Select(_SelectBaseMixin, FromClause):
 
 class _UpdateBase(ClauseElement):
     """forms the base for INSERT, UPDATE, and DELETE statements."""
+    def supports_execution(self):
+        return True
     def _process_colparams(self, parameters):
         """receives the "values" of an INSERT or UPDATE statement and constructs
         appropriate bind parameters."""

@@ -5,6 +5,9 @@
     object might be label'ed as something else which does contain mixed case, and
     propigating "case_sensitive=False" breaks that.  Other fixes to quoting
     when using labels and "fake" column objects
+  - added a "supports_execution()" method to ClauseElement, so that individual
+  kinds of clauses can express if they are appropriate for executing...such as, 
+  you can execute a "select", but not a "Table" or a "Join".
 - orm:
   - further rework of the recent polymorphic relationship refactorings, as well
   as the mechanics of relationships overall.  Allows more accurate ORM behavior

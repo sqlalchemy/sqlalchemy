@@ -287,6 +287,8 @@ class Connection(Connectable):
         return self.execute_compiled(elem.compile(engine=self.__engine, parameters=param), *multiparams, **params)
     def execute_compiled(self, compiled, *multiparams, **params):
         """executes a sql.Compiled object."""
+        if not compiled.can_execute:
+            raise exceptions.ArgumentError("Not an executeable clause: %s" % (str(compiled)))
         cursor = self.__engine.dialect.create_cursor(self.connection)
         parameters = [compiled.get_params(**m) for m in self._params_to_listofdicts(*multiparams, **params)]
         if len(parameters) == 1:
