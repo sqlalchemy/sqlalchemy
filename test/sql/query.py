@@ -7,16 +7,21 @@ import sqlalchemy.databases.sqlite as sqllite
 import tables
 from sqlalchemy import *
 from sqlalchemy.engine import ResultProxy, RowProxy
+from sqlalchemy import exceptions
 
 class QueryTest(PersistTest):
     
     def setUpAll(self):
-        global users, metadata
+        global users, addresses, metadata
         metadata = BoundMetaData(testbase.db)
         users = Table('query_users', metadata,
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20)),
         )
+        addresses = Table('query_addresses', metadata, 
+            Column('address_id', Integer, primary_key=True),
+            Column('user_id', Integer, ForeignKey('query_users.user_id')),
+            Column('address', String(30)))
         metadata.create_all()
     
     def setUp(self):
@@ -205,6 +210,12 @@ class QueryTest(PersistTest):
         self.assertEqual(len(r), 1)
         r.close()
     
+    def test_cant_execute_join(self):
+        try:
+            users.join(addresses).execute()
+        except exceptions.ArgumentError, e:
+            assert str(e) == """Not an executeable clause: query_users JOIN query_addresses ON query_users.user_id = query_addresses.user_id"""
+            
     def test_functions(self):
         x = testbase.db.func.current_date().execute().scalar()
         y = testbase.db.func.current_date().select().execute().scalar()
@@ -292,7 +303,7 @@ class QueryTest(PersistTest):
         self.assertEqual(r[1], 1)
         self.assertEqual(r.keys(), ['user_name', 'user_id'])
         self.assertEqual(r.values(), ['foo', 1])
-       
+    
     @testbase.unsupported('oracle', 'firebird') 
     def test_column_accessor_shadow(self):
         meta = BoundMetaData(testbase.db)
