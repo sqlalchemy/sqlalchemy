@@ -932,9 +932,7 @@ class ANSIIdentifierPreparer(object):
     
     def format_column(self, column, use_table=False):
         """Prepare a quoted column name """
-        # TODO: isinstance alert !  get ColumnClause and Column to better
-        # differentiate themselves
-        if isinstance(column, schema.SchemaItem):
+        if not getattr(column, 'is_literal', False):
             if use_table:
                 return self.format_table(column.table, use_schema=False) + "." + self.__generic_obj_format(column, column.name)
             else:

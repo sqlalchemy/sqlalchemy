@@ -98,12 +98,11 @@ class QuoteTest(PersistTest):
         assert str(select([x.c.ImATable_col1])) == '''SELECT "SomeAlias"."ImATable_col1" \nFROM (SELECT "ImATable".col1 AS "ImATable_col1" \nFROM "ImATable") AS "SomeAlias"'''
 
         # note that 'foo' and 'FooCol' are literals already quoted
-        x = select([sql.column("'foo'").label("somelabel")], from_obj=[table]).alias("AnAlias")
+        x = select([sql.literal_column("'foo'").label("somelabel")], from_obj=[table]).alias("AnAlias")
         x = x.select()
-        #print x
         assert str(x) == '''SELECT "AnAlias".somelabel \nFROM (SELECT 'foo' AS somelabel \nFROM "ImATable") AS "AnAlias"'''
         
-        x = select([sql.column("'FooCol'").label("SomeLabel")], from_obj=[table])
+        x = select([sql.literal_column("'FooCol'").label("SomeLabel")], from_obj=[table])
         x = x.select()
         assert str(x) == '''SELECT "SomeLabel" \nFROM (SELECT 'FooCol' AS "SomeLabel" \nFROM "ImATable")'''
         

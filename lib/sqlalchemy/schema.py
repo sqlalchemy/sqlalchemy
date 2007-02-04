@@ -193,9 +193,9 @@ class Table(SchemaItem, sql.TableClause):
         quote_schema=False : indicates that the Namespace identifier must be properly escaped and quoted before being sent 
         to the database. This flag overrides all other quoting behavior.
         
-        case_sensitive=True : indicates quoting should be used if the identifier needs it.
+        case_sensitive=True : indicates quoting should be used if the identifier contains mixed case.
         
-        case_sensitive_schema=True : indicates quoting should be used if the identifier needs it.
+        case_sensitive_schema=True : indicates quoting should be used if the identifier contains mixed case.
         """
         super(Table, self).__init__(name)
         self._metadata = metadata
@@ -362,7 +362,7 @@ class Column(SchemaItem, sql._ColumnClause):
         to the database.  This flag should normally not be required as dialects can auto-detect conditions where quoting
         is required.
 
-        case_sensitive=True : indicates quoting should be used if the identifier needs it.
+        case_sensitive=True : indicates quoting should be used if the identifier contains mixed case.
         """
         name = str(name) # in case of incoming unicode        
         super(Column, self).__init__(name, None, type)

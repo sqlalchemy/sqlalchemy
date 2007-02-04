@@ -10,7 +10,7 @@ from sqlalchemy import types as sqltypes
 import string, re, random, sets
 
 
-__all__ = ['text', 'table', 'column', 'func', 'select', 'update', 'insert', 'delete', 'join', 'and_', 'or_', 'not_', 'between_', 'case', 'cast', 'union', 'union_all', 'except_', 'except_all', 'intersect', 'intersect_all', 'null', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'literal', 'bindparam', 'exists', 'extract','AbstractDialect', 'ClauseParameters', 'ClauseVisitor', 'Executor', 'Compiled', 'ClauseElement', 'ColumnElement', 'ColumnCollection', 'FromClause', 'TableClause', 'Select', 'Alias', 'CompoundSelect','Join', 'Selectable']
+__all__ = ['text', 'table', 'column', 'literal_column', 'func', 'select', 'update', 'insert', 'delete', 'join', 'and_', 'or_', 'not_', 'between_', 'case', 'cast', 'union', 'union_all', 'except_', 'except_all', 'intersect', 'intersect_all', 'null', 'desc', 'asc', 'outerjoin', 'alias', 'subquery', 'literal', 'bindparam', 'exists', 'extract','AbstractDialect', 'ClauseParameters', 'ClauseVisitor', 'Executor', 'Compiled', 'ClauseElement', 'ColumnElement', 'ColumnCollection', 'FromClause', 'TableClause', 'Select', 'Alias', 'CompoundSelect','Join', 'Selectable']
 
 def desc(column):
     """return a descending ORDER BY clause element, e.g.:
@@ -220,10 +220,14 @@ def label(name, obj):
     return _Label(name, obj)
     
 def column(text, table=None, type=None, **kwargs):
-    """returns a textual column clause, relative to a table.  this is also the primitive version of
+    """return a textual column clause, relative to a table.  this is also the primitive version of
     a schema.Column which is a subclass. """
     return _ColumnClause(text, table, type, **kwargs)
 
+def literal_column(text, table=None, type=None, **kwargs):
+    """return a textual column clause with the 'literal' flag set.  this column will not be quoted"""
+    return _ColumnClause(text, table, type, is_literal=True, **kwargs)
+    
 def table(name, *columns):
     """returns a table clause.  this is a primitive version of the schema.Table object, which is a subclass
     of this object."""
@@ -1251,13 +1255,14 @@ legal_characters = util.Set(string.ascii_letters + string.digits + '_')
 class _ColumnClause(ColumnElement):
     """represents a textual column clause in a SQL statement.  May or may not
     be bound to an underlying Selectable."""
-    def __init__(self, text, selectable=None, type=None, _is_oid=False, case_sensitive=True):
+    def __init__(self, text, selectable=None, type=None, _is_oid=False, case_sensitive=True, is_literal=False):
         self.key = self.name = text
         self.table = selectable
         self.type = sqltypes.to_instance(type)
         self._is_oid = _is_oid
         self.__label = None
-        self.case_sensitive = False #text.isalpha() and not text.islower()
+        self.case_sensitive = case_sensitive
+        self.is_literal = is_literal
     def _get_label(self):
         if self.__label is None:
             if self.table is not None and self.table.named_with_column():
@@ -1524,7 +1529,7 @@ class Select(_SelectBaseMixin, FromClause):
                 
     def append_column(self, column):
         if _is_literal(column):
-            column = _ColumnClause(str(column), self)
+            column = literal_column(str(column), table=self)
 
         self._raw_columns.append(column)
 

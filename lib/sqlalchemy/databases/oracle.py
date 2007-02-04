@@ -394,7 +394,7 @@ class OracleCompiler(ansisql.ANSICompiler):
                 orderby = self.strings[orderby]
             class SelectVisitor(sql.ClauseVisitor):
                 def visit_select(self, select):
-                    select.append_column(sql.column("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn"))
+                    select.append_column(sql.literal_column("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn"))
             select.accept_visitor(SelectVisitor())
             limitselect = sql.select([c for c in select.c if c.key!='ora_rn'])
             if select.offset is not None:
@@ -429,7 +429,7 @@ class OracleCompiler(ansisql.ANSICompiler):
                 orderby = select.oid_column
                 orderby.accept_visitor(self)
                 orderby = self.strings[orderby]
-            select.append_column(sql.column("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn"))
+            select.append_column(sql.literal_column("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn"))
             limitselect = sql.select([c for c in select.c if c.key!='ora_rn'])
             if select.offset is not None:
                 limitselect.append_whereclause("ora_rn>%d" % select.offset)
