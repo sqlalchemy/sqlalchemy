@@ -395,7 +395,7 @@ def class_for_table(selectable, **mapper_kwargs):
         return cmp(t1, t2)
     def __repr__(self):
         import locale
-        encoding = locale.getdefaultlocale()[1]
+        encoding = locale.getdefaultlocale()[1] or 'ascii'
         L = []
         for k in self.__class__.c.keys():
             value = getattr(self, k, '')
