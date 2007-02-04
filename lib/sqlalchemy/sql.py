@@ -1257,7 +1257,7 @@ class _ColumnClause(ColumnElement):
         self.type = sqltypes.to_instance(type)
         self._is_oid = _is_oid
         self.__label = None
-        self.case_sensitive = case_sensitive
+        self.case_sensitive = False #text.isalpha() and not text.islower()
     def _get_label(self):
         if self.__label is None:
             if self.table is not None and self.table.named_with_column():
