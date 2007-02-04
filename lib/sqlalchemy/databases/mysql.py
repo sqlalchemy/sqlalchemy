@@ -17,6 +17,7 @@ try:
     import MySQLdb.constants.CLIENT as CLIENT_FLAGS
 except:
     mysql = None
+    CLIENT_FLAGS = None
 
 def kw_colspec(self, spec):
     if self.unsigned:
@@ -256,7 +257,7 @@ class MySQLDialect(ansisql.ANSIDialect):
             self.module = mysql
         else:
             self.module = module
-        ansisql.ANSIDialect.__init__(self, **kwargs)
+        ansisql.ANSIDialect.__init__(self, default_paramstyle='format', **kwargs)
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args(['host', 'db', 'user', 'passwd', 'port'])
@@ -274,7 +275,8 @@ class MySQLDialect(ansisql.ANSIDialect):
         # TODO: what about options like "ssl", "cursorclass" and "conv" ?
 
         client_flag = opts.get('client_flag', 0)
-        client_flag |= CLIENT_FLAGS.FOUND_ROWS
+        if CLIENT_FLAGS is not None:
+            client_flag |= CLIENT_FLAGS.FOUND_ROWS
         opts['client_flag'] = client_flag
 
         return [[], opts]

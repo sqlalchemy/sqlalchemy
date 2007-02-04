@@ -24,14 +24,13 @@ class PoolConnectionProvider(base.ConnectionProvider):
         
 class DefaultDialect(base.Dialect):
     """default implementation of Dialect"""
-    def __init__(self, convert_unicode=False, encoding='utf-8', **kwargs):
+    def __init__(self, convert_unicode=False, encoding='utf-8', default_paramstyle='named', **kwargs):
         self.convert_unicode = convert_unicode
         self.supports_autoclose_results = True
         self.encoding = encoding
         self.positional = False
-        self.paramstyle = 'named'
         self._ischema = None
-        self._figure_paramstyle()
+        self._figure_paramstyle(default=default_paramstyle)
     def create_execution_context(self):
         return DefaultExecutionContext(self)
     def type_descriptor(self, typeobj):
@@ -90,14 +89,14 @@ class DefaultDialect(base.Dialect):
                     parameters = parameters.get_raw_dict()
         return parameters
 
-    def _figure_paramstyle(self, paramstyle=None):
+    def _figure_paramstyle(self, paramstyle=None, default='named'):
         db = self.dbapi()
         if paramstyle is not None:
             self._paramstyle = paramstyle
         elif db is not None:
             self._paramstyle = db.paramstyle
         else:
-            self._paramstyle = 'named'
+            self._paramstyle = default
 
         if self._paramstyle == 'named':
             self.positional=False

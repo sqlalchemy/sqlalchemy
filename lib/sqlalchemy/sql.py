@@ -219,10 +219,10 @@ def label(name, obj):
     """returns a _Label object for the given selectable, used in the column list for a select statement."""
     return _Label(name, obj)
     
-def column(text, table=None, type=None):
+def column(text, table=None, type=None, **kwargs):
     """returns a textual column clause, relative to a table.  this is also the primitive version of
     a schema.Column which is a subclass. """
-    return _ColumnClause(text, table, type)
+    return _ColumnClause(text, table, type, **kwargs)
 
 def table(name, *columns):
     """returns a table clause.  this is a primitive version of the schema.Table object, which is a subclass
@@ -1199,7 +1199,7 @@ class Alias(FromClause):
                 alias = alias[0:15]
             alias = alias + "_" + hex(random.randint(0, 65535))[2:]
         self.name = alias
-        self.case_sensitive = getattr(baseselectable, "case_sensitive", alias.lower() != alias)
+        self.case_sensitive = getattr(baseselectable, "case_sensitive", True)
     def supports_execution(self):
         return self.original.supports_execution()    
     def _locate_oid_column(self):
@@ -1233,7 +1233,7 @@ class _Label(ColumnElement):
         while isinstance(obj, _Label):
             obj = obj.obj
         self.obj = obj
-        self.case_sensitive = getattr(obj, "case_sensitive", name.lower() != name)
+        self.case_sensitive = getattr(obj, "case_sensitive", True)
         self.type = sqltypes.to_instance(type)
         obj.parens=True
     key = property(lambda s: s.name)
@@ -1251,12 +1251,13 @@ legal_characters = util.Set(string.ascii_letters + string.digits + '_')
 class _ColumnClause(ColumnElement):
     """represents a textual column clause in a SQL statement.  May or may not
     be bound to an underlying Selectable."""
-    def __init__(self, text, selectable=None, type=None, _is_oid=False):
+    def __init__(self, text, selectable=None, type=None, _is_oid=False, case_sensitive=True):
         self.key = self.name = text
         self.table = selectable
         self.type = sqltypes.to_instance(type)
         self._is_oid = _is_oid
         self.__label = None
+        self.case_sensitive = case_sensitive
     def _get_label(self):
         if self.__label is None:
             if self.table is not None and self.table.named_with_column():

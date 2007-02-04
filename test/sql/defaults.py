@@ -176,6 +176,7 @@ class SequenceTest(PersistTest):
         
         metadata.create_all()
     
+    @testbase.supported('postgres', 'oracle')
     def testseqnonpk(self):
         """test sequences fire off as defaults on non-pk columns"""
         sometable.insert().execute(name="somename")

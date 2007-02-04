@@ -482,7 +482,7 @@ class Column(SchemaItem, sql._ColumnClause):
         """redirect the 'case_sensitive' accessor to use the ultimate parent column which created
         this one."""
         return self.__originating_column._get_case_sensitive()
-    case_sensitive = property(_case_sens)
+    case_sensitive = property(_case_sens, lambda s,v:None)
     
     def accept_schema_visitor(self, visitor, traverse=True):
         """traverses the given visitor to this Column's default and foreign key object,

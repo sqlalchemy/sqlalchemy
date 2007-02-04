@@ -850,12 +850,13 @@ class ANSIIdentifierPreparer(object):
         self.initial_quote = initial_quote
         self.final_quote = final_quote or self.initial_quote
         self.omit_schema = omit_schema
+        self._is_quoted_regexp = re.compile(r"""^['"%s].+['"%s]$""" % (self.initial_quote, self.final_quote))
         self.__strings = {}
     def _escape_identifier(self, value):
         """escape an identifier.
         
         subclasses should override this to provide database-dependent escaping behavior."""
-        return value.replace('"', '""')
+        return value.replace("'", "''")
     
     def _quote_identifier(self, value):
         """quote an identifier.
@@ -872,6 +873,10 @@ class ANSIIdentifierPreparer(object):
         # some tests would need to be rewritten if this is done.
         #return value.upper()
     
+    def _is_quoted(self, ident):
+        """return true if the given identifier is already quoted"""
+        return self._is_quoted_regexp.match(ident)
+        
     def _reserved_words(self):
         return RESERVED_WORDS
 
@@ -884,10 +889,11 @@ class ANSIIdentifierPreparer(object):
     def _requires_quotes(self, value, case_sensitive):
         """return true if the given identifier requires quoting."""
         return \
-            value in self._reserved_words() \
+            not self._is_quoted(value) and \
+            (value in self._reserved_words() \
             or (value[0] in self._illegal_initial_characters()) \
             or bool(len([x for x in str(value) if x not in self._legal_characters()])) \
-            or (case_sensitive and value.lower() != value)
+            or (case_sensitive and not value.islower()))
     
     def __generic_obj_format(self, obj, ident):
         if getattr(obj, 'quote', False):
@@ -897,13 +903,13 @@ class ANSIIdentifierPreparer(object):
             try:
                 return self.__strings[(ident, case_sens)]
             except KeyError:
-                if self._requires_quotes(ident, getattr(obj, 'case_sensitive', ident == ident.lower())):
+                if self._requires_quotes(ident, getattr(obj, 'case_sensitive', ident.islower())):
                     self.__strings[(ident, case_sens)] = self._quote_identifier(ident)
                 else:
                     self.__strings[(ident, case_sens)] = ident
                 return self.__strings[(ident, case_sens)]
         else:
-            if self._requires_quotes(ident, getattr(obj, 'case_sensitive', ident == ident.lower())):
+            if self._requires_quotes(ident, getattr(obj, 'case_sensitive', ident.islower())):
                 return self._quote_identifier(ident)
             else:
                 return ident
@@ -934,17 +940,10 @@ class ANSIIdentifierPreparer(object):
         """Prepare a quoted column name """
         # TODO: isinstance alert !  get ColumnClause and Column to better
         # differentiate themselves
-        if isinstance(column, schema.SchemaItem):
-            if use_table:
-                return self.format_table(column.table, use_schema=False) + "." + self.__generic_obj_format(column, column.name)
-            else:
-                return self.__generic_obj_format(column, column.name)
+        if use_table:
+            return self.format_table(column.table, use_schema=False) + "." + self.__generic_obj_format(column, column.name)
         else:
-            # literal textual elements get stuck into ColumnClause alot, which shouldnt get quoted
-            if use_table:
-                return self.format_table(column.table, use_schema=False) + "." + column.name
-            else:
-                return column.name
+            return self.__generic_obj_format(column, column.name)
             
     def format_column_with_table(self, column):
         """Prepare a quoted column name with table name"""
