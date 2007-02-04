@@ -98,7 +98,7 @@ class CreateEngineTest(PersistTest):
             assert True
 
         try:
-            e = create_engine('mysql://', use_unicode=True)
+            e = create_engine('mysql://', use_unicode=True, module=MockDBAPI())
             assert False
         except TypeError:
             assert True
