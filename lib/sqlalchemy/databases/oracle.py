@@ -211,7 +211,7 @@ class OracleDialect(ansisql.ANSIDialect):
         return OracleDefaultRunner(engine, proxy)
 
 
-    def has_table(self, connection, table_name):
+    def has_table(self, connection, table_name, schema=None):
         cursor = connection.execute("""select table_name from all_tables where table_name=:name""", {'name':table_name.upper()})
         return bool( cursor.fetchone() is not None )
 

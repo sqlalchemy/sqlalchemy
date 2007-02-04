@@ -91,7 +91,7 @@ class Dialect(sql.AbstractDialect):
     def reflecttable(self, connection, table):
         """given an Connection and a Table object, reflects its columns and properties from the database."""
         raise NotImplementedError()
-    def has_table(self, connection, table_name):
+    def has_table(self, connection, table_name, schema=None):
         raise NotImplementedError()
     def has_sequence(self, connection, sequence_name):
         raise NotImplementedError()
@@ -516,8 +516,8 @@ class Engine(sql.Executor, Connectable):
         finally:
             if connection is None:
                 conn.close()
-    def has_table(self, table_name):
-        return self.run_callable(lambda c: self.dialect.has_table(c, table_name))
+    def has_table(self, table_name, schema=None):
+        return self.run_callable(lambda c: self.dialect.has_table(c, table_name, schema=schema))
         
     def raw_connection(self):
         """returns a DBAPI connection."""

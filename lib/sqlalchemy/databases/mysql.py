@@ -335,7 +335,7 @@ class MySQLDialect(ansisql.ANSIDialect):
     def dbapi(self):
         return self.module
 
-    def has_table(self, connection, table_name):
+    def has_table(self, connection, table_name, schema=None):
         cursor = connection.execute("show table status like '" + table_name + "'")
         return bool( not not cursor.rowcount )
 

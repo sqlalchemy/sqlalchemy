@@ -345,10 +345,10 @@ class MSSQLDialect(ansisql.ANSIDialect):
             c.name = c.name.upper()
         return t
 
-    def has_table(self, connection, tablename):
+    def has_table(self, connection, tablename, schema=None):
         import sqlalchemy.databases.information_schema as ischema
 
-        current_schema = self.get_default_schema_name()
+        current_schema = schema or self.get_default_schema_name()
         columns = self.uppercase_table(ischema.columns)
         s = sql.select([columns],
                    current_schema

@@ -272,7 +272,7 @@ class Table(SchemaItem, sql.TableClause):
 
         def do(conn):
             e = conn.engine
-            return e.dialect.has_table(conn, self.name)
+            return e.dialect.has_table(conn, self.name, schema=self.schema)
         return connectable.run_callable(do)
 
     def create(self, connectable=None, checkfirst=False):

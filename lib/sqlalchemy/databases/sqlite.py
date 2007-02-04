@@ -171,7 +171,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
     def dbapi(self):
         return sqlite
         
-    def has_table(self, connection, table_name):
+    def has_table(self, connection, table_name, schema=None):
         cursor = connection.execute("PRAGMA table_info(" + table_name + ")", {})
         row = cursor.fetchone()
         

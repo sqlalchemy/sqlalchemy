@@ -167,7 +167,7 @@ class FBDialect(ansisql.ANSIDialect):
     def preparer(self):
         return FBIdentifierPreparer(self)
 
-    def has_table(self, connection, table_name):
+    def has_table(self, connection, table_name, schema=None):
         tblqry = """
         SELECT count(*)
         FROM RDB$RELATIONS R

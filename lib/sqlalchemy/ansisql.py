@@ -677,7 +677,7 @@ class ANSISchemaGenerator(ANSISchemaBase):
         raise NotImplementedError()
     
     def visit_metadata(self, metadata):
-        collection = [t for t in metadata.table_iterator(reverse=False, tables=self.tables) if (not self.checkfirst or not self.dialect.has_table(self.connection, t.name))]
+        collection = [t for t in metadata.table_iterator(reverse=False, tables=self.tables) if (not self.checkfirst or not self.dialect.has_table(self.connection, t.name, schema=t.schema))]
         for table in collection:
             table.accept_schema_visitor(self, traverse=False)
         if self.supports_alter():
@@ -807,7 +807,7 @@ class ANSISchemaDropper(ANSISchemaBase):
         self.dialect = self.engine.dialect
 
     def visit_metadata(self, metadata):
-        collection = [t for t in metadata.table_iterator(reverse=True, tables=self.tables) if (not self.checkfirst or  self.dialect.has_table(self.connection, t.name))]
+        collection = [t for t in metadata.table_iterator(reverse=True, tables=self.tables) if (not self.checkfirst or  self.dialect.has_table(self.connection, t.name, schema=t.schema))]
         if self.supports_alter():
             for alterable in self.find_alterables(collection):
                 self.drop_foreignkey(alterable)

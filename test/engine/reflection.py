@@ -491,9 +491,37 @@ class SchemaTest(PersistTest):
         print buf
         assert buf.index("CREATE TABLE someschema.table1") > -1
         assert buf.index("CREATE TABLE someschema.table2") > -1
-         
+    
+    @testbase.supported('postgres')
+    def testpg(self):
+        """note: this test requires that the 'test_schema' schema be separate and accessible by the test user"""
         
-        
+        meta1 = BoundMetaData(testbase.db)
+        users = Table('users', meta1,
+            Column('user_id', Integer, primary_key = True),
+            Column('user_name', String(30), nullable = False),
+            schema="test_schema"
+            )
+
+        addresses = Table('email_addresses', meta1,
+            Column('address_id', Integer, primary_key = True),
+            Column('remote_user_id', Integer, ForeignKey(users.c.user_id)),
+            Column('email_address', String(20)),
+            schema="test_schema"
+        )
+        meta1.create_all()
+        try:
+            meta2 = BoundMetaData(testbase.db)
+            users = Table('users', meta2, autoload = True, schema="test_schema")
+            addresses = Table('email_addresses', meta2, autoload = True, schema="test_schema")
+
+            print users
+            print addresses
+            j = join(users, addresses)
+            print str(j.onclause)
+            self.assert_((users.c.user_id==addresses.c.remote_user_id).compare(j.onclause))
+        finally:
+            meta1.drop_all()
         
 if __name__ == "__main__":
     testbase.main()        
