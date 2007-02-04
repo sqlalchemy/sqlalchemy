@@ -512,8 +512,8 @@ class SchemaTest(PersistTest):
         meta1.create_all()
         try:
             meta2 = BoundMetaData(testbase.db)
-            users = Table('users', meta2, autoload = True, schema="test_schema")
-            addresses = Table('email_addresses', meta2, autoload = True, schema="test_schema")
+            addresses = Table('email_addresses', meta2, autoload=True, schema="test_schema")
+            users = Table('users', meta2, mustexist=True, schema="test_schema")
 
             print users
             print addresses
