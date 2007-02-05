@@ -446,7 +446,7 @@ class Query(object):
                 cf = []
                 
             s2 = sql.select(self.table.primary_key + list(cf), whereclause, use_labels=True, from_obj=from_obj, **context.select_args())
-            if not distinct and order_by:
+            if order_by:
                 s2.order_by(*util.to_list(order_by))
             s3 = s2.alias('tbl_row_count')
             crit = s3.primary_key==self.table.primary_key

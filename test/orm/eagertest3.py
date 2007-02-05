@@ -266,6 +266,64 @@ class EagerTest3(testbase.ORMTest):
         # assert equality including ordering (may break if the DB "ORDER BY" and python's sort() used differing
         # algorithms and there are repeated 'somedata' values in the list)
         assert verify_result == arb_result
-        
+
+class EagerTest4(testbase.ORMTest):
+    def define_tables(self, metadata):
+        global departments, employees
+        departments = Table('departments', metadata,
+                            Column('department_id', Integer, primary_key=True),
+                            Column('name', String(50)))
+
+        employees = Table('employees', metadata, 
+                          Column('person_id', Integer, primary_key=True),
+                          Column('name', String(50)),
+                          Column('department_id', Integer,
+                                 ForeignKey('departments.department_id')))
+
+    def test_basic(self):
+        class Department(object):
+            def __init__(self, **kwargs):
+                for k, v in kwargs.iteritems():
+                    setattr(self, k, v)
+            def __repr__(self):
+                return "<Department %s>" % (self.name,)
+
+        class Employee(object):
+            def __init__(self, **kwargs):
+                for k, v in kwargs.iteritems():
+                    setattr(self, k, v)
+            def __repr__(self):
+                return "<Employee %s>" % (self.name,)
+
+        mapper(Employee, employees)
+        mapper(Department, departments,
+                      properties=dict(employees=relation(Employee,
+                                                         lazy=False,
+                                                         backref='department')))
+
+        d1 = Department(name='One')
+        for e in 'Jim Jack John Susan'.split():
+            d1.employees.append(Employee(name=e))
+
+        d2 = Department(name='Two')
+        for e in 'Joe Bob Mary Wally'.split():
+            d2.employees.append(Employee(name=e))
+
+        sess = create_session()
+        sess.save(d1)
+        sess.save(d2)
+        sess.flush()
+
+        q = sess.query(Department)
+        filters = [q.join_to('employees'),
+                   Employee.c.name.startswith('J')]
+
+        d = SelectResults(q, and_(*filters), ops=dict(distinct=True))
+        d = d.order_by([desc(Department.c.name)])
+        assert d.count() == 2
+        assert d[0] is d2
+
+
+    
 if __name__ == "__main__":    
     testbase.main()
