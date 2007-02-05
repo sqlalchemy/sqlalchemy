@@ -38,7 +38,10 @@
 - postgres:
   - better reflection of sequences for alternate-schema Tables [ticket:442]
   - sequences on a non-pk column will properly fire off on INSERT
-
+- ext:
+  - added distinct() method to SelectResults.  generally should only make a difference
+  when using count().
+  
 0.3.4
 - general:
   - global "insure"->"ensure" change. in US english "insure" is actually

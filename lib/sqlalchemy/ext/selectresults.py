@@ -89,6 +89,12 @@ class SelectResults(object):
         """apply an OFFSET to the query."""
         return self[offset:]
 
+    def distinct(self):
+        """applies a DISTINCT to the query"""
+        new = self.clone()
+        new._ops['distinct'] = True
+        return new
+        
     def list(self):
         """return the results represented by this SelectResults as a list.  
         

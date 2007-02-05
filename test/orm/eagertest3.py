@@ -318,7 +318,9 @@ class EagerTest4(testbase.ORMTest):
         filters = [q.join_to('employees'),
                    Employee.c.name.startswith('J')]
 
-        d = SelectResults(q, and_(*filters), ops=dict(distinct=True))
+        d = SelectResults(q)
+        d = d.join_to('employees').filter(Employee.c.name.startswith('J'))
+        d = d.distinct()
         d = d.order_by([desc(Department.c.name)])
         assert d.count() == 2
         assert d[0] is d2
