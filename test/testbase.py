@@ -51,7 +51,8 @@ def parse_argv():
     parser.add_option("--nothreadlocal", action="store_true", dest="nothreadlocal", help="dont use thread-local mod")
     parser.add_option("--enginestrategy", action="store", default=None, dest="enginestrategy", help="engine strategy (plain or threadlocal, defaults to plain)")
     parser.add_option("--coverage", action="store_true", dest="coverage", help="Dump a full coverage report after running")
-
+    parser.add_option("--reversetop", action="store_true", dest="topological", help="Reverse the collection ordering for topological sorts (helps reveal dependency issues)")
+    
     (options, args) = parser.parse_args()
     sys.argv[1:] = args
     
@@ -106,7 +107,19 @@ def parse_argv():
     else:
         db = engine.create_engine(db_uri, **db_opts)
     db = EngineAssert(db)
-
+    
+    if options.topological:
+        from sqlalchemy.orm import unitofwork
+        from sqlalchemy import topological
+        class RevQueueDepSort(topological.QueueDependencySorter):
+            def __init__(self, tuples, allitems):
+                self.tuples = list(tuples)
+                self.allitems = list(allitems)
+                self.tuples.reverse()
+                self.allitems.reverse()
+        topological.QueueDependencySorter = RevQueueDepSort
+        unitofwork.DependencySorter = RevQueueDepSort
+            
     import logging
     logging.basicConfig()
     if options.log_info is not None:

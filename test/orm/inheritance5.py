@@ -6,7 +6,7 @@ class AttrSettable(object):
     def __init__(self, **kwargs):
         [setattr(self, k, v) for k, v in kwargs.iteritems()]
     def __repr__(self):
-        return self.__class__.__name__ + ' ' + ','.join(["%s=%s" % (k,v) for k, v in self.__dict__.iteritems() if k[0] != '_'])
+        return self.__class__.__name__ + "(%s)" % (hex(id(self)))
 
 
 class RelationTest1(testbase.ORMTest):
@@ -233,7 +233,7 @@ class RelationTest3(testbase.ORMTest):
         if usedata:
             mapper(Person, people, select_table=poly_union, polymorphic_identity='person', polymorphic_on=people.c.type,
                   properties={
-                    'colleagues':relation(Person, primaryjoin=people.c.colleague_id==people.c.person_id, remote_side=people.c.colleague_id, uselist=True),
+                    'colleagues':relation(Person, primaryjoin=people.c.colleague_id==people.c.person_id, remote_side=people.c.person_id, uselist=True),
                     'data':relation(Data, uselist=False)
                     }        
             )
@@ -241,7 +241,7 @@ class RelationTest3(testbase.ORMTest):
             mapper(Person, people, select_table=poly_union, polymorphic_identity='person', polymorphic_on=people.c.type,
                   properties={
                     'colleagues':relation(Person, primaryjoin=people.c.colleague_id==people.c.person_id, 
-                        remote_side=people.c.colleague_id, uselist=True)
+                        remote_side=people.c.person_id, uselist=True)
                     }        
             )
 
