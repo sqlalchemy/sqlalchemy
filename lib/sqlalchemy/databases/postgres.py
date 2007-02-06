@@ -112,7 +112,10 @@ class PG1Time(sqltypes.Time):
         return value
     def get_col_spec(self):
         return "TIME " + (self.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
-
+class PGInterval(sqltypes.TypeEngine):
+    def get_col_spec(self):
+        return "INTERVAL"
+        
 class PGText(sqltypes.TEXT):
     def get_col_spec(self):
         return "TEXT"
@@ -171,6 +174,7 @@ pg2_ischema_names = {
     'time': PG2Time,
     'bytea' : PGBinary,
     'boolean' : PGBoolean,
+    'interval':PGInterval,
 }
 pg1_ischema_names = pg2_ischema_names.copy()
 pg1_ischema_names.update({
