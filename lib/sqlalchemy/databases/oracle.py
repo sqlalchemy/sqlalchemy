@@ -318,6 +318,17 @@ class OracleDialect(ansisql.ANSIDialect):
         if context is not None:
             context._rowcount = rowcount
 
+    def create_result_proxy_args(self, connection, cursor):
+        args = super(OracleDialect, self).create_result_proxy_args(connection, cursor)
+        if cursor and cursor.description:
+            for column in cursor.description:
+                type_code = column[1]
+                if type_code in (cx_Oracle.BFILE, cx_Oracle.CLOB, cx_Oracle.NCLOB,
+                                 cx_Oracle.BLOB, cx_Oracle.LONG_BINARY, cx_Oracle.LONG_STRING):
+                    args['should_prefetch'] = True
+                    break
+        return args
+
 class OracleCompiler(ansisql.ANSICompiler):
     """oracle compiler modifies the lexical structure of Select statements to work under 
     non-ANSI configured Oracle databases, if the use_ansi flag is False."""

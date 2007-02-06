@@ -32,6 +32,8 @@
   (other places that rowid is invalid) still a TODO.  allows polymorphic mappings
   to function, [ticket:436]
   - sequences on a non-pk column will properly fire off on INSERT
+  - added PrefetchingResultProxy support to pre-fetch LOB columns when they are 
+  known to be present, fixes [ticket:435]
 - mysql:
   - fix to reflection on older DB's that might return array() type for 
   "show variables like" statements

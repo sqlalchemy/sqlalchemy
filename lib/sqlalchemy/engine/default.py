@@ -65,6 +65,8 @@ class DefaultDialect(base.Dialect):
         return base.DefaultRunner(engine, proxy)
     def create_cursor(self, connection):
         return connection.cursor()
+    def create_result_proxy_args(self, connection, cursor):
+        return dict(should_prefetch=False)
         
     def _set_paramstyle(self, style):
         self._paramstyle = style
