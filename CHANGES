@@ -44,6 +44,9 @@
 - ext:
   - added distinct() method to SelectResults.  generally should only make a difference
   when using count().
+- mssql:
+  - better support for NVARCHAR types added [ticket:298]
+  - fix for commit logic on pymssql
   
 0.3.4
 - general:

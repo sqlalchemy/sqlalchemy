@@ -146,13 +146,28 @@ class MSText(sqltypes.TEXT):
 class MSString(sqltypes.String):
     def get_col_spec(self):
         return "VARCHAR(%(length)s)" % {'length' : self.length}
+
+
 class MSNVarchar(MSString):
     """NVARCHAR string, does unicode conversion if dialect.convert_encoding is true"""
+    impl = sqltypes.Unicode
     def get_col_spec(self):
         return "NVARCHAR(%(length)s)" % {'length' : self.length}
+    if dbmodule and dbmodule.__name__ == 'adodbapi':
+        def convert_bind_param(self, value, dialect):
+            return value
+        def convert_result_value(self, value, dialect):
+            return value        
+
 class MSUnicode(sqltypes.Unicode):
     """Unicode subclass, does unicode conversion in all cases, uses NVARCHAR impl"""
     impl = MSNVarchar
+    if dbmodule and dbmodule.__name__ == 'adodbapi':
+        def convert_bind_param(self, value, dialect):
+            return value
+        def convert_result_value(self, value, dialect):
+            return value        
+
 class MSChar(sqltypes.CHAR):
     def get_col_spec(self):
         return "CHAR(%(length)s)" % {'length' : self.length}
@@ -264,10 +279,10 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
 
 
 class MSSQLDialect(ansisql.ANSIDialect):
-    def __init__(self, module=None, auto_identity_insert=False, **params):
+    def __init__(self, module=None, auto_identity_insert=False, encoding=None, **params):
         self.module = module or dbmodule
         self.auto_identity_insert = auto_identity_insert
-        ansisql.ANSIDialect.__init__(self, **params)
+        ansisql.ANSIDialect.__init__(self, encoding=encoding, **params)
         self.set_default_schema_name("dbo")
         
     def create_connect_args(self, url):
@@ -468,8 +483,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
 class PyMSSQLDialect(MSSQLDialect):
     def do_begin(self, connection):
         """implementations might want to put logic here for turning autocommit on/off, etc."""
-        if do_commit:
-            pass  
+        pass  
 
     def do_rollback(self, connection):
         """implementations might want to put logic here for turning autocommit on/off, etc."""
@@ -496,7 +510,6 @@ class PyMSSQLDialect(MSSQLDialect):
         r.fetch_array()
         r.query("begin tran")
         r.fetch_array()
-
 
 class MSSQLCompiler(ansisql.ANSICompiler):
     def __init__(self, dialect, statement, parameters, **kwargs):
@@ -544,7 +557,6 @@ class MSSQLCompiler(ansisql.ANSICompiler):
             self.strings[column] = \
                 self.strings[self.tablealiases[column.table].corresponding_column(column)]
 
-        
 class MSSQLSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column) + " " + column.type.engine_impl(self.engine).get_col_spec()
