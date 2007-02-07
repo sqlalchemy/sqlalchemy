@@ -61,7 +61,4 @@ class DBAPIError(SQLAlchemyError):
         SQLAlchemyError.__init__(self, "(%s) (%s) %s"% (message, orig.__class__.__name__, str(orig)))
         self.orig = orig
 
-class MissingTypeError(SQLAlchemyError):
-    """no database type is available for the sa type"""
-    pass
     
