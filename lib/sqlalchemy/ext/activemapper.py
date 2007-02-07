@@ -208,6 +208,7 @@ class ActiveMapperMeta(type):
                              "__metadata__", metadata)
         version_id_col = None
         version_id_col_object = None
+        table_opts = {}
 
         if 'mapping' in dict:
             found_pk = False
@@ -228,6 +229,9 @@ class ActiveMapperMeta(type):
                 
                 if '__version_id_col__' == name:
                     version_id_col = value
+                
+                if '__table_opts__' == name:
+                    table_opts = value
 
                 if name.startswith('__'): continue
                 
@@ -261,10 +265,10 @@ class ActiveMapperMeta(type):
             ActiveMapperMeta.metadatas.add(_metadata)
             
             if not autoload:
-                cls.table = Table(table_name, _metadata, *columns)
+                cls.table = Table(table_name, _metadata, *columns, **table_opts)
                 cls.columns = columns
             else:
-                cls.table = Table(table_name, _metadata, autoload=True)
+                cls.table = Table(table_name, _metadata, autoload=True, **table_opts)
                 cls.columns = cls.table._columns
             
             # check for inheritence
