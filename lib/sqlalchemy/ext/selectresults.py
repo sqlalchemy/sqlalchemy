@@ -27,6 +27,14 @@ class SelectResults(object):
         self._ops.update(ops)
         self._joinpoint = joinpoint or (self._query.table, self._query.mapper)
 
+    def options(self,*args, **kwargs):
+        """transform the original mapper query form to an alternate form
+
+        See also Query.options
+
+        """
+        self._query = self._query.options(*args, **kwargs)
+
     def count(self):
         """executes the SQL count() function against the SelectResults criterion."""
         return self._query.count(self._clause, **self._ops)

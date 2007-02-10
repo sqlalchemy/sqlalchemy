@@ -46,6 +46,7 @@
 - ext:
   - added distinct() method to SelectResults.  generally should only make a difference
   when using count().
+  - added options() method to SelectResults, equivalent to query.options() [ticket:472]
   - added optional __table_opts__ dictionary to ActiveMapper, will send kw options to 
   Table objects [ticket:462]
 - mssql:
