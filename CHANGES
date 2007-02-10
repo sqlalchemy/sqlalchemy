@@ -27,6 +27,7 @@
   items in the cascade [ticket:445]
   - fix to deferred so that load operation doesnt mistakenly occur when only
   PK col attributes are set
+  - added support for py2.5 "with" statement with SessionTransaction [ticket:468]
 - oracle:
   - when returning "rowid" as the ORDER BY column or in use with ROW_NUMBER OVER,
   oracle dialect checks the selectable its being applied to and will switch to 

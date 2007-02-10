@@ -69,6 +69,15 @@ class SessionTransaction(object):
             if t[2]:
                 t[0].close()
         self.session.transaction = None
+    def __enter__(self):
+        return self
+    def __exit__(self, type, value, traceback):
+        if self.session.transaction is None:
+            return
+        if type is None:
+            self.commit()
+        else:
+            self.rollback()
 
 class Session(object):
     """encapsulates a set of objects being operated upon within an object-relational operation.

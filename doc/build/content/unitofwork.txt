@@ -370,6 +370,16 @@ Example usage is as follows:
         raise
     trans.commit()
 
+The SessionTransaction object supports Python 2.5's with statement so that the example above can be written as:
+
+    {python}
+    sess = create_session()
+    with sess.create_transaction():
+        item1 = sess.query(Item).get(1)
+        item2 = sess.query(Item).get(2)
+        item1.foo = 'bar'
+        item2.bar = 'foo'
+
 The `create_transaction()` method creates a new SessionTransaction object but does not declare any connection/transaction resources.  At the point of the first `get()` call, a connection resource is opened off the engine that corresponds to the Item classes' mapper and is stored within the `SessionTransaction` with an open `Transaction`.  When `trans.commit()` is called, the `flush()` method is called on the `Session` and the corresponding update statements are issued to the database within the scope of the transaction already opened; afterwards, the underying Transaction is committed, and connection resources are freed.
 
 `SessionTransaction`, like the `Transaction` off of `Connection` also supports "nested" behavior, and is safe to pass to other functions which then issue their own `begin()`/`commit()` pair; only the outermost `begin()`/`commit()` pair actually affects the transaction, and any call to `rollback()` within a particular call stack will issue a rollback.
