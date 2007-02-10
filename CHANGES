@@ -9,11 +9,13 @@
   kinds of clauses can express if they are appropriate for executing...such as, 
   you can execute a "select", but not a "Table" or a "Join".
 - orm:
-  - further rework of the recent polymorphic relationship refactorings, as well
-  as the mechanics of relationships overall.  Allows more accurate ORM behavior
-  with relationships from/to/between polymorphic mappers, as well as their usage
-  with Query, SelectResults.  tickets include [ticket:439], [ticket:441], [ticket:448].
-  relationship mechanics are still a work in progress, more to come !
+  - another refactoring to relationship calculation.  Allows more accurate ORM behavior
+  with relationships from/to/between mappers, particularly polymorphic mappers,
+  also their usage with Query, SelectResults.  
+  tickets include [ticket:439], [ticket:441], [ticket:448].
+  - implemented foreign_keys argument to mapper [ticket:385].  use in conjunction with
+  primaryjoin/secondaryjoin arguments to specify/override foreign keys defined on the
+  Table instance.
   - eager relation to an inheriting mapper wont fail if no rows returned for
   the relationship.
   - eager loading is slightly more strict about detecting "self-referential"

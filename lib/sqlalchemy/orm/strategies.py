@@ -129,7 +129,7 @@ class DeferredOption(StrategizedOption):
 class AbstractRelationLoader(LoaderStrategy):
     def init(self):
         super(AbstractRelationLoader, self).init()
-        for attr in ['primaryjoin', 'secondaryjoin', 'secondary', 'foreignkey', 'mapper', 'select_mapper', 'target', 'select_table', 'loads_polymorphic', 'uselist', 'cascade', 'attributeext', 'order_by', 'remote_side', 'polymorphic_primaryjoin', 'polymorphic_secondaryjoin', 'direction']:
+        for attr in ['primaryjoin', 'secondaryjoin', 'secondary', 'foreign_keys', 'mapper', 'select_mapper', 'target', 'select_table', 'loads_polymorphic', 'uselist', 'cascade', 'attributeext', 'order_by', 'remote_side', 'polymorphic_primaryjoin', 'polymorphic_secondaryjoin', 'direction']:
             setattr(self, attr, getattr(self.parent_property, attr))
         self._should_log_debug = logging.is_debug_enabled(self.logger)
         
@@ -155,13 +155,7 @@ NoLoader.logger = logging.class_logger(NoLoader)
 class LazyLoader(AbstractRelationLoader):
     def init(self):
         super(LazyLoader, self).init()
-        (self.lazywhere, self.lazybinds, self.lazyreverse) = self._create_lazy_clause(
-            self.parent.mapped_table, 
-            self.mapper.select_table,
-            self.polymorphic_primaryjoin, 
-            self.polymorphic_secondaryjoin, 
-            self.foreignkey, 
-            self.remote_side)
+        (self.lazywhere, self.lazybinds, self.lazyreverse) = self._create_lazy_clause(self.polymorphic_primaryjoin, self.polymorphic_secondaryjoin, self.remote_side)
 
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
@@ -246,53 +240,13 @@ class LazyLoader(AbstractRelationLoader):
                 # to load data into it.
                 sessionlib.attribute_manager.reset_instance_attribute(instance, self.key)
 
-    def _create_lazy_clause(self, parenttable, targettable, primaryjoin, secondaryjoin, foreignkey, remote_side):
+    def _create_lazy_clause(self, primaryjoin, secondaryjoin, remote_side):
         binds = {}
         reverse = {}
 
-        #print "PARENTTABLE", parenttable, "TARGETTABLE", targettable, "PJ", primaryjoin
-
         def should_bind(targetcol, othercol):
-            # determine if the given target column is part of the parent table
-            # portion of the join condition, in which case it gets converted
-            # to a bind param.
-            
-            # contains_column will return if this column is exactly in the table, with no
-            # proxying relationships.  the table can be either the column's actual parent table,
-            # or a Join object containing the table.  for a Select, Alias, or Union, the column
-            # needs to be the actual ColumnElement exported by that selectable, not the "originating" column.
-            inparent = parenttable.c.contains_column(targetcol)
-            
-            # check if its also in the target table.  if this is a many-to-many relationship, 
-            # then we dont care about target table presence
-            intarget = secondaryjoin is None and targettable.c.contains_column(targetcol)
-            
-            if inparent and not intarget:
-                # its in the parent and not the target, return true.
-                return True
-            elif inparent and intarget:
-                # its in both.  hmm.
-                if parenttable is not targettable:
-                    # the column is in both tables, but the two tables are different.  
-                    # this corresponds to a table relating to a Join which also contains that table.
-                    # such as tableA.c.col1 == tableB.c.col2, tables are tableA and tableA.join(tableB)
-                    # in which case we only accept that the parenttable is the "base" table, not the "joined" table
-                    return targetcol.table is parenttable
-                else:
-                    # parent/target are the same table, i.e. circular reference.
-                    # we have to rely on the "remote_side" argument
-                    # and/or foreignkey collection.
-                    # technically we can use this for the non-circular refs as well except that "remote_side" is usually
-                    # only calculated for self-referential relationships at the moment.
-                    # TODO: have PropertyLoader calculate remote_side completely ?  this would involve moving most of the
-                    # "should_bind()" logic to PropertyLoader.  remote_side could also then be accurately used by sync.py.
-                    if col_in_collection(othercol, remote_side):
-                        return True
-            return False
+            return othercol in remote_side
 
-        if remote_side is None or len(remote_side) == 0:
-            remote_side = foreignkey
-            
         def find_column_in_expr(expr):
             if not isinstance(expr, sql.ColumnElement):
                 return None
@@ -324,7 +278,7 @@ class LazyLoader(AbstractRelationLoader):
                 reverse[rightcol] = binds[col]
 
             # the "left is not right" compare is to handle part of a join clause that is "table.c.col1==table.c.col1",
-            # which can happen in rare cases
+            # which can happen in rare cases (test/orm/relationships.py RelationTest2)
             if leftcol is not rightcol and should_bind(rightcol, leftcol):
                 col = rightcol
                 binary.right = binds.setdefault(rightcol,
@@ -339,8 +293,7 @@ class LazyLoader(AbstractRelationLoader):
             secondaryjoin = secondaryjoin.copy_container()
             lazywhere = sql.and_(lazywhere, secondaryjoin)
  
-        #print "LAZYCLAUSE", str(lazywhere)
-        LazyLoader.logger.info("create_lazy_clause " + str(lazywhere))
+        LazyLoader.logger.info(str(self.parent_property) + " lazy loading clause " + str(lazywhere))
         return (lazywhere, binds, reverse)
 
 LazyLoader.logger = logging.class_logger(LazyLoader)

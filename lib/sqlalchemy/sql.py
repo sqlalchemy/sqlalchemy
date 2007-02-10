@@ -642,7 +642,7 @@ class ColumnElement(Selectable, _CompareMixin):
     may correspond to several TableClause-attached columns)."""
     
     primary_key = property(lambda self:getattr(self, '_primary_key', False), doc="primary key flag.  indicates if this Column represents part or whole of a primary key.")
-    foreign_keys = property(lambda self:getattr(self, '_foreign_keys', []), doc="foreign key accessor.  points to a ForeignKey object which represents a Foreign Key placed on this column's ultimate ancestor.")
+    foreign_keys = property(lambda self:getattr(self, '_foreign_keys', []), doc="foreign key accessor.  points to a list of ForeignKey objects which represents a Foreign Key placed on this column's ultimate ancestor.")
     columns = property(lambda self:[self], doc="Columns accessor which just returns self, to provide compatibility with Selectable objects.")
     def _one_fkey(self):
         if len(self._foreign_keys):

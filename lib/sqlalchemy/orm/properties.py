@@ -73,7 +73,7 @@ mapper.ColumnProperty = ColumnProperty
 class PropertyLoader(StrategizedProperty):
     """describes an object property that holds a single item or list of items that correspond
     to a related database table."""
-    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreignkey=None, uselist=None, private=False, association=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False, cascade=None, viewonly=False, lazy=True, collection_class=None, passive_deletes=False, remote_side=None):
+    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreign_keys=None, foreignkey=None, uselist=None, private=False, association=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False, cascade=None, viewonly=False, lazy=True, collection_class=None, passive_deletes=False, remote_side=None):
         self.uselist = uselist
         self.argument = argument
         self.secondary = secondary
@@ -83,7 +83,8 @@ class PropertyLoader(StrategizedProperty):
         self.direction = None
         self.viewonly = viewonly
         self.lazy = lazy
-        self.foreignkey = util.to_set(foreignkey)
+        self.foreign_keys = util.to_set(foreign_keys)
+        self._legacy_foreignkey = util.to_set(foreignkey)
         self.collection_class = collection_class
         self.passive_deletes = passive_deletes
         self.remote_side = util.to_set(remote_side)
@@ -126,7 +127,7 @@ class PropertyLoader(StrategizedProperty):
             return strategies.NoLoader(self)
             
     def __str__(self):
-        return self.__class__.__name__ + " " + str(self.parent) + "->" + self.key + "->" + str(self.mapper)
+        return str(self.parent.class_.__name__) + "." + self.key + " (" + str(self.mapper.class_.__name__)  + ")"
 
     def merge(self, session, source, dest, _recursive):
         if not "merge" in self.cascade or source in _recursive:
@@ -184,6 +185,15 @@ class PropertyLoader(StrategizedProperty):
             return self.argument.class_
         
     def do_init(self):
+        self._determine_targets()
+        self._determine_joins()
+        self._determine_fks()
+        self._determine_direction()
+        self._determine_remote_side()
+        self._create_polymorphic_joins()
+        self._post_init()
+        
+    def _determine_targets(self):
         if isinstance(self.argument, type):
             self.mapper = mapper.class_mapper(self.argument, compile=False)._check_compile()
         elif isinstance(self.argument, mapper.Mapper):
@@ -205,9 +215,10 @@ class PropertyLoader(StrategizedProperty):
 
         if self.cascade.delete_orphan:
             if self.parent.class_ is self.mapper.class_:
-                raise exceptions.ArgumentError("Cant establish 'delete-orphan' cascade rule on a self-referential relationship (attribute '%s' on class '%s').  You probably want cascade='all', which includes delete cascading but not orphan detection." %(self.key, self.parent.class_.__name__))
+                raise exceptions.ArgumentError("In relationship '%s', can't establish 'delete-orphan' cascade rule on a self-referential relationship.  You probably want cascade='all', which includes delete cascading but not orphan detection." %(str(self)))
             self.mapper.primary_mapper().delete_orphans.append((self.key, self.parent.class_))
-            
+    
+    def _determine_joins(self):
         if self.secondaryjoin is not None and self.secondary is None:
             raise exceptions.ArgumentError("Property '" + self.key + "' specified with secondary join condition but no secondary argument")
         # if join conditions were not specified, figure them out based on foreign keys
@@ -221,7 +232,7 @@ class PropertyLoader(StrategizedProperty):
                 if self.primaryjoin is None:
                     self.primaryjoin = sql.join(self.parent.unjoined_table, self.target).onclause
         except exceptions.ArgumentError, e:
-            raise exceptions.ArgumentError("Error determining primary and/or secondary join for relationship '%s' between mappers '%s' and '%s'.  If the underlying error cannot be corrected, you should specify the 'primaryjoin' (and 'secondaryjoin', if there is an association table present) keyword arguments to the relation() function (or for backrefs, by specifying the backref using the backref() function with keyword arguments) to explicitly specify the join conditions.  Nested error is \"%s\"" % (self.key, self.parent, self.mapper, str(e)))
+            raise exceptions.ArgumentError("Error determining primary and/or secondary join for relationship '%s'.  If the underlying error cannot be corrected, you should specify the 'primaryjoin' (and 'secondaryjoin', if there is an association table present) keyword arguments to the relation() function (or for backrefs, by specifying the backref using the backref() function with keyword arguments) to explicitly specify the join conditions.  Nested error is \"%s\"" % (str(self), str(e)))
 
         # if using polymorphic mapping, the join conditions must be agasint the base tables of the mappers,
         # as the loader strategies expect to be working with those now (they will adapt the join conditions
@@ -233,25 +244,93 @@ class PropertyLoader(StrategizedProperty):
             if self.secondaryjoin:
                 self.secondaryjoin.accept_visitor(vis)
             if vis.result:
-                raise exceptions.ArgumentError("In relationship '%s' between mappers '%s' and '%s', primary and secondary join conditions must not include columns from the polymorphic 'select_table' argument as of SA release 0.3.4.  Construct join conditions using the base tables of the related mappers." % (self.key, self.parent, self.mapper))
+                raise exceptions.ArgumentError("In relationship '%s', primary and secondary join conditions must not include columns from the polymorphic 'select_table' argument as of SA release 0.3.4.  Construct join conditions using the base tables of the related mappers." % (str(self)))
 
+    def _determine_fks(self):
+        if len(self._legacy_foreignkey) and not self._is_self_referential():
+            self.foreign_keys = self._legacy_foreignkey
+        if len(self.foreign_keys):
+            self._opposite_side = util.Set()
+            def visit_binary(binary):
+                if binary.operator != '=' or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
+                    return
+                if binary.left in self.foreign_keys:
+                    self._opposite_side.add(binary.right)
+                if binary.right in self.foreign_keys:
+                    self._opposite_side.add(binary.left)
+            self.primaryjoin.accept_visitor(mapperutil.BinaryVisitor(visit_binary))
+            if self.secondaryjoin is not None:
+                self.secondaryjoin.accept_visitor(mapperutil.BinaryVisitor(visit_binary))
+        else:
+            self.foreign_keys = util.Set()
+            self._opposite_side = util.Set()
+            def visit_binary(binary):
+                if binary.operator != '=' or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
+                    return
+                for f in binary.left.foreign_keys:
+                    if f.references(binary.right.table):
+                        self.foreign_keys.add(binary.left)
+                        self._opposite_side.add(binary.right)
+                for f in binary.right.foreign_keys:
+                    if f.references(binary.left.table):
+                        self.foreign_keys.add(binary.right)
+                        self._opposite_side.add(binary.left)
+            self.primaryjoin.accept_visitor(mapperutil.BinaryVisitor(visit_binary))
+
+            if len(self.foreign_keys) == 0:
+                raise exceptions.ArgumentError("Cant locate any foreign key columns in primary join condition '%s' for relationship '%s'.  Specify 'foreign_keys' argument to indicate which columns in the join condition are foreign." %(str(self.primaryjoin), str(self)))
+            if self.secondaryjoin is not None:
+                self.secondaryjoin.accept_visitor(mapperutil.BinaryVisitor(visit_binary))
             
-        # if the foreign key wasnt specified and theres no assocaition table, try to figure
-        # out who is dependent on who. we dont need all the foreign keys represented in the join,
-        # just one of them.
-        if not len(self.foreignkey) and self.secondaryjoin is None:
-            # else we usually will have a one-to-many where the secondary depends on the primary
-            # but its possible that its reversed
-            self._find_dependent()
+    def _determine_direction(self):
+        """determines our 'direction', i.e. do we represent one to many, many to many, etc."""
+        if self.secondaryjoin is not None:
+            self.direction = sync.MANYTOMANY
+        elif self._is_self_referential():
+            # for a self referential mapper, if the "foreignkey" is a single or composite primary key,
+            # then we are "many to one", since the remote site of the relationship identifies a singular entity.
+            # otherwise we are "one to many".
+            if len(self._legacy_foreignkey):
+                for f in self._legacy_foreignkey:
+                    if not f.primary_key:
+                        self.direction = sync.ONETOMANY
+                    else:
+                        self.direction = sync.MANYTOONE
+                
+            elif len(self.remote_side):
+                for f in self.foreign_keys:
+                    if f in self.remote_side:
+                        self.direction = sync.ONETOMANY
+                        return
+                else:
+                    self.direction = sync.MANYTOONE
+            else:
+                self.direction = sync.ONETOMANY
+        else:
+            onetomany = len([c for c in self.foreign_keys if self.mapper.unjoined_table.corresponding_column(c, False) is not None])
+            manytoone = len([c for c in self.foreign_keys if self.parent.unjoined_table.corresponding_column(c, False) is not None])
+            if not onetomany and not manytoone:
+                raise exceptions.ArgumentError("Cant determine relation direction for relationship '%s' - foreign key columns are not present in neither the parent nor the child's mapped tables" %(str(self)))
+            elif onetomany and manytoone:
+                raise exceptions.ArgumentError("Cant determine relation direction for relationship '%s' - foreign key columns are present in both the parent and the child's mapped tables.  Specify 'foreign_keys' argument." %(str(self)))
+            elif onetomany:
+                self.direction = sync.ONETOMANY
+            elif manytoone:
+                self.direction = sync.MANYTOONE
 
-        # if we are re-initializing, as in a copy made for an inheriting 
-        # mapper, dont re-evaluate the direction.
-        if self.direction is None:
-            self.direction = self._get_direction()
-        
-        #print "DIRECTION IS ", self.direction, sync.ONETOMANY, sync.MANYTOONE
-        #print "FKEY IS", self.foreignkey
+    def _determine_remote_side(self):
+        if len(self.remote_side):
+            return
+        self.remote_side = util.Set()
+            
+        if self.direction is sync.MANYTOONE:
+            for c in self._opposite_side:
+                self.remote_side.add(c)
+        elif self.direction is sync.ONETOMANY or self.direction is sync.MANYTOMANY:
+            for c in self.foreign_keys:
+                self.remote_side.add(c)
 
+    def _create_polymorphic_joins(self):        
         # get ready to create "polymorphic" primary/secondary join clauses.
         # these clauses represent the same join between parent/child tables that the primary
         # and secondary join clauses represent, except they reference ColumnElements that are specifically
@@ -272,21 +351,27 @@ class PropertyLoader(StrategizedProperty):
             else:
                 self.polymorphic_primaryjoin = self.primaryjoin.copy_container()
                 if self.direction is sync.ONETOMANY:
-                    self.polymorphic_primaryjoin.accept_visitor(sql_util.ClauseAdapter(self.mapper.select_table, include=self.foreignkey, equivalents=target_equivalents))
+                    self.polymorphic_primaryjoin.accept_visitor(sql_util.ClauseAdapter(self.mapper.select_table, include=self.foreign_keys, equivalents=target_equivalents))
                 elif self.direction is sync.MANYTOONE:
-                    self.polymorphic_primaryjoin.accept_visitor(sql_util.ClauseAdapter(self.mapper.select_table, exclude=self.foreignkey, equivalents=target_equivalents))
-                    
+                    self.polymorphic_primaryjoin.accept_visitor(sql_util.ClauseAdapter(self.mapper.select_table, exclude=self.foreign_keys, equivalents=target_equivalents))
                 self.polymorphic_secondaryjoin = None
+            for c in list(self.remote_side):
+                corr = self.mapper.select_table.corresponding_column(c, raiseerr=False)
+                if corr:
+                    self.remote_side.add(corr)
         else:
             self.polymorphic_primaryjoin = self.primaryjoin.copy_container()
             self.polymorphic_secondaryjoin = self.secondaryjoin and self.secondaryjoin.copy_container() or None
 
-            
-        #print "KEY", self.key, "PARENT", str(self.parent)
-        #print "KEY", self.key, "REG PRIMARY JOIN", str(self.primaryjoin)
-        #print "KEY", self.key, "POLY PRIMARY JOIN", str(self.polymorphic_primaryjoin)
-                
-        if self.uselist is None and self.direction == sync.MANYTOONE:
+    def _post_init(self):
+        if logging.is_info_enabled(self.logger):
+            self.logger.info(str(self) + " setup primary join " + str(self.primaryjoin))
+            self.logger.info(str(self) + " setup polymorphic primary join " + str(self.polymorphic_primaryjoin))
+            self.logger.info(str(self) + " foreign keys " + str([c.key for c in self.foreign_keys]))
+            self.logger.info(str(self) + " remote columns " + str([c.key for c in self.remote_side]))
+            self.logger.info(str(self) + " relation direction " + (self.direction is sync.ONETOMANY and "one-to-many" or (self.direction is sync.MANYTOONE and "many-to-one" or "many-to-many")))
+        
+        if self.uselist is None and self.direction is sync.MANYTOONE:
             self.uselist = False
 
         if self.uselist is None:
@@ -312,58 +397,6 @@ class PropertyLoader(StrategizedProperty):
     def _is_self_referential(self):
         return self.parent.mapped_table is self.target or self.parent.select_table is self.target
         
-    def _get_direction(self):
-        """determines our 'direction', i.e. do we represent one to many, many to many, etc."""
-        if self.secondaryjoin is not None:
-            return sync.MANYTOMANY
-        elif self._is_self_referential():
-            # for a self referential mapper, if the "foreignkey" is a single or composite primary key,
-            # then we are "many to one", since the remote site of the relationship identifies a singular entity.
-            # otherwise we are "one to many".
-            if self.remote_side is not None and len(self.remote_side):
-                for f in self.foreignkey:
-                    if f in self.remote_side:
-                        return sync.ONETOMANY
-                else:
-                    return sync.MANYTOONE
-            else:
-                for f in self.foreignkey:
-                    if not f.primary_key:
-                        return sync.ONETOMANY
-                else:
-                    return sync.MANYTOONE
-        else:
-            onetomany = len([c for c in self.foreignkey if self.mapper.unjoined_table.corresponding_column(c, False) is not None])
-            manytoone = len([c for c in self.foreignkey if self.parent.unjoined_table.corresponding_column(c, False) is not None])
-            if not onetomany and not manytoone:
-                raise exceptions.ArgumentError("Cant determine relation direction for '%s' on mapper '%s' with primary join '%s' - foreign key columns are not present in neither the parent nor the child's mapped tables" %(self.key, str(self.parent), str(self.primaryjoin)) +  str(self.foreignkey))
-            elif onetomany and manytoone:
-                raise exceptions.ArgumentError("Cant determine relation direction for '%s' on mapper '%s' with primary join '%s' - foreign key columns are present in both the parent and the child's mapped tables.  Specify 'foreignkey' argument." %(self.key, str(self.parent), str(self.primaryjoin)))
-            elif onetomany:
-                return sync.ONETOMANY
-            elif manytoone:
-                return sync.MANYTOONE
-            
-    def _find_dependent(self):
-        """searches through the primary join condition to determine which side
-        has the foreign key - from this we return 
-        the "foreign key" for this property which helps determine one-to-many/many-to-one."""
-        foreignkeys = util.Set()
-        def foo(binary):
-            if binary.operator != '=' or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
-                return
-            for f in binary.left.foreign_keys:
-                if f.references(binary.right.table):
-                    foreignkeys.add(binary.left)
-            for f in binary.right.foreign_keys:
-                if f.references(binary.left.table):
-                    foreignkeys.add(binary.right)
-        visitor = mapperutil.BinaryVisitor(foo)
-        self.primaryjoin.accept_visitor(visitor)
-        if len(foreignkeys) == 0:
-            raise exceptions.ArgumentError("Cant determine relation direction for '%s' on mapper '%s' with primary join '%s' - no foreign key relationship is expressed within the join condition.  Specify 'foreignkey' argument." %(self.key, str(self.parent), str(self.primaryjoin)))
-        self.foreignkey = foreignkeys
-        
     def get_join(self, parent):
         try:
             return self._parent_join_cache[parent]
@@ -375,11 +408,11 @@ class PropertyLoader(StrategizedProperty):
             else:
                 secondaryjoin = None
             if self.direction is sync.ONETOMANY:
-                primaryjoin.accept_visitor(sql_util.ClauseAdapter(parent.select_table, exclude=self.foreignkey, equivalents=parent_equivalents))
+                primaryjoin.accept_visitor(sql_util.ClauseAdapter(parent.select_table, exclude=self.foreign_keys, equivalents=parent_equivalents))
             elif self.direction is sync.MANYTOONE:
-                primaryjoin.accept_visitor(sql_util.ClauseAdapter(parent.select_table, include=self.foreignkey, equivalents=parent_equivalents))
+                primaryjoin.accept_visitor(sql_util.ClauseAdapter(parent.select_table, include=self.foreign_keys, equivalents=parent_equivalents))
             elif self.secondaryjoin:
-                primaryjoin.accept_visitor(sql_util.ClauseAdapter(parent.select_table, exclude=self.foreignkey, equivalents=parent_equivalents))
+                primaryjoin.accept_visitor(sql_util.ClauseAdapter(parent.select_table, exclude=self.foreign_keys, equivalents=parent_equivalents))
 
             if secondaryjoin is not None:
                 j = primaryjoin & secondaryjoin

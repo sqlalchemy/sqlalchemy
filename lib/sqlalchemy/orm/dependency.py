@@ -35,7 +35,7 @@ class DependencyProcessor(object):
         self.direction = prop.direction
         self.is_backref = prop.is_backref
         self.post_update = prop.post_update
-        self.foreignkey = prop.foreignkey
+        self.foreign_keys = prop.foreign_keys
         self.passive_deletes = prop.passive_deletes
         self.key = prop.key
 
@@ -88,10 +88,10 @@ class DependencyProcessor(object):
         objects are processed."""
         self.syncrules = sync.ClauseSynchronizer(self.parent, self.mapper, self.direction)
         if self.direction == sync.MANYTOMANY:
-            self.syncrules.compile(self.prop.primaryjoin, issecondary=False)
-            self.syncrules.compile(self.prop.secondaryjoin, issecondary=True)
+            self.syncrules.compile(self.prop.primaryjoin, issecondary=False, foreign_keys=self.foreign_keys)
+            self.syncrules.compile(self.prop.secondaryjoin, issecondary=True, foreign_keys=self.foreign_keys)
         else:
-            self.syncrules.compile(self.prop.primaryjoin, foreignkey=self.foreignkey)
+            self.syncrules.compile(self.prop.primaryjoin, foreign_keys=self.foreign_keys)
         
     def get_object_dependencies(self, obj, uowcommit, passive = True):
         """returns the list of objects that are dependent on the given object, as according to the relationship

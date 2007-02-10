@@ -93,7 +93,7 @@ class relationship(object):
         else:
             br_fkey = None
         
-        return create_backref(self.backref, foreignkey=br_fkey)
+        return create_backref(self.backref, remote_side=br_fkey)
 
 
 class one_to_many(relationship):

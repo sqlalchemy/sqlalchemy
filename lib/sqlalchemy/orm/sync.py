@@ -31,7 +31,7 @@ class ClauseSynchronizer(object):
         self.direction = direction
         self.syncrules = []
 
-    def compile(self, sqlclause, issecondary=None, foreignkey=None):
+    def compile(self, sqlclause, foreign_keys=None, issecondary=None):
         def compile_binary(binary):
             """assemble a SyncRule given a single binary condition"""
             if binary.operator != '=' or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
@@ -39,43 +39,24 @@ class ClauseSynchronizer(object):
 
             source_column = None
             dest_column = None
-            if foreignkey is not None:
-                # for self-referential relationships,
-                # the best we can do right now is figure out which side
-                # is the primary key
-                # TODO: need some better way for this
+            
+            if foreign_keys is None:
                 if binary.left.table == binary.right.table:
-                    if binary.left.primary_key:
-                        source_column = binary.left
-                        dest_column = binary.right
-                    elif binary.right.primary_key:
-                        source_column = binary.right
-                        dest_column = binary.left
-                    elif binary.left in foreignkey:
-                        dest_column = binary.left
-                        source_column = binary.right
-                    elif binary.right in foreignkey:
-                        dest_column = binary.right
-                        source_column = binary.left
-                    else:
-                        raise exceptions.ArgumentError("Can't figure out which column is source/dest in join clause '%s'" % str(binary))
-                # for other relationships we are more flexible
-                # and go off the 'foreignkey' property
-                elif binary.left in foreignkey:
-                    dest_column = binary.left
-                    source_column = binary.right
-                elif binary.right in foreignkey:
-                    dest_column = binary.right
-                    source_column = binary.left
-                else:
-                    return
-            else:
+                    raise exceptions.ArgumentError("need foreign_keys argument for self-referential sync")
+                    
                 if binary.left in [f.column for f in binary.right.foreign_keys]:
                     dest_column = binary.right
                     source_column = binary.left
                 elif binary.right in [f.column for f in binary.left.foreign_keys]:
                     dest_column = binary.left
                     source_column = binary.right
+            else:
+                if binary.left in foreign_keys:
+                    source_column=binary.right
+                    dest_column = binary.left
+                elif binary.right in foreign_keys:
+                    source_column = binary.left
+                    dest_column = binary.right
             
             if source_column and dest_column:    
                 if self.direction == ONETOMANY:
