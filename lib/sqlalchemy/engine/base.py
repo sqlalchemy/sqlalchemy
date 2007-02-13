@@ -260,13 +260,19 @@ class Connection(Connectable):
         self.__connection.close()
         self.__connection = None
         del self.__connection
-    def scalar(self, object, parameters=None, **kwargs):
-        return self.execute(object, parameters, **kwargs).scalar()
+    def scalar(self, object, *multiparams, **params):
+        return self.execute(object, *multiparams, **params).scalar()
     def execute(self, object, *multiparams, **params):
         return Connection.executors[type(object).__mro__[-2]](self, object, *multiparams, **params)
     def execute_default(self, default, **kwargs):
         return default.accept_schema_visitor(self.__engine.dialect.defaultrunner(self.__engine, self.proxy, **kwargs))
-    def execute_text(self, statement, parameters=None):
+    def execute_text(self, statement, *multiparams, **params):
+        if len(multiparams) == 0:
+            parameters = params
+        elif len(multiparams) == 1 and (isinstance(multiparams[0], list) or isinstance(multiparams[0], dict)):
+            parameters = multiparams[0]
+        else:
+            parameters = list(multiparams)
         cursor = self._execute_raw(statement, parameters)
         rpargs = self.__engine.dialect.create_result_proxy_args(self, cursor)
         return ResultProxy(self.__engine, self, cursor, **rpargs)

@@ -5,8 +5,9 @@ import unittest
 def suite():
     modules_to_test = (
         # connectivity, execution
-	'engine.parseconnect',
+	    'engine.parseconnect',
         'engine.pool', 
+        'engine.execute',
         'engine.transaction',
         
         # schema/tables

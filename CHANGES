@@ -8,6 +8,9 @@
   - added a "supports_execution()" method to ClauseElement, so that individual
   kinds of clauses can express if they are appropriate for executing...such as, 
   you can execute a "select", but not a "Table" or a "Join".
+  - fixed argument passing to straight textual execute() on engine, connection.
+  can handle *args or a list instance for positional, **kwargs or a dict instance
+  for named args, or a list of list or dicts to invoke executemany()
 - orm:
   - another refactoring to relationship calculation.  Allows more accurate ORM behavior
   with relationships from/to/between mappers, particularly polymorphic mappers,
