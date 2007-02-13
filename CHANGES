@@ -18,6 +18,7 @@
   Table instance.
   - eager relation to an inheriting mapper wont fail if no rows returned for
   the relationship.
+  - fix for very large topological sorts, courtesy ants.aasma at gmail [ticket:423]
   - eager loading is slightly more strict about detecting "self-referential"
   relationships, specifically between polymorphic mappers.
   - improved support for complex queries embedded into "where" criterion

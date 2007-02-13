@@ -181,6 +181,11 @@ class DependencySortTest(PersistTest):
         head = DependencySorter(tuples, []).sort(allow_all_cycles=True)
         self.assert_sort(tuples, head)
         
+    def testbigsort(self):
+        tuples = []
+        for i in range(0,1500, 2):
+            tuples.append((i, i+1))
+        head = DependencySorter(tuples, []).sort()
             
             
             

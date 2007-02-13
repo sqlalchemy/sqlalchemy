@@ -53,16 +53,13 @@ class _Node(object):
             string.join([n.safestr(indent + 1) for n in self.children], '')
     def __repr__(self):
         return "%s" % (str(self.item))
-    def is_dependent(self, child):
+    def all_deps(self):
+        """Returns a set of dependencies for this node and all its cycles"""
+        deps = util.Set(self.dependencies)
         if self.cycles is not None:
             for c in self.cycles:
-                if child in c.dependencies:
-                    return True
-        if child.cycles is not None:
-            for c in child.cycles:
-                if c in self.dependencies:
-                    return True
-        return child in self.dependencies
+                deps.update(c.dependencies)
+        return deps
 
 class _EdgeCollection(object):
     """a collection of directed edges."""
@@ -196,38 +193,44 @@ class QueueDependencySorter(object):
     def _create_batched_tree(self, nodes):
         """given a list of nodes from a topological sort, organizes the nodes into a tree structure,
         with as many non-dependent nodes set as silbings to each other as possible."""
-        def sort(index=None, l=None):
-            if index is None:
-                index = 0
-            
-            if index >= len(nodes):
-                return None
-            
-            node = nodes[index]
-            l2 = []
-            sort(index + 1, l2)
-            for n in l2:
-                if l is None or search_dep(node, n):
-                    node.children.append(n)
-                else:
-                    l.append(n)
-            if l is not None:
-                l.append(node)
-            return node
-            
-        def search_dep(parent, child):
-            if child is None:
-                return False
-            elif parent.is_dependent(child):
-                return True
+        if not len(nodes):
+            return None
+        # a list of all currently independent subtrees as a tuple of
+        # (root_node, set_of_all_tree_nodes, set_of_all_cycle_nodes_in_tree)
+        # order of the list has no semantics for the algorithmic 
+        independents = []
+        # in reverse topological order
+        for node in reversed(nodes):
+            # nodes subtree and cycles contain the node itself
+            subtree = util.Set([node])
+            if node.cycles is not None:
+                cycles = util.Set(node.cycles)
             else:
-                for c in child.children:
-                    x = search_dep(parent, c)
-                    if x is True:
-                        return True
-                else:
-                    return False
-        return sort()
+                cycles = util.Set()
+            # get a set of dependent nodes of node and its cycles
+            nodealldeps = node.all_deps()
+            if nodealldeps:
+                # iterate over independent node indexes in reverse order so we can efficiently remove them
+                for index in xrange(len(independents)-1,-1,-1):
+                    child, childsubtree, childcycles = independents[index] 
+                    # if there is a dependency between this node and an independent node
+                    if (childsubtree.intersection(nodealldeps) or childcycles.intersection(node.dependencies)):
+                        # prepend child to nodes children
+                        # (append should be fine, but previous implemetation used prepend)
+                        node.children[0:0] = (child,)
+                        # merge childs subtree and cycles
+                        subtree.update(childsubtree)
+                        cycles.update(childcycles)
+                        # remove the child from list of independent subtrees
+                        independents[index:index+1] = []
+            # add node as a new independent subtree
+            independents.append((node,subtree,cycles))
+        # choose an arbitrary node from list of all independent subtrees
+        head = independents.pop()[0]
+        # add all other independent subtrees as a child of the chosen root
+        # used prepend [0:0] instead of extend to maintain exact behaviour of previous implementation
+        head.children[0:0] = [i[0] for i in independents]
+        return head
         
     def _find_cycles(self, edges):
         involved_in_cycles = util.Set()
