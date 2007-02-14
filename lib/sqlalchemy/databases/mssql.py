@@ -537,6 +537,7 @@ class MSSQLCompiler(ansisql.ANSICompiler):
             self.froms[('alias', table)] = self.froms[table]
             for c in alias.c:
                 c.accept_visitor(self)
+            alias.oid_column.accept_visitor(self)
             self.tablealiases[alias] = self.froms[table]
             self.froms[table] = self.froms[alias]
         else:

@@ -60,6 +60,7 @@
 - mssql:
   - better support for NVARCHAR types added [ticket:298]
   - fix for commit logic on pymssql
+  - fix for query.get() with schema [ticket:456]
   
 0.3.4
 - general:
