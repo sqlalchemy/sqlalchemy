@@ -74,7 +74,7 @@ class DependencyProcessor(object):
         instance which will require save/update/delete is properly added to the UOWTransaction."""
         raise NotImplementedError()
 
-    def _synchronize(self, obj, child, associationrow, clearkeys):
+    def _synchronize(self, obj, child, associationrow, clearkeys, uowcommit):
         """called during a flush to synchronize primary key identifier values between a parent/child object, as well as 
         to an associationrow in the case of many-to-many."""
         raise NotImplementedError()
@@ -134,22 +134,22 @@ class OneToManyDP(DependencyProcessor):
                     if childlist is not None:
                         for child in childlist.deleted_items():
                             if child is not None and childlist.hasparent(child) is False:
-                                self._synchronize(obj, child, None, True)
+                                self._synchronize(obj, child, None, True, uowcommit)
                                 self._conditional_post_update(child, uowcommit, [obj])
                         for child in childlist.unchanged_items():
                             if child is not None:
-                                self._synchronize(obj, child, None, True)
+                                self._synchronize(obj, child, None, True, uowcommit)
                                 self._conditional_post_update(child, uowcommit, [obj])
         else:
             for obj in deplist:
                 childlist = self.get_object_dependencies(obj, uowcommit, passive=True)
                 if childlist is not None:
                     for child in childlist.added_items():
-                        self._synchronize(obj, child, None, False)
+                        self._synchronize(obj, child, None, False, uowcommit)
                         self._conditional_post_update(child, uowcommit, [obj])
                     for child in childlist.deleted_items():
                         if not self.cascade.delete_orphan:
-                            self._synchronize(obj, child, None, True)
+                            self._synchronize(obj, child, None, True, uowcommit)
 
     def preprocess_dependencies(self, task, deplist, uowcommit, delete = False):
         #print self.mapper.mapped_table.name + " " + self.key + " " + repr(len(deplist)) + " preprocess_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
@@ -198,10 +198,10 @@ class OneToManyDP(DependencyProcessor):
                             for c in self.mapper.cascade_iterator('delete', child):
                                 uowcommit.register_object(c, isdelete=True)
             
-    def _synchronize(self, obj, child, associationrow, clearkeys):
+    def _synchronize(self, obj, child, associationrow, clearkeys, uowcommit):
         source = obj
         dest = child
-        if dest is None:
+        if dest is None or (not self.post_update and uowcommit.is_deleted(dest)):
             return
         self.syncrules.execute(source, dest, obj, child, clearkeys)
     
@@ -223,7 +223,7 @@ class ManyToOneDP(DependencyProcessor):
                 # post_update means we have to update our row to not reference the child object
                 # before we can DELETE the row
                 for obj in deplist:
-                    self._synchronize(obj, None, None, True)
+                    self._synchronize(obj, None, None, True, uowcommit)
                     childlist = self.get_object_dependencies(obj, uowcommit, passive=self.passive_deletes)
                     if childlist is not None:
                         self._conditional_post_update(obj, uowcommit, childlist.deleted_items() + childlist.unchanged_items() + childlist.added_items())
@@ -232,9 +232,8 @@ class ManyToOneDP(DependencyProcessor):
                 childlist = self.get_object_dependencies(obj, uowcommit, passive=True)
                 if childlist is not None:
                     for child in childlist.added_items():
-                        self._synchronize(obj, child, None, False)
+                        self._synchronize(obj, child, None, False, uowcommit)
                     self._conditional_post_update(obj, uowcommit, childlist.deleted_items() + childlist.unchanged_items() + childlist.added_items())
-                        
     def preprocess_dependencies(self, task, deplist, uowcommit, delete = False):
         #print self.mapper.mapped_table.name + " " + self.key + " " + repr(len(deplist)) + " PRE process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
         if self.post_update:
@@ -261,10 +260,10 @@ class ManyToOneDP(DependencyProcessor):
                                 for c in self.mapper.cascade_iterator('delete', child):
                                     uowcommit.register_object(c, isdelete=True)
                         
-    def _synchronize(self, obj, child, associationrow, clearkeys):
+    def _synchronize(self, obj, child, associationrow, clearkeys, uowcommit):
         source = child
         dest = obj
-        if dest is None:
+        if dest is None or (not self.post_update and uowcommit.is_deleted(dest)):
             return
         self.syncrules.execute(source, dest, obj, child, clearkeys)
 
@@ -296,7 +295,7 @@ class ManyToManyDP(DependencyProcessor):
                 if childlist is not None:
                     for child in childlist.deleted_items() + childlist.unchanged_items():
                         associationrow = {}
-                        self._synchronize(obj, child, associationrow, False)
+                        self._synchronize(obj, child, associationrow, False, uowcommit)
                         secondary_delete.append(associationrow)
         else:
             for obj in deplist:
@@ -304,11 +303,11 @@ class ManyToManyDP(DependencyProcessor):
                 if childlist is None: continue
                 for child in childlist.added_items():
                     associationrow = {}
-                    self._synchronize(obj, child, associationrow, False)
+                    self._synchronize(obj, child, associationrow, False, uowcommit)
                     secondary_insert.append(associationrow)
                 for child in childlist.deleted_items():
                     associationrow = {}
-                    self._synchronize(obj, child, associationrow, False)
+                    self._synchronize(obj, child, associationrow, False, uowcommit)
                     secondary_delete.append(associationrow)
         if len(secondary_delete):
             secondary_delete.sort()
@@ -330,7 +329,7 @@ class ManyToManyDP(DependencyProcessor):
                             uowcommit.register_object(child, isdelete=True)
                             for c in self.mapper.cascade_iterator('delete', child):
                                 uowcommit.register_object(c, isdelete=True)
-    def _synchronize(self, obj, child, associationrow, clearkeys):
+    def _synchronize(self, obj, child, associationrow, clearkeys, uowcommit):
         dest = associationrow
         source = None
         if dest is None:

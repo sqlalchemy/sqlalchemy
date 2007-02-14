@@ -350,8 +350,154 @@ class RelationTest3(testbase.PersistTest):
         j.pages[1].current_version = 12
         s.delete(j)
         s.flush()
+
+class RelationTest4(testbase.ORMTest):
+    """test syncrules on foreign keys that are also primary"""
+    def define_tables(self, metadata):
+        global tableA, tableB
+        tableA = Table("A", metadata, 
+            Column("id",Integer,primary_key=True),
+            Column("foo",Integer,),
+            )
+        tableB = Table("B",metadata,
+                Column("id",Integer,ForeignKey("A.id"),primary_key=True),
+                )
+    def test_no_delete_PK_AtoB(self):
+        """test that A cant be deleted without B because B would have no PK value"""
+        class A(object):pass
+        class B(object):pass
+        mapper(A, tableA, properties={
+            'bs':relation(B, cascade="save-update")
+        })
+        mapper(B, tableB)
+        a1 = A()
+        a1.bs.append(B())
+        sess = create_session()
+        sess.save(a1)
+        sess.flush()
         
+        sess.delete(a1)
+        try:
+            sess.flush()
+            assert False
+        except exceptions.AssertionError, e:
+            assert str(e).startswith("Dependency rule tried to blank-out primary key column 'B.id' on instance ")
+
+    def test_no_delete_PK_BtoA(self):
+        class A(object):pass
+        class B(object):pass
+        mapper(B, tableB, properties={
+            'a':relation(A, cascade="save-update")
+        })
+        mapper(A, tableA)
+        b1 = B()
+        a1 = A()
+        b1.a = a1
+        sess = create_session()
+        sess.save(b1)
+        sess.flush()
+        b1.a = None
+        try:
+            sess.flush()
+            assert False
+        except exceptions.AssertionError, e:
+            assert str(e).startswith("Dependency rule tried to blank-out primary key column 'B.id' on instance ")
+
+    def test_delete_cascade_BtoA(self):
+        """test that the 'blank the PK' error doesnt get raised when the child is to be deleted as part of a 
+        cascade"""
+        class A(object):pass
+        class B(object):pass
+        for cascade in (
+                    "save-update, delete",
+                    "save-update, delete-orphan",
+                    "save-update, delete, delete-orphan"):
+
+            mapper(B, tableB, properties={
+                'a':relation(A, cascade=cascade)
+            })
+            mapper(A, tableA)
+            b1 = B()
+            a1 = A()
+            b1.a = a1
+            sess = create_session()
+            sess.save(b1)
+            sess.flush()
+            sess.delete(b1)
+            sess.flush()
+            assert a1 not in sess
+            assert b1 not in sess
+            sess.clear()
+            clear_mappers()
+    
+    def test_delete_cascade_AtoB(self):
+        """test that the 'blank the PK' error doesnt get raised when the child is to be deleted as part of a 
+        cascade"""
+        class A(object):pass
+        class B(object):pass
+        for cascade in (
+                    "save-update, delete",
+                    "save-update, delete-orphan",
+                    "save-update, delete, delete-orphan"):
+            mapper(A, tableA, properties={
+                'bs':relation(B, cascade=cascade)
+            })
+            mapper(B, tableB)
+            a1 = A()
+            b1 = B()
+            a1.bs.append(b1)
+            sess = create_session()
+            sess.save(a1)
+            sess.flush()
         
-        
+            sess.delete(a1)
+            sess.flush()
+            assert a1 not in sess
+            assert b1 not in sess
+            sess.clear()
+            clear_mappers()
+    
+    def test_delete_manual_AtoB(self):
+        class A(object):pass
+        class B(object):pass
+        mapper(A, tableA, properties={
+            'bs':relation(B, cascade="none")
+        })
+        mapper(B, tableB)
+        a1 = A()
+        b1 = B()
+        a1.bs.append(b1)
+        sess = create_session()
+        sess.save(a1)
+        sess.save(b1)
+        sess.flush()
+    
+        sess.delete(a1)
+        sess.delete(b1)
+        sess.flush()
+        assert a1 not in sess
+        assert b1 not in sess
+        sess.clear()
+
+    def test_delete_manual_BtoA(self):
+        class A(object):pass
+        class B(object):pass
+        mapper(B, tableB, properties={
+            'a':relation(A, cascade="none")
+        })
+        mapper(A, tableA)
+        b1 = B()
+        a1 = A()
+        b1.a = a1
+        sess = create_session()
+        sess.save(b1)
+        sess.save(a1)
+        sess.flush()
+        sess.delete(b1)
+        sess.delete(a1)
+        sess.flush()
+        assert a1 not in sess
+        assert b1 not in sess
+    
 if __name__ == "__main__":
     testbase.main()        

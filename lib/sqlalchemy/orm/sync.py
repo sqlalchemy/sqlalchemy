@@ -116,6 +116,7 @@ class SyncRule(object):
                 source = child
         if clearkeys or source is None:
             value = None
+            clearkeys = True
         else:
             value = self.source_mapper.get_attr_by_column(source, self.source_column)
         if isinstance(dest, dict):

@@ -29,6 +29,9 @@
   - contains_eager('foo') automatically implies eagerload('foo')
   - fixed bug where cascade operations incorrectly included deleted collection
   items in the cascade [ticket:445]
+  - fixed relationship deletion error where parent/child with a single column as PK/FK 
+  on the child would raise a "blank out the primary key" error, if manually deleted
+  or "delete" cascade without "delete-orphan" was used
   - fix to deferred so that load operation doesnt mistakenly occur when only
   PK col attributes are set
   - added support for py2.5 "with" statement with SessionTransaction [ticket:468]
