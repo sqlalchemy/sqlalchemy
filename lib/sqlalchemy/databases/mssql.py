@@ -558,6 +558,13 @@ class MSSQLCompiler(ansisql.ANSICompiler):
             self.strings[column] = \
                 self.strings[self.tablealiases[column.table].corresponding_column(column)]
 
+    def visit_binary(self, binary):
+        """Move bind parameters to the right-hand side of an operator, where possible."""
+        if isinstance(binary.left, sql._BindParamClause) and binary.operator == '=':
+            binary.left, binary.right = binary.right, binary.left
+        super(MSSQLCompiler, self).visit_binary(binary)
+
+
 class MSSQLSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column) + " " + column.type.engine_impl(self.engine).get_col_spec()
