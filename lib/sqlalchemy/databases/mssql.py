@@ -44,7 +44,11 @@ import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
 import sqlalchemy.exceptions as exceptions
 
-try:
+dbmodule = None
+dialect = None
+
+def use_adodbapi():
+    global dbmodule, connect, make_connect_string, do_commit, sane_rowcount, dialect
     import adodbapi as dbmodule
     # ADODBAPI has a non-standard Connection method
     connect = dbmodule.Connection
@@ -52,23 +56,61 @@ try:
         [["Provider=SQLOLEDB;Data Source=%s;User Id=%s;Password=%s;Initial Catalog=%s" % (
             keys.get("host"), keys.get("user"), keys.get("password"), keys.get("database"))], {}]
     sane_rowcount = True
-except:
-    try:
-        import pymssql as dbmodule
-        connect = dbmodule.connect
-        # pymmsql doesn't have a Binary method.  we use string
-        dbmodule.Binary = lambda st: str(st)
-        def make_connect_string(keys):
-            if keys.get('port'):
-                # pymssql expects port as host:port, not a separate arg
-                keys['host'] = ''.join([keys.get('host', ''), ':', str(keys['port'])])
-                del keys['port'] 
-            return [[], keys]
-    except:
-        dbmodule = None
-        make_connect_string = lambda keys: [[],{}]
-    sane_rowcount = False
+    dialect = MSSQLDialect
     
+def use_pymssql():
+    global dbmodule, connect, make_connect_string, do_commit, sane_rowcount, dialect
+    import pymssql as dbmodule
+    connect = dbmodule.connect
+    # pymmsql doesn't have a Binary method.  we use string
+    dbmodule.Binary = lambda st: str(st)
+    def make_connect_string(keys):
+        if keys.get('port'):
+            # pymssql expects port as host:port, not a separate arg
+            keys['host'] = ''.join([keys.get('host', ''), ':', str(keys['port'])])
+            del keys['port'] 
+        return [[], keys]
+    do_commit = True
+    sane_rowcount = False
+    dialect = PyMSSQLDialect
+    
+def use_pyodbc():
+    global dbmodule, connect, make_connect_string, do_commit, sane_rowcount, dialect
+    import pyodbc as dbmodule
+    connect = dbmodule.connect
+    make_connect_string = lambda keys: \
+        [["Driver={SQL Server};Server=%s;UID=%s;PWD=%s;Database=%s" % (
+            keys.get("host"), keys.get("user"), keys.get("password"), keys.get("database"))], {}]
+    do_commit = True
+    sane_rowcount = True
+    dialect = MSSQLDialect # XXX - find out whether this needs to be tweaked for pyodbc
+    import warnings
+    warnings.warn('pyodbc support in sqlalchemy.databases.mssql is extremely experimental - use at your own risk.')
+
+def use_default():
+    import_errors = []
+    def try_use(f):
+        try:
+            f()
+        except ImportError, e:
+            import_errors.append(e)
+            return False
+        else:
+            return True
+    for f in [
+            # XXX - is this the best default ordering? For now, it retains the current (2007-Jan-11) 
+            # default - that is, adodbapi first, pymssql second - and adds pyodbc as a third option.
+            # However, my tests suggest that the exact opposite order may be the best!
+            use_adodbapi,
+            use_pymssql,
+            use_pyodbc,
+        ]:
+        if try_use(f):
+            return dbmodule # informational return, so the user knows what he's using.
+    else:
+        raise ImportError(import_errors)
+        
+
 class MSNumeric(sqltypes.Numeric):
     def convert_result_value(self, value, dialect):
         return value
@@ -244,7 +286,7 @@ def descriptor():
 class MSSQLExecutionContext(default.DefaultExecutionContext):
     def __init__(self, dialect):
         self.IINSERT = self.HASIDENT = False
-	super(MSSQLExecutionContext, self).__init__(dialect)
+        super(MSSQLExecutionContext, self).__init__(dialect)
     
     def pre_exec(self, engine, proxy, compiled, parameters, **kwargs):
         """ MS-SQL has a special mode for inserting non-NULL values into IDENTITY columns. Activate it if the feature is turned on and needed. """
@@ -280,7 +322,7 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
 
 class MSSQLDialect(ansisql.ANSIDialect):
     def __init__(self, module=None, auto_identity_insert=False, encoding=None, **params):
-        self.module = module or dbmodule
+        self.module = module or dbmodule or use_default()
         self.auto_identity_insert = auto_identity_insert
         ansisql.ANSIDialect.__init__(self, encoding=encoding, **params)
         self.set_default_schema_name("dbo")
@@ -605,7 +647,5 @@ class MSSQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
         #TODO: determin MSSQL's case folding rules
         return value
 
-if dbmodule and dbmodule.__name__ == 'adodbapi':
-	dialect = MSSQLDialect
-else:
-	dialect = PyMSSQLDialect
+
+use_default()

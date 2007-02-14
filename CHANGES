@@ -61,6 +61,9 @@
   - better support for NVARCHAR types added [ticket:298]
   - fix for commit logic on pymssql
   - fix for query.get() with schema [ticket:456]
+  - fix for non-integer relationships [ticket:473]
+  - DB-API module now selectable at run-time [ticket:419]
+  - preliminary support for pyodbc (Yay!) [ticket:419]
   
 0.3.4
 - general:
