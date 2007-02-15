@@ -64,6 +64,7 @@
   - fix for non-integer relationships [ticket:473]
   - DB-API module now selectable at run-time [ticket:419]
   - preliminary support for pyodbc (Yay!) [ticket:419]
+  - now passes more unit tests [ticket:422]
   
 0.3.4
 - general:

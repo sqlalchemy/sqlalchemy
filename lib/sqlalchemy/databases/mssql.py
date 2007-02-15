@@ -123,7 +123,10 @@ class MSNumeric(sqltypes.Numeric):
             return str(value) 
 
     def get_col_spec(self):
-        return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
+        if self.precision is None:
+            return "NUMERIC"
+        else:
+            return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
 
 class MSFloat(sqltypes.Float):
     def get_col_spec(self):
@@ -194,7 +197,10 @@ class MSNVarchar(MSString):
     """NVARCHAR string, does unicode conversion if dialect.convert_encoding is true"""
     impl = sqltypes.Unicode
     def get_col_spec(self):
-        return "NVARCHAR(%(length)s)" % {'length' : self.length}
+        if self.length:
+            return "NVARCHAR(%(length)s)" % {'length' : self.length}
+        else:
+            return "NTEXT"
     if dbmodule and dbmodule.__name__ == 'adodbapi':
         def convert_bind_param(self, value, dialect):
             return value
@@ -297,8 +303,9 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
                 if hasattr(c,'sequence'):
                     self.HASIDENT = True
                     if engine.dialect.auto_identity_insert:
-                        if  isinstance(parameters, list) and parameters[0].has_key(c.name):
-                            self.IINSERT = True
+                        if isinstance(parameters, list):
+                            if parameters[0].has_key(c.name):
+                                self.IINSERT = True
                         elif parameters.has_key(c.name):
                             self.IINSERT = True
                     break
@@ -483,8 +490,8 @@ class MSSQLDialect(ansisql.ANSIDialect):
         # Add constraints
         RR = self.uppercase_table(ischema.ref_constraints)    #information_schema.referential_constraints
         TC = self.uppercase_table(ischema.constraints)        #information_schema.table_constraints
-        C  = self.uppercase_table(ischema.column_constraints).alias('C') #information_schema.constraint_column_usage: the constrained column 
-        R  = self.uppercase_table(ischema.column_constraints).alias('R') #information_schema.constraint_column_usage: the referenced column
+        C  = self.uppercase_table(ischema.pg_key_constraints).alias('C') #information_schema.constraint_column_usage: the constrained column 
+        R  = self.uppercase_table(ischema.pg_key_constraints).alias('R') #information_schema.constraint_column_usage: the referenced column
 
         # Primary key constraints
         s = sql.select([C.c.column_name, TC.c.constraint_type], sql.and_(TC.c.constraint_name == C.c.constraint_name,
@@ -500,8 +507,10 @@ class MSSQLDialect(ansisql.ANSIDialect):
                         R.c.table_schema, R.c.table_name, R.c.column_name,
                         RR.c.constraint_name, RR.c.match_option, RR.c.update_rule, RR.c.delete_rule],
                        sql.and_(C.c.table_name == table.name,
+                                C.c.table_schema == current_schema,
                                 C.c.constraint_name == RR.c.constraint_name,
-                                R.c.constraint_name == RR.c.unique_constraint_name
+                                R.c.constraint_name == RR.c.unique_constraint_name,
+                                C.c.ordinal_position == R.c.ordinal_position
                                 ),
                        order_by = [RR.c.constraint_name])
         rows = connection.execute(s).fetchall()
@@ -612,7 +621,8 @@ class MSSQLSchemaGenerator(ansisql.ANSISchemaGenerator):
         colspec = self.preparer.format_column(column) + " " + column.type.engine_impl(self.engine).get_col_spec()
         
         # install a IDENTITY Sequence if we have an implicit IDENTITY column
-        if column.primary_key and column.autoincrement and isinstance(column.type, sqltypes.Integer) and not column.foreign_key:
+        if (not getattr(column.table, 'has_sequence', False)) and column.primary_key and \
+                column.autoincrement and isinstance(column.type, sqltypes.Integer) and not column.foreign_key:
             if column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional):
                 column.sequence = schema.Sequence(column.name + '_seq')
 
@@ -620,6 +630,7 @@ class MSSQLSchemaGenerator(ansisql.ANSISchemaGenerator):
             colspec += " NOT NULL"
 
         if hasattr(column, 'sequence'):
+            column.table.has_sequence = True
             colspec += " IDENTITY(%s,%s)" % (column.sequence.start or 1, column.sequence.increment or 1)
         else:
             default = self.get_column_default_string(column)
