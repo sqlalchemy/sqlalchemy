@@ -63,8 +63,11 @@ class OracleBinary(sqltypes.Binary):
     def get_col_spec(self):
         return "BLOB"
     def convert_bind_param(self, value, dialect):
-        # this is RAWTOHEX
-        return ''.join(["%.2X" % ord(c) for c in value])
+        if value is None:
+            return None
+        else:
+            # this is RAWTOHEX
+            return ''.join(["%.2X" % ord(c) for c in value])
     def convert_result_value(self, value, dialect):
         if value is None:
             return None
