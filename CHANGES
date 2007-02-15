@@ -29,6 +29,8 @@
   - contains_eager('foo') automatically implies eagerload('foo')
   - fixed bug where cascade operations incorrectly included deleted collection
   items in the cascade [ticket:445]
+  - fixed relationship deletion error when one-to-many child item is moved to a new 
+  parent in a single unit of work [ticket:478]
   - fixed relationship deletion error where parent/child with a single column as PK/FK 
   on the child would raise a "blank out the primary key" error, if manually deleted
   or "delete" cascade without "delete-orphan" was used

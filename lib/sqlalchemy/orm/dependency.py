@@ -41,6 +41,10 @@ class DependencyProcessor(object):
 
         self._compile_synchronizers()
 
+    def _get_instrumented_attribute(self):
+        """return the InstrumentedAttribute handled by this DependencyProecssor"""
+        return getattr(self.parent.class_, self.key)
+        
     def register_dependencies(self, uowcommit):
         """tells a UOWTransaction what mappers are dependent on which, with regards
         to the two or three mappers handled by this PropertyLoader.
@@ -148,7 +152,7 @@ class OneToManyDP(DependencyProcessor):
                         self._synchronize(obj, child, None, False, uowcommit)
                         self._conditional_post_update(child, uowcommit, [obj])
                     for child in childlist.deleted_items():
-                        if not self.cascade.delete_orphan:
+                        if not self.cascade.delete_orphan and not self._get_instrumented_attribute().hasparent(child):
                             self._synchronize(obj, child, None, True, uowcommit)
 
     def preprocess_dependencies(self, task, deplist, uowcommit, delete = False):

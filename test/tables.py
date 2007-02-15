@@ -127,43 +127,26 @@ def data():
         dict(keyword_id=6, item_id=3)
     )
 
-    
-class User(object):
+class BaseObject(object):
+    def __repr__(self):
+        return "%s(%s)" % (self.__class__.__name__, ",".join("%s=%s" % (k, repr(v)) for k, v in self.__dict__.iteritems() if k[0] != '_'))
+        
+class User(BaseObject):
     def __init__(self):
         self.user_id = None
-    def __repr__(self):
-        return (
-"""
-objid: %d
-User ID: %s
-User Name: %s
-email address ?: %s
-Addresses: %s
-Orders: %s
-Open Orders %s
-Closed Orderss %s
-------------------
-""" % tuple([id(self), self.user_id, repr(self.user_name), repr(getattr(self, 'email_address', None))] + [repr(getattr(self, attr, None)) for attr in ('addresses', 'orders', 'open_orders', 'closed_orders')])
-)
 
-class Address(object):
-    def __repr__(self):
-        return "Address: " + repr(getattr(self, 'address_id', None)) + " " + repr(getattr(self, 'user_id', None)) + " " + repr(self.email_address)
+class Address(BaseObject):
+    pass
 
-class Order(object):
+class Order(BaseObject):
     def __init__(self):
         self.isopen=0
-    def __repr__(self):
-        return "Order: " + repr(self.description) + " " + repr(self.isopen) + " " + repr(getattr(self, 'items', None))
 
-class Item(object):
-    def __repr__(self):
-#        return repr(self.__dict__)
-        return "Item: " + repr(self.item_name) + " " + repr(getattr(self, 'keywords', None))
+class Item(BaseObject):
+    pass
     
-class Keyword(object):
-    def __repr__(self):
-        return "Keyword: %s/%s" % (repr(getattr(self, 'keyword_id', None)),repr(self.name))
+class Keyword(BaseObject):
+    pass
 
 user_result = [{'user_id' : 7}, {'user_id' : 8}, {'user_id' : 9}]
 
