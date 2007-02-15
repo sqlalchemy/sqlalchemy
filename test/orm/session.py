@@ -162,20 +162,6 @@ class SessionTest(AssertMixin):
         assert s.query(Address).selectone().address_id == a.address_id
         assert s.query(User).selectfirst() is None
 
-    def test_fetchid(self):
-        # this is necessary to ensure the test fails on old versions of mssql        
-        if hasattr(autoseq.columns['autoseq_id'], 'sequence'):
-            del autoseq.columns['autoseq_id'].sequence
-        
-        mapper(Autoseq, autoseq)
-        s = create_session()
-        u = Autoseq()
-        s.save(u)
-        s.flush()
-        assert u.autoseq_id is not None
-        s.clear()
-        
-
         
 class OrphanDeletionTest(AssertMixin):
 

@@ -16,7 +16,6 @@ from sqlalchemy.orm import clear_mappers
 db = None
 metadata = None
 db_uri = None
-db_opts = {}
 echo = True
 
 # redefine sys.stdout so all those print statements go to the echo func
@@ -34,7 +33,7 @@ def echo_text(text):
 def parse_argv():
     # we are using the unittest main runner, so we are just popping out the 
     # arguments we need instead of using our own getopt type of thing
-    global db, db_uri, db_opts, metadata
+    global db, db_uri, metadata
     
     DBTYPE = 'sqlite'
     PROXY = False
@@ -62,9 +61,7 @@ def parse_argv():
     elif options.db:
         DBTYPE = param = options.db
 
-    if DBTYPE == 'mssql':
-        db_opts['auto_identity_insert'] = True    
-    
+    opts = {}
     if (None == db_uri):
         if DBTYPE == 'sqlite':
             db_uri = 'sqlite:///:memory:'
@@ -78,7 +75,7 @@ def parse_argv():
             db_uri = 'oracle://scott:tiger@127.0.0.1:1521'
         elif DBTYPE == 'oracle8':
             db_uri = 'oracle://scott:tiger@127.0.0.1:1521'
-            db_opts = {'use_ansi':False, 'auto_setinputsizes':True}
+            opts = {'use_ansi':False, 'auto_setinputsizes':True}
         elif DBTYPE == 'mssql':
             db_uri = 'mssql://scott:tiger@SQUAWK\\SQLEXPRESS/test'
         elif DBTYPE == 'firebird':
@@ -101,11 +98,11 @@ def parse_argv():
     with_coverage = options.coverage
     
     if options.enginestrategy is not None:
-        db_opts['strategy'] = options.enginestrategy    
+        opts['strategy'] = options.enginestrategy    
     if options.mockpool:
-        db = engine.create_engine(db_uri, poolclass=pool.AssertionPool, **db_opts)
+        db = engine.create_engine(db_uri, poolclass=pool.AssertionPool, **opts)
     else:
-        db = engine.create_engine(db_uri, **db_opts)
+        db = engine.create_engine(db_uri, **opts)
     db = EngineAssert(db)
     
     if options.topological:
@@ -419,5 +416,6 @@ def main():
 
     result = runTests(suite)
     sys.exit(not result.wasSuccessful())
+
 
 

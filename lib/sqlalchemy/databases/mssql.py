@@ -337,6 +337,8 @@ class MSSQLDialect(ansisql.ANSIDialect):
     def create_connect_args(self, url):
         opts = url.translate_connect_args(['host', 'database', 'user', 'password', 'port'])
         opts.update(url.query)
+        if opts.has_key('auto_identity_insert'):
+            self.auto_identity_insert = bool(int(opts['auto_identity_insert']))
         return make_connect_string(opts)
 
     def create_execution_context(self):

@@ -53,11 +53,6 @@ itemkeywords = Table('itemkeywords', metadata,
 #    Column('foo', Boolean, default=True)
 )
 
-autoseq = Table('autoseq', metadata,
-    Column('autoseq_id', Integer, primary_key = True),
-    Column('name', String)
-)
-
 def create():
     metadata.create_all()
 def drop():
@@ -169,10 +164,6 @@ class Item(object):
 class Keyword(object):
     def __repr__(self):
         return "Keyword: %s/%s" % (repr(getattr(self, 'keyword_id', None)),repr(self.name))
-
-class Autoseq(object):
-    def __init__(self):
-        self.autoseq_id = None
 
 user_result = [{'user_id' : 7}, {'user_id' : 8}, {'user_id' : 9}]
 
