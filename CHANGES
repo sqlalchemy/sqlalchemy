@@ -67,6 +67,7 @@
   - DB-API module now selectable at run-time [ticket:419]
   - preliminary support for pyodbc (Yay!) [ticket:419]
   - now passes more unit tests [ticket:422]
+  - better unittest compatibility with ANSI functions [ticket:479]
   
 0.3.4
 - general:

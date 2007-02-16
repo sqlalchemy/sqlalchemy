@@ -48,7 +48,7 @@ dbmodule = None
 dialect = None
 
 def use_adodbapi():
-    global dbmodule, connect, make_connect_string, do_commit, sane_rowcount, dialect
+    global dbmodule, connect, make_connect_string, do_commit, sane_rowcount, dialect, colspecs, ischema_names
     import adodbapi as dbmodule
     # ADODBAPI has a non-standard Connection method
     connect = dbmodule.Connection
@@ -57,9 +57,11 @@ def use_adodbapi():
             keys.get("host"), keys.get("user"), keys.get("password"), keys.get("database"))], {}]
     sane_rowcount = True
     dialect = MSSQLDialect
+    colspecs[sqltypes.Unicode] = AdoMSUnicode
+    ischema_names['nvarchar'] = AdoMSUnicode
     
 def use_pymssql():
-    global dbmodule, connect, make_connect_string, do_commit, sane_rowcount, dialect
+    global dbmodule, connect, make_connect_string, do_commit, sane_rowcount, dialect, colspecs, ischema_names
     import pymssql as dbmodule
     connect = dbmodule.connect
     # pymmsql doesn't have a Binary method.  we use string
@@ -73,9 +75,11 @@ def use_pymssql():
     do_commit = True
     sane_rowcount = False
     dialect = PyMSSQLDialect
+    colspecs[sqltypes.Unicode] = MSUnicode
+    ischema_names['nvarchar'] = MSUnicode
     
 def use_pyodbc():
-    global dbmodule, connect, make_connect_string, do_commit, sane_rowcount, dialect
+    global dbmodule, connect, make_connect_string, do_commit, sane_rowcount, dialect, colspecs, ischema_names
     import pyodbc as dbmodule
     connect = dbmodule.connect
     make_connect_string = lambda keys: \
@@ -86,6 +90,8 @@ def use_pyodbc():
     dialect = MSSQLDialect # XXX - find out whether this needs to be tweaked for pyodbc
     import warnings
     warnings.warn('pyodbc support in sqlalchemy.databases.mssql is extremely experimental - use at your own risk.')
+    colspecs[sqltypes.Unicode] = MSUnicode # Ado?
+    ischema_names['nvarchar'] = MSUnicode # Ado?
 
 def use_default():
     import_errors = []
@@ -201,20 +207,23 @@ class MSNVarchar(MSString):
             return "NVARCHAR(%(length)s)" % {'length' : self.length}
         else:
             return "NTEXT"
-    if dbmodule and dbmodule.__name__ == 'adodbapi':
-        def convert_bind_param(self, value, dialect):
-            return value
-        def convert_result_value(self, value, dialect):
-            return value        
+
+class AdoMSNVarchar(MSNVarchar):
+    def convert_bind_param(self, value, dialect):
+        return value
+    def convert_result_value(self, value, dialect):
+        return value        
 
 class MSUnicode(sqltypes.Unicode):
     """Unicode subclass, does unicode conversion in all cases, uses NVARCHAR impl"""
     impl = MSNVarchar
-    if dbmodule and dbmodule.__name__ == 'adodbapi':
-        def convert_bind_param(self, value, dialect):
-            return value
-        def convert_result_value(self, value, dialect):
-            return value        
+
+class AdoMSUnicode(MSUnicode):
+    impl = AdoMSNVarchar
+    def convert_bind_param(self, value, dialect):
+        return value
+    def convert_result_value(self, value, dialect):
+        return value        
 
 class MSChar(sqltypes.CHAR):
     def get_col_spec(self):
