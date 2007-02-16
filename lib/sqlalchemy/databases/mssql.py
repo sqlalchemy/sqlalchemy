@@ -306,20 +306,29 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
     def pre_exec(self, engine, proxy, compiled, parameters, **kwargs):
         """ MS-SQL has a special mode for inserting non-NULL values into IDENTITY columns. Activate it if the feature is turned on and needed. """
         if getattr(compiled, "isinsert", False):
-            self.IINSERT = False
-            self.HASIDENT = False
-            for c in compiled.statement.table.c:
-                if hasattr(c,'sequence'):
-                    self.HASIDENT = True
-                    if engine.dialect.auto_identity_insert:
-                        if isinstance(parameters, list):
-                            if parameters[0].has_key(c.name):
-                                self.IINSERT = True
-                        elif parameters.has_key(c.name):
-                            self.IINSERT = True
-                    break
+            tbl = compiled.statement.table
+            if not hasattr(tbl, 'has_sequence'):                
+                for column in tbl.c:
+                    if column.primary_key and column.autoincrement and \
+                            isinstance(column.type, sqltypes.Integer) and not column.foreign_key:
+                        if column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional):
+                            tbl.has_sequence = column
+                            break
+                else:
+                    tbl.has_sequence = False
+
+            self.HASIDENT = bool(tbl.has_sequence)
+            if engine.dialect.auto_identity_insert and self.HASIDENT:
+                if isinstance(parameters, list):
+                    self.IINSERT = parameters[0].has_key(tbl.has_sequence.name)
+                else:
+                    self.IINSERT = parameters.has_key(tbl.has_sequence.name)
+            else:
+                self.IINSERT = False
+
             if self.IINSERT:
                 proxy("SET IDENTITY_INSERT %s ON" % compiled.statement.table.name)
+
         super(MSSQLExecutionContext, self).pre_exec(engine, proxy, compiled, parameters, **kwargs)
 
     def post_exec(self, engine, proxy, compiled, parameters, **kwargs):
@@ -651,7 +660,7 @@ class MSSQLSchemaGenerator(ansisql.ANSISchemaGenerator):
             colspec += " NOT NULL"
 
         if hasattr(column, 'sequence'):
-            column.table.has_sequence = True
+            column.table.has_sequence = column
             colspec += " IDENTITY(%s,%s)" % (column.sequence.start or 1, column.sequence.increment or 1)
         else:
             default = self.get_column_default_string(column)
