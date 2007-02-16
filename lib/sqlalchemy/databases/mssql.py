@@ -534,35 +534,37 @@ class MSSQLDialect(ansisql.ANSIDialect):
 
 
 class PyMSSQLDialect(MSSQLDialect):
-    def do_begin(self, connection):
-        """implementations might want to put logic here for turning autocommit on/off, etc."""
-        pass  
+    pass
+##    def do_begin(self, connection):
+##        """implementations might want to put logic here for turning autocommit on/off, etc."""
+##        pass  
 
-    def do_rollback(self, connection):
-        """implementations might want to put logic here for turning autocommit on/off, etc."""
-        try:
-            # connection.rollback() for pymmsql failed sometimes--the begin tran doesn't show up
-            # this is a workaround that seems to be handle it.
-            r = self.raw_connection(connection)
-            r.query("if @@trancount > 0 rollback tran")
-            r.fetch_array()
-            r.query("begin tran")
-            r.fetch_array()
-        except:
-            pass
+##    def do_rollback(self, connection):
+##        """implementations might want to put logic here for turning autocommit on/off, etc."""
+##        try:
+##            # connection.rollback() for pymmsql failed sometimes--the begin tran doesn't show up
+##            # this is a workaround that seems to be handle it.
+##            r = self.raw_connection(connection)
+##            r.query("if @@trancount > 0 rollback tran")
+##            r.fetch_array()
+##            r.query("begin tran")
+##            r.fetch_array()
+##        except:
+##            pass
 
-    def do_commit(self, connection):
-        """implementations might want to put logic here for turning autocommit on/off, etc.
-            do_commit is set for pymmsql connections--ADO seems to handle transactions without any issue 
-        """
-        # ADO Uses Implicit Transactions.
-        # This is very pymssql specific.  We use this instead of its commit, because it hangs on failed rollbacks.
-        # By using the "if" we don't assume an open transaction--much better.
-        r = self.raw_connection(connection)
-        r.query("if @@trancount > 0 commit tran")
-        r.fetch_array()
-        r.query("begin tran")
-        r.fetch_array()
+##    def do_commit(self, connection):
+##        """implementations might want to put logic here for turning autocommit on/off, etc.
+##            do_commit is set for pymmsql connections--ADO seems to handle transactions without any issue 
+##        """
+##        # ADO Uses Implicit Transactions.
+##        # This is very pymssql specific.  We use this instead of its commit, because it hangs on failed rollbacks.
+##        # By using the "if" we don't assume an open transaction--much better.
+##        r = self.raw_connection(connection)
+##        r.query("if @@trancount > 0 commit tran")
+##        r.fetch_array()
+##        r.query("begin tran")
+##        r.fetch_array()
+
 
 class MSSQLCompiler(ansisql.ANSICompiler):
     def __init__(self, dialect, statement, parameters, **kwargs):
@@ -617,6 +619,14 @@ class MSSQLCompiler(ansisql.ANSICompiler):
             binary.left, binary.right = binary.right, binary.left
         super(MSSQLCompiler, self).visit_binary(binary)
 
+    function_rewrites = \
+    {
+        'current_date': 'getdate',
+        'length':     'len',
+    }
+    def visit_function(self, func):
+        func.name = self.function_rewrites.get(func.name, func.name)
+        super(MSSQLCompiler, self).visit_function(func)            
 
 class MSSQLSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, **kwargs):
