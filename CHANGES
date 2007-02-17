@@ -13,6 +13,7 @@
   for named args, or a list of list or dicts to invoke executemany()
   - small fix to BoundMetaData to accept unicode or string URLs
   - fixed named PrimaryKeyConstraint generation [ticket:466] courtesy andrija at gmail
+  - fixed generation of CHECK constraints on columns [ticket:464]
 - orm:
   - another refactoring to relationship calculation.  Allows more accurate ORM behavior
   with relationships from/to/between mappers, particularly polymorphic mappers,

@@ -705,7 +705,10 @@ class CheckConstraint(Constraint):
         super(CheckConstraint, self).__init__(name)
         self.sqltext = sqltext
     def accept_schema_visitor(self, visitor, traverse=True):
-        visitor.visit_check_constraint(self)
+        if isinstance(self.parent, Table):
+            visitor.visit_check_constraint(self)
+        else:
+            visitor.visit_column_check_constraint(self)
     def _set_parent(self, parent):
         self.parent = parent
         parent.constraints.add(self)
@@ -992,6 +995,8 @@ class SchemaVisitor(sql.ClauseVisitor):
     def visit_unique_constraint(self, constraint):
         pass
     def visit_check_constraint(self, constraint):
+        pass
+    def visit_column_check_constraint(self, constraint):
         pass
         
 default_metadata = DynamicMetaData('default')

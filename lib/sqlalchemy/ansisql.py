@@ -742,6 +742,10 @@ class ANSISchemaGenerator(ANSISchemaBase):
         if constraint.name is not None:
             self.append("CONSTRAINT %s " % constraint.name)
         self.append(" CHECK (%s)" % constraint.sqltext)
+
+    def visit_column_check_constraint(self, constraint):
+        self.append(" ")
+        self.append(" CHECK (%s)" % constraint.sqltext)
         
     def visit_primary_key_constraint(self, constraint):
         if len(constraint) == 0:

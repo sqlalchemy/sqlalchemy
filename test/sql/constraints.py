@@ -28,7 +28,7 @@ class ConstraintTest(testbase.AssertMixin):
             )
         metadata.create_all()
 
-    @testbase.unsupported('sqlite', 'mysql')
+    @testbase.unsupported('mysql')
     def test_check_constraint(self):
         foo = Table('foo', metadata, 
             Column('id', Integer, primary_key=True),
@@ -38,6 +38,7 @@ class ConstraintTest(testbase.AssertMixin):
         bar = Table('bar', metadata, 
             Column('id', Integer, primary_key=True),
             Column('x', Integer, CheckConstraint('x>7')),
+            Column('z', Integer)
             )
 
         metadata.create_all()
