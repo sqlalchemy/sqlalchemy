@@ -23,7 +23,7 @@ class ConstraintTest(testbase.AssertMixin):
             Column('stuff', String(30)),
             Column('emp_id', Integer),
             Column('emp_soc', String(40)),
-            PrimaryKeyConstraint('id'),
+            PrimaryKeyConstraint('id', name='elements_primkey'),
             ForeignKeyConstraint(['emp_id', 'emp_soc'], ['employees.id', 'employees.soc'])
             )
         metadata.create_all()

@@ -47,6 +47,7 @@
   - sequences on a non-pk column will properly fire off on INSERT
   - added PrefetchingResultProxy support to pre-fetch LOB columns when they are 
   known to be present, fixes [ticket:435]
+  - fixed named PrimaryKeyConstraint generation [ticket:466] courtesy andrija at gmail
 - mysql:
   - fix to reflection on older DB's that might return array() type for 
   "show variables like" statements

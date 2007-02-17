@@ -188,10 +188,10 @@ class UnicodeTest(UnitOfWorkTest):
         global metadata, uni_table, uni_table2
         metadata = BoundMetaData(testbase.db)
         uni_table = Table('uni_test', metadata,
-            Column('id',  Integer, primary_key=True),
+            Column('id',  Integer, Sequence("uni_test_id_seq", optional=True), primary_key=True),
             Column('txt', Unicode(50), unique=True))
         uni_table2 = Table('uni2', metadata,
-            Column('id',  Integer, primary_key=True),
+            Column('id',  Integer, Sequence("uni2_test_id_seq", optional=True), primary_key=True),
             Column('txt', Unicode(50), ForeignKey(uni_table.c.txt)))
         metadata.create_all()
     def tearDownAll(self):
