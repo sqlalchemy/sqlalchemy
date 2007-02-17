@@ -405,12 +405,26 @@ class MapperTest(MapperSuperTest):
     
     def testextensionoptions(self):
         sess  = create_session()
-        mapper(User, users)
+        class ext1(MapperExtension):
+            def populate_instance(self, mapper, selectcontext, row, instance, identitykey, isnew):
+                """test options at the Mapper._instance level"""
+                instance.TEST = "hello world"
+                return EXT_PASS
+        mapper(User, users, extension=ext1())
         class testext(MapperExtension):
             def select_by(self, *args, **kwargs):
+                """test options at the Query level"""
                 return "HI"
+            def populate_instance(self, mapper, selectcontext, row, instance, identitykey, isnew):
+                """test options at the Mapper._instance level"""
+                instance.TEST_2 = "also hello world"
+                return EXT_PASS
         l = sess.query(User).options(extension(testext())).select_by(x=5)
         assert l == "HI"
+        l = sess.query(User).options(extension(testext())).get(7)
+        assert l.user_id == 7
+        assert l.TEST == "hello world"
+        assert l.TEST_2 == "also hello world"
         
     def testeageroptions(self):
         """tests that a lazy relation can be upgraded to an eager relation via the options method"""

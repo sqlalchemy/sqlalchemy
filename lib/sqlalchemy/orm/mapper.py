@@ -1200,9 +1200,9 @@ class Mapper(object):
                 if not context.identity_map.has_key(identitykey):
                     context.identity_map[identitykey] = instance
                     isnew = True
-                if self.extension.populate_instance(self, context, row, instance, identitykey, isnew) is EXT_PASS:
+                if context.extension.populate_instance(self, context, row, instance, identitykey, isnew) is EXT_PASS:
                     self.populate_instance(context, instance, row, identitykey, isnew)
-            if self.extension.append_result(self, context, row, instance, identitykey, result, isnew) is EXT_PASS:
+            if context.extension.append_result(self, context, row, instance, identitykey, result, isnew) is EXT_PASS:
                 if result is not None:
                     result.append(instance)
             return instance
@@ -1228,7 +1228,7 @@ class Mapper(object):
                         return None
             
             # plugin point
-            instance = self.extension.create_instance(self, context, row, self.class_)
+            instance = context.extension.create_instance(self, context, row, self.class_)
             if instance is EXT_PASS:
                 instance = self._create_instance(context.session)
             else:
@@ -1243,9 +1243,9 @@ class Mapper(object):
 
         # call further mapper properties on the row, to pull further 
         # instances from the row and possibly populate this item.
-        if self.extension.populate_instance(self, context, row, instance, identitykey, isnew) is EXT_PASS:
+        if context.extension.populate_instance(self, context, row, instance, identitykey, isnew) is EXT_PASS:
             self.populate_instance(context, instance, row, identitykey, isnew)
-        if self.extension.append_result(self, context, row, instance, identitykey, result, isnew) is EXT_PASS:
+        if context.extension.append_result(self, context, row, instance, identitykey, result, isnew) is EXT_PASS:
             if result is not None:
                 result.append(instance)
         return instance

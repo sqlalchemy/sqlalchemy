@@ -323,7 +323,7 @@ class Query(object):
 
         session = self.session
         
-        context = SelectionContext(self.select_mapper, session, with_options=self.with_options, **kwargs)
+        context = SelectionContext(self.select_mapper, session, self.extension, with_options=self.with_options, **kwargs)
 
         result = util.UniqueAppender([])
         if mappers:
@@ -525,10 +525,11 @@ class SelectionContext(OperationContext):
     to the freshly loaded value
 
     """
-    def __init__(self, mapper, session, **kwargs):
+    def __init__(self, mapper, session, extension, **kwargs):
         self.populate_existing = kwargs.pop('populate_existing', False)
         self.version_check = kwargs.pop('version_check', False)
         self.session = session
+        self.extension = extension
         self.identity_map = {}
         super(SelectionContext, self).__init__(mapper, kwargs.pop('with_options', []), **kwargs)
     def accept_option(self, opt):

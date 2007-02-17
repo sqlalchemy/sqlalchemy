@@ -21,6 +21,8 @@
   - implemented foreign_keys argument to mapper [ticket:385].  use in conjunction with
   primaryjoin/secondaryjoin arguments to specify/override foreign keys defined on the
   Table instance.
+  - extension() query option propigates to Mapper._instance() method so that 
+  all loading-related methods get called [ticket:454]
   - eager relation to an inheriting mapper wont fail if no rows returned for
   the relationship.
   - fix for very large topological sorts, courtesy ants.aasma at gmail [ticket:423]
