@@ -32,6 +32,10 @@ except:
     except:
         psycopg = None
 
+class PGInet(sqltypes.TypeEngine):
+    def get_col_spec(self):
+        return "INET"
+
 class PGNumeric(sqltypes.Numeric):
     def get_col_spec(self):
         if not self.precision:
@@ -164,6 +168,7 @@ pg2_ischema_names = {
     'numeric' : PGNumeric,
     'float' : PGFloat,
     'real' : PGFloat,
+    'inet': PGInet,
     'double precision' : PGFloat,
     'timestamp' : PG2DateTime,
     'timestamp with time zone' : PG2DateTime,
