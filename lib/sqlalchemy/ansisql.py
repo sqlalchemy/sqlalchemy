@@ -746,9 +746,10 @@ class ANSISchemaGenerator(ANSISchemaBase):
     def visit_primary_key_constraint(self, constraint):
         if len(constraint) == 0:
             return
-        self.append(", \n\tPRIMARY KEY ")
+        self.append(", \n\t")
         if constraint.name is not None:
-            self.append("%s " % constraint.name)
+            self.append("CONSTRAINT %s " % constraint.name)
+        self.append("PRIMARY KEY ")
         self.append("(%s)" % (string.join([self.preparer.format_column(c) for c in constraint],', ')))
     
     def supports_alter(self):

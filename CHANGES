@@ -12,6 +12,7 @@
   can handle *args or a list instance for positional, **kwargs or a dict instance
   for named args, or a list of list or dicts to invoke executemany()
   - small fix to BoundMetaData to accept unicode or string URLs
+  - fixed named PrimaryKeyConstraint generation [ticket:466] courtesy andrija at gmail
 - orm:
   - another refactoring to relationship calculation.  Allows more accurate ORM behavior
   with relationships from/to/between mappers, particularly polymorphic mappers,
@@ -47,7 +48,6 @@
   - sequences on a non-pk column will properly fire off on INSERT
   - added PrefetchingResultProxy support to pre-fetch LOB columns when they are 
   known to be present, fixes [ticket:435]
-  - fixed named PrimaryKeyConstraint generation [ticket:466] courtesy andrija at gmail
 - mysql:
   - fix to reflection on older DB's that might return array() type for 
   "show variables like" statements
