@@ -355,14 +355,15 @@ class ReflectionTest(PersistTest):
         finally:
             meta.drop_all()
             
-    def testtoengine(self):
+    def testtometadata(self):
         meta = MetaData('md1')
         meta2 = MetaData('md2')
         
         table = Table('mytable', meta,
             Column('myid', Integer, primary_key=True),
             Column('name', String, nullable=False),
-            Column('description', String(30)),
+            Column('description', String(30), CheckConstraint("description='hi'")),
+            UniqueConstraint('name')
         )
         
         table2 = Table('othertable', meta,
@@ -382,6 +383,20 @@ class ReflectionTest(PersistTest):
         assert [x.name for x in table.primary_key] == [x.name for x in table_c.primary_key]
         assert list(table2_c.c.myid.foreign_keys)[0].column is table_c.c.myid
         assert list(table2_c.c.myid.foreign_keys)[0].column is not table.c.myid
+        for c in table_c.c.description.constraints:
+            if isinstance(c, CheckConstraint):
+                break
+        else:
+            assert False
+        assert c.sqltext=="description='hi'"
+        
+        for c in table_c.constraints:
+            if isinstance(c, UniqueConstraint):
+                break
+        else:
+            assert False
+        assert c.columns.contains_column(table_c.c.name)
+        assert not c.columns.contains_column(table.c.name)
         
     # mysql throws its own exception for no such table, resulting in 
     # a sqlalchemy.SQLError instead of sqlalchemy.NoSuchTableError.

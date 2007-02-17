@@ -14,6 +14,7 @@
   - small fix to BoundMetaData to accept unicode or string URLs
   - fixed named PrimaryKeyConstraint generation [ticket:466] courtesy andrija at gmail
   - fixed generation of CHECK constraints on columns [ticket:464]
+  - fixes to tometadata() operation to propigate Constraints at column and table level
 - orm:
   - another refactoring to relationship calculation.  Allows more accurate ORM behavior
   with relationships from/to/between mappers, particularly polymorphic mappers,

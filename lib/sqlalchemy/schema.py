@@ -459,7 +459,7 @@ class Column(SchemaItem, sql._ColumnClause):
 
     def copy(self): 
         """creates a copy of this Column, unitialized.  this is used in Table.tometadata."""
-        return Column(self.name, self.type, self.default, key = self.key, primary_key = self.primary_key, nullable = self.nullable, _is_oid = self._is_oid, case_sensitive=self._case_sensitive_setting, quote=self.quote)
+        return Column(self.name, self.type, self.default, key = self.key, primary_key = self.primary_key, nullable = self.nullable, _is_oid = self._is_oid, case_sensitive=self._case_sensitive_setting, quote=self.quote, *[c.copy() for c in self.constraints])
         
     def _make_proxy(self, selectable, name = None):
         """create a "proxy" for this column.
@@ -712,7 +712,9 @@ class CheckConstraint(Constraint):
     def _set_parent(self, parent):
         self.parent = parent
         parent.constraints.add(self)
-                
+    def copy(self):
+        return CheckConstraint(self.sqltext, name=self.name)
+                    
 class ForeignKeyConstraint(Constraint):
     """table-level foreign key constraint, represents a colleciton of ForeignKey objects."""
     def __init__(self, columns, refcolumns, name=None, onupdate=None, ondelete=None, use_alter=False):
@@ -779,7 +781,9 @@ class UniqueConstraint(Constraint):
         self.columns.add(col)
     def accept_schema_visitor(self, visitor, traverse=True):
         visitor.visit_unique_constraint(self)
-        
+    def copy(self):
+        return UniqueConstraint(name=self.name, *self.__colnames)
+            
 class Index(SchemaItem):
     """Represents an index of columns from a database table
     """
