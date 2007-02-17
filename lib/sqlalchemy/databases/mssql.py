@@ -114,7 +114,9 @@ def use_default():
         if try_use(f):
             return dbmodule # informational return, so the user knows what he's using.
     else:
-        raise ImportError(import_errors)
+        return None
+        # cant raise this right now since all dialects need to be importable/loadable
+        #raise ImportError(import_errors)
         
 
 class MSNumeric(sqltypes.Numeric):
@@ -688,5 +690,3 @@ class MSSQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
         #TODO: determin MSSQL's case folding rules
         return value
 
-
-use_default()
