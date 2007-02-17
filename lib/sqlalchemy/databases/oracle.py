@@ -20,6 +20,9 @@ try:
     import cx_Oracle
 except:
     cx_Oracle = None
+
+ORACLE_BINARY_TYPES = [getattr(cx_Oracle, k) for k in ["BFILE", "CLOB", "NCLOB", "BLOB", "LONG_BINARY", "LONG_STRING"] if hasattr(cx_Oracle, k)]
+
         
 class OracleNumeric(sqltypes.Numeric):
     def get_col_spec(self):
@@ -326,8 +329,7 @@ class OracleDialect(ansisql.ANSIDialect):
         if cursor and cursor.description:
             for column in cursor.description:
                 type_code = column[1]
-                if type_code in (cx_Oracle.BFILE, cx_Oracle.CLOB, cx_Oracle.NCLOB,
-                                 cx_Oracle.BLOB, cx_Oracle.LONG_BINARY, cx_Oracle.LONG_STRING):
+                if type_code in ORACLE_BINARY_TYPES:
                     args['should_prefetch'] = True
                     break
         return args

@@ -211,15 +211,8 @@ class BinaryTest(AssertMixin):
             stream2 =self.load_stream('binary_data_two.dat')
         binary_table.insert().execute(primary_id=1, misc='binary_data_one.dat',    data=stream1, data_slice=stream1[0:100], pickled=testobj1)
         binary_table.insert().execute(primary_id=2, misc='binary_data_two.dat', data=stream2, data_slice=stream2[0:99], pickled=testobj2)
-        if db.name == 'oracle':
-            res = binary_table.select().execute()
-            l = []
-            row = res.fetchone()
-            l.append(dict([(k, row[k]) for k in row.keys()]))
-            row = res.fetchone()
-            l.append(dict([(k, row[k]) for k in row.keys()]))
-        else:
-            l = binary_table.select().execute().fetchall()
+        binary_table.insert().execute(primary_id=3, misc='binary_data_two.dat', data=None, data_slice=stream2[0:99], pickled=None)
+        l = binary_table.select().execute().fetchall()
         print len(stream1), len(l[0]['data']), len(l[0]['data_slice'])
         self.assert_(list(stream1) == list(l[0]['data']))
         self.assert_(list(stream1[0:100]) == list(l[0]['data_slice']))
