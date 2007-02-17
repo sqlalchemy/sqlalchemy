@@ -4,19 +4,18 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import weakref, UserList, time, string, inspect, sys, sets
 try:
     import thread, threading
 except ImportError:
     import dummy_thread as thread
     import dummy_threading as threading
 
-from sqlalchemy.exceptions import *
 import __builtin__
 
 try:
     Set = set
 except:
+    import sets
     Set = sets.Set
 
 def to_list(x):
@@ -225,26 +224,26 @@ class OrderedSet(Set):
     def __init__(self, d=None, **kwargs):
       super(OrderedSet, self).__init__(**kwargs)
       self._list = []
-      if d: self.update( d, **kwargs)
+      if d: self.update(d, **kwargs)
 
     def add(self, key):
       if key not in self:
           self._list.append(key)
-      Set.add( self, key)
+      super(OrderedSet, self).add(key)
 
-    def remove( self, element):
-      Set.remove( self, element)
-      self._list.remove( element)
+    def remove(self, element):
+      super(OrderedSet, self).remove(element)
+      self._list.remove(element)
 
-    def discard( self, element):
+    def discard(self, element):
       try:
-          Set.remove( self, element)
+          super(OrderedSet, self).remove(element)
       except KeyError: pass
       else:
-          self._list.remove( element)
+          self._list.remove(element)
 
     def clear(self):
-      Set.clear( self)
+      super(OrderedSet, self).clear()
       self._list=[]
 
     def __iter__(self): return iter(self._list)
@@ -254,7 +253,7 @@ class OrderedSet(Set):
       for i in iterable: add(i)
       return self
 
-    def __repr__( self):
+    def __repr__(self):
       return '%s(%r)' % (self.__class__.__name__, self._list)
     __str__ = __repr__
 
@@ -264,35 +263,35 @@ class OrderedSet(Set):
       return result
     __or__ = union
     def intersection(self, other):
-      return self.__class__( [a for a in self if a in other])
+      return self.__class__([a for a in self if a in other])
     __and__ = intersection
     def symmetric_difference(self, other):
-      result = self.__class__( [a for a in self if a not in other])
-      result.update( [a for a in other if a not in self])
+      result = self.__class__([a for a in self if a not in other])
+      result.update([a for a in other if a not in self])
       return result
     __xor__ = symmetric_difference
 
     def difference(self, other):
-      return self.__class__( [a for a in self if a not in other])
+      return self.__class__([a for a in self if a not in other])
     __sub__ = difference
 
     __ior__ = update
 
     def intersection_update(self, other):
-      Set.intersection_update( self, other)
+      super(OrderedSet, self).intersection_update(other)
       self._list = [ a for a in self._list if a in other]
       return self
     __iand__ = intersection_update
 
     def symmetric_difference_update(self, other):
-      Set.symmetric_difference_update( self, other)
+      super(OrderedSet, self).symmetric_difference_update(other)
       self._list =  [ a for a in self._list if a in self]
       self._list += [ a for a in other._list if a in self]
       return self
     __ixor__ = symmetric_difference_update
 
     def difference_update(self, other):
-      Set.difference_update( self, other)
+      super(OrderedSet, self).difference_update(other)
       self._list = [ a for a in self._list if a in self]
       return self
     __isub__ = difference_update
