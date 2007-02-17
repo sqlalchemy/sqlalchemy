@@ -80,7 +80,7 @@ def make_url(name_or_url):
     
     the given string is parsed according to the rfc1738 spec.
     if an existing URL object is passed, just returns the object."""
-    if isinstance(name_or_url, str) or isinstance(name_or_url, unicode):
+    if isinstance(name_or_url, basestring):
         return _parse_rfc1738_args(name_or_url)
     else:
         return name_or_url

@@ -914,7 +914,7 @@ class BoundMetaData(MetaData):
     """builds upon MetaData to provide the capability to bind to an Engine implementation."""
     def __init__(self, engine_or_url, name=None, **kwargs):
         super(BoundMetaData, self).__init__(name, **kwargs)
-        if isinstance(engine_or_url, str):
+        if isinstance(engine_or_url, basestring):
             self._engine = sqlalchemy.create_engine(engine_or_url, **kwargs)
         else:
             self._engine = engine_or_url
