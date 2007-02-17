@@ -26,7 +26,10 @@ ORACLE_BINARY_TYPES = [getattr(cx_Oracle, k) for k in ["BFILE", "CLOB", "NCLOB",
         
 class OracleNumeric(sqltypes.Numeric):
     def get_col_spec(self):
-        return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
+        if self.precision is None:
+            return "NUMERIC"
+        else:
+            return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
 class OracleInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
@@ -123,25 +126,6 @@ ischema_names = {
     'DOUBLE PRECISION' : OracleNumeric,
 }
 
-constraintSQL = """SELECT
-  ac.constraint_name,
-  ac.constraint_type,
-  LOWER(loc.column_name) AS local_column,
-  LOWER(rem.table_name) AS remote_table,
-  LOWER(rem.column_name) AS remote_column,
-  LOWER(rem.owner) AS remote_owner
-FROM all_constraints ac,
-  all_cons_columns loc,
-  all_cons_columns rem
-WHERE ac.table_name = :table_name
-AND ac.constraint_type IN ('R','P')
-AND ac.owner = :owner
-AND ac.owner = loc.owner
-AND ac.constraint_name = loc.constraint_name
-AND ac.r_owner = rem.owner(+)
-AND ac.r_constraint_name = rem.constraint_name(+)
--- order multiple primary keys correctly
-ORDER BY ac.constraint_name, loc.position, rem.position"""
 
 
 def descriptor():
@@ -224,6 +208,66 @@ class OracleDialect(ansisql.ANSIDialect):
     def has_sequence(self, connection, sequence_name):
         cursor = connection.execute("""select sequence_name from all_sequences where sequence_name=:name""", {'name':sequence_name.upper()})
         return bool( cursor.fetchone() is not None )
+
+    def _locate_owner_row(self, owner, name, rows, raiseerr=False):
+        """return the row in the given list of rows which references the given table name and owner name."""
+        if not rows:
+            if raiseerr:
+                raise exceptions.NoSuchTableError(name)
+            else:
+                return None
+        else:
+            if owner is not None:
+                for row in rows:
+                    if owner.upper() in row[0]:
+                        return row
+                else:
+                    if raiseerr:
+                        raise exceptions.AssertionError("Specified owner %s does not own table %s" % (owner, name))
+                    else:
+                        return None
+            else:
+                if len(rows)==1:
+                    return rows[0]
+                else:
+                    if raiseerr:
+                        raise exceptions.AssertionError("There are multiple tables with name '%s' visible to the schema, you must specifiy owner" % name)
+                    else:
+                        return None
+        
+    def _resolve_table_owner(self, connection, name, table, dblink=''):
+        """locate the given table in the ALL_TAB_COLUMNS view, including searching for equivalent synonyms and dblinks"""
+        c = connection.execute ("select distinct OWNER from ALL_TAB_COLUMNS%(dblink)s where TABLE_NAME = :table_name" % {'dblink':dblink}, {'table_name':name})
+        rows = c.fetchall()
+        try:
+            row = self._locate_owner_row(table.owner, name, rows, raiseerr=True)
+            return name, row['OWNER'], ''
+        except exceptions.SQLAlchemyError:
+            # locate synonyms
+            c = connection.execute ("""select OWNER, TABLE_OWNER, TABLE_NAME, DB_LINK
+                                       from   ALL_SYNONYMS%(dblink)s 
+                                       where  SYNONYM_NAME = :synonym_name
+                                       and (DB_LINK IS NOT NULL 
+                                               or ((TABLE_NAME, TABLE_OWNER) in 
+                                                    (select TABLE_NAME, OWNER from ALL_TAB_COLUMNS%(dblink)s)))""" % {'dblink':dblink},
+                                    {'synonym_name':name})
+            rows = c.fetchall()
+            row = self._locate_owner_row(table.owner, name, rows)
+            if row is None:
+                row = self._locate_owner_row("PUBLIC", name, rows)
+
+            if row is not None:
+                owner, name, dblink = row['TABLE_OWNER'], row['TABLE_NAME'], row['DB_LINK']
+                if dblink:
+                    dblink = '@' + dblink
+                    if not owner:
+                        # re-resolve table owner using new dblink variable
+                        t1, owner, t2 = self._resolve_table_owner(connection, name, table, dblink=dblink)
+                else:
+                    dblink = ''
+                return name, owner, dblink
+            raise
+
         
     def reflecttable(self, connection, table):
         preparer = self.identifier_preparer
@@ -231,23 +275,12 @@ class OracleDialect(ansisql.ANSIDialect):
             name = table.name.upper()
         else:
             name = table.name
-        c = connection.execute ("select distinct OWNER from ALL_TAB_COLUMNS where TABLE_NAME = :table_name", {'table_name':name})
-        rows = c.fetchall()
-        if not rows :
-            raise exceptions.NoSuchTableError(table.name)
-        else:
-            if table.owner is not None:
-                if table.owner.upper() in [r[0] for r in rows]:
-                    owner = table.owner.upper()
-                else:
-                    raise exceptions.AssertionError("Specified owner %s does not own table %s"%(table.owner, table.name))
-            else:
-                if len(rows)==1:
-                    owner = rows[0][0]
-                else:
-                    raise exceptions.AssertionError("There are multiple tables with name %s in the schema, you must specifie owner"%table.name)
-
-        c = connection.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from ALL_TAB_COLUMNS where TABLE_NAME = :table_name and OWNER = :owner", {'table_name':name, 'owner':owner})
+        
+        # search for table, including across synonyms and dblinks.
+        # locate the actual name of the table, the real owner, and any dblink clause needed.
+        actual_name, owner, dblink = self._resolve_table_owner(connection, name, table)
+        
+        c = connection.execute ("select COLUMN_NAME, DATA_TYPE, DATA_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT from ALL_TAB_COLUMNS%(dblink)s where TABLE_NAME = :table_name and OWNER = :owner" % {'dblink':dblink}, {'table_name':actual_name, 'owner':owner})
         
         while True:
             row = c.fetchone()
@@ -256,7 +289,7 @@ class OracleDialect(ansisql.ANSIDialect):
             found_table = True
 
             #print "ROW:" , row
-            (name, coltype, length, precision, scale, nullable, default) = (row[0], row[1], row[2], row[3], row[4], row[5]=='Y', row[6])
+            (colname, coltype, length, precision, scale, nullable, default) = (row[0], row[1], row[2], row[3], row[4], row[5]=='Y', row[6])
 
             # INTEGER if the scale is 0 and precision is null
             # NUMBER if the scale and precision are both null
@@ -277,20 +310,42 @@ class OracleDialect(ansisql.ANSIDialect):
                 try:
                     coltype = ischema_names[coltype]
                 except KeyError:
-                    raise exceptions.AssertionError("Cant get coltype for type '%s'" % coltype)
+                    raise exceptions.AssertionError("Cant get coltype for type '%s' on colname '%s'" % (coltype, colname))
                
             colargs = []
             if default is not None:
                 colargs.append(schema.PassiveDefault(sql.text(default)))
           
             # if name comes back as all upper, assume its case folded 
-            if (name.upper() == name): 
-                name = name.lower()
+            if (colname.upper() == colname): 
+                colname = colname.lower()
             
-            table.append_column(schema.Column(name, coltype, nullable=nullable, *colargs))
+            table.append_column(schema.Column(colname, coltype, nullable=nullable, *colargs))
 
-       
-        c = connection.execute(constraintSQL, {'table_name' : table.name.upper(), 'owner' : owner})
+        if not len(table.columns):
+           raise exceptions.AssertionError("Couldn't find any column information for table %s" % actual_name)
+           
+        c = connection.execute("""SELECT
+             ac.constraint_name,
+             ac.constraint_type,
+             LOWER(loc.column_name) AS local_column,
+             LOWER(rem.table_name) AS remote_table,
+             LOWER(rem.column_name) AS remote_column,
+             LOWER(rem.owner) AS remote_owner
+           FROM all_constraints%(dblink)s ac,
+             all_cons_columns%(dblink)s loc,
+             all_cons_columns%(dblink)s rem
+           WHERE ac.table_name = :table_name
+           AND ac.constraint_type IN ('R','P')
+           AND ac.owner = :owner
+           AND ac.owner = loc.owner
+           AND ac.constraint_name = loc.constraint_name
+           AND ac.r_owner = rem.owner(+)
+           AND ac.r_constraint_name = rem.constraint_name(+)
+           -- order multiple primary keys correctly
+           ORDER BY ac.constraint_name, loc.position, rem.position"""
+         % {'dblink':dblink}, {'table_name' : actual_name, 'owner' : owner})
+         
         fks = {}
         while True:
             row = c.fetchone()
@@ -306,6 +361,9 @@ class OracleDialect(ansisql.ANSIDialect):
                 except KeyError:
                    fk = ([], [])
                    fks[cons_name] = fk
+                if remote_table is None:
+                    # ticket 363
+                    raise exceptions.AssertionError("Got 'None' querying 'table_name' from all_cons_columns%(dblink)s - does the user have proper rights to the table?" % {'dblink':dblink})
                 refspec = ".".join([remote_table, remote_column])
                 schema.Table(remote_table, table.metadata, autoload=True, autoload_with=connection, owner=remote_owner)
                 if local_column not in fk[0]:
