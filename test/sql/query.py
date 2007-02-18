@@ -159,6 +159,16 @@ class QueryTest(PersistTest):
         self.users.insert().execute(user_id=7, user_name='fido')
         r = self.users.select(limit=3, order_by=[self.users.c.user_id]).execute().fetchall()
         self.assert_(r == [(1, 'john'), (2, 'jack'), (3, 'ed')], repr(r))
+        
+    @testbase.unsupported('mssql')
+    def testselectlimitoffset(self):
+        self.users.insert().execute(user_id=1, user_name='john')
+        self.users.insert().execute(user_id=2, user_name='jack')
+        self.users.insert().execute(user_id=3, user_name='ed')
+        self.users.insert().execute(user_id=4, user_name='wendy')
+        self.users.insert().execute(user_id=5, user_name='laura')
+        self.users.insert().execute(user_id=6, user_name='ralph')
+        self.users.insert().execute(user_id=7, user_name='fido')
         r = self.users.select(limit=3, offset=2, order_by=[self.users.c.user_id]).execute().fetchall()
         self.assert_(r==[(3, 'ed'), (4, 'wendy'), (5, 'laura')])
         r = self.users.select(offset=5, order_by=[self.users.c.user_id]).execute().fetchall()

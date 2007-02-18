@@ -72,9 +72,12 @@
   - fix for non-integer relationships [ticket:473]
   - DB-API module now selectable at run-time [ticket:419]
   - preliminary support for pyodbc (Yay!) [ticket:419]
-  - now passes more unit tests [ticket:422]
+  - now passes many more unit tests [tickets:422, 481, 415]
   - better unittest compatibility with ANSI functions [ticket:479]
   - improved support for implicit sequence PK columns with auto-insert [ticket:415]
+  - fix for blank password in adodbapi [ticket:371]
+  - fixes to get unit tests working with pyodbc [ticket:481]
+
   
 0.3.4
 - general:

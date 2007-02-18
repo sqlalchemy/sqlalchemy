@@ -52,9 +52,9 @@ def use_adodbapi():
     import adodbapi as dbmodule
     # ADODBAPI has a non-standard Connection method
     connect = dbmodule.Connection
-    make_connect_string = lambda keys: \
-        [["Provider=SQLOLEDB;Data Source=%s;User Id=%s;Password=%s;Initial Catalog=%s" % (
-            keys.get("host"), keys.get("user"), keys.get("password"), keys.get("database"))], {}]
+    def make_connect_string(keys):
+        return  [["Provider=SQLOLEDB;Data Source=%s;User Id=%s;Password=%s;Initial Catalog=%s" % (
+            keys.get("host"), keys.get("user"), keys.get("password", ""), keys.get("database"))], {}]        
     sane_rowcount = True
     dialect = MSSQLDialect
     colspecs[sqltypes.Unicode] = AdoMSUnicode
@@ -82,16 +82,16 @@ def use_pyodbc():
     global dbmodule, connect, make_connect_string, do_commit, sane_rowcount, dialect, colspecs, ischema_names
     import pyodbc as dbmodule
     connect = dbmodule.connect
-    make_connect_string = lambda keys: \
-        [["Driver={SQL Server};Server=%s;UID=%s;PWD=%s;Database=%s" % (
-            keys.get("host"), keys.get("user"), keys.get("password"), keys.get("database"))], {}]
+    def make_connect_string(keys):
+        return [["Driver={SQL Server};Server=%s;UID=%s;PWD=%s;Database=%s" % (
+            keys.get("host"), keys.get("user"), keys.get("password", ""), keys.get("database"))], {}]        
     do_commit = True
-    sane_rowcount = True
-    dialect = MSSQLDialect # XXX - find out whether this needs to be tweaked for pyodbc
+    sane_rowcount = False
+    dialect = MSSQLDialect
     import warnings
     warnings.warn('pyodbc support in sqlalchemy.databases.mssql is extremely experimental - use at your own risk.')
-    colspecs[sqltypes.Unicode] = MSUnicode # Ado?
-    ischema_names['nvarchar'] = MSUnicode # Ado?
+    colspecs[sqltypes.Unicode] = AdoMSUnicode
+    ischema_names['nvarchar'] = AdoMSUnicode
 
 def use_default():
     import_errors = []
@@ -110,7 +110,7 @@ def use_default():
             use_adodbapi,
             use_pymssql,
             use_pyodbc,
-        ]:
+            ]:
         if try_use(f):
             return dbmodule # informational return, so the user knows what he's using.
     else:
@@ -348,10 +348,10 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
 
 
 class MSSQLDialect(ansisql.ANSIDialect):
-    def __init__(self, module=None, auto_identity_insert=False, encoding=None, **params):
+    def __init__(self, module=None, auto_identity_insert=False, **params):
         self.module = module or dbmodule or use_default()
         self.auto_identity_insert = auto_identity_insert
-        ansisql.ANSIDialect.__init__(self, encoding=encoding, **params)
+        ansisql.ANSIDialect.__init__(self, **params)
         self.set_default_schema_name("dbo")
         
     def create_connect_args(self, url):
@@ -397,8 +397,15 @@ class MSSQLDialect(ansisql.ANSIDialect):
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
             
+    def do_execute(self, cursor, statement, params, **kwargs):
+        if params == {}:
+            params = ()
+        super(MSSQLDialect, self).do_execute(cursor, statement, params, **kwargs)
+
     def _execute(self, c, statement, parameters):
         try:
+            if parameters == {}:
+                parameters = ()
             c.execute(statement, parameters)
             self.context.rowcount = c.rowcount
             c.DBPROP_COMMITPRESERVE = "Y"
@@ -648,6 +655,10 @@ class MSSQLCompiler(ansisql.ANSICompiler):
         func.name = self.function_rewrites.get(func.name, func.name)
         super(MSSQLCompiler, self).visit_function(func)            
 
+    def for_update_clause(self, select):
+        # "FOR UPDATE" is only allowed on "DECLARE CURSOR" which SQLAlchemy doesn't use
+        return ''
+
 class MSSQLSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column) + " " + column.type.engine_impl(self.engine).get_col_spec()
@@ -689,4 +700,6 @@ class MSSQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
     def _fold_identifier_case(self, value):
         #TODO: determin MSSQL's case folding rules
         return value
+
+use_default()
 

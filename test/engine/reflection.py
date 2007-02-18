@@ -273,7 +273,7 @@ class ReflectionTest(PersistTest):
         table = Table(
             'engine_multi', meta, 
             Column('multi_id', Integer, Sequence('multi_id_seq'), primary_key=True),
-            Column('multi_rev', Integer, Sequence('multi_rev_seq'), primary_key=True),
+            Column('multi_rev', Integer, primary_key=True),
             Column('name', String(50), nullable=False),
             Column('val', String(100))
         )

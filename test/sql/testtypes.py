@@ -158,10 +158,10 @@ class UnicodeTest(AssertMixin):
         self.echo(repr(x['plain_data']))
         self.assert_(isinstance(x['unicode_data'], unicode) and x['unicode_data'] == unicodedata)
         if isinstance(x['plain_data'], unicode):
-            # SQLLite returns even non-unicode data as unicode
-            self.assert_(db.name == 'sqlite')
+            # SQLLite and MSSQL return non-unicode data as unicode
+            self.assert_(db.name in ('sqlite', 'mssql'))
             self.assert_(x['plain_data'] == unicodedata)
-            self.echo("its sqlite !")
+            self.echo("it's %s!" % db.name)
         else:
             self.assert_(not isinstance(x['plain_data'], unicode) and x['plain_data'] == rawdata)
     def testengineparam(self):

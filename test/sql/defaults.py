@@ -63,7 +63,7 @@ class DefaultTest(PersistTest):
             Column('col5', deftype, PassiveDefault(def2)),
             
             # preexecute + update timestamp
-            Column('col6', Date, default=currenttime, onupdate=currenttime),
+            Column('col6', DateTime, default=currenttime, onupdate=currenttime),
             
             Column('boolcol1', Boolean, default=True),
             Column('boolcol2', Boolean, default=False)
@@ -157,6 +157,33 @@ class AutoIncrementTest(PersistTest):
             table.insert().execute(data='row 2')
         finally:
             table.drop()    
+
+    def testfetchid(self):
+        meta = BoundMetaData(testbase.db)
+        table = Table("aitest", meta, 
+            Column('id', Integer, primary_key=True),
+            Column('data', String(20)))
+        table.create()
+
+        try:
+            # simulate working on a table that doesn't already exist
+            meta2 = BoundMetaData(testbase.db)
+            table2 = Table("aitest", meta2,
+                Column('id', Integer, primary_key=True),
+                Column('data', String(20)))
+            class AiTest(object):
+                pass
+            mapper(AiTest, table2)
+        
+            s = create_session()
+            u = AiTest()
+            s.save(u)
+            s.flush()
+            assert u.id is not None
+            s.clear()
+        finally:
+            table.drop()
+        
 
 class SequenceTest(PersistTest):
     @testbase.supported('postgres', 'oracle')

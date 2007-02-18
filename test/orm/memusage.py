@@ -43,7 +43,7 @@ class MapperCleanoutTest(testbase.AssertMixin):
         table2 = Table("mytable2", metadata, 
             Column('col1', Integer, primary_key=True),
             Column('col2', String(30)),
-            Column('col3', String(30), ForeignKey("mytable.col1"))
+            Column('col3', Integer, ForeignKey("mytable.col1"))
             )
     
         metadata.create_all()
