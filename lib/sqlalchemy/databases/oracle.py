@@ -7,14 +7,9 @@
 
 import sys, StringIO, string, re
 
-import sqlalchemy.util as util
-import sqlalchemy.sql as sql
-import sqlalchemy.engine as engine
+from sqlalchemy import util, sql, engine, schema, ansisql, exceptions, logging
 import sqlalchemy.engine.default as default
-import sqlalchemy.schema as schema
-import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
-import sqlalchemy.exceptions as exceptions
 
 try:
     import cx_Oracle
@@ -234,7 +229,6 @@ class OracleDialect(ansisql.ANSIDialect):
                         raise exceptions.AssertionError("There are multiple tables with name '%s' visible to the schema, you must specifiy owner" % name)
                     else:
                         return None
-        
     def _resolve_table_owner(self, connection, name, table, dblink=''):
         """locate the given table in the ALL_TAB_COLUMNS view, including searching for equivalent synonyms and dblinks"""
         c = connection.execute ("select distinct OWNER from ALL_TAB_COLUMNS%(dblink)s where TABLE_NAME = :table_name" % {'dblink':dblink}, {'table_name':name})
@@ -363,7 +357,7 @@ class OracleDialect(ansisql.ANSIDialect):
                    fks[cons_name] = fk
                 if remote_table is None:
                     # ticket 363
-                    raise exceptions.AssertionError("Got 'None' querying 'table_name' from all_cons_columns%(dblink)s - does the user have proper rights to the table?" % {'dblink':dblink})
+                    self.logger.warn("Got 'None' querying 'table_name' from all_cons_columns%(dblink)s - does the user have proper rights to the table?" % {'dblink':dblink})
                 refspec = ".".join([remote_table, remote_column])
                 schema.Table(remote_table, table.metadata, autoload=True, autoload_with=connection, owner=remote_owner)
                 if local_column not in fk[0]:
@@ -391,6 +385,8 @@ class OracleDialect(ansisql.ANSIDialect):
                     args['should_prefetch'] = True
                     break
         return args
+
+OracleDialect.logger = logging.class_logger(OracleDialect)
 
 class OracleCompiler(ansisql.ANSICompiler):
     """oracle compiler modifies the lexical structure of Select statements to work under 

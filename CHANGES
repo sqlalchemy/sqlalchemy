@@ -52,6 +52,10 @@
   - sequences on a non-pk column will properly fire off on INSERT
   - added PrefetchingResultProxy support to pre-fetch LOB columns when they are 
   known to be present, fixes [ticket:435]
+  - implemented reflection of tables based on synonyms, including across dblinks
+  [ticket:379]
+  - issues a log warning when a related table cant be reflected due to certain
+  permission errors [ticket:363]
 - mysql:
   - fix to reflection on older DB's that might return array() type for 
   "show variables like" statements
