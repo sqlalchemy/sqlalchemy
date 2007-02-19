@@ -165,12 +165,14 @@ class MSDateTime(sqltypes.DateTime):
     def convert_bind_param(self, value, dialect):
         if hasattr(value, "isoformat"):
             #return value.isoformat(' ')
-            return value.strftime('%Y-%m-%d %H:%M:%S')            # isoformat() bings on apodbapi -- reported/suggested by Peter Buschman
+            # isoformat() bings on apodbapi -- reported/suggested by Peter Buschman
+            return value.strftime('%Y-%m-%d %H:%M:%S')
         else:
             return value
 
     def convert_result_value(self, value, dialect):
-        # adodbapi will return datetimes with empty time values as datetime.date() objects. Promote them back to full datetime.datetime()
+        # adodbapi will return datetimes with empty time values as datetime.date() objects.
+        # Promote them back to full datetime.datetime()
         if value and not hasattr(value, 'second'):
             return datetime.datetime(value.year, value.month, value.day)
         return value
@@ -184,7 +186,7 @@ class MSDate(sqltypes.Date):
     
     def convert_bind_param(self, value, dialect):
         if value and hasattr(value, "isoformat"):
-            return value.isoformat()
+            return value.strftime('%Y-%m-%d %H:%M:%S')
         return value
 
     def convert_result_value(self, value, dialect):
@@ -306,14 +308,16 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
         super(MSSQLExecutionContext, self).__init__(dialect)
     
     def pre_exec(self, engine, proxy, compiled, parameters, **kwargs):
-        """ MS-SQL has a special mode for inserting non-NULL values into IDENTITY columns. Activate it if the feature is turned on and needed. """
+        """ MS-SQL has a special mode for inserting non-NULL values into IDENTITY columns.
+        Activate it if the feature is turned on and needed. """
         if getattr(compiled, "isinsert", False):
             tbl = compiled.statement.table
             if not hasattr(tbl, 'has_sequence'):                
                 for column in tbl.c:
                     if column.primary_key and column.autoincrement and \
-                            isinstance(column.type, sqltypes.Integer) and not column.foreign_key:
-                        if column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional):
+                           isinstance(column.type, sqltypes.Integer) and not column.foreign_key:
+                        if column.default is None or (isinstance(column.default, schema.Sequence) and \
+                                                      column.default.optional):
                             tbl.has_sequence = column
                             break
                 else:
@@ -348,7 +352,7 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
 
 
 class MSSQLDialect(ansisql.ANSIDialect):
-    def __init__(self, module=None, auto_identity_insert=False, **params):
+    def __init__(self, module=None, auto_identity_insert=True, **params):
         self.module = module or dbmodule or use_default()
         self.auto_identity_insert = auto_identity_insert
         ansisql.ANSIDialect.__init__(self, **params)
@@ -561,7 +565,13 @@ class MSSQLDialect(ansisql.ANSIDialect):
 
 
 class PyMSSQLDialect(MSSQLDialect):
-    pass
+    def do_rollback(self, connection):
+        # pymssql throws an error on repeated rollbacks. Ignore it.
+        try:
+            connection.rollback()
+        except:
+            pass
+##    This code is leftover from the initial implementation, for reference
 ##    def do_begin(self, connection):
 ##        """implementations might want to put logic here for turning autocommit on/off, etc."""
 ##        pass  
@@ -646,11 +656,9 @@ class MSSQLCompiler(ansisql.ANSICompiler):
             binary.left, binary.right = binary.right, binary.left
         super(MSSQLCompiler, self).visit_binary(binary)
 
-    function_rewrites = \
-    {
-        'current_date': 'getdate',
-        'length':     'len',
-    }
+    function_rewrites =  {'current_date': 'getdate',
+                          'length':     'len',
+                          }
     def visit_function(self, func):
         func.name = self.function_rewrites.get(func.name, func.name)
         super(MSSQLCompiler, self).visit_function(func)            
