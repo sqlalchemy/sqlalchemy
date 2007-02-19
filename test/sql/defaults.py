@@ -63,7 +63,7 @@ class DefaultTest(PersistTest):
             Column('col5', deftype, PassiveDefault(def2)),
             
             # preexecute + update timestamp
-            Column('col6', DateTime, default=currenttime, onupdate=currenttime),
+            Column('col6', Date, default=currenttime, onupdate=currenttime),
             
             Column('boolcol1', Boolean, default=True),
             Column('boolcol2', Boolean, default=False)
