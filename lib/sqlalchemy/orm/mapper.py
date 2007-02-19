@@ -518,8 +518,6 @@ class Mapper(object):
         or through proxying relationships. Currently, non-column properties are *not* copied.  this implies
         that a polymorphic mapper cant do any eager loading right now."""
         if self.select_table is not self.mapped_table:
-            if self.polymorphic_identity is None:
-                raise exceptions.ArgumentError("Could not locate a polymorphic_identity field for mapper '%s'.  This field is required for polymorphic mappers" % str(self))
             props = {}
             if self.properties is not None:
                 for key, prop in self.properties.iteritems():
