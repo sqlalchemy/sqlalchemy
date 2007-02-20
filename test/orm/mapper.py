@@ -1068,6 +1068,36 @@ class EagerTest(MapperSuperTest):
             self.assert_result(l, User, *user_address_result)
         self.assert_sql_count(testbase.db, go, 1)
 
+    def testcustomeagerwithstringalias(self):
+        mapper(User, users, properties={
+            'addresses':relation(Address, lazy=False)
+        })
+        mapper(Address, addresses)
+
+        adalias = addresses.alias('adalias')
+        selectquery = users.outerjoin(adalias).select(use_labels=True)
+        q = create_session().query(User)
+
+        def go():
+            l = q.options(contains_eager('addresses', alias="adalias")).instances(selectquery.execute())
+            self.assert_result(l, User, *user_address_result)
+        self.assert_sql_count(testbase.db, go, 1)
+
+    def testcustomeagerwithalias(self):
+        mapper(User, users, properties={
+            'addresses':relation(Address, lazy=False)
+        })
+        mapper(Address, addresses)
+
+        adalias = addresses.alias('adalias')
+        selectquery = users.outerjoin(adalias).select(use_labels=True)
+        q = create_session().query(User)
+
+        def go():
+            l = q.options(contains_eager('addresses', alias=adalias)).instances(selectquery.execute())
+            self.assert_result(l, User, *user_address_result)
+        self.assert_sql_count(testbase.db, go, 1)
+
     def testcustomeagerwithdecorator(self):
         mapper(User, users, properties={
             'addresses':relation(Address, lazy=False)

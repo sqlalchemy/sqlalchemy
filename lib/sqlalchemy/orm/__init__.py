@@ -119,14 +119,21 @@ def noload(name):
     used with query.options()."""
     return strategies.EagerLazyOption(name, lazy=None)
 
-def contains_eager(key, decorator=None):
+def contains_eager(key, alias=None, decorator=None):
     """return a MapperOption that will indicate to the query that the given 
-    attribute will be eagerly loaded without any row decoration, or using
-    a custom row decorator.  
-    
+    attribute will be eagerly loaded.
+
     used when feeding SQL result sets directly into
-    query.instances().  Also bundles an EagerLazyOption to turn on eager loading in case it isnt already."""
-    return (strategies.EagerLazyOption(key, lazy=False), strategies.RowDecorateOption(key, decorator=decorator))
+    query.instances().  Also bundles an EagerLazyOption to turn on eager loading 
+    in case it isnt already.
+        
+    "alias" is the string name of an alias, *or* an sql.Alias object, which represents
+    the aliased columns in the query.  this argument is optional.
+    
+    "decorator" is mutually exclusive of "alias" and is a row-processing function which
+    will be applied to the incoming row before sending to the eager load handler.  use this
+    for more sophisticated row adjustments beyond a straight alias."""
+    return (strategies.EagerLazyOption(key, lazy=False), strategies.RowDecorateOption(key, alias=alias, decorator=decorator))
     
 def defer(name):
     """return a MapperOption that will convert the column property of the given 

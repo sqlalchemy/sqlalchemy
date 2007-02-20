@@ -576,10 +576,20 @@ class EagerLazyOption(StrategizedOption):
 EagerLazyOption.logger = logging.class_logger(EagerLazyOption)
 
 class RowDecorateOption(PropertyOption):
-    def __init__(self, key, decorator=None):
+    def __init__(self, key, decorator=None, alias=None):
         super(RowDecorateOption, self).__init__(key)
         self.decorator = decorator
+        self.alias = alias
     def process_selection_property(self, context, property):
+        if self.alias is not None and self.decorator is None:
+            if isinstance(self.alias, basestring):
+                self.alias = property.target.alias(self.alias)
+            def decorate(row):
+                d = {}
+                for c in property.target.columns:
+                    d[c] = row[self.alias.corresponding_column(c)]
+                return d
+            self.decorator = decorate
         context.attributes[(EagerLoader, property)] = self.decorator
 RowDecorateOption.logger = logging.class_logger(RowDecorateOption)
         
