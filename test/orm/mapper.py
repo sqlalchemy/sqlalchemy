@@ -1052,6 +1052,19 @@ class EagerTest(MapperSuperTest):
             {'user_id' : 9, 'addresses' : (Address, [])}
             )
 
+    def testcustomfromalias(self):
+        mapper(User, users, properties={
+            'addresses':relation(Address, lazy=True)
+        })
+        mapper(Address, addresses)
+        query = users.select(users.c.user_id==7).union(users.select(users.c.user_id>7)).alias('ulist').outerjoin(addresses).select(use_labels=True)
+        q = create_session().query(User)
+        
+        def go():
+            l = q.options(contains_alias('ulist'), contains_eager('addresses')).instances(query.execute())
+            self.assert_result(l, User, *user_address_result)
+        self.assert_sql_count(testbase.db, go, 1)
+        
     def testcustomeagerquery(self):
         mapper(User, users, properties={
             # setting lazy=True - the contains_eager() option below

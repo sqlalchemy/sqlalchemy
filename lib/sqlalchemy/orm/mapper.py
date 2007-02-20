@@ -1172,6 +1172,10 @@ class Mapper(object):
         either case, executes all the property loaders on the instance to also process extra
         information in the row."""
 
+        ret = context.extension.translate_row(self, context, row)
+        if ret is not EXT_PASS:
+            row = ret
+
         if not skip_polymorphic and self.polymorphic_on is not None:
             discriminator = row[self.polymorphic_on]
             if discriminator is not None:
@@ -1321,6 +1325,13 @@ class MapperExtension(object):
         the return value of this method is used as the result of query.select() if the
         value is anything other than EXT_PASS."""
         return EXT_PASS
+        
+    def translate_row(self, mapper, context, row):
+        """perform pre-processing on the given result row and return a new row instance.
+        
+        this is called as the very first step in the _instance() method."""
+        return EXT_PASS
+        
     def create_instance(self, mapper, selectcontext, row, class_):
         """receieve a row when a new object instance is about to be created from that row.  
         the method can choose to create the instance itself, or it can return 
@@ -1412,6 +1423,8 @@ class _ExtensionCarrier(MapperExtension):
         return self._do('select_by', *args, **kwargs)
     def select(self, *args, **kwargs):
         return self._do('select', *args, **kwargs)
+    def translate_row(self, *args, **kwargs):
+        return self._do('translate_row', *args, **kwargs)
     def create_instance(self, *args, **kwargs):
         return self._do('create_instance', *args, **kwargs)
     def append_result(self, *args, **kwargs):

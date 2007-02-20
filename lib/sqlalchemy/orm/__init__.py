@@ -20,7 +20,7 @@ from sqlalchemy.orm.session import object_session, attribute_manager
 
 __all__ = ['relation', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer', 'extension', 
         'mapper', 'clear_mappers', 'compile_mappers', 'clear_mapper', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query', 
-        'cascade_mappers', 'polymorphic_union', 'create_session', 'synonym', 'contains_eager', 'EXT_PASS', 'object_session'
+        'cascade_mappers', 'polymorphic_union', 'create_session', 'synonym', 'contains_alias', 'contains_eager', 'EXT_PASS', 'object_session'
         ]
 
 def relation(*args, **kwargs):
@@ -119,6 +119,34 @@ def noload(name):
     used with query.options()."""
     return strategies.EagerLazyOption(name, lazy=None)
 
+def contains_alias(alias):
+    """return a MapperOption that will indicate to the query that the main table
+    has been aliased.
+    
+    "alias" is the string name or Alias object representing the alias.
+    """
+    class AliasedRow(MapperExtension):
+        def __init__(self, alias):
+            self.alias = alias
+            if isinstance(self.alias, basestring):
+                self.selectable = None
+            else:
+                self.selectable = alias
+        def get_selectable(self, mapper):
+            if self.selectable is None:
+                self.selectable = mapper.mapped_table.alias(self.alias)
+            return self.selectable
+        def translate_row(self, mapper, context, row):
+            newrow = sautil.DictDecorator(row)
+            selectable = self.get_selectable(mapper)
+            for c in mapper.mapped_table.c:
+                c2 = selectable.corresponding_column(c, keys_ok=True, raiseerr=False)
+                if c2 and row.has_key(c2):
+                    newrow[c] = row[c2]
+            return newrow
+            
+    return ExtensionOption(AliasedRow(alias))
+    
 def contains_eager(key, alias=None, decorator=None):
     """return a MapperOption that will indicate to the query that the given 
     attribute will be eagerly loaded.

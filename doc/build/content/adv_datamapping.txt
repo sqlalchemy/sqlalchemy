@@ -788,6 +788,23 @@ It is often the case with large queries that some of the tables within the query
     adalias.user_id AS adalias_user_id, adalias.email_address AS adalias_email_address, (...other columns...)
     FROM users LEFT OUTER JOIN email_addresses AS adalias ON users.user_id = adalias.user_id
 
+In the case that the main table itself is also aliased, the `contains_alias()` option can be used (new in version 0.3.5):
+
+    {python}
+    # define an aliased UNION called 'ulist'
+    statement = users.select(users.c.user_id==7).union(users.select(users.c.user_id>7)).alias('ulist')
+
+    # add on an eager load of "addresses"
+    statement = statement.outerjoin(addresses).select(use_labels=True)
+    
+    # create query, indicating "ulist" is an alias for the main table, "addresses" property should
+    # be eager loaded
+    query = create_session().query(User).options(contains_alias('ulist'), contains_eager('addresses'))
+    
+    # results
+    r = query.instances(statement.execute())
+    
+
 ### Mapper Options {@name=mapperoptions}
 
 Options which can be sent to the `mapper()` function.  For arguments to `relation()`, see [advdatamapping_properties_relationoptions](rel:advdatamapping_properties_relationoptions).

@@ -36,6 +36,7 @@
   - added "alias" argument to contains_eager().  use it to specify the string name
     or Alias instance of an alias used in the query for the eagerly loaded child items.
     easier to use than "decorator"
+  - added "contains_alias()" option for result set mapping to an alias of the mapped table
   - mapper options like eagerload(), lazyload(), deferred(), will work for "synonym()"
   relationships [ticket:485]
   - fixed bug where cascade operations incorrectly included deleted collection
