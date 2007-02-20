@@ -1172,7 +1172,15 @@ class Mapper(object):
         either case, executes all the property loaders on the instance to also process extra
         information in the row."""
 
-        ret = context.extension.translate_row(self, context, row)
+        # apply ExtensionOptions applied to the Query to this mapper,
+        # but only if our mapper matches.
+        # TODO: what if our mapper inherits from the mapper (i.e. as in a polymorphic load?)
+        if context.mapper is self:
+            extension = context.extension
+        else:
+            extension = self.extension
+            
+        ret = extension.translate_row(self, context, row)
         if ret is not EXT_PASS:
             row = ret
 
@@ -1202,9 +1210,9 @@ class Mapper(object):
                 if not context.identity_map.has_key(identitykey):
                     context.identity_map[identitykey] = instance
                     isnew = True
-                if context.extension.populate_instance(self, context, row, instance, identitykey, isnew) is EXT_PASS:
+                if extension.populate_instance(self, context, row, instance, identitykey, isnew) is EXT_PASS:
                     self.populate_instance(context, instance, row, identitykey, isnew)
-            if context.extension.append_result(self, context, row, instance, identitykey, result, isnew) is EXT_PASS:
+            if extension.append_result(self, context, row, instance, identitykey, result, isnew) is EXT_PASS:
                 if result is not None:
                     result.append(instance)
             return instance
@@ -1230,7 +1238,7 @@ class Mapper(object):
                         return None
             
             # plugin point
-            instance = context.extension.create_instance(self, context, row, self.class_)
+            instance = extension.create_instance(self, context, row, self.class_)
             if instance is EXT_PASS:
                 instance = self._create_instance(context.session)
             else:
@@ -1245,9 +1253,9 @@ class Mapper(object):
 
         # call further mapper properties on the row, to pull further 
         # instances from the row and possibly populate this item.
-        if context.extension.populate_instance(self, context, row, instance, identitykey, isnew) is EXT_PASS:
+        if extension.populate_instance(self, context, row, instance, identitykey, isnew) is EXT_PASS:
             self.populate_instance(context, instance, row, identitykey, isnew)
-        if context.extension.append_result(self, context, row, instance, identitykey, result, isnew) is EXT_PASS:
+        if extension.append_result(self, context, row, instance, identitykey, result, isnew) is EXT_PASS:
             if result is not None:
                 result.append(instance)
         return instance

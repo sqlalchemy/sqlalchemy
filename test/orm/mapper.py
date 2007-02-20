@@ -422,7 +422,9 @@ class MapperTest(MapperSuperTest):
                 """test options at the Mapper._instance level"""
                 instance.TEST = "hello world"
                 return EXT_PASS
-        mapper(User, users, extension=ext1())
+        mapper(User, users, extension=ext1(), properties={
+            'addresses':relation(mapper(Address, addresses), lazy=False)
+        })
         class testext(MapperExtension):
             def select_by(self, *args, **kwargs):
                 """test options at the Query level"""
@@ -437,6 +439,11 @@ class MapperTest(MapperSuperTest):
         assert l.user_id == 7
         assert l.TEST == "hello world"
         assert l.TEST_2 == "also hello world"
+        assert not hasattr(l.addresses[0], 'TEST')
+        assert not hasattr(l.addresses[0], 'TEST2')
+        
+        
+        
         
     def testeageroptions(self):
         """tests that a lazy relation can be upgraded to an eager relation via the options method"""
