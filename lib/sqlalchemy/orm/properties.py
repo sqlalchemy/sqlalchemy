@@ -15,31 +15,6 @@ from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil
 import sets, random
 from sqlalchemy.orm.interfaces import *
-
-
-class SynonymProperty(MapperProperty):
-    def __init__(self, name, proxy=False):
-        self.name = name
-        self.proxy = proxy
-    def setup(self, querycontext, **kwargs):
-        pass
-    def execute(self, selectcontext, instance, row, identitykey, isnew):
-        pass
-    def do_init(self):
-        if not self.proxy:
-            return
-        class SynonymProp(object):
-            def __set__(s, obj, value):
-                setattr(obj, self.name, value)
-            def __delete__(s, obj):
-                delattr(obj, self.name)
-            def __get__(s, obj, owner):
-                if obj is None:
-                    return s
-                return getattr(obj, self.name)
-        setattr(self.parent.class_, self.key, SynonymProp())
-    def merge(self, session, source, dest, _recursive):
-        pass
         
 class ColumnProperty(StrategizedProperty):
     """describes an object attribute that corresponds to a table column."""

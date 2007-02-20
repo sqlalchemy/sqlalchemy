@@ -33,6 +33,8 @@
   - improved support for complex queries embedded into "where" criterion
   for query.select() [ticket:449]
   - contains_eager('foo') automatically implies eagerload('foo')
+  - mapper options like eagerload(), lazyload(), deferred(), will work for "synonym()"
+  relationships [ticket:485]
   - fixed bug where cascade operations incorrectly included deleted collection
   items in the cascade [ticket:445]
   - fixed relationship deletion error when one-to-many child item is moved to a new 

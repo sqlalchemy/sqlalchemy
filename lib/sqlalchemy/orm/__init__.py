@@ -14,7 +14,7 @@ from sqlalchemy.orm.mapper import *
 from sqlalchemy.orm import mapper as mapperlib
 from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.util import polymorphic_union
-from sqlalchemy.orm import properties, strategies
+from sqlalchemy.orm import properties, strategies, interfaces
 from sqlalchemy.orm.session import Session as create_session
 from sqlalchemy.orm.session import object_session, attribute_manager
 
@@ -59,7 +59,7 @@ def synonym(name, proxy=False):
     """set up 'name' as a synonym to another MapperProperty.  
     
     Used with the 'properties' dictionary sent to mapper()."""
-    return properties.SynonymProperty(name, proxy=proxy)
+    return interfaces.SynonymProperty(name, proxy=proxy)
 
 def compile_mappers():
     """compile all mappers that have been defined.  

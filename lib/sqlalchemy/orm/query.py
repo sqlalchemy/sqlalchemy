@@ -6,7 +6,7 @@
 
 from sqlalchemy import sql, util, exceptions, sql_util, logging, schema
 from sqlalchemy.orm import mapper, class_mapper
-from sqlalchemy.orm.interfaces import OperationContext
+from sqlalchemy.orm.interfaces import OperationContext, SynonymProperty
 
 __all__ = ['Query', 'QueryContext', 'SelectionContext']
 
@@ -149,7 +149,7 @@ class Query(object):
             seen.add(mapper_)
             if mapper_.props.has_key(key):
                 prop = mapper_.props[key]
-                if isinstance(prop, properties.SynonymProperty):
+                if isinstance(prop, SynonymProperty):
                     prop = mapper_.props[prop.name]
                 if isinstance(prop, properties.PropertyLoader):
                     keys.insert(0, prop.key)

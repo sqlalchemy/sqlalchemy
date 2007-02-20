@@ -402,7 +402,19 @@ class MapperTest(MapperSuperTest):
         assert u.uname == "some user name"
         assert u.user_name == "some user name"
         assert u in sess.dirty
-    
+
+    def testsynonymoptions(self):
+        sess = create_session()
+        mapper(User, users, properties = dict(
+            addresses = relation(mapper(Address, addresses), lazy = True),
+            adlist = synonym('addresses', proxy=True)
+        ))
+        
+        def go():
+            u = sess.query(User).options(eagerload('adlist')).get_by(user_name='jack')
+            self.assert_result(u.adlist, Address, *(user_address_result[0]['addresses'][1]))
+        self.assert_sql_count(db, go, 1)
+        
     def testextensionoptions(self):
         sess  = create_session()
         class ext1(MapperExtension):

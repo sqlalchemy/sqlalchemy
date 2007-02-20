@@ -58,7 +58,31 @@ class MapperProperty(object):
         """returns a compare operation for the columns represented by this MapperProperty to the given value,
         which may be a column value or an instance."""
         raise NotImplementedError()
-        
+
+class SynonymProperty(MapperProperty):
+    def __init__(self, name, proxy=False):
+        self.name = name
+        self.proxy = proxy
+    def setup(self, querycontext, **kwargs):
+        pass
+    def execute(self, selectcontext, instance, row, identitykey, isnew):
+        pass
+    def do_init(self):
+        if not self.proxy:
+            return
+        class SynonymProp(object):
+            def __set__(s, obj, value):
+                setattr(obj, self.name, value)
+            def __delete__(s, obj):
+                delattr(obj, self.name)
+            def __get__(s, obj, owner):
+                if obj is None:
+                    return s
+                return getattr(obj, self.name)
+        setattr(self.parent.class_, self.key, SynonymProp())
+    def merge(self, session, source, dest, _recursive):
+        pass
+
 class StrategizedProperty(MapperProperty):
     """a MapperProperty which uses selectable strategies to affect loading behavior.
     There is a single default strategy selected, and alternate strategies can be selected
@@ -135,6 +159,8 @@ class PropertyOption(MapperOption):
             mapper = context.mapper
             for token in self.key.split('.'):
                 prop = mapper.props[token]
+                if isinstance(prop, SynonymProperty):
+                    prop = mapper.props[prop.name]
                 mapper = getattr(prop, 'mapper', None)
             self.__prop = prop
         return prop
