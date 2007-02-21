@@ -445,6 +445,8 @@ class EagerLoader(AbstractRelationLoader):
         except KeyError:
             clauses = EagerLoader.AliasedClauses(self, parentclauses)
             self.clauses[parentclauses] = clauses
+            
+        if context.mapper not in self.clauses_by_lead_mapper:
             self.clauses_by_lead_mapper[context.mapper] = clauses
 
         if self.secondaryjoin is not None:
@@ -481,7 +483,7 @@ class EagerLoader(AbstractRelationLoader):
                 # decorate the row according to the stored AliasedClauses for this eager load
                 clauses = self.clauses_by_lead_mapper[selectcontext.mapper]
                 decorator = clauses._row_decorator
-            except KeyError:
+            except KeyError, k:
                 # no stored AliasedClauses: eager loading was not set up in the query and
                 # AliasedClauses never got initialized
                 return None
@@ -492,8 +494,10 @@ class EagerLoader(AbstractRelationLoader):
             identity_key = self.mapper.identity_key_from_row(decorated_row)
             # and its good
             return decorator
-        except KeyError:
+        except KeyError, k:
             # no identity key - dont return a row processor, will cause a degrade to lazy
+            if self._should_log_debug:
+                self.logger.debug("could not locate identity key from row '%s'; missing column '%s'" % (repr(decorated_row), str(k)))
             return None
 
     def process_row(self, selectcontext, instance, row, identitykey, isnew):

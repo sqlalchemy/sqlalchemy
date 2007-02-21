@@ -325,7 +325,97 @@ class EagerTest4(testbase.ORMTest):
         assert d.count() == 2
         assert d[0] is d2
 
+class EagerTest5(testbase.ORMTest):
+    """test the construction of AliasedClauses for the same eager load property but different 
+    parent mappers, due to inheritance"""
+    def define_tables(self, metadata):
+        global base, derived, derivedII, comments
+        base = Table(
+            'base', metadata,
+            Column('uid', String, primary_key=True), 
+            Column('x', String)
+            )
 
+        derived = Table(
+            'derived', metadata,
+            Column('uid', String, ForeignKey(base.c.uid), primary_key=True),
+            Column('y', String)
+            )
+
+        derivedII = Table(
+            'derivedII', metadata,
+            Column('uid', String, ForeignKey(base.c.uid), primary_key=True),
+            Column('z', String)
+            )
+
+        comments = Table(
+            'comments', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('uid', String, ForeignKey(base.c.uid)),
+            Column('comment', String)
+            )
+    def test_basic(self):
+        class Base(object):
+            def __init__(self, uid, x):
+                self.uid = uid
+                self.x = x
+
+        class Derived(Base):
+            def __init__(self, uid, x, y):
+                self.uid = uid
+                self.x = x
+                self.y = y
+
+        class DerivedII(Base):
+            def __init__(self, uid, x, z):
+                self.uid = uid
+                self.x = x
+                self.z = z
+
+        class Comment(object):
+            def __init__(self, uid, comment):
+                self.uid = uid
+                self.comment = comment
+
+
+        commentMapper = mapper(Comment, comments)
+
+        baseMapper = mapper(
+            Base, base,
+                properties={
+                'comments': relation(
+                    Comment, lazy=False, cascade='all, delete-orphan'
+                    )
+                }
+            )
+
+        derivedMapper = mapper(Derived, derived, inherits=baseMapper)
+        derivedIIMapper = mapper(DerivedII, derivedII, inherits=baseMapper)
+        sess = create_session()
+        d = Derived(1, 'x', 'y')
+        d.comments = [Comment(1, 'comment')]
+        d2 = DerivedII(2, 'xx', 'z')
+        d2.comments = [Comment(2, 'comment')]
+        sess.save(d)
+        sess.save(d2)
+        sess.flush()
+        sess.clear()
+        # this eager load sets up an AliasedClauses for the "comment" relationship,
+        # then stores it in clauses_by_lead_mapper[mapper for Derived]
+        d = sess.query(Derived).get(1)
+        sess.clear()
+        assert len([c for c in d.comments]) == 1
+
+        # this eager load sets up an AliasedClauses for the "comment" relationship,
+        # and should store it in clauses_by_lead_mapper[mapper for DerivedII].
+        # the bug was that the previous AliasedClause create prevented this population
+        # from occurring.
+        d2 = sess.query(DerivedII).get(2)
+        sess.clear()
+        # object is not in the session; therefore the lazy load cant trigger here,
+        # eager load had to succeed
+        assert len([c for c in d2.comments]) == 1
+        
     
 if __name__ == "__main__":    
     testbase.main()
