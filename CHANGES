@@ -61,6 +61,12 @@
       ORM behavior with relationships from/to/between mappers, particularly
       polymorphic mappers, also their usage with Query, SelectResults. tickets
       include [ticket:439], [ticket:441], [ticket:448].
+    - removed deprecated method of specifying custom collections on classes;
+      you must now use the "collection_class" option. the old way was
+      beginning to produce conflicts when people used assign_mapper(), which
+      now patches an "options" method, in conjunction with a relationship
+      named "options". (relationships take precedence over monkeypatched
+      assign_mapper methods).
     - extension() query option propigates to Mapper._instance() method so that
       all loading-related methods get called [ticket:454]
     - eager relation to an inheriting mapper wont fail if no rows returned for

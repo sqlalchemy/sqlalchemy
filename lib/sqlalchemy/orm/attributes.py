@@ -766,8 +766,6 @@ class AttributeManager(object):
             class_._state = property(_get_state)
         
         typecallable = kwargs.pop('typecallable', None)
-        if typecallable is None:
-            typecallable = getattr(class_, key, None)
         if isinstance(typecallable, InstrumentedAttribute):
             typecallable = None
         setattr(class_, key, self.create_prop(class_, key, uselist, callable_, typecallable=typecallable, **kwargs))

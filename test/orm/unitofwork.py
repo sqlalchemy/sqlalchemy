@@ -55,7 +55,7 @@ class HistoryTest(UnitOfWorkTest):
         u = s.query(m).select()[0]
         print u.addresses[0].user
 
-class CustomAttrTest(UnitOfWorkTest):
+class CustomCollectionsTest(UnitOfWorkTest):
     def setUpAll(self):
         UnitOfWorkTest.setUpAll(self)
         global sometable, metadata, someothertable
@@ -71,11 +71,11 @@ class CustomAttrTest(UnitOfWorkTest):
         class MyList(list):
             pass
         class Foo(object):
-            bars = MyList
+            pass
         class Bar(object):
             pass
         mapper(Foo, sometable, properties={
-            'bars':relation(Bar)
+            'bars':relation(Bar, collection_class=MyList)
         })
         mapper(Bar, someothertable)
         f = Foo()
