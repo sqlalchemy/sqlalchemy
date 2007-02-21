@@ -35,7 +35,7 @@
 - mysql:
     - fix to reflection on older DB's that might return array() type for 
     "show variables like" statements
-    - postgres:
+- postgres:
     - better reflection of sequences for alternate-schema Tables [ticket:442]
     - sequences on a non-pk column will properly fire off on INSERT
     - added PGInterval type [ticket:460], PGInet type [ticket:444]
