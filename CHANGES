@@ -1,99 +1,111 @@
 0.3.5
 - sql:
-  - the value of "case_sensitive" defaults to True now, regardless of the casing
-    of the identifier, unless specifically set to False. this is because the
-    object might be label'ed as something else which does contain mixed case, and
-    propigating "case_sensitive=False" breaks that.  Other fixes to quoting
-    when using labels and "fake" column objects
-  - added a "supports_execution()" method to ClauseElement, so that individual
-  kinds of clauses can express if they are appropriate for executing...such as, 
-  you can execute a "select", but not a "Table" or a "Join".
-  - fixed argument passing to straight textual execute() on engine, connection.
-  can handle *args or a list instance for positional, **kwargs or a dict instance
-  for named args, or a list of list or dicts to invoke executemany()
-  - small fix to BoundMetaData to accept unicode or string URLs
-  - fixed named PrimaryKeyConstraint generation [ticket:466] courtesy andrija at gmail
-  - fixed generation of CHECK constraints on columns [ticket:464]
-  - fixes to tometadata() operation to propigate Constraints at column and table level
-- orm:
-  - another refactoring to relationship calculation.  Allows more accurate ORM behavior
-  with relationships from/to/between mappers, particularly polymorphic mappers,
-  also their usage with Query, SelectResults.  
-  tickets include [ticket:439], [ticket:441], [ticket:448].
-  - implemented foreign_keys argument to mapper [ticket:385].  use in conjunction with
-  primaryjoin/secondaryjoin arguments to specify/override foreign keys defined on the
-  Table instance.
-  - extension() query option propigates to Mapper._instance() method so that 
-  all loading-related methods get called [ticket:454]
-  - eager relation to an inheriting mapper wont fail if no rows returned for
-  the relationship.
-  - eager relation loading bug fixed for eager relation on multiple
-  descendant classes [ticket:486]
-  - fix for very large topological sorts, courtesy ants.aasma at gmail [ticket:423]
-  - eager loading is slightly more strict about detecting "self-referential"
-  relationships, specifically between polymorphic mappers.
-  - improved support for complex queries embedded into "where" criterion
-  for query.select() [ticket:449]
-  - contains_eager('foo') automatically implies eagerload('foo')
-  - added "alias" argument to contains_eager().  use it to specify the string name
-    or Alias instance of an alias used in the query for the eagerly loaded child items.
-    easier to use than "decorator"
-  - added "contains_alias()" option for result set mapping to an alias of the mapped table
-  - mapper options like eagerload(), lazyload(), deferred(), will work for "synonym()"
-  relationships [ticket:485]
-  - fixed bug where cascade operations incorrectly included deleted collection
-  items in the cascade [ticket:445]
-  - fixed relationship deletion error when one-to-many child item is moved to a new 
-  parent in a single unit of work [ticket:478]
-  - fixed relationship deletion error where parent/child with a single column as PK/FK 
-  on the child would raise a "blank out the primary key" error, if manually deleted
-  or "delete" cascade without "delete-orphan" was used
-  - fix to deferred so that load operation doesnt mistakenly occur when only
-  PK col attributes are set
-  - added support for py2.5 "with" statement with SessionTransaction [ticket:468]
+    - the value of "case_sensitive" defaults to True now, regardless of the
+      casing of the identifier, unless specifically set to False. this is
+      because the object might be label'ed as something else which does
+      contain mixed case, and propigating "case_sensitive=False" breaks that.
+      Other fixes to quoting when using labels and "fake" column objects
+    - added a "supports_execution()" method to ClauseElement, so that
+      individual kinds of clauses can express if they are appropriate for
+      executing...such as, you can execute a "select", but not a "Table" or a
+      "Join".
+    - fixed argument passing to straight textual execute() on engine,
+      connection. can handle *args or a list instance for positional, **kwargs
+      or a dict instance for named args, or a list of list or dicts to invoke
+      executemany()
+    - small fix to BoundMetaData to accept unicode or string URLs
+    - fixed named PrimaryKeyConstraint generation [ticket:466] courtesy
+      andrija at gmail
+    - fixed generation of CHECK constraints on columns [ticket:464]
+    - fixes to tometadata() operation to propigate Constraints at column and
+      table level
 - oracle:
-  - when returning "rowid" as the ORDER BY column or in use with ROW_NUMBER OVER,
-  oracle dialect checks the selectable its being applied to and will switch to 
-  table PK if not applicable, i.e. for a UNION.  checking for DISTINCT, GROUP BY
-  (other places that rowid is invalid) still a TODO.  allows polymorphic mappings
-  to function, [ticket:436]
-  - sequences on a non-pk column will properly fire off on INSERT
-  - added PrefetchingResultProxy support to pre-fetch LOB columns when they are 
-  known to be present, fixes [ticket:435]
-  - implemented reflection of tables based on synonyms, including across dblinks
-  [ticket:379]
-  - issues a log warning when a related table cant be reflected due to certain
-  permission errors [ticket:363]
+    - when returning "rowid" as the ORDER BY column or in use with ROW_NUMBER
+      OVER, oracle dialect checks the selectable its being applied to and will
+      switch to table PK if not applicable, i.e. for a UNION. checking for
+      DISTINCT, GROUP BY (other places that rowid is invalid) still a TODO.
+      allows polymorphic mappings to function, [ticket:436]
+    - sequences on a non-pk column will properly fire off on INSERT
+    - added PrefetchingResultProxy support to pre-fetch LOB columns when they
+      are known to be present, fixes [ticket:435]
+    - implemented reflection of tables based on synonyms, including across
+      dblinks [ticket:379]
+    - issues a log warning when a related table cant be reflected due to
+      certain permission errors [ticket:363]
 - mysql:
-  - fix to reflection on older DB's that might return array() type for 
-  "show variables like" statements
-- postgres:
-  - better reflection of sequences for alternate-schema Tables [ticket:442]
-  - sequences on a non-pk column will properly fire off on INSERT
-  - added PGInterval type [ticket:460], PGInet type [ticket:444]
-- ext:
-  - added distinct() method to SelectResults.  generally should only make a difference
-  when using count().
-  - added options() method to SelectResults, equivalent to query.options() [ticket:472]
-  - added optional __table_opts__ dictionary to ActiveMapper, will send kw options to 
-  Table objects [ticket:462]
+    - fix to reflection on older DB's that might return array() type for 
+    "show variables like" statements
+    - postgres:
+    - better reflection of sequences for alternate-schema Tables [ticket:442]
+    - sequences on a non-pk column will properly fire off on INSERT
+    - added PGInterval type [ticket:460], PGInet type [ticket:444]
 - mssql:
-  - preliminary support for pyodbc (Yay!) [ticket:419]
-  - better support for NVARCHAR types added [ticket:298]
-  - fix for commit logic on pymssql
-  - fix for query.get() with schema [ticket:456]
-  - fix for non-integer relationships [ticket:473]
-  - DB-API module now selectable at run-time [ticket:419]
-  - now passes many more unit tests [tickets:422, 481, 415]
-  - better unittest compatibility with ANSI functions [ticket:479]
-  - improved support for implicit sequence PK columns with auto-insert [ticket:415]
-  - fix for blank password in adodbapi [ticket:371]
-  - fixes to get unit tests working with pyodbc [ticket:481]
-  - fix to auto_identity_insert on db-url query
-  - added query_timeout to db-url query parms. currently works only for pymssql
-  - tested with pymssql 0.8.0 (which is now LGPL)
+    - preliminary support for pyodbc (Yay!) [ticket:419]
+    - better support for NVARCHAR types added [ticket:298]
+    - fix for commit logic on pymssql
+    - fix for query.get() with schema [ticket:456]
+    - fix for non-integer relationships [ticket:473]
+    - DB-API module now selectable at run-time [ticket:419]
+    - now passes many more unit tests [tickets:422, 481, 415]
+    - better unittest compatibility with ANSI functions [ticket:479]
+    - improved support for implicit sequence PK columns with auto-insert
+      [ticket:415]
+    - fix for blank password in adodbapi [ticket:371]
+    - fixes to get unit tests working with pyodbc [ticket:481]
+    - fix to auto_identity_insert on db-url query
+    - added query_timeout to db-url query parms. currently works only for
+      pymssql
+    - tested with pymssql 0.8.0 (which is now LGPL)
+- orm bugs:
+    - another refactoring to relationship calculation. Allows more accurate
+      ORM behavior with relationships from/to/between mappers, particularly
+      polymorphic mappers, also their usage with Query, SelectResults. tickets
+      include [ticket:439], [ticket:441], [ticket:448].
+    - extension() query option propigates to Mapper._instance() method so that
+      all loading-related methods get called [ticket:454]
+    - eager relation to an inheriting mapper wont fail if no rows returned for
+      the relationship.
+    - eager relation loading bug fixed for eager relation on multiple
+      descendant classes [ticket:486]
+    - fix for very large topological sorts, courtesy ants.aasma at gmail
+      [ticket:423]
+    - eager loading is slightly more strict about detecting "self-referential"
+      relationships, specifically between polymorphic mappers. this results in
+      an "eager degrade" to lazy loading.
+    - improved support for complex queries embedded into "where" criterion for
+      query.select() [ticket:449]
+    - mapper options like eagerload(), lazyload(), deferred(), will work for
+      "synonym()" relationships [ticket:485]
+    - fixed bug where cascade operations incorrectly included deleted
+      collection items in the cascade [ticket:445]
+    - fixed relationship deletion error when one-to-many child item is moved
+      to a new parent in a single unit of work [ticket:478]
+    - fixed relationship deletion error where parent/child with a single
+      column as PK/FK on the child would raise a "blank out the primary key"
+      error, if manually deleted or "delete" cascade without "delete-orphan"
+      was used
+    - fix to deferred so that load operation doesnt mistakenly occur when only
+      PK col attributes are set
+- orm enhancements:
+    - implemented foreign_keys argument to mapper [ticket:385]. use in
+      conjunction with primaryjoin/secondaryjoin arguments to specify/override
+      foreign keys defined on the Table instance.
+    - contains_eager('foo') automatically implies eagerload('foo')
+    - added "alias" argument to contains_eager(). use it to specify the string
+      name or Alias instance of an alias used in the query for the eagerly
+      loaded child items. easier to use than "decorator"
+    - added "contains_alias()" option for result set mapping to an alias of
+      the mapped table
+    - added support for py2.5 "with" statement with SessionTransaction
+      [ticket:468]
+- extensions:
+    - added distinct() method to SelectResults. generally should only make a
+      difference when using count().
+    - added options() method to SelectResults, equivalent to query.options()
+      [ticket:472]
+    - added optional __table_opts__ dictionary to ActiveMapper, will send kw
+      options to Table objects [ticket:462]
 
-  
 0.3.4
 - general:
   - global "insure"->"ensure" change. in US english "insure" is actually
