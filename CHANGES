@@ -76,17 +76,20 @@
   - added optional __table_opts__ dictionary to ActiveMapper, will send kw options to 
   Table objects [ticket:462]
 - mssql:
+  - preliminary support for pyodbc (Yay!) [ticket:419]
   - better support for NVARCHAR types added [ticket:298]
   - fix for commit logic on pymssql
   - fix for query.get() with schema [ticket:456]
   - fix for non-integer relationships [ticket:473]
   - DB-API module now selectable at run-time [ticket:419]
-  - preliminary support for pyodbc (Yay!) [ticket:419]
   - now passes many more unit tests [tickets:422, 481, 415]
   - better unittest compatibility with ANSI functions [ticket:479]
   - improved support for implicit sequence PK columns with auto-insert [ticket:415]
   - fix for blank password in adodbapi [ticket:371]
   - fixes to get unit tests working with pyodbc [ticket:481]
+  - fix to auto_identity_insert on db-url query
+  - added query_timeout to db-url query parms. currently works only for pymssql
+  - tested with pymssql 0.8.0 (which is now LGPL)
 
   
 0.3.4

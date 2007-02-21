@@ -2,7 +2,7 @@
 
 """
 notes:
-  supports both pymssql and adodbapi interfaces
+  supports the pymssq, adodbapi and pyodbc interfaces
 
   IDENTITY columns are supported by using SA schema.Sequence() objects. In other words:
          Table('test', mss_engine,
@@ -28,7 +28,6 @@ Known issues / TODO:
   no support for more than one IDENTITY column per table
   no support for table reflection of IDENTITY columns with (seed,increment) values other than (1,1)
   no support for GUID type columns (yet)
-  pymssql has problems with transaction control that this module attempts to work around
   pymssql has problems with binary and unicode data that this module does NOT work around
   adodbapi fails testtypes.py unit test on unicode data too -- issue with the test?
 
@@ -89,7 +88,7 @@ def use_pyodbc():
     sane_rowcount = False
     dialect = MSSQLDialect
     import warnings
-    warnings.warn('pyodbc support in sqlalchemy.databases.mssql is extremely experimental - use at your own risk.')
+    warnings.warn('pyodbc support in sqlalchemy.databases.mssql is experimental - use at your own risk.')
     colspecs[sqltypes.Unicode] = AdoMSUnicode
     ischema_names['nvarchar'] = AdoMSUnicode
 
@@ -362,7 +361,9 @@ class MSSQLDialect(ansisql.ANSIDialect):
         opts = url.translate_connect_args(['host', 'database', 'user', 'password', 'port'])
         opts.update(url.query)
         if opts.has_key('auto_identity_insert'):
-            self.auto_identity_insert = bool(int(opts['auto_identity_insert']))
+            self.auto_identity_insert = bool(opts.pop('auto_identity_insert'))
+        if opts.has_key('query_timeout'):
+            self.query_timeout = int(opts.pop('query_timeout'))
         return make_connect_string(opts)
 
     def create_execution_context(self):
@@ -571,6 +572,14 @@ class PyMSSQLDialect(MSSQLDialect):
             connection.rollback()
         except:
             pass
+
+    def create_connect_args(self, url):
+        r = super(PyMSSQLDialect, self).create_connect_args(url)
+        if hasattr(self, 'query_timeout'):
+            dbmodule._mssql.set_query_timeout(self.query_timeout)
+        return r
+        
+
 ##    This code is leftover from the initial implementation, for reference
 ##    def do_begin(self, connection):
 ##        """implementations might want to put logic here for turning autocommit on/off, etc."""
