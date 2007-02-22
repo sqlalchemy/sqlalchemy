@@ -213,19 +213,22 @@ class Query(object):
         The criterion is constructed in the same way as the select_by() method."""
         return self.count(self.join_by(*args, **params))
 
-    def selectfirst(self, *args, **params):
+    def selectfirst(self, arg=None, **kwargs):
         """works like select(), but only returns the first result by itself, or None if no 
         objects returned."""
-        params['limit'] = 1
-        ret = self.select_whereclause(*args, **params)
+        if isinstance(arg, sql.FromClause) and arg.supports_execution():
+            ret = self.select_statement(arg, **kwargs)
+        else:
+            kwargs['limit'] = 1
+            ret = self.select_whereclause(whereclause=arg, **kwargs)
         if ret:
             return ret[0]
         else:
             return None
 
-    def selectone(self, *args, **params):
+    def selectone(self, arg=None, **kwargs):
         """works like selectfirst(), but throws an error if not exactly one result was returned."""
-        ret = list(self.select(*args, **params)[0:2])
+        ret = list(self.select(arg, **kwargs)[0:2])
         if len(ret) == 1:
             return ret[0]
         elif len(ret) == 0:
@@ -247,7 +250,7 @@ class Query(object):
         ret = self.extension.select(self, arg=arg, **kwargs)
         if ret is not mapper.EXT_PASS:
             return ret
-        if isinstance(arg, sql.FromClause):
+        if isinstance(arg, sql.FromClause) and arg.supports_execution():
             return self.select_statement(arg, **kwargs)
         else:
             return self.select_whereclause(whereclause=arg, **kwargs)
