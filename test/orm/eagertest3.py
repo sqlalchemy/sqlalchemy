@@ -332,27 +332,27 @@ class EagerTest5(testbase.ORMTest):
         global base, derived, derivedII, comments
         base = Table(
             'base', metadata,
-            Column('uid', String, primary_key=True), 
-            Column('x', String)
+            Column('uid', String(30), primary_key=True), 
+            Column('x', String(30))
             )
 
         derived = Table(
             'derived', metadata,
-            Column('uid', String, ForeignKey(base.c.uid), primary_key=True),
-            Column('y', String)
+            Column('uid', String(30), ForeignKey(base.c.uid), primary_key=True),
+            Column('y', String(30))
             )
 
         derivedII = Table(
             'derivedII', metadata,
-            Column('uid', String, ForeignKey(base.c.uid), primary_key=True),
-            Column('z', String)
+            Column('uid', String(30), ForeignKey(base.c.uid), primary_key=True),
+            Column('z', String(30))
             )
 
         comments = Table(
             'comments', metadata,
             Column('id', Integer, primary_key=True),
-            Column('uid', String, ForeignKey(base.c.uid)),
-            Column('comment', String)
+            Column('uid', String(30), ForeignKey(base.c.uid)),
+            Column('comment', String(30))
             )
     def test_basic(self):
         class Base(object):
