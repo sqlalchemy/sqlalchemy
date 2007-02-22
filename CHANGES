@@ -111,6 +111,7 @@
       [ticket:472]
     - added optional __table_opts__ dictionary to ActiveMapper, will send kw
       options to Table objects [ticket:462]
+    - added selectfirst(), selectfirst_by() to assign_mapper [ticket:467]
 
 0.3.4
 - general:
