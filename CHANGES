@@ -1,3 +1,6 @@
+- sql:
+    - exists() becomes useable as a standalone selectable, not just in a 
+    WHERE clause
 - orm:
     - a full select() construct can be passed to query.select() (which
       worked anyway), but also query.selectfirst(), query.selectone() which

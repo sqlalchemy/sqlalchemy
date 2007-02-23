@@ -170,11 +170,10 @@ def extract(field, expr):
     """return extract(field FROM expr)"""
     expr = _BinaryClause(text(field), expr, "FROM")
     return func.extract(expr)
+
     
-def exists(*args, **params):
-    params['correlate'] = True
-    s = select(*args, **params)
-    return _BooleanExpression(_TextClause("EXISTS"), s, None)
+def exists(*args, **kwargs):
+    return _Exists(*args, **kwargs)
 
 def union(*selects, **params):
     return _compound_select('UNION', *selects, **params)
@@ -1118,6 +1117,14 @@ class _BooleanExpression(_BinaryExpression):
             return _BooleanExpression(self.left, self.right, self.negate, negate=self.operator, type=self.type)
         else:
             return super(_BooleanExpression, self)._negate()
+
+class _Exists(_BooleanExpression):
+    def __init__(self, *args, **kwargs):
+        kwargs['correlate'] = True
+        s = select(*args, **kwargs)
+        _BooleanExpression.__init__(self, _TextClause("EXISTS"), s, None)
+    def _hide_froms(self):
+        return self._get_from_objects()
         
 class Join(FromClause):
     def __init__(self, left, right, onclause=None, isouter = False):
