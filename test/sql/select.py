@@ -162,6 +162,17 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             s,
             "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE EXISTS (SELECT 1 FROM myothertable WHERE myothertable.otherid = mytable.myid)"
         )
+    
+    def testorderbysubquery(self):
+        self.runtest(
+            table1.select(order_by=[select([table2.c.otherid], table1.c.myid==table2.c.otherid)]),
+            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable ORDER BY (SELECT myothertable.otherid AS otherid FROM myothertable WHERE mytable.myid = myothertable.otherid)"
+        )
+        self.runtest(
+            table1.select(order_by=[desc(select([table2.c.otherid], table1.c.myid==table2.c.otherid))]),
+            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable ORDER BY (SELECT myothertable.otherid AS otherid FROM myothertable WHERE mytable.myid = myothertable.otherid) DESC"
+        )
+        
         
     def testcolumnsubquery(self):
         s = select([table1.c.myid], scalar=True, correlate=False)
@@ -566,15 +577,17 @@ myothertable.othername != :myothertable_othername AND EXISTS (select yay from fo
         self.runtest(query.select(), "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername, thirdtable.userid, thirdtable.otherstuff FROM mytable, myothertable, thirdtable WHERE mytable.myid = myothertable.otherid(+) AND thirdtable.userid(+) = myothertable.otherid", dialect=oracle.dialect(use_ansi=False))    
 
     def testbindparam(self):
-        self.runtest(select(
+        for stmt, assertion in [
+            (
+                select(
                     [table1, table2],
                     and_(table1.c.myid == table2.c.otherid,
-                    table1.c.name == bindparam('mytablename'),
-                    )
-                ),
+                    table1.c.name == bindparam('mytablename')),
                 "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername \
-FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable.name = :mytablename"
-                )
+        FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable.name = :mytablename"
+            )
+        ]:
+            self.runtest(stmt, assertion)
 
         # check that the bind params sent along with a compile() call
         # get preserved when the params are retreived later

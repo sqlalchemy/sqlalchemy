@@ -918,6 +918,8 @@ class ClauseList(ClauseElement):
             if c is None: continue
             self.append(c)
         self.parens = kwargs.get('parens', False)
+    def __iter__(self):
+        return iter(self.clauses)
     def copy_container(self):
         clauses = [clause.copy_container() for clause in self.clauses]
         return ClauseList(parens=self.parens, *clauses)
@@ -1494,15 +1496,21 @@ class Select(_SelectBaseMixin, FromClause):
         self.__correlator = Select._CorrelatedVisitor(self, False)
         self.__wherecorrelator = Select._CorrelatedVisitor(self, True)
 
-        self.group_by(*(group_by or [None]))
-        self.order_by(*(order_by or [None]))
-        
+
         if columns is not None:
             for c in columns:
                 self.append_column(c)
 
+        self.order_by(*(order_by or [None]))
+        self.group_by(*(group_by or [None]))
+        for c in self.order_by_clause:
+            c.accept_visitor(self.__correlator)
+        for c in self.group_by_clause:
+            c.accept_visitor(self.__correlator)
+
         for f in from_obj:
             self.append_from(f)
+
 
         # whereclauses must be appended after the columns/FROM, since it affects
         # the correlation of subqueries.  see test/sql/select.py SelectTest.testwheresubquery
@@ -1549,7 +1557,8 @@ class Select(_SelectBaseMixin, FromClause):
         
         # visit the FROM objects of the column looking for more Selects
         for f in column._get_from_objects():
-            f.accept_visitor(self.__correlator)
+            if f is not self:
+                f.accept_visitor(self.__correlator)
         self._process_froms(column, False)
     def _make_proxy(self, selectable, name):
         if self.is_scalar:
