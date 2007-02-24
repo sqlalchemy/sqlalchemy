@@ -114,6 +114,14 @@ class MapperTest(MapperSuperTest):
         self.assert_(u.user_name == 'jack')
         self.assert_(a not in u.addresses)
     
+    def testexpirecascade(self):
+        mapper(User, users, properties={'addresses':relation(mapper(Address, addresses), cascade="all, refresh-expire")})
+        s = create_session()
+        u = s.get(User, 8)
+        u.addresses[0].email_address = 'someotheraddress'
+        s.expire(u)
+        assert u.addresses[0].email_address == 'ed@wood.com'
+        
     def testrefreshwitheager(self):
         """test that a refresh/expire operation loads rows properly and sends correct "isnew" state to eager loaders"""
         mapper(User, users, properties={'addresses':relation(mapper(Address, addresses), lazy=False)})

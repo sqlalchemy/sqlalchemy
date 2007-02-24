@@ -264,12 +264,16 @@ class Session(object):
         an attribute is next accessed, the session will reload all attributes on the instance
         from the database.
         """
+        for c in [obj] + list(_object_mapper(obj).cascade_iterator('refresh-expire', obj)):
+            self._expire_impl(c)
+            
+    def _expire_impl(self, obj):
         self._validate_persistent(obj)
         def exp():
             if self.query(obj.__class__)._get(obj._instance_key, reload=True) is None:
                 raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % repr(obj))
         attribute_manager.trigger_history(obj, exp)
-
+        
     def is_expired(self, obj, unexpire=False):
         """return True if the given object has been marked as expired."""
         ret = attribute_manager.has_trigger(obj)
