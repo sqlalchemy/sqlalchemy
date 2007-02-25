@@ -348,9 +348,12 @@ class RelationTest4(testbase.ORMTest):
         session.flush()
 
         engineer4 = session.query(Engineer).selectfirst_by(name="E4")
-
-        car1 = Car(owner=engineer4.person_id)
+        manager3 = session.query(Manager).selectfirst_by(name="M3")
+        
+        car1 = Car(employee=engineer4)
         session.save(car1)
+        car2 = Car(employee=manager3)
+        session.save(car2)
         session.flush()
 
         session.clear()
@@ -478,6 +481,107 @@ class RelationTest6(testbase.ORMTest):
         m2 = sess.query(Manager).get(m2.person_id)
         assert m.colleague is m2
 
+class RelationTest7(testbase.ORMTest):
+    def define_tables(self, metadata):
+        global people, engineers, managers, cars, offroad_cars
+        cars = Table('cars', metadata,
+                Column('car_id', Integer, primary_key=True),
+                Column('name', String(30)))
+
+        offroad_cars = Table('offroad_cars', metadata,
+                Column('car_id',Integer, ForeignKey('cars.car_id'),nullable=False,primary_key=True))
+
+        people = Table('people', metadata,
+                Column('person_id', Integer, primary_key=True),
+                Column('car_id', Integer, ForeignKey('cars.car_id'), nullable=False),
+                Column('name', String(50)))
+
+        engineers = Table('engineers', metadata,
+                Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
+                Column('field', String(30)))
+
+
+        managers = Table('managers', metadata,
+                Column('person_id', Integer, ForeignKey('people.person_id'), primary_key=True),
+                Column('category', String(70)))
+
+    def test_manytoone_lazyload(self):
+        """test that lazy load clause to a polymorphic child mapper generates correctly [ticket:493]"""
+        class PersistentObject(object):
+            def __init__(self, **kwargs):
+                for key, value in kwargs.iteritems():
+                    setattr(self, key, value)
+
+        class Status(PersistentObject):
+            def __repr__(self):
+                return "Status %s" % self.name
+
+        class Person(PersistentObject):
+            def __repr__(self):
+                return "Ordinary person %s" % self.name
+
+        class Engineer(Person):
+            def __repr__(self):
+                return "Engineer %s, field %s" % (self.name, self.field)
+
+        class Manager(Person):
+            def __repr__(self):
+                return "Manager %s, category %s" % (self.name, self.category)
+
+        class Car(PersistentObject):
+            def __repr__(self):
+                return "Car number %d, name %s" % i(self.car_id, self.name)
+
+        class Offraod_Car(Car):
+            def __repr__(self):
+                return "Offroad Car number %d, name %s" % (self.car_id,self.name)
+
+        employee_join = polymorphic_union(
+                {
+                    'engineer':people.join(engineers),
+                    'manager':people.join(managers), 
+                }, "type", 'employee_join')
+
+        car_join = polymorphic_union(
+            {
+                'car' : cars.select(offroad_cars.c.car_id == None, from_obj=[cars.outerjoin(offroad_cars)]),
+                # cant do this one because "car_id" from both tables conflicts on pg
+#                'car' : cars.outerjoin(offroad_cars).select(offroad_cars.c.car_id == None),
+                'offroad' : cars.join(offroad_cars)
+            }, "type", 'car_join')
+
+        car_mapper  = mapper(Car, cars,
+                select_table=car_join,polymorphic_on=car_join.c.type,
+                polymorphic_identity='car',
+                )
+        offroad_car_mapper = mapper(Offraod_Car, offroad_cars, inherits=car_mapper, polymorphic_identity='offroad')
+        person_mapper = mapper(Person, people,
+                select_table=employee_join,polymorphic_on=employee_join.c.type,
+                polymorphic_identity='person', 
+                properties={
+                    'car':relation(car_mapper)
+                    })
+        engineer_mapper = mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
+        manager_mapper  = mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
+
+        session = create_session()
+        basic_car=Car(name="basic")
+        offroad_car=Offraod_Car(name="offroad")
+
+        for i in range(1,4):
+            if i%2:
+                car=Car()
+            else:
+                car=Offraod_Car()
+            session.save(Manager(name="M%d" % i,category="YYYYYYYYY",car=car))
+            session.save(Engineer(name="E%d" % i,field="X",car=car))
+            session.flush()
+            session.clear()
+
+        r = session.query(Person).select()
+        for p in r:
+            assert p.car_id == p.car.car_id
+    
 class SelectResultsTest(testbase.AssertMixin):
     def setUpAll(self):
         #  cars---owned by---  people (abstract) --- has a --- status

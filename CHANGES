@@ -8,6 +8,10 @@
       will be used as is (i.e. no query is compiled). works similarly to
       sending the results to instances().
     - added "refresh-expire" cascade [ticket:492]
+    - more fixes to polymorphic relations, involving proper lazy-clause
+      generation on many-to-one relationships to polymorphic mappers 
+      [ticket:493]
+    
 0.3.5
 - sql:
     - the value of "case_sensitive" defaults to True now, regardless of the

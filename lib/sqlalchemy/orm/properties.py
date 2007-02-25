@@ -330,10 +330,15 @@ class PropertyLoader(StrategizedProperty):
                 elif self.direction is sync.MANYTOONE:
                     self.polymorphic_primaryjoin.accept_visitor(sql_util.ClauseAdapter(self.mapper.select_table, exclude=self.foreign_keys, equivalents=target_equivalents))
                 self.polymorphic_secondaryjoin = None
+            # load "polymorphic" versions of the columns present in "remote_side" - this is
+            # important for lazy-clause generation which goes off the polymorphic target selectable
             for c in list(self.remote_side):
-                corr = self.mapper.select_table.corresponding_column(c, raiseerr=False)
+                corr = self.mapper.select_table.corresponding_column(c, raiseerr=False) or \
+                    (c in target_equivalents and self.mapper.select_table.corresponding_column(target_equivalents[c], raiseerr=False))
                 if corr:
                     self.remote_side.add(corr)
+                else:
+                    raise exceptions.AssertionError("Could not find corresponding column for " + str(c) + " in selectable "  + str(self.mapper.select_table))
         else:
             self.polymorphic_primaryjoin = self.primaryjoin.copy_container()
             self.polymorphic_secondaryjoin = self.secondaryjoin and self.secondaryjoin.copy_container() or None
@@ -342,8 +347,8 @@ class PropertyLoader(StrategizedProperty):
         if logging.is_info_enabled(self.logger):
             self.logger.info(str(self) + " setup primary join " + str(self.primaryjoin))
             self.logger.info(str(self) + " setup polymorphic primary join " + str(self.polymorphic_primaryjoin))
-            self.logger.info(str(self) + " foreign keys " + str([c.key for c in self.foreign_keys]))
-            self.logger.info(str(self) + " remote columns " + str([c.key for c in self.remote_side]))
+            self.logger.info(str(self) + " foreign keys " + str([str(c) for c in self.foreign_keys]))
+            self.logger.info(str(self) + " remote columns " + str([str(c) for c in self.remote_side]))
             self.logger.info(str(self) + " relation direction " + (self.direction is sync.ONETOMANY and "one-to-many" or (self.direction is sync.MANYTOONE and "many-to-one" or "many-to-many")))
         
         if self.uselist is None and self.direction is sync.MANYTOONE:
