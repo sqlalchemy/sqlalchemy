@@ -582,11 +582,11 @@ myothertable.othername != :myothertable_othername AND EXISTS (select yay from fo
                 select(
                     [table1, table2],
                     and_(table1.c.myid == table2.c.otherid,
-                    table1.c.name == bindparam('mytablename')),
-                "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername \
-        FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable.name = :mytablename"
+                    table1.c.name == bindparam('mytablename'))),
+                "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid AND mytable.name = :mytablename"
             )
-        ]:
+	]:
+
             self.runtest(stmt, assertion)
 
         # check that the bind params sent along with a compile() call
