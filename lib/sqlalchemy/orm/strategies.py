@@ -41,8 +41,12 @@ class ColumnLoader(LoaderStrategy):
 ColumnLoader.logger = logging.class_logger(ColumnLoader)
 
 class DeferredColumnLoader(LoaderStrategy):
-    """describes an object attribute that corresponds to a table column, which also
-    will "lazy load" its value from the table.  this is per-column lazy loading."""
+    """Describes an object attribute that corresponds to a table
+    column, which also will *lazy load* its value from the table.
+
+    This is per-column lazy loading.
+    """
+    
     def init(self):
         super(DeferredColumnLoader, self).init()
         self.columns = self.parent_property.columns
@@ -120,6 +124,7 @@ class DeferredOption(StrategizedOption):
     def __init__(self, key, defer=False):
         super(DeferredOption, self).__init__(key)
         self.defer = defer
+
     def get_strategy_class(self):
         if self.defer:
             return DeferredColumnLoader
@@ -143,6 +148,7 @@ class AbstractRelationLoader(LoaderStrategy):
 class NoLoader(AbstractRelationLoader):
     def init_class_attribute(self):
         self._register_attribute(self.parent.class_)
+
     def process_row(self, selectcontext, instance, row, identitykey, isnew):
         if isnew:
             if not self.is_default or len(selectcontext.options):
@@ -266,6 +272,7 @@ class LazyLoader(AbstractRelationLoader):
                 
         def bind_label():
             return "lazy_" + hex(random.randint(0, 65535))[2:]
+
         def visit_binary(binary):
             leftcol = find_column_in_expr(binary.left)
             rightcol = find_column_in_expr(binary.right)
@@ -299,9 +306,9 @@ class LazyLoader(AbstractRelationLoader):
 LazyLoader.logger = logging.class_logger(LazyLoader)
 
 
-        
 class EagerLoader(AbstractRelationLoader):
-    """loads related objects inline with a parent query."""
+    """Loads related objects inline with a parent query."""
+    
     def init(self):
         super(EagerLoader, self).init()
         if self.parent.isa(self.mapper):
@@ -312,15 +319,18 @@ class EagerLoader(AbstractRelationLoader):
         self.clauses_by_lead_mapper = {}
 
     class AliasedClauses(object):
-        """defines a set of join conditions and table aliases which are aliased on a randomly-generated
-        alias name, corresponding to the connection of an optional parent AliasedClauses object and a 
-        target mapper.
+        """Defines a set of join conditions and table aliases which
+        are aliased on a randomly-generated alias name, corresponding
+        to the connection of an optional parent AliasedClauses object
+        and a target mapper.
         
-        EagerLoader has a distinct AliasedClauses object per parent AliasedClauses object,
-        so that all paths from one mapper to another across a chain of eagerloaders generates a distinct
-        chain of joins.  The AliasedClauses objects are generated and cached on an as-needed basis.
+        EagerLoader has a distinct AliasedClauses object per parent
+        AliasedClauses object, so that all paths from one mapper to
+        another across a chain of eagerloaders generates a distinct
+        chain of joins.  The AliasedClauses objects are generated and
+        cached on an as-needed basis.
         
-        e.g.:
+        E.g.::
         
             mapper A -->
                 (EagerLoader 'items') --> 
@@ -328,7 +338,7 @@ class EagerLoader(AbstractRelationLoader):
                         (EagerLoader 'keywords') --> 
                             mapper C
             
-            will generate:
+        will generate::
             
             EagerLoader 'items' --> {
                 None : AliasedClauses(items, None, alias_suffix='AB34')        # mappera JOIN mapperb_AB34
@@ -340,6 +350,7 @@ class EagerLoader(AbstractRelationLoader):
                         AliasedClauses(keywords, items, alias_suffix='8F44')   # mapperb_AB34 JOIN mapperc_8F44
             ]
         """
+        
         def __init__(self, eagerloader, parentclauses=None):
             self.parent = eagerloader
             self.target = eagerloader.select_table
@@ -408,7 +419,8 @@ class EagerLoader(AbstractRelationLoader):
         self.parent_property._get_strategy(LazyLoader).init_class_attribute()
         
     def setup_query(self, context, eagertable=None, parentclauses=None, parentmapper=None, **kwargs):
-        """add a left outer join to the statement thats being constructed"""
+        """Add a left outer join to the statement thats being constructed."""
+        
         if parentmapper is None:
             localparent = context.mapper
         else:
@@ -468,9 +480,13 @@ class EagerLoader(AbstractRelationLoader):
             value.setup(context, eagertable=clauses.eagertarget, parentclauses=clauses, parentmapper=self.select_mapper)
 
     def _create_row_processor(self, selectcontext, row):
-        """create a 'row processing' function that will apply eager aliasing to the row.
+        """Create a *row processing* function that will apply eager
+        aliasing to the row.
         
-        also check that an identity key can be retrieved from the row, else return None."""
+        Also check that an identity key can be retrieved from the row,
+        else return None.
+        """
+        
         # check for a user-defined decorator in the SelectContext (which was set up by the contains_eager() option)
         if selectcontext.attributes.has_key((EagerLoader, self.parent_property)):
             # custom row decoration function, placed in the selectcontext by the 
@@ -501,8 +517,12 @@ class EagerLoader(AbstractRelationLoader):
             return None
 
     def process_row(self, selectcontext, instance, row, identitykey, isnew):
-        """receive a row.  tell our mapper to look for a new object instance in the row, and attach
-        it to a list on the parent instance."""
+        """Receive a row.
+
+        Tell our mapper to look for a new object instance in the row,
+        and attach it to a list on the parent instance.
+        """
+        
         if self in selectcontext.recursion_stack:
             return
         
@@ -563,6 +583,7 @@ class EagerLazyOption(StrategizedOption):
     def __init__(self, key, lazy=True):
         super(EagerLazyOption, self).__init__(key)
         self.lazy = lazy
+
     def process_query_property(self, context, prop):
         if self.lazy:
             if prop in context.eager_loaders:
@@ -570,6 +591,7 @@ class EagerLazyOption(StrategizedOption):
         else:
             context.eager_loaders.add(prop)
         super(EagerLazyOption, self).process_query_property(context, prop)
+
     def get_strategy_class(self):
         if self.lazy:
             return LazyLoader
@@ -577,6 +599,7 @@ class EagerLazyOption(StrategizedOption):
             return EagerLoader
         elif self.lazy is None:
             return NoLoader
+
 EagerLazyOption.logger = logging.class_logger(EagerLazyOption)
 
 class RowDecorateOption(PropertyOption):
@@ -584,6 +607,7 @@ class RowDecorateOption(PropertyOption):
         super(RowDecorateOption, self).__init__(key)
         self.decorator = decorator
         self.alias = alias
+
     def process_selection_property(self, context, property):
         if self.alias is not None and self.decorator is None:
             if isinstance(self.alias, basestring):
@@ -595,6 +619,7 @@ class RowDecorateOption(PropertyOption):
                 return d
             self.decorator = decorate
         context.attributes[(EagerLoader, property)] = self.decorator
+
 RowDecorateOption.logger = logging.class_logger(RowDecorateOption)
         
 

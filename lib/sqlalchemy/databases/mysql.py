@@ -25,21 +25,24 @@ def kw_colspec(self, spec):
     if self.zerofill:
         spec += ' ZEROFILL'
     return spec
-        
+
 class MSNumeric(sqltypes.Numeric):
     def __init__(self, precision = 10, length = 2, **kw):
         self.unsigned = 'unsigned' in kw
         self.zerofill = 'zerofill' in kw
         super(MSNumeric, self).__init__(precision, length)
+
     def get_col_spec(self):
         if self.precision is None:
             return kw_colspec(self, "NUMERIC")
         else:
             return kw_colspec(self, "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length})
+
 class MSDecimal(MSNumeric):
     def get_col_spec(self):
         if self.precision is not None and self.length is not None:
             return kw_colspec(self, "DECIMAL(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length})
+
 class MSDouble(MSNumeric):
     def __init__(self, precision=10, length=2, **kw):
         if (precision is None and length is not None) or (precision is not None and length is None):
@@ -47,11 +50,13 @@ class MSDouble(MSNumeric):
         self.unsigned = 'unsigned' in kw
         self.zerofill = 'zerofill' in kw
         super(MSDouble, self).__init__(precision, length)
+
     def get_col_spec(self):
         if self.precision is not None and self.length is not None:
             return "DOUBLE(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
         else:
             return kw_colspec(self, "DOUBLE")
+
 class MSFloat(sqltypes.Float):
     def __init__(self, precision=10, length=None, **kw):
         if length is not None:
@@ -59,6 +64,7 @@ class MSFloat(sqltypes.Float):
         self.unsigned = 'unsigned' in kw
         self.zerofill = 'zerofill' in kw
         super(MSFloat, self).__init__(precision)
+
     def get_col_spec(self):
         if hasattr(self, 'length') and self.length is not None:
             return kw_colspec(self, "FLOAT(%(precision)s,%(length)s)" % {'precision': self.precision, 'length' : self.length})
@@ -66,23 +72,27 @@ class MSFloat(sqltypes.Float):
             return kw_colspec(self, "FLOAT(%(precision)s)" % {'precision': self.precision})
         else:
             return kw_colspec(self, "FLOAT")
+
 class MSInteger(sqltypes.Integer):
     def __init__(self, length=None, **kw):
         self.length = length
         self.unsigned = 'unsigned' in kw
         self.zerofill = 'zerofill' in kw
         super(MSInteger, self).__init__()
+
     def get_col_spec(self):
         if self.length is not None:
             return kw_colspec(self, "INTEGER(%(length)s)" % {'length': self.length})
         else:
             return kw_colspec(self, "INTEGER")
+
 class MSBigInteger(MSInteger):
     def get_col_spec(self):
         if self.length is not None:
             return kw_colspec(self, "BIGINT(%(length)s)" % {'length': self.length})
         else:
             return kw_colspec(self, "BIGINT")
+
 class MSSmallInteger(sqltypes.Smallinteger):
     def __init__(self, length=None, **kw):
         self.length = length
@@ -94,54 +104,65 @@ class MSSmallInteger(sqltypes.Smallinteger):
             return kw_colspec(self, "SMALLINT(%(length)s)" % {'length': self.length})
         else:
             return kw_colspec(self, "SMALLINT")
+
 class MSDateTime(sqltypes.DateTime):
     def get_col_spec(self):
         return "DATETIME"
+
 class MSDate(sqltypes.Date):
     def get_col_spec(self):
         return "DATE"
+
 class MSTime(sqltypes.Time):
     def get_col_spec(self):
         return "TIME"
+
     def convert_result_value(self, value, dialect):
         # convert from a timedelta value
         if value is not None:
             return datetime.time(value.seconds/60/60, value.seconds/60%60, value.seconds - (value.seconds/60*60))
         else:
             return None
-            
+
 class MSText(sqltypes.TEXT):
     def __init__(self, **kw):
         self.binary = 'binary' in kw
         super(MSText, self).__init__()
+
     def get_col_spec(self):
         return "TEXT"
+
 class MSTinyText(MSText):
     def get_col_spec(self):
         if self.binary:
             return "TEXT BINARY"
         else:
            return "TEXT"
+
 class MSMediumText(MSText):
     def get_col_spec(self):
         if self.binary:
             return "MEDIUMTEXT BINARY"
         else:
             return "MEDIUMTEXT"
+
 class MSLongText(MSText):
     def get_col_spec(self):
         if self.binary:
             return "LONGTEXT BINARY"
         else:
             return "LONGTEXT"
+
 class MSString(sqltypes.String):
     def __init__(self, length=None, *extra):
         sqltypes.String.__init__(self, length=length)
     def get_col_spec(self):
         return "VARCHAR(%(length)s)" % {'length' : self.length}
+
 class MSChar(sqltypes.CHAR):
     def get_col_spec(self):
         return "CHAR(%(length)s)" % {'length' : self.length}
+
 class MSBinary(sqltypes.Binary):
     def get_col_spec(self):
         if self.length is not None and self.length <=255:
@@ -149,6 +170,7 @@ class MSBinary(sqltypes.Binary):
             return "BINARY(%d)" % self.length
         else:
             return "BLOB"
+
     def convert_result_value(self, value, dialect):
         if value is None:
             return None
@@ -158,7 +180,7 @@ class MSBinary(sqltypes.Binary):
 class MSMediumBlob(MSBinary):
     def get_col_spec(self):
         return "MEDIUMBLOB"
-            
+
 class MSEnum(MSString):
     def __init__(self, *enums):
         self.__enums_hidden = enums
@@ -172,17 +194,20 @@ class MSEnum(MSString):
             strip_enums.append(a)
         self.enums = strip_enums
         super(MSEnum, self).__init__(length)
+
     def get_col_spec(self):
         return "ENUM(%s)" % ",".join(self.__enums_hidden)
-        
+
 
 class MSBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "BOOLEAN"
+
     def convert_result_value(self, value, dialect):
         if value is None:
             return None
         return value and True or False
+
     def convert_bind_param(self, value, dialect):
         if value is True:
             return 1
@@ -192,7 +217,7 @@ class MSBoolean(sqltypes.Boolean):
             return None
         else:
             return value and True or False
-            
+
 colspecs = {
 #    sqltypes.BIGinteger : MSInteger,
     sqltypes.Integer : MSInteger,
@@ -215,7 +240,7 @@ ischema_names = {
     'int' : MSInteger,
     'mediumint' : MSInteger,
     'smallint' : MSSmallInteger,
-    'tinyint' : MSSmallInteger, 
+    'tinyint' : MSSmallInteger,
     'varchar' : MSString,
     'char' : MSChar,
     'text' : MSText,
@@ -244,7 +269,6 @@ def descriptor():
         ('database',"Database Name",None),
         ('host',"Hostname", None),
     ]}
-
 
 class MySQLExecutionContext(default.DefaultExecutionContext):
     def post_exec(self, engine, proxy, compiled, parameters, **kwargs):
@@ -318,7 +342,6 @@ class MySQLDialect(ansisql.ANSIDialect):
             if o.args[0] == 2006 or o.args[0] == 2014:
                 cursor.invalidate()
             raise o
-            
 
     def do_rollback(self, connection):
         # MySQL without InnoDB doesnt support rollback()
@@ -331,7 +354,7 @@ class MySQLDialect(ansisql.ANSIDialect):
         if not hasattr(self, '_default_schema_name'):
             self._default_schema_name = text("select database()", self).scalar()
         return self._default_schema_name
-    
+
     def dbapi(self):
         return self.module
 
@@ -345,7 +368,7 @@ class MySQLDialect(ansisql.ANSIDialect):
         if isinstance(cs, array):
             cs = cs.tostring()
         case_sensitive = int(cs) == 0
-        
+
         if not case_sensitive:
             table.name = table.name.lower()
             table.metadata.tables[table.name]= table
@@ -364,7 +387,7 @@ class MySQLDialect(ansisql.ANSIDialect):
 
             # these can come back as unicode if use_unicode=1 in the mysql connection
             (name, type, nullable, primary_key, default) = (str(row[0]), str(row[1]), row[2] == 'YES', row[3] == 'PRI', row[4])
-            
+
             match = re.match(r'(\w+)(\(.*?\))?\s*(\w+)?\s*(\w+)?', type)
             col_type = match.group(1)
             args = match.group(2)
@@ -391,7 +414,7 @@ class MySQLDialect(ansisql.ANSIDialect):
             colargs= []
             if default:
                 colargs.append(schema.PassiveDefault(sql.text(default)))
-            table.append_column(schema.Column(name, coltype, *colargs, 
+            table.append_column(schema.Column(name, coltype, *colargs,
                                             **dict(primary_key=primary_key,
                                                    nullable=nullable,
                                                    )))
@@ -401,7 +424,7 @@ class MySQLDialect(ansisql.ANSIDialect):
 
         if not found_table:
             raise exceptions.NoSuchTableError(table.name)
-    
+
     def moretableinfo(self, connection, table):
         """Return (tabletype, {colname:foreignkey,...})
         execute(SHOW CREATE TABLE child) =>
@@ -438,10 +461,8 @@ class MySQLDialect(ansisql.ANSIDialect):
             table.append_constraint(constraint)
 
         return tabletype
-        
 
 class MySQLCompiler(ansisql.ANSICompiler):
-
     def visit_cast(self, cast):
         """hey ho MySQL supports almost no types at all for CAST"""
         if (isinstance(cast.type, sqltypes.Date) or isinstance(cast.type, sqltypes.Time) or isinstance(cast.type, sqltypes.DateTime)):
@@ -467,7 +488,7 @@ class MySQLCompiler(ansisql.ANSICompiler):
                 text += " \n LIMIT 18446744073709551615"
             text += " OFFSET " + str(select.offset)
         return text
-        
+
 class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, override_pk=False, first_pk=False):
         t = column.type.engine_impl(self.engine)
@@ -495,6 +516,7 @@ class MySQLSchemaDropper(ansisql.ANSISchemaDropper):
     def visit_index(self, index):
         self.append("\nDROP INDEX " + index.name + " ON " + index.table.name)
         self.execute()
+
     def drop_foreignkey(self, constraint):
         self.append("ALTER TABLE %s DROP FOREIGN KEY %s" % (self.preparer.format_table(constraint.table), constraint.name))
         self.execute()
@@ -502,9 +524,11 @@ class MySQLSchemaDropper(ansisql.ANSISchemaDropper):
 class MySQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
     def __init__(self, dialect):
         super(MySQLIdentifierPreparer, self).__init__(dialect, initial_quote='`')
+
     def _escape_identifier(self, value):
         #TODO: determin MySQL's escaping rules
         return value
+
     def _fold_identifier_case(self, value):
         #TODO: determin MySQL's case folding rules
         return value

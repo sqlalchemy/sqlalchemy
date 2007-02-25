@@ -1,36 +1,45 @@
 # mssql.py
 
-"""
-notes:
-  supports the pymssq, adodbapi and pyodbc interfaces
+"""MSSQL backend, thru either pymssq, adodbapi or pyodbc interfaces.
 
-  IDENTITY columns are supported by using SA schema.Sequence() objects. In other words:
-         Table('test', mss_engine,
-                Column('id',   Integer, Sequence('blah',100,10), primary_key=True),
-                Column('name', String(20))
-              ).create()
+* ``IDENTITY`` columns are supported by using SA ``schema.Sequence()``
+  objects. In other words::
 
-         would yield:
-         CREATE TABLE test (
-           id INTEGER NOT NULL IDENTITY(100,10) PRIMARY KEY,
-           name VARCHAR(20)
-           )
-  note that the start & increment values for sequences are optional and will default to 1,1
+    Table('test', mss_engine,
+           Column('id',   Integer, Sequence('blah',100,10), primary_key=True),
+           Column('name', String(20))
+         ).create()
 
-  support for SET IDENTITY_INSERT ON mode (automagic on / off for INSERTs)
+  would yield::
 
-  support for auto-fetching of @@IDENTITY on insert
+   CREATE TABLE test (
+     id INTEGER NOT NULL IDENTITY(100,10) PRIMARY KEY,
+     name VARCHAR(20)
+     )
 
-  select.limit implemented as SELECT TOP n
+  Note that the start & increment values for sequences are optional
+  and will default to 1,1.
+
+* Support for ``SET IDENTITY_INSERT ON`` mode (automagic on / off for
+  ``INSERT``s)
+
+* Support for auto-fetching of ``@@IDENTITY`` on ``INSERT``
+
+* ``select.limit`` implemented as ``SELECT TOP n``
 
 
 Known issues / TODO:
-  no support for more than one IDENTITY column per table
-  no support for table reflection of IDENTITY columns with (seed,increment) values other than (1,1)
-  no support for GUID type columns (yet)
-  pymssql has problems with binary and unicode data that this module does NOT work around
-  adodbapi fails testtypes.py unit test on unicode data too -- issue with the test?
 
+* No support for more than one ``IDENTITY`` column per table no
+
+* No support for table reflection of ``IDENTITY`` columns with
+ (seed,increment) values other than (1,1)
+
+* No support for ``GUID`` type columns (yet)
+
+* pymssql has problems with binary and unicode data that this module
+  does **not** work around adodbapi fails testtypes.py unit test on
+  unicode data too -- issue with the test?
 """
 
 import sys, StringIO, string, types, re, datetime
@@ -138,6 +147,7 @@ class MSNumeric(sqltypes.Numeric):
 class MSFloat(sqltypes.Float):
     def get_col_spec(self):
         return "FLOAT(%(precision)s)" % {'precision': self.precision}
+
     def convert_bind_param(self, value, dialect):
         """By converting to string, we can use Decimal types round-trip."""
         return str(value) 
@@ -197,14 +207,17 @@ class MSDate(sqltypes.Date):
 class MSText(sqltypes.TEXT):
     def get_col_spec(self):
         return "TEXT"
+
 class MSString(sqltypes.String):
     def get_col_spec(self):
         return "VARCHAR(%(length)s)" % {'length' : self.length}
 
-
 class MSNVarchar(MSString):
-    """NVARCHAR string, does unicode conversion if dialect.convert_encoding is true"""
+    """NVARCHAR string, does Unicode conversion if `dialect.convert_encoding` is True.
+    """
+
     impl = sqltypes.Unicode
+
     def get_col_spec(self):
         if self.length:
             return "NVARCHAR(%(length)s)" % {'length' : self.length}
@@ -214,36 +227,45 @@ class MSNVarchar(MSString):
 class AdoMSNVarchar(MSNVarchar):
     def convert_bind_param(self, value, dialect):
         return value
+
     def convert_result_value(self, value, dialect):
         return value        
 
 class MSUnicode(sqltypes.Unicode):
-    """Unicode subclass, does unicode conversion in all cases, uses NVARCHAR impl"""
+    """Unicode subclass, does Unicode conversion in all cases, uses NVARCHAR impl."""
+
     impl = MSNVarchar
 
 class AdoMSUnicode(MSUnicode):
     impl = AdoMSNVarchar
+
     def convert_bind_param(self, value, dialect):
         return value
+
     def convert_result_value(self, value, dialect):
         return value        
 
 class MSChar(sqltypes.CHAR):
     def get_col_spec(self):
         return "CHAR(%(length)s)" % {'length' : self.length}
+
 class MSNChar(sqltypes.NCHAR):
     def get_col_spec(self):
         return "NCHAR(%(length)s)" % {'length' : self.length}
+
 class MSBinary(sqltypes.Binary):
     def get_col_spec(self):
         return "IMAGE"
+
 class MSBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "BIT"
+
     def convert_result_value(self, value, dialect):
         if value is None:
             return None
         return value and True or False
+
     def convert_bind_param(self, value, dialect):
         if value is True:
             return 1
@@ -307,8 +329,12 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
         super(MSSQLExecutionContext, self).__init__(dialect)
     
     def pre_exec(self, engine, proxy, compiled, parameters, **kwargs):
-        """ MS-SQL has a special mode for inserting non-NULL values into IDENTITY columns.
-        Activate it if the feature is turned on and needed. """
+        """MS-SQL has a special mode for inserting non-NULL values
+        into IDENTITY columns.
+        
+        Activate it if the feature is turned on and needed.
+        """
+        
         if getattr(compiled, "isinsert", False):
             tbl = compiled.statement.table
             if not hasattr(tbl, 'has_sequence'):                
@@ -337,7 +363,11 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
         super(MSSQLExecutionContext, self).pre_exec(engine, proxy, compiled, parameters, **kwargs)
 
     def post_exec(self, engine, proxy, compiled, parameters, **kwargs):
-        """ Turn off the INDENTITY_INSERT mode if it's been activated, and fetch recently inserted IDENTIFY values (works only for one column) """
+        """Turn off the INDENTITY_INSERT mode if it's been activated,
+        and fetch recently inserted IDENTIFY values (works only for
+        one column).
+        """
+        
         if getattr(compiled, "isinsert", False):
             if self.IINSERT:
                 proxy("SET IDENTITY_INSERT %s OFF" % compiled.statement.table.name)
@@ -429,8 +459,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
         c = self._pool.connect()
         c.supportsTransactions = 0
         return c
-
-          
+  
     def dbapi(self):
         return self.module
 
@@ -535,7 +564,6 @@ class MSSQLDialect(ansisql.ANSIDialect):
             if 'PRIMARY' in row[TC.c.constraint_type.name]:
                 table.primary_key.add(table.c[row[0]])
 
-
         # Foreign key constraints
         s = sql.select([C.c.column_name,
                         R.c.table_schema, R.c.table_name, R.c.column_name,
@@ -562,8 +590,6 @@ class MSSQLDialect(ansisql.ANSIDialect):
 
         if fknm and scols:
             table.append_constraint(schema.ForeignKeyConstraint(scols, ['%s.%s' % (t,c) for (s,t,c) in rcols], fknm))
-                                
-
 
 class PyMSSQLDialect(MSSQLDialect):
     def do_rollback(self, connection):
@@ -578,7 +604,6 @@ class PyMSSQLDialect(MSSQLDialect):
         if hasattr(self, 'query_timeout'):
             dbmodule._mssql.set_query_timeout(self.query_timeout)
         return r
-        
 
 ##    This code is leftover from the initial implementation, for reference
 ##    def do_begin(self, connection):
@@ -611,7 +636,6 @@ class PyMSSQLDialect(MSSQLDialect):
 ##        r.query("begin tran")
 ##        r.fetch_array()
 
-
 class MSSQLCompiler(ansisql.ANSICompiler):
     def __init__(self, dialect, statement, parameters, **kwargs):
         super(MSSQLCompiler, self).__init__(dialect, statement, parameters, **kwargs)
@@ -627,7 +651,6 @@ class MSSQLCompiler(ansisql.ANSICompiler):
     def limit_clause(self, select):
         # Limit in mssql is after the select keyword; MSsql has no support for offset
         return ""
-
             
     def visit_table(self, table):
         # alias schema-qualified tables
@@ -699,7 +722,6 @@ class MSSQLSchemaGenerator(ansisql.ANSISchemaGenerator):
         
         return colspec
 
-
 class MSSQLSchemaDropper(ansisql.ANSISchemaDropper):
     def visit_index(self, index):
         self.append("\nDROP INDEX " + index.table.name + "." + index.name)
@@ -711,9 +733,11 @@ class MSSQLDefaultRunner(ansisql.ANSIDefaultRunner):
 class MSSQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
     def __init__(self, dialect):
         super(MSSQLIdentifierPreparer, self).__init__(dialect, initial_quote='[', final_quote=']')
+
     def _escape_identifier(self, value):
         #TODO: determin MSSQL's escapeing rules
         return value
+
     def _fold_identifier_case(self, value):
         #TODO: determin MSSQL's case folding rules
         return value

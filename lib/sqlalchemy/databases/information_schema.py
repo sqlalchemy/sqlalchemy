@@ -85,6 +85,7 @@ class ISchema(object):
     def __init__(self, engine):
         self.engine = engine
         self.cache = {}
+
     def __getattr__(self, name):
         if name not in self.cache:
             # This is a bit of a hack.

@@ -5,8 +5,10 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-"""bridges the PropertyLoader (i.e. a relation()) and the UOWTransaction 
-together to allow processing of scalar- and list-based dependencies at flush time."""
+"""Bridge the ``PropertyLoader`` (i.e. a ``relation()``) and the
+``UOWTransaction`` together to allow processing of scalar- and
+list-based dependencies at flush time.
+"""
 
 from sqlalchemy.orm import sync
 from sqlalchemy.orm.sync import ONETOMANY,MANYTOONE,MANYTOMANY
@@ -42,74 +44,109 @@ class DependencyProcessor(object):
         self._compile_synchronizers()
 
     def _get_instrumented_attribute(self):
-        """return the InstrumentedAttribute handled by this DependencyProecssor"""
-        return getattr(self.parent.class_, self.key)
-        
-    def register_dependencies(self, uowcommit):
-        """tells a UOWTransaction what mappers are dependent on which, with regards
-        to the two or three mappers handled by this PropertyLoader.
+        """Return the ``InstrumentedAttribute`` handled by this
+        ``DependencyProecssor``.
+        """
 
-        Also registers itself as a "processor" for one of its mappers, which
-        will be executed after that mapper's objects have been saved or before
-        they've been deleted.  The process operation manages attributes and dependent
-        operations upon the objects of one of the involved mappers."""
+        return getattr(self.parent.class_, self.key)
+
+    def register_dependencies(self, uowcommit):
+        """Tell a ``UOWTransaction`` what mappers are dependent on
+        which, with regards to the two or three mappers handled by
+        this ``PropertyLoader``.
+
+        Also register itself as a *processor* for one of its mappers,
+        which will be executed after that mapper's objects have been
+        saved or before they've been deleted.  The process operation
+        manages attributes and dependent operations upon the objects
+        of one of the involved mappers.
+        """
+
         raise NotImplementedError()
 
     def whose_dependent_on_who(self, obj1, obj2):
-        """given an object pair assuming obj2 is a child of obj1, returns a tuple
-        with the dependent object second, or None if they are equal.  
-        used by objectstore's object-level topological sort (i.e. cyclical 
-        table dependency)."""
+        """Given an object pair assuming `obj2` is a child of `obj1`,
+        return a tuple with the dependent object second, or None if
+        they are equal.
+
+        Used by objectstore's object-level topological sort (i.e. cyclical
+        table dependency).
+        """
+
         if obj1 is obj2:
             return None
         elif self.direction == ONETOMANY:
             return (obj1, obj2)
         else:
             return (obj2, obj1)
-            
+
     def process_dependencies(self, task, deplist, uowcommit, delete = False):
-        """this method is called during a flush operation to synchronize data between a parent and child object.
-        it is called within the context of the various mappers and sometimes individual objects sorted according to their
-        insert/update/delete order (topological sort)."""
+        """This method is called during a flush operation to
+        synchronize data between a parent and child object.
+
+        It is called within the context of the various mappers and
+        sometimes individual objects sorted according to their
+        insert/update/delete order (topological sort).
+        """
+
         raise NotImplementedError()
 
     def preprocess_dependencies(self, task, deplist, uowcommit, delete = False):
-        """used before the flushes' topological sort to traverse through related objects and ensure every 
-        instance which will require save/update/delete is properly added to the UOWTransaction."""
+        """Used before the flushes' topological sort to traverse
+        through related objects and ensure every instance which will
+        require save/update/delete is properly added to the
+        UOWTransaction.
+        """
+
         raise NotImplementedError()
 
     def _synchronize(self, obj, child, associationrow, clearkeys, uowcommit):
-        """called during a flush to synchronize primary key identifier values between a parent/child object, as well as 
-        to an associationrow in the case of many-to-many."""
+        """Called during a flush to synchronize primary key identifier
+        values between a parent/child object, as well as to an
+        associationrow in the case of many-to-many.
+        """
+
         raise NotImplementedError()
 
     def _compile_synchronizers(self):
-        """assembles a list of 'synchronization rules', which are instructions on how to populate
-        the objects on each side of a relationship.  This is done when a DependencyProcessor is 
+        """Assemble a list of *synchronization rules*, which are
+        instructions on how to populate the objects on each side of a
+        relationship.  This is done when a ``DependencyProcessor`` is
         first initialized.
 
-        The list of rules is used within commits by the _synchronize() method when dependent 
-        objects are processed."""
+        The list of rules is used within commits by the ``_synchronize()``
+        method when dependent objects are processed.
+        """
+
         self.syncrules = sync.ClauseSynchronizer(self.parent, self.mapper, self.direction)
         if self.direction == sync.MANYTOMANY:
             self.syncrules.compile(self.prop.primaryjoin, issecondary=False, foreign_keys=self.foreign_keys)
             self.syncrules.compile(self.prop.secondaryjoin, issecondary=True, foreign_keys=self.foreign_keys)
         else:
             self.syncrules.compile(self.prop.primaryjoin, foreign_keys=self.foreign_keys)
-        
+
     def get_object_dependencies(self, obj, uowcommit, passive = True):
-        """returns the list of objects that are dependent on the given object, as according to the relationship
-        this dependency processor represents"""
+        """Return the list of objects that are dependent on the given
+        object, as according to the relationship this dependency
+        processor represents.
+        """
+
         return sessionlib.attribute_manager.get_history(obj, self.key, passive = passive)
 
     def _conditional_post_update(self, obj, uowcommit, related):
-        """execute a post_update call.
-        
-        for relations that contain the post_update flag, an additional UPDATE statement may be
-        associated after an INSERT or before a DELETE in order to resolve circular row dependencies.
-        This method will check for the post_update flag being set on a particular relationship, and
-        given a target object and list of one or more related objects, and execute the UPDATE if the
-        given related object list contains INSERTs or DELETEs."""
+        """Execute a post_update call.
+
+        For relations that contain the post_update flag, an additional
+        ``UPDATE`` statement may be associated after an ``INSERT`` or
+        before a ``DELETE`` in order to resolve circular row
+        dependencies.
+
+        This method will check for the post_update flag being set on a
+        particular relationship, and given a target object and list of
+        one or more related objects, and execute the ``UPDATE`` if the
+        given related object list contains ``INSERT``s or ``DELETE``s.
+        """
+
         if obj is not None and self.post_update:
             for x in related:
                 if x is not None:
@@ -127,6 +164,7 @@ class OneToManyDP(DependencyProcessor):
         else:
             uowcommit.register_dependency(self.parent, self.mapper)
             uowcommit.register_processor(self.parent, self, self.parent)
+
     def process_dependencies(self, task, deplist, uowcommit, delete = False):
         #print self.mapper.mapped_table.name + " " + self.key + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
         if delete:
@@ -201,14 +239,14 @@ class OneToManyDP(DependencyProcessor):
                             uowcommit.register_object(child, isdelete=True)
                             for c in self.mapper.cascade_iterator('delete', child):
                                 uowcommit.register_object(c, isdelete=True)
-            
+
     def _synchronize(self, obj, child, associationrow, clearkeys, uowcommit):
         source = obj
         dest = child
         if dest is None or (not self.post_update and uowcommit.is_deleted(dest)):
             return
         self.syncrules.execute(source, dest, obj, child, clearkeys)
-    
+
 class ManyToOneDP(DependencyProcessor):
     def register_dependencies(self, uowcommit):
         if self.post_update:
@@ -220,6 +258,7 @@ class ManyToOneDP(DependencyProcessor):
         else:
             uowcommit.register_dependency(self.mapper, self.parent)
             uowcommit.register_processor(self.mapper, self, self.parent)
+
     def process_dependencies(self, task, deplist, uowcommit, delete = False):
         #print self.mapper.mapped_table.name + " " + self.key + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
         if delete:
@@ -238,6 +277,7 @@ class ManyToOneDP(DependencyProcessor):
                     for child in childlist.added_items():
                         self._synchronize(obj, child, None, False, uowcommit)
                     self._conditional_post_update(obj, uowcommit, childlist.deleted_items() + childlist.unchanged_items() + childlist.added_items())
+
     def preprocess_dependencies(self, task, deplist, uowcommit, delete = False):
         #print self.mapper.mapped_table.name + " " + self.key + " " + repr(len(deplist)) + " PRE process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
         if self.post_update:
@@ -263,7 +303,7 @@ class ManyToOneDP(DependencyProcessor):
                                 uowcommit.register_object(child, isdelete=True)
                                 for c in self.mapper.cascade_iterator('delete', child):
                                     uowcommit.register_object(c, isdelete=True)
-                        
+
     def _synchronize(self, obj, child, associationrow, clearkeys, uowcommit):
         source = child
         dest = obj
@@ -280,14 +320,14 @@ class ManyToManyDP(DependencyProcessor):
         # association table.
 
         if self.is_backref:
-            # if we are the "backref" half of a two-way backref 
+            # if we are the "backref" half of a two-way backref
             # relationship, let the other mapper handle inserting the rows
             return
         stub = MapperStub(self.parent, self.mapper, self.key)
         uowcommit.register_dependency(self.parent, stub)
         uowcommit.register_dependency(self.mapper, stub)
         uowcommit.register_processor(stub, self, self.parent)
-        
+
     def process_dependencies(self, task, deplist, uowcommit, delete = False):
         #print self.mapper.table.name + " " + self.key + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
         connection = uowcommit.transaction.connection(self.mapper)
@@ -333,6 +373,7 @@ class ManyToManyDP(DependencyProcessor):
                             uowcommit.register_object(child, isdelete=True)
                             for c in self.mapper.cascade_iterator('delete', child):
                                 uowcommit.register_object(c, isdelete=True)
+
     def _synchronize(self, obj, child, associationrow, clearkeys, uowcommit):
         dest = associationrow
         source = None
@@ -347,23 +388,31 @@ class AssociationDP(OneToManyDP):
         self.cascade.delete_orphan = True
 
 class MapperStub(object):
-    """poses as a Mapper representing the association table in a many-to-many
-    join, when performing a flush().  
+    """Pose as a Mapper representing the association table in a
+    many-to-many join, when performing a ``flush()``.
 
-    The Task objects in the objectstore module treat it just like
-    any other Mapper, but in fact it only serves as a "dependency" placeholder
-    for the many-to-many update task."""
+    The ``Task`` objects in the objectstore module treat it just like
+    any other ``Mapper``, but in fact it only serves as a *dependency*
+    placeholder for the many-to-many update task.
+    """
+
     __metaclass__ = util.ArgSingleton
+
     def __init__(self, parent, mapper, key):
         self.mapper = mapper
         self._inheriting_mappers = []
+
     def register_dependencies(self, uowcommit):
         pass
+
     def save_obj(self, *args, **kwargs):
         pass
+
     def delete_obj(self, *args, **kwargs):
         pass
+
     def primary_mapper(self):
         return self
+
     def base_mapper(self):
         return self

@@ -2,6 +2,33 @@
 
 <%global>
 import docstring
+import sys
+
+def trim(docstring):
+    if not docstring:
+        return ''
+    # Convert tabs to spaces (following the normal Python rules)
+    # and split into a list of lines:
+    lines = docstring.expandtabs().splitlines()
+    # Determine minimum indentation (first line doesn't count):
+    indent = sys.maxint
+    for line in lines[1:]:
+        stripped = line.lstrip()
+        if stripped:
+            indent = min(indent, len(line) - len(stripped))
+    # Remove indentation (first line is special):
+    trimmed = [lines[0].strip()]
+    if indent < sys.maxint:
+        for line in lines[1:]:
+            trimmed.append(line[indent:].rstrip())
+    # Strip off trailing and leading blank lines:
+    while trimmed and not trimmed[-1]:
+        trimmed.pop()
+    while trimmed and not trimmed[0]:
+        trimmed.pop(0)
+    # Return a single string:
+    return '\n'.join(trimmed)
+    
 </%global>
 
 <%method obj_doc>
@@ -25,7 +52,7 @@ else:
 </%init>
 
 <&|formatting.myt:section, toc=toc, path=obj.toc_path, description=htmldescription &>
-<&|formatting.myt:formatplain&><% obj.doc %></&>
+<pre><% trim(obj.doc) |h %></pre>
 
 % if not obj.isclass and obj.functions:
 
@@ -62,7 +89,7 @@ else:
         <A name=""></a>
         <b><% func.name %>(<% ", ".join(map(lambda k: "<i>%s</i>" % k, func.arglist))%>)</b>
         <div class="docstring">
-        <&|formatting.myt:formatplain&><% func.doc %></&>
+        <pre><% trim(func.doc) |h %></pre>
         </div>
         </div>
 </%method>
@@ -76,7 +103,7 @@ else:
          <A name=""></a>
          <b><% prop.name %></b>
          <div class="docstring">
-         <&|formatting.myt:formatplain&><% prop.doc %></&>
+         <pre><% trim(prop.doc) |h%></pre>
          </div> 
          </div>
 </%method>

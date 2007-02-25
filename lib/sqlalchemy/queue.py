@@ -1,9 +1,11 @@
-"""an adaptation of Py2.3/2.4's Queue module which supports reentrant behavior,
-using RLock instead of Lock for its mutex object.
-this is to support the connection pool's usage of __del__ to return connections
-to the underlying Queue, which can apparently in extremely rare cases be invoked
-within the get() method of the Queue itself, producing a put() inside the get()
-and therefore a reentrant condition."""
+"""An adaptation of Py2.3/2.4's Queue module which supports reentrant
+behavior, using RLock instead of Lock for its mutex object.
+
+This is to support the connection pool's usage of ``__del__`` to return
+connections to the underlying Queue, which can apparently in extremely
+rare cases be invoked within the ``get()`` method of the Queue itself,
+producing a ``put()`` inside the ``get()`` and therefore a reentrant
+condition."""
 
 from time import time as _time
 
@@ -20,18 +22,21 @@ __all__ = ['Empty', 'Full', 'Queue']
 
 class Empty(Exception):
     "Exception raised by Queue.get(block=0)/get_nowait()."
+
     pass
 
 class Full(Exception):
     "Exception raised by Queue.put(block=0)/put_nowait()."
+
     pass
 
 class Queue:
     def __init__(self, maxsize=0):
         """Initialize a queue object with a given maximum size.
 
-        If maxsize is <= 0, the queue size is infinite.
+        If `maxsize` is <= 0, the queue size is infinite.
         """
+
         try:
             import threading
         except ImportError:
@@ -51,6 +56,7 @@ class Queue:
 
     def qsize(self):
         """Return the approximate size of the queue (not reliable!)."""
+
         self.mutex.acquire()
         n = self._qsize()
         self.mutex.release()
@@ -58,6 +64,7 @@ class Queue:
 
     def empty(self):
         """Return True if the queue is empty, False otherwise (not reliable!)."""
+
         self.mutex.acquire()
         n = self._empty()
         self.mutex.release()
@@ -65,6 +72,7 @@ class Queue:
 
     def full(self):
         """Return True if the queue is full, False otherwise (not reliable!)."""
+
         self.mutex.acquire()
         n = self._full()
         self.mutex.release()
@@ -73,14 +81,16 @@ class Queue:
     def put(self, item, block=True, timeout=None):
         """Put an item into the queue.
 
-        If optional args 'block' is true and 'timeout' is None (the default),
-        block if necessary until a free slot is available. If 'timeout' is
-        a positive number, it blocks at most 'timeout' seconds and raises
-        the Full exception if no free slot was available within that time.
-        Otherwise ('block' is false), put an item on the queue if a free slot
-        is immediately available, else raise the Full exception ('timeout'
-        is ignored in that case).
+        If optional args `block` is True and `timeout` is None (the
+        default), block if necessary until a free slot is
+        available. If `timeout` is a positive number, it blocks at
+        most `timeout` seconds and raises the ``Full`` exception if no
+        free slot was available within that time.  Otherwise (`block`
+        is false), put an item on the queue if a free slot is
+        immediately available, else raise the ``Full`` exception
+        (`timeout` is ignored in that case).
         """
+
         self.not_full.acquire()
         try:
             if not block:
@@ -107,21 +117,22 @@ class Queue:
         """Put an item into the queue without blocking.
 
         Only enqueue the item if a free slot is immediately available.
-        Otherwise raise the Full exception.
+        Otherwise raise the ``Full`` exception.
         """
         return self.put(item, False)
 
     def get(self, block=True, timeout=None):
         """Remove and return an item from the queue.
 
-        If optional args 'block' is true and 'timeout' is None (the default),
-        block if necessary until an item is available. If 'timeout' is
-        a positive number, it blocks at most 'timeout' seconds and raises
-        the Empty exception if no item was available within that time.
-        Otherwise ('block' is false), return an item if one is immediately
-        available, else raise the Empty exception ('timeout' is ignored
-        in that case).
+        If optional args `block` is True and `timeout` is None (the
+        default), block if necessary until an item is available. If
+        `timeout` is a positive number, it blocks at most `timeout`
+        seconds and raises the ``Empty`` exception if no item was
+        available within that time.  Otherwise (`block` is false),
+        return an item if one is immediately available, else raise the
+        ``Empty`` exception (`timeout` is ignored in that case).
         """
+
         self.not_empty.acquire()
         try:
             if not block:
@@ -149,8 +160,9 @@ class Queue:
         """Remove and return an item from the queue without blocking.
 
         Only get an item if one is immediately available. Otherwise
-        raise the Empty exception.
+        raise the ``Empty`` exception.
         """
+
         return self.get(False)
 
     # Override these methods to implement other queue organizations

@@ -4,24 +4,26 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""provides a few functions used by instances to turn on/off their logging, including support
-for the usual "echo" parameter.  Control of logging for SA can be performed from the regular
-python logging module.  The regular dotted module namespace is used, starting at 'sqlalchemy'.  
-For class-level logging, the class name is appended, and for instance-level logging, the hex
-id of the instance is appended.
+"""Provides a few functions used by instances to turn on/off their
+logging, including support for the usual "echo" parameter.
 
-The "echo" keyword parameter which is available on some SA objects corresponds to an instance-level
-logger for that instance.
+Control of logging for SA can be performed from the regular python
+logging module.  The regular dotted module namespace is used, starting
+at 'sqlalchemy'.  For class-level logging, the class name is appended,
+and for instance-level logging, the hex id of the instance is
+appended.
 
-E.g.:
+The "echo" keyword parameter which is available on some SA objects
+corresponds to an instance-level logger for that instance.
+
+E.g.::
 
     engine.echo = True
-    
-is equivalent to:
+
+is equivalent to::
 
     import logging
     logging.getLogger('sqlalchemy.engine.Engine.%s' % hex(id(engine))).setLevel(logging.DEBUG)
-    
 """
 
 import sys
@@ -44,12 +46,12 @@ def default_logging(name):
         handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s %(message)s'))
         rootlogger.addHandler(handler)
 
-def _get_instance_name(instance):                    
+def _get_instance_name(instance):
     # since getLogger() does not have any way of removing logger objects from memory,
     # instance logging displays the instance id as a modulus of 16 to prevent endless memory growth
     # also speeds performance as logger initialization is apparently slow
     return instance.__class__.__module__ + "." + instance.__class__.__name__ + ".0x.." + hex(id(instance))[-2:]
-    
+
 def instance_logger(instance):
     return logging.getLogger(_get_instance_name(instance))
 
@@ -58,9 +60,10 @@ def class_logger(cls):
 
 def is_debug_enabled(logger):
     return logger.isEnabledFor(logging.DEBUG)
+
 def is_info_enabled(logger):
     return logger.isEnabledFor(logging.INFO)
-        
+
 class echo_property(object):
     level_map={logging.DEBUG : "debug", logging.INFO:True}
     def __get__(self, instance, owner):
@@ -72,5 +75,3 @@ class echo_property(object):
             logging.getLogger(_get_instance_name(instance)).setLevel(value == 'debug' and logging.DEBUG or logging.INFO)
         else:
             logging.getLogger(_get_instance_name(instance)).setLevel(logging.NOTSET)
-    
-    

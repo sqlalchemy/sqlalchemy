@@ -1,15 +1,22 @@
-"""this plugin installs thread-local behavior at the Engine and Session level.
+"""This plugin installs thread-local behavior at the ``Engine`` and ``Session`` level.
 
-The default Engine strategy will be "threadlocal", producing TLocalEngine instances for create_engine by default.
-With this engine, connect() method will return the same connection on the same thread, if it is already checked out
-from the pool.  this greatly helps functions that call multiple statements to be able to easily use just one connection
-without explicit "close" statements on result handles.
+The default ``Engine`` strategy will be *threadlocal*, producing
+``TLocalEngine`` instances for create_engine by default.
 
-on the Session side, module-level methods will be installed within the objectstore module, such as flush(), delete(), etc.
-which call this method on the thread-local session.
+With this engine, ``connect()`` method will return the same connection
+on the same thread, if it is already checked out from the pool.  This
+greatly helps functions that call multiple statements to be able to
+easily use just one connection without explicit ``close`` statements
+on result handles.
 
-Note: this mod creates a global, thread-local session context named sqlalchemy.objectstore. All mappers created
-while this mod is installed will reference this global context when creating new mapped object instances.
+On the ``Session`` side, module-level methods will be installed within
+the objectstore module, such as ``flush()``, ``delete()``, etc.  which
+call this method on the thread-local session.
+
+Note: this mod creates a global, thread-local session context named
+``sqlalchemy.objectstore``. All mappers created while this mod is
+installed will reference this global context when creating new mapped
+object instances.
 """
 
 from sqlalchemy import util, engine, mapper
@@ -19,7 +26,6 @@ from sqlalchemy.orm.mapper import global_extensions
 from sqlalchemy.orm.session import Session
 import sqlalchemy
 import sys, types
-
 
 __all__ = ['Objectstore', 'assign_mapper']
 

@@ -35,15 +35,17 @@ def to_set(x):
         return x
 
 def flatten_iterator(x):
-    """given an iterator of which further sub-elements may also be iterators,
-    flatten the sub-elements into a single iterator."""
+    """Given an iterator of which further sub-elements may also be
+    iterators, flatten the sub-elements into a single iterator.
+    """
+
     for elem in x:
         if hasattr(elem, '__iter__'):
             for y in flatten_iterator(elem):
                 yield y
         else:
             yield elem
-            
+
 def reversed(seq):
     try:
         return __builtin__.reversed(seq)
@@ -58,10 +60,12 @@ def reversed(seq):
 
 class ArgSingleton(type):
     instances = {}
+
     def dispose_static(self, *args):
         hashkey = (self, args)
         #if hashkey in ArgSingleton.instances:
         del ArgSingleton.instances[hashkey]
+
     def __call__(self, *args):
         hashkey = (self, args)
         try:
@@ -72,7 +76,8 @@ class ArgSingleton(type):
             return instance
 
 def get_cls_kwargs(cls):
-    """return the full set of legal kwargs for the given cls"""
+    """Return the full set of legal kwargs for the given `cls`."""
+
     kw = []
     for c in cls.__mro__:
         cons = c.__init__
@@ -81,15 +86,19 @@ def get_cls_kwargs(cls):
                 if vn != 'self':
                     kw.append(vn)
     return kw
-                        
+
 class SimpleProperty(object):
-    """a "default" property accessor."""
+    """A *default* property accessor."""
+
     def __init__(self, key):
         self.key = key
+
     def __set__(self, obj, value):
         setattr(obj, self.key, value)
+
     def __delete__(self, obj):
         delattr(obj, self.key)
+
     def __get__(self, obj, owner):
         if obj is None:
             return self
@@ -97,60 +106,80 @@ class SimpleProperty(object):
             return getattr(obj, self.key)
 
 class OrderedProperties(object):
-    """
-    An object that maintains the order in which attributes are set upon it.
-    also provides an iterator and a very basic getitem/setitem interface to those attributes.
-    
+    """An object that maintains the order in which attributes are set upon it.
+
+    Also provides an iterator and a very basic getitem/setitem
+    interface to those attributes.
+
     (Not really a dict, since it iterates over values, not keys.  Not really
     a list, either, since each value must have a key associated; hence there is
     no append or extend.)
     """
+
     def __init__(self):
         self.__dict__['_data'] = OrderedDict()
+
     def __len__(self):
         return len(self._data)
+
     def __iter__(self):
         return self._data.itervalues()
+
     def __add__(self, other):
         return list(self) + list(other)
+
     def __setitem__(self, key, object):
         self._data[key] = object
+
     def __getitem__(self, key):
         return self._data[key]
+
     def __delitem__(self, key):
         del self._data[key]
+
     def __setattr__(self, key, object):
         self._data[key] = object
+
     _data = property(lambda s:s.__dict__['_data'])
+
     def __getattr__(self, key):
         try:
             return self._data[key]
         except KeyError:
             raise AttributeError(key)
+
     def __contains__(self, key):
         return key in self._data
+
     def get(self, key, default=None):
         if self.has_key(key):
             return self[key]
         else:
             return default
+
     def keys(self):
         return self._data.keys()
+
     def has_key(self, key):
         return self._data.has_key(key)
+
     def clear(self):
         self._data.clear()
-        
+
 class OrderedDict(dict):
-    """A Dictionary that returns keys/values/items in the order they were added"""
+    """A Dictionary that returns keys/values/items in the order they were added."""
+
     def __init__(self, d=None, **kwargs):
         self._list = []
         self.update(d, **kwargs)
+
     def keys(self):
         return list(self._list)
+
     def clear(self):
         self._list = []
         dict.clear(self)
+
     def update(self, d=None, **kwargs):
         # d can be a dict or sequence of keys/values
         if d:
@@ -162,61 +191,77 @@ class OrderedDict(dict):
                 self.__setitem__(key, value)
         if kwargs:
             self.update(kwargs)
+
     def setdefault(self, key, value):
         if not self.has_key(key):
             self.__setitem__(key, value)
             return value
         else:
             return self.__getitem__(key)
+
     def values(self):
         return [self[key] for key in self._list]
+
     def __iter__(self):
         return iter(self._list)
+
     def itervalues(self):
         return iter([self[key] for key in self._list])
-    def iterkeys(self): 
+
+    def iterkeys(self):
         return self.__iter__()
+
     def iteritems(self):
         return iter([(key, self[key]) for key in self.keys()])
+
     def __delitem__(self, key):
         try:
             del self._list[self._list.index(key)]
         except ValueError:
             raise KeyError(key)
         dict.__delitem__(self, key)
+
     def __setitem__(self, key, object):
         if not self.has_key(key):
             self._list.append(key)
         dict.__setitem__(self, key, object)
+
     def __getitem__(self, key):
         return dict.__getitem__(self, key)
 
 class ThreadLocal(object):
-    """an object in which attribute access occurs only within the context of the current thread"""
+    """An object in which attribute access occurs only within the context of the current thread."""
+
     def __init__(self):
         self.__dict__['_tdict'] = {}
+
     def __delattr__(self, key):
         try:
             del self._tdict["%d_%s" % (thread.get_ident(), key)]
         except KeyError:
             raise AttributeError(key)
+
     def __getattr__(self, key):
         try:
             return self._tdict["%d_%s" % (thread.get_ident(), key)]
         except KeyError:
             raise AttributeError(key)
+
     def __setattr__(self, key, value):
         self._tdict["%d_%s" % (thread.get_ident(), key)] = value
 
 class DictDecorator(dict):
-    """a Dictionary that delegates items not found to a second wrapped dictionary."""
+    """A Dictionary that delegates items not found to a second wrapped dictionary."""
+
     def __init__(self, decorate):
         self.decorate = decorate
+
     def __getitem__(self, key):
         try:
             return dict.__getitem__(self, key)
         except KeyError:
             return self.decorate[key]
+
     def __repr__(self):
         return dict.__repr__(self) + repr(self.decorate)
 
@@ -246,7 +291,8 @@ class OrderedSet(Set):
       super(OrderedSet, self).clear()
       self._list=[]
 
-    def __iter__(self): return iter(self._list)
+    def __iter__(self):
+        return iter(self._list)
 
     def update(self, iterable):
       add = self.add
@@ -255,24 +301,31 @@ class OrderedSet(Set):
 
     def __repr__(self):
       return '%s(%r)' % (self.__class__.__name__, self._list)
+
     __str__ = __repr__
 
     def union(self, other):
       result = self.__class__(self)
       result.update(other)
       return result
+
     __or__ = union
+
     def intersection(self, other):
       return self.__class__([a for a in self if a in other])
+
     __and__ = intersection
+
     def symmetric_difference(self, other):
       result = self.__class__([a for a in self if a not in other])
       result.update([a for a in other if a not in self])
       return result
+
     __xor__ = symmetric_difference
 
     def difference(self, other):
       return self.__class__([a for a in self if a not in other])
+
     __sub__ = difference
 
     __ior__ = update
@@ -281,6 +334,7 @@ class OrderedSet(Set):
       super(OrderedSet, self).intersection_update(other)
       self._list = [ a for a in self._list if a in other]
       return self
+
     __iand__ = intersection_update
 
     def symmetric_difference_update(self, other):
@@ -288,12 +342,14 @@ class OrderedSet(Set):
       self._list =  [ a for a in self._list if a in self]
       self._list += [ a for a in other._list if a in self]
       return self
+
     __ixor__ = symmetric_difference_update
 
     def difference_update(self, other):
       super(OrderedSet, self).difference_update(other)
       self._list = [ a for a in self._list if a in self]
       return self
+
     __isub__ = difference_update
 
 class UniqueAppender(object):
@@ -304,20 +360,25 @@ class UniqueAppender(object):
         elif hasattr(data, 'add'):
             self._data_appender = data.add
         self.set = Set()
+
     def append(self, item):
         if item not in self.set:
             self.set.add(item)
             self._data_appender(item)
-        
+
 class ScopedRegistry(object):
-    """a Registry that can store one or multiple instances of a single class 
-    on a per-thread scoped basis, or on a customized scope
-    
-    createfunc - a callable that returns a new object to be placed in the registry
-    scopefunc - a callable that will return a key to store/retrieve an object,
-    defaults to thread.get_ident for thread-local objects.  use a value like
-    lambda: True for application scope.
+    """A Registry that can store one or multiple instances of a single
+    class on a per-thread scoped basis, or on a customized scope.
+
+    createfunc
+      a callable that returns a new object to be placed in the registry
+
+    scopefunc
+      a callable that will return a key to store/retrieve an object,
+      defaults to ``thread.get_ident`` for thread-local objects.  Use
+      a value like ``lambda: True`` for application scope.
     """
+
     def __init__(self, createfunc, scopefunc=None):
         self.createfunc = createfunc
         if scopefunc is None:
@@ -325,20 +386,22 @@ class ScopedRegistry(object):
         else:
             self.scopefunc = scopefunc
         self.registry = {}
+
     def __call__(self):
         key = self._get_key()
         try:
             return self.registry[key]
         except KeyError:
             return self.registry.setdefault(key, self.createfunc())
+
     def set(self, obj):
         self.registry[self._get_key()] = obj
+
     def clear(self):
         try:
             del self.registry[self._get_key()]
         except KeyError:
             pass
+
     def _get_key(self):
         return self.scopefunc()
-
-

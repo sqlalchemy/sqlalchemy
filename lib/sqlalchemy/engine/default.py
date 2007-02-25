@@ -9,21 +9,23 @@ from sqlalchemy import schema, exceptions, util, sql, types
 import StringIO, sys, re
 from sqlalchemy.engine import base
 
-"""provides default implementations of the engine interfaces"""
-
+"""Provide default implementations of the engine interfaces"""
 
 class PoolConnectionProvider(base.ConnectionProvider):
     def __init__(self, pool):
         self._pool = pool
+
     def get_connection(self):
         return self._pool.connect()
+
     def dispose(self):
         self._pool.dispose()
         if hasattr(self, '_dbproxy'):
             self._dbproxy.dispose()
-        
+
 class DefaultDialect(base.Dialect):
-    """default implementation of Dialect"""
+    """Default implementation of Dialect"""
+
     def __init__(self, convert_unicode=False, encoding='utf-8', default_paramstyle='named', **kwargs):
         self.convert_unicode = convert_unicode
         self.supports_autoclose_results = True
@@ -31,52 +33,75 @@ class DefaultDialect(base.Dialect):
         self.positional = False
         self._ischema = None
         self._figure_paramstyle(default=default_paramstyle)
+
     def create_execution_context(self):
         return DefaultExecutionContext(self)
+
     def type_descriptor(self, typeobj):
-        """provides a database-specific TypeEngine object, given the generic object
-        which comes from the types module.  Subclasses will usually use the adapt_type()
-        method in the types module to make this job easy."""
+        """Provide a database-specific ``TypeEngine`` object, given
+        the generic object which comes from the types module.
+
+        Subclasses will usually use the ``adapt_type()`` method in the
+        types module to make this job easy."""
+
         if type(typeobj) is type:
             typeobj = typeobj()
         return typeobj
+
     def oid_column_name(self, column):
         return None
+
     def supports_sane_rowcount(self):
         return True
+
     def do_begin(self, connection):
-        """implementations might want to put logic here for turning autocommit on/off,
-        etc."""
+        """Implementations might want to put logic here for turning
+        autocommit on/off, etc.
+        """
+
         pass
+
     def do_rollback(self, connection):
-        """implementations might want to put logic here for turning autocommit on/off,
-        etc."""
+        """Implementations might want to put logic here for turning
+        autocommit on/off, etc.
+        """
+
         #print "ENGINE ROLLBACK ON ", connection.connection
         connection.rollback()
+
     def do_commit(self, connection):
-        """implementations might want to put logic here for turning autocommit on/off, etc."""
+        """Implementations might want to put logic here for turning
+        autocommit on/off, etc.
+        """
+
         #print "ENGINE COMMIT ON ", connection.connection
         connection.commit()
+
     def do_executemany(self, cursor, statement, parameters, **kwargs):
         cursor.executemany(statement, parameters)
+
     def do_execute(self, cursor, statement, parameters, **kwargs):
         cursor.execute(statement, parameters)
+
     def defaultrunner(self, engine, proxy):
         return base.DefaultRunner(engine, proxy)
+
     def create_cursor(self, connection):
         return connection.cursor()
+
     def create_result_proxy_args(self, connection, cursor):
         return dict(should_prefetch=False)
-        
+
     def _set_paramstyle(self, style):
         self._paramstyle = style
         self._figure_paramstyle(style)
+
     paramstyle = property(lambda s:s._paramstyle, _set_paramstyle)
 
     def convert_compiled_params(self, parameters):
         executemany = parameters is not None and isinstance(parameters, list)
         # the bind params are a CompiledParams object.  but all the DBAPI's hate
-        # that object (or similar).  so convert it to a clean 
+        # that object (or similar).  so convert it to a clean
         # dictionary/list/tuple of dictionary/tuple of list
         if parameters is not None:
            if self.positional:
@@ -125,29 +150,40 @@ class DefaultDialect(base.Dialect):
 class DefaultExecutionContext(base.ExecutionContext):
     def __init__(self, dialect):
         self.dialect = dialect
+
     def pre_exec(self, engine, proxy, compiled, parameters):
         self._process_defaults(engine, proxy, compiled, parameters)
+
     def post_exec(self, engine, proxy, compiled, parameters):
         pass
+
     def get_rowcount(self, cursor):
         if hasattr(self, '_rowcount'):
             return self._rowcount
         else:
             return cursor.rowcount
+
     def supports_sane_rowcount(self):
         return self.dialect.supports_sane_rowcount()
+
     def last_inserted_ids(self):
         return self._last_inserted_ids
+
     def last_inserted_params(self):
         return self._last_inserted_params
+
     def last_updated_params(self):
-        return self._last_updated_params                
+        return self._last_updated_params
+
     def lastrow_has_defaults(self):
         return self._lastrow_has_defaults
+
     def set_input_sizes(self, cursor, parameters):
-        """given a cursor and ClauseParameters, call the appropriate style of 
-        setinputsizes() on the cursor, using DBAPI types from the bind parameter's
-        TypeEngine objects."""
+        """Given a cursor and ClauseParameters, call the appropriate
+        style of ``setinputsizes()`` on the cursor, using DBAPI types
+        from the bind parameter's ``TypeEngine`` objects.
+        """
+
         if isinstance(parameters, list):
             plist = parameters
         else:
@@ -166,19 +202,27 @@ class DefaultExecutionContext(base.ExecutionContext):
                     typeengine = params.binds[key].type
                     inputsizes[key] = typeengine.get_dbapi_type(self.dialect.module)
             cursor.setinputsizes(**inputsizes)
-        
+
     def _process_defaults(self, engine, proxy, compiled, parameters):
-        """INSERT and UPDATE statements, when compiled, may have additional columns added to their
-        VALUES and SET lists corresponding to column defaults/onupdates that are present on the 
-        Table object (i.e. ColumnDefault, Sequence, PassiveDefault).  This method pre-execs those
-        DefaultGenerator objects that require pre-execution and sets their values within the 
-        parameter list, and flags the thread-local state about
-        PassiveDefault objects that may require post-fetching the row after it is inserted/updated.  
-        This method relies upon logic within the ANSISQLCompiler in its visit_insert and 
-        visit_update methods that add the appropriate column clauses to the statement when its 
-        being compiled, so that these parameters can be bound to the statement."""
+        """``INSERT`` and ``UPDATE`` statements, when compiled, may
+        have additional columns added to their ``VALUES`` and ``SET``
+        lists corresponding to column defaults/onupdates that are
+        present on the ``Table`` object (i.e. ``ColumnDefault``,
+        ``Sequence``, ``PassiveDefault``).  This method pre-execs
+        those ``DefaultGenerator`` objects that require pre-execution
+        and sets their values within the parameter list, and flags the
+        thread-local state about ``PassiveDefault`` objects that may
+        require post-fetching the row after it is inserted/updated.
+
+        This method relies upon logic within the ``ANSISQLCompiler``
+        in its `visit_insert` and `visit_update` methods that add the
+        appropriate column clauses to the statement when its being
+        compiled, so that these parameters can be bound to the
+        statement.
+        """
+
         if compiled is None: return
-        
+
         if getattr(compiled, "isinsert", False):
             if isinstance(parameters, list):
                 plist = parameters
@@ -198,9 +242,9 @@ class DefaultExecutionContext(base.ExecutionContext):
                         if c.primary_key:
                             need_lastrowid = True
                     # check if its not present at all.  see if theres a default
-                    # and fire it off, and add to bind parameters.  if 
+                    # and fire it off, and add to bind parameters.  if
                     # its a pk, add the value to our last_inserted_ids list,
-                    # or, if its a SQL-side default, dont do any of that, but we'll need 
+                    # or, if its a SQL-side default, dont do any of that, but we'll need
                     # the SQL-generated value after execution.
                     elif not param.has_key(c.key) or param[c.key] is None:
                         if isinstance(c.default, schema.PassiveDefault):
@@ -212,7 +256,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                                 last_inserted_ids.append(param[c.key])
                         elif c.primary_key:
                             need_lastrowid = True
-                    # its an explicitly passed pk value - add it to 
+                    # its an explicitly passed pk value - add it to
                     # our last_inserted_ids list.
                     elif c.primary_key:
                         last_inserted_ids.append(param[c.key])
@@ -229,7 +273,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             drunner = self.dialect.defaultrunner(engine, proxy)
             self._lastrow_has_defaults = False
             for param in plist:
-                # check the "onupdate" status of each column in the table 
+                # check the "onupdate" status of each column in the table
                 for c in compiled.statement.table.c:
                     # it will be populated by a SQL clause - we'll need that
                     # after execution.
@@ -242,5 +286,3 @@ class DefaultExecutionContext(base.ExecutionContext):
                         if value is not None:
                             param[c.key] = value
                 self._last_updated_params = param
-
-

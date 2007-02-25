@@ -1,6 +1,6 @@
 from sqlalchemy.orm import unitofwork
 
-"""dumps out a string representation of a UOWTask structure"""
+"""Dumps out a string representation of a UOWTask structure"""
 
 class UOWDumper(unitofwork.UOWExecutor):
     def __init__(self, task, buf, verbose=False):
@@ -34,15 +34,15 @@ class UOWDumper(unitofwork.UOWExecutor):
             super(UOWDumper, self).execute(trans, task, isdelete)
         finally:
             self.indent -= 1
-            if self.starttask.is_empty():   
+            if self.starttask.is_empty():
                 self.buf.write(self._indent() + "   |- (empty task)\n")
             else:
                 self.buf.write(self._indent() + "   |----\n")
 
-            self.buf.write(self._indent() + "\n")           
+            self.buf.write(self._indent() + "\n")
             self.starttask = oldstarttask
             self.headers = oldheaders
-            
+
     def save_objects(self, trans, task):
         # sort elements to be inserted by insert order
         def comparator(a, b):
@@ -59,7 +59,7 @@ class UOWDumper(unitofwork.UOWExecutor):
             else:
                 y = b.obj._sa_insert_order
             return cmp(x, y)
-        
+
         l = list(task.polymorphic_tosave_elements)
         l.sort(comparator)
         for rec in l:
@@ -68,7 +68,7 @@ class UOWDumper(unitofwork.UOWExecutor):
             self.header("Save elements"+ self._inheritance_tag(task))
             self.buf.write(self._indent() + "- " + self._repr_task_element(rec)  + "\n")
             self.closeheader()
-            
+
     def delete_objects(self, trans, task):
         for rec in task.polymorphic_todelete_elements:
             if rec.listonly:
@@ -86,7 +86,8 @@ class UOWDumper(unitofwork.UOWExecutor):
             return ""
 
     def header(self, text):
-        """write a given header just once"""
+        """Write a given header just once."""
+
         if not self.verbose:
             return
         try:
@@ -106,7 +107,7 @@ class UOWDumper(unitofwork.UOWExecutor):
     def execute_save_steps(self, trans, task):
         super(UOWDumper, self).execute_save_steps(trans, task)
 
-    def execute_delete_steps(self, trans, task):    
+    def execute_delete_steps(self, trans, task):
         super(UOWDumper, self).execute_delete_steps(trans, task)
 
     def execute_dependencies(self, trans, task, isdelete=None):
@@ -116,12 +117,12 @@ class UOWDumper(unitofwork.UOWExecutor):
         self.header("Child tasks" + self._inheritance_tag(task))
         super(UOWDumper, self).execute_childtasks(trans, task, isdelete)
         self.closeheader()
-        
+
     def execute_cyclical_dependencies(self, trans, task, isdelete):
         self.header("Cyclical %s dependencies" % (isdelete and "delete" or "save"))
         super(UOWDumper, self).execute_cyclical_dependencies(trans, task, isdelete)
         self.closeheader()
-            
+
     def execute_per_element_childtasks(self, trans, task, isdelete):
         super(UOWDumper, self).execute_per_element_childtasks(trans, task, isdelete)
 
@@ -129,7 +130,7 @@ class UOWDumper(unitofwork.UOWExecutor):
         self.header("%s subelements of UOWTaskElement(%s)" % ((isdelete and "Delete" or "Save"), hex(id(element))))
         super(UOWDumper, self).execute_element_childtasks(trans, element, isdelete)
         self.closeheader()
-        
+
     def _dump_processor(self, proc, deletes):
         if deletes:
             val = proc.targettask.polymorphic_todelete_elements
@@ -138,18 +139,18 @@ class UOWDumper(unitofwork.UOWExecutor):
 
         if self.verbose:
             self.buf.write(self._indent() + "   |- %s attribute on %s (UOWDependencyProcessor(%d) processing %s)\n" % (
-                repr(proc.processor.key), 
+                repr(proc.processor.key),
                     ("%s's to be %s" % (self._repr_task_class(proc.targettask), deletes and "deleted" or "saved")),
-                hex(id(proc)), 
+                hex(id(proc)),
                 self._repr_task(proc.targettask))
             )
         elif False:
             self.buf.write(self._indent() + "   |- %s attribute on %s\n" % (
-                repr(proc.processor.key), 
+                repr(proc.processor.key),
                     ("%s's to be %s" % (self._repr_task_class(proc.targettask), deletes and "deleted" or "saved")),
                 )
             )
-            
+
         if len(val) == 0:
             if self.verbose:
                 self.buf.write(self._indent() + "   |- " + "(no objects)\n")
@@ -183,7 +184,7 @@ class UOWDumper(unitofwork.UOWExecutor):
             return ("UOWTask(%s->%s, %s)" % (hex(id(task.circular_parent)), hex(id(task)), name))
         else:
             return ("UOWTask(%s, %s)" % (hex(id(task)), name))
-        
+
     def _repr_task_class(self, task):
         if task.mapper is not None and task.mapper.__class__.__name__ == 'Mapper':
             return task.mapper.class_.__name__
@@ -195,4 +196,3 @@ class UOWDumper(unitofwork.UOWExecutor):
 
     def _indent(self):
         return "   |" * self.indent
-

@@ -4,26 +4,38 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""defines ANSI SQL operations.  Contains default implementations for the abstract objects 
-in the sql module."""
+"""Defines ANSI SQL operations.
+
+Contains default implementations for the abstract objects in the sql
+module.
+"""
 
 from sqlalchemy import schema, sql, engine, util, sql_util
 from  sqlalchemy.engine import default
 import string, re, sets, weakref
 
-ANSI_FUNCS = sets.ImmutableSet([
-'CURRENT_TIME',
-'CURRENT_TIMESTAMP',
-'CURRENT_DATE',
-'LOCALTIME',
-'LOCALTIMESTAMP',
-'CURRENT_USER',
-'SESSION_USER',
-'USER'
-])
+ANSI_FUNCS = sets.ImmutableSet(['CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP',
+                                'CURRENT_USER', 'LOCALTIME', 'LOCALTIMESTAMP',
+                                'SESSION_USER', 'USER'])
 
 
-RESERVED_WORDS = util.Set(['all', 'analyse', 'analyze', 'and', 'any', 'array', 'as', 'asc', 'asymmetric', 'authorization', 'between', 'binary', 'both', 'case', 'cast', 'check', 'collate', 'column', 'constraint', 'create', 'cross', 'current_date', 'current_role', 'current_time', 'current_timestamp', 'current_user', 'default', 'deferrable', 'desc', 'distinct', 'do', 'else', 'end', 'except', 'false', 'for', 'foreign', 'freeze', 'from', 'full', 'grant', 'group', 'having', 'ilike', 'in', 'initially', 'inner', 'intersect', 'into', 'is', 'isnull', 'join', 'leading', 'left', 'like', 'limit', 'localtime', 'localtimestamp', 'natural', 'new', 'not', 'notnull', 'null', 'off', 'offset', 'old', 'on', 'only', 'or', 'order', 'outer', 'overlaps', 'placing', 'primary', 'references', 'right', 'select', 'session_user', 'similar', 'some', 'symmetric', 'table', 'then', 'to', 'trailing', 'true', 'union', 'unique', 'user', 'using', 'verbose', 'when', 'where'])
+RESERVED_WORDS = util.Set(['all', 'analyse', 'analyze', 'and', 'any', 'array',
+                           'as', 'asc', 'asymmetric', 'authorization', 'between',
+                           'binary', 'both', 'case', 'cast', 'check', 'collate',
+                           'column', 'constraint', 'create', 'cross', 'current_date',
+                           'current_role', 'current_time', 'current_timestamp',
+                           'current_user', 'default', 'deferrable', 'desc',
+                           'distinct', 'do', 'else', 'end', 'except', 'false',
+                           'for', 'foreign', 'freeze', 'from', 'full', 'grant',
+                           'group', 'having', 'ilike', 'in', 'initially', 'inner',
+                           'intersect', 'into', 'is', 'isnull', 'join', 'leading',
+                           'left', 'like', 'limit', 'localtime', 'localtimestamp',
+                           'natural', 'new', 'not', 'notnull', 'null', 'off', 'offset',
+                           'old', 'on', 'only', 'or', 'order', 'outer', 'overlaps',
+                           'placing', 'primary', 'references', 'right', 'select',
+                           'session_user', 'similar', 'some', 'symmetric', 'table',
+                           'then', 'to', 'trailing', 'true', 'union', 'unique', 'user',
+                           'using', 'verbose', 'when', 'where'])
 
 LEGAL_CHARACTERS = util.Set(string.ascii_lowercase + string.ascii_uppercase + string.digits + '_$')
 ILLEGAL_INITIAL_CHARACTERS = util.Set(string.digits + '$')
@@ -33,7 +45,7 @@ class ANSIDialect(default.DefaultDialect):
         super(ANSIDialect,self).__init__(**kwargs)
         self.identifier_preparer = self.preparer()
         self.cache_identifiers = cache_identifiers
-        
+
     def create_connect_args(self):
         return ([],{})
 
@@ -50,87 +62,99 @@ class ANSIDialect(default.DefaultDialect):
         return ANSICompiler(self, statement, parameters, **kwargs)
 
     def preparer(self):
-        """return an IdenfifierPreparer.
-        
-        This object is used to format table and column names including proper quoting and case conventions."""
+        """Return an IdentifierPreparer.
+
+        This object is used to format table and column names including
+        proper quoting and case conventions.
+        """
         return ANSIIdentifierPreparer(self)
 
 class ANSICompiler(sql.Compiled):
-    """default implementation of Compiled, which compiles ClauseElements into ANSI-compliant SQL strings."""
+    """Default implementation of Compiled.
+
+    Compiles ClauseElements into ANSI-compliant SQL strings.
+    """
+
     def __init__(self, dialect, statement, parameters=None, **kwargs):
-        """constructs a new ANSICompiler object.
+        """Construct a new ``ANSICompiler`` object.
+
+        dialect
+          Dialect to be used
+
+        statement
+          ClauseElement to be compiled
+
+        parameters
+          optional dictionary indicating a set of bind parameters
+          specified with this Compiled object.  These parameters are
+          the *default* key/value pairs when the Compiled is executed,
+          and also may affect the actual compilation, as in the case
+          of an INSERT where the actual columns inserted will
+          correspond to the keys present in the parameters.
+        """
         
-        dialect - Dialect to be used
-        
-        statement - ClauseElement to be compiled
-        
-        parameters - optional dictionary indicating a set of bind parameters
-        specified with this Compiled object.  These parameters are the "default"
-        key/value pairs when the Compiled is executed, and also may affect the 
-        actual compilation, as in the case of an INSERT where the actual columns
-        inserted will correspond to the keys present in the parameters."""
         sql.Compiled.__init__(self, dialect, statement, parameters, **kwargs)
-        
+
         # a dictionary of bind parameter keys to _BindParamClause instances.
         self.binds = {}
 
         # a dictionary which stores the string representation for every ClauseElement
         # processed by this compiler.
         self.strings = {}
-        
+
         # a dictionary which stores the string representation for ClauseElements
         # processed by this compiler, which are to be used in the FROM clause
         # of a select.  items are often placed in "froms" as well as "strings"
         # and sometimes with different representations.
         self.froms = {}
-        
-        # slightly hacky.  maps FROM clauses to WHERE clauses, and used in select 
+
+        # slightly hacky.  maps FROM clauses to WHERE clauses, and used in select
         # generation to modify the WHERE clause of the select.  currently a hack
         # used by the oracle module.
         self.wheres = {}
-        
+
         # when the compiler visits a SELECT statement, the clause object is appended
         # to this stack.  various visit operations will check this stack to determine
         # additional choices (TODO: it seems to be all typemap stuff.  shouldnt this only
         # apply to the topmost-level SELECT statement ?)
         self.select_stack = []
-        
+
         # a dictionary of result-set column names (strings) to TypeEngine instances,
         # which will be passed to a ResultProxy and used for resultset-level value conversion
         self.typemap = {}
-        
+
         # a dictionary of select columns mapped to their name or key
         self.columns = {}
-        
+
         # True if this compiled represents an INSERT
         self.isinsert = False
-        
+
         # True if this compiled represents an UPDATE
         self.isupdate = False
-        
+
         # default formatting style for bind parameters
         self.bindtemplate = ":%s"
-        
+
         # paramstyle from the dialect (comes from DBAPI)
         self.paramstyle = dialect.paramstyle
-        
+
         # true if the paramstyle is positional
         self.positional = dialect.positional
-        
+
         # a list of the compiled's bind parameter names, used to help
         # formulate a positional argument list
         self.positiontup = []
-        
+
         # an ANSIIdentifierPreparer that formats the quoting of identifiers
         self.preparer = dialect.identifier_preparer
-        
+
         # for UPDATE and INSERT statements, a set of columns whos values are being set
         # from a SQL expression (i.e., not one of the bind parameter values).  if present,
         # default-value logic in the Dialect knows not to fire off column defaults
         # and also knows postfetching will be needed to get the values represented by these
         # parameters.
         self.inline_params = None
-        
+
     def after_compile(self):
         # this re will search for params like :param
         # it has a negative lookbehind for an extra ':' so that it doesnt match
@@ -163,19 +187,26 @@ class ANSICompiler(sql.Compiled):
         return self.wheres.get(obj, None)
 
     def get_params(self, **params):
-        """returns a structure of bind parameters for this compiled object.
-        This includes bind parameters that might be compiled in via the "values"
-        argument of an Insert or Update statement object, and also the given **params.
-        The keys inside of **params can be any key that matches the BindParameterClause
-        objects compiled within this object.  The output is dependent on the paramstyle
-        of the DBAPI being used; if a named style, the return result will be a dictionary
-        with keynames matching the compiled statement.  If a positional style, the output
-        will be a list, with an iterator that will return parameter 
-        values in an order corresponding to the bind positions in the compiled statement.
-        
-        for an executemany style of call, this method should be called for each element
-        in the list of parameter groups that will ultimately be executed.
+        """Return a structure of bind parameters for this compiled object.
+
+        This includes bind parameters that might be compiled in via
+        the `values` argument of an ``Insert`` or ``Update`` statement
+        object, and also the given `**params`.  The keys inside of
+        `**params` can be any key that matches the
+        ``BindParameterClause`` objects compiled within this object.
+
+        The output is dependent on the paramstyle of the DBAPI being
+        used; if a named style, the return result will be a dictionary
+        with keynames matching the compiled statement.  If a
+        positional style, the output will be a list, with an iterator
+        that will return parameter values in an order corresponding to
+        the bind positions in the compiled statement.
+
+        For an executemany style of call, this method should be called
+        for each element in the list of parameter groups that will
+        ultimately be executed.
         """
+        
         if self.parameters is not None:
             bindparams = self.parameters.copy()
         else:
@@ -196,15 +227,18 @@ class ANSICompiler(sql.Compiled):
         return d
 
     def default_from(self):
-        """called when a SELECT statement has no froms, and no FROM clause is to be appended.  
-        gives Oracle a chance to tack on a "FROM DUAL" to the string output. """
+        """Called when a SELECT statement has no froms, and no FROM clause is to be appended.
+
+        Gives Oracle a chance to tack on a ``FROM DUAL`` to the string output.
+        """
+
         return ""
 
     def visit_label(self, label):
         if len(self.select_stack):
             self.typemap.setdefault(label.name.lower(), label.obj.type)
         self.strings[label] = self.strings[label.obj] + " AS "  + self.preparer.format_label(label)
-        
+
     def visit_column(self, column):
         if len(self.select_stack):
             # if we are within a visit to a Select, set up the "typemap"
@@ -230,10 +264,10 @@ class ANSICompiler(sql.Compiled):
 
     def visit_index(self, index):
         self.strings[index] = index.name
-    
+
     def visit_typeclause(self, typeclause):
         self.strings[typeclause] = typeclause.type.dialect_impl(self.dialect).get_col_spec()
-            
+
     def visit_textclause(self, textclause):
         if textclause.parens and len(textclause.text):
             self.strings[textclause] = "(" + textclause.text + ")"
@@ -242,22 +276,22 @@ class ANSICompiler(sql.Compiled):
         self.froms[textclause] = textclause.text
         if textclause.typemap is not None:
             self.typemap.update(textclause.typemap)
-        
+
     def visit_null(self, null):
         self.strings[null] = 'NULL'
-       
+
     def visit_compound(self, compound):
         if compound.operator is None:
             sep = " "
         else:
             sep = " " + compound.operator + " "
-        
+
         s = string.join([self.get_str(c) for c in compound.clauses], sep)
         if compound.parens:
             self.strings[compound] = "(" + s + ")"
         else:
             self.strings[compound] = s
-        
+
     def visit_clauselist(self, list):
         if list.parens:
             self.strings[list] = "(" + string.join([s for s in [self.get_str(c) for c in list.clauses] if s is not None], ', ') + ")"
@@ -272,13 +306,13 @@ class ANSICompiler(sql.Compiled):
             self.strings[list] = "(" + string.join([self.get_str(c) for c in list.clauses], ' ') + ")"
         else:
             self.strings[list] = string.join([self.get_str(c) for c in list.clauses], ' ')
-      
+
     def visit_cast(self, cast):
         if len(self.select_stack):
             # not sure if we want to set the typemap here...
             self.typemap.setdefault("CAST", cast.type)
         self.strings[cast] = "CAST(%s AS %s)" % (self.strings[cast.clause],self.strings[cast.typeclause])
-         
+
     def visit_function(self, func):
         if len(self.select_stack):
             self.typemap.setdefault(func.name, func.type)
@@ -288,7 +322,7 @@ class ANSICompiler(sql.Compiled):
         else:
             self.strings[func] = ".".join(func.packagenames + [func.name]) + "(" + string.join([self.get_str(c) for c in func.clauses], ', ') + ")"
             self.froms[func] = self.strings[func]
-        
+
     def visit_compound_select(self, cs):
         text = string.join([self.get_str(c) for c in cs.selects], " " + cs.keyword + " ")
         group_by = self.get_str(cs.group_by_clause)
@@ -335,13 +369,12 @@ class ANSICompiler(sql.Compiled):
 
     def bindparam_string(self, name):
         return self.bindtemplate % name
-        
+
     def visit_alias(self, alias):
         self.froms[alias] = self.get_from_text(alias.original) + " AS " + self.preparer.format_alias(alias)
         self.strings[alias] = self.get_str(alias.original)
 
     def visit_select(self, select):
-        
         # the actual list of columns to print in the SELECT column list.
         inner_columns = util.OrderedDict()
 
@@ -375,15 +408,15 @@ class ANSICompiler(sql.Compiled):
                     co.accept_visitor(self)
                     inner_columns[self.get_str(co)] = co
         self.select_stack.pop(-1)
-        
+
         collist = string.join([self.get_str(v) for v in inner_columns.values()], ', ')
 
         text = "SELECT "
         text += self.visit_select_precolumns(select)
         text += collist
-        
+
         whereclause = select.whereclause
-        
+
         froms = []
         for f in select.froms:
 
@@ -408,17 +441,17 @@ class ANSICompiler(sql.Compiled):
                 # TODO: move this more into the oracle module
                 whereclause = sql.and_(w, whereclause)
                 self.visit_compound(whereclause)
-                
+
             t = self.get_from_text(f)
             if t is not None:
                 froms.append(t)
-        
+
         if len(froms):
             text += " \nFROM "
             text += string.join(froms, ', ')
         else:
             text += self.default_from()
-            
+
         if whereclause is not None:
             t = self.get_str(whereclause)
             if t:
@@ -448,11 +481,16 @@ class ANSICompiler(sql.Compiled):
         self.froms[select] = "(" + text + ")"
 
     def visit_select_precolumns(self, select):
-        """ called when building a SELECT statment, position is just before column list """
+        """Called when building a ``SELECT`` statement, position is just before column list."""
+
         return select.distinct and "DISTINCT " or ""
 
     def visit_select_postclauses(self, select):
-        """ called when building a SELECT statement, position is after all other SELECT clauses. Most DB syntaxes put LIMIT/OFFSET here """
+        """Called when building a ``SELECT`` statement, position is after all other ``SELECT`` clauses.
+
+        Most DB syntaxes put ``LIMIT``/``OFFSET`` here.
+        """
+
         return (select.limit or select.offset) and self.limit_clause(select) or ""
 
     def for_update_clause(self, select):
@@ -480,7 +518,7 @@ class ANSICompiler(sql.Compiled):
         if join.right._group_parenthesized():
             righttext = "(" + righttext + ")"
         if join.isouter:
-            self.froms[join] = (self.get_from_text(join.left) + " LEFT OUTER JOIN " + righttext + 
+            self.froms[join] = (self.get_from_text(join.left) + " LEFT OUTER JOIN " + righttext +
             " ON " + self.get_str(join.onclause))
         else:
             self.froms[join] = (self.get_from_text(join.left) + " JOIN " + righttext +
@@ -488,31 +526,50 @@ class ANSICompiler(sql.Compiled):
         self.strings[join] = self.froms[join]
 
     def visit_insert_column_default(self, column, default, parameters):
-        """called when visiting an Insert statement, for each column in the table that
-        contains a ColumnDefault object.  adds a blank 'placeholder' parameter so the 
-        Insert gets compiled with this column's name in its column and VALUES clauses."""
+        """Called when visiting an ``Insert`` statement.
+
+        For each column in the table that contains a ``ColumnDefault``
+        object, add a blank *placeholder* parameter so the ``Insert``
+        gets compiled with this column's name in its column and
+        ``VALUES`` clauses.
+        """
+
         parameters.setdefault(column.key, None)
 
     def visit_update_column_default(self, column, default, parameters):
-        """called when visiting an Update statement, for each column in the table that
-        contains a ColumnDefault object as an onupdate. adds a blank 'placeholder' parameter so the 
-        Update gets compiled with this column's name as one of its SET clauses."""
+        """Called when visiting an ``Update`` statement.
+
+        For each column in the table that contains a ``ColumnDefault``
+        object as an onupdate, add a blank *placeholder* parameter so
+        the ``Update`` gets compiled with this column's name as one of
+        its ``SET` clauses.
+        """
+
         parameters.setdefault(column.key, None)
-        
+
     def visit_insert_sequence(self, column, sequence, parameters):
-        """called when visiting an Insert statement, for each column in the table that
-        contains a Sequence object.  Overridden by compilers that support sequences to place
-        a blank 'placeholder' parameter, so the Insert gets compiled with this column's
-        name in its column and VALUES clauses."""
+        """Called when visiting an ``Insert`` statement.
+
+        This may be overridden compilers that support sequences to
+        place a blank *placeholder* parameter for each column in the
+        table that contains a Sequence object, so the Insert gets
+        compiled with this column's name in its column and ``VALUES``
+        clauses.
+        """
+
         pass
-    
+
     def visit_insert_column(self, column, parameters):
-        """called when visiting an Insert statement, for each column in the table
-        that is a NULL insert into the table.  Overridden by compilers who disallow
-        NULL columns being set in an Insert where there is a default value on the column
-        (i.e. postgres), to remove the column from the parameter list."""
+        """Called when visiting an ``Insert`` statement.
+
+        This may be overridden by compilers who disallow NULL columns
+        being set in an ``Insert`` where there is a default value on
+        the column (i.e. postgres), to remove the column for which
+        there is a NULL insert from the parameter list.
+        """
+
         pass
-        
+
     def visit_insert(self, insert_stmt):
         # scan the table's columns for defaults that have to be pre-set for an INSERT
         # add these columns to the parameter list via visit_insert_XXX methods
@@ -528,7 +585,7 @@ class ANSICompiler(sql.Compiled):
         for c in insert_stmt.table.c:
             if (isinstance(c, schema.SchemaItem) and (self.parameters is None or self.parameters.get(c.key, None) is None)):
                 c.accept_schema_visitor(vis)
-        
+
         self.isinsert = True
         colparams = self._get_colparams(insert_stmt, default_params)
 
@@ -580,32 +637,36 @@ class ANSICompiler(sql.Compiled):
                     return "(" + self.get_str(p) + ")"
                 else:
                     return self.get_str(p)
-                
+
         text = "UPDATE " + self.preparer.format_table(update_stmt.table) + " SET " + string.join(["%s=%s" % (self.preparer.format_column(c[0]), create_param(*c)) for c in colparams], ', ')
-        
+
         if update_stmt.whereclause:
             text += " WHERE " + self.get_str(update_stmt.whereclause)
-         
+
         self.strings[update_stmt] = text
 
 
     def _get_colparams(self, stmt, default_params):
-        """organize UPDATE/INSERT SET/VALUES parameters into a list of tuples, 
-        each tuple containing the Column and a ClauseElement representing the
-        value to be set (usually a _BindParamClause, but could also be other
-        SQL expressions.)
+        """Organize ``UPDATE``/``INSERT`` ``SET``/``VALUES`` parameters into a list of tuples.
 
-        the list of tuples will determine the columns that are actually rendered
-        into the SET/VALUES clause of the rendered UPDATE/INSERT statement.  It will
-        also determine how to generate the list/dictionary of bind parameters at 
-        execution time (i.e. get_params()).
-        
-        this list takes into account the "values" keyword specified to the statement,
-        the parameters sent to this Compiled instance, and the default bind parameter
-        values corresponding to the dialect's behavior for otherwise unspecified 
-        primary key columns.
+        Each tuple will contain the ``Column`` and a ``ClauseElement``
+        representing the value to be set (usually a ``_BindParamClause``,
+        but could also be other SQL expressions.)
+
+        The list of tuples will determine the columns that are
+        actually rendered into the ``SET``/``VALUES`` clause of the
+        rendered ``UPDATE``/``INSERT`` statement.  It will also
+        determine how to generate the list/dictionary of bind
+        parameters at execution time (i.e. ``get_params()``).
+
+        This list takes into account the `values` keyword specified
+        to the statement, the parameters sent to this Compiled
+        instance, and the default bind parameter values corresponding
+        to the dialect's behavior for otherwise unspecified primary
+        key columns.
         """
-        # no parameters in the statement, no parameters in the 
+
+        # no parameters in the statement, no parameters in the
         # compiled params - return binds for all columns
         if self.parameters is None and stmt.parameters is None:
             return [(c, sql.bindparam(c.key, type=c.type)) for c in stmt.table.columns]
@@ -615,8 +676,8 @@ class ANSICompiler(sql.Compiled):
                 return stmt.table.columns.get(str(key), key)
             else:
                 return key
-                
-        # if we have statement parameters - set defaults in the 
+
+        # if we have statement parameters - set defaults in the
         # compiled params
         if self.parameters is None:
             parameters = {}
@@ -642,12 +703,12 @@ class ANSICompiler(sql.Compiled):
 
     def visit_delete(self, delete_stmt):
         text = "DELETE FROM " + self.preparer.format_table(delete_stmt.table)
-        
+
         if delete_stmt.whereclause:
             text += " WHERE " + self.get_str(delete_stmt.whereclause)
-         
+
         self.strings[delete_stmt] = text
-        
+
     def __str__(self):
         return self.get_str(self.statement)
 
@@ -663,7 +724,7 @@ class ANSISchemaBase(engine.SchemaIterator):
             for c in table.constraints:
                 c.accept_schema_visitor(findalterables)
         return alterables
-        
+
 class ANSISchemaGenerator(ANSISchemaBase):
     def __init__(self, engine, proxy, connection, checkfirst=False, tables=None, **kwargs):
         super(ANSISchemaGenerator, self).__init__(engine, proxy, **kwargs)
@@ -672,10 +733,10 @@ class ANSISchemaGenerator(ANSISchemaBase):
         self.connection = connection
         self.preparer = self.engine.dialect.preparer()
         self.dialect = self.engine.dialect
-        
+
     def get_column_specification(self, column, first_pk=False):
         raise NotImplementedError()
-    
+
     def visit_metadata(self, metadata):
         collection = [t for t in metadata.table_iterator(reverse=False, tables=self.tables) if (not self.checkfirst or not self.dialect.has_table(self.connection, t.name, schema=t.schema))]
         for table in collection:
@@ -683,18 +744,18 @@ class ANSISchemaGenerator(ANSISchemaBase):
         if self.supports_alter():
             for alterable in self.find_alterables(collection):
                 self.add_foreignkey(alterable)
-                
+
     def visit_table(self, table):
         for column in table.columns:
             if column.default is not None:
                 column.default.accept_schema_visitor(self, traverse=False)
             #if column.onupdate is not None:
             #    column.onupdate.accept_schema_visitor(visitor, traverse=False)
-        
+
         self.append("\nCREATE TABLE " + self.preparer.format_table(table) + " (")
-        
+
         separator = "\n"
-        
+
         # if only one primary key, specify it along with the column
         first_pk = False
         for column in table.columns:
@@ -718,7 +779,7 @@ class ANSISchemaGenerator(ANSISchemaBase):
         if hasattr(table, 'indexes'):
             for index in table.indexes:
                 index.accept_schema_visitor(self, traverse=False)
-        
+
     def post_create_table(self, table):
         return ''
 
@@ -746,7 +807,7 @@ class ANSISchemaGenerator(ANSISchemaBase):
     def visit_column_check_constraint(self, constraint):
         self.append(" ")
         self.append(" CHECK (%s)" % constraint.sqltext)
-        
+
     def visit_primary_key_constraint(self, constraint):
         if len(constraint) == 0:
             return
@@ -755,21 +816,21 @@ class ANSISchemaGenerator(ANSISchemaBase):
             self.append("CONSTRAINT %s " % constraint.name)
         self.append("PRIMARY KEY ")
         self.append("(%s)" % (string.join([self.preparer.format_column(c) for c in constraint],', ')))
-    
+
     def supports_alter(self):
         return True
-                        
+
     def visit_foreign_key_constraint(self, constraint):
         if constraint.use_alter and self.supports_alter():
             return
         self.append(", \n\t ")
         self.define_foreign_key(constraint)
-    
+
     def add_foreignkey(self, constraint):
         self.append("ALTER TABLE %s ADD " % self.preparer.format_table(constraint.table))
         self.define_foreign_key(constraint)
         self.execute()
-        
+
     def define_foreign_key(self, constraint):
         if constraint.name is not None:
             self.append("CONSTRAINT %s " % constraint.name)
@@ -801,7 +862,7 @@ class ANSISchemaGenerator(ANSISchemaBase):
                     % (index.name, self.preparer.format_table(index.table),
                        string.join([self.preparer.format_column(c) for c in index.columns], ', ')))
         self.execute()
-        
+
 class ANSISchemaDropper(ANSISchemaBase):
     def __init__(self, engine, proxy, connection, checkfirst=False, tables=None, **kwargs):
         super(ANSISchemaDropper, self).__init__(engine, proxy, **kwargs)
@@ -829,7 +890,7 @@ class ANSISchemaDropper(ANSISchemaBase):
     def drop_foreignkey(self, constraint):
         self.append("ALTER TABLE %s DROP CONSTRAINT %s" % (self.preparer.format_table(constraint.table), constraint.name))
         self.execute()
-        
+
     def visit_table(self, table):
         for column in table.columns:
             if column.default is not None:
@@ -842,58 +903,76 @@ class ANSIDefaultRunner(engine.DefaultRunner):
     pass
 
 class ANSIIdentifierPreparer(object):
-    """handles quoting and case-folding of identifiers based on options"""
+    """Handle quoting and case-folding of identifiers based on options."""
+
     def __init__(self, dialect, initial_quote='"', final_quote=None, omit_schema=False):
-        """Constructs a new ANSIIdentifierPreparer object.
-        
-        initial_quote - Character that begins a delimited identifier
-        final_quote - Caracter that ends a delimited identifier. defaults to initial_quote.
-        
-        omit_schema - prevent prepending schema name. useful for databases that do not support schemae
+        """Construct a new ``ANSIIdentifierPreparer`` object.
+
+        initial_quote
+          Character that begins a delimited identifier.
+
+        final_quote
+          Character that ends a delimited identifier. Defaults to `initial_quote`.
+
+        omit_schema
+          Prevent prepending schema name. Useful for databases that do
+          not support schemae.
         """
+
         self.dialect = dialect
         self.initial_quote = initial_quote
         self.final_quote = final_quote or self.initial_quote
         self.omit_schema = omit_schema
         self.__strings = {}
+
     def _escape_identifier(self, value):
-        """escape an identifier.
-        
-        subclasses should override this to provide database-dependent escaping behavior."""
+        """Escape an identifier.
+
+        Subclasses should override this to provide database-dependent
+        escaping behavior.
+        """
+
         return value.replace('"', '""')
-    
+
     def _quote_identifier(self, value):
-        """quote an identifier.
-        
-        subclasses should override this to provide database-dependent quoting behavior."""
+        """Quote an identifier.
+
+        Subclasses should override this to provide database-dependent
+        quoting behavior.
+        """
+
         return self.initial_quote + self._escape_identifier(value) + self.final_quote
-    
+
     def _fold_identifier_case(self, value):
-        """fold the case of an identifier.
-        
-        subclassses should override this to provide database-dependent case folding behavior."""
+        """Fold the case of an identifier.
+
+        Subclasses should override this to provide database-dependent
+        case folding behavior.
+        """
+
         return value
         # ANSI SQL calls for the case of all unquoted identifiers to be folded to UPPER.
         # some tests would need to be rewritten if this is done.
         #return value.upper()
-    
+
     def _reserved_words(self):
         return RESERVED_WORDS
 
     def _legal_characters(self):
         return LEGAL_CHARACTERS
-    
+
     def _illegal_initial_characters(self):
         return ILLEGAL_INITIAL_CHARACTERS
-        
+
     def _requires_quotes(self, value, case_sensitive):
-        """return true if the given identifier requires quoting."""
+        """Return True if the given identifier requires quoting."""
+
         return \
             value in self._reserved_words() \
             or (value[0] in self._illegal_initial_characters()) \
             or bool(len([x for x in str(value) if x not in self._legal_characters()])) \
             or (case_sensitive and value.lower() != value)
-    
+
     def __generic_obj_format(self, obj, ident):
         if getattr(obj, 'quote', False):
             return self._quote_identifier(ident)
@@ -912,31 +991,33 @@ class ANSIIdentifierPreparer(object):
                 return self._quote_identifier(ident)
             else:
                 return ident
-            
+
     def should_quote(self, object):
-        return object.quote or self._requires_quotes(object.name, object.case_sensitive) 
- 
+        return object.quote or self._requires_quotes(object.name, object.case_sensitive)
+
     def is_natural_case(self, object):
         return object.quote or self._requires_quotes(object.name, object.case_sensitive)
-        
+
     def format_sequence(self, sequence):
         return self.__generic_obj_format(sequence, sequence.name)
-    
+
     def format_label(self, label):
         return self.__generic_obj_format(label, label.name)
 
     def format_alias(self, alias):
         return self.__generic_obj_format(alias, alias.name)
-        
+
     def format_table(self, table, use_schema=True):
-        """Prepare a quoted table and schema name"""
+        """Prepare a quoted table and schema name."""
+
         result = self.__generic_obj_format(table, table.name)
         if use_schema and getattr(table, "schema", None):
             result = self.__generic_obj_format(table, table.schema) + "." + result
         return result
-    
+
     def format_column(self, column, use_table=False):
-        """Prepare a quoted column name """
+        """Prepare a quoted column name."""
+
         if not getattr(column, 'is_literal', False):
             if use_table:
                 return self.format_table(column.table, use_schema=False) + "." + self.__generic_obj_format(column, column.name)
@@ -948,8 +1029,8 @@ class ANSIIdentifierPreparer(object):
                 return self.format_table(column.table, use_schema=False) + "." + column.name
             else:
                 return column.name
-            
-    def format_column_with_table(self, column):
-        """Prepare a quoted column name with table name"""
-        return self.format_column(column, use_table=True)
 
+    def format_column_with_table(self, column):
+        """Prepare a quoted column name with table name."""
+
+        return self.format_column(column, use_table=True)

@@ -3,30 +3,40 @@ import cgi
 import urllib
 from sqlalchemy import exceptions
 
-"""provides the URL object as well as the make_url parsing function."""
+"""Provide the URL object as well as the make_url parsing function."""
 
 class URL(object):
-    """represents the components of a URL used to connect to a database.
-    
-    This object is suitable to be passed directly to a create_engine() call.
-    The fields of the URL are parsed from a string by the module-level make_url() function.  
-    the string format of the URL is an RFC-1738-style string.  
-    
+    """Represent the components of a URL used to connect to a database.
+
+    This object is suitable to be passed directly to a ``create_engine()``
+    call.  The fields of the URL are parsed from a string by the
+    ``module-level make_url()`` function.  the string format of the URL is
+    an RFC-1738-style string.
+
     Attributes on URL include:
-    
+
     drivername
-    
+      The name of the database backend.
+
     username
-    
+      The user name for the connection.
+
     password
-    
+      His password.
+
     host
-    
+      The name of the host.
+
     port
-    
+      The port number.
+
     database
-    
-    query - a dictionary containing key/value pairs representing the URL's query string."""
+      The database.
+
+    query
+      A dictionary containing key/value pairs representing the URL's query string.
+    """
+
     def __init__(self, drivername, username=None, password=None, host=None, port=None, database=None, query=None):
         self.drivername = drivername
         self.username = username
@@ -38,6 +48,7 @@ class URL(object):
             self.port = None
         self.database= database
         self.query = query or {}
+
     def __str__(self):
         s = self.drivername + "://"
         if self.username is not None:
@@ -56,14 +67,21 @@ class URL(object):
             keys.sort()
             s += '?' + "&".join(["%s=%s" % (k, self.query[k]) for k in keys])
         return s
+
     def get_module(self):
-        """return the SQLAlchemy database module corresponding to this URL's driver name."""
+        """Return the SQLAlchemy database module corresponding to this URL's driver name."""
+
         return getattr(__import__('sqlalchemy.databases.%s' % self.drivername).databases, self.drivername)
+
     def translate_connect_args(self, names):
-        """translate this URL's attributes into a dictionary of connection arguments.
-        
-        given a list of argument names corresponding to the URL attributes ('host', 'database', 'username', 'password', 'port'),
-        will assemble the attribute values of this URL into the dictionary using the given names."""
+        """Translate this URL's attributes into a dictionary of connection arguments.
+
+        Given a list of argument names corresponding to the URL
+        attributes (`host`, `database`, `username`, `password`,
+        `port`), will assemble the attribute values of this URL into
+        the dictionary using the given names.
+        """
+
         a = {}
         attribute_names = ['host', 'database', 'username', 'password', 'port']
         for n in names:
@@ -73,18 +91,19 @@ class URL(object):
             if getattr(self, sname, None):
                 a[n] = getattr(self, sname)
         return a
-    
 
 def make_url(name_or_url):
-    """given a string or unicode instance, produces a new URL instance.
-    
-    the given string is parsed according to the rfc1738 spec.
-    if an existing URL object is passed, just returns the object."""
+    """Given a string or unicode instance, produce a new URL instance.
+
+    The given string is parsed according to the rfc1738 spec.  If an
+    existing URL object is passed, just returns the object.
+    """
+
     if isinstance(name_or_url, basestring):
         return _parse_rfc1738_args(name_or_url)
     else:
         return name_or_url
-        
+
 def _parse_rfc1738_args(name):
     pattern = re.compile(r'''
             (\w+)://
@@ -99,7 +118,7 @@ def _parse_rfc1738_args(name):
             (?:/(.*))?
             '''
             , re.X)
-    
+
     m = pattern.match(name)
     if m is not None:
         (name, username, password, host, port, database) = m.group(1, 2, 3, 4, 5, 6)
@@ -124,4 +143,3 @@ def _parse_keyvalue_args(name):
         return URL(name, *opts)
     else:
         return None
-    

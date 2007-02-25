@@ -330,17 +330,23 @@ class FBCompiler(ansisql.ANSICompiler):
 
     def visit_insert(self, insert):
         """Inserts are required to have the primary keys be explicitly present.
-         mapper will by default not put them in the insert statement to comply
-         with autoincrement fields that require they not be present. So,
-         put them all in for all primary key columns."""
+
+         mapper will by default not put them in the insert statement
+         to comply with autoincrement fields that require they not be
+         present. So, put them all in for all primary key columns.
+         """
+
         for c in insert.table.primary_key:
             if not self.parameters.has_key(c.key):
                 self.parameters[c.key] = None
         return ansisql.ANSICompiler.visit_insert(self, insert)
 
     def visit_select_precolumns(self, select):
-        """Called when building a SELECT statement, position is just before column list
-        Firebird puts the limit and offset right after the select..."""
+        """Called when building a ``SELECT`` statement, position is just
+        before column list Firebird puts the limit and offset right
+        after the ``SELECT``...
+        """
+
         result = ""
         if select.limit:
             result += " FIRST %d "  % select.limit
@@ -351,7 +357,7 @@ class FBCompiler(ansisql.ANSICompiler):
         return result
 
     def limit_clause(self, select):
-        """Already taken care of in the visit_select_precolumns method."""
+        """Already taken care of in the `visit_select_precolumns` method."""
         return ""
 
 

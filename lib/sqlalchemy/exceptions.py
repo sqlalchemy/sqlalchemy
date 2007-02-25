@@ -6,59 +6,77 @@
 
 
 class SQLAlchemyError(Exception):
-    """generic error class"""
+    """Generic error class."""
+
     pass
-    
+
 class SQLError(SQLAlchemyError):
-    """raised when the execution of a SQL statement fails.  includes accessors
-    for the underlying exception, as well as the SQL and bind parameters"""
+    """Raised when the execution of a SQL statement fails.
+
+    Includes accessors for the underlying exception, as well as the
+    SQL and bind parameters.
+    """
+
     def __init__(self, statement, params, orig):
         SQLAlchemyError.__init__(self, "(%s) %s"% (orig.__class__.__name__, str(orig)))
         self.statement = statement
         self.params = params
         self.orig = orig
+
     def __str__(self):
         return SQLAlchemyError.__str__(self) + " " + repr(self.statement) + " " + repr(self.params)
 
 class ArgumentError(SQLAlchemyError):
-    """raised for all those conditions where invalid arguments are sent to constructed
-    objects.  This error generally corresponds to construction time state errors."""
+    """Raised for all those conditions where invalid arguments are
+    sent to constructed objects.  This error generally corresponds to
+    construction time state errors.
+    """
+
     pass
 
 class TimeoutError(SQLAlchemyError):
-    """raised when a connection pool times out on getting a connection"""
+    """Raised when a connection pool times out on getting a connection."""
+
     pass
 
 class ConcurrentModificationError(SQLAlchemyError):
-    """raised when a concurrent modification condition is detected"""
+    """Raised when a concurrent modification condition is detected."""
+
     pass
-        
+
 class FlushError(SQLAlchemyError):
-    """raised when an invalid condition is detected upon a flush()"""
+    """Raised when an invalid condition is detected upon a ``flush()``."""
     pass
-    
+
 class InvalidRequestError(SQLAlchemyError):
-    """sqlalchemy was asked to do something it cant do, return nonexistent data, etc.
-    This error generally corresponds to runtime state errors."""
+    """SQLAlchemy was asked to do something it can't do, return
+    nonexistent data, etc.
+
+    This error generally corresponds to runtime state errors.
+    """
+
     pass
 
 class NoSuchTableError(InvalidRequestError):
-    """sqlalchemy was asked to load a table's definition from the database,
-    but the table doesn't exist."""
+    """SQLAlchemy was asked to load a table's definition from the
+    database, but the table doesn't exist.
+    """
+
     pass
 
 class AssertionError(SQLAlchemyError):
-    """corresponds to internal state being detected in an invalid state"""
+    """Corresponds to internal state being detected in an invalid state."""
+
     pass
 
 class NoSuchColumnError(KeyError, SQLAlchemyError):
-    """raised by RowProxy when a nonexistent column is requested from a row"""
+    """Raised by ``RowProxy`` when a nonexistent column is requested from a row."""
+
     pass
-        
+
 class DBAPIError(SQLAlchemyError):
-    """something weird happened with a particular DBAPI version"""
+    """Something weird happened with a particular DBAPI version."""
+
     def __init__(self, message, orig):
         SQLAlchemyError.__init__(self, "(%s) (%s) %s"% (message, orig.__class__.__name__, str(orig)))
         self.orig = orig
-
-    

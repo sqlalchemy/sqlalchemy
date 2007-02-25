@@ -1,25 +1,31 @@
 from sqlalchemy import sql, util, schema, topological
 
-"""utility functions that build upon SQL and Schema constructs"""
-
+"""Utility functions that build upon SQL and Schema constructs."""
 
 class TableCollection(object):
     def __init__(self, tables=None):
         self.tables = tables or []
+
     def __len__(self):
         return len(self.tables)
+
     def __getitem__(self, i):
         return self.tables[i]
+
     def __iter__(self):
         return iter(self.tables)
+
     def __contains__(self, obj):
         return obj in self.tables
+
     def __add__(self, obj):
         return self.tables + list(obj)
+
     def add(self, table):
         self.tables.append(table)
         if hasattr(self, '_sorted'):
             del self._sorted
+
     def sort(self, reverse=False):
         try:
             sorted = self._sorted
@@ -32,7 +38,7 @@ class TableCollection(object):
             return x
         else:
             return sorted
-            
+
     def _do_sort(self):
         tuples = []
         class TVisitor(schema.SchemaVisitor):
@@ -43,7 +49,7 @@ class TableCollection(object):
                 if parent_table in self:
                     child_table = fkey.parent.table
                     tuples.append( ( parent_table, child_table ) )
-        vis = TVisitor()        
+        vis = TVisitor()
         for table in self.tables:
             table.accept_schema_visitor(vis)
         sorter = topological.QueueDependencySorter( tuples, self.tables )
@@ -56,17 +62,20 @@ class TableCollection(object):
         if head is not None:
             to_sequence( head )
         return sequence
-        
+
 
 class TableFinder(TableCollection, sql.ClauseVisitor):
-    """given a Clause, locates all the Tables within it into a list."""
+    """Given a ``Clause``, locate all the ``Tables`` within it into a list."""
+
     def __init__(self, table, check_columns=False):
         TableCollection.__init__(self)
         self.check_columns = check_columns
         if table is not None:
             table.accept_visitor(self)
+
     def visit_table(self, table):
         self.tables.append(table)
+
     def visit_column(self, column):
         if self.check_columns:
             column.table.accept_visitor(self)
@@ -74,48 +83,66 @@ class TableFinder(TableCollection, sql.ClauseVisitor):
 class ColumnFinder(sql.ClauseVisitor):
     def __init__(self):
         self.columns = util.Set()
+
     def visit_column(self, c):
         self.columns.add(c)
+
     def __iter__(self):
         return iter(self.columns)
 
 class ColumnsInClause(sql.ClauseVisitor):
-    """given a selectable, visits clauses and determines if any columns from the clause are in the selectable"""
+    """Given a selectable, visit clauses and determine if any columns
+    from the clause are in the selectable.
+    """
+
     def __init__(self, selectable):
         self.selectable = selectable
         self.result = False
+
     def visit_column(self, column):
         if self.selectable.c.get(column.key) is column:
             self.result = True
 
 class AbstractClauseProcessor(sql.ClauseVisitor):
-    """traverses a clause and attempts to convert the contents of container elements
-    to a converted element.  the conversion operation is defined by subclasses."""
+    """Traverse a clause and attempt to convert the contents of container elements
+    to a converted element.
+
+    The conversion operation is defined by subclasses.
+    """
+
     def convert_element(self, elem):
-        """define the 'conversion' method for this AbstractClauseProcessor"""
+        """Define the *conversion* method for this ``AbstractClauseProcessor``."""
+
         raise NotImplementedError()
+
     def copy_and_process(self, list_):
-        """copy the container elements in the given list to a new list and
-        process the new list."""
+        """Copy the container elements in the given list to a new list and
+        process the new list.
+        """
+
         list_ = [o.copy_container() for o in list_]
         self.process_list(list_)
         return list_
 
     def process_list(self, list_):
-        """process all elements of the given list in-place"""
+        """Process all elements of the given list in-place."""
+
         for i in range(0, len(list_)):
             elem = self.convert_element(list_[i])
             if elem is not None:
                 list_[i] = elem
             else:
                 list_[i].accept_visitor(self)
+
     def visit_compound(self, compound):
         self.visit_clauselist(compound)
+
     def visit_clauselist(self, clist):
         for i in range(0, len(clist.clauses)):
             n = self.convert_element(clist.clauses[i])
             if n is not None:
                 clist.clauses[i] = n
+
     def visit_binary(self, binary):
         elem = self.convert_element(binary.left)
         if elem is not None:
@@ -123,9 +150,10 @@ class AbstractClauseProcessor(sql.ClauseVisitor):
         elem = self.convert_element(binary.right)
         if elem is not None:
             binary.right = elem
-                
+
 class Aliasizer(AbstractClauseProcessor):
-    """converts a table instance within an expression to be an alias of that table."""
+    """Convert a table instance within an expression to be an alias of that table."""
+
     def __init__(self, *tables, **kwargs):
         self.tables = {}
         self.aliases = kwargs.get('aliases', {})
@@ -138,8 +166,10 @@ class Aliasizer(AbstractClauseProcessor):
                     self.tables[t2.table] = t2
                     self.aliases[t2.table] = self.aliases[t]
         self.binary = None
+
     def get_alias(self, table):
         return self.aliases[table]
+
     def convert_element(self, elem):
         if isinstance(elem, sql.ColumnElement) and hasattr(elem, 'table') and self.tables.has_key(elem.table):
             return self.get_alias(elem.table).corresponding_column(elem)
@@ -147,37 +177,39 @@ class Aliasizer(AbstractClauseProcessor):
             return None
 
 class ClauseAdapter(AbstractClauseProcessor):
-    """given a clause (like as in a WHERE criterion), locates columns which 'correspond' to a given selectable, 
-    and changes those columns to be that of the selectable.
-    
-        such as:
-        
-        table1 = Table('sometable', metadata, 
-            Column('col1', Integer),
-            Column('col2', Integer)
-            )
-        table2 = Table('someothertable', metadata, 
-            Column('col1', Integer),
-            Column('col2', Integer)
-            )
-    
-        condition = table1.c.col1 == table2.c.col1
-        
-        and make an alias of table1:
-        
-        s = table1.alias('foo')
-        
-        calling condition.accept_visitor(ClauseAdapter(s)) converts condition to read:
-        
-        s.c.col1 == table2.c.col1
-    
+    """Given a clause (like as in a WHERE criterion), locate columns
+    which *correspond* to a given selectable, and changes those
+    columns to be that of the selectable.
+
+    E.g.::
+
+      table1 = Table('sometable', metadata,
+          Column('col1', Integer),
+          Column('col2', Integer)
+          )
+      table2 = Table('someothertable', metadata,
+          Column('col1', Integer),
+          Column('col2', Integer)
+          )
+
+      condition = table1.c.col1 == table2.c.col1
+
+    and make an alias of table1::
+
+      s = table1.alias('foo')
+
+    calling ``condition.accept_visitor(ClauseAdapter(s))`` converts
+    condition to read::
+
+      s.c.col1 == table2.c.col1
     """
+
     def __init__(self, selectable, include=None, exclude=None, equivalents=None):
         self.selectable = selectable
         self.include = include
         self.exclude = exclude
         self.equivalents = equivalents
-        
+
     def convert_element(self, col):
         if not isinstance(col, sql.ColumnElement):
             return None
@@ -191,4 +223,3 @@ class ClauseAdapter(AbstractClauseProcessor):
         if newcol is None and self.equivalents is not None and col in self.equivalents:
             newcol = self.selectable.corresponding_column(self.equivalents[col], raiseerr=False, keys_ok=False)
         return newcol
-    

@@ -15,7 +15,7 @@ import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
 import sqlalchemy.exceptions as exceptions
 from sqlalchemy.databases import information_schema as ischema
-from sqlalchemy import * 
+from sqlalchemy import *
 import re
 
 try:
@@ -42,24 +42,30 @@ class PGNumeric(sqltypes.Numeric):
             return "NUMERIC"
         else:
             return "NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length}
+
 class PGFloat(sqltypes.Float):
     def get_col_spec(self):
         if not self.precision:
             return "FLOAT"
         else:
             return "FLOAT(%(precision)s)" % {'precision': self.precision}
+
 class PGInteger(sqltypes.Integer):
     def get_col_spec(self):
         return "INTEGER"
+
 class PGSmallInteger(sqltypes.Smallinteger):
     def get_col_spec(self):
         return "SMALLINT"
+
 class PGBigInteger(PGInteger):
     def get_col_spec(self):
         return "BIGINT"
+
 class PG2DateTime(sqltypes.DateTime):
     def get_col_spec(self):
         return "TIMESTAMP " + (self.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
+
 class PG1DateTime(sqltypes.DateTime):
     def convert_bind_param(self, value, dialect):
         if value is not None:
@@ -73,6 +79,7 @@ class PG1DateTime(sqltypes.DateTime):
             return psycopg.TimestampFromMx(value)
         else:
             return None
+
     def convert_result_value(self, value, dialect):
         if value is None:
             return None
@@ -82,11 +89,14 @@ class PG1DateTime(sqltypes.DateTime):
         return datetime.datetime(value.year, value.month, value.day,
                                  value.hour, value.minute, seconds,
                                  microseconds)
+
     def get_col_spec(self):
         return "TIMESTAMP " + (self.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
+
 class PG2Date(sqltypes.Date):
     def get_col_spec(self):
         return "DATE"
+
 class PG1Date(sqltypes.Date):
     def convert_bind_param(self, value, dialect):
         # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
@@ -95,14 +105,18 @@ class PG1Date(sqltypes.Date):
             return psycopg.DateFromMx(value)
         else:
             return None
+
     def convert_result_value(self, value, dialect):
         # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
         return value
+
     def get_col_spec(self):
         return "DATE"
+
 class PG2Time(sqltypes.Time):
     def get_col_spec(self):
         return "TIME " + (self.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
+
 class PG1Time(sqltypes.Time):
     def convert_bind_param(self, value, dialect):
         # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
@@ -111,31 +125,37 @@ class PG1Time(sqltypes.Time):
             return psycopg.TimeFromMx(value)
         else:
             return None
+
     def convert_result_value(self, value, dialect):
         # TODO: perform appropriate postgres1 conversion between Python DateTime/MXDateTime
         return value
+
     def get_col_spec(self):
         return "TIME " + (self.timezone and "WITH" or "WITHOUT") + " TIME ZONE"
+
 class PGInterval(sqltypes.TypeEngine):
     def get_col_spec(self):
         return "INTERVAL"
-        
+
 class PGText(sqltypes.TEXT):
     def get_col_spec(self):
         return "TEXT"
+
 class PGString(sqltypes.String):
     def get_col_spec(self):
         return "VARCHAR(%(length)s)" % {'length' : self.length}
+
 class PGChar(sqltypes.CHAR):
     def get_col_spec(self):
         return "CHAR(%(length)s)" % {'length' : self.length}
+
 class PGBinary(sqltypes.Binary):
     def get_col_spec(self):
         return "BYTEA"
+
 class PGBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "BOOLEAN"
-
 
 pg2_colspecs = {
     sqltypes.Integer : PGInteger,
@@ -214,7 +234,7 @@ class PGExecutionContext(default.DefaultExecutionContext):
                     cursor = proxy(str(c), c.get_params())
                     row = cursor.fetchone()
                 self._last_inserted_ids = [v for v in row]
-    
+
 class PGDialect(ansisql.ANSIDialect):
     def __init__(self, module=None, use_oids=False, use_information_schema=False, server_side_cursors=False, **params):
         self.use_oids = use_oids
@@ -225,7 +245,7 @@ class PGDialect(ansisql.ANSIDialect):
             self.module = psycopg
         else:
             self.module = module
-        # figure psycopg version 1 or 2    
+        # figure psycopg version 1 or 2
         try:
             if self.module.__version__.startswith('2'):
                 self.version = 2
@@ -238,7 +258,7 @@ class PGDialect(ansisql.ANSIDialect):
         # produce consistent paramstyle even if psycopg2 module not present
         if self.module is None:
             self.paramstyle = 'pyformat'
-        
+
     def create_connect_args(self, url):
         opts = url.translate_connect_args(['host', 'database', 'user', 'password', 'port'])
         if opts.has_key('port'):
@@ -265,23 +285,27 @@ class PGDialect(ansisql.ANSIDialect):
             return sqltypes.adapt_type(typeobj, pg2_colspecs)
         else:
             return sqltypes.adapt_type(typeobj, pg1_colspecs)
-        
+
     def compiler(self, statement, bindparams, **kwargs):
         return PGCompiler(self, statement, bindparams, **kwargs)
+
     def schemagenerator(self, *args, **kwargs):
         return PGSchemaGenerator(*args, **kwargs)
+
     def schemadropper(self, *args, **kwargs):
         return PGSchemaDropper(*args, **kwargs)
+
     def defaultrunner(self, engine, proxy):
         return PGDefaultRunner(engine, proxy)
+
     def preparer(self):
         return PGIdentifierPreparer(self)
-        
+
     def get_default_schema_name(self, connection):
         if not hasattr(self, '_default_schema_name'):
             self._default_schema_name = connection.scalar("select current_schema()", None)
         return self._default_schema_name
-        
+
     def last_inserted_ids(self):
         if self.context.last_inserted_ids is None:
             raise exceptions.InvalidRequestError("no INSERT executed, or cant use cursor.lastrowid without Postgres OIDs enabled")
@@ -295,8 +319,12 @@ class PGDialect(ansisql.ANSIDialect):
             return None
 
     def do_executemany(self, c, statement, parameters, context=None):
-        """we need accurate rowcounts for updates, inserts and deletes.  psycopg2 is not nice enough
-        to produce this correctly for an executemany, so we do our own executemany here."""
+        """We need accurate rowcounts for updates, inserts and deletes.
+
+        ``psycopg2`` is not nice enough to produce this correctly for
+        an executemany, so we do our own executemany here.
+        """
+
         rowcount = 0
         for param in parameters:
             c.execute(statement, param)
@@ -318,7 +346,7 @@ class PGDialect(ansisql.ANSIDialect):
     def has_sequence(self, connection, sequence_name):
         cursor = connection.execute('''SELECT relname FROM pg_class WHERE relkind = 'S' AND relnamespace IN ( SELECT oid FROM pg_namespace WHERE nspname NOT LIKE 'pg_%%' AND nspname != 'information_schema' AND relname = %(seqname)s);''', {'seqname': sequence_name})
         return bool(not not cursor.rowcount)
-        
+
     def reflecttable(self, connection, table):
         if self.version == 2:
             ischema_names = pg2_ischema_names
@@ -333,10 +361,10 @@ class PGDialect(ansisql.ANSIDialect):
                 schema_where_clause = "n.nspname = :schema"
             else:
                 schema_where_clause = "pg_catalog.pg_table_is_visible(c.oid)"
-    
+
             ## information schema in pg suffers from too many permissions' restrictions
             ## let us find out at the pg way what is needed...
-    
+
             SQL_COLS = """
                 SELECT a.attname,
                   pg_catalog.format_type(a.atttypid, a.atttypmod),
@@ -354,25 +382,25 @@ class PGDialect(ansisql.ANSIDialect):
                 ) AND a.attnum > 0 AND NOT a.attisdropped
                 ORDER BY a.attnum
             """ % schema_where_clause
-    
+
             s = text(SQL_COLS)
-            c = connection.execute(s, table_name=table.name, 
+            c = connection.execute(s, table_name=table.name,
                                       schema=table.schema)
             rows = c.fetchall()
-            
-            if not rows: 
+
+            if not rows:
                 raise exceptions.NoSuchTableError(table.name)
-                
+
             for name, format_type, default, notnull, attnum, table_oid in rows:
-                ## strip (30) from character varying(30)                
+                ## strip (30) from character varying(30)
                 attype = re.search('([^\(]+)', format_type).group(1)
                 nullable = not notnull
-                
+
                 try:
                     charlen = re.search('\(([\d,]+)\)', format_type).group(1)
                 except:
                     charlen = False
-    
+
                 numericprec = False
                 numericscale = False
                 if attype == 'numeric':
@@ -400,7 +428,7 @@ class PGDialect(ansisql.ANSIDialect):
                     kwargs['timezone'] = True
                 elif attype == 'timestamp without time zone':
                     kwargs['timezone'] = False
-    
+
                 coltype = ischema_names[attype]
                 coltype = coltype(*args, **kwargs)
                 colargs= []
@@ -413,31 +441,31 @@ class PGDialect(ansisql.ANSIDialect):
                             default = match.group(1) + sch + '.' + match.group(2) + match.group(3)
                     colargs.append(PassiveDefault(sql.text(default)))
                 table.append_column(schema.Column(name, coltype, nullable=nullable, *colargs))
-    
-    
+
+
             # Primary keys
             PK_SQL = """
-              SELECT attname FROM pg_attribute 
+              SELECT attname FROM pg_attribute
               WHERE attrelid = (
                  SELECT indexrelid FROM pg_index i
                  WHERE i.indrelid = :table
                  AND i.indisprimary = 't')
               ORDER BY attnum
-            """ 
+            """
             t = text(PK_SQL)
             c = connection.execute(t, table=table_oid)
-            for row in c.fetchall(): 
+            for row in c.fetchall():
                 pk = row[0]
                 table.primary_key.add(table.c[pk])
-    
+
             # Foreign keys
             FK_SQL = """
-              SELECT conname, pg_catalog.pg_get_constraintdef(oid, true) as condef 
-              FROM  pg_catalog.pg_constraint r 
-              WHERE r.conrelid = :table AND r.contype = 'f' 
+              SELECT conname, pg_catalog.pg_get_constraintdef(oid, true) as condef
+              FROM  pg_catalog.pg_constraint r
+              WHERE r.conrelid = :table AND r.contype = 'f'
               ORDER BY 1
             """
-            
+
             t = text(FK_SQL)
             c = connection.execute(t, table=table_oid)
             for conname, condef in c.fetchall():
@@ -448,10 +476,10 @@ class PGDialect(ansisql.ANSIDialect):
                     referred_schema = preparer._unquote_identifier(referred_schema)
                 referred_table = preparer._unquote_identifier(referred_table)
                 referred_columns = [preparer._unquote_identifier(x) for x in re.split(r'\s*,\s', referred_columns)]
-                
+
                 refspec = []
                 if referred_schema is not None:
-                    schema.Table(referred_table, table.metadata, autoload=True, schema=referred_schema, 
+                    schema.Table(referred_table, table.metadata, autoload=True, schema=referred_schema,
                                 autoload_with=connection)
                     for column in referred_columns:
                         refspec.append(".".join([referred_schema, referred_table, column]))
@@ -459,11 +487,10 @@ class PGDialect(ansisql.ANSIDialect):
                     schema.Table(referred_table, table.metadata, autoload=True, autoload_with=connection)
                     for column in referred_columns:
                         refspec.append(".".join([referred_table, column]))
-                
+
                 table.append_constraint(ForeignKeyConstraint(constrained_columns, refspec, conname))
 
 class PGCompiler(ansisql.ANSICompiler):
-        
     def visit_insert_column(self, column, parameters):
         # all column primary key inserts must be explicitly present
         if column.primary_key:
@@ -502,10 +529,9 @@ class PGCompiler(ansisql.ANSICompiler):
         if isinstance(binary.type, sqltypes.String) and binary.operator == '+':
             return '||'
         else:
-            return ansisql.ANSICompiler.binary_operator_string(self, binary)        
-        
+            return ansisql.ANSICompiler.binary_operator_string(self, binary)
+
 class PGSchemaGenerator(ansisql.ANSISchemaGenerator):
-        
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column)
         if column.primary_key and len(column.foreign_keys)==0 and column.autoincrement and isinstance(column.type, sqltypes.Integer) and not isinstance(column.type, sqltypes.SmallInteger) and (column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional)):
@@ -527,7 +553,7 @@ class PGSchemaGenerator(ansisql.ANSISchemaGenerator):
         if not sequence.optional and (not self.dialect.has_sequence(self.connection, sequence.name)):
             self.append("CREATE SEQUENCE %s" % self.preparer.format_sequence(sequence))
             self.execute()
-            
+
 class PGSchemaDropper(ansisql.ANSISchemaDropper):
     def visit_sequence(self, sequence):
         if not sequence.optional and (self.dialect.has_sequence(self.connection, sequence.name)):
@@ -543,7 +569,7 @@ class PGDefaultRunner(ansisql.ANSIDefaultRunner):
                 return c.fetchone()[0]
             elif (isinstance(column.type, sqltypes.Integer) and column.autoincrement) and (column.default is None or (isinstance(column.default, schema.Sequence) and column.default.optional)):
                 sch = column.table.schema
-                # TODO: this has to build into the Sequence object so we can get the quoting 
+                # TODO: this has to build into the Sequence object so we can get the quoting
                 # logic from it
                 if sch is not None:
                     exc = "select nextval('\"%s\".\"%s_%s_seq\"')" % (sch, column.table.name, column.name)
@@ -555,7 +581,7 @@ class PGDefaultRunner(ansisql.ANSIDefaultRunner):
                 return ansisql.ANSIDefaultRunner.get_column_default(self, column)
         else:
             return ansisql.ANSIDefaultRunner.get_column_default(self, column)
-        
+
     def visit_sequence(self, seq):
         if not seq.optional:
             c = self.proxy("select nextval('%s')" % seq.name) #TODO: self.dialect.preparer.format_sequence(seq))
@@ -566,9 +592,10 @@ class PGDefaultRunner(ansisql.ANSIDefaultRunner):
 class PGIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
     def _fold_identifier_case(self, value):
         return value.lower()
+
     def _unquote_identifier(self, value):
         if value[0] == self.initial_quote:
             value = value[1:-1].replace('""','"')
         return value
-    
+
 dialect = PGDialect
