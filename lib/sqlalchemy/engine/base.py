@@ -439,7 +439,11 @@ class Connection(Connectable):
         return self.execute(object, *multiparams, **params).scalar()
 
     def execute(self, object, *multiparams, **params):
-        return Connection.executors[type(object).__mro__[-2]](self, object, *multiparams, **params)
+        for c in type(object).__mro__:
+            if c in Connection.executors:
+                return Connection.executors[c](self, object, *multiparams, **params)
+        else:
+            raise exceptions.InvalidRequestError("Unexecuteable object type: " + str(type(object)))
 
     def execute_default(self, default, **kwargs):
         return default.accept_schema_visitor(self.__engine.dialect.defaultrunner(self.__engine, self.proxy, **kwargs))
@@ -467,7 +471,10 @@ class Connection(Connectable):
                 return [multiparams[0]]
         else:
             return multiparams
-
+    
+    def execute_function(self, func, *multiparams, **params):
+        return self.execute_clauseelement(func.select(), *multiparams, **params)
+        
     def execute_clauseelement(self, elem, *multiparams, **params):
         executemany = len(multiparams) > 0
         if executemany:
@@ -478,7 +485,6 @@ class Connection(Connectable):
 
     def execute_compiled(self, compiled, *multiparams, **params):
         """Execute a sql.Compiled object."""
-
         if not compiled.can_execute:
             raise exceptions.ArgumentError("Not an executeable clause: %s" % (str(compiled)))
         cursor = self.__engine.dialect.create_cursor(self.connection)
@@ -501,6 +507,7 @@ class Connection(Connectable):
 
     # poor man's multimethod/generic function thingy
     executors = {
+        sql._Function : execute_function,
         sql.ClauseElement : execute_clauseelement,
         sql.ClauseVisitor : execute_compiled,
         schema.SchemaItem:execute_default,

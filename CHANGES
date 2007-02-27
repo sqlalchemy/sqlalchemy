@@ -2,6 +2,9 @@
     - exists() becomes useable as a standalone selectable, not just in a 
     WHERE clause
     - correlated subqueries work inside of ORDER BY, GROUP BY
+    - fixed function execution with explicit connections, when you dont 
+    explicitly say "select()" off the function, i.e. 
+    conn.execute(func.dosomething())
 - orm:
     - a full select() construct can be passed to query.select() (which
       worked anyway), but also query.selectfirst(), query.selectone() which
