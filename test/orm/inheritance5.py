@@ -233,7 +233,7 @@ class RelationTest3(testbase.ORMTest):
         if usedata:
             mapper(Person, people, select_table=poly_union, polymorphic_identity='person', polymorphic_on=people.c.type,
                   properties={
-                    'colleagues':relation(Person, primaryjoin=people.c.colleague_id==people.c.person_id, remote_side=people.c.person_id, uselist=True),
+                    'colleagues':relation(Person, primaryjoin=people.c.colleague_id==people.c.person_id, remote_side=people.c.colleague_id, uselist=True),
                     'data':relation(Data, uselist=False)
                     }        
             )
@@ -241,7 +241,7 @@ class RelationTest3(testbase.ORMTest):
             mapper(Person, people, select_table=poly_union, polymorphic_identity='person', polymorphic_on=people.c.type,
                   properties={
                     'colleagues':relation(Person, primaryjoin=people.c.colleague_id==people.c.person_id, 
-                        remote_side=people.c.person_id, uselist=True)
+                        remote_side=people.c.colleague_id, uselist=True)
                     }        
             )
 
