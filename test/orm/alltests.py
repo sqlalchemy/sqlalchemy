@@ -31,6 +31,7 @@ def suite():
         'orm.inheritance3',
         'orm.inheritance4',
         'orm.inheritance5',
+        'orm.abc_inheritance',
         'orm.single',
         'orm.polymorph'        
         )
