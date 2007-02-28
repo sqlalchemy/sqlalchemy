@@ -50,10 +50,24 @@ class SessionTest(AssertMixin):
             sess.delete(u)
             sess.save(User())
             sess.flush()
+            # TODO: assertion ?
             transaction.commit()
         except:
             transaction.rollback()
-        
+
+    def test_nested_transaction(self):
+        class User(object):pass
+        mapper(User, users)
+        sess = create_session()
+        transaction = sess.create_transaction()
+        trans2 = sess.create_transaction()
+        u = User()
+        sess.save(u)
+        sess.flush()
+        trans2.commit()
+        transaction.rollback()
+        assert len(sess.query(User).select()) == 0
+
     def test_close_two(self):
         c = testbase.db.connect()
         try:
