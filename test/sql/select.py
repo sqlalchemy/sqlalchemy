@@ -350,6 +350,26 @@ WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid =
             select(["column1", "column2"], from_obj=[table1]).alias('somealias').select(),
             "SELECT somealias.column1, somealias.column2 FROM (SELECT column1, column2 FROM mytable) AS somealias"
         )
+        
+        # test that use_labels doesnt interfere with literal columns
+        self.runtest(
+            select(["column1", "column2", table1.c.myid], from_obj=[table1], use_labels=True),
+            "SELECT column1, column2, mytable.myid AS mytable_myid FROM mytable"
+        )
+
+        # test that use_labels doesnt interfere with literal columns that have textual labels
+        self.runtest(
+            select(["column1 AS foobar", "column2 AS hoho", table1.c.myid], from_obj=[table1], use_labels=True),
+            "SELECT column1 AS foobar, column2 AS hoho, mytable.myid AS mytable_myid FROM mytable"
+        )
+        
+        # test that "auto-labeling of subquery columns" doesnt interfere with literal columns,
+        # exported columns dont get quoted
+        self.runtest(
+            select(["column1 AS foobar", "column2 AS hoho", table1.c.myid], from_obj=[table1]).select(),
+            "SELECT column1 AS foobar, column2 AS hoho, myid FROM (SELECT column1 AS foobar, column2 AS hoho, mytable.myid AS myid FROM mytable)"
+        )
+
     def testtextbinds(self):
         self.runtest(
             text("select * from foo where lala=:bar and hoho=:whee"), 

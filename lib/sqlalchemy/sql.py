@@ -1662,6 +1662,10 @@ class _ColumnClause(ColumnElement):
         self.is_literal = is_literal
 
     def _get_label(self):
+        # for a "literal" column, we've no idea what the text is
+        # therefore no 'label' can be automatically generated
+        if self.is_literal:
+            return None
         if self.__label is None:
             if self.table is not None and self.table.named_with_column():
                 self.__label = self.table.name + "_" + self.name
@@ -1674,6 +1678,14 @@ class _ColumnClause(ColumnElement):
 
     _label = property(_get_label)
 
+    def label(self, name):
+        # if going off the "__label" property and its None, we have
+        # no label; return self
+        if name is None:
+            return self
+        else:
+            return super(_ColumnClause, self).label(name)
+            
     def accept_visitor(self, visitor):
         visitor.visit_column(self)
 
@@ -1697,7 +1709,10 @@ class _ColumnClause(ColumnElement):
         return _BindParamClause(self._label, obj, shortname = self.name, type=self.type)
 
     def _make_proxy(self, selectable, name = None):
-        c = _ColumnClause(name or self.name, selectable, _is_oid=self._is_oid, type=self.type)
+        # propigate the "is_literal" flag only if we are keeping our name,
+        # otherwise its considered to be a label
+        is_literal = self.is_literal and (name is None or name == self.name)
+        c = _ColumnClause(name or self.name, selectable, _is_oid=self._is_oid, type=self.type, is_literal=is_literal)
         c.orig_set = self.orig_set
         if not self._is_oid:
             selectable.columns[c.name] = c
@@ -1855,7 +1870,7 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
         if self.use_labels:
             col = column._make_proxy(self, name=column._label)
         else:
-            col = column._make_proxy(self, name=column.name)
+            col = column._make_proxy(self)
         try:
             colset = self._col_map[col.name]
         except KeyError:
@@ -2009,7 +2024,7 @@ class Select(_SelectBaseMixin, FromClause):
         if self.use_labels:
             return column._make_proxy(self, name=column._label)
         else:
-            return column._make_proxy(self, name=column.name)
+            return column._make_proxy(self)
             
     def _process_froms(self, elem, asfrom):
         for f in elem._get_from_objects():

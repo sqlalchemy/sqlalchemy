@@ -392,12 +392,17 @@ class ANSICompiler(sql.Compiled):
                 continue
             for co in s.columns:
                 if select.use_labels:
-                    l = co.label(co._label)
-                    l.accept_visitor(self)
-                    inner_columns[co._label] = l
+                    labelname = co._label
+                    if labelname is not None:
+                        l = co.label(labelname)
+                        l.accept_visitor(self)
+                        inner_columns[labelname] = l
+                    else:
+                        co.accept_visitor(self)
+                        inner_columns[self.get_str(co)] = co
                 # TODO: figure this out, a ColumnClause with a select as a parent
                 # is different from any other kind of parent
-                elif select.is_subquery and isinstance(co, sql._ColumnClause) and co.table is not None and not isinstance(co.table, sql.Select):
+                elif select.is_subquery and isinstance(co, sql._ColumnClause) and not co.is_literal and co.table is not None and not isinstance(co.table, sql.Select):
                     # SQLite doesnt like selecting from a subquery where the column
                     # names look like table.colname, so add a label synonomous with
                     # the column name
