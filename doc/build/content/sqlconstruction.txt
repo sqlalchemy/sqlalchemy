@@ -13,7 +13,7 @@ For this section, we will mostly use the implcit style of execution, meaning the
 
     {python}
     from sqlalchemy import *
-    metadata = BoundMetaData('sqlite:///mydb.db', strategy='threadlocal', echo=True)
+    metadata = BoundMetaData('sqlite:///mydb.db', echo=True)
     
     # a table to store users
     users = Table('users', metadata,
@@ -492,6 +492,17 @@ A join can be created on its own using the `join` or `outerjoin` functions, or c
     JOIN keywords ON keywords.keyword_id = userkeywords.keyword_id
     WHERE keywords.name = :keywords_name
     {'keywords_name': 'running'}                
+
+Joins also provide a keyword argument `fold_equivalents` on the `select()` function which allows the column list of the resulting select to be "folded" to the minimal list of columns, based on those columns that are known to be equivalent from the "onclause" of the join.  This saves the effort of constructing column lists manually in conjunction with databases like Postgres which can be picky about "ambiguous columns".  In this example, only the "users.user_id" column, but not the "addresses.user_id" column, shows up in the column clause of the resulting select:
+
+    {python}
+    {sql}users.join(addresses).select(fold_equivalents=True).execute()
+    SELECT users.user_id, users.user_name, users.password, addresses.address_id, 
+    addresses.street, addresses.city, addresses.state, addresses.zip
+    FROM users JOIN addresses ON users.user_id = addresses.address_id
+    {}                
+    
+The `fold_equivalents` argument will recursively apply to "chained" joins as well, i.e. `a.join(b).join(c)...`.
 
 ### Table Aliases {@name=alias}
 

@@ -544,9 +544,7 @@ class RelationTest7(testbase.ORMTest):
 
         car_join = polymorphic_union(
             {
-                'car' : cars.select(offroad_cars.c.car_id == None, from_obj=[cars.outerjoin(offroad_cars)]),
-                # cant do this one because "car_id" from both tables conflicts on pg
-#                'car' : cars.outerjoin(offroad_cars).select(offroad_cars.c.car_id == None),
+                'car' : cars.outerjoin(offroad_cars).select(offroad_cars.c.car_id == None, fold_equivalents=True),
                 'offroad' : cars.join(offroad_cars)
             }, "type", 'car_join')
 

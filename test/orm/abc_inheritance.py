@@ -8,7 +8,7 @@ def produce_test(parent, child, direction, fkeyinline):
             global ta, tb, tc
             ta = ["a", meta]
             ta.append(Column('id', Integer, primary_key=True)), 
-            ta.append(Column('data', String(30)))
+            ta.append(Column('a_data', String(30)))
             if "a"== parent and direction == MANYTOONE:
                 ta.append(Column('child_id', Integer, ForeignKey("%s.id" % child, use_alter=True, name="foo")))
             elif "a" == child and direction == ONETOMANY:
@@ -22,7 +22,7 @@ def produce_test(parent, child, direction, fkeyinline):
                 tb.append(Column('id', Integer, primary_key=True))
                 tb.append(Column('a_id', Integer, ForeignKey("a.id"), primary_key=True))
         
-            tb.append(Column('data', String(30)))
+            tb.append(Column('b_data', String(30)))
     
             if "b"== parent and direction == MANYTOONE:
                 tb.append(Column('child_id', Integer, ForeignKey("%s.id" % child, use_alter=True, name="foo")))
@@ -37,16 +37,23 @@ def produce_test(parent, child, direction, fkeyinline):
                 tc.append(Column('id', Integer, primary_key=True))
                 tc.append(Column('b_id', Integer, ForeignKey("b.id"), primary_key=True))
         
-            tc.append(Column('data', String(30)))
+            tc.append(Column('c_data', String(30)))
     
             if "c"== parent and direction == MANYTOONE:
                 tc.append(Column('child_id', Integer, ForeignKey("%s.id" % child, use_alter=True, name="foo")))
             elif "c" == child and direction == ONETOMANY:
                 tc.append(Column('parent_id', Integer, ForeignKey("%s.id" % parent, use_alter=True, name="foo")))
             tc = Table(*tc)
+
+        def tearDown(self):
+            if direction == MANYTOONE:
+                parent_table = {"a":ta, "b":tb, "c": tc}[parent]
+                parent_table.update(values={parent_table.c.child_id:None}).execute()
+            elif direction == ONETOMANY:
+                child_table = {"a":ta, "b":tb, "c": tc}[child]
+                child_table.update(values={child_table.c.parent_id:None}).execute()
+            super(ABCTest, self).tearDown()
         
-        # TODO: get finicky postgres to work
-        @testbase.supported('sqlite')
         def test_basic(self):
             parent_table = {"a":ta, "b":tb, "c": tc}[parent]
             child_table = {"a":ta, "b":tb, "c": tc}[child]
@@ -70,14 +77,14 @@ def produce_test(parent, child, direction, fkeyinline):
 
             abcjoin = polymorphic_union(
                 {"a":ta.select(tb.c.id==None, from_obj=[ta.outerjoin(tb, onclause=atob)]),
-                "b":ta.join(tb, onclause=atob).outerjoin(tc, onclause=btoc).select(tc.c.id==None),
+                "b":ta.join(tb, onclause=atob).outerjoin(tc, onclause=btoc).select(tc.c.id==None, fold_equivalents=True),
                 "c":tc.join(tb, onclause=btoc).join(ta, onclause=atob)
                 },"type", "abcjoin"
             )
 
             bcjoin = polymorphic_union(
             {
-            "b":ta.join(tb, onclause=atob).outerjoin(tc, onclause=btoc).select(tc.c.id==None),
+            "b":ta.join(tb, onclause=atob).outerjoin(tc, onclause=btoc).select(tc.c.id==None, fold_equivalents=True),
             "c":tc.join(tb, onclause=btoc).join(ta, onclause=atob)
             },"type", "bcjoin"
             )
@@ -131,7 +138,7 @@ def produce_test(parent, child, direction, fkeyinline):
                 result2 = sess.query(parent_class).get(parent2.id)
                 assert result2.id == parent2.id
                 assert result2.collection[0].id == child_obj.id
-    ABCTest.__name__ = "Test%s%s%d%sTest" % (parent, child, direction, fkeyinline)
+    ABCTest.__name__ = "Test%sTo%s%s%s" % (parent, child, (direction is ONETOMANY and "O2M" or "M2O"), fkeyinline)
     return ABCTest
 
 for parent in ["a", "b", "c"]:

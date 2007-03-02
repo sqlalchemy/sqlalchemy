@@ -11,6 +11,11 @@
       or use literal_column("somecol").label("somelabel")
     - quoting wont occur for literal columns when they are "proxied" into the
     column collection for their selectable (is_literal flag is propigated)
+    - added "fold_equivalents" argument to Join.select(), which removes
+    'duplicate' columns from the resulting column clause that are known to be 
+    equivalent based on the join condition.  this is of great usage when 
+    constructing subqueries of joins which Postgres complains about if 
+    duplicate column names are present.
 - orm:
     - a full select() construct can be passed to query.select() (which
       worked anyway), but also query.selectfirst(), query.selectone() which

@@ -739,17 +739,33 @@ class Mapper(object):
         equated to one another.
 
         This is used when relating columns to those of a polymorphic
-        selectable, as the selectable usually only contains one of two
+        selectable, as the selectable usually only contains one of two (or more)
         columns that are equated to one another.
+        
+        The resulting structure is a dictionary of columns mapped
+        to lists of equivalent columns, i.e.
+        
+        {
+            tablea.col1: 
+                [tableb.col1, tablec.col1],
+            tablea.col2:
+                [tabled.col2]
+        }
         """
 
         result = {}
         def visit_binary(binary):
             if binary.operator == '=':
-                result[binary.left] = binary.right
-                result[binary.right] = binary.left
+                if binary.left in result:
+                    result[binary.left].append(binary.right)
+                else:
+                    result[binary.left] = [binary.right]
+                if binary.right in result:
+                    result[binary.right].append(binary.left)
+                else:
+                    result[binary.right] = [binary.left]
         vis = mapperutil.BinaryVisitor(visit_binary)
-        for mapper in self.polymorphic_iterator():
+        for mapper in self.base_mapper().polymorphic_iterator():
             if mapper.inherit_condition is not None:
                 mapper.inherit_condition.accept_visitor(vis)
         return result

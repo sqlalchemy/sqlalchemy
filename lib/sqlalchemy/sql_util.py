@@ -221,5 +221,8 @@ class ClauseAdapter(AbstractClauseProcessor):
                 return None
         newcol = self.selectable.corresponding_column(col, raiseerr=False, keys_ok=False)
         if newcol is None and self.equivalents is not None and col in self.equivalents:
-            newcol = self.selectable.corresponding_column(self.equivalents[col], raiseerr=False, keys_ok=False)
+            for equiv in self.equivalents[col]:
+                newcol = self.selectable.corresponding_column(equiv, raiseerr=False, keys_ok=False)
+                if newcol:
+                    return newcol
         return newcol
