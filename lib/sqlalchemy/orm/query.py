@@ -32,7 +32,7 @@ class Query(object):
         if not hasattr(self.mapper, '_get_clause'):
             _get_clause = sql.and_()
             for primary_key in self.primary_key_columns:
-                _get_clause.clauses.append(primary_key == sql.bindparam(primary_key._label, type=primary_key.type))
+                _get_clause.clauses.append(primary_key == sql.bindparam(primary_key._label, type=primary_key.type, unique=True))
             self.mapper._get_clause = _get_clause
         self._get_clause = self.mapper._get_clause
         for opt in util.flatten_iterator(self.with_options):

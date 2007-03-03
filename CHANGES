@@ -1,4 +1,11 @@
 - sql:
+    - bindparam() names are now repeatable!  specify two
+     distinct bindparam()s with the same name in a single statement,
+     and the key will be shared.  proper positional/named args translate
+     at compile time.  for the old behavior of "aliasing" bind parameters
+     with conflicting names, specify "unique=True" - this option is
+     still used internally for all the auto-genererated (value-based) 
+     bind parameters.    
     - exists() becomes useable as a standalone selectable, not just in a 
     WHERE clause
     - correlated subqueries work inside of ORDER BY, GROUP BY
@@ -15,7 +22,7 @@
     'duplicate' columns from the resulting column clause that are known to be 
     equivalent based on the join condition.  this is of great usage when 
     constructing subqueries of joins which Postgres complains about if 
-    duplicate column names are present.
+    duplicate column names are present.    
 - orm:
     - a full select() construct can be passed to query.select() (which
       worked anyway), but also query.selectfirst(), query.selectone() which

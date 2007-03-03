@@ -1151,9 +1151,9 @@ class Mapper(object):
                 mapper = table_to_mapper[table]
                 clause = sql.and_()
                 for col in mapper.pks_by_table[table]:
-                    clause.clauses.append(col == sql.bindparam(col._label, type=col.type))
+                    clause.clauses.append(col == sql.bindparam(col._label, type=col.type, unique=True))
                 if mapper.version_id_col is not None:
-                    clause.clauses.append(mapper.version_id_col == sql.bindparam(mapper.version_id_col._label, type=col.type))
+                    clause.clauses.append(mapper.version_id_col == sql.bindparam(mapper.version_id_col._label, type=col.type, unique=True))
                 statement = table.update(clause)
                 rows = 0
                 supports_sane_rowcount = True
@@ -1277,9 +1277,9 @@ class Mapper(object):
                 delete.sort(comparator)
                 clause = sql.and_()
                 for col in self.pks_by_table[table]:
-                    clause.clauses.append(col == sql.bindparam(col.key, type=col.type))
+                    clause.clauses.append(col == sql.bindparam(col.key, type=col.type, unique=True))
                 if self.version_id_col is not None:
-                    clause.clauses.append(self.version_id_col == sql.bindparam(self.version_id_col.key, type=self.version_id_col.type))
+                    clause.clauses.append(self.version_id_col == sql.bindparam(self.version_id_col.key, type=self.version_id_col.type, unique=True))
                 statement = table.delete(clause)
                 c = connection.execute(statement, delete)
                 if c.supports_sane_rowcount() and c.rowcount != len(delete):

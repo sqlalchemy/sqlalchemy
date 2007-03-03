@@ -308,7 +308,7 @@ def literal(value, type=None):
     for this literal.
     """
 
-    return _BindParamClause('literal', value, type=type)
+    return _BindParamClause('literal', value, type=type, unique=True)
 
 def label(name, obj):
     """Return a ``_Label`` object for the given selectable, used in
@@ -343,19 +343,30 @@ def table(name, *columns):
 
     return TableClause(name, *columns)
 
-def bindparam(key, value=None, type=None, shortname=None):
+def bindparam(key, value=None, type=None, shortname=None, unique=False):
     """Create a bind parameter clause with the given key.
 
-    An optional default value can be specified by the value parameter,
-    and the optional type parameter is a
-    ``sqlalchemy.types.TypeEngine`` object which indicates
-    bind-parameter and result-set translation for this bind parameter.
+     value
+       a default value for this bind parameter.  a bindparam with a value
+       is called a ``value-based bindparam``.
+     
+     shortname
+        an ``alias`` for this bind parameter.  usually used to alias the ``key`` and 
+       ``label`` of a column, i.e. ``somecolname`` and ``sometable_somecolname``
+       
+     type
+       a sqlalchemy.types.TypeEngine object indicating the type of this bind param, will
+       invoke type-specific bind parameter processing
+     
+     unique
+       if True, bind params sharing the same name will have their underlying ``key`` modified
+       to a uniquely generated name.  mostly useful with value-based bind params.
     """
 
     if isinstance(key, _ColumnClause):
-        return _BindParamClause(key.name, value, type=key.type, shortname=shortname)
+        return _BindParamClause(key.name, value, type=key.type, shortname=shortname, unique=unique)
     else:
-        return _BindParamClause(key, value, type=type, shortname=shortname)
+        return _BindParamClause(key, value, type=type, shortname=shortname, unique=unique)
 
 def text(text, engine=None, *args, **kwargs):
     """Create literal text to be inserted into a query.
@@ -817,7 +828,7 @@ class _CompareMixin(object):
         return self._operate('/', other)
 
     def _bind_param(self, obj):
-        return _BindParamClause('literal', obj, shortname=None, type=self.type)
+        return _BindParamClause('literal', obj, shortname=None, type=self.type, unique=True)
 
     def _check_literal(self, other):
         if _is_literal(other):
@@ -1120,7 +1131,7 @@ class _BindParamClause(ClauseElement, _CompareMixin):
     Public constructor is the ``bindparam()`` function.
     """
 
-    def __init__(self, key, value, shortname=None, type=None):
+    def __init__(self, key, value, shortname=None, type=None, unique=False):
         """Construct a _BindParamClause.
 
         key
@@ -1144,15 +1155,21 @@ class _BindParamClause(ClauseElement, _CompareMixin):
           corresponding ``_BindParamClause`` objects.
 
         type
-
           A ``TypeEngine`` object that will be used to pre-process the
           value corresponding to this ``_BindParamClause`` at
           execution time.
+
+        unique
+          if True, the key name of this BindParamClause will be 
+          modified if another ``_BindParamClause`` of the same
+          name already has been located within the containing 
+          ``ClauseElement``.
         """
 
         self.key = key
         self.value = value
         self.shortname = shortname or key
+        self.unique = unique
         self.type = sqltypes.to_instance(type)
 
     def accept_visitor(self, visitor):
@@ -1162,7 +1179,7 @@ class _BindParamClause(ClauseElement, _CompareMixin):
         return []
 
     def copy_container(self):
-        return _BindParamClause(self.key, self.value, self.shortname, self.type)
+        return _BindParamClause(self.key, self.value, self.shortname, self.type, unique=self.unique)
 
     def typeprocess(self, value, dialect):
         return self.type.dialect_impl(dialect).convert_bind_param(value, dialect)
@@ -1353,7 +1370,7 @@ class _CalculatedClause(ClauseList, ColumnElement):
         visitor.visit_calculatedclause(self)
 
     def _bind_param(self, obj):
-        return _BindParamClause(self.name, obj, type=self.type)
+        return _BindParamClause(self.name, obj, type=self.type, unique=True)
 
     def select(self):
         return select([self])
@@ -1388,7 +1405,7 @@ class _Function(_CalculatedClause, FromClause):
             if clause is None:
                 clause = null()
             else:
-                clause = _BindParamClause(self.name, clause, shortname=self.name, type=None)
+                clause = _BindParamClause(self.name, clause, shortname=self.name, type=None, unique=True)
         self.clauses.append(clause)
 
     def copy_container(self):
@@ -1753,7 +1770,7 @@ class _ColumnClause(ColumnElement):
             return []
 
     def _bind_param(self, obj):
-        return _BindParamClause(self._label, obj, shortname = self.name, type=self.type)
+        return _BindParamClause(self._label, obj, shortname = self.name, type=self.type, unique=True)
 
     def _make_proxy(self, selectable, name = None):
         # propigate the "is_literal" flag only if we are keeping our name,
@@ -2208,7 +2225,7 @@ class _UpdateBase(ClauseElement):
                 else:
                     col = key
                 try:
-                    parameters[key] = bindparam(col, value)
+                    parameters[key] = bindparam(col, value, unique=True)
                 except KeyError:
                     del parameters[key]
         return parameters

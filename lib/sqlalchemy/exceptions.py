@@ -34,6 +34,11 @@ class ArgumentError(SQLAlchemyError):
 
     pass
 
+class CompileError(SQLAlchemyError):
+    """Raised when an error occurs during SQL compilation"""
+    
+    pass
+    
 class TimeoutError(SQLAlchemyError):
     """Raised when a connection pool times out on getting a connection."""
 
