@@ -2,7 +2,10 @@ from sqlalchemy import *
 from sqlalchemy.orm.sync import ONETOMANY, MANYTOONE
 import testbase
 
-def produce_test(parent, child, direction, fkeyinline):
+def produce_test(parent, child, direction):
+    """produce a testcase for A->B->C inheritance with a self-referential
+    relationship between two of the classes, using either one-to-many or
+    many-to-one."""
     class ABCTest(testbase.ORMTest):
         def define_tables(self, meta):
             global ta, tb, tc
@@ -16,11 +19,7 @@ def produce_test(parent, child, direction, fkeyinline):
             ta = Table(*ta)
     
             tb = ["b", meta]
-            if fkeyinline:
-                tb.append(Column('id', Integer, ForeignKey("a.id"), primary_key=True, ))
-            else:
-                tb.append(Column('id', Integer, primary_key=True))
-                tb.append(Column('a_id', Integer, ForeignKey("a.id"), primary_key=True))
+            tb.append(Column('id', Integer, ForeignKey("a.id"), primary_key=True, ))
         
             tb.append(Column('b_data', String(30)))
     
@@ -31,11 +30,7 @@ def produce_test(parent, child, direction, fkeyinline):
             tb = Table(*tb)
     
             tc = ["c", meta]
-            if fkeyinline:
-                tc.append(Column('id', Integer, ForeignKey("b.id"), primary_key=True, ))
-            else:
-                tc.append(Column('id', Integer, primary_key=True))
-                tc.append(Column('b_id', Integer, ForeignKey("b.id"), primary_key=True))
+            tc.append(Column('id', Integer, ForeignKey("b.id"), primary_key=True, ))
         
             tc.append(Column('c_data', String(30)))
     
@@ -63,12 +58,8 @@ def produce_test(parent, child, direction, fkeyinline):
             elif direction == ONETOMANY:
                 foreign_keys = [child_table.c.parent_id]
 
-            if fkeyinline:
-                atob = ta.c.id==tb.c.id
-                btoc = tc.c.id==tb.c.id
-            else:
-                atob = ta.c.id==tb.c.a_id
-                btoc = tc.c.b_id==tb.c.id
+            atob = ta.c.id==tb.c.id
+            btoc = tc.c.id==tb.c.id
 
             if direction == ONETOMANY:
                 relationjoin = parent_table.c.id==child_table.c.parent_id
@@ -129,6 +120,7 @@ def produce_test(parent, child, direction, fkeyinline):
             sess.flush()
             sess.clear()
 
+            # assert result via direct get() of parent object
             result = sess.query(parent_class).get(parent_obj.id)
             assert result.id == parent_obj.id
             assert result.collection[0].id == child_obj.id
@@ -138,17 +130,31 @@ def produce_test(parent, child, direction, fkeyinline):
                 result2 = sess.query(parent_class).get(parent2.id)
                 assert result2.id == parent2.id
                 assert result2.collection[0].id == child_obj.id
-    ABCTest.__name__ = "Test%sTo%s%s%s" % (parent, child, (direction is ONETOMANY and "O2M" or "M2O"), fkeyinline)
+            
+            sess.clear()
+
+            # assert result via polymorphic load of parent object
+            result = sess.query(A).get_by(id=parent_obj.id)
+            assert result.id == parent_obj.id
+            assert result.collection[0].id == child_obj.id
+            if direction == ONETOMANY:
+                assert result.collection[1].id == child2.id
+            elif direction == MANYTOONE:
+                result2 = sess.query(A).get_by(id=parent2.id)
+                assert result2.id == parent2.id
+                assert result2.collection[0].id == child_obj.id
+            
+    ABCTest.__name__ = "Test%sTo%s%s" % (parent, child, (direction is ONETOMANY and "O2M" or "M2O"))
     return ABCTest
 
+# test all combinations of polymorphic a/b/c related to another of a/b/c
 for parent in ["a", "b", "c"]:
     for child in ["a", "b", "c"]:
         if parent == child:
             continue
-        for fkeyinline in [True]: #, False]:
-            for direction in [ONETOMANY, MANYTOONE]:
-                testclass = produce_test(parent, child, direction, fkeyinline)
-                exec("%s = testclass" % testclass.__name__)
+        for direction in [ONETOMANY, MANYTOONE]:
+            testclass = produce_test(parent, child, direction)
+            exec("%s = testclass" % testclass.__name__)
 
 
 if __name__ == "__main__":
