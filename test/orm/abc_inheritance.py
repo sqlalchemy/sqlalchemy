@@ -49,7 +49,7 @@ def produce_test(parent, child, direction):
                 child_table.update(values={child_table.c.parent_id:None}).execute()
             super(ABCTest, self).tearDown()
         
-        def test_basic(self):
+        def test_roundtrip(self):
             parent_table = {"a":ta, "b":tb, "c": tc}[parent]
             child_table = {"a":ta, "b":tb, "c": tc}[child]
 
