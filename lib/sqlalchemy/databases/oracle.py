@@ -373,6 +373,7 @@ class OracleDialect(ansisql.ANSIDialect):
                 if remote_table is None:
                     # ticket 363
                     self.logger.warn("Got 'None' querying 'table_name' from all_cons_columns%(dblink)s - does the user have proper rights to the table?" % {'dblink':dblink})
+                    continue
                 refspec = ".".join([remote_table, remote_column])
                 schema.Table(remote_table, table.metadata, autoload=True, autoload_with=connection, owner=remote_owner)
                 if local_column not in fk[0]:
