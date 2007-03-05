@@ -498,6 +498,124 @@ class RelationTest4(testbase.ORMTest):
         sess.flush()
         assert a1 not in sess
         assert b1 not in sess
+
+class TypeMatchTest(testbase.ORMTest):
+    """test errors raised when trying to add items whose type is not handled by a relation"""
+    def define_tables(self, metadata):
+        global a, b, c, d
+        a = Table("a", metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)))
+        b = Table("b", metadata, 
+            Column('id', Integer, primary_key=True),
+            Column("a_id", Integer, ForeignKey("a.id")),
+            Column('data', String(30)))
+        c = Table("c", metadata, 
+            Column('id', Integer, primary_key=True),
+            Column("b_id", Integer, ForeignKey("b.id")),
+            Column('data', String(30)))
+        d = Table("d", metadata, 
+            Column('id', Integer, primary_key=True),
+            Column("a_id", Integer, ForeignKey("a.id")),
+            Column('data', String(30)))
+    def test_o2m_oncascade(self):
+        class A(object):pass
+        class B(object):pass
+        class C(object):pass
+        mapper(A, a, properties={'bs':relation(B)})
+        mapper(B, b)
+        mapper(C, c)
+        
+        a1 = A()
+        b1 = B()
+        c1 = C()
+        a1.bs.append(b1)
+        a1.bs.append(c1)
+        sess = create_session()
+        try:
+            sess.save(a1)
+            assert False
+        except exceptions.AssertionError, err:
+            assert str(err) == "Attribute 'bs' on class '%s' doesn't handle objects of type '%s'" % (A, C)
+    def test_o2m_onflush(self):
+        class A(object):pass
+        class B(object):pass
+        class C(object):pass
+        mapper(A, a, properties={'bs':relation(B, cascade="none")})
+        mapper(B, b)
+        mapper(C, c)
+        
+        a1 = A()
+        b1 = B()
+        c1 = C()
+        a1.bs.append(b1)
+        a1.bs.append(c1)
+        sess = create_session()
+        sess.save(a1)
+        sess.save(b1)
+        sess.save(c1)
+        try:
+            sess.flush()
+            assert False
+        except exceptions.FlushError, err:
+            assert str(err) == "Attempting to flush an item of type %s on collection 'A.bs (B)', which is handled by mapper 'Mapper|B|b' and does not load items of that type.  Did you mean to use a polymorphic mapper for this relationship ?" % C
+    def test_o2m_nopoly_onflush(self):
+        class A(object):pass
+        class B(object):pass
+        class C(B):pass
+        mapper(A, a, properties={'bs':relation(B, cascade="none")})
+        mapper(B, b)
+        mapper(C, c, inherits=B)
+        
+        a1 = A()
+        b1 = B()
+        c1 = C()
+        a1.bs.append(b1)
+        a1.bs.append(c1)
+        sess = create_session()
+        sess.save(a1)
+        sess.save(b1)
+        sess.save(c1)
+        try:
+            sess.flush()
+            assert False
+        except exceptions.FlushError, err:
+            assert str(err) == "Attempting to flush an item of type %s on collection 'A.bs (B)', which is handled by mapper 'Mapper|B|b' and does not load items of that type.  Did you mean to use a polymorphic mapper for this relationship ?" % C
     
+    def test_m2o_nopoly_onflush(self):
+        class A(object):pass
+        class B(A):pass
+        class D(object):pass
+        mapper(A, a)
+        mapper(B, b, inherits=A)
+        mapper(D, d, properties={"a":relation(A, cascade="none")})
+        b1 = B()
+        d1 = D()
+        d1.a = b1
+        sess = create_session()
+        sess.save(b1)
+        sess.save(d1)
+        try:
+            sess.flush()
+            assert False
+        except exceptions.FlushError, err:
+            assert str(err) == "Attempting to flush an item of type %s on collection 'D.a (A)', which is handled by mapper 'Mapper|A|a' and does not load items of that type.  Did you mean to use a polymorphic mapper for this relationship ?" % B
+    def test_m2o_oncascade(self):
+        class A(object):pass
+        class B(object):pass
+        class D(object):pass
+        mapper(A, a)
+        mapper(B, b)
+        mapper(D, d, properties={"a":relation(A)})
+        b1 = B()
+        d1 = D()
+        d1.a = b1
+        sess = create_session()
+        try:
+            sess.save(d1)
+            assert False
+        except exceptions.AssertionError, err:
+            assert str(err) == "Attribute 'a' on class '%s' doesn't handle objects of type '%s'" % (D, B)
+                
 if __name__ == "__main__":
     testbase.main()        

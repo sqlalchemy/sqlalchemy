@@ -956,6 +956,13 @@ class Mapper(object):
 
         return [self.get_attr_by_column(instance, column) for column in self.pks_by_table[self.mapped_table]]
 
+    def canload(self, instance):
+        """return true if this mapper is capable of loading the given instance"""
+        if self.polymorphic_on is not None:
+            return isinstance(instance, self.class_)
+        else:
+            return instance.__class__ is self.class_
+        
     def instance_key(self, instance):
         """Deprecated. A synonym for `identity_key_from_instance`."""
 
