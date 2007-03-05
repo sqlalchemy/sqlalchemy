@@ -391,9 +391,9 @@ class ANSICompiler(sql.Compiled):
                 c.accept_visitor(self)
                 inner_columns[self.get_str(c)] = c
                 continue
-            try:
+            if hasattr(c, '_selectable'):
                 s = c._selectable()
-            except AttributeError:
+            else:
                 c.accept_visitor(self)
                 inner_columns[self.get_str(c)] = c
                 continue

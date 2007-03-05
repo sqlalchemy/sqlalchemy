@@ -31,7 +31,9 @@
     - added "refresh-expire" cascade [ticket:492]
     - more fixes to polymorphic relations, involving proper lazy-clause
       generation on many-to-one relationships to polymorphic mappers 
-      [ticket:493]
+      [ticket:493]. also fixes to detection of "direction", more specific
+      targeting of columns that belong to the polymorphic union vs. those
+      that dont.
     - put an aggressive check for "flushing object A with a collection
       of B's, but you put a C in the collection" error condition - 
       **even if C is a subclass of B**, unless B's mapper loads polymorphically.
@@ -39,6 +41,7 @@
       (since its not polymorphic) which breaks in bi-directional relationships
       (i.e. C has its A, but A's backref will lazyload it as a different 
       instance of type "B") [ticket:500]
+
 0.3.5
 - sql:
     - the value of "case_sensitive" defaults to True now, regardless of the

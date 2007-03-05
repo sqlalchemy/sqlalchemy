@@ -178,7 +178,7 @@ class Aliasizer(AbstractClauseProcessor):
 
 class ClauseAdapter(AbstractClauseProcessor):
     """Given a clause (like as in a WHERE criterion), locate columns
-    which *correspond* to a given selectable, and changes those
+    which are embedded within a given selectable, and changes those
     columns to be that of the selectable.
 
     E.g.::
@@ -219,10 +219,10 @@ class ClauseAdapter(AbstractClauseProcessor):
         if self.exclude is not None:
             if col in self.exclude:
                 return None
-        newcol = self.selectable.corresponding_column(col, raiseerr=False, keys_ok=False)
+        newcol = self.selectable.corresponding_column(col, raiseerr=False, require_embedded=True, keys_ok=False)
         if newcol is None and self.equivalents is not None and col in self.equivalents:
             for equiv in self.equivalents[col]:
-                newcol = self.selectable.corresponding_column(equiv, raiseerr=False, keys_ok=False)
+                newcol = self.selectable.corresponding_column(equiv, raiseerr=False, require_embedded=True, keys_ok=False)
                 if newcol:
                     return newcol
         return newcol

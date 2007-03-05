@@ -302,8 +302,9 @@ class PropertyLoader(StrategizedProperty):
             else:
                 self.direction = sync.ONETOMANY
         else:
-            onetomany = len([c for c in self.foreign_keys if self.mapper.unjoined_table.corresponding_column(c, False) is not None])
-            manytoone = len([c for c in self.foreign_keys if self.parent.unjoined_table.corresponding_column(c, False) is not None])
+            onetomany = len([c for c in self.foreign_keys if self.mapper.unjoined_table.c.contains_column(c)])
+            manytoone = len([c for c in self.foreign_keys if self.parent.unjoined_table.c.contains_column(c)])
+
             if not onetomany and not manytoone:
                 raise exceptions.ArgumentError("Cant determine relation direction for relationship '%s' - foreign key columns are not present in neither the parent nor the child's mapped tables" %(str(self)))
             elif onetomany and manytoone:

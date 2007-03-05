@@ -506,6 +506,21 @@ class ClauseVisitor(object):
     def visit_label(self, label):pass
     def visit_typeclause(self, typeclause):pass
 
+class VisitColumnMixin(object):
+    """a mixin that adds Column traversal to a ClauseVisitor"""
+    def visit_table(self, table):
+        for c in table.c:
+            c.accept_visitor(self)
+    def visit_select(self, select):
+        for c in select.c:
+            c.accept_visitor(self)
+    def visit_compound_select(self, select):
+        for c in select.c:
+            c.accept_visitor(self)
+    def visit_alias(self, alias):
+        for c in alias.c:
+            c.accept_visitor(self)
+        
 class Executor(object):
     """Represent a *thing that can produce Compiled objects and execute them*."""
 
@@ -1041,20 +1056,25 @@ class FromClause(Selectable):
             self._oid_column = self._locate_oid_column()
         return self._oid_column
 
-    def corresponding_column(self, column, raiseerr=True, keys_ok=False, require_exact=False):
+    def _get_all_embedded_columns(self):
+        ret = []
+        class FindCols(VisitColumnMixin, ClauseVisitor):
+            def visit_column(self, col):
+                ret.append(col)
+        self.accept_visitor(FindCols())
+        return ret
+
+    def corresponding_column(self, column, raiseerr=True, keys_ok=False, require_embedded=False):
         """Given a ``ColumnElement``, return the ``ColumnElement``
         object from this ``Selectable`` which corresponds to that
         original ``Column`` via a proxy relationship.
         """
 
-        if require_exact:
-            if self.columns.get(column.name) is column:
-                return column
+        if require_embedded and column not in util.Set(self._get_all_embedded_columns()):
+            if not raiseerr:
+                return None
             else:
-                if not raiseerr:
-                    return None
-                else:
-                    raise exceptions.InvalidRequestError("Column instance '%s' is not directly present in table '%s'" % (str(column), str(column.table)))
+                raise exceptions.InvalidRequestError("Column instance '%s' is not directly present within selectable '%s'" % (str(column), column.table))
         for c in column.orig_set:
             try:
                 return self.original_columns[c]
