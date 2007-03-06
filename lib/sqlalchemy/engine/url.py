@@ -1,5 +1,6 @@
 import re
 import cgi
+import sys
 import urllib
 from sqlalchemy import exceptions
 
@@ -70,8 +71,12 @@ class URL(object):
 
     def get_module(self):
         """Return the SQLAlchemy database module corresponding to this URL's driver name."""
-
-        return getattr(__import__('sqlalchemy.databases.%s' % self.drivername).databases, self.drivername)
+        try:
+            return getattr(__import__('sqlalchemy.databases.%s' % self.drivername).databases, self.drivername)
+        except ImportError:
+            if sys.exc_info()[2].tb_next is None:
+                raise exceptions.ArgumentError('unknown database %r' % self.drivername)
+            raise
 
     def translate_connect_args(self, names):
         """Translate this URL's attributes into a dictionary of connection arguments.
