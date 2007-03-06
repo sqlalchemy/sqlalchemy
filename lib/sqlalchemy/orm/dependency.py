@@ -39,6 +39,7 @@ class DependencyProcessor(object):
         self.post_update = prop.post_update
         self.foreign_keys = prop.foreign_keys
         self.passive_deletes = prop.passive_deletes
+        self.enable_typechecks = prop.enable_typechecks
         self.key = prop.key
 
         self._compile_synchronizers()
@@ -101,8 +102,10 @@ class DependencyProcessor(object):
         raise NotImplementedError()
 
     def _verify_canload(self, child):
+        if not self.enable_typechecks:
+            return
         if child is not None and not self.mapper.canload(child):
-            raise exceptions.FlushError("Attempting to flush an item of type %s on collection '%s', which is handled by mapper '%s' and does not load items of that type.  Did you mean to use a polymorphic mapper for this relationship ?" % (child.__class__, self.prop, self.mapper))
+            raise exceptions.FlushError("Attempting to flush an item of type %s on collection '%s', which is handled by mapper '%s' and does not load items of that type.  Did you mean to use a polymorphic mapper for this relationship ?  Set 'enable_typechecks=False' on the relation() to disable this exception.  Mismatched typeloading may cause bi-directional relationships (backrefs) to not function properly." % (child.__class__, self.prop, self.mapper))
         
     def _synchronize(self, obj, child, associationrow, clearkeys, uowcommit):
         """Called during a flush to synchronize primary key identifier

@@ -62,7 +62,7 @@ class PropertyLoader(StrategizedProperty):
     of items that correspond to a related database table.
     """
 
-    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreign_keys=None, foreignkey=None, uselist=None, private=False, association=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False, cascade=None, viewonly=False, lazy=True, collection_class=None, passive_deletes=False, remote_side=None):
+    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreign_keys=None, foreignkey=None, uselist=None, private=False, association=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False, cascade=None, viewonly=False, lazy=True, collection_class=None, passive_deletes=False, remote_side=None, enable_typechecks=True):
         self.uselist = uselist
         self.argument = argument
         self.secondary = secondary
@@ -77,6 +77,7 @@ class PropertyLoader(StrategizedProperty):
         self.collection_class = collection_class
         self.passive_deletes = passive_deletes
         self.remote_side = util.to_set(remote_side)
+        self.enable_typechecks = enable_typechecks
         self._parent_join_cache = {}
 
         if cascade is not None:

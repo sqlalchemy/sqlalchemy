@@ -614,7 +614,7 @@ class TypeMatchTest(testbase.ORMTest):
             sess.flush()
             assert False
         except exceptions.FlushError, err:
-            assert str(err) == "Attempting to flush an item of type %s on collection 'A.bs (B)', which is handled by mapper 'Mapper|B|b' and does not load items of that type.  Did you mean to use a polymorphic mapper for this relationship ?" % C
+            assert str(err).startswith("Attempting to flush an item of type %s on collection 'A.bs (B)', which is handled by mapper 'Mapper|B|b' and does not load items of that type.  Did you mean to use a polymorphic mapper for this relationship ?" % C)
     def test_o2m_nopoly_onflush(self):
         class A(object):pass
         class B(object):pass
@@ -636,7 +636,7 @@ class TypeMatchTest(testbase.ORMTest):
             sess.flush()
             assert False
         except exceptions.FlushError, err:
-            assert str(err) == "Attempting to flush an item of type %s on collection 'A.bs (B)', which is handled by mapper 'Mapper|B|b' and does not load items of that type.  Did you mean to use a polymorphic mapper for this relationship ?" % C
+            assert str(err).startswith("Attempting to flush an item of type %s on collection 'A.bs (B)', which is handled by mapper 'Mapper|B|b' and does not load items of that type.  Did you mean to use a polymorphic mapper for this relationship ?" % C)
     
     def test_m2o_nopoly_onflush(self):
         class A(object):pass
@@ -655,7 +655,7 @@ class TypeMatchTest(testbase.ORMTest):
             sess.flush()
             assert False
         except exceptions.FlushError, err:
-            assert str(err) == "Attempting to flush an item of type %s on collection 'D.a (A)', which is handled by mapper 'Mapper|A|a' and does not load items of that type.  Did you mean to use a polymorphic mapper for this relationship ?" % B
+            assert str(err).startswith("Attempting to flush an item of type %s on collection 'D.a (A)', which is handled by mapper 'Mapper|A|a' and does not load items of that type.  Did you mean to use a polymorphic mapper for this relationship ?" % B)
     def test_m2o_oncascade(self):
         class A(object):pass
         class B(object):pass
