@@ -590,7 +590,7 @@ A second example:
 
 In both examples above, "composite" columns were added as properties to the mappers; these are aggregations of multiple columns into one mapper property, which instructs the mapper to keep both of those columns set at the same value.
 
-### Mapping a Class against Arbitary Selects {@name=selects}
+### Mapping a Class against Arbitrary Selects {@name=selects}
 
 Similar to mapping against a join, a plain select() object can be used with a mapper as well.  Below, an example select which contains two aggregate functions and a group_by is mapped to a class:
 
@@ -600,7 +600,7 @@ Similar to mapping against a join, a plain select() object can be used with a ma
                 func.max(orders.price).label('highest_order')],
                 customers.c.customer_id==orders.c.customer_id,
                 group_by=[c for c in customers.c]
-                )
+                ).alias('somealias')
     class Customer(object):
         pass
     
