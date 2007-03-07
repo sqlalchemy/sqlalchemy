@@ -28,6 +28,30 @@ class ConstraintTest(testbase.AssertMixin):
             )
         metadata.create_all()
 
+    def test_circular_constraint(self):
+        a = Table("a", metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('bid', Integer),
+            ForeignKeyConstraint(["bid"], ["b.id"], name="afk")
+            )
+        b = Table("b", metadata,
+            Column('id', Integer, primary_key=True),
+            Column("aid", Integer),
+            ForeignKeyConstraint(["aid"], ["a.id"], use_alter=True, name="bfk")
+            )
+        metadata.create_all()
+
+    def test_circular_constraint_2(self):
+        a = Table("a", metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('bid', Integer, ForeignKey("b.id")),
+            )
+        b = Table("b", metadata,
+            Column('id', Integer, primary_key=True),
+            Column("aid", Integer, ForeignKey("a.id", use_alter=True, name="bfk")),
+            )
+        metadata.create_all()
+        
     @testbase.unsupported('mysql')
     def test_check_constraint(self):
         foo = Table('foo', metadata, 

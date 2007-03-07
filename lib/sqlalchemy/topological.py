@@ -44,7 +44,7 @@ I realized this characteristic of the algorithm.
 
 import string, StringIO
 from sqlalchemy import util
-from sqlalchemy.exceptions import *
+from sqlalchemy.exceptions import CircularDependencyError
 
 class _Node(object):
     """Represent each item in the sort.
@@ -188,7 +188,7 @@ class QueueDependencySorter(object):
                     n.cycles = util.Set([n])
                     continue
                 else:
-                    raise FlushError("Self-referential dependency detected " + repr(t))
+                    raise CircularDependencyError("Self-referential dependency detected " + repr(t))
             childnode = nodes[t[1]]
             parentnode = nodes[t[0]]
             edges.add((parentnode, childnode))
@@ -222,7 +222,7 @@ class QueueDependencySorter(object):
                     continue
                 else:
                     # long cycles not allowed
-                    raise FlushError("Circular dependency detected " + repr(edges) + repr(queue))
+                    raise CircularDependencyError("Circular dependency detected " + repr(edges) + repr(queue))
             node = queue.pop()
             if not hasattr(node, '_cyclical'):
                 output.append(node)

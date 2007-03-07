@@ -22,7 +22,8 @@
     'duplicate' columns from the resulting column clause that are known to be 
     equivalent based on the join condition.  this is of great usage when 
     constructing subqueries of joins which Postgres complains about if 
-    duplicate column names are present.    
+    duplicate column names are present.
+    - fixed use_alter flag on ForeignKeyConstraint [ticket:503]
 - orm:
     - a full select() construct can be passed to query.select() (which
       worked anyway), but also query.selectfirst(), query.selectone() which

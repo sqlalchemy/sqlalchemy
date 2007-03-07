@@ -908,7 +908,7 @@ class ForeignKeyConstraint(Constraint):
         visitor.visit_foreign_key_constraint(self)
 
     def append_element(self, col, refcol):
-        fk = ForeignKey(refcol, constraint=self)
+        fk = ForeignKey(refcol, constraint=self, name=self.name, onupdate=self.onupdate, ondelete=self.ondelete, use_alter=self.use_alter)
         fk._set_parent(self.table.c[col])
         self._append_fk(fk)
 
@@ -917,7 +917,7 @@ class ForeignKeyConstraint(Constraint):
         self.elements.add(fk)
 
     def copy(self):
-        return ForeignKeyConstraint([x.parent.name for x in self.elements], [x._get_colspec() for x in self.elements], name=self.name, onupdate=self.onupdate, ondelete=self.ondelete)
+        return ForeignKeyConstraint([x.parent.name for x in self.elements], [x._get_colspec() for x in self.elements], name=self.name, onupdate=self.onupdate, ondelete=self.ondelete, use_alter=self.use_alter)
 
 class PrimaryKeyConstraint(Constraint):
     def __init__(self, *columns, **kwargs):

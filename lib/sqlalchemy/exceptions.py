@@ -49,6 +49,10 @@ class ConcurrentModificationError(SQLAlchemyError):
 
     pass
 
+class CircularDependencyError(SQLAlchemyError):
+    """Raised by topological sorts when a circular dependency is detected"""
+    pass
+    
 class FlushError(SQLAlchemyError):
     """Raised when an invalid condition is detected upon a ``flush()``."""
     pass
