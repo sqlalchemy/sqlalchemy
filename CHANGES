@@ -41,6 +41,9 @@
       (since its not polymorphic) which breaks in bi-directional relationships
       (i.e. C has its A, but A's backref will lazyload it as a different 
       instance of type "B") [ticket:500]
+- extensions:
+    - options() method on SelectResults now implemented "generatively"
+      like the rest of the SelectResults methods [ticket:472]
 
 0.3.5
 - sql:

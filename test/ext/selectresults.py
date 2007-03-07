@@ -70,6 +70,14 @@ class SelectResultsTest(PersistTest):
         assert self.res.filter(Foo.c.bar < 30).count() == 30
         res2 = self.res.filter(Foo.c.bar < 30).filter(Foo.c.bar > 10)
         assert res2.count() == 19
+    
+    def test_options(self):
+        class ext1(MapperExtension):
+            def populate_instance(self, mapper, selectcontext, row, instance, identitykey, isnew):
+                instance.TEST = "hello world"
+                return EXT_PASS
+        objectstore.clear()
+        assert self.res.options(extension(ext1()))[0].TEST == "hello world"
         
     def test_order_by(self):
         assert self.res.order_by([Foo.c.bar])[0].bar == 0
