@@ -245,7 +245,7 @@ class QueueDependencySorter(object):
         # order of the list has no semantics for the algorithmic
         independents = []
         # in reverse topological order
-        for node in reversed(nodes):
+        for node in util.reversed(nodes):
             # nodes subtree and cycles contain the node itself
             subtree = util.Set([node])
             if node.cycles is not None:

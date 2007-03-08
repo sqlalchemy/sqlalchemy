@@ -24,6 +24,7 @@
     constructing subqueries of joins which Postgres complains about if 
     duplicate column names are present.
     - fixed use_alter flag on ForeignKeyConstraint [ticket:503]
+    - fixed usage of 2.4-only "reversed" in topological.py [ticket:506]
 - orm:
     - a full select() construct can be passed to query.select() (which
       worked anyway), but also query.selectfirst(), query.selectone() which
