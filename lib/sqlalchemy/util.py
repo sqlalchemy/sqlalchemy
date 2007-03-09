@@ -18,6 +18,16 @@ except:
     import sets
     Set = sets.Set
 
+try:
+    reversed = __builtin__.reversed
+except:
+    def reversed(seq):
+        i = len(seq) -1
+        while  i >= 0:
+            yield seq[i]
+            i -= 1
+        raise StopIteration()
+
 def to_list(x):
     if x is None:
         return None
@@ -46,17 +56,6 @@ def flatten_iterator(x):
         else:
             yield elem
 
-def reversed(seq):
-    try:
-        return __builtin__.reversed(seq)
-    except:
-        def rev():
-            i = len(seq) -1
-            while  i >= 0:
-                yield seq[i]
-                i -= 1
-            raise StopIteration()
-        return rev()
 
 class ArgSingleton(type):
     instances = {}
