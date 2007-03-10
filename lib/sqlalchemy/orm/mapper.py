@@ -1695,6 +1695,9 @@ class _ExtensionCarrier(MapperExtension):
     def __init__(self):
         self.__elements = []
 
+    def __iter__(self):
+        return iter(self.__elements)
+        
     def insert(self, extension):
         """Insert a MapperExtension at the beginning of this ExtensionCarrier's list."""
 
@@ -1766,7 +1769,7 @@ class ExtensionOption(MapperOption):
         self.ext = ext
 
     def process_query(self, query):
-        query._insert_extension(self.ext)
+        query.extension.append(self.ext)
 
 class ClassKey(object):
     """Key a class and an entity name to a mapper, via the mapper_registry."""

@@ -26,6 +26,36 @@
     - fixed use_alter flag on ForeignKeyConstraint [ticket:503]
     - fixed usage of 2.4-only "reversed" in topological.py [ticket:506]
 - orm:
+    - the full featureset of the SelectResults extension has been merged
+      into a new set of methods available off of Query.  These methods
+      all provide "generative" behavior, whereby the Query is copied
+      and a new one returned with additional criterion added.  
+      The new methods include:
+
+          filter() - applies select criterion to the query
+          filter_by() - applies "by"-style criterion to the query
+          avg() - return the avg() function on the given column
+          join() - join to a property (or across a list of properties)
+          outerjoin() - like join() but uses LEFT OUTER JOIN
+          limit()/offset() - apply LIMIT/OFFSET
+          range-based access which applies limit/offset:  
+             session.query(Foo)[3:5]
+          distinct() - apply DISTINCT
+          list() - evaluate the criterion and return results
+          
+      no incompatible changes have been made to Query's API and no methods
+      have been deprecated.  Existing methods like select(), select_by(),
+      get(), get_by() all execute the query at once and return results
+      like they always did.  join_to()/join_via() are still there although
+      the generative join()/outerjoin() methods are easier to use.
+      
+    - the return value for multiple mappers used with instances() now returns
+      a cartesian product of the requested list of mappers, represented
+      as a list of tuples.  this corresponds to the documented behavior.
+      So that instances match up properly, the "uniquing" is disabled when 
+      this feature is used.
+    - strings and columns can also be sent to the *args of instances() where
+      those exact result columns will be part of the result tuples.
     - a full select() construct can be passed to query.select() (which
       worked anyway), but also query.selectfirst(), query.selectone() which
       will be used as is (i.e. no query is compiled). works similarly to
@@ -46,7 +76,9 @@
 - extensions:
     - options() method on SelectResults now implemented "generatively"
       like the rest of the SelectResults methods [ticket:472]
-
+    - query() method is added by assignmapper.  this helps with 
+      navigating to all the new generative methods on Query.
+    
 0.3.5
 - sql:
     - the value of "case_sensitive" defaults to True now, regardless of the

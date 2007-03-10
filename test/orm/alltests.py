@@ -5,6 +5,7 @@ def suite():
     modules_to_test = (
 	'orm.attributes',
         'orm.mapper',
+        'orm.generative',
         'orm.lazytest1',
         'orm.eagertest1',
         'orm.eagertest2',

@@ -1,6 +1,5 @@
 from sqlalchemy import *
 import testbase
-from sqlalchemy.ext.selectresults import SelectResults
 
 class AttrSettable(object):
     def __init__(self, **kwargs):
@@ -374,8 +373,8 @@ class RelationTest4(testbase.ORMTest):
         assert str(car1.employee) == "Engineer E4, status X"
 
         session.clear()
-        s = SelectResults(session.query(Car))
-        c = s.join_to("employee").select(employee_join.c.name=="E4")[0]
+        s = session.query(Car)
+        c = s.join("employee").select(employee_join.c.name=="E4")[0]
         assert c.car_id==car1.car_id
 
 class RelationTest5(testbase.ORMTest):
@@ -580,7 +579,7 @@ class RelationTest7(testbase.ORMTest):
         for p in r:
             assert p.car_id == p.car.car_id
     
-class SelectResultsTest(testbase.AssertMixin):
+class GenerativeTest(testbase.AssertMixin):
     def setUpAll(self):
         #  cars---owned by---  people (abstract) --- has a --- status
         #   |                  ^    ^                            |
@@ -693,9 +692,9 @@ class SelectResultsTest(testbase.AssertMixin):
 
         # test these twice because theres caching involved
         for x in range(0, 2):
-            r = SelectResults(session.query(Person)).select_by(people.c.name.like('%2')).join_to('status').select_by(name="active")
+            r = session.query(Person).filter_by(people.c.name.like('%2')).join('status').filter_by(name="active")
             assert str(list(r)) == "[Manager M2, category YYYYYYYYY, status Status active, Engineer E2, field X, status Status active]"
-            r = SelectResults(session.query(Engineer)).join_to('status').select(people.c.name.in_('E2', 'E3', 'E4', 'M4', 'M2', 'M1') & (status.c.name=="active"))
+            r = session.query(Engineer).join('status').filter(people.c.name.in_('E2', 'E3', 'E4', 'M4', 'M2', 'M1') & (status.c.name=="active"))
             assert str(list(r)) == "[Engineer E2, field X, status Status active, Engineer E3, field X, status Status active]"
         
 class MultiLevelTest(testbase.ORMTest):
