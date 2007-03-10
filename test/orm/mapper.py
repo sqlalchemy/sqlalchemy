@@ -1460,24 +1460,76 @@ class InstancesTest(MapperSuperTest):
     
     def testmultiplemappers(self):
         mapper(User, users, properties={
-            'addresses':relation(Address, lazy=False)
+            'addresses':relation(Address, lazy=True)
         })
         mapper(Address, addresses)
 
+        sess = create_session()
+        
+        (user7, user8, user9) = sess.query(User).select()
+        (address1, address2, address3, address4) = sess.query(Address).select()
+        
         selectquery = users.outerjoin(addresses).select(use_labels=True)
-        q = create_session().query(User)
+        q = sess.query(User)
         l = q.instances(selectquery.execute(), Address)
         # note the result is a cartesian product
-        assert repr(l) == "[(User(user_id=7,user_name=u'jack'), Address(address_id=1,user_id=7,email_address=u'jack@bean.com')), (User(user_id=8,user_name=u'ed'), Address(address_id=2,user_id=8,email_address=u'ed@wood.com')), (User(user_id=8,user_name=u'ed'), Address(address_id=3,user_id=8,email_address=u'ed@bettyboop.com')), (User(user_id=8,user_name=u'ed'), Address(address_id=4,user_id=8,email_address=u'ed@lala.com'))]"
+        assert l == [
+            (user7, address1),
+            (user8, address2),
+            (user8, address3),
+            (user8, address4),
+            (user9, None)
+        ]
+    
+    def testmultipleonquery(self):
+        mapper(User, users, properties={
+            'addresses':relation(Address, lazy=True)
+        })
+        mapper(Address, addresses)
+        sess = create_session()
+        (user7, user8, user9) = sess.query(User).select()
+        (address1, address2, address3, address4) = sess.query(Address).select()
+        q = sess.query(User)
+        q = q.add_entity(Address).outerjoin('addresses')
+        l = q.list()
+        assert l == [
+            (user7, address1),
+            (user8, address2),
+            (user8, address3),
+            (user8, address4),
+            (user9, None)
+        ]
+
+    def testcolumnonquery(self):
+        mapper(User, users, properties={
+            'addresses':relation(Address, lazy=True)
+        })
+        mapper(Address, addresses)
         
-        # check identity map still in effect even though dupe results
-        assert l[1][0] is l[2][0]
+        sess = create_session()
+        (user7, user8, user9) = sess.query(User).select()
+        q = sess.query(User)
+        q = q.group_by([c for c in users.c]).outerjoin('addresses').add_column(func.count(addresses.c.address_id).label('count'))
+        l = q.list()
+        assert l == [
+            (user7, 1),
+            (user8, 3),
+            (user9, 0)
+        ]
         
     def testmapperspluscolumn(self):
         mapper(User, users)
         s = select([users, func.count(addresses.c.address_id).label('count')], from_obj=[users.outerjoin(addresses)], group_by=[c for c in users.c])
-        q = create_session().query(User)
+        sess = create_session()
+        (user7, user8, user9) = sess.query(User).select()
+        q = sess.query(User)
         l = q.instances(s.execute(), "count")
-        assert repr(l) == "[(User(user_id=7,user_name=u'jack'), 1), (User(user_id=8,user_name=u'ed'), 3), (User(user_id=9,user_name=u'fred'), 0)]"
+        assert l == [
+            (user7, 1),
+            (user8, 3),
+            (user9, 0)
+        ]
+
+
 if __name__ == "__main__":    
     testbase.main()

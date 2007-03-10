@@ -33,9 +33,12 @@ class Query(object):
             for primary_key in self.primary_key_columns:
                 _get_clause.clauses.append(primary_key == sql.bindparam(primary_key._label, type=primary_key.type, unique=True))
             self.mapper._get_clause = _get_clause
+            
+        self._entities = []
         self._get_clause = self.mapper._get_clause
 
         self._order_by = kwargs.pop('order_by', False)
+        self._group_by = kwargs.pop('group_by', False)
         self._distinct = kwargs.pop('distinct', False)
         self._offset = kwargs.pop('offset', None)
         self._limit = kwargs.pop('limit', None)
@@ -52,6 +55,7 @@ class Query(object):
         q.select_mapper = self.select_mapper
         q._order_by = self._order_by
         q._distinct = self._distinct
+        q._entities = list(self._entities)
         q.always_refresh = self.always_refresh
         q.with_options = list(self.with_options)
         q._session = self.session
@@ -62,6 +66,7 @@ class Query(object):
             q.extension.append(ext)
         q._offset = self._offset
         q._limit = self._limit
+        q._group_by = self._group_by
         q._get_clause = self._get_clause
         q._from_obj = list(self._from_obj)
         q._joinpoint = self._joinpoint
@@ -340,6 +345,16 @@ class Query(object):
         t = sql.text(text)
         return self.execute(t, params=params)
 
+    def add_entity(self, entity):
+        q = self._clone()
+        q._entities.append(entity)
+        return q
+        
+    def add_column(self, column):
+        q = self._clone()
+        q._entities.append(column)
+        return q
+        
     def options(self, *args, **kwargs):
         """Return a new Query object, applying the given list of
         MapperOptions.
@@ -497,6 +512,16 @@ class Query(object):
         else:
             q._order_by.extend(util.to_list(criterion))
         return q
+
+    def group_by(self, criterion):
+        """apply one or more GROUP BY criterion to the query and return the newly resulting ``Query``"""
+
+        q = self._clone()
+        if q._group_by is False:    
+            q._group_by = util.to_list(criterion)
+        else:
+            q._group_by.extend(util.to_list(criterion))
+        return q
     
     def join(self, prop):
         """create a join of this ``Query`` object's criterion
@@ -651,6 +676,7 @@ class Query(object):
         context = SelectionContext(self.select_mapper, session, self.extension, with_options=self.with_options, **kwargs)
 
         process = []
+        mappers_or_columns = tuple(self._entities) + mappers_or_columns
         if mappers_or_columns:
             for m in mappers_or_columns:
                 if isinstance(m, type):
@@ -658,7 +684,8 @@ class Query(object):
                 if isinstance(m, mapper.Mapper):
                     appender = []
                     def proc(context, row):
-                        m._instance(context, row, appender)
+                        if not m._instance(context, row, appender):
+                            appender.append(None)
                     process.append((proc, appender))
                 elif isinstance(m, sql.ColumnElement) or isinstance(m, basestring):
                     res = []
@@ -745,14 +772,26 @@ class Query(object):
             whereclause = sql.and_(self._criterion, whereclause)
 
         if whereclause is not None and self.is_polymorphic:
-            # adapt the given WHERECLAUSE to adjust instances of this query's mapped table to be that of our select_table,
+            # adapt the given WHERECLAUSE to adjust instances of this query's mapped 
+            # table to be that of our select_table,
             # which may be the "polymorphic" selectable used by our mapper.
             whereclause.accept_visitor(sql_util.ClauseAdapter(self.table))
-            
+
+            # if extra entities, adapt the criterion to those as well
+            for m in self._entities:
+                if isinstance(m, type):
+                    m = mapper.class_mapper(m)
+                if isinstance(m, mapper.Mapper):
+                    table = m.select_table
+                    whereclause.accept_visitor(sql_util.ClauseAdapter(m.select_table))
+        
+        # get/create query context.  get the ultimate compile arguments
+        # from there
         context = kwargs.pop('query_context', None)
         if context is None:
             context = QueryContext(self, kwargs)
         order_by = context.order_by
+        group_by = context.group_by
         from_obj = context.from_obj
         lockmode = context.lockmode
         distinct = context.distinct
@@ -769,6 +808,8 @@ class Query(object):
         except KeyError:
             raise exceptions.ArgumentError("Unknown lockmode '%s'" % lockmode)
 
+        # if single-table inheritance mapper, add "typecol IN (polymorphic)" criterion so
+        # that we only load the appropriate types
         if self.select_mapper.single and self.select_mapper.polymorphic_on is not None and self.select_mapper.polymorphic_identity is not None:
             whereclause = sql.and_(whereclause, self.select_mapper.polymorphic_on.in_(*[m.polymorphic_identity for m in self.select_mapper.polymorphic_iterator()]))
 
@@ -811,12 +852,23 @@ class Query(object):
                 [statement.append_column(c) for c in util.to_list(order_by)]
 
         context.statement = statement
+        
         # give all the attached properties a chance to modify the query
         # TODO: doing this off the select_mapper.  if its the polymorphic mapper, then
         # it has no relations() on it.  should we compile those too into the query ?  (i.e. eagerloads)
         for value in self.select_mapper.props.values():
             value.setup(context)
 
+        # additional entities/columns, add those to selection criterion
+        for m in self._entities:
+            if isinstance(m, type):
+                m = mapper.class_mapper(m)
+            if isinstance(m, mapper.Mapper):
+                for value in m.props.values():
+                    value.setup(context)
+            elif isinstance(m, sql.ColumnElement):
+                statement.append_column(m)
+                
         return statement
 
     def __log_debug(self, msg):
@@ -833,6 +885,7 @@ class QueryContext(OperationContext):
     def __init__(self, query, kwargs):
         self.query = query
         self.order_by = kwargs.pop('order_by', query._order_by)
+        self.group_by = kwargs.pop('group_by', query._group_by)
         self.from_obj = kwargs.pop('from_obj', query._from_obj)
         self.lockmode = kwargs.pop('lockmode', query.lockmode)
         self.distinct = kwargs.pop('distinct', query._distinct)
@@ -847,7 +900,7 @@ class QueryContext(OperationContext):
         ``QueryContext`` that can be applied to a ``sql.Select``
         statement.
         """
-        return {'limit':self.limit, 'offset':self.offset, 'distinct':self.distinct}
+        return {'limit':self.limit, 'offset':self.offset, 'distinct':self.distinct, 'group_by':self.group_by}
 
     def accept_option(self, opt):
         """Accept a ``MapperOption`` which will process (modify) the

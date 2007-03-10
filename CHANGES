@@ -54,6 +54,11 @@
       as a list of tuples.  this corresponds to the documented behavior.
       So that instances match up properly, the "uniquing" is disabled when 
       this feature is used.
+    - Query has add_entity() and add_column() generative methods.  these
+      will add the given mapper/class or ColumnElement to the query at compile
+      time, and apply them to the instances method.  the user is responsible
+      for constructing reasonable join conditions (otherwise you can get
+      full cartesian products).  result set is the list of tuples, non-uniqued.
     - strings and columns can also be sent to the *args of instances() where
       those exact result columns will be part of the result tuples.
     - a full select() construct can be passed to query.select() (which

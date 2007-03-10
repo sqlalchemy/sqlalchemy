@@ -97,11 +97,11 @@ print [(item.item.description, item.price) for item in order.itemassociations]
 print [(item.description, item.price) for item in order.items]
 
 # print customers who bought 'MySQL Crowbar' on sale
-result = SelectResults(session.query(Order)).join_to('item').select(and_(items.c.description=='MySQL Crowbar', items.c.price>orderitems.c.price))
+result = session.query(Order).join('item').filter(and_(items.c.description=='MySQL Crowbar', items.c.price>orderitems.c.price))
 print [order.customer_name for order in result]
 
 # print customers who got the special T-shirt discount
-result = SelectResults(session.query(Order)).join_to('item').select(and_(items.c.description=='SA T-Shirt', items.c.price>orderitems.c.price))
+result = session.query(Order).join('item').filter(and_(items.c.description=='SA T-Shirt', items.c.price>orderitems.c.price))
 print [order.customer_name for order in result]
 
 
