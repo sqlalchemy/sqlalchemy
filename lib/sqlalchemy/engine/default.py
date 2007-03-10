@@ -193,14 +193,18 @@ class DefaultExecutionContext(base.ExecutionContext):
             for params in plist[0:1]:
                 for key in params.positional:
                     typeengine = params.binds[key].type
-                    inputsizes.append(typeengine.get_dbapi_type(self.dialect.module))
+                    dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.module)
+                    if dbtype is not None:
+                        inputsizes.append(dbtype)
             cursor.setinputsizes(*inputsizes)
         else:
             inputsizes = {}
             for params in plist[0:1]:
                 for key in params.keys():
                     typeengine = params.binds[key].type
-                    inputsizes[key] = typeengine.get_dbapi_type(self.dialect.module)
+                    dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.module)
+                    if dbtype is not None:
+                        inputsizes[key] = dbtype
             cursor.setinputsizes(**inputsizes)
 
     def _process_defaults(self, engine, proxy, compiled, parameters):

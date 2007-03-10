@@ -24,13 +24,13 @@ class DefaultTest(PersistTest):
         # also correct for "current_date" compatible as column default, value differences
         currenttime = func.current_date(type=Date, engine=db);
         if is_oracle:
-            ts = db.func.trunc(func.sysdate(), column("'DAY'")).scalar()
+            ts = db.func.trunc(func.sysdate(), literal_column("'DAY'")).scalar()
             f = select([func.count(1) + 5], engine=db).scalar()
             f2 = select([func.count(1) + 14], engine=db).scalar()
             # TODO: engine propigation across nested functions not working
-            currenttime = func.trunc(currenttime, column("'DAY'"), engine=db)
+            currenttime = func.trunc(currenttime, literal_column("'DAY'"), engine=db)
             def1 = currenttime
-            def2 = func.trunc(text("sysdate"), column("'DAY'"))
+            def2 = func.trunc(text("sysdate"), literal_column("'DAY'"))
             deftype = Date
         elif use_function_defaults:
             f = select([func.count(1) + 5], engine=db).scalar()

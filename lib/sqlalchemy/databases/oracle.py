@@ -51,6 +51,9 @@ class OracleTimestamp(sqltypes.DateTime):
         return dialect.TIMESTAMP
 
 class OracleText(sqltypes.TEXT):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.CLOB
+
     def get_col_spec(self):
         return "CLOB"
 
@@ -68,17 +71,13 @@ class OracleChar(sqltypes.CHAR):
 
 class OracleBinary(sqltypes.Binary):
     def get_dbapi_type(self, dbapi):
-        return dbapi.BINARY
+        return dbapi.BLOB
 
     def get_col_spec(self):
         return "BLOB"
 
     def convert_bind_param(self, value, dialect):
-        if value is None:
-            return None
-        else:
-            # this is RAWTOHEX
-            return ''.join(["%.2X" % ord(c) for c in value])
+        return value
 
     def convert_result_value(self, value, dialect):
         if value is None:
@@ -149,7 +148,7 @@ class OracleExecutionContext(default.DefaultExecutionContext):
                 self.set_input_sizes(proxy(), parameters)
 
 class OracleDialect(ansisql.ANSIDialect):
-    def __init__(self, use_ansi=True, auto_setinputsizes=False, module=None, threaded=True, **kwargs):
+    def __init__(self, use_ansi=True, auto_setinputsizes=True, module=None, threaded=True, **kwargs):
         self.use_ansi = use_ansi
         self.threaded = threaded
         if module is None:

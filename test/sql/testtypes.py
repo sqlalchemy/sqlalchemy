@@ -203,12 +203,8 @@ class BinaryTest(AssertMixin):
         testobj1 = pickleable.Foo('im foo 1')
         testobj2 = pickleable.Foo('im foo 2')
 
-        if db.name == 'oracle':
-            stream1 =self.load_stream('binary_data_one.dat', len=2000)
-            stream2 =self.load_stream('binary_data_two.dat', len=2000)
-        else:
-            stream1 =self.load_stream('binary_data_one.dat')
-            stream2 =self.load_stream('binary_data_two.dat')
+        stream1 =self.load_stream('binary_data_one.dat')
+        stream2 =self.load_stream('binary_data_two.dat')
         binary_table.insert().execute(primary_id=1, misc='binary_data_one.dat',    data=stream1, data_slice=stream1[0:100], pickled=testobj1)
         binary_table.insert().execute(primary_id=2, misc='binary_data_two.dat', data=stream2, data_slice=stream2[0:99], pickled=testobj2)
         binary_table.insert().execute(primary_id=3, misc='binary_data_two.dat', data=None, data_slice=stream2[0:99], pickled=None)
