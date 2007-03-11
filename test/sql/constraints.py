@@ -177,7 +177,7 @@ class ConstraintTest(testbase.AssertMixin):
             capt.append(repr(parameters))
             connection.proxy(statement, parameters)
         schemagen = testbase.db.dialect.schemagenerator(testbase.db, proxy, connection)
-        events.accept_schema_visitor(schemagen)
+        schemagen.traverse(events)
         
         assert capt[0].strip().startswith('CREATE TABLE events')
         

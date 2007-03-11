@@ -260,7 +260,7 @@ class LazyLoader(AbstractRelationLoader):
             class FindColumnInColumnClause(sql.ClauseVisitor):
                 def visit_column(self, c):
                     columns.append(c)
-            expr.accept_visitor(FindColumnInColumnClause())
+            FindColumnInColumnClause().traverse(expr)
             return len(columns) and columns[0] or None
         
         def col_in_collection(column, collection):
@@ -294,7 +294,7 @@ class LazyLoader(AbstractRelationLoader):
 
         lazywhere = primaryjoin.copy_container()
         li = mapperutil.BinaryVisitor(visit_binary)
-        lazywhere.accept_visitor(li)
+        li.traverse(lazywhere)
         
         if secondaryjoin is not None:
             secondaryjoin = secondaryjoin.copy_container()
@@ -363,16 +363,16 @@ class EagerLoader(AbstractRelationLoader):
                         eagerloader.secondary:self.eagersecondary
                         })
                 self.eagersecondaryjoin = eagerloader.polymorphic_secondaryjoin.copy_container()
-                self.eagersecondaryjoin.accept_visitor(self.aliasizer)
+                self.aliasizer.traverse(self.eagersecondaryjoin)
                 self.eagerprimary = eagerloader.polymorphic_primaryjoin.copy_container()
-                self.eagerprimary.accept_visitor(self.aliasizer)
+                self.aliasizer.traverse(self.eagerprimary)
             else:
                 self.eagerprimary = eagerloader.polymorphic_primaryjoin.copy_container()
                 self.aliasizer = sql_util.Aliasizer(self.target, aliases={self.target:self.eagertarget})
-                self.eagerprimary.accept_visitor(self.aliasizer)
+                self.aliasizer.traverse(self.eagerprimary)
 
             if parentclauses is not None:
-                self.eagerprimary.accept_visitor(parentclauses.aliasizer)
+                parentclauses.aliasizer.traverse(self.eagerprimary)
 
             if eagerloader.order_by:
                 self.eager_order_by = self._aliasize_orderby(eagerloader.order_by)

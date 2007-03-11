@@ -80,8 +80,7 @@ class ClauseSynchronizer(object):
                         self.syncrules.append(SyncRule(self.child_mapper, source_column, dest_column, dest_mapper=self.parent_mapper, issecondary=issecondary))
 
         rules_added = len(self.syncrules)
-        processor = BinaryVisitor(compile_binary)
-        sqlclause.accept_visitor(processor)
+        BinaryVisitor(compile_binary).traverse(sqlclause)
         if len(self.syncrules) == rules_added:
             raise exceptions.ArgumentError("No syncrules generated for join criterion " + str(sqlclause))
 

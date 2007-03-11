@@ -767,7 +767,7 @@ class Mapper(object):
         vis = mapperutil.BinaryVisitor(visit_binary)
         for mapper in self.base_mapper().polymorphic_iterator():
             if mapper.inherit_condition is not None:
-                mapper.inherit_condition.accept_visitor(vis)
+                vis.traverse(mapper.inherit_condition)
         return result
 
     def add_properties(self, dict_of_properties):

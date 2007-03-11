@@ -500,8 +500,8 @@ class SchemaTest(PersistTest):
         def foo(s, p):
             buf.write(s)
         gen = testbase.db.dialect.schemagenerator(testbase.db.engine, foo, None)
-        table1.accept_schema_visitor(gen)
-        table2.accept_schema_visitor(gen)
+        gen.traverse(table1)
+        gen.traverse(table2)
         buf = buf.getvalue()
         print buf
         assert buf.index("CREATE TABLE someschema.table1") > -1

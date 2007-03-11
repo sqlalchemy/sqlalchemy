@@ -434,7 +434,7 @@ class OracleCompiler(ansisql.ANSICompiler):
 
             # now re-visit the onclause, which will be used as a where clause
             # (the first visit occured via the Join object itself right before it called visit_join())
-            join.onclause.accept_visitor(self)
+            self.traverse(join.onclause)
 
             self._outertable = None
 
@@ -488,12 +488,12 @@ class OracleCompiler(ansisql.ANSICompiler):
             orderby = self.strings[select.order_by_clause]
             if not orderby:
                 orderby = select.oid_column
-                orderby.accept_visitor(self)
+                self.traverse(orderby)
                 orderby = self.strings[orderby]
-            class SelectVisitor(sql.ClauseVisitor):
+            class SelectVisitor(sql.NoColumnVisitor):
                 def visit_select(self, select):
                     select.append_column(sql.literal_column("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn"))
-            select.accept_visitor(SelectVisitor())
+            SelectVisitor().traverse(select)
             limitselect = sql.select([c for c in select.c if c.key!='ora_rn'])
             if select.offset is not None:
                 limitselect.append_whereclause("ora_rn>%d" % select.offset)
@@ -501,7 +501,7 @@ class OracleCompiler(ansisql.ANSICompiler):
                     limitselect.append_whereclause("ora_rn<=%d" % (select.limit + select.offset))
             else:
                 limitselect.append_whereclause("ora_rn<=%d" % select.limit)
-            limitselect.accept_visitor(self)
+            self.traverse(limitselect)
             self.strings[select] = self.strings[limitselect]
             self.froms[select] = self.froms[limitselect]
         else:
@@ -527,7 +527,7 @@ class OracleCompiler(ansisql.ANSICompiler):
             orderby = self.strings[select.order_by_clause]
             if not orderby:
                 orderby = select.oid_column
-                orderby.accept_visitor(self)
+                self.traverse(orderby)
                 orderby = self.strings[orderby]
             select.append_column(sql.literal_column("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn"))
             limitselect = sql.select([c for c in select.c if c.key!='ora_rn'])
@@ -537,7 +537,7 @@ class OracleCompiler(ansisql.ANSICompiler):
                     limitselect.append_whereclause("ora_rn<=%d" % (select.limit + select.offset))
             else:
                 limitselect.append_whereclause("ora_rn<=%d" % select.limit)
-            limitselect.accept_visitor(self)
+            self.traverse(limitselect)
             self.strings[select] = self.strings[limitselect]
             self.froms[select] = self.froms[limitselect]
         else:

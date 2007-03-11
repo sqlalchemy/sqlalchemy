@@ -775,7 +775,7 @@ class Query(object):
             # adapt the given WHERECLAUSE to adjust instances of this query's mapped 
             # table to be that of our select_table,
             # which may be the "polymorphic" selectable used by our mapper.
-            whereclause.accept_visitor(sql_util.ClauseAdapter(self.table))
+            sql_util.ClauseAdapter(self.table).traverse(whereclause)
 
             # if extra entities, adapt the criterion to those as well
             for m in self._entities:
@@ -783,7 +783,7 @@ class Query(object):
                     m = mapper.class_mapper(m)
                 if isinstance(m, mapper.Mapper):
                     table = m.select_table
-                    whereclause.accept_visitor(sql_util.ClauseAdapter(m.select_table))
+                    sql_util.ClauseAdapter(m.select_table).traverse(whereclause)
         
         # get/create query context.  get the ultimate compile arguments
         # from there
@@ -827,7 +827,7 @@ class Query(object):
                 order_by = util.to_list(order_by) or []
                 cf = sql_util.ColumnFinder()
                 for o in order_by:
-                    o.accept_visitor(cf)
+                    cf.traverse(o)
             else:
                 cf = []
 

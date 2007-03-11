@@ -51,7 +51,7 @@ class TableCollection(object):
                     tuples.append( ( parent_table, child_table ) )
         vis = TVisitor()
         for table in self.tables:
-            table.accept_schema_visitor(vis)
+            vis.traverse(table)
         sorter = topological.QueueDependencySorter( tuples, self.tables )
         head =  sorter.sort()
         sequence = []
@@ -64,21 +64,21 @@ class TableCollection(object):
         return sequence
 
 
-class TableFinder(TableCollection, sql.ClauseVisitor):
+class TableFinder(TableCollection, sql.NoColumnVisitor):
     """Given a ``Clause``, locate all the ``Tables`` within it into a list."""
 
     def __init__(self, table, check_columns=False):
         TableCollection.__init__(self)
         self.check_columns = check_columns
         if table is not None:
-            table.accept_visitor(self)
+            self.traverse(table)
 
     def visit_table(self, table):
         self.tables.append(table)
 
     def visit_column(self, column):
         if self.check_columns:
-            column.table.accept_visitor(self)
+            self.traverse(column.table)
 
 class ColumnFinder(sql.ClauseVisitor):
     def __init__(self):
@@ -103,7 +103,7 @@ class ColumnsInClause(sql.ClauseVisitor):
         if self.selectable.c.get(column.key) is column:
             self.result = True
 
-class AbstractClauseProcessor(sql.ClauseVisitor):
+class AbstractClauseProcessor(sql.NoColumnVisitor):
     """Traverse a clause and attempt to convert the contents of container elements
     to a converted element.
 
@@ -132,7 +132,7 @@ class AbstractClauseProcessor(sql.ClauseVisitor):
             if elem is not None:
                 list_[i] = elem
             else:
-                list_[i].accept_visitor(self)
+                self.traverse(list_[i])
 
     def visit_compound(self, compound):
         self.visit_clauselist(compound)
@@ -198,7 +198,7 @@ class ClauseAdapter(AbstractClauseProcessor):
 
       s = table1.alias('foo')
 
-    calling ``condition.accept_visitor(ClauseAdapter(s))`` converts
+    calling ``ClauseAdapter(s).traverse(condition)`` converts
     condition to read::
 
       s.c.col1 == table2.c.col1

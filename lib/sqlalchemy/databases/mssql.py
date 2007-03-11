@@ -657,11 +657,11 @@ class MSSQLCompiler(ansisql.ANSICompiler):
         if getattr(table, 'schema', None) is not None and not self.tablealiases.has_key(table):
             alias = table.alias()
             self.tablealiases[table] = alias
-            alias.accept_visitor(self)
+            self.traverse(alias)
             self.froms[('alias', table)] = self.froms[table]
             for c in alias.c:
-                c.accept_visitor(self)
-            alias.oid_column.accept_visitor(self)
+                self.traverse(c)
+            self.traverse(alias.oid_column)
             self.tablealiases[alias] = self.froms[table]
             self.froms[table] = self.froms[alias]
         else:
