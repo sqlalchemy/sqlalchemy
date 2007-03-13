@@ -446,6 +446,54 @@ class Session(object):
             self.save(merged)
         return merged
 
+    def identity_key(self, *args, **kwargs):
+        """Get an identity key
+
+        Valid call signatures:
+
+        identity_key(class_, ident, entity_name=None)
+            class_ - mapped class
+            ident - primary key, if the key is composite this is a tuple
+            entity_name - optional entity name. May be given as a
+                positional arg or as a keyword arg.
+
+        identity_key(instance=instance)
+            instance - object instance (must be given as a keyword arg)
+
+        identity_key(row=row, class=class_, entity_name=None)
+            row - result proxy row (must be given as a keyword arg)
+        """
+        if args:
+            kw = {}
+            if len(args) == 2:
+                class_, ident = args
+                entity_name = kwargs.pop("entity_name", None)
+                assert not kwargs, ("unknown keyword arguments: %s"
+                    % (kwargs.keys(),))
+            else:
+                assert len(args) == 3, ("two or three positional args are "
+                    "accepted, got %s" % len(args))
+                class_, ident, entity_name = args
+            mapper = _class_mapper(class_, entity_name=entity_name)
+            return mapper.instance_key_from_primary_key(ident,
+                entity_name=entity_name)
+        else:
+            try:
+                instance = kwargs.pop("instance")
+            except KeyError:
+                row = kwargs.pop("row")
+                class_ = kwargs.pop("class")
+                entity_name = kwargs.pop("entity_name", None)
+                assert not kwargs, ("unknown keyword arguments: %s"
+                    % (kwargs.keys(),))
+                mapper = _class_mapper(class_, entity_name=entity_name)
+                return mapper.identity_key_from_row(row)
+            else:
+                assert not kwargs, ("unknown keyword arguments: %s"
+                    % (kwargs.keys(),))
+                mapper = _object_mapper(instance)
+                return mapper.identity_key_from_instance(instance)
+
     def _save_impl(self, object, **kwargs):
         if hasattr(object, '_instance_key'):
             if not self.identity_map.has_key(object._instance_key):

@@ -96,6 +96,10 @@
       worked anyway), but also query.selectfirst(), query.selectone() which
       will be used as is (i.e. no query is compiled). works similarly to
       sending the results to instances().
+
+    - added a handy multi-use "identity_key()" method to Session, allowing
+      the generation of identity keys for primary key values, instances,
+      and rows, courtesy Daniel Miller
       
     - added "refresh-expire" cascade [ticket:492].  allows refresh() and
       expire() calls to propigate along relationships.
