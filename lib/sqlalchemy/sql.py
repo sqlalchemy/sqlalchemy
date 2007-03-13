@@ -988,11 +988,21 @@ class ColumnElement(Selectable, _CompareMixin):
     """
 
     primary_key = property(lambda self:getattr(self, '_primary_key', False),
-                           doc="Primary key flag.  Indicates if this Column represents part or whole of a primary key.")
+                           doc=\
+        """Primary key flag.  Indicates if this Column represents part or 
+        whole of a primary key.
+        """)
     foreign_keys = property(lambda self:getattr(self, '_foreign_keys', []),
-                            doc="Foreign key accessor.  Points to a list of ForeignKey objects which represents a Foreign Key placed on this column's ultimate ancestor.")
+                            doc=\
+        """Foreign key accessor.  Points to a list of ForeignKey objects 
+        which represents a Foreign Key placed on this column's ultimate
+         ancestor.
+        """)
     columns = property(lambda self:[self],
-                       doc="Columns accessor which just returns self, to provide compatibility with Selectable objects.")
+                       doc=\
+        """Columns accessor which just returns self, to provide compatibility 
+        with Selectable objects.
+        """)
 
     def _one_fkey(self):
         if len(self._foreign_keys):
@@ -1013,7 +1023,12 @@ class ColumnElement(Selectable, _CompareMixin):
             s.add(self)
         self.__orig_set = s
     orig_set = property(_get_orig_set, _set_orig_set,
-                        doc="A Set containing TableClause-bound, non-proxied ColumnElements for which this ColumnElement is a proxy.  In all cases except for a column proxied from a Union (i.e. CompoundSelect), this set will be just one element.")
+                        doc=\
+        """A Set containing TableClause-bound, non-proxied ColumnElements 
+        for which this ColumnElement is a proxy.  In all cases except 
+        for a column proxied from a Union (i.e. CompoundSelect), this 
+        set will be just one element.
+        """)
 
     def shares_lineage(self, othercolumn):
         """Return True if the given ``ColumnElement`` has a common ancestor to this ``ColumnElement``."""
@@ -1195,7 +1210,10 @@ class FromClause(Selectable):
     c = property(lambda s:s._get_exported_attribute('_columns'))
     primary_key = property(lambda s:s._get_exported_attribute('_primary_key'))
     foreign_keys = property(lambda s:s._get_exported_attribute('_foreign_keys'))
-    original_columns = property(lambda s:s._get_exported_attribute('_orig_cols'), doc="A dictionary mapping an original Table-bound column to a proxied column in this FromClause.")
+    original_columns = property(lambda s:s._get_exported_attribute('_orig_cols'), doc=\
+        """A dictionary mapping an original Table-bound 
+        column to a proxied column in this FromClause.
+        """)
     oid_column = property(_get_oid_column)
 
     def _export_columns(self):

@@ -11,7 +11,7 @@ from sqlalchemy.orm import mapper, query
 from sqlalchemy.orm.interfaces import *
 from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil
-import sets, random
+import random
 
 
 class ColumnLoader(LoaderStrategy):
