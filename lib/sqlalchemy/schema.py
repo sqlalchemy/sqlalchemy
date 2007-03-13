@@ -178,14 +178,25 @@ class Table(SchemaItem, sql.TableClause):
     """Represent a relational database table.
 
     This subclasses ``sql.TableClause`` to provide a table that is
-    *wired* to an engine.
+    associated with an instance of ``MetaData``, which in turn
+    may be associated with an instance of ``SQLEngine``.  
 
-    Whereas ``TableClause`` represents a table as its used in a SQL
-    expression, ``Table`` represents a table as its created in the
-    database.
-
-    Be sure to look at ``sqlalchemy.sql.TableImpl`` for additional methods
-    defined on a ``Table``."""
+    Whereas ``TableClause`` represents a table as its used in an SQL
+    expression, ``Table`` represents a table as it exists in a
+    database schema.
+    
+    If this ``Table`` is ultimately associated with an engine,
+    the ``Table`` gains the ability to access the database directly
+    without the need for dealing with an explicit ``Connection`` object;
+    this is known as "implicit execution".
+    
+    Implicit operation allows the ``Table`` to access the database to
+    reflect its own properties (via the autoload=True flag), it allows
+    the create() and drop() methods to be called without passing
+    a connectable, and it also propigates the underlying engine to
+    constructed SQL objects so that they too can be executed via their
+    execute() method without the need for a ``Connection``.
+    """
 
     __metaclass__ = _TableSingleton
 
