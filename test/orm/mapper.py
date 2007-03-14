@@ -319,6 +319,21 @@ class MapperTest(MapperSuperTest):
             assert False
         except AttributeError:
             assert True
+
+    def testjoinviam2m(self):
+        """test the join_via and join_to functions"""
+        m = mapper(Order, orders, properties = {
+            'items' : relation(mapper(Item, orderitems, properties = {
+                'keywords' : relation(mapper(Keyword, keywords), itemkeywords)
+            }))
+        })
+        
+        sess = create_session()
+        q = sess.query(m)
+
+        l = q.filter(keywords.c.name=='square').join(['items', 'keywords']).list()
+        self.assert_result(l, Order, order_result[1])
+
         
     def testcustomjoin(self):
         """test that the from_obj parameter to query.select() can be used
@@ -1315,7 +1330,6 @@ class EagerTest(MapperSuperTest):
     
     def testmanytomany(self):
         items = orderitems
-        
         m = mapper(Item, items, properties = dict(
                 keywords = relation(mapper(Keyword, keywords), itemkeywords, lazy=False, order_by=[keywords.c.keyword_id]),
             ))
@@ -1328,6 +1342,7 @@ class EagerTest(MapperSuperTest):
             {'item_id' : 1, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 4}, {'keyword_id' : 6}])},
             {'item_id' : 2, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 5}, {'keyword_id' : 7}])},
         )
+
     
     def testmanytomanyoptions(self):
         items = orderitems

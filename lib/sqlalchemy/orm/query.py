@@ -408,9 +408,17 @@ class Query(object):
         for key in keys:
             prop = mapper.props[key]
             if outerjoin:
-                clause = clause.outerjoin(prop.select_table, prop.get_join(mapper))
+                if prop.secondary:
+                    clause = clause.outerjoin(prop.secondary, prop.get_join(mapper, primary=True, secondary=False))
+                    clause = clause.outerjoin(prop.select_table, prop.get_join(mapper, primary=False))
+                else:
+                    clause = clause.outerjoin(prop.select_table, prop.get_join(mapper))
             else:
-                clause = clause.join(prop.select_table, prop.get_join(mapper))
+                if prop.secondary:
+                    clause = clause.join(prop.secondary, prop.get_join(mapper, primary=True, secondary=False))
+                    clause = clause.join(prop.select_table, prop.get_join(mapper, primary=False))
+                else:
+                    clause = clause.join(prop.select_table, prop.get_join(mapper))
             mapper = prop.mapper
         return (clause, mapper)
 

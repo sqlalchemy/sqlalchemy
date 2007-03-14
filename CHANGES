@@ -89,6 +89,14 @@
       for constructing reasonable join conditions (otherwise you can get
       full cartesian products).  result set is the list of tuples, non-uniqued.
 
+    - eager loading will not "aliasize" "order by" clauses that were placed 
+      in the select statement by something other than the eager loader
+      itself, to fix possibility of dupe columns as illustrated in
+      [ticket:495].  however, this means you have to be more careful with
+      the columns placed in the "order by" of Query.select(), that you have
+      explicitly named them in your criterion (i.e. you cant rely on the
+      eager loader adding them in for you)
+      
     - strings and columns can also be sent to the *args of instances() where
       those exact result columns will be part of the result tuples.
 

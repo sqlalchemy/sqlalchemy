@@ -400,9 +400,9 @@ class PropertyLoader(StrategizedProperty):
     def _is_self_referential(self):
         return self.parent.mapped_table is self.target or self.parent.select_table is self.target
 
-    def get_join(self, parent):
+    def get_join(self, parent, primary=True, secondary=True):
         try:
-            return self._parent_join_cache[parent]
+            return self._parent_join_cache[(parent, primary, secondary)]
         except KeyError:
             parent_equivalents = parent._get_inherited_column_equivalents()
             primaryjoin = self.polymorphic_primaryjoin.copy_container()
@@ -418,10 +418,15 @@ class PropertyLoader(StrategizedProperty):
                 sql_util.ClauseAdapter(parent.select_table, exclude=self.foreign_keys, equivalents=parent_equivalents).traverse(primaryjoin)
 
             if secondaryjoin is not None:
-                j = primaryjoin & secondaryjoin
+                if secondary and not primary:
+                    j = secondaryjoin
+                elif primary and secondary:
+                    j = primaryjoin & secondaryjoin
+                elif primary and not secondary:
+                    j = primaryjoin
             else:
                 j = primaryjoin
-            self._parent_join_cache[parent] = j
+            self._parent_join_cache[(parent, primary, secondary)] = j
             return j
 
     def register_dependencies(self, uowcommit):

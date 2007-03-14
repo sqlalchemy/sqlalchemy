@@ -1255,7 +1255,7 @@ class ManyToManyTest(UnitOfWorkTest):
         keywordmapper = mapper(Keyword, keywords)
 
         m = mapper(Item, items, properties = dict(
-                keywords = relation(keywordmapper, itemkeywords, lazy = False),
+                keywords = relation(keywordmapper, itemkeywords, lazy = False, order_by=keywords.c.name),
             ))
 
         data = [Item,
@@ -1289,7 +1289,7 @@ class ManyToManyTest(UnitOfWorkTest):
 
         ctx.current.flush()
         
-        l = ctx.current.query(m).select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name, keywords.c.name])
+        l = ctx.current.query(m).select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name])
         self.assert_result(l, *data)
 
         objects[4].item_name = 'item4updated'
@@ -1408,7 +1408,7 @@ class ManyToManyTest(UnitOfWorkTest):
         # the reorganization of mapper construction affected this, but was fixed again
         m = mapper(Item, items, properties = dict(
                 keywords = relation(mapper(IKAssociation, itemkeywords, properties = dict(
-                    keyword = relation(mapper(Keyword, keywords, non_primary=True), lazy = False, uselist = False)
+                    keyword = relation(mapper(Keyword, keywords, non_primary=True), lazy = False, uselist = False, order_by=keywords.c.name)
                 ), primary_key = [itemkeywords.c.item_id, itemkeywords.c.keyword_id]),
                 lazy = False)
             ))
@@ -1455,7 +1455,7 @@ class ManyToManyTest(UnitOfWorkTest):
 
         ctx.current.flush()
         ctx.current.clear()
-        l = Query(m).select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name, keywords.c.name])
+        l = Query(m).select(items.c.item_name.in_(*[e['item_name'] for e in data[1:]]), order_by=[items.c.item_name])
         self.assert_result(l, *data)
 
     def testm2mmultitable(self):

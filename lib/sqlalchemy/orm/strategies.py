@@ -472,8 +472,6 @@ class EagerLoader(AbstractRelationLoader):
 
         if clauses.eager_order_by:
             statement.order_by(*util.to_list(clauses.eager_order_by))
-        elif getattr(statement, 'order_by_clause', None):
-            clauses._aliasize_orderby(statement.order_by_clause, False)
                 
         statement.append_from(statement._outerjoin)
         for value in self.select_mapper.props.values():
