@@ -174,6 +174,14 @@ class QueryTest(PersistTest):
         r = self.users.select(offset=5, order_by=[self.users.c.user_id]).execute().fetchall()
         self.assert_(r==[(6, 'ralph'), (7, 'fido')])
         
+    @testbase.supported('mssql')
+    def testselectlimitoffset_mssql(self):
+        try:
+            r = self.users.select(limit=3, offset=2, order_by=[self.users.c.user_id]).execute().fetchall()
+            assert False # InvalidRequestError should have been raised
+        except exceptions.InvalidRequestError:
+            pass
+
     @testbase.unsupported('mysql')  
     def test_scalar_select(self):
         """test that scalar subqueries with labels get their type propigated to the result set."""

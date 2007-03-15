@@ -61,8 +61,16 @@ def use_adodbapi():
     # ADODBAPI has a non-standard Connection method
     connect = dbmodule.Connection
     def make_connect_string(keys):
-        return  [["Provider=SQLOLEDB;Data Source=%s;User Id=%s;Password=%s;Initial Catalog=%s" % (
-            keys.get("host"), keys.get("user"), keys.get("password", ""), keys.get("database"))], {}]        
+        connectors = ["Provider=SQLOLEDB"]
+        connectors.append ("Data Source=%s" % keys.get("host"))
+        connectors.append ("Initial Catalog=%s" % keys.get("database"))
+        user = keys.get("user")
+        if user:
+            connectors.append("User Id=%s" % user)
+            connectors.append("Password=%s" % keys.get("password", ""))
+        else:
+            connectors.append("Integrated Security=SSPI")
+        return [[";".join (connectors)], {}]
     sane_rowcount = True
     dialect = MSSQLDialect
     colspecs[sqltypes.Unicode] = AdoMSUnicode
@@ -91,8 +99,16 @@ def use_pyodbc():
     import pyodbc as dbmodule
     connect = dbmodule.connect
     def make_connect_string(keys):
-        return [["Driver={SQL Server};Server=%s;UID=%s;PWD=%s;Database=%s" % (
-            keys.get("host"), keys.get("user"), keys.get("password", ""), keys.get("database"))], {}]        
+        connectors = ["Driver={SQL Server}"]
+        connectors.append("Server=%s" % keys.get("host"))
+        connectors.append("Database=%s" % keys.get("database"))
+        user = keys.get("user")
+        if user:
+            connectors.append("UID=%s" % user)
+            connectors.append("PWD=%s" % keys.get("password", ""))
+        else:
+            connectors.append ("TrustedConnection=Yes")
+        return [[";".join (connectors)], {}]
     do_commit = True
     sane_rowcount = False
     dialect = MSSQLDialect
@@ -150,7 +166,7 @@ class MSFloat(sqltypes.Float):
 
     def convert_bind_param(self, value, dialect):
         """By converting to string, we can use Decimal types round-trip."""
-        return str(value) 
+        return value and str(value) or None
 
 class MSInteger(sqltypes.Integer):
     def get_col_spec(self):
@@ -195,7 +211,7 @@ class MSDate(sqltypes.Date):
     
     def convert_bind_param(self, value, dialect):
         if value and hasattr(value, "isoformat"):
-            return value.strftime('%Y-%m-%d %H:%M:%S')
+            return value.strftime('%Y-%m-%d %H:%M')
         return value
 
     def convert_result_value(self, value, dialect):
@@ -327,26 +343,29 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
     def __init__(self, dialect):
         self.IINSERT = self.HASIDENT = False
         super(MSSQLExecutionContext, self).__init__(dialect)
-    
+
+    def _has_implicit_sequence(self, column):
+        if column.primary_key and column.autoincrement:
+            if isinstance(column.type, sqltypes.Integer) and not column.foreign_key:
+                if column.default is None or (isinstance(column.default, schema.Sequence) and \
+                                              column.default.optional):
+                    return True
+        return False
+
     def pre_exec(self, engine, proxy, compiled, parameters, **kwargs):
         """MS-SQL has a special mode for inserting non-NULL values
         into IDENTITY columns.
         
         Activate it if the feature is turned on and needed.
         """
-        
         if getattr(compiled, "isinsert", False):
             tbl = compiled.statement.table
-            if not hasattr(tbl, 'has_sequence'):                
+            if not hasattr(tbl, 'has_sequence'):
+                tbl.has_sequence = False
                 for column in tbl.c:
-                    if column.primary_key and column.autoincrement and \
-                           isinstance(column.type, sqltypes.Integer) and not column.foreign_key:
-                        if column.default is None or (isinstance(column.default, schema.Sequence) and \
-                                                      column.default.optional):
-                            tbl.has_sequence = column
-                            break
-                else:
-                    tbl.has_sequence = False
+                    if getattr(column, 'sequence', False) or self._has_implicit_sequence(column):
+                        tbl.has_sequence = column
+                        break
 
             self.HASIDENT = bool(tbl.has_sequence)
             if engine.dialect.auto_identity_insert and self.HASIDENT:
@@ -520,6 +539,10 @@ class MSSQLDialect(ansisql.ANSIDialect):
                 row[columns.c.column_default]
             )
 
+            # cope with varchar(max)
+            if charlen == -1:
+                charlen = None
+                
             args = []
             for a in (charlen, numericprec, numericscale):
                 if a is not None:
@@ -644,12 +667,14 @@ class MSSQLCompiler(ansisql.ANSICompiler):
     def visit_select_precolumns(self, select):
         """ MS-SQL puts TOP, it's version of LIMIT here """
         s = select.distinct and "DISTINCT " or ""
-        if (select.limit):
+        if select.limit:
             s += "TOP %s " % (select.limit,)
+        if select.offset:
+            raise exceptions.InvalidRequestError('MSSQL does not support LIMIT with an offset')
         return s
 
-    def limit_clause(self, select):
-        # Limit in mssql is after the select keyword; MSsql has no support for offset
+    def limit_clause(self, select):    
+        # Limit in mssql is after the select keyword
         return ""
             
     def visit_table(self, table):
@@ -743,4 +768,5 @@ class MSSQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
         return value
 
 use_default()
+
 

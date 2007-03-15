@@ -267,6 +267,7 @@ class ReflectionTest(PersistTest):
             testbase.db.execute("drop table django_admin_log")
             testbase.db.execute("drop table django_content_type")
 
+    @testbase.unsupported('mssql')
     def testmultipk(self):
         """test that creating a table checks for a sequence before creating it"""
         meta = BoundMetaData(testbase.db)

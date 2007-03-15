@@ -983,8 +983,14 @@ class LazyTest(MapperSuperTest):
         ))
         sess= create_session()
         q = sess.query(m)
-        l = q.select(limit=2, offset=1)
-        self.assert_result(l, User, *user_all_result[1:3])
+        
+        if db.engine.name == 'mssql':
+            l = q.select(limit=2)
+            self.assert_result(l, User, *user_all_result[:2])
+        else:        
+            l = q.select(limit=2, offset=1)
+            self.assert_result(l, User, *user_all_result[1:3])
+
         # use a union all to get a lot of rows to join against
         u2 = users.alias('u2')
         s = union_all(u2.select(use_labels=True), u2.select(use_labels=True), u2.select(use_labels=True)).alias('u')
@@ -1124,8 +1130,13 @@ class EagerTest(MapperSuperTest):
         sess = create_session()
         q = sess.query(m)
         
-        l = q.select(limit=2, offset=1)
-        self.assert_result(l, User, *user_all_result[1:3])
+        if db.engine.name == 'mssql':
+            l = q.select(limit=2)
+            self.assert_result(l, User, *user_all_result[:2])
+        else:        
+            l = q.select(limit=2, offset=1)
+            self.assert_result(l, User, *user_all_result[1:3])
+
         # this is an involved 3x union of the users table to get a lot of rows.
         # then see if the "distinct" works its way out.  you actually get the same
         # result with or without the distinct, just via less or more rows.
@@ -1156,8 +1167,9 @@ class EagerTest(MapperSuperTest):
         sess = create_session()
         q = sess.query(m)
         
-        l = q.select(q.join_to('orders'), order_by=desc(orders.c.user_id), limit=2, offset=1)
-        self.assert_result(l, User, *(user_all_result[2], user_all_result[0]))
+        if db.engine.name != 'mssql':
+            l = q.select(q.join_to('orders'), order_by=desc(orders.c.user_id), limit=2, offset=1)
+            self.assert_result(l, User, *(user_all_result[2], user_all_result[0]))
         
         l = q.select(q.join_to('addresses'), order_by=desc(addresses.c.email_address), limit=1, offset=0)
         self.assert_result(l, User, *(user_all_result[0],))

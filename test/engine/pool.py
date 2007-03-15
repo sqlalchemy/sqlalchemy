@@ -162,7 +162,7 @@ class PoolTest(PersistTest):
         c2 = p.connect()
         assert id(c2.connection) == c_id
         c2.close()
-        time.sleep(3)
+        time.sleep(4)
         c3= p.connect()
         assert id(c3.connection) != c_id
     

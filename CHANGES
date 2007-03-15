@@ -48,6 +48,7 @@
     - the "else_" parameter to the case statement now properly works when
     set to zero.
 
+
 - oracle:
     - got binary working for any size input !  cx_oracle works fine,
       it was my fault as BINARY was being passed and not BLOB for
@@ -141,6 +142,16 @@
 
     - query() method is added by assignmapper.  this helps with 
       navigating to all the new generative methods on Query.
+
+- ms-sql:
+    - removed seconds input on DATE column types (probably 
+        should remove the time altogether)
+
+    - null values in float fields no longer raise errors
+
+    - LIMIT with OFFSET now raises an error (MS-SQL has no OFFSET support)
+
+
     
 0.3.5
 - sql:

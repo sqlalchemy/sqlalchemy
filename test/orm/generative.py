@@ -39,6 +39,7 @@ class GenerativeQueryTest(PersistTest):
         assert res.order_by([Foo.c.bar])[0].bar == 5
         assert res.order_by([desc(Foo.c.bar)])[0].bar == 95
         
+    @testbase.unsupported('mssql')
     def test_slice(self):
         assert self.query[1] == self.orig[1]
         assert list(self.query[10:20]) == self.orig[10:20]
@@ -48,6 +49,11 @@ class GenerativeQueryTest(PersistTest):
         assert list(self.query[10:40:3]) == self.orig[10:40:3]
         assert list(self.query[-5:]) == self.orig[-5:]
         assert self.query[10:20][5] == self.orig[10:20][5]
+
+    @testbase.supported('mssql')
+    def test_slice_mssql(self):
+        assert list(self.query[:10]) == self.orig[:10]
+        assert list(self.query[:10]) == self.orig[:10]
 
     def test_aggregate(self):
         assert self.query.count() == 100
@@ -59,10 +65,13 @@ class GenerativeQueryTest(PersistTest):
         # this one fails in mysql as the result comes back as a string
         assert self.query.filter(foo.c.bar<30).sum(foo.c.bar) == 435
 
-    @testbase.unsupported('postgres', 'mysql', 'firebird')
+    @testbase.unsupported('postgres', 'mysql', 'firebird', 'mssql')
     def test_aggregate_2(self):
-        # this one fails with postgres, the floating point comparison fails
-        assert self.query.filter(foo.c.bar<30).avg(foo.c.bar) == 14.5
+        assert self.res.filter(foo.c.bar<30).avg(foo.c.bar) == 14.5
+
+    @testbase.supported('postgres', 'mysql', 'firebird', 'mssql')
+    def test_aggregate_2_int(self):
+        assert int(self.res.filter(foo.c.bar<30).avg(foo.c.bar)) == 14
 
     def test_filter(self):
         assert self.query.count() == 100
