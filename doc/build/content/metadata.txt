@@ -419,7 +419,7 @@ A PassiveDefault indicates an column default that is executed upon INSERT by the
 
     {python}
     t = Table('test', meta, 
-        Column('mycolumn', DateTime, PassiveDefault("sysdate"))
+        Column('mycolumn', DateTime, PassiveDefault(text("sysdate")))
     )
         
 A create call for the above table will produce:
@@ -437,7 +437,7 @@ PassiveDefault also sends a message to the `Engine` that data is available after
         Column('my_id', Integer, primary_key=True),
 
         # an on-insert database-side default
-        Column('data1', Integer, PassiveDefault("d1_func")),
+        Column('data1', Integer, PassiveDefault(text("d1_func()"))),
     )
     # insert a row
     r = mytable.insert().execute(name='fred')
