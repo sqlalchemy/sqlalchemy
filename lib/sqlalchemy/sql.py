@@ -243,7 +243,7 @@ def case(whens, value=None, else_=None):
     """
 
     whenlist = [_CompoundClause(None, 'WHEN', c, 'THEN', r) for (c,r) in whens]
-    if else_:
+    if not else_ is None:
         whenlist.append(_CompoundClause(None, 'ELSE', else_))
     cc = _CalculatedClause(None, 'CASE', value, *whenlist + ['END'])
     for c in cc.clauses:

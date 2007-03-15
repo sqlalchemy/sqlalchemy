@@ -45,6 +45,9 @@
     with an easy method of limiting a traversal (just pass flags which
     are picked up by appropriate get_children() methods). [ticket:501]
 
+    - the "else_" parameter to the case statement now properly works when
+    set to zero.
+
 - oracle:
     - got binary working for any size input !  cx_oracle works fine,
       it was my fault as BINARY was being passed and not BLOB for
