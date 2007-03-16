@@ -154,7 +154,7 @@ class MSLongText(MSText):
             return "LONGTEXT"
 
 class MSString(sqltypes.String):
-    def __init__(self, length=None, *extra):
+    def __init__(self, length=None, *extra, **kwargs):
         sqltypes.String.__init__(self, length=length)
     def get_col_spec(self):
         return "VARCHAR(%(length)s)" % {'length' : self.length}
