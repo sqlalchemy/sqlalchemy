@@ -1,0 +1,73 @@
+## nav.myt - Provides page navigation elements that are derived from toc.TOCElement structures, including
+## individual hyperlinks as well as navigational toolbars and table-of-content listings.
+<%namespace name="tocns" file="toc.html"/>
+
+<%def name="itemlink(item, paged, extension, anchor=True)" filter="trim">
+    <a href="${ item.get_link(anchor=anchor, usefilename=paged, extension=extension) }">${ item.description }</a>
+</%def>
+
+<%def name="toclink(toc, path, extension, paged, description=None)" filter="trim">
+    <%
+        item = toc.get_by_path(path)
+        if description is None:
+            if item:
+                description = item.description
+            else:
+                description = path
+        if item:
+            anchor = not paged or item.depth > 1
+        else: 
+            anchor = False
+    %>
+    % if item:
+        <a href="${ item.get_link(extension=extension, anchor=anchor, usefilename=paged) }">${ description }</a>
+    % else:
+        <b>${ description }</b>
+    % endif
+</%def>
+
+
+<%def name="link(href, text, class_)" filter="trim">
+    <a href="${ href }" ${ class_ and (('class=\"%s\"' % class_) or '')}>${ text }</a>
+</%def>
+
+<%def name="topnav(item, toc, extension, paged)">
+    <div class="topnav">
+
+    ${pagenav(item, extension=extension, paged=paged)}
+	
+	${tocns.printtoc(root=item, current=None, anchor_toplevel=True, paged=paged, extension=extension)}
+	</div>
+</%def>
+
+<%def name="pagenav(item, paged, extension)">
+    <div class="navbanner">
+        <a href="${paged and 'index' or 'documentation'}.${ extension }">Table of Contents</a>
+        ${prevnext(item, paged, extension)}
+        <h2>${item.description}</h2>
+    </div>
+</%def>
+
+<%def name="bottomnav(item, paged, extension)">
+    <div class="bottomnav">
+        ${prevnext(item, paged, extension)}
+    </div>
+</%def>
+
+<%def name="prevnext(item, paged, extension)">
+    <div class="prevnext">
+        % if item.up:
+            Up: ${itemlink(item=item.up, paged=paged, anchor=not paged, extension=extension)}
+        % endif
+
+        % if item.previous is not None:
+            ${item.up is not None and "   |   " or ""}
+            Previous: ${itemlink(item=item.previous, paged=paged, anchor=not paged, extension=extension)}
+        % endif
+
+        % if item.next is not None:
+            ${item.previous is not None and "   |   " or ""}
+            Next: ${itemlink(item=item.next, paged=paged, anchor=not paged, extension=extension)}
+        % endif
+    </div>
+</%def>

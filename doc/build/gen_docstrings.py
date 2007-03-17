@@ -1,5 +1,6 @@
 from toc import TOCElement
 import docstring
+import re
 
 import sqlalchemy.schema as schema
 import sqlalchemy.types as types
@@ -16,10 +17,12 @@ import sqlalchemy.ext.selectresults as selectresults
 
 def make_doc(obj, classes=None, functions=None):
     """generate a docstring.ObjectDoc structure for an individual module, list of classes, and list of functions."""
-    return docstring.ObjectDoc(obj, classes=classes, functions=functions)
+    obj = docstring.ObjectDoc(obj, classes=classes, functions=functions)
+    return (obj.name, obj)
 
 def make_all_docs():
     """generate a docstring.AbstractDoc structure."""
+    print "generating docstrings"
     objects = [
         make_doc(obj=sql),
         make_doc(obj=schema),
@@ -42,7 +45,8 @@ def make_all_docs():
 def create_docstring_toc(data, root):
     """given a docstring.AbstractDoc structure, create new TOCElement nodes corresponding
     to the elements and cross-reference them back to the doc structure."""
-    root = TOCElement("docstrings", name="docstrings", description="Generated Documentation", parent=root)
+    root = TOCElement("docstrings", name="docstrings", description="Generated Documentation", parent=root, requires_paged=True)
+    files = []
     def create_obj_toc(obj, toc):
         if obj.isclass:
             s = []
@@ -52,21 +56,47 @@ def create_docstring_toc(data, root):
                 else:
                     s.append(str(elem))
             description = "class " + obj.classname + "(%s)" % (','.join(s))
+            filename = toc.filename
         else:
             description = obj.description
-
-        toc = TOCElement("docstrings", obj.name, description, parent=toc)
+            filename = re.sub(r'\W', '_', obj.name)
+            
+        toc = TOCElement(filename, obj.name, description, parent=toc, requires_paged=True)
         obj.toc_path = toc.path
-
+        if not obj.isclass:
+            create_module_file(obj, toc)
+            files.append(filename)
+            
         if not obj.isclass and obj.functions:
-            functoc = TOCElement("docstrings", name="modfunc", description="Module Functions", parent=toc)
+            functoc = TOCElement(toc.filename, name="modfunc", description="Module Functions", parent=toc)
             obj.mod_path = functoc.path
+            for func in obj.functions:
+                t = TOCElement(toc.filename, name=func.name, description=func.name + "()", parent=functoc)
+                func.toc_path = t.path
+        #elif obj.functions:
+        #    for func in obj.functions:
+        #        t = TOCElement(toc.filename, name=func.name, description=func.name, parent=toc)
+        #        func.toc_path = t.path
             
         if obj.classes:
             for class_ in obj.classes:
                 create_obj_toc(class_, toc)
                 
-    for obj in data:
+    for key, obj in data:
         create_obj_toc(obj, root)
-    return data
+    return files
 
+def create_module_file(obj, toc):
+    outname = 'output/%s.html' % toc.filename
+    print "->", outname
+    header = """# -*- coding: utf-8 -*-
+    <%%inherit file="module.html"/>
+    <%%def name="title()">%s - %s</%%def>
+    ## This file is generated.  Edit the .txt files instead of this one.
+    <%%!
+        filename = '%s'
+        docstring = '%s'
+    %%>
+    """ % (toc.root.doctitle, obj.description, toc.filename, obj.name)
+    file(outname, 'w').write(header)
+    return outname

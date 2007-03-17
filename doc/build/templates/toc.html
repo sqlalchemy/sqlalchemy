@@ -1,0 +1,35 @@
+## toc.myt - prints table of contents listings given toc.TOCElement strucures
+
+<%def name="toc(toc, paged, extension)">
+	<div class="topnav">
+
+	<a name="table_of_contents"></a>
+	<h3>Table of Contents</h3>
+	&nbsp;&nbsp;
+	<a href="#full_index">(view full table)</a>
+	<br/><br/>
+	${printtoc(root=toc,paged=paged, extension=extension, current=None,children=False,anchor_toplevel=False)}
+
+	<a name="full_index"></a>
+	<h3>Table of Contents: Full</h3>
+	&nbsp;&nbsp;
+	<a href="#table_of_contents">(view brief table)</a>
+	
+	${printtoc(root=toc,paged=paged, extension=extension, current=None,children=True,anchor_toplevel=False)}
+
+	</div>
+</%def>
+
+
+<%def name="printtoc(root, paged, extension, current=None, children=True, anchor_toplevel=False)">
+    <ul>
+    % for item in root.children:
+        <li><A style="${item is current and "font-weight:bold;" or "" }" href="${item.get_link(extension=extension,anchor=anchor_toplevel, usefilename=paged) }">${item.description}</a></li>
+        
+        % if children:
+            ${printtoc(item, current=current, children=True,anchor_toplevel=True, paged=paged, extension=extension)}
+        % endif
+    % endfor
+    </ul>
+</%def>
+

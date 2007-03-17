@@ -1,83 +1,18 @@
 /* documentation section styles */
 
-.doccontainer {
-}
-
-.panecontainer {
-}
-
-.sidebar {
-	background-color: #fbfbee;
-	border: solid 1px #ccc;
-	padding: 5px 5px 5px 5px;
-	margin: 0px 5px 5px 0px;
-	width:120px;
-	float:left;
-}
-
- 
-.sectionnavblock {
-}
-
-.sectionnav {
-	background-color: #fbfbee;
-	border: solid 1px #ccc;
-	padding: 10px 10px 10px 10px; 
-	margin: 35px 0px 15px 5px;
-	float:right;
-}
-
+#topanchor {position:absolute;left:0px;top:0px;width:0px;height:0px;}
+#pagecontrol {float:right;}
 
 .topnav {
 	background-color: #fbfbee;
 	border: solid 1px #ccc;
 	padding:10px 10px 0px 10px;
-	margin:0px 0px 10px 0px;
-}
-
-.tipbox {
-	background-color: #fbfbee;
-	border:1px solid;
-	padding:10px;
-	margin: 5px;
-}
-
-.multipage {
-	float:right;
-}
-
-/* optional margin to add to topnav */
-.topnavmargin {
-	margin:10px;
-}
-
-.topnavsectionlink {
-	padding: 0px 0px 0px 0px; 
-	margin: 0px 0px 0px 0px;
-}
-
-.topnavcontrol {
-	float:right;
-}
-
-.topnavmain {
-	margin: 25px 5px 15px 5px;
-}
-
-.topnavheader {
-    font: normal 20px/24px arial,helvetica,sans-serif;
-	margin: 0px 0px 0px 0px;
-	padding:0px 0px 15px 0px;
-}
-
-.topnavitems {
-	margin: 0px 0px 0px 40px;
+	margin:10px 0px 10px 0px;
 }
 
 .prevnext {
 	padding: 5px 0px 0px 0px;
 }
-
 
 .codetitle {
 	font-family: verdana, sans-serif;
@@ -93,24 +28,11 @@
     color: #960;
 }
 
-
-.content {
-	border: solid 1px #ccc;
-	padding: 0px 10px 20px 0px;
+h1, h2, h3 {
+    font-family:arial,helvetica,sans-serif;
 }
 
-.sectioncontent {
-	border: solid 1px #fff;
-	padding: 0px 10px 20px 0px;
-    line-height: 1.5em;
-}
-
-.onepagecontent {
-	border: solid 1px #ccc;
-	margin: 0px 0px 0px 0px;
-}
-
-h1, .docheadertext {
+h1 {
     font: normal 20px/22px arial,helvetica,sans-serif;
     color: #222;
     padding:0px;
@@ -118,82 +40,65 @@ h1, .docheadertext {
 }
 
 h2 {
-    font-size:16px;
-    font-weight:bold;
-    display:inline;
-    padding:0px;
+    font-family:arial,helvetica,sans-serif;
+    font-size:20px;
+    font-weight:normal;
+    line-height:24px;
     margin:0px;
 }
 
-.docheader {
-	margin: 0px 0px 10px 0px;
-    line-height: 1.2em;
+h3 {
+    font-family: arial, sans-serif;
+    font-size:16px;
+    font-weight:bold;
 }
 
-.docheaderversion {
-	margin: 0.8em 0;
+.topnav h3 {
+	font-weight: bold;
+	font-size: 16px;
+	margin:0px;
+	display:inline;
+    font-family:verdana,sans-serif;	
 }
 
-.subsection {
-	/* this style is dynamically modified by the indentation */
-	margin:15px 0px 0px 0px;
-	clear:right;
+.topnav h2 {
+    margin:26px 4px 0px 5px;
 }
 
 .section {
-	padding: 20px 0px 0px 0px;
+    line-height: 1.5em;
+    padding:8px 10px 20px 10px;
+    margin:10px 0px 0px;
 }
 
-h3, .sectionheadertext {
-    font-family: arial, sans-serif;
-	font-weight: bold;
-	font-size: 16px;
+.subsection {
+    margin:0px 0px 0px 20px;
+    line-height: 1.5em;
 }
 
-.sectiontext {
-	font-size: 12px;
-	margin: 5px 0px 0px 0px;
-}
 
-.maintoc {
-	/*background-color: #fbfbee;*/
-    background-color: #fbfbee;	
-	border: solid 1px #ccc;
-	padding: 10px 10px 10px 10px; 
-	margin: 0px 0px 10px 0px;
-}
-
-.toclinkcontainer {
-	padding:0px 0px 0px 8px;
-	/*border:1px solid;*/
-}
-
-.tocsection {
-	padding:2px 2px 2px 8px;
-}
-
-.toc_list {
-   padding:0px;
-   margin:0px;
-}
-
-.toc_list li {
+.topnav li {
    font-size:12px;
    list-style-type:none;
    padding:0px 0px 3px 8px;
    margin:0px;
 }
 
-.small_toc_list {
+.topnav ul ul {
    padding:0px 0px 0px 8px;
 }
 
-.small_toc_list li {
+.topnav ul ul li {
    font-size: 11px;
-  list-style-type:none;
 }
 
-
+.bottomnav {
+    background-color:#FBFBEE;
+    border:1px solid #CCCCCC;
+    float:right;
+    margin:0px 0px 15px 5px;
+    padding:10px;
+}
 
 .toclink {
     font-weight: bold;
@@ -254,7 +159,6 @@ h3, .sectionheadertext {
 	/*clear:right;*/
 }
 
-
 .codepoplink,
 #docs a.codepoplink
 {
@@ -278,6 +182,3 @@ h3, .sectionheadertext {
     background-color: #900;
 }
 
-.popup {
-	margin:10px;
-}

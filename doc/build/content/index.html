@@ -1,0 +1,6 @@
+<%inherit file="base.html"/>
+<%page args="toc, extension"/>
+
+<%namespace name="tocns" file="toc.html"/>
+
+${tocns.toc(toc, paged=True, extension=extension)}

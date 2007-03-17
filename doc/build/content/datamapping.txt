@@ -130,6 +130,8 @@ Some of the above examples above illustrate the usage of the mapper's Table obje
     {python}
     userlist = session.query(User).select(User.c.user_id==12)
 
+Full documentation for Query's API : [Query](rel:docstrings_sqlalchemy.orm.query_Query).
+
 ### Saving Objects {@name=saving}
 
 When objects corresponding to mapped classes are created or manipulated, all changes are logged by the `Session` object.  The changes are then written to the database when an application calls `flush()`.  This pattern is known as a *Unit of Work*, and has many advantages over saving individual objects or attributes on those objects with individual method invocations.  Domain models can be built with far greater complexity with no concern over the order of saves and deletes, excessive database round-trips and write operations, or deadlocking issues.  The `flush()` operation batches its SQL statements into a transaction, and can also perform optimistic concurrency checks (using a version id column) to ensure the proper number of rows were in fact affected (not supported with the current MySQL drivers). 

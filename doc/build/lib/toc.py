@@ -4,25 +4,26 @@ defines a pickleable, recursive "table of contents" datastructure.
 TOCElements define a name, a description, and also a uniquely-identifying "path" which is
 used to generate hyperlinks between document sections.
 """
-import time
+import time, re
 
 toc_by_file = {}
 toc_by_path = {}
 filenames = []
 
 class TOCElement(object):
-    def __init__(self, filename, name, description, parent=None, version=None, last_updated=None, doctitle=None, **kwargs):
+    def __init__(self, filename, name, description, parent=None, version=None, last_updated=None, doctitle=None, requires_paged=False, **kwargs):
         self.filename = filename
-        self.name = name
+        self.name = re.sub(r'[<>&;%]', '', name)
         self.description = description
         self.parent = parent
         self.content = None
+        self.filenames = filenames
         self.toc_by_path = toc_by_path
         self.toc_by_file = toc_by_file
-        self.filenames = filenames
         self.last_updated = time.time()
         self.version = version
         self.doctitle = doctitle
+        self.requires_paged = requires_paged
         (self.path, self.depth) = self._create_path()
         #print "NEW TOC:", self.path
         for key, value in kwargs.iteritems():
@@ -35,7 +36,8 @@ class TOCElement(object):
             toc_by_file[self.filename] = self
             if self.filename:
                 filenames.append(self.filename)
-        self.root = self.parent or self
+                
+        self.root = self.parent and self.parent.root or self
 
         self.content = None
         self.previous = None
@@ -46,7 +48,11 @@ class TOCElement(object):
                 self.previous = parent.children[-1]
                 parent.children[-1].next = self
             parent.children.append(self)
-
+            if parent is not parent.root:
+                self.up = parent
+            else:
+                self.up = None
+                
     def get_page_root(self):
         return self.toc_by_file[self.filename]
         
@@ -57,14 +63,15 @@ class TOCElement(object):
         return self.toc_by_file[filename]
 
     def get_link(self, extension='html', anchor=True, usefilename=True):
-        if usefilename:
+        if usefilename or self.requires_paged:
             if anchor:
                 return "%s.%s#%s" % (self.filename, extension, self.path) 
             else:
                 return "%s.%s" % (self.filename, extension)
         else:
             return "#%s" % (self.path) 
-                
+
+
     def _create_path(self):
         elem = self
         tokens = []

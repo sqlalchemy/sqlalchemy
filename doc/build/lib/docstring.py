@@ -128,7 +128,7 @@ class FunctionDoc(AbstractDoc):
         if varkw is not None:
            argstrings.append("**%s" % varkw)
         self.argstrings = self.arglist = argstrings
-        self.name = "def " + func.__name__
+        self.name = func.__name__
         self.link = func.__name__
         self.doc = func.__doc__
     def accept_visitor(self, visitor):
@@ -138,7 +138,7 @@ class PropertyDoc(AbstractDoc):
     def __init__(self, name, prop):
         super(PropertyDoc, self).__init__(prop)
         self.doc = prop.__doc__
-        self.name = name + " = property()"
+        self.name = name
         self.link = name
     def accept_visitor(self, visitor):
         visitor.visit_property(self)
