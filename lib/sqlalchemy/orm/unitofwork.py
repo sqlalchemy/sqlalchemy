@@ -406,7 +406,9 @@ class UOWTransaction(object):
 
         mappers = self._get_noninheriting_mappers()
         head = DependencySorter(self.dependencies, list(mappers)).sort(allow_all_cycles=True)
-        self.logger.debug("Dependency sort:\n"+ str(head))
+        if logging.is_debug_enabled(self.logger):
+            self.logger.debug("Dependent tuples:\n" + "\n".join(["(%s->%s)" % (d[0].class_.__name__, d[1].class_.__name__) for d in self.dependencies]))
+            self.logger.debug("Dependency sort:\n"+ str(head))
         task = sort_hier(head)
         return task
 
@@ -726,17 +728,16 @@ class UOWTask(object):
                                 get_dependency_task(obj, dep).append(obj, isdelete=isdelete)
 
         #print "TUPLES", tuples
+        #print "ALLOBJECTS", allobjects
         head = DependencySorter(tuples, allobjects).sort()
-        if head is None:
-            return None
-
-        #print str(head)
 
         # create a tree of UOWTasks corresponding to the tree of object instances
         # created by the DependencySorter
 
+        used_tasks = util.Set()
         def make_task_tree(node, parenttask, nexttasks):
             originating_task = object_to_original_task[node.item]
+            used_tasks.add(originating_task)
             t = nexttasks.get(originating_task, None)
             if t is None:
                 t = UOWTask(self.uowtransaction, originating_task.mapper, circular_parent=self)
@@ -755,12 +756,29 @@ class UOWTask(object):
         # this is the new "circular" UOWTask which will execute in place of "self"
         t = UOWTask(self.uowtransaction, self.mapper, circular_parent=self)
 
-        # stick the non-circular dependencies and child tasks onto the new
-        # circular UOWTask
-        [t.dependencies.add(d) for d in extradeplist]
+        # stick the non-circular dependencies onto the new UOWTask
+        for d in extradeplist:
+            t.dependencies.add(d)
+        
+        # share the "childtasks" list with the new UOWTask.  more elements
+        # may be appended to this "childtasks" list in the enclosing
+        # _sort_dependencies() operation that is calling us.
         t.childtasks = self.childtasks
-        make_task_tree(head, t, {})
-        #print t.dump()
+        
+        # if we have a head from the dependency sort, assemble child nodes
+        # onto the tree.  note this only occurs if there were actual objects
+        # to be saved/deleted.
+        if head is not None:
+            make_task_tree(head, t, {})
+            
+        for t2 in cycles:
+            # tasks that were in the cycle but did not get assembled
+            # into the tree, add them as child tasks.  these tasks
+            # will have no "save" or "delete" members, but may have dependency
+            # processors that operate upon other tasks outside of the cycle.
+            if t2 not in used_tasks and t2 is not self:
+                t.childtasks.insert(0, t2)
+                
         return t
 
     def dump(self):

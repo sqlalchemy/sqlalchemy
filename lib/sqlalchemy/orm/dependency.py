@@ -410,6 +410,7 @@ class MapperStub(object):
 
     def __init__(self, parent, mapper, key):
         self.mapper = mapper
+        self.class_ = mapper.class_
         self._inheriting_mappers = []
 
     def register_dependencies(self, uowcommit):

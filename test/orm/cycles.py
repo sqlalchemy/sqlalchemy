@@ -1,4 +1,4 @@
-from testbase import PersistTest, AssertMixin
+from testbase import PersistTest, AssertMixin, ORMTest
 import unittest, sys, os
 from sqlalchemy import *
 import StringIO
@@ -8,7 +8,12 @@ from tables import *
 import tables
 
 """test cyclical mapper relationships.  Many of the assertions are provided
-via running with postgres, which is strict about foreign keys."""
+via running with postgres, which is strict about foreign keys.
+
+we might want to try an automated generate of much of this, all combos of T1<->T2, with 
+o2m or m2o between them, and a third T3 with o2m/m2o to one/both T1/T2.
+"""
+
 
 class Tester(object):
     def __init__(self, data=None):
@@ -120,6 +125,7 @@ class SelfReferentialTest(AssertMixin):
             assert True
 
 class SelfReferentialNoPKTest(AssertMixin):
+    """test self-referential relationship that joins on a column other than the primary key column"""
     def setUpAll(self):
         global table, meta
         meta = BoundMetaData(testbase.db)
@@ -224,7 +230,103 @@ class InheritTestOne(AssertMixin):
         # the flush will fail if the UOW does not set up a many-to-one DP 
         # attached to a task corresponding to c1, since "child1_id" is not nullable
         session.flush()
+
+
+class BiDirectionalManyToOneTest(ORMTest):
+    def define_tables(self, metadata):
+        global t1, t2, t3, t4
+        t1 = Table('t1', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)),
+            Column('t2id', Integer, ForeignKey('t2.id'))
+            )
+        t2 = Table('t2', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)),
+            Column('t1id', Integer, ForeignKey('t1.id', use_alter=True, name="foo_fk"))
+            )
+        t3 = Table('t3', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)),
+            Column('t1id', Integer, ForeignKey('t1.id'), nullable=False),
+            Column('t2id', Integer, ForeignKey('t2.id'), nullable=False),
+            )
+            
+    def test_reflush(self):
+        class T1(object):pass
+        class T2(object):pass
+        class T3(object):pass
         
+        mapper(T1, t1, properties={
+            't2':relation(T2, primaryjoin=t1.c.t2id==t2.c.id)
+        })
+        mapper(T2, t2, properties={
+            't1':relation(T1, primaryjoin=t2.c.t1id==t1.c.id)
+        })
+        mapper(T3, t3, properties={
+            't1':relation(T1),
+            't2':relation(T2)
+        })
+        
+        o1 = T1()
+        o1.t2 = T2()
+        sess = create_session()
+        sess.save(o1)
+        sess.flush()
+        
+        # the bug here is that the dependency sort comes up with T1/T2 in a cycle, but there
+        # are no T1/T2 objects to be saved.  therefore no "cyclical subtree" gets generated,
+        # and one or the other of T1/T2 gets lost, and processors on T3 dont fire off.
+        # the test will then fail because the FK's on T3 are not nullable.
+        o3 = T3()
+        o3.t1 = o1
+        o3.t2 = o1.t2
+        sess.save(o3)
+        sess.flush()
+        
+
+    def test_reflush_2(self):
+        """a variant on test_reflush()"""
+        class T1(object):pass
+        class T2(object):pass
+        class T3(object):pass
+
+        mapper(T1, t1, properties={
+            't2':relation(T2, primaryjoin=t1.c.t2id==t2.c.id)
+        })
+        mapper(T2, t2, properties={
+            't1':relation(T1, primaryjoin=t2.c.t1id==t1.c.id)
+        })
+        mapper(T3, t3, properties={
+            't1':relation(T1),
+            't2':relation(T2)
+        })
+
+        o1 = T1()
+        o1.t2 = T2()
+        sess = create_session()
+        sess.save(o1)
+        sess.flush()
+
+        # in this case, T1, T2, and T3 tasks will all be in the cyclical
+        # tree normally.  the dependency processors for T3 are part of the
+        # 'extradeps' collection so they all get assembled into the tree
+        # as well.
+        o1a = T1()
+        o2a = T2()
+        sess.save(o1a)
+        sess.save(o2a)
+        o3b = T3()
+        o3b.t1 = o1a
+        o3b.t2 = o2a
+        sess.save(o3b)
+        
+        o3 = T3()
+        o3.t1 = o1
+        o3.t2 = o1.t2
+        sess.save(o3)
+        sess.flush()
+            
 class BiDirectionalOneToManyTest(AssertMixin):
     """tests two mappers with a one-to-many relation to each other."""
     def setUpAll(self):
@@ -370,8 +472,6 @@ class OneToManyManyToOneTest(AssertMixin):
          )
         )
 
-        print str(Person.mapper.props['balls'].primaryjoin)
-        
         b = Ball()
         p = Person()
         p.balls.append(b)
@@ -623,6 +723,7 @@ class OneToManyManyToOneTest(AssertMixin):
         ])
 
 class SelfReferentialPostUpdateTest(AssertMixin):
+    """test using post_update on a single self-referential mapper"""
     def setUpAll(self):
         global metadata, node_table
         metadata = BoundMetaData(testbase.db)
