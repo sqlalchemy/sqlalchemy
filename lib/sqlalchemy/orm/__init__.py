@@ -76,7 +76,7 @@ def synonym(name, proxy=False):
 def compile_mappers():
     """Compile all mappers that have been defined.
 
-    This is equivalent to calling ``compile()` on any individual mapper.
+    This is equivalent to calling ``compile()`` on any individual mapper.
     """
 
     if not len(mapper_registry):

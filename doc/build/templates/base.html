@@ -2,7 +2,7 @@
     from mako.ext.autohandler import autohandler
 %>
 <%inherit file="${autohandler(template, context)}"/>
-<%page cached="False" cache_key="${self.filename}"/>
+<%page cached="True" cache_key="${self.filename}"/>
 
 <%doc> 
  base.html - common to all documentation pages. intentionally separate 

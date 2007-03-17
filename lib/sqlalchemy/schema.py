@@ -217,10 +217,10 @@ class Table(SchemaItem, sql.TableClause):
           Further tables constructed with the same name/schema
           combination will return the same Table instance.
 
-        *args
+        \*args
           Should contain a listing of the Column objects for this table.
 
-        **kwargs
+        \**kwargs
           options include:
 
           schema
@@ -413,11 +413,11 @@ class Column(SchemaItem, sql._ColumnClause):
           ForeignKey, the type can also be None, in which case the
           type assigned will be that of the referenced column.
 
-        *args
+        \*args
           Constraint, ForeignKey, ColumnDefault and Sequence objects
           should be added as list values.
 
-        **kwargs
+        \**kwargs
           Keyword arguments include:
 
           key
@@ -844,8 +844,7 @@ class Sequence(DefaultGenerator):
         return visitor.visit_sequence(self)
 
 class Constraint(SchemaItem):
-    """Represent a table-level ``Constraint`` such as a composite primary
-    key, foreign key, or unique constraint.
+    """Represent a table-level ``Constraint`` such as a composite primary key, foreign key, or unique constraint.
 
     Implements a hybrid of dict/setlike behavior with regards to the
     list of underying columns.
@@ -991,15 +990,16 @@ class Index(SchemaItem):
         name
           The name of the index
 
-        *columns
+        \*columns
           Columns to include in the index. All columns must belong to
           the same table, and no column may appear more than once.
 
-        **kwargs
+        \**kwargs
           Keyword arguments include:
 
           unique
             Defaults to True: create a unique index.
+            
         """
 
         self.name = name
@@ -1141,7 +1141,7 @@ class MetaData(SchemaItem):
 
 class BoundMetaData(MetaData):
     """Build upon ``MetaData`` to provide the capability to bind to an
-    ``Engine`` implementation.
+``Engine`` implementation.
     """
 
     def __init__(self, engine_or_url, name=None, **kwargs):
@@ -1155,9 +1155,9 @@ class BoundMetaData(MetaData):
         return True
 
 class DynamicMetaData(MetaData):
-    """Build upon ``MetaData`` to provide the capability to bind to
-    multiple ``Engine`` implementations on a dynamically alterable,
-    thread-local basis.
+    """Build upon ``MetaData`` to provide the capability to bind to 
+multiple ``Engine`` implementations on a dynamically alterable,
+thread-local basis.
     """
 
     def __init__(self, name=None, threadlocal=True, **kwargs):

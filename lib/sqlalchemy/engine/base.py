@@ -783,7 +783,7 @@ class ResultProxy(object):
       col3 = row[mytable.c.mycol] # access via Column object.
 
     ResultProxy also contains a map of TypeEngine objects and will
-    invoke the appropriate ``convert_result_value()` method before
+    invoke the appropriate ``convert_result_value()`` method before
     returning columns, as well as the ExecutionContext corresponding
     to the statement execution.  It provides several methods for which
     to obtain information from the underlying ExecutionContext.

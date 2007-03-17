@@ -1,15 +1,16 @@
 <%doc>pydoc.myt - provides formatting functions for printing docstring.AbstractDoc generated python documentation objects.</%doc>
 <%!
 import docstring
-import sys, re
+from docutils.core import publish_parts
+import re, sys
 
-def whitespace(docstring):
-    if not docstring:
+def whitespace(content):
+    """trim left whitespace."""
+    if not content:
         return ''
-    
     # Convert tabs to spaces (following the normal Python rules)
     # and split into a list of lines:
-    lines = docstring.expandtabs().splitlines()
+    lines = content.expandtabs().splitlines()
     # Determine minimum indentation (first line doesn't count):
     indent = sys.maxint
     for line in lines[1:]:
@@ -29,8 +30,8 @@ def whitespace(docstring):
     # Return a single string:
     return '\n'.join(trimmed)
     
-def convquotes(text):
-    return re.sub(r'``(.*?)``', lambda m: "<b>%s</b>" % m.group(1), text)
+def formatdocstring(content):
+    return publish_parts(whitespace(content), writer_name='html')['body']
     
 %>
 <%namespace name="formatting" file="formatting.html"/>
@@ -53,7 +54,7 @@ def convquotes(text):
 
     <%call expr="formatting.section(toc=toc, path=obj.toc_path, description=htmldescription, paged=paged, extension=extension)">
     % if obj.doc:
-    <div class="darkcell"><pre>${obj.doc or '' |whitespace, h,convquotes}</pre></div>
+    <div class="darkcell">${obj.doc or '' |formatdocstring}</div>
     % endif
     
     % if not obj.isclass and obj.functions:
@@ -96,7 +97,7 @@ def convquotes(text):
     <A name="${item and item.path or ''}"></a>
     <b>def ${func.name}(${", ".join(map(lambda k: "<i>%s</i>" % k, func.arglist))})</b>
     <div class="docstring">
-    <pre>${func.doc or '' | whitespace, h, convquotes}</pre>
+    ${func.doc or '' | formatdocstring}
     </div>
     </div>
 </%def>
@@ -106,7 +107,7 @@ def convquotes(text):
          <A name=""></a>
          <b>${prop.name} = property()</b>
          <div class="docstring">
-         <pre>${prop.doc or '' | whitespace, h, convquotes}</pre>
+         ${prop.doc or '' | formatdocstring}
          </div> 
          </div>
 </%def>

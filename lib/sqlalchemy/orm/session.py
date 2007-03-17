@@ -139,8 +139,7 @@ class Session(object):
             return self.transaction
 
     def connect(self, mapper=None, **kwargs):
-        """Return a unique connection corresponding to the given
-        mapper.
+        """Return a unique connection corresponding to the given mapper.
 
         This connection will not be part of any pre-existing
         transactional context.
@@ -447,21 +446,29 @@ class Session(object):
         return merged
 
     def identity_key(self, *args, **kwargs):
-        """Get an identity key
+        """Get an identity key.
 
         Valid call signatures:
 
-        identity_key(class_, ident, entity_name=None)
-            class_ - mapped class
-            ident - primary key, if the key is composite this is a tuple
-            entity_name - optional entity name. May be given as a
-                positional arg or as a keyword arg.
+            identity_key(class\_, ident, entity_name=None)
+                class\_
+                    mapped class
+                
+                ident
+                    primary key, if the key is composite this is a tuple
+                
+                entity_name
+                    optional entity name. May be given as a
+                    positional arg or as a keyword arg.
 
-        identity_key(instance=instance)
-            instance - object instance (must be given as a keyword arg)
+            identity_key(instance=instance)
+                instance
+                    object instance (must be given as a keyword arg)
 
-        identity_key(row=row, class=class_, entity_name=None)
-            row - result proxy row (must be given as a keyword arg)
+            identity_key(row=row, class=class\_, entity_name=None)
+                row
+                    result proxy row (must be given as a keyword arg)
+            
         """
         if args:
             kw = {}

@@ -139,26 +139,29 @@ class Query(object):
         """Return an array of object instances based on the given
         clauses and key/value criterion.
 
-        `*args` is a list of zero or more ``ClauseElements`` which will be
-        connected by ``AND`` operators.
+        \*args
+            a list of zero or more ``ClauseElements`` which will be
+            connected by ``AND`` operators.
 
-        `**params` is a set of zero or more key/value parameters which
-        are converted into ``ClauseElements``.  the keys are mapped to
-        property or column names mapped by this mapper's Table, and
-        the values are coerced into a ``WHERE`` clause separated by
-        ``AND`` operators.  If the local property/column names dont
-        contain the key, a search will be performed against this
-        mapper's immediate list of relations as well, forming the
-        appropriate join conditions if a matching property is located.
+        \**params 
+            a set of zero or more key/value parameters which
+            are converted into ``ClauseElements``.  the keys are mapped to
+            property or column names mapped by this mapper's Table, and
+            the values are coerced into a ``WHERE`` clause separated by
+            ``AND`` operators.  If the local property/column names dont
+            contain the key, a search will be performed against this
+            mapper's immediate list of relations as well, forming the
+            appropriate join conditions if a matching property is located.
 
-        if the located property is a column-based property, the comparison
-        value should be a scalar with an appropriate type.  If the 
-        property is a relationship-bound property, the comparison value
-        should be an instance of the related class.
+            if the located property is a column-based property, the comparison
+            value should be a scalar with an appropriate type.  If the 
+            property is a relationship-bound property, the comparison value
+            should be an instance of the related class.
 
-        E.g.::
+            E.g.::
 
-          result = usermapper.select_by(user_name = 'fred')
+              result = usermapper.select_by(user_name = 'fred')
+
         """
 
         ret = self.extension.select_by(self, *args, **params)
@@ -502,7 +505,7 @@ class Query(object):
         return self._col_aggregate(col, sql.func.max)
 
     def sum(self, col):
-        """Execute the SQL ``sum``() function against the given column."""
+        """Execute the SQL ``sum()`` function against the given column."""
 
         return self._col_aggregate(col, sql.func.sum)
 
@@ -658,20 +661,20 @@ class Query(object):
         """Return a list of mapped instances corresponding to the rows
         in a given *cursor* (i.e. ``ResultProxy``).
         
-        *mappers_or_columns is an optional list containing one or more of
+        \*mappers_or_columns is an optional list containing one or more of
         classes, mappers, strings or sql.ColumnElements which will be
         applied to each row and added horizontally to the result set,
         which becomes a list of tuples. The first element in each tuple
         is the usual result based on the mapper represented by this
         ``Query``. Each additional element in the tuple corresponds to an
-        entry in the *mappers_or_columns list.
+        entry in the \*mappers_or_columns list.
         
-        For each element in *mappers_or_columns, if the element is 
+        For each element in \*mappers_or_columns, if the element is 
         a mapper or mapped class, an additional class instance will be 
         present in the tuple.  If the element is a string or sql.ColumnElement, 
         the corresponding result column from each row will be present in the tuple.
         
-        Note that when *mappers_or_columns is present, "uniquing" for the result set
+        Note that when \*mappers_or_columns is present, "uniquing" for the result set
         is *disabled*, so that the resulting tuples contain entities as they actually
         correspond.  this indicates that multiple results may be present if this 
         option is used.
@@ -923,7 +926,7 @@ class SelectionContext(OperationContext):
     state among all the Mappers and MapperProperty objects used in a
     load operation.
 
-    SelectionContext contains these attributes::
+    SelectionContext contains these attributes:
 
     mapper
       The Mapper which originated the instances() call.

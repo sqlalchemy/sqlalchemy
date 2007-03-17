@@ -24,7 +24,12 @@
 <%def name="printtoc(root, paged, extension, current=None, children=True, anchor_toplevel=False)">
     <ul>
     % for item in root.children:
-        <li><A style="${item is current and "font-weight:bold;" or "" }" href="${item.get_link(extension=extension,anchor=anchor_toplevel, usefilename=paged) }">${item.description}</a></li>
+        <%
+            anchor = anchor_toplevel
+            if paged and item.filename != root.filename:
+                anchor = False
+        %>
+        <li><A style="${item is current and "font-weight:bold;" or "" }" href="${item.get_link(extension=extension,anchor=anchor, usefilename=paged) }">${item.description}</a></li>
         
         % if children:
             ${printtoc(item, current=current, children=True,anchor_toplevel=True, paged=paged, extension=extension)}

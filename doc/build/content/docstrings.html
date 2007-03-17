@@ -5,6 +5,12 @@
 <%namespace  name="nav" file="nav.html"/>
 <%namespace name="pydoc" file="pydoc.html"/>
 <%def name="title()">SQLAlchemy 0.3 Documentation - Modules and Classes</%def>
+
+<%def name="style()">
+    ${parent.style()}
+    <link rel="stylesheet" href="docutil.css"></link>
+</%def>
+
 <%!
     filename = 'docstrings'
 %>

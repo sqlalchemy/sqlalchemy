@@ -70,7 +70,7 @@ class SelectResults(object):
         return self._col_aggregate(col, sql.func.max)
 
     def sum(self, col):
-        """Execute the SQL ``sum``() function against the given column."""
+        """Execute the SQL ``sum()`` function against the given column."""
 
         return self._col_aggregate(col, sql.func.sum)
 
@@ -155,11 +155,12 @@ class SelectResults(object):
         return new
 
     def outerjoin_to(self, prop):
-        """Outer join the table of this ``SelectResults`` to the table located against the given property name.
+        """Outer join the table of this ``SelectResults`` to the 
+        table located against the given property name.
 
         Subsequent calls to join_to or outerjoin_to will join against
-        the rightmost table located from the previous ``join_to` or
-        `outerjoin_to` call, searching for the property starting with
+        the rightmost table located from the previous ``join_to`` or
+        ``outerjoin_to`` call, searching for the property starting with
         the rightmost mapper last located.
         """
 

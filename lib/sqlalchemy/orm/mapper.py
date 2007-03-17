@@ -65,7 +65,7 @@ class Mapper(object):
         All arguments may be sent to the ``sqlalchemy.orm.mapper()``
         function where they are passed through to here.
 
-        class_
+        class\_
           The class to be mapped.
 
         local_table
@@ -1349,12 +1349,13 @@ class Mapper(object):
           The lead object instance.  child items will be processed per
           the relations defined for this object's mapper.
 
-        callable_
+        callable\_
           The callable function.
 
         recursive
           Used by the function for internal context during recursive
           calls, leave as None.
+          
         """
 
         if recursive is None:
@@ -1597,7 +1598,7 @@ class MapperExtension(object):
         row
           The result row from the database
 
-        class_
+        class\_
           The class we are mapping.
         """
 
@@ -1803,8 +1804,15 @@ def has_mapper(object):
     return hasattr(object, '_entity_name')
 
 def object_mapper(object, raiseerror=True):
-    """Given an object, return the primary Mapper associated with the
-    object instance.
+    """Given an object, return the primary Mapper associated with the object instance.
+    
+        object
+            The object instance.
+            
+        raiseerror
+            Defaults to True: raise an ``InvalidRequestError`` if no mapper can
+            be located.  If False, return None.
+            
     """
 
     try:
@@ -1817,8 +1825,9 @@ def object_mapper(object, raiseerror=True):
     return mapper.compile()
 
 def class_mapper(class_, entity_name=None, compile=True):
-    """Given a ClassKey, return the primary Mapper associated with the
-    key.
+    """Given a class and optional entity_name, return the primary Mapper associated with the key.
+    
+    If no mapper can be located, raises ``InvalidRequestError``.
     """
 
     try:

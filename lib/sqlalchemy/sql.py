@@ -91,7 +91,7 @@ def select(columns=None, whereclause = None, from_obj = [], **kwargs):
       which will extend or override the default ``FROM`` objects
       created from the column list and the whereclause.
 
-    **kwargs
+    \**kwargs
       Additional parameters for the ``Select`` object.
     """
 
@@ -238,7 +238,7 @@ def case(whens, value=None, else_=None):
     value
       Optional for simple case statements.
 
-    else_
+    else\_
       Optional as well, for case defaults.
     """
 
@@ -251,11 +251,12 @@ def case(whens, value=None, else_=None):
     return cc
    
 def cast(clause, totype, **kwargs):
-    """ returns CAST function CAST(clause AS totype) 
-        Use with a sqlalchemy.types.TypeEngine object, i.e
-        cast(table.c.unit_price * table.c.qty, Numeric(10,4))
-         or
-        cast(table.c.timestamp, DATE)
+    """return CAST function CAST(clause AS totype)
+    
+    Use with a sqlalchemy.types.TypeEngine object, i.e
+    ``cast(table.c.unit_price * table.c.qty, Numeric(10,4))``
+    or ``cast(table.c.timestamp, DATE)``
+         
     """
     return _Cast(clause, totype, **kwargs)
 
@@ -351,7 +352,7 @@ def bindparam(key, value=None, type=None, shortname=None, unique=False):
        is called a ``value-based bindparam``.
      
      shortname
-        an ``alias`` for this bind parameter.  usually used to alias the ``key`` and 
+       an ``alias`` for this bind parameter.  usually used to alias the ``key`` and 
        ``label`` of a column, i.e. ``somecolname`` and ``sometable_somecolname``
        
      type
@@ -361,6 +362,7 @@ def bindparam(key, value=None, type=None, shortname=None, unique=False):
      unique
        if True, bind params sharing the same name will have their underlying ``key`` modified
        to a uniquely generated name.  mostly useful with value-based bind params.
+       
     """
 
     if isinstance(key, _ColumnClause):
@@ -580,8 +582,8 @@ class NoColumnVisitor(ClauseVisitor):
     __traverse_options__ = {'column_collections':False}
     
 class Executor(object):
-    """Interface representing a *thing that can produce Compiled objects 
-    and execute them*."""
+    """Interface representing a "thing that can produce Compiled objects 
+    and execute them"."""
 
     def execute_compiled(self, compiled, parameters, echo=None, **kwargs):
         """Execute a Compiled object."""
@@ -714,7 +716,7 @@ class ClauseElement(object):
         
         this is used for visit traversal.
         
-        **kwargs may contain flags that change the collection
+        \**kwargs may contain flags that change the collection
         that is returned, for example to return a subset of items
         in order to cut down on larger traversals, or to return 
         child items from a different context (such as schema-level
@@ -730,7 +732,7 @@ class ClauseElement(object):
 
     def copy_container(self):
         """Return a copy of this ``ClauseElement``, if this
-        ``ClauseElement`` contains other ``ClauseElements`.
+        ``ClauseElement`` contains other ``ClauseElements``.
 
         If this ``ClauseElement`` is not a container, it should return
         self.  This is used to create copies of expression trees that
@@ -996,7 +998,7 @@ class ColumnElement(Selectable, _CompareMixin):
                             doc=\
         """Foreign key accessor.  Points to a list of ForeignKey objects 
         which represents a Foreign Key placed on this column's ultimate
-         ancestor.
+        ancestor.
         """)
     columns = property(lambda self:[self],
                        doc=\
@@ -1739,7 +1741,7 @@ class Join(FromClause):
           columns in the column list of the resulting select.  this will recursively
           apply to any joins directly nested by this one as well.
           
-        **kwargs
+        \**kwargs
           all other kwargs are sent to the underlying ``select()`` function
           
         """
