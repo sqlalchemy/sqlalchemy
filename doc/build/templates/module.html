@@ -14,6 +14,11 @@
     data = data[self.template.module.docstring]
 %>
 
+<%def name="style()">
+    ${parent.style()}
+    <link rel="stylesheet" href="docutil.css"></link>
+</%def>
+
 ${nav.topnav(item=current, toc=toc, extension=extension, paged=True)}
 
 ${pydoc.obj_doc(obj=data, toc=toc, extension=extension, paged=True)}
