@@ -17,13 +17,13 @@ class URL(object):
     Attributes on URL include:
 
     drivername
-      The name of the database backend.
+      The name of the database backend.  this name will correspond to a module in sqlalchemy/databases
 
     username
       The user name for the connection.
 
     password
-      His password.
+      database password.
 
     host
       The name of the host.

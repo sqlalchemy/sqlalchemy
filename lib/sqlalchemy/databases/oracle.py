@@ -460,7 +460,7 @@ class OracleCompiler(ansisql.ANSICompiler):
             self.strings[column] = self.strings[column] + "(+)"
 
     def visit_insert(self, insert):
-        """``INSERT``s are required to have the primary keys be explicitly present.
+        """``INSERT`` s are required to have the primary keys be explicitly present.
 
          Mapper will by default not put them in the insert statement
          to comply with autoincrement fields that require they not be

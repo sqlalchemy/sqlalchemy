@@ -20,8 +20,8 @@
   Note that the start & increment values for sequences are optional
   and will default to 1,1.
 
-* Support for ``SET IDENTITY_INSERT ON`` mode (automagic on / off for
-  ``INSERT``s)
+* Support for ``SET IDENTITY_INSERT ON`` mode (automagic on / off for 
+  ``INSERT`` s)
 
 * Support for auto-fetching of ``@@IDENTITY`` on ``INSERT``
 
@@ -33,12 +33,13 @@ Known issues / TODO:
 * No support for more than one ``IDENTITY`` column per table
 
 * No support for table reflection of ``IDENTITY`` columns with
- (seed,increment) values other than (1,1)
+  (seed,increment) values other than (1,1)
 
 * No support for ``GUID`` type columns (yet)
 
 * pymssql has problems with binary and unicode data that this module
   does **not** work around
+  
 """
 
 import sys, StringIO, string, types, re, datetime
@@ -312,6 +313,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
     }
 
     def __new__(cls, module_name=None, *args, **kwargs):
+        module = kwargs.get('module', None)
         if cls != MSSQLDialect:
             return super(MSSQLDialect, cls).__new__(cls, *args, **kwargs)
         if module_name:
@@ -321,18 +323,24 @@ class MSSQLDialect(ansisql.ANSIDialect):
             if not hasattr(dialect, 'module'):
                 raise dialect.saved_import_error
             return dialect(*args, **kwargs)
+        elif module:
+            return object.__new__(cls, *args, **kwargs)
         else:
             for dialect in dialect_preference:
                 if hasattr(dialect, 'module'):
                     return dialect(*args, **kwargs)
-            raise ImportError('No DBAPI module detected for MSSQL - please install adodbapi, pymssql or pyodbc')
-
-    def __init__(self, module_name=None, auto_identity_insert=True, **params):
+            #raise ImportError('No DBAPI module detected for MSSQL - please install adodbapi, pymssql or pyodbc')
+            else:
+                return object.__new__(cls, *args, **kwargs)
+                
+    def __init__(self, module_name=None, module=None, auto_identity_insert=True, **params):
+        if not hasattr(self, 'module'):
+            self.module = module
         super(MSSQLDialect, self).__init__(**params)
         self.auto_identity_insert = auto_identity_insert
         self.text_as_varchar = False
         self.set_default_schema_name("dbo")
-        
+            
     def create_connect_args(self, url):
         opts = url.translate_connect_args(['host', 'database', 'user', 'password', 'port'])
         opts.update(url.query)

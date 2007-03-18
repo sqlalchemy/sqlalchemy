@@ -15,7 +15,6 @@ import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
 import sqlalchemy.exceptions as exceptions
 from sqlalchemy.databases import information_schema as ischema
-from sqlalchemy import *
 import re
 
 try:
@@ -383,7 +382,7 @@ class PGDialect(ansisql.ANSIDialect):
                 ORDER BY a.attnum
             """ % schema_where_clause
 
-            s = text(SQL_COLS)
+            s = sql.text(SQL_COLS)
             c = connection.execute(s, table_name=table.name,
                                       schema=table.schema)
             rows = c.fetchall()
@@ -439,7 +438,7 @@ class PGDialect(ansisql.ANSIDialect):
                         sch = table.schema
                         if '.' not in match.group(2) and sch is not None:
                             default = match.group(1) + sch + '.' + match.group(2) + match.group(3)
-                    colargs.append(PassiveDefault(sql.text(default)))
+                    colargs.append(schema.PassiveDefault(sql.text(default)))
                 table.append_column(schema.Column(name, coltype, nullable=nullable, *colargs))
 
 
@@ -452,7 +451,7 @@ class PGDialect(ansisql.ANSIDialect):
                  AND i.indisprimary = 't')
               ORDER BY attnum
             """
-            t = text(PK_SQL)
+            t = sql.text(PK_SQL)
             c = connection.execute(t, table=table_oid)
             for row in c.fetchall():
                 pk = row[0]
@@ -466,7 +465,7 @@ class PGDialect(ansisql.ANSIDialect):
               ORDER BY 1
             """
 
-            t = text(FK_SQL)
+            t = sql.text(FK_SQL)
             c = connection.execute(t, table=table_oid)
             for conname, condef in c.fetchall():
                 m = re.search('FOREIGN KEY \((.*?)\) REFERENCES (?:(.*?)\.)?(.*?)\((.*?)\)', condef).groups()

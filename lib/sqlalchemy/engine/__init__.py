@@ -31,8 +31,7 @@ def engine_descriptors():
     """
 
     result = []
-    #for module in sqlalchemy.databases.__all__:
-    for module in ['sqlite', 'postgres', 'mysql']:
+    for module in sqlalchemy.databases.__all__:
         module = getattr(__import__('sqlalchemy.databases.%s' % module).databases, module)
         result.append(module.descriptor())
     return result

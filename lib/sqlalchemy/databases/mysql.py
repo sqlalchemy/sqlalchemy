@@ -426,13 +426,8 @@ class MySQLDialect(ansisql.ANSIDialect):
             raise exceptions.NoSuchTableError(table.name)
 
     def moretableinfo(self, connection, table):
-        """Return (tabletype, {colname:foreignkey,...})
-        execute(SHOW CREATE TABLE child) =>
-        CREATE TABLE `child` (
-        `id` int(11) default NULL,
-        `parent_id` int(11) default NULL,
-        KEY `par_ind` (`parent_id`),
-        CONSTRAINT `child_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `parent` (`id`) ON DELETE CASCADE\n) TYPE=InnoDB
+        """runs SHOW CREATE TABLE to get foreign key/options information about the table.
+        
         """
         c = connection.execute("SHOW CREATE TABLE " + table.fullname, {})
         desc_fetched = c.fetchone()[1]
