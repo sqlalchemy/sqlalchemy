@@ -222,7 +222,10 @@ class MSDate(sqltypes.Date):
 
 class MSText(sqltypes.TEXT):
     def get_col_spec(self):
-        return "TEXT"
+        if self.dialect.text_as_varchar:
+            return "VARCHAR(max)"            
+        else:
+            return "TEXT"
 
 class MSString(sqltypes.String):
     def get_col_spec(self):
@@ -238,7 +241,10 @@ class MSNVarchar(MSString):
         if self.length:
             return "NVARCHAR(%(length)s)" % {'length' : self.length}
         else:
-            return "NTEXT"
+            if self.dialect.text_as_varchar:
+                return "NVARCHAR(max)"
+            else:
+                return "NTEXT"
 
 class AdoMSNVarchar(MSNVarchar):
     def convert_bind_param(self, value, dialect):
@@ -403,6 +409,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
     def __init__(self, module=None, auto_identity_insert=True, **params):
         self.module = module or dbmodule or use_default()
         self.auto_identity_insert = auto_identity_insert
+        self.text_as_varchar = False
         ansisql.ANSIDialect.__init__(self, **params)
         self.set_default_schema_name("dbo")
         
@@ -413,13 +420,19 @@ class MSSQLDialect(ansisql.ANSIDialect):
             self.auto_identity_insert = bool(opts.pop('auto_identity_insert'))
         if opts.has_key('query_timeout'):
             self.query_timeout = int(opts.pop('query_timeout'))
+        if opts.has_key('text_as_varchar'):
+            self.text_as_varchar = bool(opts.pop('text_as_varchar'))
         return make_connect_string(opts)
 
     def create_execution_context(self):
         return MSSQLExecutionContext(self)
 
     def type_descriptor(self, typeobj):
-        return sqltypes.adapt_type(typeobj, colspecs)
+        newobj = sqltypes.adapt_type(typeobj, colspecs)
+        # Some types need to know about the dialect
+        if isinstance(newobj, (MSText, MSNVarchar)):
+            newobj.dialect = self
+        return newobj
 
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
@@ -539,16 +552,17 @@ class MSSQLDialect(ansisql.ANSIDialect):
                 row[columns.c.column_default]
             )
 
-            # cope with varchar(max)
-            if charlen == -1:
-                charlen = None
-                
             args = []
             for a in (charlen, numericprec, numericscale):
                 if a is not None:
                     args.append(a)
             coltype = ischema_names[type]
-            coltype = coltype(*args)
+            if coltype == MSString and charlen == -1:
+                coltype = MSText()                
+            else:
+                if coltype == MSNVarchar and charlen == -1:
+                    charlen = None
+                coltype = coltype(*args)
             colargs= []
             if default is not None:
                 colargs.append(schema.PassiveDefault(sql.text(default)))
@@ -768,5 +782,6 @@ class MSSQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
         return value
 
 use_default()
+
 
 

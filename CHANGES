@@ -159,6 +159,11 @@
 
     - LIMIT with OFFSET now raises an error (MS-SQL has no OFFSET support)
 
+    - added an facility to use the MSSQL type VARCHAR(max) instead of TEXT 
+      for large unsized string fields. Use the new "text_as_varchar" to 
+      turn it on. [ticket:509]
+
+
 
     
 0.3.5
