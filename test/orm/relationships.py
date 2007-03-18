@@ -672,6 +672,108 @@ class TypeMatchTest(testbase.ORMTest):
             assert False
         except exceptions.AssertionError, err:
             assert str(err) == "Attribute 'a' on class '%s' doesn't handle objects of type '%s'" % (D, B)
-                
+
+class ViewOnlyTest(testbase.ORMTest):
+    """test a view_only mapping where a third table is pulled into the primary join condition,
+    using overlapping PK column names (should not produce "conflicting column" error)"""
+    def define_tables(self, metadata):
+        global t1, t2, t3
+        t1 = Table("t1", metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(40)))
+        t2 = Table("t2", metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(40)),
+            Column('t1id', Integer, ForeignKey('t1.id')))
+        t3 = Table("t3", metadata,
+            Column('id', Integer, primary_key=True),
+            Column('data', String(40)),
+            Column('t2id', Integer, ForeignKey('t2.id'))
+            )
+            
+    def test_basic(self):
+        class C1(object):pass
+        class C2(object):pass
+        class C3(object):pass
+        
+        mapper(C1, t1, properties={
+            't2s':relation(C2),
+            't2_view':relation(C2, viewonly=True, primaryjoin=and_(t1.c.id==t2.c.t1id, t3.c.t2id==t2.c.id, t3.c.data==t1.c.data))
+        })
+        mapper(C2, t2)
+        mapper(C3, t3, properties={
+            't2':relation(C2)
+        })
+        
+        c1 = C1()
+        c1.data = 'c1data'
+        c2a = C2()
+        c1.t2s.append(c2a)
+        c2b = C2()
+        c1.t2s.append(c2b)
+        c3 = C3()
+        c3.data='c1data'
+        c3.t2 = c2b
+        sess = create_session()
+        sess.save(c1)
+        sess.save(c3)
+        sess.flush()
+        sess.clear()
+        
+        c1 = sess.query(C1).get(c1.id)
+        assert set([x.id for x in c1.t2s]) == set([c2a.id, c2b.id])
+        assert set([x.id for x in c1.t2_view]) == set([c2b.id])
+
+class ViewOnlyTest2(testbase.ORMTest):
+    """test a view_only mapping where a third table is pulled into the primary join condition,
+    using non-overlapping PK column names (should not produce "mapper has no column X" error)"""
+    def define_tables(self, metadata):
+        global t1, t2, t3
+        t1 = Table("t1", metadata,
+            Column('t1id', Integer, primary_key=True),
+            Column('data', String(40)))
+        t2 = Table("t2", metadata,
+            Column('t2id', Integer, primary_key=True),
+            Column('data', String(40)),
+            Column('t1id_ref', Integer, ForeignKey('t1.t1id')))
+        t3 = Table("t3", metadata,
+            Column('t3id', Integer, primary_key=True),
+            Column('data', String(40)),
+            Column('t2id_ref', Integer, ForeignKey('t2.t2id'))
+            )
+    def test_basic(self):
+        class C1(object):pass
+        class C2(object):pass
+        class C3(object):pass
+
+        mapper(C1, t1, properties={
+            't2s':relation(C2),
+            't2_view':relation(C2, viewonly=True, primaryjoin=and_(t1.c.t1id==t2.c.t1id_ref, t3.c.t2id_ref==t2.c.t2id, t3.c.data==t1.c.data))
+        })
+        mapper(C2, t2)
+        mapper(C3, t3, properties={
+            't2':relation(C2)
+        })
+
+        c1 = C1()
+        c1.data = 'c1data'
+        c2a = C2()
+        c1.t2s.append(c2a)
+        c2b = C2()
+        c1.t2s.append(c2b)
+        c3 = C3()
+        c3.data='c1data'
+        c3.t2 = c2b
+        sess = create_session()
+        sess.save(c1)
+        sess.save(c3)
+        sess.flush()
+        sess.clear()
+
+        c1 = sess.query(C1).get(c1.t1id)
+        assert set([x.t2id for x in c1.t2s]) == set([c2a.t2id, c2b.t2id])
+        assert set([x.t2id for x in c1.t2_view]) == set([c2b.t2id])
+        
+        
 if __name__ == "__main__":
     testbase.main()        

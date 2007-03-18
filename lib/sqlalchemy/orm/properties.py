@@ -242,6 +242,16 @@ class PropertyLoader(StrategizedProperty):
     def _determine_fks(self):
         if len(self._legacy_foreignkey) and not self._is_self_referential():
             self.foreign_keys = self._legacy_foreignkey
+
+        def col_is_part_of_mappings(col):
+            if self.secondary is None:
+                return self.parent.unjoined_table.corresponding_column(col, raiseerr=False) is not None or \
+                    self.target.corresponding_column(col, raiseerr=False) is not None
+            else:
+                return self.parent.unjoined_table.corresponding_column(col, raiseerr=False) is not None or \
+                    self.target.corresponding_column(col, raiseerr=False) is not None or \
+                    self.secondary.corresponding_column(col, raiseerr=False) is not None
+
         if len(self.foreign_keys):
             self._opposite_side = util.Set()
             def visit_binary(binary):
@@ -260,6 +270,13 @@ class PropertyLoader(StrategizedProperty):
             def visit_binary(binary):
                 if binary.operator != '=' or not isinstance(binary.left, schema.Column) or not isinstance(binary.right, schema.Column):
                     return
+
+                # this check is for when the user put the "view_only" flag on and has tables that have nothing
+                # to do with the relationship's parent/child mappings in the join conditions.  we dont want cols
+                # or clauses related to those external tables dealt with.  see orm.relationships.ViewOnlyTest
+                if not col_is_part_of_mappings(binary.left) or not col_is_part_of_mappings(binary.right):
+                    return
+                        
                 for f in binary.left.foreign_keys:
                     if f.references(binary.right.table):
                         self.foreign_keys.add(binary.left)
@@ -274,6 +291,7 @@ class PropertyLoader(StrategizedProperty):
                 raise exceptions.ArgumentError("Cant locate any foreign key columns in primary join condition '%s' for relationship '%s'.  Specify 'foreign_keys' argument to indicate which columns in the join condition are foreign." %(str(self.primaryjoin), str(self)))
             if self.secondaryjoin is not None:
                 mapperutil.BinaryVisitor(visit_binary).traverse(self.secondaryjoin)
+
 
     def _determine_direction(self):
         """Determine our *direction*, i.e. do we represent one to

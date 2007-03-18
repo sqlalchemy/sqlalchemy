@@ -125,6 +125,10 @@
       [ticket:493]. also fixes to detection of "direction", more specific
       targeting of columns that belong to the polymorphic union vs. those
       that dont.
+      
+    - some fixes to relationship calcs when using "view_only=True" to pull
+      in other tables into the join condition which arent parent of the
+      relationship's parent/child mappings
 
     - flush fixes on self-referential relationships that contain references
       to other instances outside of the cyclical chain, when the initial
