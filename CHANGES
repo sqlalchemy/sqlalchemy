@@ -163,6 +163,9 @@
       for large unsized string fields. Use the new "text_as_varchar" to 
       turn it on. [ticket:509]
 
+    - cleanup of module importing code; specifiable DB-API module; more 
+      explicit ordering of module preferences. [ticket:480]
+
 
 
     
