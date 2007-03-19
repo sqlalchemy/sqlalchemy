@@ -245,9 +245,9 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
             self.HASIDENT = bool(tbl.has_sequence)
             if engine.dialect.auto_identity_insert and self.HASIDENT:
                 if isinstance(parameters, list):
-                    self.IINSERT = parameters[0].has_key(tbl.has_sequence.name)
+                    self.IINSERT = parameters[0].has_key(tbl.has_sequence.key)
                 else:
-                    self.IINSERT = parameters.has_key(tbl.has_sequence.name)
+                    self.IINSERT = parameters.has_key(tbl.has_sequence.key)
             else:
                 self.IINSERT = False
 
@@ -540,7 +540,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
                                 R.c.constraint_name == RR.c.unique_constraint_name,
                                 C.c.ordinal_position == R.c.ordinal_position
                                 ),
-                       order_by = [RR.c.constraint_name])
+                       order_by = [RR.c.constraint_name, R.c.ordinal_position])
         rows = connection.execute(s).fetchall()
 
         # group rows by constraint ID, to handle multi-column FKs
@@ -746,6 +746,16 @@ class MSSQLCompiler(ansisql.ANSICompiler):
     def for_update_clause(self, select):
         # "FOR UPDATE" is only allowed on "DECLARE CURSOR" which SQLAlchemy doesn't use
         return ''
+
+    def order_by_clause(self, select):
+        order_by = self.get_str(select.order_by_clause)
+
+        # MSSQL only allows ORDER BY in subqueries if there is a LIMIT
+        if order_by and (not select.is_subquery or select.limit):
+            return " ORDER BY " + order_by
+        else:
+            return ""
+
 
 class MSSQLSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, **kwargs):

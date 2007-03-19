@@ -101,7 +101,6 @@ class VersioningTest(UnitOfWorkTest):
         version_table.delete().execute()
         UnitOfWorkTest.tearDown(self)
     
-    @testbase.unsupported('mssql')
     def testbasic(self):
         s = create_session()
         class Foo(object):pass
@@ -126,7 +125,10 @@ class VersioningTest(UnitOfWorkTest):
         except exceptions.ConcurrentModificationError, e:
             #print e
             success = True
-        assert success
+
+        # Only dialects with a sane rowcount can detect the ConcurrentModificationError
+        if testbase.db.dialect.supports_sane_rowcount():
+            assert success
         
         s.clear()
         f1 = s.query(Foo).get(f1.id)
@@ -142,7 +144,9 @@ class VersioningTest(UnitOfWorkTest):
         except exceptions.ConcurrentModificationError, e:
             #print e
             success = True
-        assert success
+        if testbase.db.dialect.supports_sane_rowcount():
+            assert success
+
     def testversioncheck(self):
         """test that query.with_lockmode performs a 'version check' on an already loaded instance"""
         s1 = create_session()
@@ -328,7 +332,6 @@ class MutableTypesTest(UnitOfWorkTest):
         
         
 class PKTest(UnitOfWorkTest):
-    @testbase.unsupported('mssql')
     def setUpAll(self):
         UnitOfWorkTest.setUpAll(self)
         global table
@@ -356,7 +359,7 @@ class PKTest(UnitOfWorkTest):
         table.create()
         table2.create()
         table3.create()
-    @testbase.unsupported('mssql')
+
     def tearDownAll(self):
         table.drop()
         table2.drop()
@@ -365,7 +368,7 @@ class PKTest(UnitOfWorkTest):
         
     # not support on sqlite since sqlite's auto-pk generation only works with
     # single column primary keys    
-    @testbase.unsupported('sqlite', 'mssql')
+    @testbase.unsupported('sqlite')
     def testprimarykey(self):
         class Entry(object):
             pass
@@ -380,7 +383,6 @@ class PKTest(UnitOfWorkTest):
         self.assert_(e is not e2 and e._instance_key == e2._instance_key)
         
     # this one works with sqlite since we are manually setting up pk values
-    @testbase.unsupported('mssql')
     def testmanualpk(self):
         class Entry(object):
             pass
@@ -391,7 +393,6 @@ class PKTest(UnitOfWorkTest):
         e.data = 'im the data'
         ctx.current.flush()
         
-    @testbase.unsupported('mssql')
     def testkeypks(self):
         import datetime
         class Entity(object):
