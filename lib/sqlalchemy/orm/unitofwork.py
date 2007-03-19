@@ -232,7 +232,8 @@ class UOWTransaction(object):
         self.tasks = {}
         self.logger = logging.instance_logger(self)
         self.echo = uow.echo
-
+        self.attributes = {}
+        
     echo = logging.echo_property()
 
     def register_object(self, obj, isdelete = False, listonly = False, postupdate=False, post_update_cols=None, **kwargs):
@@ -337,7 +338,7 @@ class UOWTransaction(object):
         targettask = self.get_task_by_mapper(mapperfrom)
         up = UOWDependencyProcessor(processor, targettask)
         task.dependencies.add(up)
-
+        
     def execute(self):
         # ensure that we have a UOWTask for every mapper that will be involved
         # in the topological sort

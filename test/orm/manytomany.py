@@ -216,6 +216,32 @@ class M2MTest2(testbase.ORMTest):
         self.assert_(len(s.courses) == 3)
         del s.courses[1]
         self.assert_(len(s.courses) == 2)
+    
+    def test_delete(self):
+        """test that many-to-many table gets cleared out with deletion from the backref side"""
+        class Student(object):
+            def __init__(self, name=''):
+                self.name = name
+        class Course(object):
+            def __init__(self, name=''):
+                self.name = name
+        Student.mapper = mapper(Student, studentTbl)
+        Course.mapper = mapper(Course, courseTbl, properties = {
+            'students': relation(Student.mapper, enrolTbl, lazy=True, backref='courses')
+        })
+        sess = create_session()
+        s1 = Student('Student1')
+        c1 = Course('Course1')
+        c2 = Course('Course2')
+        c3 = Course('Course3')
+        s1.courses.append(c1)
+        s1.courses.append(c2)
+        c3.students.append(s1)
+        sess.save(s1)
+        sess.flush()
+        sess.delete(s1)
+        sess.flush()
+        assert enrolTbl.count().scalar() == 0
         
 class M2MTest3(testbase.ORMTest):
     def define_tables(self, metadata):

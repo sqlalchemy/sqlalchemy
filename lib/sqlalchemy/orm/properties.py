@@ -489,6 +489,10 @@ class BackRef(object):
                 prop.is_backref=True
                 if not prop.viewonly:
                     prop._dependency_processor.is_backref=True
+                    # reverse_property used by dependencies.ManyToManyDP to check
+                    # association table operations
+                    prop.reverse_property = mapper.props[self.key]
+                    mapper.props[self.key].reverse_property = prop
 
     def get_extension(self):
         """Return an attribute extension to use with this backreference."""

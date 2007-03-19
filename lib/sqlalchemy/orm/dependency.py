@@ -328,39 +328,50 @@ class ManyToManyDP(DependencyProcessor):
         # related mappers.  its dependency processor then populates the
         # association table.
 
-        if self.is_backref:
-            # if we are the "backref" half of a two-way backref
-            # relationship, let the other mapper handle inserting the rows
-            return
         stub = MapperStub(self.parent, self.mapper, self.key)
         uowcommit.register_dependency(self.parent, stub)
         uowcommit.register_dependency(self.mapper, stub)
         uowcommit.register_processor(stub, self, self.parent)
 
     def process_dependencies(self, task, deplist, uowcommit, delete = False):
-        #print self.mapper.table.name + " " + self.key + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
+        #print self.mapper.mapped_table.name + " " + self.key + " " + repr(len(deplist)) + " process_dep isdelete " + repr(delete) + " direction " + repr(self.direction)
         connection = uowcommit.transaction.connection(self.mapper)
         secondary_delete = []
         secondary_insert = []
+
+        if hasattr(self.prop, 'reverse_property'):
+            reverse_dep = getattr(self.prop.reverse_property, '_dependency_processor', None)
+        else:
+            reverse_dep = None
+            
         if delete:
             for obj in deplist:
                 childlist = self.get_object_dependencies(obj, uowcommit, passive=self.passive_deletes)
                 if childlist is not None:
                     for child in childlist.deleted_items() + childlist.unchanged_items():
+                        if reverse_dep and (reverse_dep, "manytomany", child, obj) in uowcommit.attributes:
+                            continue
                         associationrow = {}
                         self._synchronize(obj, child, associationrow, False, uowcommit)
                         secondary_delete.append(associationrow)
+                        uowcommit.attributes[(self, "manytomany", obj, child)] = True
         else:
             for obj in deplist:
                 childlist = self.get_object_dependencies(obj, uowcommit)
                 if childlist is None: continue
                 for child in childlist.added_items():
+                    if reverse_dep and (reverse_dep, "manytomany", child, obj) in uowcommit.attributes:
+                        continue
                     associationrow = {}
                     self._synchronize(obj, child, associationrow, False, uowcommit)
+                    uowcommit.attributes[(self, "manytomany", obj, child)] = True
                     secondary_insert.append(associationrow)
                 for child in childlist.deleted_items():
+                    if reverse_dep and (reverse_dep, "manytomany", child, obj) in uowcommit.attributes:
+                        continue
                     associationrow = {}
                     self._synchronize(obj, child, associationrow, False, uowcommit)
+                    uowcommit.attributes[(self, "manytomany", obj, child)] = True
                     secondary_delete.append(associationrow)
         if len(secondary_delete):
             secondary_delete.sort()

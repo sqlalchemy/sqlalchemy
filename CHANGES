@@ -91,6 +91,9 @@
       So that instances match up properly, the "uniquing" is disabled when 
       this feature is used.
 
+    - many-to-many table will be properly handled even for operations that
+      occur on the "backref" side of the operation [ticket:249]
+      
     - Query has add_entity() and add_column() generative methods.  these
       will add the given mapper/class or ColumnElement to the query at compile
       time, and apply them to the instances() method.  the user is responsible
