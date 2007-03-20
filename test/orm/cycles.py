@@ -231,6 +231,50 @@ class InheritTestOne(AssertMixin):
         # attached to a task corresponding to c1, since "child1_id" is not nullable
         session.flush()
 
+class InheritTestTwo(ORMTest):
+    """the fix in BiDirectionalManyToOneTest raised this issue, regarding
+    the 'circular sort' containing UOWTasks that were still polymorphic, which could
+    create duplicate entries in the final sort"""
+    def define_tables(self, metadata):
+        global a, b, c
+        a = Table('a', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)),
+            Column('cid', Integer, ForeignKey('c.id')),
+            )
+
+        b = Table('b', metadata, 
+            Column('id', Integer, ForeignKey("a.id"), primary_key=True),
+            Column('data', String(30)),
+            )
+
+        c = Table('c', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('data', String(30)),
+            Column('aid', Integer, ForeignKey('a.id', use_alter=True, name="foo")),
+            )
+    def test_flush(self):
+        class A(object):pass
+        class B(A):pass
+        class C(object):pass
+
+        mapper(A, a, properties={
+            'cs':relation(C, primaryjoin=a.c.cid==c.c.id)
+        })
+
+        mapper(B, b, inherits=A, inherit_condition=b.c.id==a.c.id, properties={
+        })
+        mapper(C, c, properties={
+            'arel':relation(A, primaryjoin=a.c.id==c.c.aid)
+        })
+
+        sess = create_session()
+        bobj = B()
+        sess.save(bobj)
+        cobj = C()
+        sess.save(cobj)
+        sess.flush()
+        
 
 class BiDirectionalManyToOneTest(ORMTest):
     def define_tables(self, metadata):

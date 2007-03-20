@@ -458,8 +458,10 @@ class UOWTask(object):
         # dependency processing, and before pre-delete processing and deletes
         self.childtasks = []
 
-        # whether this UOWTask is circular, meaning it holds a second
-        # UOWTask that contains a special row-based dependency structure.
+        # holds a second UOWTask that contains a special row-based dependency 
+        # structure. this is generated when cycles are detected between mapper-
+        # level UOWTasks, and breaks up the mapper-level UOWTasks into individual
+        # object-based tasks.  
         self.circular = None
 
         # for a task thats part of that row-based dependency structure, points
@@ -546,7 +548,8 @@ class UOWTask(object):
         # first us
         yield self
 
-        # "circular dependency" tasks aren't polymorphic
+        # "circular dependency" tasks aren't polymorphic, since they break down into many 
+        # sub-tasks which encompass a subset of the objects that their "non-circular" parent task would.
         if self.circular_parent is not None:
             return
 
@@ -778,8 +781,16 @@ class UOWTask(object):
             # will have no "save" or "delete" members, but may have dependency
             # processors that operate upon other tasks outside of the cycle.
             if t2 not in used_tasks and t2 is not self:
-                t.childtasks.insert(0, t2)
-                
+                # the task must be copied into a "circular" task, so that polymorphic
+                # rules dont fire off.  this ensures that the task will have no "save"
+                # or "delete" members due to inheriting mappers which contain tasks
+                localtask = UOWTask(self.uowtransaction, t2.mapper, circular_parent=self)
+                for obj in t2.get_elements(polymorphic=False):
+                    localtask.append(obj, t2.listonly, isdelete=t2.objects[obj].isdelete)
+                for dep in t2.dependencies:
+                    localtask.dependencies.add(dep)
+                t.childtasks.insert(0, localtask)
+
         return t
 
     def dump(self):
