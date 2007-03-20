@@ -422,7 +422,7 @@ The other way is just to use the `Connection` referenced by the `SessionTransact
         raise
     trans.commit()
         
-The `connection()` method also exists on the `Session` object itself, and can be called regardless of whether or not a `SessionTransaction` is in progress.  If a `SessionTransaction` is in progress, it will return the connection referenced by the transaction.  If an `Engine` is being used with `threadlocal` strategy, the `Connection` returned will correspond to the connection resources that are bound to the current thread, if any (i.e. it is obtained by calling `contextual_connection()`).
+The `connection()` method also exists on the `Session` object itself, and can be called regardless of whether or not a `SessionTransaction` is in progress.  If a `SessionTransaction` is in progress, it will return the connection referenced by the transaction.  If an `Engine` is being used with `threadlocal` strategy, the `Connection` returned will correspond to the connection resources that are bound to the current thread, if any (i.e. it is obtained by calling `contextual_connect()`).
 
 #### Using Engine-level Transactions with Sessions
 

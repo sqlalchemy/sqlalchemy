@@ -326,19 +326,19 @@ Using the "threadlocal" strategy, all calls to `execute` within the same thread 
     # are returned to the pool.
     r2 = None
 
-To get at the actual `Connection` object which is used by implicit executions, call the `contextual_connection()` method on `Engine`:
+To get at the actual `Connection` object which is used by implicit executions, call the `contextual_connect()` method on `Engine`:
 
     {python title="Contextual Connection"}
     # threadlocal strategy
     db = create_engine('mysql://localhost/test', strategy='threadlocal')
     
-    conn1 = db.contextual_connection()
-    conn2 = db.contextual_connection()
+    conn1 = db.contextual_connect()
+    conn2 = db.contextual_connect()
 
     >>> conn1.connection is conn2.connection
     True
 
-When the `plain` strategy is used, the `contextual_connection()` method is synonymous with the `connect()` method; both return a distinct connection from the pool.
+When the `plain` strategy is used, the `contextual_connect()` method is synonymous with the `connect()` method; both return a distinct connection from the pool.
 
 One programming pattern that the `threadlocal` strategy supports is transparent connection and transaction sharing.
 
@@ -351,13 +351,13 @@ One programming pattern that the `threadlocal` strategy supports is transparent 
         
     def dosomethingelse():
         table2.execute("some sql")
-        conn = db.contextual_connection()
+        conn = db.contextual_connect()
         # do stuff with conn
         conn.execute("some other sql")
         conn.close()
     
     def dosomethingtransactional():
-        conn = db.contextual_connection()
+        conn = db.contextual_connect()
         trans = conn.begin()
          # do stuff
         trans.commit()
@@ -371,5 +371,5 @@ One programming pattern that the `threadlocal` strategy supports is transparent 
     except:
         db.rollback()
 
-In the above example, the program calls three functions `dosomethingimplicit()`, `dosomethingelse()` and `dosomethingtransactional()`.  In all three functions, either implicit execution is used, **or** an explicit `Connection` is used via the `contextual_connection()` method.  This indicates that they all will share the same underlying dbapi connection as well as the same parent `Transaction` instance, which is created in the main body of the program via the call to `db.create_transaction()`.  So while there are several calls that return "new" `Transaction` or `Connection` objects, in reality only one "real" connection is ever used, and there is only one transaction (i.e. one begin/commit pair) executed.
+In the above example, the program calls three functions `dosomethingimplicit()`, `dosomethingelse()` and `dosomethingtransactional()`.  In all three functions, either implicit execution is used, **or** an explicit `Connection` is used via the `contextual_connect()` method.  This indicates that they all will share the same underlying dbapi connection as well as the same parent `Transaction` instance, which is created in the main body of the program via the call to `db.create_transaction()`.  So while there are several calls that return "new" `Transaction` or `Connection` objects, in reality only one "real" connection is ever used, and there is only one transaction (i.e. one begin/commit pair) executed.
 
