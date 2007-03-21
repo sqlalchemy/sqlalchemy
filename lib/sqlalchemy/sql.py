@@ -318,14 +318,14 @@ def label(name, obj):
 
     return _Label(name, obj)
 
-def column(text, table=None, type=None, **kwargs):
+def column(text, type=None):
     """Return a textual column clause, relative to a table.
 
     This is also the primitive version of a ``schema.Column`` which is
     a subclass.
     """
 
-    return _ColumnClause(text, table, type, **kwargs)
+    return _ColumnClause(text, type=type)
 
 def literal_column(text, table=None, type=None, **kwargs):
     """Return a textual column clause with the `literal` flag set.
@@ -1327,9 +1327,6 @@ class _BindParamClause(ClauseElement, _CompareMixin):
 
         return isinstance(other, _BindParamClause) and other.type.__class__ == self.type.__class__
 
-    def _make_proxy(self, selectable, name = None):
-        return self
-
     def __repr__(self):
         return "_BindParamClause(%s, %s, type=%s)" % (repr(self.key), repr(self.value), repr(self.type))
 
@@ -1845,7 +1842,10 @@ class _Label(ColumnElement):
         return self.obj._get_from_objects()
 
     def _make_proxy(self, selectable, name = None):
-        return self.obj._make_proxy(selectable, name=self.name)
+        if isinstance(self.obj, Selectable):
+            return self.obj._make_proxy(selectable, name=self.name)
+        else:
+            return column(self.name)._make_proxy(selectable=selectable)
 
 legal_characters = util.Set(string.ascii_letters + string.digits + '_')
 
@@ -1915,7 +1915,7 @@ class _ColumnClause(ColumnElement):
         # propigate the "is_literal" flag only if we are keeping our name,
         # otherwise its considered to be a label
         is_literal = self.is_literal and (name is None or name == self.name)
-        c = _ColumnClause(name or self.name, selectable, _is_oid=self._is_oid, type=self.type, is_literal=is_literal)
+        c = _ColumnClause(name or self.name, selectable=selectable, _is_oid=self._is_oid, type=self.type, is_literal=is_literal)
         c.orig_set = self.orig_set
         if not self._is_oid:
             selectable.columns[c.name] = c
@@ -2227,7 +2227,8 @@ class Select(_SelectBaseMixin, FromClause):
             return label(name, self)
             
     def _exportable_columns(self):
-        return self._raw_columns
+        return [c for c in self._raw_columns if isinstance(c, Selectable)]
+        
     def _proxy_column(self, column):
         if self.use_labels:
             return column._make_proxy(self, name=column._label)
@@ -2325,7 +2326,7 @@ class Select(_SelectBaseMixin, FromClause):
                 return e
         # look through the columns (largely synomous with looking
         # through the FROMs except in the case of _CalculatedClause/_Function)
-        for cc in self._raw_columns:
+        for cc in self._exportable_columns():
             for c in cc.columns:
                 if getattr(c, 'table', None) is self:
                     continue

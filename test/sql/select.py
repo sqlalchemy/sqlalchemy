@@ -678,6 +678,13 @@ myothertable.othername != :myothertable_othername AND EXISTS (select yay from fo
         c = s.compile(parameters = {'test' : 7})
         self.assert_(c.get_params() == {'test' : 7})
 
+    def testbindascol(self):
+        t = table('foo', column('id'))
+
+        s = select([t, literal('lala').label('hoho')])
+        self.runtest(s, "SELECT foo.id, :literal AS hoho FROM foo")
+        assert [str(c) for c in s.c] == ["id", "hoho"]
+        
     def testin(self):
         self.runtest(select([table1], table1.c.myid.in_(1, 2, 3)),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid, :mytable_my_1, :mytable_my_2)")

@@ -6,7 +6,10 @@
      with conflicting names, specify "unique=True" - this option is
      still used internally for all the auto-genererated (value-based) 
      bind parameters.    
-
+    
+    - slightly better support for bind params as column clauses, either
+    via bindparam() or via literal(), i.e. select([literal('foo')])
+    
     - exists() becomes useable as a standalone selectable, not just in a 
     WHERE clause, i.e. exists([columns], criterion).select()
 
