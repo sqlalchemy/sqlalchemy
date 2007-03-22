@@ -1075,14 +1075,14 @@ class MetaData(SchemaItem):
             
             url
                 a string or URL instance which will be passed to create_engine(),
-                along with **kwargs - this MetaData will be bound to the resulting
+                along with \**kwargs - this MetaData will be bound to the resulting
                 engine.
             
             engine
                 an Engine instance to which this MetaData will be bound.
                 
             case_sensitive
-                popped from **kwargs, indicates default case sensitive setting for
+                popped from \**kwargs, indicates default case sensitive setting for
                 all contained objects.  defaults to True.
             
         """        
@@ -1103,7 +1103,7 @@ class MetaData(SchemaItem):
         
             engine_or_url
                 a string, URL or Engine instance.  If a string or URL,
-                will be passed to create_engine() along with **kwargs to
+                will be passed to create_engine() along with \**kwargs to
                 produce the engine which to connect to.  otherwise connects
                 directly to the given Engine.
                 

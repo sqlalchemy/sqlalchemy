@@ -1,3 +1,4 @@
+0.3.6
 - sql:
     - bindparam() names are now repeatable!  specify two
      distinct bindparam()s with the same name in a single statement,

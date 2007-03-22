@@ -349,11 +349,51 @@ class Query(object):
         return self.execute(t, params=params)
 
     def add_entity(self, entity):
+        """add a mapped entity to the list of result columns to be returned.
+        
+        This will have the effect of all result-returning methods returning a tuple
+        of results, the first element being an instance of the primary class for this 
+        Query, and subsequent elements matching columns or entities which were
+        specified via add_column or add_entity.
+        
+        When adding entities to the result, its generally desireable to add
+        limiting criterion to the query which can associate the primary entity
+        of this Query along with the additional entities.  The Query selects
+        from all tables with no joining criterion by default.
+        
+        When tuple-based results are returned, the 'uniquing' of returned entities
+        is disabled to maintain grouping.
+
+            entity
+                a class or mapper which will be added to the results.
+                
+        """
         q = self._clone()
         q._entities.append(entity)
         return q
         
     def add_column(self, column):
+        """add a SQL ColumnElement to the list of result columns to be returned.
+        
+        This will have the effect of all result-returning methods returning a tuple
+        of results, the first element being an instance of the primary class for this 
+        Query, and subsequent elements matching columns or entities which were
+        specified via add_column or add_entity.
+
+        When adding columns to the result, its generally desireable to add
+        limiting criterion to the query which can associate the primary entity
+        of this Query along with the additional columns, if the column is based on a 
+        table or selectable that is not the primary mapped selectable.  The Query selects
+        from all tables with no joining criterion by default.
+        
+        When tuple-based results are returned, the 'uniquing' of returned entities
+        is disabled to maintain grouping.
+
+            column
+                a string column name or sql.ColumnElement to be added to the results.
+                
+        """
+        
         q = self._clone()
         q._entities.append(column)
         return q
@@ -572,7 +612,7 @@ class Query(object):
         """
 
         new = self._clone()
-        new._from_obj = from_obj
+        new._from_obj = list(new._from_obj) + util.to_list(from_obj)
         return new
         
     def __getattr__(self, key):

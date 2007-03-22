@@ -171,7 +171,9 @@ The decoration of mapped instances' `__init__()` method is similar to this examp
 
 **Author:** Jonas Borgström
 
-SelectResults gives transformative behavior to the results returned from the `select` and `select_by` methods of `Query`. 
+*NOTE:* As of verison 0.3.6 of SQLAlchemy, most behavior of `SelectResults` has been rolled into the base `Query` object.  Explicit usage of `SelectResults` is therefore no longer needed.
+
+`SelectResults` gives transformative behavior to the results returned from the `select` and `select_by` methods of `Query`. 
 
     {python}
     from sqlalchemy.ext.selectresults import SelectResults

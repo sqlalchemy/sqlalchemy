@@ -42,8 +42,7 @@ First, the metadata/mapper configuration code:
         pass
         
     # create a mapper and associate it with the User class.
-    # technically we dont really need the 'usermapper' variable.
-    usermapper = mapper(User, users_table)
+    mapper(User, users_table)
 
 Note that no database definitions are required.  Next we will define an `Engine` and connect a `Session` to it, and perform a simple select:
 
@@ -130,7 +129,31 @@ Some of the above examples above illustrate the usage of the mapper's Table obje
     {python}
     userlist = session.query(User).select(User.c.user_id==12)
 
-Full documentation for Query's API : [Query](rel:docstrings_sqlalchemy.orm.query_Query).
+#### Generative Query Methods {@name=generative}
+
+The Query also includes as of version 0.3.6 "generative" methods, used for building more complex queries.  These methods imitate the behavior of the [plugins_selectresults](rel:plugins_selectresults) plugin which is effectively replaced by these methods.  The key behavior of a "generative" method is that calling it produces a **new** `Query` object,which contains all the attributes of the previous `Query` object plus some new modifications.  The simplest example is the `filter_by()` method:
+
+    {python}
+    # create a Query
+    query = session.query(User)   
+    
+    # filter by user_name property using filter_by()
+    query = query.filter_by(user_name="john") 
+    
+    # filter by email address column using filter()
+    query = query.filter(User.c.email_address=="john@foo.com")  
+    
+    # execute - the list() method returns a list.  this is equivalent to just saying query.select()
+    {sql}result = query.list()
+    SELECT users.user_name AS users_user_name, 
+    users.password AS users_password, users.user_id AS users_user_id 
+    FROM users 
+    WHERE ((users.user_name = :users_user_name) 
+    AND users.password = :users_password) ORDER BY users.oid
+
+There is no restriction to mixing the "generative" methods like `filter()`, `join()`, `order_by()` etc. with the "non-generative" methods like `select()` and `select_by()`.  The only difference is that `select...` methods return results immediately, whereas generative methods return a new `Query` from which results can be retrieved using any number of methods such as `list()`, `select()`, `select_by()`, `selectfirst()`, etc.  Options that are specified to the `select...` methods build upon options that were already built up generatively.
+
+The `Query` object will be described further in subsequent sections dealing with joins.  Also, be sure to consult the full generated documentation for `Query`: [Query](rel:docstrings_sqlalchemy.orm.query_Query).
 
 ### Saving Objects {@name=saving}
 
@@ -138,7 +161,7 @@ When objects corresponding to mapped classes are created or manipulated, all cha
 
 The Unit of Work is a powerful tool, and has some important concepts that should be understood in order to use it effectively.  See the [unitofwork](rel:unitofwork) section for a full description on all its operations.
 
-When a mapper is created, the target class has its mapped properties decorated by specialized property accessors that track changes.  New objects by default must be explicitly added to the `Session`, however this can be made automatic by using [plugins_threadlocal](rel:plugins_threadlocal) or [plugins_sessioncontext](rel:plugins_sessioncontext).
+When a mapper is created, the target class has its mapped properties decorated by specialized property accessors that track changes.  New objects by default must be explicitly added to the `Session` using the `save()` method, however this can be made automatic by using the [plugins_sessioncontext](rel:plugins_sessioncontext) extension.
 
     {python}
     mapper(User, users_table)
@@ -204,15 +227,15 @@ The mapped class can also specify whatever methods and/or constructor it wants:
 
 Note that the **__init__() method is not called when the instance is loaded**.  This is so that classes can define operations that are specific to their initial construction which are not re-called when the object is restored from the database, and is similar in concept to how Python's `pickle` module calls `__new__()` when deserializing instances.  To allow `__init__()` to be called at object load time, or to define any other sort of on-load operation, create a `MapperExtension` which supplies the `create_instance()` method (see [advdatamapping_extending](rel:advdatamapping_extending), as well as the example in the FAQ).
 
-SQLAlchemy will only put modified object attributes columns into the UPDATE statements generated upon flush.  This is to conserve database traffic and also to successfully interact with a "deferred" attribute, which is a mapped object attribute against the mapper's primary table that isnt loaded until referenced by the application.
+SQLAlchemy will only place columns into UPDATE statements for which the value of the attribute has changed.  This is to conserve database traffic and also to successfully interact with a "deferred" attribute, which is a mapped object attribute against the mapper's primary table that isnt loaded until referenced by the application.
 
 ### Defining and Using Relationships {@name=relations}
 
-So that covers how to map the columns in a table to an object, how to load objects, create new ones, and save changes.  The next step is how to define an object's relationships to other database-persisted objects.  This is done via the `relation` function provided by the `orm` module.  
+So that covers how to map the columns in a table to an object, how to load objects, create new ones, and save changes.  The next step is how to define an object's relationships to other database-persisted objects.  This is done via the `relation` function provided by the `orm` module.
 
 #### One to Many {@name=onetomany}
 
-So with our User class, lets also define the User has having one or more mailing addresses.  First, the table metadata:
+With our User class, lets also define the User has having one or more mailing addresses.  First, the table metadata:
 
     {python}
     from sqlalchemy import *
@@ -236,7 +259,7 @@ So with our User class, lets also define the User has having one or more mailing
         Column('zip', String(10))
     )
         
-Of importance here is the addresses table's definition of a *foreign key* relationship to the users table, relating the user_id column into a parent-child relationship.  When a `Mapper` wants to indicate a relation of one object to another, the `ForeignKey` relationships are the default method by which the relationship is determined (options also exist to describe the relationships explicitly).   
+Of importance here is the addresses table's definition of a *foreign key* relationship to the users table, relating the user_id column into a parent-child relationship.  When a `Mapper` wants to indicate a relation of one object to another, the `ForeignKey` relationships are the default method by which the relationship is determined (options also exist to describe the relationships explicitly).
 
 So then lets define two classes, the familiar `User` class, as well as an `Address` class:
 
@@ -285,7 +308,7 @@ Lets do some operations with these classes and see what happens:
         
 A lot just happened there!  The `Mapper` figured out how to relate rows in the addresses table to the users table, and also upon flush had to determine the proper order in which to insert rows.  After the insert, all the `User` and `Address` objects have their new primary and foreign key attributes populated.
 
-Also notice that when we created a `Mapper` on the `User` class which defined an `addresses` relation, the newly created `User` instance magically had an "addresses" attribute which behaved like a list.   This list is in reality a property function which returns an instance of `sqlalchemy.util.HistoryArraySet`.  This object fulfills the full set of Python list accessors, but maintains a *unique* set of objects (based on their in-memory identity), and also tracks additions and deletions to the list:
+Also notice that when we created a `Mapper` on the `User` class which defined an `addresses` relation, the newly created `User` instance magically had an "addresses" attribute which behaved like a list.   This list is in reality a Python `property` which will return an instance of `sqlalchemy.orm.attributes.InstrumentedList`.  This is a generic collection-bearing object which can represent lists, sets, dictionaries, or any user-defined collection class which has an `append()` method.  By default it represents a list:
 
     {python}
     del u.addresses[1]
@@ -407,7 +430,7 @@ We've seen how the `relation` specifier affects the saving of an object and its 
 
 When using mappers that have relationships to other mappers, the need to specify query criterion across multiple tables arises.  SQLAlchemy provides several core techniques which offer this functionality.
 
-When specifying columns to the `select` method of `Query`, if the columns are attached to a table other than the mapped table, that table is automatically added to the "FROM" clause of the query.  This is the same behavior that occurs when creating a non-ORM `select` object.  Using this feature, joins can be created when querying:
+When specifying columns to the `select()` method (including variants like `selectfirst()`, `selectone()`, etc.) or the generative `filter()` method of `Query`, if the columns are attached to a table other than the mapped table, that table is automatically added to the "FROM" clause of the query.  This is the same behavior that occurs when creating a non-ORM `select` object.  Using this feature, joins can be created when querying:
 
     {python}
     {sql}l = session.query(User).select(and_(users.c.user_id==addresses.c.user_id, 
@@ -434,11 +457,11 @@ Above, we specified selection criterion that included columns from both the `use
     
 The above join will return all rows of the `users` table, even those that do not correspond to the `addresses` table, in a **cartesian product** with the matching rows from the `addresses` table.
 
-Another way to specify joins more explicitly is to use the `from_obj` parameter of `select()`.  This allows you to explicitly place elements in the FROM clause of the query, which could include lists of tables and/or `Join` constructs:
+Another way to specify joins more explicitly is to use the `from_obj` parameter of `select()`, or the generative `select_from()` method.  These allow you to explicitly place elements in the FROM clause of the query, which could include lists of tables and/or `Join` constructs:
 
     {python}
-    {sql}l = session.query(User).select(addresses.c.street=='123 Green Street', 
-                    from_obj=[users.join(addresses)])
+    {sql}l = session.query(User).select(addresses_table.c.street=='123 Green Street', 
+                    from_obj=[users_table.join(addresses_table)])
     SELECT users.user_id AS users_user_id, 
     users.user_name AS users_user_name, users.password AS users_password
     FROM users JOIN addresses ON users.user_id=addresses.user_id
@@ -446,13 +469,27 @@ Another way to specify joins more explicitly is to use the `from_obj` parameter 
     ORDER BY users.oid
     {'addresses_street', '123 Green Street'}
 
-In the above example, the `join` function by default creates a natural join between the two tables, so we were able to avoid having to specify the join condition between `users` and `addresses` explicitly.
+In the above example, the `join()` function by default creates a natural join between the two tables, so we were able to avoid having to specify the join condition between `users` and `addresses` explicitly.
 
-#### Creating Joins Using select\_by() {@name=relselectby}
+Using a generative approach:
 
-Another way that joins can be created is by using the `select_by` method of `Query`, which has the ability to create joins across relationships automatically.  This method is in many circumstances more convenient than, but not as flexible as, the more SQL-level approach using the `select()` method described in the previous section.
+    {python}
+    {sql}l = session.query(User).filter(addresses_table.c.street=='123 Green Street').
+                select_from(users_table.join(addresses_table)).list()
+    SELECT users.user_id AS users_user_id, 
+    users.user_name AS users_user_name, users.password AS users_password
+    FROM users JOIN addresses ON users.user_id=addresses.user_id
+    WHERE addresses.street=:addresses_street
+    ORDER BY users.oid
+    {'addresses_street', '123 Green Street'}
 
-To issue a join using `select_by`, just specify a key in the argument list which is not present in the primary mapper's list of properties or columns, but *is* present in the property list of some relationship down the line of objects.  The `Query` object will recursively traverse along the mapped relationships starting with the lead class and descending into child classes, until it finds a property matching the given name.  For each new mapper it encounters along the path to the located property, it constructs a join across that relationship:
+Note that `select_from()` takes either a single scalar element or a list of selectables (i.e. `select_from([table1, table2, table3.join(table4), ...])`), which are added to the current list of "from" elements.  As is the behavior of constructed SQL, `join` elements used in the `from_obj` parameter or the `select_from()` method will replace instances of the individual tables they represent.
+
+#### Creating Joins Using filter\_by() and select\_by() {@name=relselectby}
+
+Another way that joins can be created is by using the `select_by` method or the generative `filter_by` methods of `Query`, which have the ability to create joins across relationships automatically.  These methods are in many circumstances more convenient than, but not as flexible as, the more SQL-level approach using the `select()`/`select_from()` methods described in the previous section.
+
+To issue a join using `select_by()`, just specify a key in the argument list which is not present in the primary mapper's list of properties or columns, but *is* present in the property list of some relationship down the line of objects.  The `Query` object will recursively traverse along the mapped relationships starting with the lead class and descending into child classes, until it finds a property matching the given name.  For each new mapper it encounters along the path to the located property, it constructs a join across that relationship:
 
     {python}
     {sql}l = session.query(User).select_by(street='123 Green Street')
@@ -472,11 +509,22 @@ The above example is shorthand for:
              Address.c.street=='123 Green Street')
        )
 
-All keyword arguments sent to `select_by` are used to create query criterion.  This means that familiar `select` keyword options like `order_by` and `limit` are not directly available.  To enable these options with `select_by`, you can try the [plugins_selectresults](rel:plugins_selectresults) extension which offers transitive methods off the result of a `select` or `select_by` such as `order_by()`, `limit()`, etc.  
+All keyword arguments sent to `select_by()` and `filter_by()` are used to create WHERE criterion.  To add modifiers such as `order_by` and `limit`, use the "generative" methods, such as `order_by()`, `limit()`, `offset()`, etc. (new in 0.3.6).  Here is an example using `filter_by()`:
 
-Note that the `select_by` method, while it primarily uses keyword arguments, also can accomodate `ClauseElement` objects positionally; recall that a `ClauseElement` is genearated when producing a comparison off of a `Column` expression, such as `users.c.name=='ed'`.  When using `ClauseElements` with `select_by`, these clauses are passed directly to the generated SQL and are **not** used to further locate join criterion.  If criterion is being constructed with these kinds of expressions, consider using the `select()` method which is better designed to accomodate these expressions.
+    {python}
+    {sql}l = session.query(User).filter_by(street='123 Green Street').
+                order_by(User.c.user_name).limit(10).offset(5).list()
+    SELECT users.user_id AS users_user_id, 
+    users.user_name AS users_user_name, users.password AS users_password
+    FROM users, addresses 
+    WHERE (addresses.street=:addresses_street
+    AND users.user_id=addresses.user_id)
+    ORDER BY users.user_name LIMIT 10 OFFSET 5
+    {'addresses_street', '123 Green Street'}
 
-As of SA 0.3.4, `select_by()` and related functions can compare not only column-based attributes to column-based values, but also relations to object instances:
+Note that the `select_by()` and `filter_by()` methods, while they primarily use keyword arguments, also can accomodate `ClauseElement` objects positionally; recall that a `ClauseElement` is genearated when producing a comparison off of a `Column` expression, such as `users.c.name=='ed'`.  When using `ClauseElements` with `select_by()` or `filter_by()`, these clauses are passed directly to the generated SQL and are **not** used to further locate join criterion.  
+
+`select_by()` and its related functions can compare not only column-based attributes to column-based values, but also relations to object instances:
 
     {python}
     # get an instance of Address
@@ -486,47 +534,34 @@ As of SA 0.3.4, `select_by()` and related functions can compare not only column-
     # "someaddress" instance in their "addresses" collection
     l = session.query(User).select_by(addresses=someaddress)
 
-Where above, the comparison denoted by `addresses=someaddress` is constructed by comparing all the primary key columns in the `Address` mapper to each corresponding primary key value in the `someaddress` entity.  In other words, its equivalent to saying `select_by(address_id=someaddress.address_id)` ([Alpha API][alpha_api]).
+Where above, the comparison denoted by `addresses=someaddress` is constructed by comparing all the primary key columns in the `Address` mapper to each corresponding primary key value in the `someaddress` entity.  In other words, its equivalent to saying `select_by(address_id=someaddress.address_id)`.
 
-#### Generating Join Criterion Using join\_to, join\_via {@name=jointo}
+#### Generating Join Criterion Using join() {@name=jointo}
 
-Feature Status: [Alpha API][alpha_api] 
-
-The `join_to` method of `Query` is a component of the `select_by` operation, and is given a keyname in order to return a "join path" from the Query's mapper to the mapper which is referenced by a `relation()` of the given name:
+The `join()` method, new in version 0.3.6, is a generative method which can apply join conditions to a `Query` based on the names of relationships, using a similar mechanism as that of `select_by()` and similar methods.  By specifying the string name of a relation as its only argument, the resulting `Query` will automatically join from the starting class' mapper to the target mapper, indicated by searching for a relationship of that name along the relationship path.
 
     {python}
-    >>> q = session.query(User)
-    >>> j = q.join_to('addresses')
-    >>> print j
-    users.user_id=addresses.user_id
+    {sql}l = session.query(User).join('addresses').list()
+    SELECT users.user_name AS users_user_name, users.password AS users_password, 
+    users.user_id AS users_user_id 
+    FROM users JOIN addresses ON users.user_id = addresses.user_id 
+    ORDER BY users.oid
+    
+One drawback of this method of locating a relationship is that its not *deterministic*.   If the same relationship name occurs on more than one traversal path, its only possible to locate one of those relationships.  Similarly, if relationships are added to mapped classes, queries that worked fine may suddenly experience a similar conflict and produce unexpected results.
 
-`join_to` can also be given the name of a column-based property, in which case it will locate a path to the nearest mapper which has that property as a column:
-
-    {python}
-    >>> q = session.query(User)
-    >>> j = q.join_to('street')
-    >>> print j
-    users.user_id=addresses.user_id
-
-Also available is the `join_via` function, which is similar to `join_to`, except instead of traversing through all properties to find a path to the given key, its given an explicit path to the target property:
+So to specify a deterministic path to `join()`, send the relationship name or a path of names as a list.  Such as:
 
     {python}
-    >>> q = session.query(User)
-    >>> j = q.join_via(['orders', 'items'])
-    >>> print j
-    users.c.user_id==orders.c.user_id AND orders.c.item_id==items.c.item_id
+    l = session.query(User).join(['addresses']).list()
 
-Expressions produced by `join_to` and `join_via` can be used with `select` to create more complicated query criterion across multiple relations:
+Where above, if the "addresses" relation is not present directly on the `User` class, an error is raised.
+
+To traverse more deeply into relationships, specify multiple relationship names in the order in which they are constructed:
 
     {python}
-    >>> l = q.select(
-        (addresses_table.c.street=='some address') &
-        (items_table.c.item_name=='item #4') &
-        q.join_to('addresses') &
-        q.join_via(['orders', 'items'])
-        )
+    orders = session.query(Order).join(['customer', 'addresses']).select_by(email_address="foo@bar.com")
 
-Note that the `from_obj` parameter of `select()`, described previously, allows finer grained control of joins, allowing any combination of inner and outer joins.  
+The `join()` method is an easier-to-use version of the `join_by()`, `join_to()` and `join_via()` methods, all of which produce `ClauseElements` that can be constructed into a query criterion.  Consult the generated documentation for information on these methods.
 
 #### Eager Loading {@name=eagerload}
 
@@ -582,7 +617,7 @@ The join implied by passing the "street" parameter is separate from the join pro
     
 #### Using Options to Change the Loading Strategy {@name=options}
 
-The `options` method on the `Query` object provides an easy way to get alternate forms of a mapper query from an original one.  The most common use of this feature is to change the "eager/lazy" loading behavior of a particular mapper, via the functions `eagerload()`, `lazyload()` and `noload()`:
+The `options()` method on the `Query` object is a generative method that allows modifications to the underlying querying methodology.  The most common use of this feature is to change the "eager/lazy" loading behavior of a particular mapper, via the functions `eagerload()`, `lazyload()` and `noload()`:
     
     {python}
     # user mapper with lazy addresses
@@ -677,7 +712,7 @@ The above examples focused on the "one-to-many" relationship.  To do other forms
 
 ### Many to Many {@name=manytomany}
 
-The `relation` function handles a basic many-to-many relationship when you specify the association table:
+The `relation` function handles a basic many-to-many relationship when you specify an association table using the `secondary` argument:
 
     {python}
     metadata = MetaData()
@@ -884,4 +919,4 @@ Keep in mind that the association object works a little differently from a plain
 
 SQLAlchemy includes an extension module which can be used in some cases to decrease the explicitness of the association object pattern; this extension is described in [plugins_associationproxy](rel:plugins_associationproxy).
 
-    
+Note that you should **not** combine the usage of a `secondary` relationship with an association object pattern against the same association table.  This is because SQLAlchemy's unit of work will regard rows in the table tracked by the `secondary` argument as distinct from entities mapped into the table by the association mapper, causing unexpected behaviors when rows are changed by one mapping and not the other.
