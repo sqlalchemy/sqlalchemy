@@ -64,6 +64,9 @@
     - added a catchall **kwargs to MSString, to help reflection of 
       obscure types (like "varchar() binary" in MS 4.0)
 
+    - added explicit MSTimeStamp type which takes effect when using 
+    types.TIMESTAMP.
+    
 - orm:
     - the full featureset of the SelectResults extension has been merged
       into a new set of methods available off of Query.  These methods

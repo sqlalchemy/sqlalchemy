@@ -124,6 +124,10 @@ class MSTime(sqltypes.Time):
         else:
             return None
 
+class MSTimeStamp(sqltypes.TIMESTAMP):
+    def get_col_spec(self):
+        return "TIMESTAMP"
+
 class MSText(sqltypes.TEXT):
     def __init__(self, **kw):
         self.binary = 'binary' in kw
@@ -232,7 +236,9 @@ colspecs = {
     sqltypes.Boolean : MSBoolean,
     sqltypes.TEXT : MSText,
     sqltypes.CHAR: MSChar,
+    sqltypes.TIMESTAMP: MSTimeStamp
 }
+
 
 ischema_names = {
     'boolean':MSBoolean,
@@ -251,7 +257,7 @@ ischema_names = {
     'numeric' : MSNumeric,
     'float' : MSFloat,
     'double' : MSDouble,
-    'timestamp' : MSDateTime,
+    'timestamp' : MSTimeStamp,
     'datetime' : MSDateTime,
     'date' : MSDate,
     'time' : MSTime,
