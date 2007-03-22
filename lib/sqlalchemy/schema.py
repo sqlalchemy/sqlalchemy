@@ -1067,13 +1067,53 @@ class Index(SchemaItem):
 class MetaData(SchemaItem):
     """Represent a collection of Tables and their associated schema constructs."""
 
-    def __init__(self, name=None, **kwargs):
+    def __init__(self, name=None, url=None, engine=None, **kwargs):
+        """create a new MetaData object.
+        
+            name
+                optional name for this MetaData instance.
+            
+            url
+                a string or URL instance which will be passed to create_engine(),
+                along with **kwargs - this MetaData will be bound to the resulting
+                engine.
+            
+            engine
+                an Engine instance to which this MetaData will be bound.
+                
+            case_sensitive
+                popped from **kwargs, indicates default case sensitive setting for
+                all contained objects.  defaults to True.
+            
+        """        
+
         self.tables = {}
         self.name = name
+        self._engine = None
         self._set_casing_strategy(name, kwargs)
+        if engine or url:
+            self.connect(engine or url, **kwargs)
 
     def is_bound(self):
-        return False
+        """return True if this MetaData is bound to an Engine."""
+        return self._engine is not None
+
+    def connect(self, engine_or_url, **kwargs):
+        """bind this MetaData to an Engine.
+        
+            engine_or_url
+                a string, URL or Engine instance.  If a string or URL,
+                will be passed to create_engine() along with **kwargs to
+                produce the engine which to connect to.  otherwise connects
+                directly to the given Engine.
+                
+        """
+        
+        from sqlalchemy.engine.url import URL
+        if isinstance(engine_or_url, basestring) or isinstance(engine_or_url, URL):
+            self._engine = sqlalchemy.create_engine(engine_or_url, **kwargs)
+        else:
+            self._engine = engine_or_url
 
     def clear(self):
         self.tables.clear()
@@ -1140,19 +1180,17 @@ class MetaData(SchemaItem):
         return self._engine
 
 class BoundMetaData(MetaData):
-    """Build upon ``MetaData`` to provide the capability to bind to an
-``Engine`` implementation.
+    """``MetaData`` for which the first argument is a required Engine, url string, or URL instance.
+    
     """
 
     def __init__(self, engine_or_url, name=None, **kwargs):
-        super(BoundMetaData, self).__init__(name, **kwargs)
-        if isinstance(engine_or_url, basestring):
-            self._engine = sqlalchemy.create_engine(engine_or_url, **kwargs)
+        from sqlalchemy.engine.url import URL
+        if isinstance(engine_or_url, basestring) or isinstance(engine_or_url, URL):
+            super(BoundMetaData, self).__init__(name=name, url=engine_or_url, **kwargs)
         else:
-            self._engine = engine_or_url
-
-    def is_bound(self):
-        return True
+            super(BoundMetaData, self).__init__(name=name, engine=engine_or_url, **kwargs)
+            
 
 class DynamicMetaData(MetaData):
     """Build upon ``MetaData`` to provide the capability to bind to 
@@ -1161,15 +1199,16 @@ thread-local basis.
     """
 
     def __init__(self, name=None, threadlocal=True, **kwargs):
-        super(DynamicMetaData, self).__init__(name, **kwargs)
         if threadlocal:
             self.context = util.ThreadLocal()
         else:
             self.context = self
         self.__engines = {}
+        super(DynamicMetaData, self).__init__(name=name, **kwargs)
 
     def connect(self, engine_or_url, **kwargs):
-        if isinstance(engine_or_url, str):
+        from sqlalchemy.engine.url import URL
+        if isinstance(engine_or_url, basestring) or isinstance(engine_or_url, URL):
             try:
                 self.context._engine = self.__engines[engine_or_url]
             except KeyError:

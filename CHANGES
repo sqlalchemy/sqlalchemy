@@ -9,6 +9,12 @@
     
     - slightly better support for bind params as column clauses, either
     via bindparam() or via literal(), i.e. select([literal('foo')])
+
+    - MetaData can bind to an engine either via "url" or "engine" kwargs
+    to constructor, or by using connect() method.  BoundMetaData is 
+    identical to MetaData except engine_or_url param is required.
+    DynamicMetaData is the same and provides thread-local connections 
+    be default.
     
     - exists() becomes useable as a standalone selectable, not just in a 
     WHERE clause, i.e. exists([columns], criterion).select()
