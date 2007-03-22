@@ -57,6 +57,8 @@
       it was my fault as BINARY was being passed and not BLOB for
       setinputsizes (also unit tests werent even setting input sizes).
 
+    - also fixed CLOB read/write on a separate changeset.
+
     - auto_setinputsizes defaults to True for Oracle, fixed cases where
       it improperly propigated bad types.
 

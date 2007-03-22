@@ -57,6 +57,12 @@ class OracleText(sqltypes.TEXT):
     def get_col_spec(self):
         return "CLOB"
 
+    def convert_result_value(self, value, dialect):
+        if value is None:
+            return None
+        else:
+            return value.read()
+
 class OracleString(sqltypes.String):
     def get_col_spec(self):
         return "VARCHAR(%(length)s)" % {'length' : self.length}

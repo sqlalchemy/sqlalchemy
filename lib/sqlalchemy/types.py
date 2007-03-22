@@ -371,7 +371,7 @@ class TIMESTAMP(DateTime): pass
 class DATETIME(DateTime): pass
 class DATE(Date): pass
 class TIME(Time): pass
-class CLOB(String): pass
+class CLOB(TEXT): pass
 class VARCHAR(String): pass
 class CHAR(String):pass
 class NCHAR(Unicode):pass
