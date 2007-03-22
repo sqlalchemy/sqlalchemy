@@ -452,54 +452,57 @@ class Session(object):
 
             identity_key(class\_, ident, entity_name=None)
                 class\_
-                    mapped class
-                
+                    mapped class (must be a positional argument)
+
                 ident
                     primary key, if the key is composite this is a tuple
                 
                 entity_name
-                    optional entity name. May be given as a
-                    positional arg or as a keyword arg.
+                    optional entity name
 
             identity_key(instance=instance)
                 instance
                     object instance (must be given as a keyword arg)
 
-            identity_key(row=row, class=class\_, entity_name=None)
+            identity_key(class\_, row=row, entity_name=None)
+                class\_
+                    mapped class (must be a positional argument)
+                
                 row
                     result proxy row (must be given as a keyword arg)
-            
+
+                entity_name
+                    optional entity name (must be given as a keyword arg)
         """
         if args:
-            kw = {}
-            if len(args) == 2:
+            if len(args) == 1:
+                class_ = args[0]
+                try:
+                    row = kwargs.pop("row")
+                except KeyError:
+                    ident = kwargs.pop("ident")
+                entity_name = kwargs.pop("entity_name", None)
+            elif len(args) == 2:
                 class_, ident = args
                 entity_name = kwargs.pop("entity_name", None)
-                assert not kwargs, ("unknown keyword arguments: %s"
-                    % (kwargs.keys(),))
-            else:
-                assert len(args) == 3, ("two or three positional args are "
-                    "accepted, got %s" % len(args))
+            elif len(args) == 3:
                 class_, ident, entity_name = args
-            mapper = _class_mapper(class_, entity_name=entity_name)
-            return mapper.instance_key_from_primary_key(ident,
-                entity_name=entity_name)
-        else:
-            try:
-                instance = kwargs.pop("instance")
-            except KeyError:
-                row = kwargs.pop("row")
-                class_ = kwargs.pop("class")
-                entity_name = kwargs.pop("entity_name", None)
-                assert not kwargs, ("unknown keyword arguments: %s"
-                    % (kwargs.keys(),))
-                mapper = _class_mapper(class_, entity_name=entity_name)
-                return mapper.identity_key_from_row(row)
             else:
-                assert not kwargs, ("unknown keyword arguments: %s"
-                    % (kwargs.keys(),))
-                mapper = _object_mapper(instance)
-                return mapper.identity_key_from_instance(instance)
+                raise exceptions.ArgumentError("expected up to three "
+                    "positional arguments, got %s" % len(args))
+            if kwargs:
+                raise exceptions.ArgumentError("unknown keyword arguments: %s"
+                    % ", ".join(kwargs.keys()))
+            mapper = _class_mapper(class_, entity_name=entity_name)
+            if "ident" in locals():
+                return mapper.identity_key_from_primary_key(ident)
+            return mapper.identity_key_from_row(row)
+        instance = kwargs.pop("instance")
+        if kwargs:
+            raise exceptions.ArgumentError("unknown keyword arguments: %s"
+                % ", ".join(kwargs.keys()))
+        mapper = _object_mapper(instance)
+        return mapper.identity_key_from_instance(instance)
 
     def _save_impl(self, object, **kwargs):
         if hasattr(object, '_instance_key'):

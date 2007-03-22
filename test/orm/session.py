@@ -176,6 +176,40 @@ class SessionTest(AssertMixin):
         assert s.query(Address).selectone().address_id == a.address_id
         assert s.query(User).selectfirst() is None
 
+    def _assert_key(self, got, expect):
+        assert got == expect, "expected %r got %r" % (expect, got)
+
+    def test_identity_key_1(self):
+        mapper(User, users)
+        mapper(User, users, entity_name="en")
+        s = create_session()
+        key = s.identity_key(User, 1)
+        self._assert_key(key, (User, (1,), None))
+        key = s.identity_key(User, 1, "en")
+        self._assert_key(key, (User, (1,), "en"))
+        key = s.identity_key(User, 1, entity_name="en")
+        self._assert_key(key, (User, (1,), "en"))
+        key = s.identity_key(User, ident=1, entity_name="en")
+        self._assert_key(key, (User, (1,), "en"))
+
+    def test_identity_key_2(self):
+        mapper(User, users)
+        s = create_session()
+        u = User()
+        s.save(u)
+        s.flush()
+        key = s.identity_key(instance=u)
+        self._assert_key(key, (User, (u.user_id,), None))
+
+    def test_identity_key_3(self):
+        mapper(User, users)
+        mapper(User, users, entity_name="en")
+        s = create_session()
+        row = {users.c.user_id: 1, users.c.user_name: "Frank"}
+        key = s.identity_key(User, row=row)
+        self._assert_key(key, (User, (1,), None))
+        key = s.identity_key(User, row=row, entity_name="en")
+        self._assert_key(key, (User, (1,), "en"))
         
 class OrphanDeletionTest(AssertMixin):
 
