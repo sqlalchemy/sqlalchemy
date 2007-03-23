@@ -194,7 +194,7 @@ class PropertyLoader(StrategizedProperty):
         else:
             raise exceptions.ArgumentError("relation '%s' expects a class or a mapper argument (received: %s)" % (self.key, type(self.argument)))
 
-        # insure the "select_mapper", if different from the regular target mapper, is compiled.
+        # ensure the "select_mapper", if different from the regular target mapper, is compiled.
         self.mapper.get_select_mapper()._check_compile()
 
         if self.association is not None:

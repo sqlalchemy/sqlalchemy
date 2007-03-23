@@ -1,81 +1,64 @@
 0.3.6
 - sql:
     - bindparam() names are now repeatable!  specify two
-     distinct bindparam()s with the same name in a single statement,
-     and the key will be shared.  proper positional/named args translate
-     at compile time.  for the old behavior of "aliasing" bind parameters
-     with conflicting names, specify "unique=True" - this option is
-     still used internally for all the auto-genererated (value-based) 
-     bind parameters.    
+      distinct bindparam()s with the same name in a single statement,
+      and the key will be shared.  proper positional/named args translate
+      at compile time.  for the old behavior of "aliasing" bind parameters
+      with conflicting names, specify "unique=True" - this option is
+      still used internally for all the auto-genererated (value-based) 
+      bind parameters.    
     
     - slightly better support for bind params as column clauses, either
-    via bindparam() or via literal(), i.e. select([literal('foo')])
+      via bindparam() or via literal(), i.e. select([literal('foo')])
 
     - MetaData can bind to an engine either via "url" or "engine" kwargs
-    to constructor, or by using connect() method.  BoundMetaData is 
-    identical to MetaData except engine_or_url param is required.
-    DynamicMetaData is the same and provides thread-local connections 
-    be default.
+      to constructor, or by using connect() method. BoundMetaData is
+      identical to MetaData except engine_or_url param is required.
+      DynamicMetaData is the same and provides thread-local connections be
+      default.
     
-    - exists() becomes useable as a standalone selectable, not just in a 
-    WHERE clause, i.e. exists([columns], criterion).select()
+    - exists() becomes useable as a standalone selectable, not just in a
+      WHERE clause, i.e. exists([columns], criterion).select()
 
     - correlated subqueries work inside of ORDER BY, GROUP BY
 
-    - fixed function execution with explicit connections, i.e. 
-    conn.execute(func.dosomething())
+    - fixed function execution with explicit connections, i.e.
+      conn.execute(func.dosomething())
 
     - use_labels flag on select() wont auto-create labels for literal text
       column elements, since we can make no assumptions about the text. to
-      create labels for literal columns, you can say "somecol AS somelabel",
-      or use literal_column("somecol").label("somelabel")
+      create labels for literal columns, you can say "somecol AS
+      somelabel", or use literal_column("somecol").label("somelabel")
 
-    - quoting wont occur for literal columns when they are "proxied" into the
-    column collection for their selectable (is_literal flag is propigated).
-    literal columns are specified via literal_column("somestring").
+    - quoting wont occur for literal columns when they are "proxied" into
+      the column collection for their selectable (is_literal flag is
+      propigated). literal columns are specified via
+      literal_column("somestring").
 
-    - added "fold_equivalents" boolean argument to Join.select(), which removes
-    'duplicate' columns from the resulting column clause that are known to be 
-    equivalent based on the join condition.  this is of great usage when 
-    constructing subqueries of joins which Postgres complains about if 
-    duplicate column names are present.
+    - added "fold_equivalents" boolean argument to Join.select(), which
+      removes 'duplicate' columns from the resulting column clause that
+      are known to be equivalent based on the join condition. this is of
+      great usage when constructing subqueries of joins which Postgres
+      complains about if duplicate column names are present.
 
     - fixed use_alter flag on ForeignKeyConstraint [ticket:503]
 
     - fixed usage of 2.4-only "reversed" in topological.py [ticket:506]
 
     - for hackers, refactored the "visitor" system of ClauseElement and
-    SchemaItem so that the traversal of items is controlled by the 
-    ClauseVisitor itself, using the method visitor.traverse(item).
-    accept_visitor() methods can still be called directly but will
-    not do any traversal of child items.  ClauseElement/SchemaItem now 
-    have a configurable get_children() method to return the collection
-    of child elements for each parent object. This allows the full
-    traversal of items to be clear and unambiguous (as well as loggable),
-    with an easy method of limiting a traversal (just pass flags which
-    are picked up by appropriate get_children() methods). [ticket:501]
+      SchemaItem so that the traversal of items is controlled by the
+      ClauseVisitor itself, using the method visitor.traverse(item).
+      accept_visitor() methods can still be called directly but will not
+      do any traversal of child items. ClauseElement/SchemaItem now have a
+      configurable get_children() method to return the collection of child
+      elements for each parent object. This allows the full traversal of
+      items to be clear and unambiguous (as well as loggable), with an
+      easy method of limiting a traversal (just pass flags which are
+      picked up by appropriate get_children() methods). [ticket:501]
 
     - the "else_" parameter to the case statement now properly works when
-    set to zero.
+      set to zero.
 
-
-- oracle:
-    - got binary working for any size input !  cx_oracle works fine,
-      it was my fault as BINARY was being passed and not BLOB for
-      setinputsizes (also unit tests werent even setting input sizes).
-
-    - also fixed CLOB read/write on a separate changeset.
-
-    - auto_setinputsizes defaults to True for Oracle, fixed cases where
-      it improperly propigated bad types.
-
-- mysql:
-    - added a catchall **kwargs to MSString, to help reflection of 
-      obscure types (like "varchar() binary" in MS 4.0)
-
-    - added explicit MSTimeStamp type which takes effect when using 
-    types.TIMESTAMP.
-    
 - orm:
     - the full featureset of the SelectResults extension has been merged
       into a new set of methods available off of Query.  These methods
@@ -100,41 +83,42 @@
       like they always did.  join_to()/join_via() are still there although
       the generative join()/outerjoin() methods are easier to use.
       
-    - the return value for multiple mappers used with instances() now returns
-      a cartesian product of the requested list of mappers, represented
-      as a list of tuples.  this corresponds to the documented behavior.
-      So that instances match up properly, the "uniquing" is disabled when 
-      this feature is used.
+    - the return value for multiple mappers used with instances() now
+      returns a cartesian product of the requested list of mappers,
+      represented as a list of tuples. this corresponds to the documented
+      behavior. So that instances match up properly, the "uniquing" is
+      disabled when this feature is used.
 
-    - many-to-many table will be properly handled even for operations that
-      occur on the "backref" side of the operation [ticket:249]
-      
-    - Query has add_entity() and add_column() generative methods.  these
-      will add the given mapper/class or ColumnElement to the query at compile
-      time, and apply them to the instances() method.  the user is responsible
-      for constructing reasonable join conditions (otherwise you can get
-      full cartesian products).  result set is the list of tuples, non-uniqued.
+    - Query has add_entity() and add_column() generative methods. these
+      will add the given mapper/class or ColumnElement to the query at
+      compile time, and apply them to the instances() method. the user is
+      responsible for constructing reasonable join conditions (otherwise
+      you can get full cartesian products). result set is the list of
+      tuples, non-uniqued.
 
-    - eager loading will not "aliasize" "order by" clauses that were placed 
-      in the select statement by something other than the eager loader
-      itself, to fix possibility of dupe columns as illustrated in
-      [ticket:495].  however, this means you have to be more careful with
-      the columns placed in the "order by" of Query.select(), that you have
-      explicitly named them in your criterion (i.e. you cant rely on the
-      eager loader adding them in for you)
-      
-    - strings and columns can also be sent to the *args of instances() where
-      those exact result columns will be part of the result tuples.
+    - strings and columns can also be sent to the *args of instances()
+      where those exact result columns will be part of the result tuples.
 
     - a full select() construct can be passed to query.select() (which
-      worked anyway), but also query.selectfirst(), query.selectone() which
-      will be used as is (i.e. no query is compiled). works similarly to
-      sending the results to instances().
+      worked anyway), but also query.selectfirst(), query.selectone()
+      which will be used as is (i.e. no query is compiled). works
+      similarly to sending the results to instances().
 
+    - eager loading will not "aliasize" "order by" clauses that were
+      placed in the select statement by something other than the eager
+      loader itself, to fix possibility of dupe columns as illustrated in
+      [ticket:495]. however, this means you have to be more careful with
+      the columns placed in the "order by" of Query.select(), that you
+      have explicitly named them in your criterion (i.e. you cant rely on
+      the eager loader adding them in for you)
+      
     - added a handy multi-use "identity_key()" method to Session, allowing
       the generation of identity keys for primary key values, instances,
       and rows, courtesy Daniel Miller
-      
+
+    - many-to-many table will be properly handled even for operations that
+      occur on the "backref" side of the operation [ticket:249]
+
     - added "refresh-expire" cascade [ticket:492].  allows refresh() and
       expire() calls to propigate along relationships.
     
@@ -148,24 +132,23 @@
       in other tables into the join condition which arent parent of the
       relationship's parent/child mappings
 
-    - flush fixes on cyclical-referential relationships that contain references
-      to other instances outside of the cyclical chain, when some of the 
-      objects in the cycle are not actually part of the flush
+    - flush fixes on cyclical-referential relationships that contain
+      references to other instances outside of the cyclical chain, when
+      some of the objects in the cycle are not actually part of the flush
       
-    - put an aggressive check for "flushing object A with a collection
-      of B's, but you put a C in the collection" error condition - 
-      **even if C is a subclass of B**, unless B's mapper loads polymorphically.
-      Otherwise, the collection will later load a "B" which should be a "C"
-      (since its not polymorphic) which breaks in bi-directional relationships
-      (i.e. C has its A, but A's backref will lazyload it as a different 
-      instance of type "B") [ticket:500]
-      This check is going to bite some of you who do this without issues, 
-      so the error message will also document a flag "enable_typechecks=False" 
-      to disable this checking.  But be aware that bi-directional relationships
-      in particular become fragile without this check.
+    - put an aggressive check for "flushing object A with a collection of
+      B's, but you put a C in the collection" error condition - **even if
+      C is a subclass of B**, unless B's mapper loads polymorphically.
+      Otherwise, the collection will later load a "B" which should be a
+      "C" (since its not polymorphic) which breaks in bi-directional
+      relationships (i.e. C has its A, but A's backref will lazyload it as
+      a different instance of type "B") [ticket:500] This check is going
+      to bite some of you who do this without issues, so the error message
+      will also document a flag "enable_typechecks=False" to disable this
+      checking. But be aware that bi-directional relationships in
+      particular become fragile without this check.
 
 - extensions:
-
     - options() method on SelectResults now implemented "generatively"
       like the rest of the SelectResults methods [ticket:472].  But
       you're going to just use Query now anyway.
@@ -190,6 +173,23 @@
 
     - cleanup of module importing code; specifiable DB-API module; more 
       explicit ordering of module preferences. [ticket:480]
+
+- oracle:
+    - got binary working for any size input !  cx_oracle works fine,
+      it was my fault as BINARY was being passed and not BLOB for
+      setinputsizes (also unit tests werent even setting input sizes).
+
+    - also fixed CLOB read/write on a separate changeset.
+
+    - auto_setinputsizes defaults to True for Oracle, fixed cases where
+      it improperly propigated bad types.
+
+- mysql:
+    - added a catchall **kwargs to MSString, to help reflection of 
+      obscure types (like "varchar() binary" in MS 4.0)
+
+    - added explicit MSTimeStamp type which takes effect when using 
+      types.TIMESTAMP.
 
     
 0.3.5
