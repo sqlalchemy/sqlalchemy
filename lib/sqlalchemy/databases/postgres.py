@@ -487,7 +487,7 @@ class PGDialect(ansisql.ANSIDialect):
                     for column in referred_columns:
                         refspec.append(".".join([referred_table, column]))
 
-                table.append_constraint(ForeignKeyConstraint(constrained_columns, refspec, conname))
+                table.append_constraint(schema.ForeignKeyConstraint(constrained_columns, refspec, conname))
 
 class PGCompiler(ansisql.ANSICompiler):
     def visit_insert_column(self, column, parameters):

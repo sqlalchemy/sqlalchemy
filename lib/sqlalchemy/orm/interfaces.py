@@ -187,7 +187,7 @@ class OperationContext(object):
         pass
 
 class MapperOption(object):
-    """Describe a modification to an OperationContext."""
+    """Describe a modification to an OperationContext or Query."""
 
     def process_query_context(self, context):
         pass

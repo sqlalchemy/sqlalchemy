@@ -191,8 +191,6 @@
     - cleanup of module importing code; specifiable DB-API module; more 
       explicit ordering of module preferences. [ticket:480]
 
-
-
     
 0.3.5
 - sql:

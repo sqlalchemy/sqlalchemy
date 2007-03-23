@@ -3,7 +3,7 @@ use_setuptools()
 from setuptools import setup, find_packages
 
 setup(name = "SQLAlchemy",
-    version = "0.3.5",
+    version = "0.3.6",
     description = "Database Abstraction Library",
     author = "Mike Bayer",
     author_email = "mike_mp@zzzcomputing.com",
@@ -15,7 +15,7 @@ setup(name = "SQLAlchemy",
 SQLAlchemy is:
 
     * The Python SQL toolkit and Object Relational Mapper that gives application developers the full power and flexibility of SQL. SQLAlchemy provides a full suite of well known enterprise-level persistence patterns, designed for efficient and high-performing database access, adapted into a simple and Pythonic domain language.
-    * extremely easy to use for all the basic tasks, such as: accessing thread-safe and pooled connections, constructing SQL from Python expressions, finding object instances, and commiting object modifications back to the database.
+    * extremely easy to use for all the basic tasks, such as: accessing pooled connections, constructing SQL from Python expressions, finding object instances, and commiting object modifications back to the database.
     * powerful enough for complicated tasks, such as: eager load a graph of objects and their dependencies via joins; map recursive adjacency structures automatically; map objects to not just tables but to any arbitrary join or select statement; combine multiple tables together to load whole sets of otherwise unrelated objects from a single result set; commit entire graphs of object changes in one step.
     * built to conform to what DBAs demand, including the ability to swap out generated SQL with hand-optimized statements, full usage of bind parameters for all literal values, fully transactionalized and consistent updates using Unit of Work.
     * modular. Different parts of SQLAlchemy can be used independently of the rest, including the connection pool, SQL construction, and ORM. SQLAlchemy is constructed in an open style that allows plenty of customization, with an architecture that supports custom datatypes, custom SQL extensions, and ORM plugins which can augment or extend mapping functionality.
