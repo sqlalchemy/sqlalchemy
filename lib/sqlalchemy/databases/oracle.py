@@ -192,6 +192,9 @@ class OracleDialect(ansisql.ANSIDialect):
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
 
+    def max_identifier_length(self):
+        return 30
+        
     def oid_column_name(self, column):
         if not isinstance(column.table, sql.TableClause) and not isinstance(column.table, sql.Select):
             return None

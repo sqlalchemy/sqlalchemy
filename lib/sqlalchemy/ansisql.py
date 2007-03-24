@@ -12,7 +12,7 @@ module.
 
 from sqlalchemy import schema, sql, engine, util, sql_util, exceptions
 from  sqlalchemy.engine import default
-import string, re, sets, weakref
+import string, re, sets, weakref, random
 
 ANSI_FUNCS = sets.ImmutableSet(['CURRENT_DATE', 'CURRENT_TIME', 'CURRENT_TIMESTAMP',
                                 'CURRENT_USER', 'LOCALTIME', 'LOCALTIMESTAMP',
@@ -125,8 +125,8 @@ class ANSICompiler(sql.Compiled):
         # which will be passed to a ResultProxy and used for resultset-level value conversion
         self.typemap = {}
 
-        # a dictionary of select columns mapped to their name or key
-        self.columns = {}
+        # a dictionary of select columns labels mapped to their "generated" label
+        self.column_labels = {}
 
         # True if this compiled represents an INSERT
         self.isinsert = False
@@ -237,16 +237,22 @@ class ANSICompiler(sql.Compiled):
         return ""
 
     def visit_label(self, label):
+        labelname = label.name
+        if len(labelname) >= self.dialect.max_identifier_length():
+            labelname = labelname[0:self.dialect.max_identifier_length() - 6] + "_" + hex(random.randint(0, 65535))[2:]
+        
         if len(self.select_stack):
-            self.typemap.setdefault(label.name.lower(), label.obj.type)
-        self.strings[label] = self.strings[label.obj] + " AS "  + self.preparer.format_label(label)
-
+            self.typemap.setdefault(labelname.lower(), label.obj.type)
+            if isinstance(label.obj, sql._ColumnClause):
+                self.column_labels[label.obj._label] = labelname.lower()
+        self.strings[label] = self.strings[label.obj] + " AS "  + self.preparer.format_label(label, labelname)
+        
     def visit_column(self, column):
         if len(self.select_stack):
             # if we are within a visit to a Select, set up the "typemap"
             # for this column which is used to translate result set values
             self.typemap.setdefault(column.name.lower(), column.type)
-            self.columns.setdefault(column.key, column)
+            self.column_labels.setdefault(column._label, column.name.lower())
         if column.table is None or not column.table.named_with_column():
             self.strings[column] = self.preparer.format_column(column)
         else:
@@ -1015,8 +1021,8 @@ class ANSIIdentifierPreparer(object):
     def format_sequence(self, sequence):
         return self.__generic_obj_format(sequence, sequence.name)
 
-    def format_label(self, label):
-        return self.__generic_obj_format(label, label.name)
+    def format_label(self, label, name=None):
+        return self.__generic_obj_format(label, name or label.name)
 
     def format_alias(self, alias):
         return self.__generic_obj_format(alias, alias.name)

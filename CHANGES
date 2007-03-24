@@ -1,3 +1,12 @@
+0.3.7
+- sql:
+    - column labels are now generated in the compilation phase, which
+      means their lengths are dialect-dependent.  So on oracle a label
+      that gets truncated to 30 chars will go out to 63 characters
+      on postgres.  Also, the true labelname is always attached as the
+      accessor on the parent Selectable so theres no need to be aware
+      of the genrerated label names [ticket:512].
+      
 0.3.6
 - sql:
     - bindparam() names are now repeatable!  specify two

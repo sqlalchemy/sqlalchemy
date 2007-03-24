@@ -11,6 +11,7 @@ def suite():
         'sql.select',
         'sql.selectable',
         'sql.case_statement', 
+        'sql.labels',
         
         # assorted round-trip tests
         'sql.query',

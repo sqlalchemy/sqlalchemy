@@ -48,6 +48,11 @@ class DefaultDialect(base.Dialect):
             typeobj = typeobj()
         return typeobj
 
+    def max_identifier_length(self):
+        # TODO: probably raise this and fill out
+        # db modules better
+        return 30
+        
     def oid_column_name(self, column):
         return None
 

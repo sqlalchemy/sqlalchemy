@@ -1771,7 +1771,7 @@ class Join(FromClause):
         return [self] + self.onclause._get_from_objects() + self.left._get_from_objects() + self.right._get_from_objects()
 
 class Alias(FromClause):
-    def __init__(self, selectable, alias = None):
+    def __init__(self, selectable, alias=None):
         baseselectable = selectable
         while isinstance(baseselectable, Alias):
             baseselectable = baseselectable.selectable
@@ -1808,6 +1808,7 @@ class Alias(FromClause):
         for c in self.c:
             yield c
         yield self.selectable
+        
     def accept_visitor(self, visitor):
         visitor.visit_alias(self)
 
@@ -1865,6 +1866,13 @@ class _ColumnClause(ColumnElement):
         self.is_literal = is_literal
 
     def _get_label(self):
+        """generate a 'label' for this column.
+        
+        the label is a product of the parent table name and column name, and 
+        is treated as a unique identifier of this Column across all Tables and derived 
+        selectables for a particular metadata collection.
+        """
+        
         # for a "literal" column, we've no idea what the text is
         # therefore no 'label' can be automatically generated
         if self.is_literal:
@@ -1872,8 +1880,10 @@ class _ColumnClause(ColumnElement):
         if self.__label is None:
             if self.table is not None and self.table.named_with_column():
                 self.__label = self.table.name + "_" + self.name
-                if self.table.c.has_key(self.__label) or len(self.__label) >= 30:
-                    self.__label = self.__label[0:24] + "_" + hex(random.randint(0, 65535))[2:]
+                counter = 1
+                while self.table.c.has_key(self.__label):
+                    self.__label = self.__label + "_%d" % counter
+                    counter += 1
             else:
                 self.__label = self.name
             self.__label = "".join([x for x in self.__label if x in legal_characters])

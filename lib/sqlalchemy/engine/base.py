@@ -105,6 +105,12 @@ class Dialect(sql.AbstractDialect):
 
         raise NotImplementedError()
 
+    def max_identifier_length(self):
+        """Return the maximum length of identifier names.
+        
+        Return None if no limit."""
+        return None
+
     def supports_sane_rowcount(self):
         """Indicate whether the dialect properly implements statements rowcount.
 
@@ -503,7 +509,7 @@ class Connection(Connectable):
         proxy(str(compiled), parameters)
         context.post_exec(self.__engine, proxy, compiled, parameters)
         rpargs = self.__engine.dialect.create_result_proxy_args(self, cursor)
-        return ResultProxy(self.__engine, self, cursor, context, typemap=compiled.typemap, columns=compiled.columns, **rpargs)
+        return ResultProxy(self.__engine, self, cursor, context, typemap=compiled.typemap, column_labels=compiled.column_labels, **rpargs)
 
     # poor man's multimethod/generic function thingy
     executors = {
@@ -803,7 +809,7 @@ class ResultProxy(object):
         else:
             return object.__new__(cls, *args, **kwargs)
 
-    def __init__(self, engine, connection, cursor, executioncontext=None, typemap=None, columns=None, should_prefetch=None):
+    def __init__(self, engine, connection, cursor, executioncontext=None, typemap=None, column_labels=None, should_prefetch=None):
         """ResultProxy objects are constructed via the execute() method on SQLEngine."""
 
         self.connection = connection
@@ -811,7 +817,7 @@ class ResultProxy(object):
         self.cursor = cursor
         self.engine = engine
         self.closed = False
-        self.columns = columns
+        self.column_labels = column_labels
         if executioncontext is not None:
             self.__executioncontext = executioncontext
             self.rowcount = executioncontext.get_rowcount(cursor)
@@ -823,6 +829,7 @@ class ResultProxy(object):
         self.props = {}
         self.keys = []
         i = 0
+        
         if metadata is not None:
             for item in metadata:
                 # sqlite possibly prepending table name to colnames so strip
@@ -874,36 +881,21 @@ class ResultProxy(object):
         try:
             return self.__key_cache[key]
         except KeyError:
-            # TODO: use has_key on these, too many potential KeyErrors being raised
-            if isinstance(key, sql.ColumnElement):
-                try:
-                    rec = self.props[key._label.lower()]
-                except KeyError:
-                    try:
-                        rec = self.props[key.key.lower()]
-                    except KeyError:
-                        try:
-                            rec = self.props[key.name.lower()]
-                        except KeyError:
-                            raise exceptions.NoSuchColumnError("Could not locate column in row for column '%s'" % str(key))
-            elif isinstance(key, str):
-                try:
-                    rec = self.props[key.lower()]
-                except KeyError:
-                    try:
-                        if self.columns is not None:
-                            rec = self._convert_key(self.columns[key])
-                        else:
-                            raise
-                    except KeyError:
-                        raise exceptions.NoSuchColumnError("Could not locate column in row for column '%s'" % str(key))
-            else:
-                try:
-                    rec = self.props[key]
-                except KeyError:
-                    raise exceptions.NoSuchColumnError("Could not locate column in row for column '%s'" % str(key))
+            if isinstance(key, int) and key in self.props:
+                rec = self.props[key]
+            elif isinstance(key, basestring) and key.lower() in self.props:
+                rec = self.props[key.lower()]
+            elif isinstance(key, sql.ColumnElement):
+                label = self.column_labels.get(key._label, key.name)
+                if label in self.props:
+                    rec = self.props[label]
+                        
+            if not "rec" in locals():
+                raise exceptions.NoSuchColumnError("Could not locate column in row for column '%s'" % (repr(key)))
+
             self.__key_cache[key] = rec
             return rec
+            
 
     def _has_key(self, row, key):
         try:

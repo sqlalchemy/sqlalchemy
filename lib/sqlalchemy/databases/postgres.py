@@ -279,6 +279,9 @@ class PGDialect(ansisql.ANSIDialect):
     def create_execution_context(self):
         return PGExecutionContext(self)
 
+    def max_identifier_length(self):
+        return 68
+        
     def type_descriptor(self, typeobj):
         if self.version == 2:
             return sqltypes.adapt_type(typeobj, pg2_colspecs)
