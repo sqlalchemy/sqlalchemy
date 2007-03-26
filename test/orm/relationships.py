@@ -673,6 +673,50 @@ class TypeMatchTest(testbase.ORMTest):
         except exceptions.AssertionError, err:
             assert str(err) == "Attribute 'a' on class '%s' doesn't handle objects of type '%s'" % (D, B)
 
+class CustomCollectionsTest(testbase.ORMTest):
+    def define_tables(self, metadata):
+        global sometable, someothertable
+        sometable = Table('sometable', metadata,
+            Column('col1',Integer, primary_key=True),
+            Column('data', String(30)))
+        someothertable = Table('someothertable', metadata, 
+            Column('col1', Integer, primary_key=True),
+            Column('scol1', Integer, ForeignKey(sometable.c.col1)),
+            Column('data', String(20))
+        )
+    def testbasic(self):
+        class MyList(list):
+            pass
+        class Foo(object):
+            pass
+        class Bar(object):
+            pass
+        mapper(Foo, sometable, properties={
+            'bars':relation(Bar, collection_class=MyList)
+        })
+        mapper(Bar, someothertable)
+        f = Foo()
+        assert isinstance(f.bars.data, MyList)
+    def testlazyload(self):
+        """test that a 'set' can be used as a collection and can lazyload."""
+        class Foo(object):
+            pass
+        class Bar(object):
+            pass
+        mapper(Foo, sometable, properties={
+            'bars':relation(Bar, collection_class=set)
+        })
+        mapper(Bar, someothertable)
+        f = Foo()
+        f.bars.add(Bar())
+        f.bars.add(Bar())
+        sess = create_session()
+        sess.save(f)
+        sess.flush()
+        sess.clear()
+        f = sess.query(Foo).get(f.col1)
+        assert len(list(f.bars)) == 2
+
 class ViewOnlyTest(testbase.ORMTest):
     """test a view_only mapping where a third table is pulled into the primary join condition,
     using overlapping PK column names (should not produce "conflicting column" error)"""

@@ -1,9 +1,10 @@
 from testbase import PersistTest
 import sqlalchemy.util as util
 import sqlalchemy.orm.attributes as attributes
+from sqlalchemy import exceptions
 import unittest, sys, os
 import pickle
-
+import testbase
 
 class MyTest(object):pass
 class MyTest2(object):pass
@@ -328,6 +329,49 @@ class AttributesTest(PersistTest):
 
         manager = attributes.AttributeManager()
         manager.reset_class_managed(Foo)
+    
+    def testcollectionclasses(self):
+        manager = attributes.AttributeManager()
+        class Foo(object):pass
+        manager.register_attribute(Foo, "collection", uselist=True, typecallable=set)
+        assert isinstance(Foo().collection.data, set)
         
+        manager.register_attribute(Foo, "collection", uselist=True, typecallable=dict)
+        try:
+            Foo().collection
+            assert False
+        except exceptions.ArgumentError, e:
+            assert str(e) == "Dictionary collection class 'dict' must implement an append() method"
+
+        class MyDict(dict):
+            def append(self, item):
+                self[item.foo] = item
+        manager.register_attribute(Foo, "collection", uselist=True, typecallable=MyDict)
+        assert isinstance(Foo().collection.data, MyDict)
+        
+        class MyColl(object):pass
+        manager.register_attribute(Foo, "collection", uselist=True, typecallable=MyColl)
+        try:
+            Foo().collection
+            assert False
+        except exceptions.ArgumentError, e:
+            assert str(e) == "Collection class 'MyColl' is not of type 'list', 'set', or 'dict' and has no append() or add() method"
+        
+        class MyColl(object):
+            def __iter__(self):
+                return iter([])
+            def append(self, item):
+                pass
+        manager.register_attribute(Foo, "collection", uselist=True, typecallable=MyColl)
+        try:
+            Foo().collection
+            assert False
+        except exceptions.ArgumentError, e:
+            assert str(e) == "Collection class 'MyColl' is not of type 'list', 'set', or 'dict' and has no clear() method"
+
+        def foo(self):pass
+        MyColl.clear = foo
+        assert isinstance(Foo().collection.data, MyColl)
+            
 if __name__ == "__main__":
-    unittest.main()
+    testbase.main()

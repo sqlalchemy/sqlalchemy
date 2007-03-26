@@ -162,15 +162,6 @@ class InstrumentedAttribute(object):
         else:
             return []
 
-    def _adapt_list(self, data):
-        if self.typecallable is not None:
-            t = self.typecallable()
-            if data is not None:
-                [t.append(x) for x in data]
-            return t
-        else:
-            return data
-
     def initialize(self, obj):
         """Initialize this attribute on the given object instance.
 
@@ -215,7 +206,7 @@ class InstrumentedAttribute(object):
                         return InstrumentedAttribute.PASSIVE_NORESULT
                     self.logger.debug("Executing lazy callable on %s.%s" % (orm_util.instance_str(obj), self.key))
                     values = callable_()
-                    l = InstrumentedList(self, obj, self._adapt_list(values), init=False)
+                    l = InstrumentedList(self, obj, values, init=False)
 
                     # if a callable was executed, then its part of the "committed state"
                     # if any, so commit the newly loaded data
@@ -362,6 +353,7 @@ class InstrumentedAttribute(object):
 
 InstrumentedAttribute.logger = logging.class_logger(InstrumentedAttribute)
 
+    
 class InstrumentedList(object):
     """Instrument a list-based attribute.
 
@@ -388,21 +380,42 @@ class InstrumentedList(object):
         # and the list attribute, which interferes with immediate garbage collection.
         self.__obj = weakref.ref(obj)
         self.key = attr.key
-        self.data = data or attr._blank_list()
 
         # adapt to lists or sets
         # TODO: make three subclasses of InstrumentedList that come off from a
         # metaclass, based on the type of data sent in
-        if hasattr(self.data, 'append'):
+        if attr.typecallable is not None:
+            self.data = attr.typecallable()
+        else:
+            self.data = data or attr._blank_list()
+        
+        if isinstance(self.data, list):
             self._data_appender = self.data.append
             self._clear_data = self._clear_list
-        elif hasattr(self.data, 'add'):
+        elif isinstance(self.data, util.Set):
             self._data_appender = self.data.add
             self._clear_data = self._clear_set
-        else:
-            raise exceptions.ArgumentError("Collection type " + repr(type(self.data)) + " has no append() or add() method")
-        if isinstance(self.data, dict):
+        elif isinstance(self.data, dict):
+            if not hasattr(self.data, 'append'):
+                raise exceptions.ArgumentError("Dictionary collection class '%s' must implement an append() method" % type(self.data).__name__)
             self._clear_data = self._clear_dict
+        else:
+            if hasattr(self.data, 'append'):
+                self._data_appender = self.data.append
+            elif hasattr(self.data, 'add'):
+                self._data_appender = self.data.add
+            else:
+                raise exceptions.ArgumentError("Collection class '%s' is not of type 'list', 'set', or 'dict' and has no append() or add() method" % type(self.data).__name__)
+
+            if hasattr(self.data, 'clear'):
+                self._clear_data = self._clear_set
+            else:
+                raise exceptions.ArgumentError("Collection class '%s' is not of type 'list', 'set', or 'dict' and has no clear() method" % type(self.data).__name__)
+            
+        if data is not None and data is not self.data:
+            for elem in data:
+                self._data_appender(elem)
+                
 
         if init:
             for x in self.data:
@@ -475,7 +488,7 @@ class InstrumentedList(object):
         return repr(self.data)
 
     def __getattr__(self, attr):
-        """Proxie unknown methods and attributes to the underlying
+        """Proxy unknown methods and attributes to the underlying
         data array.  This allows custom list classes to be used.
         """
 

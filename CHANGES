@@ -6,7 +6,11 @@
       on postgres.  Also, the true labelname is always attached as the
       accessor on the parent Selectable so theres no need to be aware
       of the genrerated label names [ticket:512].
-      
+- orm:
+    - improved/fixed custom collection classes when giving it "set"/
+      "sets.Set" classes or subclasses (was still looking for append()
+      methods on them during lazy loads)
+
 0.3.6
 - sql:
     - bindparam() names are now repeatable!  specify two

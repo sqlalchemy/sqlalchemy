@@ -55,33 +55,6 @@ class HistoryTest(UnitOfWorkTest):
         u = s.query(m).select()[0]
         print u.addresses[0].user
 
-class CustomCollectionsTest(UnitOfWorkTest):
-    def setUpAll(self):
-        UnitOfWorkTest.setUpAll(self)
-        global sometable, metadata, someothertable
-        metadata = BoundMetaData(testbase.db)
-        sometable = Table('sometable', metadata,
-            Column('col1',Integer, primary_key=True))
-        someothertable = Table('someothertable', metadata, 
-            Column('col1', Integer, primary_key=True),
-            Column('scol1', Integer, ForeignKey(sometable.c.col1)),
-            Column('data', String(20))
-        )
-    def testbasic(self):
-        class MyList(list):
-            pass
-        class Foo(object):
-            pass
-        class Bar(object):
-            pass
-        mapper(Foo, sometable, properties={
-            'bars':relation(Bar, collection_class=MyList)
-        })
-        mapper(Bar, someothertable)
-        f = Foo()
-        assert isinstance(f.bars.data, MyList)
-    def tearDownAll(self):
-        UnitOfWorkTest.tearDownAll(self)
             
 class VersioningTest(UnitOfWorkTest):
     def setUpAll(self):
