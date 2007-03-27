@@ -21,6 +21,7 @@ changes at once.
 
 from sqlalchemy import util, logging, topological
 from sqlalchemy.orm import attributes
+from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.mapper import object_mapper, class_mapper
 from sqlalchemy.exceptions import *
 import StringIO
@@ -249,11 +250,17 @@ class UOWTransaction(object):
         save/delete registration is entered for the object.
         """
 
+
         #print "REGISTER", repr(obj), repr(getattr(obj, '_instance_key', None)), str(isdelete), str(listonly)
 
         # if object is not in the overall session, do nothing
         if not self.uow._is_valid(obj):
+            if logging.is_debug_enabled(self.logger):
+                self.logger.debug("object %s not part of session, not registering for flush" % (mapperutil.instance_str(obj)))
             return
+
+        if logging.is_debug_enabled(self.logger):
+            self.logger.debug("register object for flush: %s isdelete=%s listonly=%s postupdate=%s" % (mapperutil.instance_str(obj), isdelete, listonly, postupdate))
 
         mapper = object_mapper(obj)
         self.mappers.add(mapper)

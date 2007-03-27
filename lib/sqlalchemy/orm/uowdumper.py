@@ -1,4 +1,5 @@
 from sqlalchemy.orm import unitofwork
+from sqlalchemy.orm import util as mapperutil
 
 """Dumps out a string representation of a UOWTask structure"""
 
@@ -162,9 +163,9 @@ class UOWDumper(unitofwork.UOWExecutor):
             objid = "(placeholder)"
         else:
             if attribute is not None:
-                objid = "%s(%s).%s" % (te.obj.__class__.__name__, hex(id(te.obj)), attribute)
+                objid = "%s.%s" % (mapperutil.instance_str(te.obj), attribute)
             else:
-                objid = "%s(%s)" % (te.obj.__class__.__name__, hex(id(te.obj)))
+                objid = mapperutil.instance_str(te.obj)
         if self.verbose:
             return "%s (UOWTaskElement(%s, %s))" % (objid, hex(id(te)), (te.listonly and 'listonly' or (te.isdelete and 'delete' or 'save')))
         elif process:
@@ -190,9 +191,6 @@ class UOWDumper(unitofwork.UOWExecutor):
             return task.mapper.class_.__name__
         else:
             return '(none)'
-
-    def _repr(self, obj):
-        return "%s(%s)" % (obj.__class__.__name__, hex(id(obj)))
 
     def _indent(self):
         return "   |" * self.indent

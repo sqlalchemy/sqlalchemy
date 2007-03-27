@@ -1663,7 +1663,8 @@ class Join(FromClause):
         self.isouter = isouter
 
     name = property(lambda s: "Join object on " + s.left.name + " " + s.right.name)
-
+    encodedname = property(lambda s: s.name.encode('ascii', 'backslashreplace'))
+    
     def _locate_oid_column(self):
         return self.left.oid_column
 
@@ -1791,6 +1792,7 @@ class Alias(FromClause):
                 alias = alias[0:15]
             alias = alias + "_" + hex(random.randint(0, 65535))[2:]
         self.name = alias
+        self.encodedname = alias.encode('ascii', 'backslashreplace')
         self.case_sensitive = getattr(baseselectable, "case_sensitive", True)
 
     def supports_execution(self):
