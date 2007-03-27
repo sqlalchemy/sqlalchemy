@@ -42,7 +42,7 @@ Known issues / TODO:
   
 """
 
-import sys, StringIO, string, types, re, datetime
+import sys, StringIO, string, types, re, datetime, random
 
 import sqlalchemy.sql as sql
 import sqlalchemy.engine as engine
@@ -736,6 +736,14 @@ class MSSQLCompiler(ansisql.ANSICompiler):
             binary.left, binary.right = binary.right, binary.left
         super(MSSQLCompiler, self).visit_binary(binary)
 
+    def visit_select(self, select):        
+        # label function calls, so they return a name in cursor.description        
+        for i,c in enumerate(select._raw_columns):
+            if isinstance(c, sql._Function):
+                select._raw_columns[i] = c.label(c.name + "_" + hex(random.randint(0, 65535))[2:])        
+
+        super(MSSQLCompiler, self).visit_select(select)
+
     function_rewrites =  {'current_date': 'getdate',
                           'length':     'len',
                           }
@@ -801,4 +809,5 @@ class MSSQLIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
         return value
 
 dialect = MSSQLDialect
+
 
