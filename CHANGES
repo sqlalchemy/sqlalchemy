@@ -6,6 +6,7 @@
       on postgres.  Also, the true labelname is always attached as the
       accessor on the parent Selectable so theres no need to be aware
       of the genrerated label names [ticket:512].
+    - preliminary support for unicode table and column names added.
 - orm:
     - improved/fixed custom collection classes when giving it "set"/
       "sets.Set" classes or subclasses (was still looking for append()

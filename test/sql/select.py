@@ -4,6 +4,7 @@ from sqlalchemy import *
 from sqlalchemy.databases import sqlite, postgres, mysql, oracle, firebird
 import unittest, re
 
+
 # the select test now tests almost completely with TableClause/ColumnClause objects,
 # which are free-roaming table/column objects not attached to any database.  
 # so SQLAlchemy's SQL construction engine can be used with no database dependencies at all.

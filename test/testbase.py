@@ -263,7 +263,7 @@ class EngineAssert(proxy.BaseProxyEngine):
         def post_exec(engine, proxy, compiled, parameters, **kwargs):
             ctx = e
             self.engine.logger = self.logger
-            statement = str(compiled)
+            statement = unicode(compiled)
             statement = re.sub(r'\n', '', statement)
 
             if self.assert_list is not None:

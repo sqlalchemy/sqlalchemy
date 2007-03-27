@@ -161,23 +161,23 @@ class ANSICompiler(sql.Compiled):
         # this re will search for params like :param
         # it has a negative lookbehind for an extra ':' so that it doesnt match
         # postgres '::text' tokens
-        match = r'(?<!:):([\w_]+)'
+        match = re.compile(r'(?<!:):([\w_]+)', re.UNICODE)
         if self.paramstyle=='pyformat':
-            self.strings[self.statement] = re.sub(match, lambda m:'%(' + m.group(1) +')s', self.strings[self.statement])
+            self.strings[self.statement] = match.sub(lambda m:'%(' + m.group(1) +')s', self.strings[self.statement])
         elif self.positional:
-            params = re.finditer(match, self.strings[self.statement])
+            params = match.finditer(self.strings[self.statement])
             for p in params:
                 self.positiontup.append(p.group(1))
             if self.paramstyle=='qmark':
-                self.strings[self.statement] = re.sub(match, '?', self.strings[self.statement])
+                self.strings[self.statement] = match.sub('?', self.strings[self.statement])
             elif self.paramstyle=='format':
-                self.strings[self.statement] = re.sub(match, '%s', self.strings[self.statement])
+                self.strings[self.statement] = match.sub('%s', self.strings[self.statement])
             elif self.paramstyle=='numeric':
                 i = [0]
                 def getnum(x):
                     i[0] += 1
                     return str(i[0])
-                self.strings[self.statement] = re.sub(match, getnum, self.strings[self.statement])
+                self.strings[self.statement] = match.sub(getnum, self.strings[self.statement])
 
     def get_from_text(self, obj):
         return self.froms.get(obj, None)
@@ -188,7 +188,7 @@ class ANSICompiler(sql.Compiled):
     def get_whereclause(self, obj):
         return self.wheres.get(obj, None)
 
-    def get_params(self, **params):
+    def construct_params(self, params):
         """Return a structure of bind parameters for this compiled object.
 
         This includes bind parameters that might be compiled in via
@@ -214,7 +214,6 @@ class ANSICompiler(sql.Compiled):
         else:
             bindparams = {}
         bindparams.update(params)
-
         d = sql.ClauseParameters(self.dialect, self.positiontup)
         for b in self.binds.values():
             d.set_parameter(b, b.value)
@@ -693,7 +692,7 @@ class ANSICompiler(sql.Compiled):
 
         def to_col(key):
             if not isinstance(key, sql._ColumnClause):
-                return stmt.table.columns.get(str(key), key)
+                return stmt.table.columns.get(unicode(key), key)
             else:
                 return key
 
@@ -986,11 +985,10 @@ class ANSIIdentifierPreparer(object):
 
     def _requires_quotes(self, value, case_sensitive):
         """Return True if the given identifier requires quoting."""
-
         return \
             value in self._reserved_words() \
             or (value[0] in self._illegal_initial_characters()) \
-            or bool(len([x for x in str(value) if x not in self._legal_characters()])) \
+            or bool(len([x for x in unicode(value) if x not in self._legal_characters()])) \
             or (case_sensitive and value.lower() != value)
 
     def __generic_obj_format(self, obj, ident):

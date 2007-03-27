@@ -138,7 +138,6 @@ class _TableSingleton(type):
         if metadata is None:
             metadata = default_metadata
 
-        name = str(name)    # in case of incoming unicode
         schema = kwargs.get('schema', None)
         autoload = kwargs.pop('autoload', False)
         autoload_with = kwargs.pop('autoload_with', False)
@@ -318,7 +317,7 @@ class Table(SchemaItem, sql.TableClause):
             , ',')
 
     def __str__(self):
-        return _get_table_key(self.name, self.schema)
+        return _get_table_key(self.encodedname, self.schema)
 
     def append_column(self, column):
         """Append a ``Column`` to this ``Table``."""
@@ -494,7 +493,6 @@ class Column(SchemaItem, sql._ColumnClause):
             identifier contains mixed case.
         """
 
-        name = str(name) # in case of incoming unicode
         super(Column, self).__init__(name, None, type)
         self.args = args
         self.key = kwargs.pop('key', name)
@@ -521,11 +519,11 @@ class Column(SchemaItem, sql._ColumnClause):
     def __str__(self):
         if self.table is not None:
             if self.table.named_with_column():
-                return self.table.name + "." + self.name
+                return (self.table.encodedname + "." + self.encodedname)
             else:
-                return self.name
+                return self.encodedname
         else:
-            return self.name
+            return self.encodedname
 
     def _derived_metadata(self):
         return self.table.metadata
@@ -572,11 +570,11 @@ class Column(SchemaItem, sql._ColumnClause):
         self.table = table
 
         if self.index:
-            if isinstance(self.index, str):
+            if isinstance(self.index, basestring):
                 raise exceptions.ArgumentError("The 'index' keyword argument on Column is boolean only.  To create indexes with a specific name, append an explicit Index object to the Table's list of elements.")
             Index('ix_%s' % self._label, self, unique=self.unique)
         elif self.unique:
-            if isinstance(self.unique, str):
+            if isinstance(self.unique, basestring):
                 raise exceptions.ArgumentError("The 'unique' keyword argument on Column is boolean only.  To create unique constraints or indexes with a specific name, append an explicit UniqueConstraint or Index object to the Table's list of elements.")
             table.append_constraint(UniqueConstraint(self.key))
 
@@ -654,8 +652,6 @@ class ForeignKey(SchemaItem):
           created and added to the parent table.
         """
 
-        if isinstance(column, unicode):
-            column = str(column)
         self._colspec = column
         self._column = None
         self.constraint = constraint
@@ -673,7 +669,7 @@ class ForeignKey(SchemaItem):
         return ForeignKey(self._get_colspec())
 
     def _get_colspec(self):
-        if isinstance(self._colspec, str):
+        if isinstance(self._colspec, basestring):
             return self._colspec
         elif self._colspec.table.schema is not None:
             return "%s.%s.%s" % (self._colspec.table.schema, self._colspec.table.name, self._colspec.key)
@@ -689,7 +685,7 @@ class ForeignKey(SchemaItem):
         # ForeignKey inits its remote column as late as possible, so tables can
         # be defined without dependencies
         if self._column is None:
-            if isinstance(self._colspec, str):
+            if isinstance(self._colspec, basestring):
                 # locate the parent table this foreign key is attached to.
                 # we use the "original" column which our parent column represents
                 # (its a list of columns/other ColumnElements if the parent table is a UNION)
@@ -699,7 +695,7 @@ class ForeignKey(SchemaItem):
                         break
                 else:
                     raise exceptions.ArgumentError("Parent column '%s' does not descend from a table-attached Column" % str(self.parent))
-                m = re.match(r"^([\w_-]+)(?:\.([\w_-]+))?(?:\.([\w_-]+))?$", self._colspec)
+                m = re.match(r"^([\w_-]+)(?:\.([\w_-]+))?(?:\.([\w_-]+))?$", self._colspec, re.UNICODE)
                 if m is None:
                     raise exceptions.ArgumentError("Invalid foreign key column specification: " + self._colspec)
                 if m.group(3) is None:

@@ -648,6 +648,12 @@ class Compiled(ClauseVisitor):
         raise NotImplementedError()
 
     def get_params(self, **params):
+        """Deprecated.  use construct_params().  (supports unicode names)
+        """
+
+        return self.construct_params(params)
+
+    def construct_params(self, params):
         """Return the bind params for this compiled object.
 
         Will start with the default parameters specified when this
@@ -657,9 +663,8 @@ class Compiled(ClauseVisitor):
         ``_BindParamClause`` objects compiled into this object; either
         the `key` or `shortname` property of the ``_BindParamClause``.
         """
-
         raise NotImplementedError()
-
+        
     def execute(self, *multiparams, **params):
         """Execute this compiled object."""
 
@@ -823,7 +828,7 @@ class ClauseElement(object):
         return compiler
 
     def __str__(self):
-        return str(self.compile())
+        return unicode(self.compile()).encode('ascii', 'backslashreplace')
 
     def __and__(self, other):
         return and_(self, other)
@@ -1858,6 +1863,7 @@ class _ColumnClause(ColumnElement):
 
     def __init__(self, text, selectable=None, type=None, _is_oid=False, case_sensitive=True, is_literal=False):
         self.key = self.name = text
+        self.encodedname = self.name.encode('ascii', 'backslashreplace')
         self.table = selectable
         self.type = sqltypes.to_instance(type)
         self._is_oid = _is_oid
@@ -1941,6 +1947,7 @@ class TableClause(FromClause):
     def __init__(self, name, *columns):
         super(TableClause, self).__init__(name)
         self.name = self.fullname = name
+        self.encodedname = self.name.encode('ascii', 'backslashreplace')
         self._columns = ColumnCollection()
         self._foreign_keys = util.OrderedSet()
         self._primary_key = ColumnCollection()

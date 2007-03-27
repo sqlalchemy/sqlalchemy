@@ -494,7 +494,7 @@ class Connection(Connectable):
         if not compiled.can_execute:
             raise exceptions.ArgumentError("Not an executeable clause: %s" % (str(compiled)))
         cursor = self.__engine.dialect.create_cursor(self.connection)
-        parameters = [compiled.get_params(**m) for m in self._params_to_listofdicts(*multiparams, **params)]
+        parameters = [compiled.construct_params(m) for m in self._params_to_listofdicts(*multiparams, **params)]
         if len(parameters) == 1:
             parameters = parameters[0]
         def proxy(statement=None, parameters=None):
@@ -506,7 +506,7 @@ class Connection(Connectable):
             return cursor
         context = self.__engine.dialect.create_execution_context()
         context.pre_exec(self.__engine, proxy, compiled, parameters)
-        proxy(str(compiled), parameters)
+        proxy(unicode(compiled), parameters)
         context.post_exec(self.__engine, proxy, compiled, parameters)
         rpargs = self.__engine.dialect.create_result_proxy_args(self, cursor)
         return ResultProxy(self.__engine, self, cursor, context, typemap=compiled.typemap, column_labels=compiled.column_labels, **rpargs)
@@ -544,16 +544,13 @@ class Connection(Connectable):
     def _execute_raw(self, statement, parameters=None, cursor=None, context=None, **kwargs):
         if cursor is None:
             cursor = self.__engine.dialect.create_cursor(self.connection)
-        try:
-            self.__engine.logger.info(statement)
-            self.__engine.logger.info(repr(parameters))
-            if parameters is not None and isinstance(parameters, list) and len(parameters) > 0 and (isinstance(parameters[0], list) or isinstance(parameters[0], dict)):
-                self._executemany(cursor, statement, parameters, context=context)
-            else:
-                self._execute(cursor, statement, parameters, context=context)
-            self._autocommit(statement)
-        except:
-            raise
+        self.__engine.logger.info(statement)
+        self.__engine.logger.info(repr(parameters))
+        if parameters is not None and isinstance(parameters, list) and len(parameters) > 0 and (isinstance(parameters[0], list) or isinstance(parameters[0], dict)):
+            self._executemany(cursor, statement, parameters, context=context)
+        else:
+            self._execute(cursor, statement, parameters, context=context)
+        self._autocommit(statement)
         return cursor
 
     def _execute(self, c, statement, parameters, context=None):
