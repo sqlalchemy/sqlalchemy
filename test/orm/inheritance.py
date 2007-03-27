@@ -96,26 +96,41 @@ class InheritTest2(testbase.ORMTest):
             Column('foo_id', Integer, ForeignKey('foo.id')),
             Column('bar_id', Integer, ForeignKey('bar.bid')))
 
+    def testget(self):
+        class Foo(object):pass
+        def __init__(self, data=None):
+            self.data = data
+        class Bar(Foo):pass
+        
+        mapper(Foo, foo)
+        mapper(Bar, bar, inherits=Foo)
+        
+        b = Bar('somedata')
+        sess = create_session()
+        sess.save(b)
+        sess.flush()
+        sess.clear()
+        
+        # test that "bar.bid" does not need to be referenced in a get
+        # (ticket 185)
+        assert sess.query(Bar).get(b.id).id == b.id
+        
     def testbasic(self):
         class Foo(object): 
             def __init__(self, data=None):
                 self.data = data
-            def __str__(self):
-                return "Foo(%s)" % self.data
-            def __repr__(self):
-                return str(self)
 
         mapper(Foo, foo)
         class Bar(Foo):
-            def __str__(self):
-                return "Bar(%s)" % self.data
+            pass
 
         mapper(Bar, bar, inherits=Foo, properties={
             'foos': relation(Foo, secondary=foo_bar, lazy=False)
         })
         
         sess = create_session()
-        b = Bar('barfoo', _sa_session=sess)
+        b = Bar('barfoo')
+        sess.save(b)
         sess.flush()
 
         f1 = Foo('subfoo1')

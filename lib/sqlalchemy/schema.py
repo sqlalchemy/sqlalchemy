@@ -680,7 +680,7 @@ class ForeignKey(SchemaItem):
         """Return True if the given table is referenced by this ``ForeignKey``."""
 
         return table.corresponding_column(self.column, False) is not None
-
+    
     def _init_column(self):
         # ForeignKey inits its remote column as late as possible, so tables can
         # be defined without dependencies

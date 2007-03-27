@@ -774,17 +774,9 @@ class Query(object):
             ident = key[1]
         else:
             ident = util.to_list(ident)
-        i = 0
         params = {}
-        for primary_key in self.primary_key_columns:
+        for i, primary_key in enumerate(self.primary_key_columns):
             params[primary_key._label] = ident[i]
-            # if there are not enough elements in the given identifier, then
-            # use the previous identifier repeatedly.  this is a workaround for the issue
-            # in [ticket:185], where a mapper that uses joined table inheritance needs to specify
-            # all primary keys of the joined relationship, which includes even if the join is joining
-            # two primary key (and therefore synonymous) columns together, the usual case for joined table inheritance.
-            if len(ident) > i + 1:
-                i += 1
         try:
             statement = self.compile(self._get_clause, lockmode=lockmode)
             return self._select_statement(statement, params=params, populate_existing=reload, version_check=(lockmode is not None))[0]
