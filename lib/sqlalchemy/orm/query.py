@@ -442,6 +442,8 @@ class Query(object):
             keys = []
             for key in prop:
                 p = mapper.props[key]
+                if p._is_self_referential():
+                    raise exceptions.InvalidRequestError("Self-referential query on '%s' property must be constructed manually using an Alias object for the related table." % (str(p)))
                 keys.append(key)
                 mapper = p.mapper
         else:
@@ -450,6 +452,8 @@ class Query(object):
         mapper = self._joinpoint
         for key in keys:
             prop = mapper.props[key]
+            if prop._is_self_referential():
+                raise exceptions.InvalidRequestError("Self-referential query on '%s' property must be constructed manually using an Alias object for the related table." % str(prop))
             if outerjoin:
                 if prop.secondary:
                     clause = clause.outerjoin(prop.secondary, prop.get_join(mapper, primary=True, secondary=False))
