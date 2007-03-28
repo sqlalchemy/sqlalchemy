@@ -111,6 +111,10 @@ class Dialect(sql.AbstractDialect):
         Return None if no limit."""
         return None
 
+    def supports_unicode_statements(self):
+        """indicate whether the DBAPI can receive SQL statements as Python unicode strings"""
+        raise NotImplementedError()
+        
     def supports_sane_rowcount(self):
         """Indicate whether the dialect properly implements statements rowcount.
 
@@ -544,6 +548,9 @@ class Connection(Connectable):
     def _execute_raw(self, statement, parameters=None, cursor=None, context=None, **kwargs):
         if cursor is None:
             cursor = self.__engine.dialect.create_cursor(self.connection)
+        if not self.__engine.dialect.supports_unicode_statements():
+            # encode to ascii, with full error handling
+            statement = statement.encode('ascii')
         self.__engine.logger.info(statement)
         self.__engine.logger.info(repr(parameters))
         if parameters is not None and isinstance(parameters, list) and len(parameters) > 0 and (isinstance(parameters[0], list) or isinstance(parameters[0], dict)):

@@ -48,6 +48,10 @@ class DefaultDialect(base.Dialect):
             typeobj = typeobj()
         return typeobj
 
+    def supports_unicode_statements(self):
+        """indicate whether the DBAPI can receive SQL statements as Python unicode strings"""
+        return True
+
     def max_identifier_length(self):
         # TODO: probably raise this and fill out
         # db modules better
