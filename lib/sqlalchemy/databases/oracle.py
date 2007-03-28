@@ -136,6 +136,7 @@ ischema_names = {
     'RAW' : OracleRaw,
     'FLOAT' : OracleNumeric,
     'DOUBLE PRECISION' : OracleNumeric,
+    'LONG' : OracleText,
 }
 
 def descriptor():
