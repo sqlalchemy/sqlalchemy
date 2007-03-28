@@ -236,7 +236,7 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
         if getattr(compiled, "isinsert", False):
             tbl = compiled.statement.table
             if not hasattr(tbl, 'has_sequence'):
-                tbl.has_sequence = False
+                tbl.has_sequence = None
                 for column in tbl.c:
                     if getattr(column, 'sequence', False) or self._has_implicit_sequence(column):
                         tbl.has_sequence = column
@@ -245,9 +245,9 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
             self.HASIDENT = bool(tbl.has_sequence)
             if engine.dialect.auto_identity_insert and self.HASIDENT:
                 if isinstance(parameters, list):
-                    self.IINSERT = hasattr(parameters[0], tbl.has_sequence.key)
+                    self.IINSERT = tbl.has_sequence.key in parameters[0]
                 else:
-                    self.IINSERT = hasattr(parameters, tbl.has_sequence.key)
+                    self.IINSERT = tbl.has_sequence.key in parameters
             else:
                 self.IINSERT = False
 
