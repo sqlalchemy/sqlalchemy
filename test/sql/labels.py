@@ -10,7 +10,7 @@ class LongLabelsTest(testbase.PersistTest):
         global metadata, table1
         metadata = MetaData(engine=testbase.db)
         table1 = Table("some_large_named_table", metadata,
-            Column("this_is_the_primarykey_column", Integer, primary_key=True),
+            Column("this_is_the_primarykey_column", Integer, Sequence("this_is_some_large_seq"), primary_key=True),
             Column("this_is_the_data_column", String(30))
             )
         metadata.create_all()
@@ -26,7 +26,7 @@ class LongLabelsTest(testbase.PersistTest):
         table1.insert().execute(**{"this_is_the_primarykey_column":3, "this_is_the_data_column":"data3"})
         table1.insert().execute(**{"this_is_the_primarykey_column":4, "this_is_the_data_column":"data4"})
 
-        r = table1.select(use_labels=True).execute()
+        r = table1.select(use_labels=True, order_by=[table1.c.this_is_the_primarykey_column]).execute()
         result = []
         for row in r:
             result.append((row[table1.c.this_is_the_primarykey_column], row[table1.c.this_is_the_data_column]))
@@ -35,7 +35,7 @@ class LongLabelsTest(testbase.PersistTest):
             (2, "data2"),
             (3, "data3"),
             (4, "data4"),
-        ]
+        ], repr(result)
     
     def test_colbinds(self):
         table1.insert().execute(**{"this_is_the_primarykey_column":1, "this_is_the_data_column":"data1"})

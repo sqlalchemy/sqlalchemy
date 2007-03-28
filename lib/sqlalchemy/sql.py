@@ -475,7 +475,10 @@ class ClauseParameters(object):
         bind = self.binds[key]
         value = self.binds_to_values[bind]
         return bind.typeprocess(value, self.dialect)
-    
+   
+    def keys(self):
+        return self.binds_to_names.values()
+ 
     def __getitem__(self, key):
         return self.get_processed(key)
         
