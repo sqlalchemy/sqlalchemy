@@ -516,7 +516,7 @@ class RelationTest5(testbase.ORMTest):
         
         container_select = select(
             [items.c.policyNum, items.c.policyEffDate, items.c.type],
-            distinct=True,
+            distinct=True, 
             ).alias('container_select')
 
         mapper(LineItem, items)

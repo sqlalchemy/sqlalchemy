@@ -3,12 +3,10 @@ sys.path.insert(0, './lib/')
 import os
 import unittest
 import StringIO
-import sqlalchemy.engine as engine
 import sqlalchemy.ext.proxy as proxy
-import sqlalchemy.pool as pool
-#import sqlalchemy.schema as schema
 import re
 import sqlalchemy
+from sqlalchemy import sql, engine, pool
 import optparse
 from sqlalchemy.schema import BoundMetaData
 from sqlalchemy.orm import clear_mappers
@@ -294,6 +292,11 @@ class EngineAssert(proxy.BaseProxyEngine):
                     params = params(ctx)
                 if params is not None and isinstance(params, list) and len(params) == 1:
                     params = params[0]
+                
+                if isinstance(parameters, sql.ClauseParameters):
+                    parameters = parameters.get_original_dict()
+                elif isinstance(parameters, list):
+                    parameters = [p.get_original_dict() for p in parameters]
                         
                 query = self.convert_statement(query)
                 self.unittest.assert_(statement == query and (params is None or params == parameters), "Testing for query '%s' params %s, received '%s' with params %s" % (query, repr(params), statement, repr(parameters)))

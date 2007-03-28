@@ -6,6 +6,11 @@
       on postgres.  Also, the true labelname is always attached as the
       accessor on the parent Selectable so theres no need to be aware
       of the genrerated label names [ticket:512].
+    - column label and bind param "truncation" also generate 
+      deterministic names now, based on their ordering within the 
+      full statement being compiled.  this means the same statement
+      will produce the same string across application restarts and
+      allowing DB query plan caching to work better.
     - preliminary support for unicode table and column names added.
     - fix for fetchmany() "size" argument being positional in most
       dbapis [ticket:505]

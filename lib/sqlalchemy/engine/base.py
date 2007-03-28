@@ -883,7 +883,7 @@ class ResultProxy(object):
             elif isinstance(key, basestring) and key.lower() in self.props:
                 rec = self.props[key.lower()]
             elif isinstance(key, sql.ColumnElement):
-                label = self.column_labels.get(key._label, key.name)
+                label = self.column_labels.get(key._label, key.name).lower()
                 if label in self.props:
                     rec = self.props[label]
                         

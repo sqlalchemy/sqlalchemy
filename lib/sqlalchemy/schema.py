@@ -613,6 +613,7 @@ class Column(SchemaItem, sql._ColumnClause):
         [c._init_items(f) for f in fk]
         return c
 
+
     def _case_sens(self):
         """Redirect the `case_sensitive` accessor to use the ultimate
         parent column which created this one."""

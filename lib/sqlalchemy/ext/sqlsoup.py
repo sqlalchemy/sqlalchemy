@@ -187,13 +187,13 @@ If you join tables that have an identical column name, wrap your join
 with `with_labels`, to disambiguate columns with their table name::
 
     >>> db.with_labels(join1).c.keys()
-    ['users_name', 'users_email', 'users_password', 'users_classname', 'users_admin', 'loans_book_id', 'loans_user_name', 'loans_loan_date']
+    [u'users_name', u'users_email', u'users_password', u'users_classname', u'users_admin', u'loans_book_id', u'loans_user_name', u'loans_loan_date']
 
 You can also join directly to a labeled object::
 
     >>> labeled_loans = db.with_labels(db.loans)
     >>> db.join(db.users, labeled_loans, isouter=True).c.keys()
-    ['name', 'email', 'password', 'classname', 'admin', 'loans_book_id', 'loans_user_name', 'loans_loan_date']
+    [u'name', u'email', u'password', u'classname', u'admin', u'loans_book_id', u'loans_user_name', u'loans_loan_date']
 
 
 Advanced Use

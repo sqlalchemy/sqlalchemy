@@ -442,7 +442,7 @@ class AbstractDialect(object):
     Used by ``Compiled`` objects."""
     pass
 
-class ClauseParameters(dict):
+class ClauseParameters(object):
     """Represent a dictionary/iterator of bind parameter key names/values.
 
     Tracks the original ``BindParam`` objects as well as the
@@ -453,38 +453,53 @@ class ClauseParameters(dict):
 
     def __init__(self, dialect, positional=None):
         super(ClauseParameters, self).__init__(self)
-        self.dialect=dialect
+        self.dialect = dialect
         self.binds = {}
+        self.binds_to_names = {}
+        self.binds_to_values = {}
         self.positional = positional or []
 
     def set_parameter(self, bindparam, value, name):
-        self[name] = value
+        self.binds[bindparam.key] = bindparam
         self.binds[name] = bindparam
-
+        self.binds_to_names[bindparam] = name
+        self.binds_to_values[bindparam] = value
+        
     def get_original(self, key):
         """Return the given parameter as it was originally placed in
         this ``ClauseParameters`` object, without any ``Type``
         conversion."""
+        return self.binds_to_values[self.binds[key]]
 
-        return super(ClauseParameters, self).__getitem__(key)
-
+    def get_processed(self, key):
+        bind = self.binds[key]
+        value = self.binds_to_values[bind]
+        return bind.typeprocess(value, self.dialect)
+    
     def __getitem__(self, key):
-        v = super(ClauseParameters, self).__getitem__(key)
-        if self.binds.has_key(key):
-            v = self.binds[key].typeprocess(v, self.dialect)
-        return v
-
+        return self.get_processed(key)
+        
+    def __contains__(self, key):
+        return key in self.binds
+    
+    def set_value(self, key, value):
+        bind = self.binds[key]
+        self.binds_to_values[bind] = value
+            
     def get_original_dict(self):
-        return self.copy()
+        return dict([(self.binds_to_names[b], self.binds_to_values[b]) for b in self.binds_to_names.keys()])
 
     def get_raw_list(self):
-        return [self[key] for key in self.positional]
+        return [self.get_processed(key) for key in self.positional]
 
     def get_raw_dict(self):
         d = {}
-        for k in self:
-            d[k] = self[k]
+        for k in self.binds_to_names.values():
+            d[k] = self.get_processed(k)
         return d
+
+    def __repr__(self):
+        return repr(self.get_original_dict())
 
 class ClauseVisitor(object):
     """A class that knows how to traverse and visit
@@ -1012,6 +1027,7 @@ class ColumnElement(Selectable, _CompareMixin):
         with Selectable objects.
         """)
 
+
     def _one_fkey(self):
         if len(self._foreign_keys):
             return list(self._foreign_keys)[0]
@@ -1037,7 +1053,7 @@ class ColumnElement(Selectable, _CompareMixin):
         for a column proxied from a Union (i.e. CompoundSelect), this 
         set will be just one element.
         """)
-
+    
     def shares_lineage(self, othercolumn):
         """Return True if the given ``ColumnElement`` has a common ancestor to this ``ColumnElement``."""
 
@@ -1928,6 +1944,8 @@ class _ColumnClause(ColumnElement):
                 self.__label = self.name
             self.__label = "".join([x for x in self.__label if x in legal_characters])
         return self.__label
+
+    is_labeled = property(lambda self:self.name != list(self.orig_set)[0].name)
 
     _label = property(_get_label)
 

@@ -1237,13 +1237,13 @@ class Mapper(object):
                     self.set_attr_by_column(obj, c, row[c])
         else:
             for c in table.c:
-                if c.primary_key or not params.has_key(c.name):
+                if c.primary_key or not c.key in params:
                     continue
                 v = self.get_attr_by_column(obj, c, False)
                 if v is NO_ATTRIBUTE:
                     continue
-                elif v != params.get_original(c.name):
-                    self.set_attr_by_column(obj, c, params.get_original(c.name))
+                elif v != params.get_original(c.key):
+                    self.set_attr_by_column(obj, c, params.get_original(c.key))
 
     def delete_obj(self, objects, uowtransaction):
         """Issue ``DELETE`` statements for a list of objects.
