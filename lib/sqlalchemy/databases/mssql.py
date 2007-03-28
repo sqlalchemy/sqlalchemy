@@ -245,9 +245,9 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
             self.HASIDENT = bool(tbl.has_sequence)
             if engine.dialect.auto_identity_insert and self.HASIDENT:
                 if isinstance(parameters, list):
-                    self.IINSERT = parameters[0].has_key(tbl.has_sequence.key)
+                    self.IINSERT = hasattr(parameters[0], tbl.has_sequence.key)
                 else:
-                    self.IINSERT = parameters.has_key(tbl.has_sequence.key)
+                    self.IINSERT = hasattr(parameters, tbl.has_sequence.key)
             else:
                 self.IINSERT = False
 
@@ -663,7 +663,10 @@ class MSSQLDialect_adodbapi(MSSQLDialect):
 
     def make_connect_string(self, keys):
         connectors = ["Provider=SQLOLEDB"]
-        connectors.append ("Data Source=%s" % keys.get("host"))
+        if 'port' in keys:
+            connectors.append ("Data Source=%s, %s" % (keys.get("host"), keys.get("port")))
+        else:
+            connectors.append ("Data Source=%s" % keys.get("host"))
         connectors.append ("Initial Catalog=%s" % keys.get("database"))
         user = keys.get("user")
         if user:
