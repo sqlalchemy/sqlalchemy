@@ -1458,17 +1458,17 @@ class InstancesTest(MapperSuperTest):
         sess = create_session()
         (user7, user8, user9) = sess.query(User).select()
         q = sess.query(User)
-        q = q.group_by([c for c in users.c]).outerjoin('addresses').add_column(func.count(addresses.c.address_id).label('count'))
+        q = q.group_by([c for c in users.c]).order_by(User.c.user_id).outerjoin('addresses').add_column(func.count(addresses.c.address_id).label('count'))
         l = q.list()
         assert l == [
             (user7, 1),
             (user8, 3),
             (user9, 0)
-        ]
+        ], repr(l)
         
     def testmapperspluscolumn(self):
         mapper(User, users)
-        s = select([users, func.count(addresses.c.address_id).label('count')], from_obj=[users.outerjoin(addresses)], group_by=[c for c in users.c])
+        s = select([users, func.count(addresses.c.address_id).label('count')], from_obj=[users.outerjoin(addresses)], group_by=[c for c in users.c], order_by=[users.c.user_id])
         sess = create_session()
         (user7, user8, user9) = sess.query(User).select()
         q = sess.query(User)
