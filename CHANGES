@@ -14,6 +14,8 @@
     - preliminary support for unicode table and column names added.
     - fix for fetchmany() "size" argument being positional in most
       dbapis [ticket:505]
+    - sending None as an argument to func.<something> will produce
+      an argument of NULL
 - orm:
     - improved/fixed custom collection classes when giving it "set"/
       "sets.Set" classes or subclasses (was still looking for append()

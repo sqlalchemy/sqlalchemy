@@ -466,7 +466,10 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
 
         # test a dotted func off the engine itself
         self.runtest(func.lala.hoho(7), "lala.hoho(:hoho)")
-    
+        
+        # test None becomes NULL
+        self.runtest(func.my_func(1,2,None,3), "my_func(:my_func, :my_func_1, NULL, :my_func_2)")
+        
     def testextract(self):
         """test the EXTRACT function"""
         self.runtest(select([extract("month", table3.c.otherstuff)]), "SELECT extract(month FROM thirdtable.otherstuff) FROM thirdtable")

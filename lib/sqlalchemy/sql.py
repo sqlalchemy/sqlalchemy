@@ -1565,7 +1565,7 @@ class _Function(_CalculatedClause, FromClause):
         self.type = sqltypes.to_instance(kwargs.get('type', None))
         self.packagenames = kwargs.get('packagenames', None) or []
         self._engine = kwargs.get('engine', None)
-        ClauseList.__init__(self, parens=True, *clauses)
+        ClauseList.__init__(self, parens=True, *[c is None and _Null() or c for c in clauses])
 
     key = property(lambda self:self.name)
 
