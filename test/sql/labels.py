@@ -30,5 +30,15 @@ class LongLabelsTest(testbase.PersistTest):
             (4, "data4"),
         ]
     
+    def test_colbinds(self):
+        r = table1.select(table1.c.this_is_the_primary_key_column == 4).execute()
+        assert r.fetchall() == [(4, "data4")]
+
+        r = table1.select(or_(
+            table1.c.this_is_the_primary_key_column == 4,
+            table1.c.this_is_the_primary_key_column == 2
+        )).execute()
+        assert r.fetchall() == [(2, "data2"), (4, "data4")]
+        
 if __name__ == '__main__':
     testbase.main()

@@ -216,6 +216,10 @@ class QueryTest(PersistTest):
         self.assert_(r.user_id == r['user_id'] == r[self.users.c.user_id] == 2)
         self.assert_(r.user_name == r['user_name'] == r[self.users.c.user_name] == 'jack')
 
+        r = text("select * from query_users where user_id=2", engine=testbase.db).execute().fetchone()
+        self.assert_(r.user_id == r['user_id'] == r[self.users.c.user_id] == 2)
+        self.assert_(r.user_name == r['user_name'] == r[self.users.c.user_name] == 'jack')
+        
     def test_keys(self):
         self.users.insert().execute(user_id=1, user_name='foo')
         r = self.users.select().execute().fetchone()

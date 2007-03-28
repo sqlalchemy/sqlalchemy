@@ -457,9 +457,9 @@ class ClauseParameters(dict):
         self.binds = {}
         self.positional = positional or []
 
-    def set_parameter(self, bindparam, value):
-        self[bindparam.key] = value
-        self.binds[bindparam.key] = bindparam
+    def set_parameter(self, bindparam, value, name):
+        self[name] = value
+        self.binds[name] = bindparam
 
     def get_original(self, key):
         """Return the given parameter as it was originally placed in

@@ -99,6 +99,10 @@ class ANSICompiler(sql.Compiled):
 
         # a dictionary of bind parameter keys to _BindParamClause instances.
         self.binds = {}
+        
+        # a dictionary of _BindParamClause instances to "compiled" names that are
+        # actually present in the generated SQL
+        self.bind_names = {}
 
         # a dictionary which stores the string representation for every ClauseElement
         # processed by this compiler.
@@ -216,14 +220,16 @@ class ANSICompiler(sql.Compiled):
         bindparams.update(params)
         d = sql.ClauseParameters(self.dialect, self.positiontup)
         for b in self.binds.values():
-            d.set_parameter(b, b.value)
+            name = self.bind_names.get(b, b.key)
+            d.set_parameter(b, b.value, name)
 
         for key, value in bindparams.iteritems():
             try:
                 b = self.binds[key]
             except KeyError:
                 continue
-            d.set_parameter(b, value)
+            name = self.bind_names.get(b, b.key)
+            d.set_parameter(b, value, name)
 
         return d
 
@@ -358,8 +364,11 @@ class ANSICompiler(sql.Compiled):
         return binary.operator
 
     def visit_bindparam(self, bindparam):
+        # apply truncation to the ultimate generated name
+
         if bindparam.shortname != bindparam.key:
             self.binds.setdefault(bindparam.shortname, bindparam)
+
         if bindparam.unique:
             count = 1
             key = bindparam.key
@@ -367,20 +376,29 @@ class ANSICompiler(sql.Compiled):
             # redefine the generated name of the bind param in the case
             # that we have multiple conflicting bind parameters.
             while self.binds.setdefault(key, bindparam) is not bindparam:
-                # ensure the name doesn't expand the length of the string
-                # in case we're at the edge of max identifier length
                 tag = "_%d" % count
-                key = bindparam.key[0 : len(bindparam.key) - len(tag)] + tag
+                key = bindparam.key + tag
                 count += 1
             bindparam.key = key
-            self.strings[bindparam] = self.bindparam_string(key)
+            self.strings[bindparam] = self.bindparam_string(self._truncate_bindparam(bindparam))
         else:
             existing = self.binds.get(bindparam.key)
             if existing is not None and existing.unique:
                 raise exceptions.CompileError("Bind parameter '%s' conflicts with unique bind parameter of the same name" % bindparam.key)
-            self.strings[bindparam] = self.bindparam_string(bindparam.key)
+            self.strings[bindparam] = self.bindparam_string(self._truncate_bindparam(bindparam))
             self.binds[bindparam.key] = bindparam
+    
+    def _truncate_bindparam(self, bindparam):
+        if bindparam in self.bind_names:
+            return self.bind_names[bindparam]
             
+        bind_name = bindparam.key
+        if len(bind_name) >= self.dialect.max_identifier_length():
+            bind_name = bind_name[0:self.dialect.max_identifier_length() - 6] + "_" + hex(random.randint(0, 65535))[2:]
+            # add to bind_names for translation
+            self.bind_names[bindparam] = bind_name
+        return bind_name
+        
     def bindparam_string(self, name):
         return self.bindtemplate % name
 
@@ -614,7 +632,7 @@ class ANSICompiler(sql.Compiled):
                 self.binds[p.key] = p
                 if p.shortname is not None:
                     self.binds[p.shortname] = p
-                return self.bindparam_string(p.key)
+                return self.bindparam_string(self._truncate_bindparam(p))
             else:
                 self.inline_params.add(col)
                 self.traverse(p)
@@ -648,7 +666,7 @@ class ANSICompiler(sql.Compiled):
             if isinstance(p, sql._BindParamClause):
                 self.binds[p.key] = p
                 self.binds[p.shortname] = p
-                return self.bindparam_string(p.key)
+                return self.bindparam_string(self._truncate_bindparam(p))
             else:
                 self.traverse(p)
                 self.inline_params.add(col)
