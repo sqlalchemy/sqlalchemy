@@ -247,9 +247,10 @@ class RelationTest3(testbase.ORMTest):
         sess = create_session()
         p = Person(name='person1')
         p2 = Person(name='person2')
+        p3 = Person(name='person3')
         m = Manager(name='manager1')
         p.colleagues.append(p2)
-        m.colleagues.append(p2)
+        m.colleagues.append(p3)
         if usedata:
             p.data = Data('ps data')
             m.data = Data('ms data')
@@ -261,9 +262,12 @@ class RelationTest3(testbase.ORMTest):
         sess.clear()
         p = sess.query(Person).get(p.person_id)
         p2 = sess.query(Person).get(p2.person_id)
-        print p, p2, p.colleagues
+        p3 = sess.query(Person).get(p3.person_id)
+        m = sess.query(Person).get(m.person_id)
+        print p, p2, p.colleagues, m.colleagues
         assert len(p.colleagues) == 1
         assert p.colleagues == [p2]
+        assert m.colleagues == [p3]
         if usedata:
             assert p.data.data == 'ps data'
             assert m.data.data == 'ms data'
