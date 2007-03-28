@@ -909,6 +909,11 @@ Updates work a lot like INSERTS, except there is an additional WHERE clause that
     UPDATE users SET password=users.user_name
     {}
     
+    # expressions OK too
+    {sql}users.update(values={users.c.user_id:users.c.user_id + 17}).execute()
+    UPDATE users SET user_id=users.user_id + :users_user_id
+    {'users_user_id':17}
+    
     # multi-update
     {sql}users.update(users.c.user_id==bindparam('id')).execute(
             {'id':7, 'user_name':'jack', 'password':'fh5jks'},
