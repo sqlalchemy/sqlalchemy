@@ -271,74 +271,100 @@ class Session(object):
             if e is None:
                 raise exceptions.InvalidRequestError("Could not locate any Engine bound to mapper '%s'" % str(mapper))
             return e
+
     def query(self, mapper_or_class, entity_name=None, **kwargs):
-        """return a new Query object corresponding to this Session and the mapper, or the classes' primary mapper."""
+        """Return a new Query object corresponding to this Session and
+        the mapper, or the classes' primary mapper.
+        """
+
         if isinstance(mapper_or_class, type):
             return query.Query(_class_mapper(mapper_or_class, entity_name=entity_name), self, **kwargs)
         else:
             return query.Query(mapper_or_class, self, **kwargs)
+
     def _sql(self):
         class SQLProxy(object):
             def __getattr__(self, key):
                 def call(*args, **kwargs):
                     kwargs[engine] = self.engine
                     return getattr(sql, key)(*args, **kwargs)
-                    
+
     sql = property(_sql)
-    
+
     def flush(self, objects=None):
-        """flush all the object modifications present in this session to the database.  
-        
-        'objects' is a list or tuple of objects specifically to be flushed; if None, all
-        new and modified objects are flushed."""
+        """Flush all the object modifications present in this session
+        to the database.
+
+        `objects` is a list or tuple of objects specifically to be
+        flushed; if None, all new and modified objects are flushed.
+        """
+
         self.uow.flush(self, objects)
 
     def get(self, class_, ident, **kwargs):
-        """return an instance of the object based on the given identifier, or None if not found.  
-        
-        The ident argument is a scalar or tuple of primary key column values in the order of the 
-        table def's primary key columns.
-        
-        the entity_name keyword argument may also be specified which further qualifies the underlying
-        Mapper used to perform the query."""
+        """Return an instance of the object based on the given
+        identifier, or None if not found.
+
+        The `ident` argument is a scalar or tuple of primary key
+        column values in the order of the table def's primary key
+        columns.
+
+        The `entity_name` keyword argument may also be specified which
+        further qualifies the underlying Mapper used to perform the
+        query.
+        """
+
         entity_name = kwargs.get('entity_name', None)
         return self.query(class_, entity_name=entity_name).get(ident)
-        
+
     def load(self, class_, ident, **kwargs):
-        """return an instance of the object based on the given identifier. 
-        
-        If not found, raises an exception.  The method will *remove all pending changes* to the object
-        already existing in the Session.  The ident argument is a scalar or tuple of
-        primary key columns in the order of the table def's primary key columns.
-        
-        the entity_name keyword argument may also be specified which further qualifies the underlying
-        Mapper used to perform the query."""
+        """Return an instance of the object based on the given
+        identifier.
+
+        If not found, raises an exception.  The method will **remove
+        all pending changes** to the object already existing in the
+        Session.  The `ident` argument is a scalar or tuple of primary
+        key columns in the order of the table def's primary key
+        columns.
+
+        The `entity_name` keyword argument may also be specified which
+        further qualifies the underlying Mapper used to perform the
+        query.
+        """
+
         entity_name = kwargs.get('entity_name', None)
         return self.query(class_, entity_name=entity_name).load(ident)
 
     def refresh(self, obj):
-        """reload the attributes for the given object from the database, clear any changes made."""
+        """Reload the attributes for the given object from the
+        database, clear any changes made.
+        """
+
         self._validate_persistent(obj)
         if self.query(obj.__class__)._get(obj._instance_key, reload=True) is None:
             raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % repr(obj))
 
     def expire(self, obj):
-        """mark the given object as expired.
-        
-        this will add an instrumentation to all mapped attributes on the instance such that when
-        an attribute is next accessed, the session will reload all attributes on the instance
-        from the database.
+        """Mark the given object as expired.
+
+        This will add an instrumentation to all mapped attributes on
+        the instance such that when an attribute is next accessed, the
+        session will reload all attributes on the instance from the
+        database.
         """
+
         for c in [obj] + list(_object_mapper(obj).cascade_iterator('refresh-expire', obj)):
             self._expire_impl(c)
-            
+
     def _expire_impl(self, obj):
         self._validate_persistent(obj)
+
         def exp():
             if self.query(obj.__class__)._get(obj._instance_key, reload=True) is None:
                 raise exceptions.InvalidRequestError("Could not refresh instance '%s'" % repr(obj))
+
         attribute_manager.trigger_history(obj, exp)
-        
+
     def is_expired(self, obj, unexpire=False):
         """Return True if the given object has been marked as expired."""
 

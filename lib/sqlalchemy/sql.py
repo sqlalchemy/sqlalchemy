@@ -421,6 +421,7 @@ class _FunctionGateway(object):
         if name[-1] == '_':
             name = name[0:-1]
         return getattr(_FunctionGenerator(), name)
+
 func = _FunctionGateway()
 
 def _compound_clause(keyword, *clauses):
@@ -434,7 +435,6 @@ def _is_literal(element):
 
 def is_column(col):
     return isinstance(col, ColumnElement)
-
 
 class AbstractDialect(object):
     """Represent the behavior of a particular database.
@@ -678,7 +678,6 @@ class Compiled(ClauseVisitor):
 
         return self.execute(*multiparams, **params).scalar()
 
-
 class ClauseElement(object):
     """Base class for elements of a programmatically constructed SQL
     expression.
@@ -769,7 +768,9 @@ class ClauseElement(object):
         else:
             return None
 
-    engine = property(lambda s: s._find_engine(), doc="Attempts to locate a Engine within this ClauseElement structure, or returns None if none found.")
+    engine = property(lambda s: s._find_engine(),
+                      doc="""Attempts to locate a Engine within this ClauseElement
+                      structure, or returns None if none found.""")
 
     def execute(self, *multiparams, **params):
         """Compile and execute this ``ClauseElement``."""
@@ -1663,9 +1664,10 @@ class _Exists(_BooleanExpression):
         kwargs['correlate'] = True
         s = select(*args, **kwargs)
         _BooleanExpression.__init__(self, _TextClause("EXISTS"), s, None)
+
     def _hide_froms(self):
         return self._get_from_objects()
-        
+
 class Join(FromClause):
     def __init__(self, left, right, onclause=None, isouter = False):
         self.left = left._selectable()
@@ -2156,7 +2158,11 @@ class Select(_SelectBaseMixin, FromClause):
     well as the ability to execute itself and return a result set.
     """
 
-    def __init__(self, columns=None, whereclause = None, from_obj = [], order_by = None, group_by=None, having=None, use_labels = False, distinct=False, for_update=False, engine=None, limit=None, offset=None, scalar=False, correlate=True):
+    def __init__(self, columns=None, whereclause=None, from_obj=[],
+                 order_by=None, group_by=None, having=None,
+                 use_labels=False, distinct=False, for_update=False,
+                 engine=None, limit=None, offset=None, scalar=False,
+                 correlate=True):
         _SelectBaseMixin.__init__(self)
         self.__froms = util.OrderedSet()
         self.__hide_froms = util.Set([self])
@@ -2192,7 +2198,6 @@ class Select(_SelectBaseMixin, FromClause):
         self.__correlator = Select._CorrelatedVisitor(self, False)
         self.__wherecorrelator = Select._CorrelatedVisitor(self, True)
 
-
         if columns is not None:
             for c in columns:
                 self.append_column(c)
@@ -2206,7 +2211,6 @@ class Select(_SelectBaseMixin, FromClause):
 
         for f in from_obj:
             self.append_from(f)
-
 
         # whereclauses must be appended after the columns/FROM, since it affects
         # the correlation of subqueries.  see test/sql/select.py SelectTest.testwheresubquery
@@ -2232,9 +2236,11 @@ class Select(_SelectBaseMixin, FromClause):
             for s in cs.selects:
                 s.parens = False
 
-        def visit_column(self, c):pass
+        def visit_column(self, c):
+            pass
 
-        def visit_table(self, c):pass
+        def visit_table(self, c):
+            pass
 
         def visit_select(self, select):
             if select is self.select:

@@ -19,20 +19,24 @@ class CascadeOptions(object):
         self.merge = "merge" in values or "all" in values
         self.expunge = "expunge" in values or "all" in values
         self.refresh_expire = "refresh-expire" in values or "all" in values
-        
+
         for x in values:
             if x not in all_cascades:
                 raise exceptions.ArgumentError("Invalid cascade option '%s'" % x)
-                
+
     def __contains__(self, item):
         return getattr(self, item.replace("-", "_"), False)
+
     def __repr__(self):
         return "CascadeOptions(arg=%s)" % repr(",".join([x for x in ['delete', 'save_update', 'merge', 'expunge', 'delete_orphan', 'refresh-expire'] if getattr(self, x, False) is True]))
 
 def polymorphic_union(table_map, typecolname, aliasname='p_union'):
-    """create a UNION statement used by a polymorphic mapper.
-    
-    See the SQLAlchemy advanced mapping docs for an example of how this is used."""
+    """Create a ``UNION`` statement used by a polymorphic mapper.
+
+    See the SQLAlchemy advanced mapping docs for an example of how
+    this is used.
+    """
+
     colnames = util.Set()
     colnamemaps = {}
     types = {}
