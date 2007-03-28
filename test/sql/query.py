@@ -53,7 +53,17 @@ class QueryTest(PersistTest):
         for row in r:
             l.append(row)
         self.assert_(len(l) == 3)
-   
+
+    def test_fetchmany(self):
+        self.users.insert().execute(user_id = 7, user_name = 'jack') 
+        self.users.insert().execute(user_id = 8, user_name = 'ed') 
+        self.users.insert().execute(user_id = 9, user_name = 'fred') 
+        r = self.users.select().execute() 
+        l = [] 
+        for row in r.fetchmany(size=2): 
+            l.append(row) 
+        self.assert_(len(l) == 2, "fetchmany(size=2) got %s rows" % len(l))
+        
     def test_compiled_execute(self):
         s = select([self.users], self.users.c.user_id==bindparam('id')).compile()
         c = testbase.db.connect()

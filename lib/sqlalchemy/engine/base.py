@@ -968,7 +968,7 @@ class ResultProxy(object):
         if size is None:
             rows = self.cursor.fetchmany()
         else:
-            rows = self.cursor.fetchmany(size=size)
+            rows = self.cursor.fetchmany(size)
         l = []
         for row in rows:
             l.append(RowProxy(self, row))
