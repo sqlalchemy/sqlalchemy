@@ -73,6 +73,9 @@ class DefaultEngineStrategy(EngineStrategy):
 
             poolclass = kwargs.pop('poolclass', getattr(module, 'poolclass', poollib.QueuePool))
             pool_args = {}
+
+            pool_args['cursor_creator'] = dialect.create_cursor
+            
             # consume pool arguments from kwargs, translating a few of the arguments
             for k in util.get_cls_kwargs(poolclass):
                 tk = {'echo':'echo_pool', 'timeout':'pool_timeout', 'recycle':'pool_recycle'}.get(k, k)

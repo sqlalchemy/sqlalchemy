@@ -4,18 +4,13 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import datetime, sys, StringIO, string, types, re
+import datetime, string, types, re, random
 
-import sqlalchemy.util as util
-import sqlalchemy.sql as sql
-import sqlalchemy.engine as engine
+from sqlalchemy import util, sql, engine, schema, ansisql, exceptions
 import sqlalchemy.engine.default as default
-import sqlalchemy.schema as schema
-import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
 import sqlalchemy.exceptions as exceptions
 from sqlalchemy.databases import information_schema as ischema
-import re
 
 try:
     import mx.DateTime.DateTime as mxDateTime
@@ -272,7 +267,9 @@ class PGDialect(ansisql.ANSIDialect):
         if self.server_side_cursors:
             # use server-side cursors:
             # http://lists.initd.org/pipermail/psycopg/2007-January/005251.html
-            return connection.cursor('x')
+            ident = "c" + hex(random.randint(0, 65535))[2:]
+            print "IDENT:", ident
+            return connection.cursor(ident)
         else:
             return connection.cursor()
 

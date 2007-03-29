@@ -31,8 +31,8 @@ import sys
 # py2.5 absolute imports will fix....
 logging = __import__('logging')
 
-# turn off logging at the root sqlalchemy level
-logging.getLogger('sqlalchemy').setLevel(logging.ERROR)
+
+logging.getLogger('sqlalchemy').setLevel(logging.WARN)
 
 default_enabled = False
 def default_logging(name):

@@ -237,7 +237,9 @@ class _ConnectionFairy(object):
             raise
         if self.__pool.echo:
             self.__pool.log("Connection %s checked out from pool" % repr(self.connection))
-
+    
+    _logger = property(lambda self: self.__pool.logger)
+         
     def invalidate(self):
         if self.connection is None:
             raise exceptions.InvalidRequestError("This connection is closed")
@@ -311,7 +313,10 @@ class _CursorFairy(object):
     def close(self):
         if self in self.__parent._cursors:
             del self.__parent._cursors[self]
-            self.cursor.close()
+            try:
+                self.cursor.close()
+            except Exception, e:
+                self.__parent._logger.warn("Error closing cursor: " + str(e))
 
     def __getattr__(self, key):
         return getattr(self.cursor, key)
