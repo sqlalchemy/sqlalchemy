@@ -10,6 +10,8 @@ except ImportError:
     import dummy_thread as thread
     import dummy_threading as threading
 
+import md5
+
 import __builtin__
 
 try:
@@ -56,6 +58,12 @@ def flatten_iterator(x):
         else:
             yield elem
 
+def hash(string):
+    """return an md5 hash of the given string."""
+    h = md5.new()
+    h.update(string)
+    return h.hexdigest()
+    
 
 class ArgSingleton(type):
     instances = {}

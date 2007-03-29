@@ -352,12 +352,13 @@ class EagerLoader(AbstractRelationLoader):
         """
         
         def __init__(self, eagerloader, parentclauses=None):
+            self.id = (parentclauses is not None and (parentclauses.id + "/") or '') + str(eagerloader.parent_property)
             self.parent = eagerloader
             self.target = eagerloader.select_table
-            self.eagertarget = eagerloader.select_table.alias()
+            self.eagertarget = eagerloader.select_table.alias(self._aliashash("/target"))
             
             if eagerloader.secondary:
-                self.eagersecondary = eagerloader.secondary.alias()
+                self.eagersecondary = eagerloader.secondary.alias(self._aliashash("/secondary"))
                 self.aliasizer = sql_util.Aliasizer(eagerloader.target, eagerloader.secondary, aliases={
                         eagerloader.target:self.eagertarget,
                         eagerloader.secondary:self.eagersecondary
@@ -380,7 +381,12 @@ class EagerLoader(AbstractRelationLoader):
                 self.eager_order_by = None
 
             self._row_decorator = self._create_decorator_row()
-
+        
+        def _aliashash(self, extra):
+            """return a deterministic 4 digit hash value for this AliasedClause's id + extra."""
+            # use the first 4 digits of an MD5 hash
+            return "anon_" + util.hash(self.id + extra)[0:4]
+            
         def _aliasize_orderby(self, orderby, copy=True):
             if copy:
                 return self.aliasizer.copy_and_process(util.to_list(orderby))

@@ -17,6 +17,9 @@
     - sending None as an argument to func.<something> will produce
       an argument of NULL
 - orm:
+    - corresponding to label/bindparam name generataion, eager loaders 
+      generate deterministic names for the aliases they create using 
+      md5 hashes.
     - improved/fixed custom collection classes when giving it "set"/
       "sets.Set" classes or subclasses (was still looking for append()
       methods on them during lazy loads)
