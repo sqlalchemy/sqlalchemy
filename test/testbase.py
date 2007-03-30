@@ -49,7 +49,6 @@ def parse_argv():
     parser.add_option("--enginestrategy", action="store", default=None, dest="enginestrategy", help="engine strategy (plain or threadlocal, defaults to plain)")
     parser.add_option("--coverage", action="store_true", dest="coverage", help="Dump a full coverage report after running")
     parser.add_option("--reversetop", action="store_true", dest="topological", help="Reverse the collection ordering for topological sorts (helps reveal dependency issues)")
-    parser.add_option("--serverside", action="store_true", dest="serverside", help="Turn on server side cursors for PG")
     
     (options, args) = parser.parse_args()
     sys.argv[1:] = args
@@ -74,7 +73,7 @@ def parse_argv():
             db_uri = 'oracle://scott:tiger@127.0.0.1:1521'
         elif DBTYPE == 'oracle8':
             db_uri = 'oracle://scott:tiger@127.0.0.1:1521'
-            opts['use_ansi'] = False
+            opts = {'use_ansi':False}
         elif DBTYPE == 'mssql':
             db_uri = 'mssql://scott:tiger@SQUAWK\\SQLEXPRESS/test'
         elif DBTYPE == 'firebird':
@@ -95,9 +94,6 @@ def parse_argv():
     
     global with_coverage
     with_coverage = options.coverage
-
-    if options.serverside:
-        opts['server_side_cursors'] = True
     
     if options.enginestrategy is not None:
         opts['strategy'] = options.enginestrategy    

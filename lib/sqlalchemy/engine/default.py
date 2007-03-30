@@ -157,34 +157,14 @@ class DefaultDialect(base.Dialect):
     ischema = property(_get_ischema, doc="""returns an ISchema object for this engine, which allows access to information_schema tables (if supported)""")
 
 class DefaultExecutionContext(base.ExecutionContext):
-    def __init__(self, dialect, engine, connection, compiled=None, parameters=None, statement=None):
+    def __init__(self, dialect):
         self.dialect = dialect
-        self.engine = engine
-        self.connection = connection
-        self.compiled = compiled
-        self.parameters = parameters
-        self.statement = statement
-        if compiled is not None:
-            self.typemap = compiled.typemap
-            self.column_labels = compiled.column_labels
-        else:
-            self.typemap = self.column_labels = None
-        self.cursor = self.dialect.create_cursor(self.connection.connection)
 
-    def proxy(self, statement=None, parameters=None):
-        if statement is not None:
-            self.connection._execute_compiled_impl(compiled, parameters, self)
-        return self.cursor
+    def pre_exec(self, engine, proxy, compiled, parameters):
+        self._process_defaults(engine, proxy, compiled, parameters)
 
-    def pre_exec(self):
-        if self.compiled is not None:
-            self._process_defaults()
-
-    def post_exec(self):
+    def post_exec(self, engine, proxy, compiled, parameters):
         pass
-
-    def get_result_proxy(self):
-        return base.ResultProxy(self.engine, self.connection, self.cursor, self, typemap=self.typemap, column_labels=self.column_labels)
 
     def get_rowcount(self, cursor):
         if hasattr(self, '_rowcount'):
@@ -207,16 +187,16 @@ class DefaultExecutionContext(base.ExecutionContext):
     def lastrow_has_defaults(self):
         return self._lastrow_has_defaults
 
-    def set_input_sizes(self):
+    def set_input_sizes(self, cursor, parameters):
         """Given a cursor and ClauseParameters, call the appropriate
         style of ``setinputsizes()`` on the cursor, using DBAPI types
         from the bind parameter's ``TypeEngine`` objects.
         """
 
-        if isinstance(self.parameters, list):
-            plist = self.parameters
+        if isinstance(parameters, list):
+            plist = parameters
         else:
-            plist = [self.parameters]
+            plist = [parameters]
         if self.dialect.positional:
             inputsizes = []
             for params in plist[0:1]:
@@ -225,7 +205,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                     dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.module)
                     if dbtype is not None:
                         inputsizes.append(dbtype)
-            self.cursor.setinputsizes(*inputsizes)
+            cursor.setinputsizes(*inputsizes)
         else:
             inputsizes = {}
             for params in plist[0:1]:
@@ -234,9 +214,9 @@ class DefaultExecutionContext(base.ExecutionContext):
                     dbtype = typeengine.dialect_impl(self.dialect).get_dbapi_type(self.dialect.module)
                     if dbtype is not None:
                         inputsizes[key] = dbtype
-            self.cursor.setinputsizes(**inputsizes)
+            cursor.setinputsizes(**inputsizes)
 
-    def _process_defaults(self):
+    def _process_defaults(self, engine, proxy, compiled, parameters):
         """``INSERT`` and ``UPDATE`` statements, when compiled, may
         have additional columns added to their ``VALUES`` and ``SET``
         lists corresponding to column defaults/onupdates that are
@@ -254,21 +234,23 @@ class DefaultExecutionContext(base.ExecutionContext):
         statement.
         """
 
-        if getattr(self.compiled, "isinsert", False):
-            if isinstance(self.parameters, list):
-                plist = self.parameters
+        if compiled is None: return
+
+        if getattr(compiled, "isinsert", False):
+            if isinstance(parameters, list):
+                plist = parameters
             else:
-                plist = [self.parameters]
-            drunner = self.dialect.defaultrunner(self.engine, self.proxy)
+                plist = [parameters]
+            drunner = self.dialect.defaultrunner(engine, proxy)
             self._lastrow_has_defaults = False
             for param in plist:
                 last_inserted_ids = []
                 need_lastrowid=False
                 # check the "default" status of each column in the table
-                for c in self.compiled.statement.table.c:
+                for c in compiled.statement.table.c:
                     # check if it will be populated by a SQL clause - we'll need that
                     # after execution.
-                    if c in self.compiled.inline_params:
+                    if c in compiled.inline_params:
                         self._lastrow_has_defaults = True
                         if c.primary_key:
                             need_lastrowid = True
@@ -296,19 +278,19 @@ class DefaultExecutionContext(base.ExecutionContext):
                 else:
                     self._last_inserted_ids = last_inserted_ids
                 self._last_inserted_params = param
-        elif getattr(self.compiled, 'isupdate', False):
-            if isinstance(self.parameters, list):
-                plist = self.parameters
+        elif getattr(compiled, 'isupdate', False):
+            if isinstance(parameters, list):
+                plist = parameters
             else:
-                plist = [self.parameters]
-            drunner = self.dialect.defaultrunner(self.engine, self.proxy)
+                plist = [parameters]
+            drunner = self.dialect.defaultrunner(engine, proxy)
             self._lastrow_has_defaults = False
             for param in plist:
                 # check the "onupdate" status of each column in the table
-                for c in self.compiled.statement.table.c:
+                for c in compiled.statement.table.c:
                     # it will be populated by a SQL clause - we'll need that
                     # after execution.
-                    if c in self.compiled.inline_params:
+                    if c in compiled.inline_params:
                         pass
                     # its not in the bind parameters, and theres an "onupdate" defined for the column;
                     # execute it and add to bind params
