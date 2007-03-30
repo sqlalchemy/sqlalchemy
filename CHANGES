@@ -16,6 +16,8 @@
       dbapis [ticket:505]
     - sending None as an argument to func.<something> will produce
       an argument of NULL
+    - query strings in unicode URLs get keys encoded to ascii
+      for **kwargs compat
 - orm:
     - corresponding to label/bindparam name generataion, eager loaders 
       generate deterministic names for the aliases they create using 

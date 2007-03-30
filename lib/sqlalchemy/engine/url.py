@@ -131,6 +131,8 @@ def _parse_rfc1738_args(name):
             tokens = database.split(r"?", 2)
             database = tokens[0]
             query = (len(tokens) > 1 and dict( cgi.parse_qsl(tokens[1]) ) or None)
+            if query is not None:
+                query = dict([(k.encode('ascii'), query[k]) for k in query])
         else:
             query = None
         opts = {'username':username,'password':password,'host':host,'port':port,'database':database, 'query':query}
