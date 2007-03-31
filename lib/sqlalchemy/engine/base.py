@@ -94,7 +94,7 @@ class Dialect(sql.AbstractDialect):
         raise NotImplementedError()
 
     def oid_column_name(self, column):
-        """Return the oid column name for this dialect, or None if the dialect cant/wont support OID/ROWID.
+        """Return the oid column name for this dialect, or None if the dialect can't/won't support OID/ROWID.
 
         The Column instance which represents OID for the query being
         compiled is passed, so that the dialect can inspect the column

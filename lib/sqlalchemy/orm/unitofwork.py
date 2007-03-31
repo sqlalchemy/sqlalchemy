@@ -151,7 +151,7 @@ class UnitOfWork(object):
 
     def register_new(self, obj):
         if hasattr(obj, '_instance_key'):
-            raise InvalidRequestError("Object '%s' already has an identity - it cant be registered as new" % repr(obj))
+            raise InvalidRequestError("Object '%s' already has an identity - it can't be registered as new" % repr(obj))
         if obj not in self.new:
             self.new.add(obj)
             obj._sa_insert_order = len(self.new)

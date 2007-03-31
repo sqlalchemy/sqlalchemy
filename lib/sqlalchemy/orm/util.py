@@ -6,7 +6,8 @@
 
 from sqlalchemy import sql, util, exceptions
 
-all_cascades = util.Set(["delete", "delete-orphan", "all", "merge", "expunge", "save-update", "refresh-expire", "none"])
+all_cascades = util.Set(["delete", "delete-orphan", "all", "merge",
+                         "expunge", "save-update", "refresh-expire", "none"])
 
 class CascadeOptions(object):
     """Keeps track of the options sent to relation().cascade"""
@@ -19,7 +20,6 @@ class CascadeOptions(object):
         self.merge = "merge" in values or "all" in values
         self.expunge = "expunge" in values or "all" in values
         self.refresh_expire = "refresh-expire" in values or "all" in values
-
         for x in values:
             if x not in all_cascades:
                 raise exceptions.ArgumentError("Invalid cascade option '%s'" % x)
@@ -28,12 +28,15 @@ class CascadeOptions(object):
         return getattr(self, item.replace("-", "_"), False)
 
     def __repr__(self):
-        return "CascadeOptions(arg=%s)" % repr(",".join([x for x in ['delete', 'save_update', 'merge', 'expunge', 'delete_orphan', 'refresh-expire'] if getattr(self, x, False) is True]))
+        return "CascadeOptions(arg=%s)" % repr(",".join(
+            [x for x in ['delete', 'save_update', 'merge', 'expunge',
+                         'delete_orphan', 'refresh-expire']
+             if getattr(self, x, False) is True]))
 
 def polymorphic_union(table_map, typecolname, aliasname='p_union'):
     """Create a ``UNION`` statement used by a polymorphic mapper.
 
-    See the SQLAlchemy advanced mapping docs for an example of how
+    See the `SQLAlchemy` advanced mapping docs for an example of how
     this is used.
     """
 
@@ -64,18 +67,20 @@ def polymorphic_union(table_map, typecolname, aliasname='p_union'):
     result = []
     for type, table in table_map.iteritems():
         if typecolname is not None:
-            result.append(sql.select([col(name, table) for name in colnames] + [sql.literal_column("'%s'" % type).label(typecolname)], from_obj=[table]))
+            result.append(sql.select([col(name, table) for name in colnames] +
+                                     [sql.literal_column("'%s'" % type).label(typecolname)],
+                                     from_obj=[table]))
         else:
             result.append(sql.select([col(name, table) for name in colnames], from_obj=[table]))
     return sql.union_all(*result).alias(aliasname)
 
 class TranslatingDict(dict):
-    """A dictionary that stores ColumnElement objects as keys.
+    """A dictionary that stores ``ColumnElement`` objects as keys.
 
-    Incoming ColumnElement keys are translated against those of an
-    underling FromClause for all operations.  This way the columns
-    from any Selectable that is derived from or underlying this
-    TranslatingDict's selectable can be used as keys.
+    Incoming ``ColumnElement`` keys are translated against those of an
+    underling ``FromClause`` for all operations.  This way the columns
+    from any ``Selectable`` that is derived from or underlying this
+    ``TranslatingDict`` 's selectable can be used as keys.
     """
 
     def __init__(self, selectable):

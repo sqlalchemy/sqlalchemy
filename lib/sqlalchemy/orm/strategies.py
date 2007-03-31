@@ -312,7 +312,11 @@ class EagerLoader(AbstractRelationLoader):
     def init(self):
         super(EagerLoader, self).init()
         if self.parent.isa(self.mapper):
-            raise exceptions.ArgumentError("Error creating eager relationship '%s' on parent class '%s' to child class '%s': Cant use eager loading on a self referential relationship." % (self.key, repr(self.parent.class_), repr(self.mapper.class_)))
+            raise exceptions.ArgumentError(
+                "Error creating eager relationship '%s' on parent class '%s' "
+                "to child class '%s': Cant use eager loading on a self "
+                "referential relationship." %
+                (self.key, repr(self.parent.class_), repr(self.mapper.class_)))
         self.parent._eager_loaders.add(self.parent_property)
 
         self.clauses = {}

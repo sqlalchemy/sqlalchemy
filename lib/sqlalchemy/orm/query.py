@@ -521,7 +521,7 @@ class Query(object):
                     return None
         p = search_for_prop(start or self.mapper)
         if p is None:
-            raise exceptions.InvalidRequestError("Cant locate property named '%s'" % key)
+            raise exceptions.InvalidRequestError("Can't locate property named '%s'" % key)
         return [keys, p]
 
     def _col_aggregate(self, col, func):

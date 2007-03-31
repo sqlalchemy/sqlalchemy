@@ -288,7 +288,11 @@ class PropertyLoader(StrategizedProperty):
             mapperutil.BinaryVisitor(visit_binary).traverse(self.primaryjoin)
 
             if len(self.foreign_keys) == 0:
-                raise exceptions.ArgumentError("Cant locate any foreign key columns in primary join condition '%s' for relationship '%s'.  Specify 'foreign_keys' argument to indicate which columns in the join condition are foreign." %(str(self.primaryjoin), str(self)))
+                raise exceptions.ArgumentError(
+                    "Can't locate any foreign key columns in primary join "
+                    "condition '%s' for relationship '%s'.  Specify "
+                    "'foreign_keys' argument to indicate which columns in "
+                    "the join condition are foreign." %(str(self.primaryjoin), str(self)))
             if self.secondaryjoin is not None:
                 mapperutil.BinaryVisitor(visit_binary).traverse(self.secondaryjoin)
 
@@ -325,9 +329,16 @@ class PropertyLoader(StrategizedProperty):
             manytoone = len([c for c in self.foreign_keys if self.parent.unjoined_table.c.contains_column(c)])
 
             if not onetomany and not manytoone:
-                raise exceptions.ArgumentError("Cant determine relation direction for relationship '%s' - foreign key columns are not present in neither the parent nor the child's mapped tables" %(str(self)))
+                raise exceptions.ArgumentError(
+                    "Can't determine relation direction for relationship '%s' "
+                    "- foreign key columns are not present in neither the "
+                    "parent nor the child's mapped tables" %(str(self)))
             elif onetomany and manytoone:
-                raise exceptions.ArgumentError("Cant determine relation direction for relationship '%s' - foreign key columns are present in both the parent and the child's mapped tables.  Specify 'foreign_keys' argument." %(str(self)))
+                raise exceptions.ArgumentError(
+                    "Can't determine relation direction for relationship '%s' "
+                    "- foreign key columns are present in both the parent and "
+                    "the child's mapped tables.  Specify 'foreign_keys' "
+                    "argument." % (str(self)))
             elif onetomany:
                 self.direction = sync.ONETOMANY
             elif manytoone:
@@ -476,15 +487,22 @@ class BackRef(object):
             parent = prop.parent.primary_mapper()
             self.kwargs.setdefault('viewonly', prop.viewonly)
             self.kwargs.setdefault('post_update', prop.post_update)
-            relation = PropertyLoader(parent, prop.secondary, pj, sj, backref=prop.key, is_backref=True, **self.kwargs)
+            relation = PropertyLoader(parent, prop.secondary, pj, sj,
+                                      backref=prop.key, is_backref=True,
+                                      **self.kwargs)
             mapper._compile_property(self.key, relation);
         elif not isinstance(mapper.props[self.key], PropertyLoader):
-            raise exceptions.ArgumentError("Cant create backref '%s' on mapper '%s'; an incompatible property of that name already exists" % (self.key, str(mapper)))
+            raise exceptions.ArgumentError(
+                "Can't create backref '%s' on mapper '%s'; an incompatible "
+                "property of that name already exists" % (self.key, str(mapper)))
         else:
             # else set one of us as the "backreference"
             parent = prop.parent.primary_mapper()
             if parent.class_ is not mapper.props[self.key]._get_target_class():
-                raise exceptions.ArgumentError("Backrefs do not match:  backref '%s' expects to connect to %s, but found a backref already connected to %s" % (self.key, str(parent.class_), str(mapper.props[self.key].mapper.class_)))
+                raise exceptions.ArgumentError(
+                    "Backrefs do not match:  backref '%s' expects to connect to %s, "
+                    "but found a backref already connected to %s" %
+                    (self.key, str(parent.class_), str(mapper.props[self.key].mapper.class_)))
             if not mapper.props[self.key].is_backref:
                 prop.is_backref=True
                 if not prop.viewonly:

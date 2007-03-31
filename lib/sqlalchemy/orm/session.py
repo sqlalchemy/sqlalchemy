@@ -124,10 +124,10 @@ class Session(object):
     echo_uow = property(_get_echo_uow,_set_echo_uow)
 
     def create_transaction(self, **kwargs):
-        """Return a new SessionTransaction corresponding to an
+        """Return a new ``SessionTransaction`` corresponding to an
         existing or new transaction.
 
-        If the transaction is new, the returned SessionTransaction
+        If the transaction is new, the returned ``SessionTransaction``
         will have commit control over the underlying transaction, else
         will have rollback control only.
         """
@@ -148,16 +148,16 @@ class Session(object):
         return self.get_bind(mapper).connect(**kwargs)
 
     def connection(self, mapper, **kwargs):
-        """Return a Connection corresponding to the given mapper.
+        """Return a ``Connection`` corresponding to the given mapper.
 
         Used by the ``execute()`` method which performs select
-        operations for Mapper and Query.
+        operations for ``Mapper`` and ``Query``.
 
-        If this Session is transactional, the connection will be in
+        If this ``Session`` is transactional, the connection will be in
         the context of this session's transaction.  Otherwise, the
-        connection is returned by the contextual_connect method, which
+        connection is returned by the ``contextual_connect()`` method, which
         some Engines override to return a thread-local connection, and
-        will have close_with_result set to True.
+        will have `close_with_result` set to `True`.
 
         The given `**kwargs` will be sent to the engine's
         ``contextual_connect()`` method, if no transaction is in
@@ -170,15 +170,15 @@ class Session(object):
             return self.get_bind(mapper).contextual_connect(**kwargs)
 
     def execute(self, mapper, clause, params, **kwargs):
-        """Using the given mapper to identify the appropriate Engine
-        or Connection to be used for statement execution, execute the
-        given ClauseElement using the provided parameter dictionary.
+        """Using the given mapper to identify the appropriate ``Engine``
+        or ``Connection`` to be used for statement execution, execute the
+        given ``ClauseElement`` using the provided parameter dictionary.
 
-        Return a ResultProxy corresponding to the execution's results.
+        Return a ``ResultProxy`` corresponding to the execution's results.
 
-        If this method allocates a new Connection for the operation,
-        then the ResultProxy's ``close()`` method will release the
-        resources of the underlying Connection, otherwise its a no-op.
+        If this method allocates a new ``Connection`` for the operation,
+        then the ``ResultProxy`` 's ``close()`` method will release the
+        resources of the underlying ``Connection``, otherwise its a no-op.
         """
         return self.connection(mapper, close_with_result=True).execute(clause, params, **kwargs)
 
@@ -195,10 +195,10 @@ class Session(object):
             self.transaction.close()
 
     def clear(self):
-        """Remove all object instances from this Session.
+        """Remove all object instances from this ``Session``.
 
         This is equivalent to calling ``expunge()`` for all objects in
-        this Session.
+        this ``Session``.
         """
 
         for instance in self:
@@ -208,54 +208,54 @@ class Session(object):
         self.uow.echo = echo
 
     def mapper(self, class_, entity_name=None):
-        """Given an Class, return the primary Mapper responsible for
+        """Given a ``Class``, return the primary ``Mapper`` responsible for
         persisting it."""
 
         return _class_mapper(class_, entity_name = entity_name)
 
     def bind_mapper(self, mapper, bindto):
-        """Bind the given `Mapper` to the given Engine or Connection.
+        """Bind the given `mapper` to the given ``Engine`` or ``Connection``.
 
-        All subsequent operations involving this Mapper will use the
+        All subsequent operations involving this ``Mapper`` will use the
         given `bindto`.
         """
 
         self.binds[mapper] = bindto
 
     def bind_table(self, table, bindto):
-        """Bind the given `Table` to the given Engine or Connection.
+        """Bind the given `table` to the given ``Engine`` or ``Connection``.
 
-        All subsequent operations involving this Table will use the
+        All subsequent operations involving this ``Table`` will use the
         given `bindto`.
         """
 
         self.binds[table] = bindto
 
     def get_bind(self, mapper):
-        """Return the Engine or Connection which is used to execute
-        statements on behalf of the given `Mapper`.
+        """Return the ``Engine`` or ``Connection`` which is used to execute
+        statements on behalf of the given `mapper`.
 
         Calling ``connect()`` on the return result will always result
-        in a Connection object.  This method disregards any
-        SessionTransaction that may be in progress.
+        in a ``Connection`` object.  This method disregards any
+        ``SessionTransaction`` that may be in progress.
 
         The order of searching is as follows:
 
-        1. if an Engine or Connection was bound to this Mapper
-           specifically within this Session, return that Engine or
-           Connection.
+        1. if an ``Engine`` or ``Connection`` was bound to this ``Mapper``
+           specifically within this ``Session``, return that ``Engine`` or
+           ``Connection``.
 
-        2. if an Engine or Connection was bound to this Mapper's
-           underlying Table within this Session (i.e. not to the Table
-           directly), return that Engine or Conneciton.
+        2. if an ``Engine`` or ``Connection`` was bound to this `mapper` 's
+           underlying ``Table`` within this ``Session`` (i.e. not to the ``Table``
+           directly), return that ``Engine`` or ``Connection``.
 
-        3. if an Engine or Connection was bound to this Session,
-           return that Engine or Connection.
+        3. if an ``Engine`` or ``Connection`` was bound to this ``Session``,
+           return that ``Engine`` or ``Connection``.
 
-        4. finally, return the Engine which was bound directly to the
-           Table's MetaData object.
+        4. finally, return the ``Engine`` which was bound directly to the
+           ``Table`` 's ``MetaData`` object.
 
-        If no Engine is bound to the Table, an exception is raised.
+        If no ``Engine`` is bound to the ``Table``, an exception is raised.
         """
 
         if mapper is None:
@@ -273,7 +273,7 @@ class Session(object):
             return e
 
     def query(self, mapper_or_class, entity_name=None, **kwargs):
-        """Return a new Query object corresponding to this Session and
+        """Return a new ``Query`` object corresponding to this ``Session`` and
         the mapper, or the classes' primary mapper.
         """
 
@@ -296,14 +296,14 @@ class Session(object):
         to the database.
 
         `objects` is a list or tuple of objects specifically to be
-        flushed; if None, all new and modified objects are flushed.
+        flushed; if ``None``, all new and modified objects are flushed.
         """
 
         self.uow.flush(self, objects)
 
     def get(self, class_, ident, **kwargs):
         """Return an instance of the object based on the given
-        identifier, or None if not found.
+        identifier, or ``None`` if not found.
 
         The `ident` argument is a scalar or tuple of primary key
         column values in the order of the table def's primary key
@@ -323,12 +323,12 @@ class Session(object):
 
         If not found, raises an exception.  The method will **remove
         all pending changes** to the object already existing in the
-        Session.  The `ident` argument is a scalar or tuple of primary
+        ``Session``.  The `ident` argument is a scalar or tuple of primary
         key columns in the order of the table def's primary key
         columns.
 
         The `entity_name` keyword argument may also be specified which
-        further qualifies the underlying Mapper used to perform the
+        further qualifies the underlying ``Mapper`` used to perform the
         query.
         """
 
@@ -374,7 +374,7 @@ class Session(object):
         return ret
 
     def expunge(self, object):
-        """Remove the given object from this Session.
+        """Remove the given `object` from this ``Session``.
 
         This will free all internal references to the object.
         Cascading will be applied according to the *expunge* cascade
@@ -386,25 +386,27 @@ class Session(object):
             self._unattach(c)
 
     def save(self, object, entity_name=None):
-        """Add a transient (unsaved) instance to this Session.
+        """Add a transient (unsaved) instance to this ``Session``.
 
         This operation cascades the `save_or_update` method to
         associated instances if the relation is mapped with
         ``cascade="save-update"``.
 
         The `entity_name` keyword argument will further qualify the
-        specific Mapper used to handle this instance.
+        specific ``Mapper`` used to handle this instance.
         """
 
         self._save_impl(object, entity_name=entity_name)
-        _object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e), halt_on=lambda c:c in self)
+        _object_mapper(object).cascade_callable('save-update', object,
+                                                lambda c, e:self._save_or_update_impl(c, e),
+                                                halt_on=lambda c:c in self)
 
     def update(self, object, entity_name=None):
         """Bring the given detached (saved) instance into this
-        Session.
+        ``Session``.
 
         If there is a persistent instance with the same identifier
-        already associated with this Session, an exception is thrown.
+        already associated with this ``Session``, an exception is thrown.
 
         This operation cascades the `save_or_update` method to
         associated instances if the relation is mapped with
@@ -412,17 +414,21 @@ class Session(object):
         """
 
         self._update_impl(object, entity_name=entity_name)
-        _object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e), halt_on=lambda c:c in self)
+        _object_mapper(object).cascade_callable('save-update', object,
+                                                lambda c, e:self._save_or_update_impl(c, e),
+                                                halt_on=lambda c:c in self)
 
     def save_or_update(self, object, entity_name=None):
-        """Save or update the given object into this Session.
+        """Save or update the given object into this ``Session``.
 
         The presence of an `_instance_key` attribute on the instance
         determines whether to ``save()`` or ``update()`` the instance.
         """
 
         self._save_or_update_impl(object, entity_name=entity_name)
-        _object_mapper(object).cascade_callable('save-update', object, lambda c, e:self._save_or_update_impl(c, e), halt_on=lambda c:c in self)
+        _object_mapper(object).cascade_callable('save-update', object,
+                                                lambda c, e:self._save_or_update_impl(c, e),
+                                                halt_on=lambda c:c in self)
 
     def _save_or_update_impl(self, object, entity_name=None):
         key = getattr(object, '_instance_key', None)
@@ -441,7 +447,7 @@ class Session(object):
             self.uow.register_deleted(c)
 
     def merge(self, object, entity_name=None, _recursive=None):
-        """Copy the state of the given object onto the persistent
+        """Copy the state of the given `object` onto the persistent
         object with the same identifier.
 
         If there is no persistent instance currently associated with
@@ -476,30 +482,34 @@ class Session(object):
 
         Valid call signatures:
 
-            identity_key(class\_, ident, entity_name=None)
-                class\_
-                    mapped class (must be a positional argument)
+        * ``identity_key(class, ident, entity_name=None)``
+        
+          class
+              mapped class (must be a positional argument)
 
-                ident
-                    primary key, if the key is composite this is a tuple
-                
-                entity_name
-                    optional entity name
+          ident
+              primary key, if the key is composite this is a tuple
 
-            identity_key(instance=instance)
-                instance
-                    object instance (must be given as a keyword arg)
+          entity_name
+              optional entity name
 
-            identity_key(class\_, row=row, entity_name=None)
-                class\_
-                    mapped class (must be a positional argument)
-                
-                row
-                    result proxy row (must be given as a keyword arg)
+        * ``identity_key(instance=instance)``
+        
+          instance
+              object instance (must be given as a keyword arg)
 
-                entity_name
-                    optional entity name (must be given as a keyword arg)
+        * ``identity_key(class, row=row, entity_name=None)``
+        
+          class
+              mapped class (must be a positional argument)
+
+          row
+              result proxy row (must be given as a keyword arg)
+
+          entity_name
+              optional entity name (must be given as a keyword arg)
         """
+
         if args:
             if len(args) == 1:
                 class_ = args[0]
@@ -533,14 +543,18 @@ class Session(object):
     def _save_impl(self, object, **kwargs):
         if hasattr(object, '_instance_key'):
             if not self.identity_map.has_key(object._instance_key):
-                raise exceptions.InvalidRequestError("Instance '%s' is a detached instance or is already persistent in a different Session" % repr(object))
+                raise exceptions.InvalidRequestError("Instance '%s' is a detached instance "
+                                                     "or is already persistent in a "
+                                                     "different Session" % repr(object))
         else:
             m = _class_mapper(object.__class__, entity_name=kwargs.get('entity_name', None))
 
             # this would be a nice exception to raise...however this is incompatible with a contextual
             # session which puts all objects into the session upon construction.
             #if m._is_orphan(object):
-            #    raise exceptions.InvalidRequestError("Instance '%s' is an orphan, and must be attached to a parent object to be saved" % (repr(object)))
+            #    raise exceptions.InvalidRequestError("Instance '%s' is an orphan, "
+            #                                         "and must be attached to a parent "
+            #                                         "object to be saved" % (repr(object)))
 
             m._assign_entity_name(object)
             self._register_pending(object)
@@ -565,12 +579,14 @@ class Session(object):
         self.uow.register_deleted(obj)
 
     def _attach(self, obj):
-        """Attach the given object to this Session."""
+        """Attach the given object to this ``Session``."""
 
         if getattr(obj, '_sa_session_id', None) != self.hash_key:
             old = getattr(obj, '_sa_session_id', None)
             if old is not None and _sessions.has_key(old):
-                raise exceptions.InvalidRequestError("Object '%s' is already attached to session '%s' (this is '%s')" % (repr(obj), old, id(self)))
+                raise exceptions.InvalidRequestError("Object '%s' is already attached "
+                                                     "to session '%s' (this is '%s')" %
+                                                     (repr(obj), old, id(self)))
 
                 # auto-removal from the old session is disabled.  but if we decide to
                 # turn it back on, do it as below: gingerly since _sessions is a WeakValueDict
@@ -600,7 +616,7 @@ class Session(object):
 
     def _validate_persistent(self, obj):
         """Validate that the given object is persistent within this
-        Session.
+        ``Session``.
         """
 
         self.uow._validate_obj(obj)
@@ -621,16 +637,21 @@ class Session(object):
         return self.identity_map.has_key(key)
 
     dirty = property(lambda s:s.uow.locate_dirty(),
-                     doc="A Set of all objects marked as 'dirty' within this Session")
+                     doc="A ``Set`` of all objects marked as 'dirty' within this ``Session``")
+
     deleted = property(lambda s:s.uow.deleted,
-                       doc="A Set of all objects marked as 'deleted' within this Session")
+                       doc="A ``Set`` of all objects marked as 'deleted' within this ``Session``")
+
     new = property(lambda s:s.uow.new,
-                   doc="A Set of all objects marked as 'new' within this Session.")
+                   doc="A ``Set`` of all objects marked as 'new' within this ``Session``.")
+
     identity_map = property(lambda s:s.uow.identity_map,
-                            doc="A dictionary consisting of all objects within this Session keyed to their _instance_key value.")
+                            doc="A dictionary consisting of all objects "
+                            "within this ``Session`` keyed to their `_instance_key` value.")
 
     def import_instance(self, *args, **kwargs):
         """Deprecated. A synynom for ``merge()``."""
+
         return self.merge(*args, **kwargs)
 
 # this is the AttributeManager instance used to provide attribute behavior on objects.
@@ -644,7 +665,7 @@ attribute_manager = unitofwork.attribute_manager
 _sessions = weakref.WeakValueDictionary()
 
 def object_session(obj):
-    """Return the Session to which the given object is bound, or None if none."""
+    """Return the ``Session`` to which the given object is bound, or ``None`` if none."""
 
     hashkey = getattr(obj, '_sa_session_id', None)
     if hashkey is not None:

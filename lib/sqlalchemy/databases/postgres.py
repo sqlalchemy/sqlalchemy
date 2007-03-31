@@ -310,7 +310,7 @@ class PGDialect(ansisql.ANSIDialect):
 
     def last_inserted_ids(self):
         if self.context.last_inserted_ids is None:
-            raise exceptions.InvalidRequestError("no INSERT executed, or cant use cursor.lastrowid without Postgres OIDs enabled")
+            raise exceptions.InvalidRequestError("no INSERT executed, or can't use cursor.lastrowid without Postgres OIDs enabled")
         else:
             return self.context.last_inserted_ids
 

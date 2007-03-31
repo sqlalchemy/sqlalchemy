@@ -62,7 +62,7 @@ class DefaultEngineStrategy(EngineStrategy):
         if pool is None:
             dbapi = kwargs.pop('module', dialect.dbapi())
             if dbapi is None:
-                raise exceptions.InvalidRequestError("Cant get DBAPI module for dialect '%s'" % dialect)
+                raise exceptions.InvalidRequestError("Can't get DBAPI module for dialect '%s'" % dialect)
 
             def connect():
                 try:
