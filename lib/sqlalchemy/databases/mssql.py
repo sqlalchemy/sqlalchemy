@@ -553,6 +553,7 @@ class MSSQLDialect_pymssql(MSSQLDialect):
 
     def do_rollback(self, connection):
         # pymssql throws an error on repeated rollbacks. Ignore it.
+        # TODO: this is normal behavior for most DBs.  are we sure we want to ignore it ?
         try:
             connection.rollback()
         except:
@@ -570,6 +571,11 @@ class MSSQLDialect_pymssql(MSSQLDialect):
             keys['host'] = ''.join([keys.get('host', ''), ':', str(keys['port'])])
             del keys['port']
         return [[], keys]
+
+    def get_disconnect_checker(self):
+        def disconnect_checker(e):
+            return isinstance(e, self.dbapi.DatabaseError) and "Error 10054" in str(e)
+        return disconnect_checker
 
 
 ##    This code is leftover from the initial implementation, for reference
@@ -630,6 +636,11 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
             connectors.append ("TrustedConnection=Yes")
         return [[";".join (connectors)], {}]
 
+    def get_disconnect_checker(self):
+        def disconnect_checker(e):
+            return isinstance(e, self.dbapi.Error) and '[08S01]' in e.args[1]
+        return disconnect_checker
+
 
 class MSSQLDialect_adodbapi(MSSQLDialect):
     def import_dbapi(cls):
@@ -659,6 +670,11 @@ class MSSQLDialect_adodbapi(MSSQLDialect):
         else:
             connectors.append("Integrated Security=SSPI")
         return [[";".join (connectors)], {}]
+
+    def get_disconnect_checker(self):
+        def disconnect_checker(e):
+            return isinstance(e, self.dbapi.adodbapi.DatabaseError) and "'connection failure'" in str(e)
+        return disconnect_checker
 
 dialect_mapping = {
     'pymssql':  MSSQLDialect_pymssql,

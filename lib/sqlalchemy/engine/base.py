@@ -246,6 +246,11 @@ class Dialect(sql.AbstractDialect):
 
         return clauseelement.compile(dialect=self, parameters=parameters)
 
+    def get_disconnect_checker(self):
+        """Return a callable that determines if an SQLError is caused by a database disconnection."""
+
+        return lambda x: False
+
 
 class ExecutionContext(object):
     """A messenger object for a Dialect that corresponds to a single execution.
@@ -440,18 +445,30 @@ class Connection(Connectable):
         return self.__transaction is not None
 
     def _begin_impl(self):
-        self.__engine.logger.info("BEGIN")
-        self.__engine.dialect.do_begin(self.connection)
+        if self.__connection.is_valid:
+            self.__engine.logger.info("BEGIN")
+            try:
+                self.__engine.dialect.do_begin(self.connection)
+            except Exception, e:
+                raise exceptions.SQLError(None, None, e)
 
     def _rollback_impl(self):
-        self.__engine.logger.info("ROLLBACK")
-        self.__engine.dialect.do_rollback(self.connection)
-        self.__connection.close_open_cursors()
+        if self.__connection.is_valid:
+            self.__engine.logger.info("ROLLBACK")
+            try:
+                self.__engine.dialect.do_rollback(self.connection)
+            except Exception, e:
+                raise exceptions.SQLError(None, None, e)
+            self.__connection.close_open_cursors()
         self.__transaction = None
 
     def _commit_impl(self):
-        self.__engine.logger.info("COMMIT")
-        self.__engine.dialect.do_commit(self.connection)
+        if self.__connection.is_valid:
+            self.__engine.logger.info("COMMIT")
+            try:
+                self.__engine.dialect.do_commit(self.connection)
+            except Exception, e:
+                raise exceptions.SQLError(None, None, e)
         self.__transaction = None
 
     def _autocommit(self, statement):
@@ -560,7 +577,6 @@ class Connection(Connectable):
             context.dialect.do_execute(context.cursor, context.statement, context.parameters, context=context)
         except Exception, e:
             self._autorollback()
-            #self._rollback_impl()
             if self.__close_with_result:
                 self.close()
             raise exceptions.SQLError(context.statement, context.parameters, e)
@@ -570,7 +586,6 @@ class Connection(Connectable):
             context.dialect.do_executemany(context.cursor, context.statement, context.parameters, context=context)
         except Exception, e:
             self._autorollback()
-            #self._rollback_impl()
             if self.__close_with_result:
                 self.close()
             raise exceptions.SQLError(context.statement, context.parameters, e)

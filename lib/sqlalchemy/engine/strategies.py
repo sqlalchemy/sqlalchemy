@@ -86,7 +86,7 @@ class DefaultEngineStrategy(EngineStrategy):
                 if tk in kwargs:
                     pool_args[k] = kwargs.pop(tk)
             pool_args['use_threadlocal'] = self.pool_threadlocal()
-            pool = poolclass(creator, **pool_args)
+            pool = poolclass(creator, disconnect_checker=dialect.get_disconnect_checker(), **pool_args)
         else:
             if isinstance(pool, poollib._DBProxy):
                 pool = pool.get_pool(*cargs, **cparams)

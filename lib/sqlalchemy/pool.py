@@ -125,7 +125,8 @@ class Pool(object):
     False, then no cursor processing occurs upon checkin.
     """
 
-    def __init__(self, creator, recycle=-1, echo=None, use_threadlocal=False, auto_close_cursors=True, disallow_open_cursors=False):
+    def __init__(self, creator, recycle=-1, echo=None, use_threadlocal=False, auto_close_cursors=True,
+                 disallow_open_cursors=False, disconnect_checker=None):
         self.logger = logging.instance_logger(self)
         self._threadconns = weakref.WeakValueDictionary()
         self._creator = creator
@@ -134,6 +135,10 @@ class Pool(object):
         self.auto_close_cursors = auto_close_cursors
         self.disallow_open_cursors = disallow_open_cursors
         self.echo = echo
+        if disconnect_checker:
+            self.disconnect_checker = disconnect_checker
+        else:
+            self.disconnect_checker = lambda x: False
     echo = logging.echo_property()
 
     def unique_connection(self):
@@ -183,8 +188,11 @@ class _ConnectionRecord(object):
         self.__pool.log("Closing connection %s" % repr(self.connection))
         self.connection.close()
 
-    def invalidate(self):
-        self.__pool.log("Invalidate connection %s" % repr(self.connection))
+    def invalidate(self, e=None):
+        if e is not None:
+            self.__pool.log("Invalidate connection %s (reason: %s:%s)" % (repr(self.connection), e.__class__.__name__, str(e)))
+        else:
+            self.__pool.log("Invalidate connection %s" % repr(self.connection))
         self.__close()
         self.connection = None
 
@@ -226,7 +234,7 @@ class _ConnectionFairy(object):
     def __init__(self, pool):
         self._threadfairy = _ThreadFairy(self)
         self._cursors = weakref.WeakKeyDictionary()
-        self.__pool = pool
+        self._pool = pool
         self.__counter = 0
         try:
             self._connection_record = pool.get()
@@ -235,15 +243,17 @@ class _ConnectionFairy(object):
             self.connection = None # helps with endless __getattr__ loops later on
             self._connection_record = None
             raise
-        if self.__pool.echo:
-            self.__pool.log("Connection %s checked out from pool" % repr(self.connection))
+        if self._pool.echo:
+            self._pool.log("Connection %s checked out from pool" % repr(self.connection))
     
-    _logger = property(lambda self: self.__pool.logger)
-         
-    def invalidate(self):
+    _logger = property(lambda self: self._pool.logger)
+    
+    is_valid = property(lambda self:self.connection is not None)
+    
+    def invalidate(self, e=None):
         if self.connection is None:
             raise exceptions.InvalidRequestError("This connection is closed")
-        self._connection_record.invalidate()
+        self._connection_record.invalidate(e=e)
         self.connection = None
         self._cursors = None
         self._close()
@@ -253,7 +263,7 @@ class _ConnectionFairy(object):
             c = self.connection.cursor(*args, **kwargs)
             return _CursorFairy(self, c)
         except Exception, e:
-            self.invalidate()
+            self.invalidate(e=e)
             raise
 
     def __getattr__(self, key):
@@ -282,21 +292,21 @@ class _ConnectionFairy(object):
         if self._cursors is not None:
             # cursors should be closed before connection is returned to the pool.  some dbapis like
             # mysql have real issues if they are not.
-            if self.__pool.auto_close_cursors:
+            if self._pool.auto_close_cursors:
                 self.close_open_cursors()
-            elif self.__pool.disallow_open_cursors:
+            elif self._pool.disallow_open_cursors:
                 if len(self._cursors):
                     raise exceptions.InvalidRequestError("This connection still has %d open cursors" % len(self._cursors))
         if self.connection is not None:
             try:
                 self.connection.rollback()
-            except:
+            except Exception, e:
                 if self._connection_record is not None:
-                    self._connection_record.invalidate()
+                    self._connection_record.invalidate(e=e)
         if self._connection_record is not None:
-            if self.__pool.echo:
-                self.__pool.log("Connection %s being returned to pool" % repr(self.connection))
-            self.__pool.return_conn(self)
+            if self._pool.echo:
+                self._pool.log("Connection %s being returned to pool" % repr(self.connection))
+            self._pool.return_conn(self)
         self.connection = None
         self._connection_record = None
         self._threadfairy = None
@@ -305,11 +315,27 @@ class _ConnectionFairy(object):
 class _CursorFairy(object):
     def __init__(self, parent, cursor):
         self.__parent = parent
-        self.__parent._cursors[self]=True
+        self.__parent._cursors[self] = True
         self.cursor = cursor
 
-    def invalidate(self):
-        self.__parent.invalidate()
+    def execute(self, *args, **kwargs):
+        try:
+            self.cursor.execute(*args, **kwargs)
+        except Exception, e:
+            if self.__parent._pool.disconnect_checker(e):
+                self.invalidate(e=e)
+            raise
+
+    def executemany(self, *args, **kwargs):
+        try:
+            self.cursor.executemany(*args, **kwargs)
+        except Exception, e:
+            if self.__parent._pool.disconnect_checker(e):
+                self.invalidate(e=e)
+            raise
+
+    def invalidate(self, e=None):
+        self.__parent.invalidate(e=e)
     
     def close(self):
         if self in self.__parent._cursors:

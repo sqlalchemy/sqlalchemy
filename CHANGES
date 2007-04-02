@@ -11,6 +11,9 @@
       "buffered" result sets used for different purposes.
     - server side cursor support fully functional in postgres
       [ticket:514].
+    - improved framework for auto-invalidation of connections that have
+      lost their underlying database - the error catching/invalidate
+      step is totally moved to the connection pool. #516
 - sql:
     - the Unicode type is now a direct subclass of String, which now
       contains all the "convert_unicode" logic.  This helps the variety

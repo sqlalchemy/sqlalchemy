@@ -328,21 +328,12 @@ class MySQLDialect(ansisql.ANSIDialect):
         return MySQLIdentifierPreparer(self)
 
     def do_executemany(self, cursor, statement, parameters, context=None, **kwargs):
-        try:
-            rowcount = cursor.executemany(statement, parameters)
-            if context is not None:
-                context._rowcount = rowcount
-        except self.dbapi.OperationalError, o:
-            if o.args[0] == 2006 or o.args[0] == 2014:
-                cursor.invalidate()
-            raise o
+        rowcount = cursor.executemany(statement, parameters)
+        if context is not None:
+            context._rowcount = rowcount
+            
     def do_execute(self, cursor, statement, parameters, **kwargs):
-        try:
-            cursor.execute(statement, parameters)
-        except self.dbapi.OperationalError, o:
-            if o.args[0] == 2006 or o.args[0] == 2014:
-                cursor.invalidate()
-            raise o
+        cursor.execute(statement, parameters)
 
     def do_rollback(self, connection):
         # MySQL without InnoDB doesnt support rollback()
@@ -350,6 +341,12 @@ class MySQLDialect(ansisql.ANSIDialect):
             connection.rollback()
         except:
             pass
+
+    def get_disconnect_checker(self):
+        def disconnect_checker(e):
+            return isinstance(e, self.dbapi.OperationalError) and e.args[0] in (2006, 2014)
+        return disconnect_checker            
+
 
     def get_default_schema_name(self):
         if not hasattr(self, '_default_schema_name'):
