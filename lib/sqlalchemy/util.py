@@ -94,6 +94,10 @@ def get_cls_kwargs(cls):
                     kw.append(vn)
     return kw
 
+def get_func_kwargs(func):
+    """Return the full set of legal kwargs for the given `func`."""
+    return [vn for vn in func.func_code.co_varnames]
+
 class SimpleProperty(object):
     """A *default* property accessor."""
 

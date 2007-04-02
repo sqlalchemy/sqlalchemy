@@ -357,7 +357,7 @@ class QueryTest(PersistTest):
                          Column('__parent', VARCHAR(20)),
                          Column('__row', VARCHAR(20)),
         )
-        shadowed.create()
+        shadowed.create(checkfirst=True)
         try:
             shadowed.insert().execute(shadow_id=1, shadow_name='The Shadow', parent='The Light', row='Without light there is no shadow', __parent='Hidden parent', __row='Hidden row')
             r = shadowed.select(shadowed.c.shadow_id==1).execute().fetchone()
@@ -374,7 +374,7 @@ class QueryTest(PersistTest):
                 pass # expected
             r.close()
         finally:
-            shadowed.drop()
+            shadowed.drop(checkfirst=True)
 
 class CompoundTest(PersistTest):
     """test compound statements like UNION, INTERSECT, particularly their ability to nest on

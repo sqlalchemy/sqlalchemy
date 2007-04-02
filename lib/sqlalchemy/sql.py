@@ -508,7 +508,7 @@ class ClauseParameters(object):
         return d
 
     def __repr__(self):
-        return repr(self.get_original_dict())
+        return self.__class__.__name__ + ":" + repr(self.get_original_dict())
 
 class ClauseVisitor(object):
     """A class that knows how to traverse and visit

@@ -42,7 +42,7 @@ class RelationTest1(testbase.ORMTest):
         try:
             compile_mappers()
         except exceptions.ArgumentError, ar:
-            assert str(ar) == "Cant determine relation direction for relationship 'Person.manager (Manager)' - foreign key columns are present in both the parent and the child's mapped tables.  Specify 'foreign_keys' argument."
+            assert str(ar) == "Can't determine relation direction for relationship 'Person.manager (Manager)' - foreign key columns are present in both the parent and the child's mapped tables.  Specify 'foreign_keys' argument.", str(ar)
 
         clear_mappers()
 

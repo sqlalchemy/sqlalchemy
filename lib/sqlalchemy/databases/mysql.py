@@ -12,12 +12,9 @@ import sqlalchemy.types as sqltypes
 import sqlalchemy.exceptions as exceptions
 from array import array
 
-try:
+def dbapi():
     import MySQLdb as mysql
-    import MySQLdb.constants.CLIENT as CLIENT_FLAGS
-except:
-    mysql = None
-    CLIENT_FLAGS = None
+    return mysql
 
 def kw_colspec(self, spec):
     if self.unsigned:
@@ -158,8 +155,6 @@ class MSLongText(MSText):
             return "LONGTEXT"
 
 class MSString(sqltypes.String):
-    def __init__(self, length=None, *extra, **kwargs):
-        sqltypes.String.__init__(self, length=length)
     def get_col_spec(self):
         return "VARCHAR(%(length)s)" % {'length' : self.length}
 
@@ -277,16 +272,12 @@ def descriptor():
     ]}
 
 class MySQLExecutionContext(default.DefaultExecutionContext):
-    def post_exec(self, engine, proxy, compiled, parameters, **kwargs):
-        if getattr(compiled, "isinsert", False):
-            self._last_inserted_ids = [proxy().lastrowid]
+    def post_exec(self):
+        if self.compiled.isinsert:
+            self._last_inserted_ids = [self.cursor.lastrowid]
 
 class MySQLDialect(ansisql.ANSIDialect):
-    def __init__(self, module = None, **kwargs):
-        if module is None:
-            self.module = mysql
-        else:
-            self.module = module
+    def __init__(self, **kwargs):
         ansisql.ANSIDialect.__init__(self, default_paramstyle='format', **kwargs)
 
     def create_connect_args(self, url):
@@ -305,14 +296,18 @@ class MySQLDialect(ansisql.ANSIDialect):
         # TODO: what about options like "ssl", "cursorclass" and "conv" ?
 
         client_flag = opts.get('client_flag', 0)
-        if CLIENT_FLAGS is not None:
-            client_flag |= CLIENT_FLAGS.FOUND_ROWS
+        if self.dbapi is not None:
+            try:
+                import MySQLdb.constants.CLIENT as CLIENT_FLAGS
+                client_flag |= CLIENT_FLAGS.FOUND_ROWS
+            except:
+                pass
         opts['client_flag'] = client_flag
 
         return [[], opts]
 
-    def create_execution_context(self):
-        return MySQLExecutionContext(self)
+    def create_execution_context(self, *args, **kwargs):
+        return MySQLExecutionContext(self, *args, **kwargs)
 
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
@@ -324,10 +319,10 @@ class MySQLDialect(ansisql.ANSIDialect):
         return MySQLCompiler(self, statement, bindparams, **kwargs)
 
     def schemagenerator(self, *args, **kwargs):
-        return MySQLSchemaGenerator(*args, **kwargs)
+        return MySQLSchemaGenerator(self, *args, **kwargs)
 
     def schemadropper(self, *args, **kwargs):
-        return MySQLSchemaDropper(*args, **kwargs)
+        return MySQLSchemaDropper(self, *args, **kwargs)
 
     def preparer(self):
         return MySQLIdentifierPreparer(self)
@@ -337,14 +332,14 @@ class MySQLDialect(ansisql.ANSIDialect):
             rowcount = cursor.executemany(statement, parameters)
             if context is not None:
                 context._rowcount = rowcount
-        except mysql.OperationalError, o:
+        except self.dbapi.OperationalError, o:
             if o.args[0] == 2006 or o.args[0] == 2014:
                 cursor.invalidate()
             raise o
     def do_execute(self, cursor, statement, parameters, **kwargs):
         try:
             cursor.execute(statement, parameters)
-        except mysql.OperationalError, o:
+        except self.dbapi.OperationalError, o:
             if o.args[0] == 2006 or o.args[0] == 2014:
                 cursor.invalidate()
             raise o
@@ -361,11 +356,9 @@ class MySQLDialect(ansisql.ANSIDialect):
             self._default_schema_name = text("select database()", self).scalar()
         return self._default_schema_name
 
-    def dbapi(self):
-        return self.module
-
     def has_table(self, connection, table_name, schema=None):
-        cursor = connection.execute("show table status like '" + table_name + "'")
+        cursor = connection.execute("show table status like %s", [table_name])
+        print "CURSOR", cursor, "ROWCOUNT", cursor.rowcount, "REAL RC", cursor.cursor.rowcount
         return bool( not not cursor.rowcount )
 
     def reflecttable(self, connection, table):
@@ -492,8 +485,7 @@ class MySQLCompiler(ansisql.ANSICompiler):
 
 class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, override_pk=False, first_pk=False):
-        t = column.type.engine_impl(self.engine)
-        colspec = self.preparer.format_column(column) + " " + column.type.engine_impl(self.engine).get_col_spec()
+        colspec = self.preparer.format_column(column) + " " + column.type.dialect_impl(self.dialect).get_col_spec()
         default = self.get_column_default_string(column)
         if default is not None:
             colspec += " DEFAULT " + default

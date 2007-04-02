@@ -50,6 +50,16 @@ class DefaultEngineStrategy(EngineStrategy):
             if k in kwargs:
                 dialect_args[k] = kwargs.pop(k)
 
+        dbapi = kwargs.pop('module', None)
+        if dbapi is None:
+            dbapi_args = {}
+            for k in util.get_func_kwargs(module.dbapi):
+                if k in kwargs:
+                    dbapi_args[k] = kwargs.pop(k)
+            dbapi = module.dbapi(**dbapi_args)
+        
+        dialect_args['dbapi'] = dbapi
+        
         # create dialect
         dialect = module.dialect(**dialect_args)
 
@@ -60,10 +70,6 @@ class DefaultEngineStrategy(EngineStrategy):
         # look for existing pool or create
         pool = kwargs.pop('pool', None)
         if pool is None:
-            dbapi = kwargs.pop('module', dialect.dbapi())
-            if dbapi is None:
-                raise exceptions.InvalidRequestError("Can't get DBAPI module for dialect '%s'" % dialect)
-
             def connect():
                 try:
                     return dbapi.connect(*cargs, **cparams)
@@ -73,6 +79,7 @@ class DefaultEngineStrategy(EngineStrategy):
 
             poolclass = kwargs.pop('poolclass', getattr(module, 'poolclass', poollib.QueuePool))
             pool_args = {}
+
             # consume pool arguments from kwargs, translating a few of the arguments
             for k in util.get_cls_kwargs(poolclass):
                 tk = {'echo':'echo_pool', 'timeout':'pool_timeout', 'recycle':'pool_recycle'}.get(k, k)
@@ -139,3 +146,52 @@ class ThreadLocalEngineStrategy(DefaultEngineStrategy):
         return threadlocal.TLEngine
 
 ThreadLocalEngineStrategy()
+
+
+class MockEngineStrategy(EngineStrategy):
+    """Produces a single Connection object which dispatches statement executions
+    to a passed-in function"""
+    def __init__(self):
+        EngineStrategy.__init__(self, 'mock')
+        
+    def create(self, name_or_url, executor, **kwargs):
+        # create url.URL object
+        u = url.make_url(name_or_url)
+
+        # get module from sqlalchemy.databases
+        module = u.get_module()
+
+        dialect_args = {}
+        # consume dialect arguments from kwargs
+        for k in util.get_cls_kwargs(module.dialect):
+            if k in kwargs:
+                dialect_args[k] = kwargs.pop(k)
+
+        # create dialect
+        dialect = module.dialect(**dialect_args)
+
+        return MockEngineStrategy.MockConnection(dialect, executor)
+
+    class MockConnection(base.Connectable):
+        def __init__(self, dialect, execute):
+            self._dialect = dialect
+            self.execute = execute
+
+        engine = property(lambda s: s)
+        dialect = property(lambda s:s._dialect)
+        
+        def contextual_connect(self):
+            return self
+
+        def create(self, entity, **kwargs):
+            kwargs['checkfirst'] = False
+            entity.accept_visitor(self.dialect.schemagenerator(self, **kwargs))
+
+        def drop(self, entity, **kwargs):
+            kwargs['checkfirst'] = False
+            entity.accept_visitor(self.dialect.schemadropper(self, **kwargs))
+
+        def execute(self, object, *multiparams, **params):
+            raise NotImplementedError()
+
+MockEngineStrategy()

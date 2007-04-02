@@ -6,7 +6,7 @@ import string,datetime, re, sys, os
 import sqlalchemy.engine.url as url
 
 import sqlalchemy.types
-
+from sqlalchemy.databases import mssql, oracle
 
 db = testbase.db
 
@@ -22,18 +22,19 @@ class MyType(types.TypeEngine):
 
 class MyDecoratedType(types.TypeDecorator):
     impl = String
-    def convert_bind_param(self, value, engine):
-        return "BIND_IN"+ value
-    def convert_result_value(self, value, engine):
-        return value + "BIND_OUT"
+    def convert_bind_param(self, value, dialect):
+        return "BIND_IN"+ super(MyDecoratedType, self).convert_bind_param(value, dialect)
+    def convert_result_value(self, value, dialect):
+        return super(MyDecoratedType, self).convert_result_value(value, dialect) + "BIND_OUT"
     def copy(self):
         return MyDecoratedType()
         
-class MyUnicodeType(types.Unicode):
-    def convert_bind_param(self, value, engine):
-        return "UNI_BIND_IN"+ value
-    def convert_result_value(self, value, engine):
-        return value + "UNI_BIND_OUT"
+class MyUnicodeType(types.TypeDecorator):
+    impl = Unicode
+    def convert_bind_param(self, value, dialect):
+        return "UNI_BIND_IN"+ super(MyUnicodeType, self).convert_bind_param(value, dialect)
+    def convert_result_value(self, value, dialect):
+        return super(MyUnicodeType, self).convert_result_value(value, dialect) + "UNI_BIND_OUT"
     def copy(self):
         return MyUnicodeType(self.impl.length)
 
@@ -52,31 +53,29 @@ class AdaptTest(PersistTest):
         assert t2 != t3
         assert t3 != t1
     
-    def testdecorator(self):
-        t1 = Unicode(20)
-        t2 = Unicode()
-        assert isinstance(t1.impl, String)
-        assert not isinstance(t1.impl, TEXT)
-        assert (t1.impl.length == 20)
-        assert isinstance(t2.impl, TEXT)
-        assert t2.impl.length is None
-
-
-    def testdialecttypedecorators(self):
-        """test that a a Dialect can provide a dialect-specific subclass of a TypeDecorator subclass."""
-        import sqlalchemy.databases.mssql as mssql
+    def testmsnvarchar(self):
         dialect = mssql.MSSQLDialect()
         # run the test twice to insure the caching step works too
         for x in range(0, 1):
             col = Column('', Unicode(length=10))
             dialect_type = col.type.dialect_impl(dialect)
-            assert isinstance(dialect_type, mssql.MSUnicode)
+            assert isinstance(dialect_type, mssql.MSNVarchar)
             assert dialect_type.get_col_spec() == 'NVARCHAR(10)'
-            assert isinstance(dialect_type.impl, mssql.MSString)
-            
+
+    def testoracletext(self):
+        dialect = oracle.OracleDialect()
+        col = Column('', MyDecoratedType)
+        dialect_type = col.type.dialect_impl(dialect)
+        assert isinstance(dialect_type.impl, oracle.OracleText), repr(dialect_type.impl)
+    
 class OverrideTest(PersistTest):
     """tests user-defined types, including a full type as well as a TypeDecorator"""
 
+    def testbasic(self):
+        print users.c.goofy4.type
+        print users.c.goofy4.type.dialect_impl(testbase.db.dialect)
+        print users.c.goofy4.type.dialect_impl(testbase.db.dialect).get_col_spec()
+        
     def testprocessing(self):
 
         global users

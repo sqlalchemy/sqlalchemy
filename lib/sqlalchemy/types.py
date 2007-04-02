@@ -53,27 +53,11 @@ class TypeEngine(AbstractType):
     def __init__(self, *args, **params):
         pass
 
-    def engine_impl(self, engine):
-        """Deprecated; call dialect_impl with a dialect directly."""
-
-        return self.dialect_impl(engine.dialect)
-
     def dialect_impl(self, dialect):
         try:
             return self.impl_dict[dialect]
         except KeyError:
             return self.impl_dict.setdefault(dialect, dialect.type_descriptor(self))
-
-    def _get_impl(self):
-        if hasattr(self, '_impl'):
-            return self._impl
-        else:
-            return NULLTYPE
-
-    def _set_impl(self, impl):
-        self._impl = impl
-
-    impl = property(_get_impl, _set_impl)
 
     def get_col_spec(self):
         raise NotImplementedError()
@@ -86,26 +70,25 @@ class TypeEngine(AbstractType):
 
     def adapt(self, cls):
         return cls()
-
+    
+    def get_search_list(self):
+        """return a list of classes to test for a match 
+        when adapting this type to a dialect-specific type.
+        
+        """
+        
+        return self.__class__.__mro__[0:-1]
+        
 class TypeDecorator(AbstractType):
     def __init__(self, *args, **kwargs):
         if not hasattr(self.__class__, 'impl'):
             raise exceptions.AssertionError("TypeDecorator implementations require a class-level variable 'impl' which refers to the class of type being decorated")
         self.impl = self.__class__.impl(*args, **kwargs)
 
-    def engine_impl(self, engine):
-        return self.dialect_impl(engine.dialect)
-
     def dialect_impl(self, dialect):
         try:
             return self.impl_dict[dialect]
         except:
-            # see if the dialect has an adaptation of the TypeDecorator itself
-            adapted_decorator = dialect.type_descriptor(self)
-            if adapted_decorator is not self:
-                result = adapted_decorator.dialect_impl(dialect)
-                self.impl_dict[dialect] = result
-                return result
             typedesc = dialect.type_descriptor(self.impl)
             tt = self.copy()
             if not isinstance(tt, self.__class__):
@@ -168,8 +151,7 @@ def to_instance(typeobj):
 def adapt_type(typeobj, colspecs):
     if isinstance(typeobj, type):
         typeobj = typeobj()
-
-    for t in typeobj.__class__.__mro__[0:-1]:
+    for t in typeobj.get_search_list():
         try:
             impltype = colspecs[t]
             break
@@ -198,26 +180,28 @@ class NullTypeEngine(TypeEngine):
         return value
 
 class String(TypeEngine):
-    def __new__(cls, *args, **kwargs):
-        if cls is not String or len(args) > 0 or kwargs.has_key('length'):
-            return super(String, cls).__new__(cls, *args, **kwargs)
-        else:
-            return super(String, TEXT).__new__(TEXT, *args, **kwargs)
-
-    def __init__(self, length = None):
+    def __init__(self, length=None, convert_unicode=False):
         self.length = length
+        self.convert_unicode = convert_unicode
 
     def adapt(self, impltype):
-        return impltype(length=self.length)
+        return impltype(length=self.length, convert_unicode=self.convert_unicode)
 
     def convert_bind_param(self, value, dialect):
-        if not dialect.convert_unicode or value is None or not isinstance(value, unicode):
+        if not (self.convert_unicode or dialect.convert_unicode) or value is None or not isinstance(value, unicode):
             return value
         else:
             return value.encode(dialect.encoding)
 
+    def get_search_list(self):
+        l = super(String, self).get_search_list()
+        if self.length is None:
+            return (TEXT,) + l
+        else:
+            return l
+
     def convert_result_value(self, value, dialect):
-        if not dialect.convert_unicode or value is None or isinstance(value, unicode):
+        if not (self.convert_unicode or dialect.convert_unicode) or value is None or isinstance(value, unicode):
             return value
         else:
             return value.decode(dialect.encoding)
@@ -228,21 +212,11 @@ class String(TypeEngine):
     def compare_values(self, x, y):
         return x == y
 
-class Unicode(TypeDecorator):
-    impl = String
-
-    def convert_bind_param(self, value, dialect):
-         if value is not None and isinstance(value, unicode):
-              return value.encode(dialect.encoding)
-         else:
-              return value
-
-    def convert_result_value(self, value, dialect):
-         if value is not None and not isinstance(value, unicode):
-             return value.decode(dialect.encoding)
-         else:
-             return value
-
+class Unicode(String):
+    def __init__(self, length=None, **kwargs):
+        kwargs['convert_unicode'] = True
+        super(Unicode, self).__init__(length=length, **kwargs)
+    
 class Integer(TypeEngine):
     """Integer datatype."""
 
@@ -310,7 +284,7 @@ class Binary(TypeEngine):
 
     def convert_bind_param(self, value, dialect):
         if value is not None:
-            return dialect.dbapi().Binary(value)
+            return dialect.dbapi.Binary(value)
         else:
             return None
 

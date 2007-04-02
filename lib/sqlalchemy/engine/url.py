@@ -71,6 +71,10 @@ class URL(object):
 
     def get_module(self):
         """Return the SQLAlchemy database module corresponding to this URL's driver name."""
+        if self.drivername == 'ansi':
+            import sqlalchemy.ansisql
+            return sqlalchemy.ansisql
+            
         try:
             return getattr(__import__('sqlalchemy.databases.%s' % self.drivername).databases, self.drivername)
         except ImportError:

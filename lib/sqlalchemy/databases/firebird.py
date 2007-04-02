@@ -15,12 +15,9 @@ import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
 import sqlalchemy.exceptions as exceptions
 
-try:
+def dbapi():
     import kinterbasdb
-except:
-    kinterbasdb = None
-
-dbmodule = kinterbasdb
+    return kinterbasdb
 
 _initialized_kb = False
 
@@ -32,7 +29,6 @@ class FBNumeric(sqltypes.Numeric):
         else:
             return "NUMERIC(%(precision)s, %(length)s)" % { 'precision': self.precision,
                                                             'length' : self.length }
-
 
 class FBInteger(sqltypes.Integer):
     def get_col_spec(self):
@@ -111,24 +107,11 @@ class FBExecutionContext(default.DefaultExecutionContext):
 
 
 class FBDialect(ansisql.ANSIDialect):
-    def __init__(self, module = None, **params):
-        global _initialized_kb
-        self.module = module or dbmodule
-        self.opts = {}
+    def __init__(self, type_conv=200, concurrency_level=1, **kwargs):
+        ansisql.ANSIDialect.__init__(self, **kwargs)
 
-        if not _initialized_kb:
-            _initialized_kb = True
-            type_conv = params.get('type_conv', 200) or 200
-            if isinstance(type_conv, types.StringTypes):
-                type_conv = int(type_conv)
-
-            concurrency_level = params.get('concurrency_level', 1) or 1
-            if isinstance(concurrency_level, types.StringTypes):
-                concurrency_level = int(concurrency_level)
-
-            if kinterbasdb is not None:
-                kinterbasdb.init(type_conv=type_conv, concurrency_level=concurrency_level)
-        ansisql.ANSIDialect.__init__(self, **params)
+        self.type_conv = type_conv
+        self.concurrency_level= concurrency_level
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args(['host', 'database', 'user', 'password', 'port'])
@@ -136,15 +119,17 @@ class FBDialect(ansisql.ANSIDialect):
             opts['host'] = "%s/%s" % (opts['host'], opts['port'])
             del opts['port']
         opts.update(url.query)
-        # pop arguments that we took at the module level
-        opts.pop('type_conv', None)
-        opts.pop('concurrency_level', None)
-        self.opts = opts
 
-        return ([], self.opts)
+        type_conv = opts.pop('type_conv', self.type_conv)
+        concurrency_level = opts.pop('concurrency_level', self.concurrency_level)
+        global _initialized_kb
+        if not _initialized_kb and self.dbapi is not None:
+            _initialized_kb = True
+            self.dbapi.init(type_conv=type_conv, concurrency_level=concurrency_level)
+        return ([], opts)
 
-    def create_execution_context(self):
-        return FBExecutionContext(self)
+    def create_execution_context(self, *args, **kwargs):
+        return FBExecutionContext(self, *args, **kwargs)
 
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
@@ -156,13 +141,13 @@ class FBDialect(ansisql.ANSIDialect):
         return FBCompiler(self, statement, bindparams, **kwargs)
 
     def schemagenerator(self, *args, **kwargs):
-        return FBSchemaGenerator(*args, **kwargs)
+        return FBSchemaGenerator(self, *args, **kwargs)
 
     def schemadropper(self, *args, **kwargs):
-        return FBSchemaDropper(*args, **kwargs)
+        return FBSchemaDropper(self, *args, **kwargs)
 
-    def defaultrunner(self, engine, proxy):
-        return FBDefaultRunner(engine, proxy)
+    def defaultrunner(self, connection):
+        return FBDefaultRunner(connection)
 
     def preparer(self):
         return FBIdentifierPreparer(self)
@@ -292,9 +277,6 @@ class FBDialect(ansisql.ANSIDialect):
         for name,value in fks.iteritems():
             table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1], name=name))
 
-    def last_inserted_ids(self):
-        return self.context.last_inserted_ids
-
     def do_execute(self, cursor, statement, parameters, **kwargs):
         cursor.execute(statement, parameters or [])
 
@@ -303,15 +285,6 @@ class FBDialect(ansisql.ANSIDialect):
 
     def do_commit(self, connection):
         connection.commit(True)
-
-    def connection(self):
-        """Returns a managed DBAPI connection from this SQLEngine's connection pool."""
-        c = self._pool.connect()
-        c.supportsTransactions = 0
-        return c
-
-    def dbapi(self):
-        return self.module
 
 
 class FBCompiler(ansisql.ANSICompiler):
@@ -364,7 +337,7 @@ class FBCompiler(ansisql.ANSICompiler):
 class FBSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column)
-        colspec += " " + column.type.engine_impl(self.engine).get_col_spec()
+        colspec += " " + column.type.dialect_impl(self.dialect).get_col_spec()
 
         default = self.get_column_default_string(column)
         if default is not None:
@@ -388,11 +361,11 @@ class FBSchemaDropper(ansisql.ANSISchemaDropper):
 
 class FBDefaultRunner(ansisql.ANSIDefaultRunner):
     def exec_default_sql(self, default):
-        c = sql.select([default.arg], from_obj=["rdb$database"], engine=self.engine).compile()
-        return self.proxy(str(c), c.get_params()).fetchone()[0]
+        c = sql.select([default.arg], from_obj=["rdb$database"]).compile(engine=self.engine)
+        return self.connection.execute_compiled(c).scalar()
 
     def visit_sequence(self, seq):
-        return self.proxy("SELECT gen_id(" + seq.name + ", 1) FROM rdb$database").fetchone()[0]
+        return self.connection.execute_text("SELECT gen_id(" + seq.name + ", 1) FROM rdb$database").scalar()
 
 
 RESERVED_WORDS = util.Set(

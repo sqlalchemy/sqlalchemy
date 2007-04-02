@@ -498,9 +498,10 @@ class SchemaTest(PersistTest):
         # insure this doesnt crash
         print [t for t in metadata.table_iterator()]
         buf = StringIO.StringIO()
-        def foo(s, p):
+        def foo(s, p=None):
             buf.write(s)
-        gen = testbase.db.dialect.schemagenerator(testbase.db.engine, foo, None)
+        gen = create_engine(testbase.db.name + "://", strategy="mock", executor=foo)
+        gen = gen.dialect.schemagenerator(gen)
         gen.traverse(table1)
         gen.traverse(table2)
         buf = buf.getvalue()

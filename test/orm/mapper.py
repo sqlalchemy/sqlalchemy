@@ -1332,7 +1332,7 @@ class InstancesTest(MapperSuperTest):
             'addresses':relation(Address, lazy=True)
         })
         mapper(Address, addresses)
-        query = users.select(users.c.user_id==7).union(users.select(users.c.user_id>7)).alias('ulist').outerjoin(addresses).select(use_labels=True)
+        query = users.select(users.c.user_id==7).union(users.select(users.c.user_id>7)).alias('ulist').outerjoin(addresses).select(use_labels=True,order_by=['ulist.user_id', addresses.c.address_id])
         q = create_session().query(User)
         
         def go():
@@ -1348,7 +1348,7 @@ class InstancesTest(MapperSuperTest):
         })
         mapper(Address, addresses)
         
-        selectquery = users.outerjoin(addresses).select(use_labels=True)
+        selectquery = users.outerjoin(addresses).select(use_labels=True, order_by=[users.c.user_id, addresses.c.address_id])
         q = create_session().query(User)
         
         def go():
@@ -1363,7 +1363,7 @@ class InstancesTest(MapperSuperTest):
         mapper(Address, addresses)
 
         adalias = addresses.alias('adalias')
-        selectquery = users.outerjoin(adalias).select(use_labels=True)
+        selectquery = users.outerjoin(adalias).select(use_labels=True, order_by=[users.c.user_id, adalias.c.address_id])
         q = create_session().query(User)
 
         def go():
@@ -1378,7 +1378,7 @@ class InstancesTest(MapperSuperTest):
         mapper(Address, addresses)
 
         adalias = addresses.alias('adalias')
-        selectquery = users.outerjoin(adalias).select(use_labels=True)
+        selectquery = users.outerjoin(adalias).select(use_labels=True, order_by=[users.c.user_id, adalias.c.address_id])
         q = create_session().query(User)
 
         def go():
@@ -1393,7 +1393,7 @@ class InstancesTest(MapperSuperTest):
         mapper(Address, addresses)
 
         adalias = addresses.alias('adalias')
-        selectquery = users.outerjoin(adalias).select(use_labels=True)
+        selectquery = users.outerjoin(adalias).select(use_labels=True, order_by=[users.c.user_id, adalias.c.address_id])
         def decorate(row):
             d = {}
             for c in addresses.columns:
@@ -1418,7 +1418,7 @@ class InstancesTest(MapperSuperTest):
         (user7, user8, user9) = sess.query(User).select()
         (address1, address2, address3, address4) = sess.query(Address).select()
         
-        selectquery = users.outerjoin(addresses).select(use_labels=True)
+        selectquery = users.outerjoin(addresses).select(use_labels=True, order_by=[users.c.user_id, addresses.c.address_id])
         q = sess.query(User)
         l = q.instances(selectquery.execute(), Address)
         # note the result is a cartesian product

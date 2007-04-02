@@ -12,19 +12,19 @@ import sqlalchemy.engine.default as default
 import sqlalchemy.types as sqltypes
 import datetime,time
 
-pysqlite2_timesupport = False   # Change this if the init.d guys ever get around to supporting time cols
-
-try:
-    from pysqlite2 import dbapi2 as sqlite
-except ImportError:
+def dbapi():
     try:
-        from sqlite3 import dbapi2 as sqlite #try the 2.5+ stdlib name.
-    except ImportError:
+        from pysqlite2 import dbapi2 as sqlite
+    except ImportError, e:
         try:
-            sqlite = __import__('sqlite') # skip ourselves
-        except:
-            sqlite = None
-
+            from sqlite3 import dbapi2 as sqlite #try the 2.5+ stdlib name.
+        except ImportError:
+            try:
+                sqlite = __import__('sqlite') # skip ourselves
+            except ImportError:
+                raise e
+    return sqlite
+    
 class SLNumeric(sqltypes.Numeric):
     def get_col_spec(self):
         if self.precision is None:
@@ -140,10 +140,6 @@ pragma_names = {
     'BLOB' : SLBinary,
 }
 
-if pysqlite2_timesupport:
-    colspecs.update({sqltypes.Time : SLTime})
-    pragma_names.update({'TIME' : SLTime})
-
 def descriptor():
     return {'name':'sqlite',
     'description':'SQLite',
@@ -152,25 +148,29 @@ def descriptor():
     ]}
 
 class SQLiteExecutionContext(default.DefaultExecutionContext):
-    def post_exec(self, engine, proxy, compiled, parameters, **kwargs):
-        if getattr(compiled, "isinsert", False):
-            self._last_inserted_ids = [proxy().lastrowid]
-
+    def post_exec(self):
+        if self.compiled.isinsert:
+            self._last_inserted_ids = [self.cursor.lastrowid]
+        super(SQLiteExecutionContext, self).post_exec()
+        
 class SQLiteDialect(ansisql.ANSIDialect):
     def __init__(self, **kwargs):
+        ansisql.ANSIDialect.__init__(self, default_paramstyle='qmark', **kwargs)
         def vers(num):
             return tuple([int(x) for x in num.split('.')])
-        self.supports_cast = (sqlite is not None and vers(sqlite.sqlite_version) >= vers("3.2.3"))
-        ansisql.ANSIDialect.__init__(self, **kwargs)
+        self.supports_cast = (self.dbapi is None or vers(self.dbapi.sqlite_version) >= vers("3.2.3"))
 
     def compiler(self, statement, bindparams, **kwargs):
         return SQLiteCompiler(self, statement, bindparams, **kwargs)
 
     def schemagenerator(self, *args, **kwargs):
-        return SQLiteSchemaGenerator(*args, **kwargs)
+        return SQLiteSchemaGenerator(self, *args, **kwargs)
 
     def schemadropper(self, *args, **kwargs):
-        return SQLiteSchemaDropper(*args, **kwargs)
+        return SQLiteSchemaDropper(self, *args, **kwargs)
+
+    def supports_alter(self):
+        return False
 
     def preparer(self):
         return SQLiteIdentifierPreparer(self)
@@ -182,17 +182,14 @@ class SQLiteDialect(ansisql.ANSIDialect):
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
 
-    def create_execution_context(self):
-        return SQLiteExecutionContext(self)
+    def create_execution_context(self, **kwargs):
+        return SQLiteExecutionContext(self, **kwargs)
 
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
 
     def oid_column_name(self, column):
         return "oid"
-
-    def dbapi(self):
-        return sqlite
 
     def has_table(self, connection, table_name, schema=None):
         cursor = connection.execute("PRAGMA table_info(" + table_name + ")", {})
@@ -321,11 +318,9 @@ class SQLiteCompiler(ansisql.ANSICompiler):
             return ansisql.ANSICompiler.binary_operator_string(self, binary)
 
 class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
-    def supports_alter(self):
-        return False
 
     def get_column_specification(self, column, **kwargs):
-        colspec = self.preparer.format_column(column) + " " + column.type.engine_impl(self.engine).get_col_spec()
+        colspec = self.preparer.format_column(column) + " " + column.type.dialect_impl(self.dialect).get_col_spec()
         default = self.get_column_default_string(column)
         if default is not None:
             colspec += " DEFAULT " + default
@@ -345,8 +340,7 @@ class SQLiteSchemaGenerator(ansisql.ANSISchemaGenerator):
     #        super(SQLiteSchemaGenerator, self).visit_primary_key_constraint(constraint)
 
 class SQLiteSchemaDropper(ansisql.ANSISchemaDropper):
-    def supports_alter(self):
-        return False
+    pass
 
 class SQLiteIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
     def __init__(self, dialect):
