@@ -126,7 +126,7 @@ class Pool(object):
     """
 
     def __init__(self, creator, recycle=-1, echo=None, use_threadlocal=False, auto_close_cursors=True,
-                 disallow_open_cursors=False, disconnect_checker=None):
+                 disallow_open_cursors=False):
         self.logger = logging.instance_logger(self)
         self._threadconns = weakref.WeakValueDictionary()
         self._creator = creator
@@ -135,10 +135,6 @@ class Pool(object):
         self.auto_close_cursors = auto_close_cursors
         self.disallow_open_cursors = disallow_open_cursors
         self.echo = echo
-        if disconnect_checker:
-            self.disconnect_checker = disconnect_checker
-        else:
-            self.disconnect_checker = lambda x: False
     echo = logging.echo_property()
 
     def unique_connection(self):
@@ -317,22 +313,6 @@ class _CursorFairy(object):
         self.__parent = parent
         self.__parent._cursors[self] = True
         self.cursor = cursor
-
-    def execute(self, *args, **kwargs):
-        try:
-            self.cursor.execute(*args, **kwargs)
-        except Exception, e:
-            if self.__parent._pool.disconnect_checker(e):
-                self.invalidate(e=e)
-            raise
-
-    def executemany(self, *args, **kwargs):
-        try:
-            self.cursor.executemany(*args, **kwargs)
-        except Exception, e:
-            if self.__parent._pool.disconnect_checker(e):
-                self.invalidate(e=e)
-            raise
 
     def invalidate(self, e=None):
         self.__parent.invalidate(e=e)

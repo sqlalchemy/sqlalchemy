@@ -99,6 +99,9 @@ class DefaultDialect(base.Dialect):
     def defaultrunner(self, connection):
         return base.DefaultRunner(connection)
 
+    def is_disconnect(self, e):
+        return False
+        
     def _set_paramstyle(self, style):
         self._paramstyle = style
         self._figure_paramstyle(style)

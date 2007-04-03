@@ -338,18 +338,16 @@ class PGDialect(ansisql.ANSIDialect):
         cursor = connection.execute('''SELECT relname FROM pg_class WHERE relkind = 'S' AND relnamespace IN ( SELECT oid FROM pg_namespace WHERE nspname NOT LIKE 'pg_%%' AND nspname != 'information_schema' AND relname = %(seqname)s);''', {'seqname': sequence_name})
         return bool(not not cursor.rowcount)
 
-    def get_disconnect_checker(self):
-        def disconnect_checker(e):
-            if isinstance(e, self.dbapi.OperationalError):
-                return 'closed the connection' in str(e) or 'connection not open' in str(e)
-            elif isinstance(e, self.dbapi.InterfaceError):
-                return 'connection already closed' in str(e)
-            elif isinstance(e, self.dbapi.ProgrammingError):
-                # yes, it really says "losed", not "closed"
-                return "losed the connection unexpectedly" in str(e)
-            else:
-                return False
-        return disconnect_checker
+    def is_disconnect(self, e):
+        if isinstance(e, self.dbapi.OperationalError):
+            return 'closed the connection' in str(e) or 'connection not open' in str(e)
+        elif isinstance(e, self.dbapi.InterfaceError):
+            return 'connection already closed' in str(e)
+        elif isinstance(e, self.dbapi.ProgrammingError):
+            # yes, it really says "losed", not "closed"
+            return "losed the connection unexpectedly" in str(e)
+        else:
+            return False
 
     def reflecttable(self, connection, table):
         if self.version == 2:

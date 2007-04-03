@@ -246,10 +246,9 @@ class Dialect(sql.AbstractDialect):
 
         return clauseelement.compile(dialect=self, parameters=parameters)
 
-    def get_disconnect_checker(self):
-        """Return a callable that determines if an SQLError is caused by a database disconnection."""
-
-        return lambda x: False
+    def is_disconnect(self, e):
+        """Return True if the given DBAPI error indicates an invalid connection"""
+        raise NotImplementedError()
 
 
 class ExecutionContext(object):
@@ -576,6 +575,8 @@ class Connection(Connectable):
         try:
             context.dialect.do_execute(context.cursor, context.statement, context.parameters, context=context)
         except Exception, e:
+            if self.dialect.is_disconnect(e):
+                self.__connection.invalidate(e=e)
             self._autorollback()
             if self.__close_with_result:
                 self.close()
@@ -585,6 +586,8 @@ class Connection(Connectable):
         try:
             context.dialect.do_executemany(context.cursor, context.statement, context.parameters, context=context)
         except Exception, e:
+            if self.dialect.is_disconnect(e):
+                self.__connection.invalidate(e=e)
             self._autorollback()
             if self.__close_with_result:
                 self.close()

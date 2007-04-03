@@ -572,10 +572,8 @@ class MSSQLDialect_pymssql(MSSQLDialect):
             del keys['port']
         return [[], keys]
 
-    def get_disconnect_checker(self):
-        def disconnect_checker(e):
-            return isinstance(e, self.dbapi.DatabaseError) and "Error 10054" in str(e)
-        return disconnect_checker
+    def is_disconnect(self, e):
+        return isinstance(e, self.dbapi.DatabaseError) and "Error 10054" in str(e)
 
 
 ##    This code is leftover from the initial implementation, for reference
@@ -636,10 +634,8 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
             connectors.append ("TrustedConnection=Yes")
         return [[";".join (connectors)], {}]
 
-    def get_disconnect_checker(self):
-        def disconnect_checker(e):
-            return isinstance(e, self.dbapi.Error) and '[08S01]' in e.args[1]
-        return disconnect_checker
+    def is_disconnect(self, e):
+        return isinstance(e, self.dbapi.Error) and '[08S01]' in e.args[1]
 
 
 class MSSQLDialect_adodbapi(MSSQLDialect):
@@ -671,10 +667,8 @@ class MSSQLDialect_adodbapi(MSSQLDialect):
             connectors.append("Integrated Security=SSPI")
         return [[";".join (connectors)], {}]
 
-    def get_disconnect_checker(self):
-        def disconnect_checker(e):
-            return isinstance(e, self.dbapi.adodbapi.DatabaseError) and "'connection failure'" in str(e)
-        return disconnect_checker
+    def is_disconnect(self, e):
+        return isinstance(e, self.dbapi.adodbapi.DatabaseError) and "'connection failure'" in str(e)
 
 dialect_mapping = {
     'pymssql':  MSSQLDialect_pymssql,

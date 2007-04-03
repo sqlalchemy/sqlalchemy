@@ -342,11 +342,8 @@ class MySQLDialect(ansisql.ANSIDialect):
         except:
             pass
 
-    def get_disconnect_checker(self):
-        def disconnect_checker(e):
-            return isinstance(e, self.dbapi.OperationalError) and e.args[0] in (2006, 2014)
-        return disconnect_checker            
-
+    def is_disconnect(self, e):
+        return isinstance(e, self.dbapi.OperationalError) and e.args[0] in (2006, 2014)
 
     def get_default_schema_name(self):
         if not hasattr(self, '_default_schema_name'):
