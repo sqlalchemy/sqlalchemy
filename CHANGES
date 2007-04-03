@@ -39,6 +39,8 @@
       an argument of NULL
     - query strings in unicode URLs get keys encoded to ascii
       for **kwargs compat
+    - slight tweak to raw execute() change to also support tuples
+      for positional parameters, not just lists [ticket:523]
 - orm:
     - corresponding to label/bindparam name generataion, eager loaders 
       generate deterministic names for the aliases they create using 

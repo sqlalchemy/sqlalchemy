@@ -25,11 +25,13 @@ class ExecuteTest(testbase.PersistTest):
     @testbase.supported('sqlite')
     def test_raw_qmark(self):
         for conn in (testbase.db, testbase.db.connect()):
-            conn.execute("insert into users (user_id, user_name) values (?, ?)", [1,"jack"])
-            conn.execute("insert into users (user_id, user_name) values (?, ?)", [2,"ed"], [3,"horse"])
-            conn.execute("insert into users (user_id, user_name) values (?, ?)", 4, 'sally')
+            conn.execute("insert into users (user_id, user_name) values (?, ?)", (1,"jack"))
+            conn.execute("insert into users (user_id, user_name) values (?, ?)", [2,"fred"])
+            conn.execute("insert into users (user_id, user_name) values (?, ?)", [3,"ed"], [4,"horse"])
+            conn.execute("insert into users (user_id, user_name) values (?, ?)", (5,"barney"), (6,"donkey"))
+            conn.execute("insert into users (user_id, user_name) values (?, ?)", 7, 'sally')
             res = conn.execute("select * from users")
-            assert res.fetchall() == [(1, "jack"), (2, "ed"), (3, "horse"), (4, 'sally')]
+            assert res.fetchall() == [(1, "jack"), (2, "fred"), (3, "ed"), (4, "horse"), (5, "barney"), (6, "donkey"), (7, 'sally')]
             conn.execute("delete from users")
 
     @testbase.supported('mysql')
