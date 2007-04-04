@@ -91,7 +91,9 @@ class MSFloat(sqltypes.Float):
 
     def convert_bind_param(self, value, dialect):
         """By converting to string, we can use Decimal types round-trip."""
-        return value and str(value) or None
+        if not value is None:
+            return str(value)
+        return None
 
 class MSInteger(sqltypes.Integer):
     def get_col_spec(self):
