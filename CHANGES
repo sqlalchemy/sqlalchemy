@@ -48,7 +48,10 @@
     - improved/fixed custom collection classes when giving it "set"/
       "sets.Set" classes or subclasses (was still looking for append()
       methods on them during lazy loads)
-
+- sqlite:
+    - removed silly behavior where sqlite would reflect UNIQUE indexes
+      as part of the primary key (?!)
+      
 0.3.6
 - sql:
     - bindparam() names are now repeatable!  specify two

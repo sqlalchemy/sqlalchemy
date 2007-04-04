@@ -281,9 +281,6 @@ class SQLiteDialect(ansisql.ANSIDialect):
                     break
                 cols.append(row[2])
                 col = table.columns[row[2]]
-            # unique index that includes the pk is considered a multiple primary key
-            for col in cols:
-                table.primary_key.add(table.columns[col])
 
 class SQLiteCompiler(ansisql.ANSICompiler):
     def visit_cast(self, cast):

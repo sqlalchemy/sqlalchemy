@@ -11,8 +11,6 @@ import unittest, re, StringIO
 
 class ReflectionTest(PersistTest):
     def testbasic(self):
-        # really trip it up with a circular reference
-        
         use_function_defaults = testbase.db.engine.name == 'postgres' or testbase.db.engine.name == 'oracle'
         
         use_string_defaults = use_function_defaults or testbase.db.engine.__module__.endswith('sqlite')
@@ -72,6 +70,8 @@ class ReflectionTest(PersistTest):
             # reference the addresses foreign key col, which will require users to be 
             # reflected at some point
             users = Table('engine_users', meta, autoload = True)
+            assert users.c.user_id in users.primary_key
+            assert len(users.primary_key) == 1
         finally:
             addresses.drop()
             users.drop()
@@ -85,7 +85,7 @@ class ReflectionTest(PersistTest):
         users.create()
         addresses.create()
         try:
-            # create a join from the two tables, this insures that
+            # create a join from the two tables, this ensures that
             # theres a foreign key set up
             # previously, we couldnt get foreign keys out of mysql.  seems like
             # we can now as long as we use InnoDB
@@ -232,6 +232,7 @@ class ReflectionTest(PersistTest):
             
     @testbase.supported('postgres')
     def testredundantsequence(self):
+        """test that sequences get checked for, before create"""
         meta1 = BoundMetaData(testbase.db)
         t = Table('mytable', meta1, 
             Column('col1', Integer, Sequence('fooseq')))
@@ -240,9 +241,52 @@ class ReflectionTest(PersistTest):
             t.create()
         finally:
             t.drop()
+    
+    def test_pks_not_uniques(self):
+        """test that primary key reflection not tripped up by unique indexes"""
+        testbase.db.execute("""
+        CREATE TABLE book (
+            id INTEGER NOT NULL,
+            title VARCHAR(100) NOT NULL,
+            series INTEGER NULL,
+            series_id INTEGER NULL,
+            UNIQUE(series, series_id),
+            PRIMARY KEY(id)
+        )""")
+        try:
+            metadata = MetaData(engine=testbase.db)
+            book = Table('book', metadata, autoload=True)
+            assert book.c.id  in book.primary_key
+            assert book.c.series not in book.primary_key
+            assert len(book.primary_key) == 1
+        finally:
+            testbase.db.execute("drop table book")
+
+    def test_composite_pks(self):
+        """test reflection of a composite primary key"""
+        testbase.db.execute("""
+        CREATE TABLE book (
+            id INTEGER NOT NULL,
+            isbn VARCHAR(50) NOT NULL,
+            title VARCHAR(100) NOT NULL,
+            series INTEGER NULL,
+            series_id INTEGER NULL,
+            UNIQUE(series, series_id),
+            PRIMARY KEY(id, isbn)
+        )""")
+        try:
+            metadata = MetaData(engine=testbase.db)
+            book = Table('book', metadata, autoload=True)
+            assert book.c.id  in book.primary_key
+            assert book.c.isbn  in book.primary_key
+            assert book.c.series not in book.primary_key
+            assert len(book.primary_key) == 2
+        finally:
+            testbase.db.execute("drop table book")
             
     @testbase.supported('sqlite')
     def test_goofy_sqlite(self):
+        """test autoload of table where quotes were used with all the colnames.  quirky in sqlite."""
         testbase.db.execute("""CREATE TABLE "django_content_type" (
             "id" integer NOT NULL PRIMARY KEY,
             "django_stuff" text NULL
@@ -267,40 +311,8 @@ class ReflectionTest(PersistTest):
             testbase.db.execute("drop table django_admin_log")
             testbase.db.execute("drop table django_content_type")
 
-    @testbase.unsupported('mssql')
-    def testmultipk(self):
-        """test that creating a table checks for a sequence before creating it"""
-        meta = BoundMetaData(testbase.db)
-        table = Table(
-            'engine_multi', meta, 
-            Column('multi_id', Integer, Sequence('multi_id_seq'), primary_key=True),
-            Column('multi_rev', Integer, Sequence('multi_rev_seq'), primary_key=True),
-            Column('name', String(50), nullable=False),
-            Column('val', String(100))
-        )
-        table.create()
-
-        meta2 = BoundMetaData(testbase.db)
-        try:
-            table = Table('engine_multi', meta2, autoload=True)
-        finally:
-            table.drop()
-        
-        print repr(
-            [table.c['multi_id'].primary_key,
-            table.c['multi_rev'].primary_key
-            ]
-        )
-
-
-        table.create()
-        table.insert().execute({'multi_id':1,'multi_rev':1,'name':'row1', 'val':'value1'})
-        table.insert().execute({'multi_id':2,'multi_rev':18,'name':'row2', 'val':'value2'})
-        table.insert().execute({'multi_id':3,'multi_rev':3,'name':'row3', 'val':'value3'})
-        table.select().execute().fetchall()
-        table.drop()
-
-    def testcompositefk(self):
+    def test_composite_fk(self):
+        """test reflection of composite foreign keys"""
         meta = BoundMetaData(testbase.db)
         table = Table(
             'multi', meta, 
@@ -337,24 +349,6 @@ class ReflectionTest(PersistTest):
         finally:
             meta.drop_all()
 
-    def testcheckfirst(self):
-        meta = BoundMetaData(testbase.db)
-        
-        table = Table('checkfirst', meta, 
-            Column('col1', Integer, primary_key=True),
-            Column('col2', String(40)))
-        try:
-            assert not table.exists()
-            table.create()
-            assert table.exists()
-            table.create(checkfirst=True)
-            table.drop()
-            table.drop(checkfirst=True)
-            assert not table.exists()
-            table.create(checkfirst=True)
-            table.drop()
-        finally:
-            meta.drop_all()
             
     def testtometadata(self):
         meta = MetaData('md1')
@@ -435,7 +429,7 @@ class ReflectionTest(PersistTest):
 
 class CreateDropTest(PersistTest):
     def setUpAll(self):
-        global metadata
+        global metadata, users
         metadata = MetaData()
         users = Table('users', metadata,
                       Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key = True),
@@ -469,6 +463,19 @@ class CreateDropTest(PersistTest):
         table_names = [t.name for t in tables]
         self.assert_( table_names == ['users', 'orders', 'items', 'email_addresses'] or table_names ==  ['users', 'email_addresses', 'orders', 'items'])
 
+    def testcheckfirst(self):
+        try:
+            assert not users.exists(testbase.db)
+            users.create(connectable=testbase.db)
+            assert users.exists(testbase.db)
+            users.create(connectable=testbase.db, checkfirst=True)
+            users.drop(connectable=testbase.db)
+            users.drop(connectable=testbase.db, checkfirst=True)
+            assert not users.exists(connectable=testbase.db)
+            users.create(connectable=testbase.db, checkfirst=True)
+            users.drop(connectable=testbase.db)
+        finally:
+            metadata.drop_all(connectable=testbase.db)
 
     def test_createdrop(self):
         metadata.create_all(connectable=testbase.db)
@@ -495,7 +502,7 @@ class SchemaTest(PersistTest):
             Column('col1', Integer, primary_key=True),
             Column('col2', Integer, ForeignKey('someschema.table1.col1')),
             schema='someschema')
-        # insure this doesnt crash
+        # ensure this doesnt crash
         print [t for t in metadata.table_iterator()]
         buf = StringIO.StringIO()
         def foo(s, p=None):

@@ -1130,6 +1130,9 @@ class ColumnCollection(util.OrderedProperties):
                     l.append(c==local)
         return and_(*l)
 
+    def __contains__(self, col):
+        return self.contains_column(col)
+        
     def contains_column(self, col):
         # have to use a Set here, because it will compare the identity
         # of the column, not just using "==" for comparison which will always return a
