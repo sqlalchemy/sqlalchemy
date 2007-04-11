@@ -2263,6 +2263,9 @@ class Select(_SelectBaseMixin, FromClause):
         # indicates if this select statement is a subquery inside another query
         self.is_subquery = False
 
+        # indicates if this select statement is in the from clause of another query
+        self.is_selected_from = False
+
         # indicates if this select statement is a subquery as a criterion
         # inside of a WHERE clause
         self.is_where = False
@@ -2272,7 +2275,10 @@ class Select(_SelectBaseMixin, FromClause):
         self.__correlated = {}
         self.__correlator = Select._CorrelatedVisitor(self, False)
         self.__wherecorrelator = Select._CorrelatedVisitor(self, True)
+        self.__fromvisitor = Select._FromVisitor(self)
 
+        self.order_by_clause = self.group_by_clause = None
+        
         if columns is not None:
             for c in columns:
                 self.append_column(c)
@@ -2327,6 +2333,17 @@ class Select(_SelectBaseMixin, FromClause):
                 return
             [select.correlate(x) for x in self.select._Select__froms]
 
+    class _FromVisitor(NoColumnVisitor):
+        def __init__(self, select):
+            NoColumnVisitor.__init__(self)
+            self.select = select
+            
+        def visit_select(self, select):
+            if select is self.select:
+                return
+            select.is_selected_from = True
+            select.is_subquery = True
+
     def append_column(self, column):
         if _is_literal(column):
             column = literal_column(str(column), table=self)
@@ -2369,6 +2386,7 @@ class Select(_SelectBaseMixin, FromClause):
 
     def _process_froms(self, elem, asfrom):
         for f in elem._get_from_objects():
+            self.__fromvisitor.traverse(f)
             self.__froms.add(f)
         if asfrom:
             self.__froms.add(elem)
@@ -2432,8 +2450,7 @@ class Select(_SelectBaseMixin, FromClause):
     def get_children(self, column_collections=True, **kwargs):
         return (column_collections and list(self.columns) or []) + \
             list(self.froms) + \
-            [x for x in (self.whereclause, self.having) if x is not None] + \
-            [self.order_by_clause, self.group_by_clause]
+            [x for x in (self.whereclause, self.having, self.order_by_clause, self.group_by_clause) if x is not None]
 
     def accept_visitor(self, visitor):
         visitor.visit_select(self)

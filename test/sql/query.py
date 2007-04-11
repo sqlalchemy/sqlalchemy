@@ -376,6 +376,7 @@ class QueryTest(PersistTest):
         finally:
             shadowed.drop(checkfirst=True)
 
+
 class CompoundTest(PersistTest):
     """test compound statements like UNION, INTERSECT, particularly their ability to nest on
     different databases."""

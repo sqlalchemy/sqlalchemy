@@ -355,9 +355,7 @@ class ANSICompiler(sql.Compiled):
         group_by = self.get_str(cs.group_by_clause)
         if group_by:
             text += " GROUP BY " + group_by
-        order_by = self.get_str(cs.order_by_clause)
-        if order_by:
-            text += " ORDER BY " + order_by
+        text += self.order_by_clause(cs)            
         text += self.visit_select_postclauses(cs)
         if cs.parens:
             self.strings[cs] = "(" + text + ")"
@@ -460,7 +458,7 @@ class ANSICompiler(sql.Compiled):
                         inner_columns[self.get_str(co)] = co
                 # TODO: figure this out, a ColumnClause with a select as a parent
                 # is different from any other kind of parent
-                elif select.is_subquery and isinstance(co, sql._ColumnClause) and not co.is_literal and co.table is not None and not isinstance(co.table, sql.Select):
+                elif select.is_selected_from and isinstance(co, sql._ColumnClause) and not co.is_literal and co.table is not None and not isinstance(co.table, sql.Select):
                     # SQLite doesnt like selecting from a subquery where the column
                     # names look like table.colname, so add a label synonomous with
                     # the column name
@@ -529,12 +527,8 @@ class ANSICompiler(sql.Compiled):
             if t:
                 text += " \nHAVING " + t
 
-        order_by = self.get_str(select.order_by_clause)
-        if order_by:
-            text += " ORDER BY " + order_by
-
+        text += self.order_by_clause(select)
         text += self.visit_select_postclauses(select)
-
         text += self.for_update_clause(select)
 
         if getattr(select, 'parens', False):
@@ -555,6 +549,13 @@ class ANSICompiler(sql.Compiled):
         """
 
         return (select.limit or select.offset) and self.limit_clause(select) or ""
+
+    def order_by_clause(self, select):
+        order_by = self.get_str(select.order_by_clause)
+        if order_by:
+            return " ORDER BY " + order_by
+        else:
+            return ""
 
     def for_update_clause(self, select):
         if select.for_update:
