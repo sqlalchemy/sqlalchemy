@@ -396,7 +396,9 @@ class InstrumentedList(object):
             self._data_appender = self.data.add
             self._clear_data = self._clear_set
         elif isinstance(self.data, dict):
-            if not hasattr(self.data, 'append'):
+            if hasattr(self.data, 'append'):
+                self._data_appender = self.data.append
+            else:
                 raise exceptions.ArgumentError("Dictionary collection class '%s' must implement an append() method" % type(self.data).__name__)
             self._clear_data = self._clear_dict
         else:

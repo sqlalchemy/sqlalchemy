@@ -716,6 +716,34 @@ class CustomCollectionsTest(testbase.ORMTest):
         sess.clear()
         f = sess.query(Foo).get(f.col1)
         assert len(list(f.bars)) == 2
+        f.bars.clear()
+        
+    def testdict(self):
+        """test that a 'dict' can be used as a collection and can lazyload."""
+        class Foo(object):
+            pass
+        class Bar(object):
+            pass
+        class AppenderDict(dict):
+            def append(self, item):
+                self[id(item)] = item
+            def __iter__(self):
+                return iter(self.values())
+                
+        mapper(Foo, sometable, properties={
+            'bars':relation(Bar, collection_class=AppenderDict)
+        })
+        mapper(Bar, someothertable)
+        f = Foo()
+        f.bars.append(Bar())
+        f.bars.append(Bar())
+        sess = create_session()
+        sess.save(f)
+        sess.flush()
+        sess.clear()
+        f = sess.query(Foo).get(f.col1)
+        assert len(list(f.bars)) == 2
+        f.bars.clear()
 
 class ViewOnlyTest(testbase.ORMTest):
     """test a view_only mapping where a third table is pulled into the primary join condition,
