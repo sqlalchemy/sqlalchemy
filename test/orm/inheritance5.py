@@ -777,6 +777,56 @@ class MultiLevelTest(testbase.ORMTest):
         assert set(session.query(Employee).select()) == set([a,b,c])
         assert set(session.query( Engineer).select()) == set([b,c])
         assert session.query( Manager).select() == [c]
+
+class ManyToManyPolyTest(testbase.ORMTest):
+    def define_tables(self, metadata):
+        global base_item_table, item_table, base_item_collection_table, collection_table
+        base_item_table = Table(
+            'base_item', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('child_name', String(255), default=None))
+
+        item_table = Table(
+            'item', metadata,
+            Column('id', Integer, ForeignKey('base_item.id'), primary_key=True),
+            Column('dummy', Integer, default=0)) # Dummy column to avoid weird insert problems
+
+        base_item_collection_table = Table(
+            'base_item_collection', metadata,
+            Column('item_id', Integer, ForeignKey('base_item.id')),
+            Column('collection_id', Integer, ForeignKey('collection.id')))
+
+        collection_table = Table(
+            'collection', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('name', Unicode(255)))
+            
+    def test_pjoin_compile(self):
+        """test that remote_side columns in the secondary join table arent attempted to be 
+        matched to the target polymorphic selectable"""
+        class BaseItem(object): pass
+        class Item(BaseItem): pass
+        class Collection(object): pass
+        item_join = polymorphic_union( {
+            'BaseItem':base_item_table.select(base_item_table.c.child_name=='BaseItem'),
+            'Item':base_item_table.join(item_table),
+            }, None, 'item_join')
+
+        mapper(
+            BaseItem, base_item_table,
+            select_table=item_join,
+            polymorphic_on=base_item_table.c.child_name,
+            polymorphic_identity='BaseItem',
+            properties=dict(collections=relation(Collection, secondary=base_item_collection_table, backref="items")))
+
+        mapper(
+            Item, item_table,
+            inherits=BaseItem,
+            polymorphic_identity='Item')
+
+        mapper(Collection, collection_table)
+        
+        class_mapper(BaseItem)
         
 if __name__ == "__main__":    
     testbase.main()

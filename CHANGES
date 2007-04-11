@@ -48,6 +48,8 @@
     - improved/fixed custom collection classes when giving it "set"/
       "sets.Set" classes or subclasses (was still looking for append()
       methods on them during lazy loads)
+    - fix to many-to-many relationships targeting polymorphic mappers
+      [ticket:533]
 - sqlite:
     - removed silly behavior where sqlite would reflect UNIQUE indexes
       as part of the primary key (?!)
