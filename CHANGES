@@ -59,7 +59,12 @@
 - sqlite:
     - removed silly behavior where sqlite would reflect UNIQUE indexes
       as part of the primary key (?!)
-      
+- oracle:
+    - small fix to allow successive compiles of the same SELECT object
+      which features LIMIT/OFFSET.  oracle dialect needs to modify
+      the object to have ROW_NUMBER OVER and wasn't performing 
+      the full series of steps on successive compiles.
+
 0.3.6
 - sql:
     - bindparam() names are now repeatable!  specify two

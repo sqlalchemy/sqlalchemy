@@ -418,6 +418,11 @@ class OracleCompiler(ansisql.ANSICompiler):
     the use_ansi flag is False.
     """
 
+    def __init__(self, *args, **kwargs):
+        super(OracleCompiler, self).__init__(*args, **kwargs)
+        # we have to modify SELECT objects a little bit, so store state here
+        self._select_state = {}
+        
     def default_from(self):
         """Called when a ``SELECT`` statement has no froms, and no ``FROM`` clause is to be appended.
 
@@ -523,7 +528,7 @@ class OracleCompiler(ansisql.ANSICompiler):
 
         # TODO: put a real copy-container on Select and copy, or somehow make this
         # not modify the Select statement
-        if getattr(select, '_oracle_visit', False):
+        if self._select_state.get((select, 'visit'), False):
             # cancel out the compiled order_by on the select
             if hasattr(select, "order_by_clause"):
                 self.strings[select.order_by_clause] = ""
@@ -531,14 +536,16 @@ class OracleCompiler(ansisql.ANSICompiler):
             return
 
         if select.limit is not None or select.offset is not None:
-            select._oracle_visit = True
+            self._select_state[(select, 'visit')] = True
             # to use ROW_NUMBER(), an ORDER BY is required.
             orderby = self.strings[select.order_by_clause]
             if not orderby:
                 orderby = select.oid_column
                 self.traverse(orderby)
                 orderby = self.strings[orderby]
-            select.append_column(sql.literal_column("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn"))
+            if not hasattr(select, '_oracle_visit'):
+                select.append_column(sql.literal_column("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn"))
+                select._oracle_visit = True
             limitselect = sql.select([c for c in select.c if c.key!='ora_rn'])
             if select.offset is not None:
                 limitselect.append_whereclause("ora_rn>%d" % select.offset)

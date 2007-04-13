@@ -280,7 +280,9 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
     def testoraclelimit(self):
         metadata = MetaData()
         users = Table('users', metadata, Column('name', String(10), key='username'))
-        self.runtest(select([users.c.username], limit=5), "SELECT name FROM (SELECT users.name AS name, ROW_NUMBER() OVER (ORDER BY users.rowid) AS ora_rn FROM users) WHERE ora_rn<=5", dialect=oracle.dialect())
+        s = select([users.c.username], limit=5)
+        self.runtest(s, "SELECT name FROM (SELECT users.name AS name, ROW_NUMBER() OVER (ORDER BY users.rowid) AS ora_rn FROM users) WHERE ora_rn<=5", dialect=oracle.dialect())
+        self.runtest(s, "SELECT name FROM (SELECT users.name AS name, ROW_NUMBER() OVER (ORDER BY users.rowid) AS ora_rn FROM users) WHERE ora_rn<=5", dialect=oracle.dialect())
 
     def testgroupby_and_orderby(self):
         self.runtest(
