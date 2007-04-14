@@ -14,15 +14,16 @@ class AbstractDoc(object):
         self.toc_path = None
         
 class ObjectDoc(AbstractDoc):
-    def __init__(self, obj, functions=None, classes=None):
+    def __init__(self, obj, functions=None, classes=None, include_all_classes=False):
         super(ObjectDoc, self).__init__(obj)
         self.isclass = isinstance(obj, types.ClassType) or isinstance(obj, types.TypeType)
         self.name= obj.__name__
+        self.include_all_classes = include_all_classes
         functions = functions
         classes= classes
         
         if not self.isclass:
-            if hasattr(obj, '__all__'):
+            if not include_all_classes and hasattr(obj, '__all__'):
                 objects = obj.__all__
                 sort = True
             else:
@@ -42,10 +43,11 @@ class ObjectDoc(AbstractDoc):
                     if getattr(obj,x,None) is not None and 
                         (isinstance(getattr(obj,x), types.TypeType) 
                         or isinstance(getattr(obj,x), types.ClassType))
-                        and not getattr(obj,x).__name__[0] == '_'
+                        and (self.include_all_classes or not getattr(obj,x).__name__[0] == '_')
                     ]
+                classes = list(set(classes))
                 if sort:
-                    classes.sort(lambda a, b: cmp(a.__name__, b.__name__))
+                    classes.sort(lambda a, b: cmp(a.__name__.replace('_', ''), b.__name__.replace('_', '')))
         else:
             if functions is None:
                 functions = (

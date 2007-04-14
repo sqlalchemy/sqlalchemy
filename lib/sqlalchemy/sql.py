@@ -326,6 +326,8 @@ def label(name, obj):
 
 def column(text, type=None):
     """Return a textual column clause, relative to a table.
+    
+    The object returned is an instance of ``sqlalchemy.sql._ColumnClause``.
 
     This is also the primitive version of a ``schema.Column`` which is
     a subclass.
@@ -869,7 +871,21 @@ class ClauseElement(object):
         return _BooleanExpression(_TextClause("NOT"), self, None)
 
 class _CompareMixin(object):
-    """Define comparison operations for ClauseElements."""
+    """Defines comparison operations for ``ClauseElement`` instances.
+    
+    This is a mixin class that adds the capability to produce ``ClauseElement``
+    instances based on regular Python operators.  
+    These operations are achieved using Python's operator overload methods
+    (i.e. ``__eq__()``, ``__ne__()``, etc.
+    
+    Overridden operators include all comparison operators (i.e. '==', '!=', '<'),
+    math operators ('+', '-', '*', etc), the '&' and '|' operators which evaluate
+    to ``AND`` and ``OR`` respectively. 
+
+    Other methods exist to create additional SQL clauses such as ``IN``, ``LIKE``, 
+    ``DISTINCT``, etc.
+    
+    """
 
     def __lt__(self, other):
         return self._compare('<', other)
@@ -890,9 +906,11 @@ class _CompareMixin(object):
         return self._compare('>=', other)
 
     def like(self, other):
+        """produce a ``LIKE`` clause."""
         return self._compare('LIKE', other)
 
     def in_(self, *other):
+        """produce an ``IN`` clause."""
         if len(other) == 0:
             return self.__eq__(None)
         elif len(other) == 1 and not hasattr(other[0], '_selectable'):
@@ -908,21 +926,42 @@ class _CompareMixin(object):
             return self._compare('IN', other[0], negate='NOT IN')
 
     def startswith(self, other):
+        """produce the clause ``LIKE '<other>%'``"""
         return self._compare('LIKE', other + "%")
 
     def endswith(self, other):
+        """produce the clause ``LIKE '%<other>'``"""
         return self._compare('LIKE', "%" + other)
 
     def label(self, name):
+        """produce a column label, i.e. ``<columnname> AS <name>``"""
         return _Label(name, self, self.type)
 
     def distinct(self):
+        """produce a DISTINCT clause, i.e. ``DISTINCT <columnname>``"""
         return _CompoundClause(None,"DISTINCT", self)
 
     def between(self, cleft, cright):
+        """produce a BETWEEN clause, i.e. ``<column> BETWEEN <cleft> AND <cright>``"""
         return _BooleanExpression(self, and_(self._check_literal(cleft), self._check_literal(cright)), 'BETWEEN')
 
     def op(self, operator):
+        """produce a generic operator function.
+        
+        e.g.
+        
+            somecolumn.op("*")(5)
+            
+        produces
+        
+            somecolumn * 5
+            
+        operator
+            a string which will be output as the infix operator 
+            between this ``ClauseElement`` and the expression 
+            passed to the generated function.
+            
+        """
         return lambda other: self._operate(operator, other)
 
     # and here come the math operators:
@@ -1008,15 +1047,24 @@ class Selectable(ClauseElement):
         return True
 
 class ColumnElement(Selectable, _CompareMixin):
-    """Represent a column element within the list of a Selectable's columns.
+    """Represent an element that is useable within the 
+    "column clause" portion of a ``SELECT`` statement. 
+    
+    This includes columns associated with tables, aliases,
+    and subqueries, expressions, function calls, SQL keywords
+    such as ``NULL``, literals, etc.  ``ColumnElement`` is the 
+    ultimate base class for all such elements.
 
-    A ``ColumnElement`` can either be directly associated with a
-    ``TableClause``, or a free-standing textual column with no table,
-    or is a *proxy* column, indicating it is placed on a
-    ``Selectable`` such as an ``Alias`` or ``Select`` statement and
-    ultimately corresponds to a ``TableClause``-attached column (or in
-    the case of a ``CompositeSelect``, a proxy ``ColumnElement`` may
-    correspond to several ``TableClause``-attached columns).
+    ``ColumnElement`` supports the ability to be a *proxy* element,
+    which indicates that the ``ColumnElement`` may be associated with
+    a ``Selectable`` which was derived from another ``Selectable``. 
+    An example of a "derived" ``Selectable`` is an ``Alias`` of 
+    a ``Table``.
+    
+    a ``ColumnElement``, by subclassing the ``_CompareMixin`` mixin 
+    class, provides the ability to generate new ``ClauseElement`` 
+    objects using Python expressions.  See the ``_CompareMixin`` 
+    docstring for more details.
     """
 
     primary_key = property(lambda self:getattr(self, '_primary_key', False),
@@ -1962,9 +2010,34 @@ class _Label(ColumnElement):
 legal_characters = util.Set(string.ascii_letters + string.digits + '_')
 
 class _ColumnClause(ColumnElement):
-    """Represent a textual column clause in a SQL statement.
-
-    May or may not be bound to an underlying ``Selectable``.
+    """Represents a generic column expression from any textual string.
+    This includes columns associated with tables, aliases and select
+    statements, but also any arbitrary text.  May or may not be bound 
+    to an underlying ``Selectable``.  ``_ColumnClause`` is usually
+    created publically via the ``column()`` function or the 
+    ``column_literal()`` function.
+    
+    text
+      the text of the element.
+        
+    selectable
+      parent selectable.
+      
+    type
+      ``TypeEngine`` object which can associate this ``_ColumnClause`` 
+      with a type.
+      
+    case_sensitive
+      defines whether identifier quoting rules will be applied to the
+      generated text of this ``_ColumnClause`` so that it is identified in
+      a case-sensitive manner.
+      
+    is_literal
+      if True, the ``_ColumnClause`` is assumed to be an exact expression
+      that will be delivered to the output with no quoting rules applied
+      regardless of case sensitive settings.  the ``column_literal()`` function is
+      usually used to create such a ``_ColumnClause``.
+    
     """
 
     def __init__(self, text, selectable=None, type=None, _is_oid=False, case_sensitive=True, is_literal=False):

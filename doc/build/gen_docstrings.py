@@ -16,16 +16,16 @@ import sqlalchemy.mods.threadlocal as threadlocal
 import sqlalchemy.ext.selectresults as selectresults
 import sqlalchemy.databases as databases
 
-def make_doc(obj, classes=None, functions=None):
+def make_doc(obj, classes=None, functions=None, **kwargs):
     """generate a docstring.ObjectDoc structure for an individual module, list of classes, and list of functions."""
-    obj = docstring.ObjectDoc(obj, classes=classes, functions=functions)
+    obj = docstring.ObjectDoc(obj, classes=classes, functions=functions, **kwargs)
     return (obj.name, obj)
 
 def make_all_docs():
     """generate a docstring.AbstractDoc structure."""
     print "generating docstrings"
     objects = [
-        make_doc(obj=sql),
+        make_doc(obj=sql,include_all_classes=True),
         make_doc(obj=schema),
         make_doc(obj=types),
         make_doc(obj=engine),
