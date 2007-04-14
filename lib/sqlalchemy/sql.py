@@ -2090,16 +2090,6 @@ class _ColumnClause(ColumnElement):
     def accept_visitor(self, visitor):
         visitor.visit_column(self)
 
-    def to_selectable(self, selectable):
-        """Given a ``Selectable``, return this column's equivalent in
-        that ``Selectable``, if any.
-
-        For example, this could translate the column *name* from a
-        ``Table`` object to an ``Alias`` of a ``Select`` off of that
-        ``Table`` object."""
-
-        return selectable.corresponding_column(self.original, False)
-
     def _get_from_objects(self):
         if self.table is not None:
             return [self.table]
