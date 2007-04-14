@@ -3,7 +3,6 @@ import docstring
 import re
 
 from sqlalchemy import schema, types, ansisql, engine, sql, pool, orm, exceptions, databases
-import sqlalchemy.engine.strategies as strategies
 import sqlalchemy.ext.proxy as proxy
 import sqlalchemy.ext.sessioncontext as sessioncontext
 import sqlalchemy.mods.threadlocal as threadlocal
@@ -23,6 +22,9 @@ def make_all_docs():
         make_doc(obj=types),
         make_doc(obj=engine),
         make_doc(obj=engine.url),
+        make_doc(obj=engine.strategies),
+        make_doc(obj=engine.default),
+        make_doc(obj=engine.threadlocal),
         make_doc(obj=ansisql),
         make_doc(obj=orm),
         make_doc(obj=orm.mapperlib, classes=[orm.mapperlib.MapperExtension, orm.mapperlib.Mapper]),

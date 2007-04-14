@@ -606,7 +606,7 @@ class ANSICompiler(sql.Compiled):
         For each column in the table that contains a ``ColumnDefault``
         object as an onupdate, add a blank *placeholder* parameter so
         the ``Update`` gets compiled with this column's name as one of
-        its ``SET` clauses.
+        its ``SET`` clauses.
         """
 
         parameters.setdefault(column.key, None)
