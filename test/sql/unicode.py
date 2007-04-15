@@ -6,7 +6,6 @@ from sqlalchemy import *
 """verrrrry basic unicode column name testing"""
 
 class UnicodeSchemaTest(testbase.PersistTest):
-    @testbase.unsupported('postgres')
     def setUpAll(self):
         global metadata, t1, t2
         metadata = MetaData(engine=testbase.db)
@@ -20,21 +19,39 @@ class UnicodeSchemaTest(testbase.PersistTest):
             Column(u'éXXm', Integer, ForeignKey(u'unitable1.méil'), key="b"),
 
             )
-
         metadata.create_all()
-    @testbase.unsupported('postgres')
+
+    def tearDown(self):
+        t2.delete().execute()
+        t1.delete().execute()
+        
     def tearDownAll(self):
         metadata.drop_all()
-
-    @testbase.unsupported('postgres')
+        
+        # has_table() doesnt handle the unicode names on mysql
+        if testbase.db.name == 'mysql':
+            t2.drop()
+        
     def test_insert(self):
         t1.insert().execute({u'méil':1, u'éXXm':5})
-        t2.insert().execute({'a':1, 'b':5})
+        t2.insert().execute({'a':1, 'b':1})
         
         assert t1.select().execute().fetchall() == [(1, 5)]
-        assert t2.select().execute().fetchall() == [(1, 5)]
+        assert t2.select().execute().fetchall() == [(1, 1)]
+    
+    def test_reflect(self):
+        t1.insert().execute({u'méil':2, u'éXXm':7})
+        t2.insert().execute({'a':2, 'b':2})
+
+        meta = BoundMetaData(testbase.db)
+        tt1 = Table(t1.name, meta, autoload=True)
+        tt2 = Table(t2.name, meta, autoload=True)
+        tt1.insert().execute({u'méil':1, u'éXXm':5})
+        tt2.insert().execute({u'méil':1, u'éXXm':1})
+
+        assert tt1.select(order_by=desc(u'méil')).execute().fetchall() == [(2, 7), (1, 5)]
+        assert tt2.select(order_by=desc(u'méil')).execute().fetchall() == [(2, 2), (1, 1)]
         
-    @testbase.unsupported('postgres')
     def test_mapping(self):
         # TODO: this test should be moved to the ORM tests, tests should be
         # added to this module testing SQL syntax and joins, etc.

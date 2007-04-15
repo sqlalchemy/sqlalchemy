@@ -185,6 +185,9 @@ class SQLiteDialect(ansisql.ANSIDialect):
     def create_execution_context(self, **kwargs):
         return SQLiteExecutionContext(self, **kwargs)
 
+    def supports_unicode_statements(self):
+        return True
+
     def last_inserted_ids(self):
         return self.context.last_inserted_ids
 

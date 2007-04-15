@@ -51,7 +51,7 @@ class DefaultDialect(base.Dialect):
 
     def supports_unicode_statements(self):
         """indicate whether the DBAPI can receive SQL statements as Python unicode strings"""
-        return True
+        return False
 
     def max_identifier_length(self):
         # TODO: probably raise this and fill out
@@ -165,16 +165,30 @@ class DefaultExecutionContext(base.ExecutionContext):
             self.statement = unicode(compiled)
         else:
             self.typemap = self.column_labels = None
-            self.parameters = parameters
+            self.parameters = self._encode_param_keys(parameters)
             self.statement = statement
 
         if not dialect.supports_unicode_statements():
-            self.statement = self.statement.encode('ascii')
-        
+            self.statement = self.statement.encode(self.dialect.encoding)
+            
         self.cursor = self.create_cursor()
         
     engine = property(lambda s:s.connection.engine)
     
+    def _encode_param_keys(self, params):
+        """apply string encoding to the keys of dictionary-based bind parameters"""
+        if self.dialect.positional or self.dialect.supports_unicode_statements():
+            return params
+        else:
+            def proc(d):
+                if d is None:
+                    return None
+                return dict((k.encode(self.dialect.encoding), d[k]) for k in d)
+            if isinstance(params, list):
+                return [proc(d) for d in params]
+            else:
+                return proc(params)
+                
     def is_select(self):
         return re.match(r'SELECT', self.statement.lstrip(), re.I)
 
@@ -183,7 +197,7 @@ class DefaultExecutionContext(base.ExecutionContext):
         
     def pre_exec(self):
         self._process_defaults()
-        self.parameters = self.dialect.convert_compiled_params(self.compiled_parameters)
+        self.parameters = self._encode_param_keys(self.dialect.convert_compiled_params(self.compiled_parameters))
 
     def post_exec(self):
         pass

@@ -1521,7 +1521,7 @@ class ClauseList(ClauseElement):
 
     def append(self, clause):
         if _is_literal(clause):
-            clause = _TextClause(str(clause))
+            clause = _TextClause(unicode(clause))
         self.clauses.append(clause)
 
     def get_children(self, **kwargs):
@@ -2042,7 +2042,7 @@ class _ColumnClause(ColumnElement):
 
     def __init__(self, text, selectable=None, type=None, _is_oid=False, case_sensitive=True, is_literal=False):
         self.key = self.name = text
-        self.encodedname = self.name.encode('ascii', 'backslashreplace')
+        self.encodedname = isinstance(self.name, unicode) and self.name.encode('ascii', 'backslashreplace') or self.name
         self.table = selectable
         self.type = sqltypes.to_instance(type)
         self._is_oid = _is_oid
@@ -2346,6 +2346,10 @@ class Select(_SelectBaseMixin, FromClause):
             for c in columns:
                 self.append_column(c)
 
+        if order_by:
+            order_by = util.to_list(order_by)
+        if group_by:
+            group_by = util.to_list(group_by)
         self.order_by(*(order_by or [None]))
         self.group_by(*(group_by or [None]))
         for c in self.order_by_clause:

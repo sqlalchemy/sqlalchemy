@@ -303,7 +303,6 @@ class MySQLDialect(ansisql.ANSIDialect):
             except:
                 pass
         opts['client_flag'] = client_flag
-
         return [[], opts]
 
     def create_execution_context(self, *args, **kwargs):
@@ -331,7 +330,10 @@ class MySQLDialect(ansisql.ANSIDialect):
         rowcount = cursor.executemany(statement, parameters)
         if context is not None:
             context._rowcount = rowcount
-            
+    
+    def supports_unicode_statements(self):
+        return True
+                
     def do_execute(self, cursor, statement, parameters, **kwargs):
         cursor.execute(statement, parameters)
 
@@ -351,8 +353,11 @@ class MySQLDialect(ansisql.ANSIDialect):
         return self._default_schema_name
 
     def has_table(self, connection, table_name, schema=None):
+        # TODO: this does not work for table names that contain multibyte characters.
+        # i have tried dozens of approaches here with no luck.  statements like
+        # DESCRIBE and SHOW CREATE TABLE work better, but they raise an error when
+        # the table does not exist.
         cursor = connection.execute("show table status like %s", [table_name])
-        print "CURSOR", cursor, "ROWCOUNT", cursor.rowcount, "REAL RC", cursor.cursor.rowcount
         return bool( not not cursor.rowcount )
 
     def reflecttable(self, connection, table):
@@ -361,6 +366,8 @@ class MySQLDialect(ansisql.ANSIDialect):
         if isinstance(cs, array):
             cs = cs.tostring()
         case_sensitive = int(cs) == 0
+
+        decode_from = connection.execute("show variables like 'character_Set_results'").fetchone()[1]
 
         if not case_sensitive:
             table.name = table.name.lower()
@@ -379,7 +386,9 @@ class MySQLDialect(ansisql.ANSIDialect):
                 found_table = True
 
             # these can come back as unicode if use_unicode=1 in the mysql connection
-            (name, type, nullable, primary_key, default) = (str(row[0]), str(row[1]), row[2] == 'YES', row[3] == 'PRI', row[4])
+            (name, type, nullable, primary_key, default) = (row[0], str(row[1]), row[2] == 'YES', row[3] == 'PRI', row[4])
+            if not isinstance(name, unicode):
+                name = name.decode(decode_from)
 
             match = re.match(r'(\w+)(\(.*?\))?\s*(\w+)?\s*(\w+)?', type)
             col_type = match.group(1)
@@ -425,10 +434,7 @@ class MySQLDialect(ansisql.ANSIDialect):
         c = connection.execute("SHOW CREATE TABLE " + table.fullname, {})
         desc_fetched = c.fetchone()[1]
 
-        # this can come back as unicode if use_unicode=1 in the mysql connection
-        if type(desc_fetched) is unicode:
-            desc_fetched = str(desc_fetched)
-        elif type(desc_fetched) is not str:
+        if not isinstance(desc_fetched, basestring):
             # may get array.array object here, depending on version (such as mysql 4.1.14 vs. 4.1.11)
             desc_fetched = desc_fetched.tostring()
         desc = desc_fetched.strip()

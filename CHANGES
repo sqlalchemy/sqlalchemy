@@ -15,6 +15,11 @@
       lost their underlying database - the error catching/invalidate
       step is totally moved to the connection pool. #516
 - sql:
+    - preliminary support for unicode table names, column names and 
+      SQL statements added, for databases which can support them.
+      Works with sqlite and postgres so far.  Mysql *mostly* works
+      except the has_table() function does not work.  Reflection
+      works too.
     - the Unicode type is now a direct subclass of String, which now
       contains all the "convert_unicode" logic.  This helps the variety
       of unicode situations that occur in db's such as MS-SQL to be
@@ -37,8 +42,6 @@
       that those named columns are selected from (part of [ticket:513])
     - MS-SQL better detects when a query is a subquery and knows not to
       generate ORDER BY phrases for those [ticket:513]
-    - preliminary support for unicode table names, column names and 
-      SQL statements added, for databases which can support them.
     - fix for fetchmany() "size" argument being positional in most
       dbapis [ticket:505]
     - sending None as an argument to func.<something> will produce

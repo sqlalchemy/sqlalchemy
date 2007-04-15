@@ -329,9 +329,9 @@ class PGDialect(ansisql.ANSIDialect):
     def has_table(self, connection, table_name, schema=None):
         # seems like case gets folded in pg_class...
         if schema is None:
-            cursor = connection.execute("""select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname=current_schema() and lower(relname)=%(name)s""", {'name':table_name.lower()});
+            cursor = connection.execute("""select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname=current_schema() and lower(relname)=%(name)s""", {'name':table_name.lower().encode(self.encoding)});
         else:
-            cursor = connection.execute("""select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname=%(schema)s and lower(relname)=%(name)s""", {'name':table_name.lower(), 'schema':schema});
+            cursor = connection.execute("""select relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname=%(schema)s and lower(relname)=%(name)s""", {'name':table_name.lower().encode(self.encoding), 'schema':schema});
         return bool( not not cursor.rowcount )
 
     def has_sequence(self, connection, sequence_name):
@@ -385,7 +385,7 @@ class PGDialect(ansisql.ANSIDialect):
                 ORDER BY a.attnum
             """ % schema_where_clause
 
-            s = sql.text(SQL_COLS)
+            s = sql.text(SQL_COLS, bindparams=[sql.bindparam('table_name', type=sqltypes.Unicode), sql.bindparam('schema', type=sqltypes.Unicode)], typemap={'attname':sqltypes.Unicode})
             c = connection.execute(s, table_name=table.name,
                                       schema=table.schema)
             rows = c.fetchall()
@@ -454,7 +454,7 @@ class PGDialect(ansisql.ANSIDialect):
                  AND i.indisprimary = 't')
               ORDER BY attnum
             """
-            t = sql.text(PK_SQL)
+            t = sql.text(PK_SQL, typemap={'attname':sqltypes.Unicode})
             c = connection.execute(t, table=table_oid)
             for row in c.fetchall():
                 pk = row[0]
@@ -468,7 +468,7 @@ class PGDialect(ansisql.ANSIDialect):
               ORDER BY 1
             """
 
-            t = sql.text(FK_SQL)
+            t = sql.text(FK_SQL, typemap={'conname':sqltypes.Unicode, 'condef':sqltypes.Unicode})
             c = connection.execute(t, table=table_oid)
             for conname, condef in c.fetchall():
                 m = re.search('FOREIGN KEY \((.*?)\) REFERENCES (?:(.*?)\.)?(.*?)\((.*?)\)', condef).groups()
