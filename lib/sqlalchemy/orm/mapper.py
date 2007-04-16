@@ -1803,11 +1803,16 @@ def has_mapper(object):
 
     return hasattr(object, '_entity_name')
 
-def object_mapper(object, raiseerror=True):
+def object_mapper(object, entity_name=None, raiseerror=True):
     """Given an object, return the primary Mapper associated with the object instance.
     
         object
             The object instance.
+            
+        entity_name
+            Entity name of the mapper to retrieve, if the given instance is 
+            transient.  Otherwise uses the entity name already associated 
+            with the instance.
             
         raiseerror
             Defaults to True: raise an ``InvalidRequestError`` if no mapper can
@@ -1816,10 +1821,10 @@ def object_mapper(object, raiseerror=True):
     """
 
     try:
-        mapper = mapper_registry[ClassKey(object.__class__, getattr(object, '_entity_name', None))]
+        mapper = mapper_registry[ClassKey(object.__class__, getattr(object, '_entity_name', entity_name))]
     except (KeyError, AttributeError):
         if raiseerror:
-            raise exceptions.InvalidRequestError("Class '%s' entity name '%s' has no mapper associated with it" % (object.__class__.__name__, getattr(object, '_entity_name', None)))
+            raise exceptions.InvalidRequestError("Class '%s' entity name '%s' has no mapper associated with it" % (object.__class__.__name__, getattr(object, '_entity_name', entity_name)))
         else:
             return None
     return mapper.compile()

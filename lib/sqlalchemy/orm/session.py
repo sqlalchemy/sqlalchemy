@@ -437,7 +437,7 @@ class Session(object):
         else:
             self._update_impl(object, entity_name=entity_name)
 
-    def delete(self, object, entity_name=None):
+    def delete(self, object):
         """Mark the given instance as deleted.
 
         The delete operation occurs upon ``flush()``.
@@ -446,7 +446,7 @@ class Session(object):
         for c in [object] + list(_object_mapper(object).cascade_iterator('delete', object)):
             self.uow.register_deleted(c)
 
-    def merge(self, object, entity_name=None, _recursive=None):
+    def merge(self, object,entity_name=None, _recursive=None):
         """Copy the state of the given `object` onto the persistent
         object with the same identifier.
 
@@ -462,7 +462,7 @@ class Session(object):
 
         if _recursive is None:
             _recursive = util.Set()
-        mapper = _object_mapper(object)
+        mapper = _object_mapper(object, entity_name=entity_name)
         key = getattr(object, '_instance_key', None)
         if key is None:
             merged = mapper._create_instance(self)

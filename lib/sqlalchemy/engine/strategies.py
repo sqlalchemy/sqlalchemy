@@ -180,8 +180,11 @@ class MockEngineStrategy(EngineStrategy):
         engine = property(lambda s: s)
         dialect = property(lambda s:s._dialect)
         
-        def contextual_connect(self):
+        def contextual_connect(self, **kwargs):
             return self
+
+        def compiler(self, statement, parameters, **kwargs):
+            return self._dialect.compiler(statement, parameters, engine=self, **kwargs)
 
         def create(self, entity, **kwargs):
             kwargs['checkfirst'] = False

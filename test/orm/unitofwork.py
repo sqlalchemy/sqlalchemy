@@ -110,7 +110,8 @@ class VersioningTest(UnitOfWorkTest):
         f1_s.value='f1rev4'
         s2.flush()
     
-        s.delete(f1, f2)
+        s.delete(f1)
+        s.delete(f2)
         success = False
         try:
             s.flush()
