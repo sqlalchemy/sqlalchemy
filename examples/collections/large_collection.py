@@ -18,9 +18,8 @@ meta.create_all()
 class Organization(object):
     def __init__(self, name):
         self.name = name
-    def find_members(self, criterion):
-        """locate a subset of the members associated with this Organization"""
-        return object_session(self).query(Member).select(and_(member_table.c.name.like(criterion), org_table.c.org_id==self.org_id), from_obj=[org_table.join(member_table)])
+    member_query = property(lambda self:object_session(self).query(Member).with_parent(self), 
+        doc="""locate a subset of the members associated with this Organization""")
     
 class Member(object):
     def __init__(self, name):
@@ -60,7 +59,7 @@ sess.clear()
 # reload. load the org and some child members
 print "-------------------------\nload subset of members"
 org = sess.query(Organization).get(org.org_id)
-members = org.find_members('%member t%')
+members = org.member_query.filter_by(member_table.c.name.like('%member t%')).list()
 print members
 
 sess.clear()

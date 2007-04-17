@@ -269,16 +269,23 @@ So there are several techniques that can be used individually or combined togeth
             'children':relation(MyOtherClass, lazy=None)
         })
 
-* To load child objects, just use a query:
+* To load child objects, just use a query.  Of particular convenience is that `Query` is a generative object, so you can return
+it as is, allowing additional criterion to be added as needed:
 
         {python}
         class Organization(object):
             def __init__(self, name):
                 self.name = name
-            def find_members(self, criterion):
-                """locate a subset of the members associated with this Organization"""
-                return object_session(self).query(Member).select(and_(member_table.c.name.like(criterion), org_table.c.org_id==self.org_id), from_obj=[org_table.join(member_table)])
-    
+            member_query = property(lambda self: object_session(self).query(Member).with_parent(self))
+
+        myorg = sess.query(Organization).get(5)
+        
+        # get all members
+        members = myorg.member_query.list()
+        
+        # query a subset of members using LIMIT/OFFSET
+        members = myorg.member_query[5:10]
+        
 * Use `passive_deletes=True` to disable child object loading on a DELETE operation, in conjunction with "ON DELETE (CASCADE|SET NULL)" on your database to automatically cascade deletes to child objects.   Note that "ON DELETE" is not supported on SQLite, and requires `InnoDB` tables when using MySQL:
 
         {python}

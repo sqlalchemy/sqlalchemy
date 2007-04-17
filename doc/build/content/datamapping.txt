@@ -563,6 +563,21 @@ To traverse more deeply into relationships, specify multiple relationship names 
 
 The `join()` method is an easier-to-use version of the `join_by()`, `join_to()` and `join_via()` methods, all of which produce `ClauseElements` that can be constructed into a query criterion.  Consult the generated documentation for information on these methods.
 
+#### Joining from a Parent Object {@name=joinparent}
+
+(new in 0.3.7) To help in navigating collections, the `with_parent()` generative method adds join criterion which corresponds to instances which belong to a particular parent.  This method makes use of the same "lazy loading" criterion used to load relationships normally, which means it also works seamlessly for self-referential relationships.  For example, to load all the `Address` objects which belong to a particular `User`:
+
+    {python}
+    # load a user
+    someuser = session.query(User).get(2)
+    
+    # load the addresses of that user
+    addresses = session.query(Address).with_parent(someuser).list()
+    
+    # filter the results
+    someaddresses = session.query(Address).with_parent(someuser).filter_by(email_address="foo@bar.com").list()
+    
+
 #### Eager Loading {@name=eagerload}
 
 Eager Loading describes the loading of parent and child objects across a relation using a single query.  The purpose of eager loading is strictly one of performance enhancement; eager loading has **no impact** on the results of a query, except that when traversing child objects within the results, lazy loaders will not need to issue separate queries to load those child objects.
