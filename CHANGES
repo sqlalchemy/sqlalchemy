@@ -17,6 +17,10 @@
       related error messages.  Additionally, when a "connection no 
       longer open" condition is detected, the entire connection pool 
       is discarded and replaced with a new instance.  #516
+    - the dialects within sqlalchemy.databases become a setuptools
+      entry points. loading the built-in database dialects works the
+      same as always, but if none found will fall back to trying
+      pkg_resources to load an external module [ticket:521]
 - sql:
     - preliminary support for unicode table names, column names and 
       SQL statements added, for databases which can support them.

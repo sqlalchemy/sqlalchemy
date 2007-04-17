@@ -70,7 +70,13 @@ class CreateEngineTest(PersistTest):
     def testbadargs(self):
         # good arg, use MockDBAPI to prevent oracle import errors
         e = create_engine('oracle://', use_ansi=True, module=MockDBAPI())
-
+        
+        try:
+            e = create_engine("foobar://", module=MockDBAPI())
+            assert False
+        except ImportError:
+            assert True 
+            
         # bad arg
         try:
             e = create_engine('postgres://', use_ansi=True, module=MockDBAPI())

@@ -15,9 +15,6 @@ import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
 import sqlalchemy.exceptions as exceptions
 
-def dbapi():
-    import kinterbasdb
-    return kinterbasdb
 
 _initialized_kb = False
 
@@ -113,6 +110,11 @@ class FBDialect(ansisql.ANSIDialect):
         self.type_conv = type_conv
         self.concurrency_level= concurrency_level
 
+    def dbapi(cls):
+        import kinterbasdb
+        return kinterbasdb
+    dbapi = classmethod(dbapi)
+    
     def create_connect_args(self, url):
         opts = url.translate_connect_args(['host', 'database', 'user', 'password', 'port'])
         if opts.get('port'):

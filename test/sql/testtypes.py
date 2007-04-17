@@ -40,9 +40,9 @@ class MyUnicodeType(types.TypeDecorator):
 
 class AdaptTest(PersistTest):
     def testadapt(self):
-        e1 = url.URL('postgres').get_module().dialect()
-        e2 = url.URL('mysql').get_module().dialect()
-        e3 = url.URL('sqlite').get_module().dialect()
+        e1 = url.URL('postgres').get_dialect()()
+        e2 = url.URL('mysql').get_dialect()()
+        e3 = url.URL('sqlite').get_dialect()()
         
         type = String(40)
         

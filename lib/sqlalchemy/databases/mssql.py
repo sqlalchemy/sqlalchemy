@@ -52,21 +52,6 @@ import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
 import sqlalchemy.exceptions as exceptions
 
-def dbapi(module_name=None):
-    if module_name:
-        try:
-            dialect_cls = dialect_mapping[module_name]
-            return dialect_cls.import_dbapi()
-        except KeyError:
-            raise exceptions.InvalidRequestError("Unsupported MSSQL module '%s' requested (must be adodbpi, pymssql or pyodbc)" % module_name)
-    else:
-        for dialect_cls in [MSSQLDialect_adodbapi, MSSQLDialect_pymssql, MSSQLDialect_pyodbc]:
-            try:
-                return dialect_cls.import_dbapi()
-            except ImportError, e:
-                pass
-        else:
-            raise ImportError('No DBAPI module detected for MSSQL - please install adodbapi, pymssql or pyodbc')
     
 class MSNumeric(sqltypes.Numeric):
     def convert_result_value(self, value, dialect):
@@ -331,7 +316,24 @@ class MSSQLDialect(ansisql.ANSIDialect):
         self.auto_identity_insert = auto_identity_insert
         self.text_as_varchar = False
         self.set_default_schema_name("dbo")
-            
+
+    def dbapi(cls, module_name=None):
+        if module_name:
+            try:
+                dialect_cls = dialect_mapping[module_name]
+                return dialect_cls.import_dbapi()
+            except KeyError:
+                raise exceptions.InvalidRequestError("Unsupported MSSQL module '%s' requested (must be adodbpi, pymssql or pyodbc)" % module_name)
+        else:
+            for dialect_cls in [MSSQLDialect_adodbapi, MSSQLDialect_pymssql, MSSQLDialect_pyodbc]:
+                try:
+                    return dialect_cls.import_dbapi()
+                except ImportError, e:
+                    pass
+            else:
+                raise ImportError('No DBAPI module detected for MSSQL - please install adodbapi, pymssql or pyodbc')
+    dbapi = classmethod(dbapi)
+    
     def create_connect_args(self, url):
         opts = url.translate_connect_args(['host', 'database', 'user', 'password', 'port'])
         opts.update(url.query)

@@ -69,19 +69,28 @@ class URL(object):
             s += '?' + "&".join(["%s=%s" % (k, self.query[k]) for k in keys])
         return s
 
-    def get_module(self):
-        """Return the SQLAlchemy database module corresponding to this URL's driver name."""
+    def get_dialect(self):
+        """Return the SQLAlchemy database dialect class corresponding to this URL's driver name."""
+        dialect=None
         if self.drivername == 'ansi':
             import sqlalchemy.ansisql
-            return sqlalchemy.ansisql
-            
+            return sqlalchemy.ansisql.dialect
+
         try:
-            return getattr(__import__('sqlalchemy.databases.%s' % self.drivername).databases, self.drivername)
+            module=getattr(__import__('sqlalchemy.databases.%s' % self.drivername).databases, self.drivername)
+            dialect=module.dialect
         except ImportError:
             if sys.exc_info()[2].tb_next is None:
-                raise exceptions.ArgumentError('unknown database %r' % self.drivername)
-            raise
-
+                import pkg_resources
+                for res in pkg_resources.iter_entry_points('sqlalchemy.databases'):
+                    if res.name==self.drivername:
+                        dialect=res.load()
+            else:
+               raise
+        if dialect is not None:
+            return dialect
+        raise ImportError('unknown database %r' % self.drivername) 
+  
     def translate_connect_args(self, names):
         """Translate this URL's attributes into a dictionary of connection arguments.
 

@@ -41,27 +41,26 @@ class DefaultEngineStrategy(EngineStrategy):
         # create url.URL object
         u = url.make_url(name_or_url)
 
-        # get module from sqlalchemy.databases
-        module = u.get_module()
+        dialect_cls = u.get_dialect()
 
         dialect_args = {}
         # consume dialect arguments from kwargs
-        for k in util.get_cls_kwargs(module.dialect):
+        for k in util.get_cls_kwargs(dialect_cls):
             if k in kwargs:
                 dialect_args[k] = kwargs.pop(k)
 
         dbapi = kwargs.pop('module', None)
         if dbapi is None:
             dbapi_args = {}
-            for k in util.get_func_kwargs(module.dbapi):
+            for k in util.get_func_kwargs(dialect_cls.dbapi):
                 if k in kwargs:
                     dbapi_args[k] = kwargs.pop(k)
-            dbapi = module.dbapi(**dbapi_args)
+            dbapi = dialect_cls.dbapi(**dbapi_args)
         
         dialect_args['dbapi'] = dbapi
         
         # create dialect
-        dialect = module.dialect(**dialect_args)
+        dialect = dialect_cls(**dialect_args)
 
         # assemble connection arguments
         (cargs, cparams) = dialect.create_connect_args(u)
@@ -77,7 +76,7 @@ class DefaultEngineStrategy(EngineStrategy):
                     raise exceptions.DBAPIError("Connection failed", e)
             creator = kwargs.pop('creator', connect)
 
-            poolclass = kwargs.pop('poolclass', getattr(module, 'poolclass', poollib.QueuePool))
+            poolclass = kwargs.pop('poolclass', getattr(dialect_cls, 'poolclass', poollib.QueuePool))
             pool_args = {}
 
             # consume pool arguments from kwargs, translating a few of the arguments
@@ -158,17 +157,16 @@ class MockEngineStrategy(EngineStrategy):
         # create url.URL object
         u = url.make_url(name_or_url)
 
-        # get module from sqlalchemy.databases
-        module = u.get_module()
+        dialect_cls = u.get_dialect()
 
         dialect_args = {}
         # consume dialect arguments from kwargs
-        for k in util.get_cls_kwargs(module.dialect):
+        for k in util.get_cls_kwargs(dialect_cls):
             if k in kwargs:
                 dialect_args[k] = kwargs.pop(k)
 
         # create dialect
-        dialect = module.dialect(**dialect_args)
+        dialect = dialect_cls(**dialect_args)
 
         return MockEngineStrategy.MockConnection(dialect, executor)
 

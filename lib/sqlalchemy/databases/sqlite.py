@@ -12,18 +12,6 @@ import sqlalchemy.engine.default as default
 import sqlalchemy.types as sqltypes
 import datetime,time
 
-def dbapi():
-    try:
-        from pysqlite2 import dbapi2 as sqlite
-    except ImportError, e:
-        try:
-            from sqlite3 import dbapi2 as sqlite #try the 2.5+ stdlib name.
-        except ImportError:
-            try:
-                sqlite = __import__('sqlite') # skip ourselves
-            except ImportError:
-                raise e
-    return sqlite
     
 class SLNumeric(sqltypes.Numeric):
     def get_col_spec(self):
@@ -159,6 +147,20 @@ class SQLiteDialect(ansisql.ANSIDialect):
         def vers(num):
             return tuple([int(x) for x in num.split('.')])
         self.supports_cast = (self.dbapi is None or vers(self.dbapi.sqlite_version) >= vers("3.2.3"))
+
+    def dbapi(cls):
+        try:
+            from pysqlite2 import dbapi2 as sqlite
+        except ImportError, e:
+            try:
+                from sqlite3 import dbapi2 as sqlite #try the 2.5+ stdlib name.
+            except ImportError:
+                try:
+                    sqlite = __import__('sqlite') # skip ourselves
+                except ImportError:
+                    raise e
+        return sqlite
+    dbapi = classmethod(dbapi)
 
     def compiler(self, statement, bindparams, **kwargs):
         return SQLiteCompiler(self, statement, bindparams, **kwargs)
@@ -347,4 +349,4 @@ class SQLiteIdentifierPreparer(ansisql.ANSIIdentifierPreparer):
         super(SQLiteIdentifierPreparer, self).__init__(dialect, omit_schema=True)
 
 dialect = SQLiteDialect
-poolclass = pool.SingletonThreadPool
+dialect.poolclass = pool.SingletonThreadPool

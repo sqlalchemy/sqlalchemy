@@ -11,9 +11,6 @@ from sqlalchemy import util, sql, engine, schema, ansisql, exceptions, logging
 from sqlalchemy.engine import default, base
 import sqlalchemy.types as sqltypes
 
-def dbapi():
-    import cx_Oracle
-    return cx_Oracle
 
 
 class OracleNumeric(sqltypes.Numeric):
@@ -172,7 +169,12 @@ class OracleDialect(ansisql.ANSIDialect):
             self.ORACLE_BINARY_TYPES = [getattr(self.dbapi, k) for k in ["BFILE", "CLOB", "NCLOB", "BLOB", "LONG_BINARY", "LONG_STRING"] if hasattr(self.dbapi, k)]
         else:
             self.ORACLE_BINARY_TYPES = []
-            
+
+    def dbapi(cls):
+        import cx_Oracle
+        return cx_Oracle
+    dbapi = classmethod(dbapi)
+    
     def create_connect_args(self, url):
         if url.database:
             # if we have a database, then we have a remote host

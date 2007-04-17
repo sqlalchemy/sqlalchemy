@@ -16,15 +16,6 @@ try:
 except:
     mxDateTime = None
 
-def dbapi():
-    try:
-        import psycopg2 as psycopg
-    except ImportError, e:
-        try:
-            import psycopg
-        except ImportError, e2:
-            raise e
-    return psycopg
     
 class PGInet(sqltypes.TypeEngine):
     def get_col_spec(self):
@@ -258,6 +249,17 @@ class PGDialect(ansisql.ANSIDialect):
         self.use_information_schema = use_information_schema
         self.paramstyle = 'pyformat'
 
+    def dbapi(cls):
+        try:
+            import psycopg2 as psycopg
+        except ImportError, e:
+            try:
+                import psycopg
+            except ImportError, e2:
+                raise e
+        return psycopg
+    dbapi = classmethod(dbapi)
+    
     def create_connect_args(self, url):
         opts = url.translate_connect_args(['host', 'database', 'user', 'password', 'port'])
         if opts.has_key('port'):

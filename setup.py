@@ -10,6 +10,10 @@ setup(name = "SQLAlchemy",
     url = "http://www.sqlalchemy.org",
     packages = find_packages('lib'),
     package_dir = {'':'lib'},
+    entry_points = { 
+      'sqlalchemy.databases': [
+        '%s = sqlalchemy.databases.%s:dialect' % (f,f) for f in 
+          ['sqlite', 'postgres', 'mysql', 'oracle', 'mssql', 'firebird']]},
     license = "MIT License",
     long_description = """\
 SQLAlchemy is:

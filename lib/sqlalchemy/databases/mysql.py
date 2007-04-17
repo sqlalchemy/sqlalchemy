@@ -12,9 +12,6 @@ import sqlalchemy.types as sqltypes
 import sqlalchemy.exceptions as exceptions
 from array import array
 
-def dbapi():
-    import MySQLdb as mysql
-    return mysql
 
 def kw_colspec(self, spec):
     if self.unsigned:
@@ -280,6 +277,11 @@ class MySQLDialect(ansisql.ANSIDialect):
     def __init__(self, **kwargs):
         ansisql.ANSIDialect.__init__(self, default_paramstyle='format', **kwargs)
 
+    def dbapi(cls):
+        import MySQLdb as mysql
+        return mysql
+    dbapi = classmethod(dbapi)
+    
     def create_connect_args(self, url):
         opts = url.translate_connect_args(['host', 'db', 'user', 'passwd', 'port'])
         opts.update(url.query)
