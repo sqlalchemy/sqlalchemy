@@ -707,12 +707,15 @@ class ForeignKey(SchemaItem):
                 table = Table(tname, parenttable.metadata, mustexist=True, schema=schema)
                 try:
                     if colname is None:
+                        # colname is None in the case that ForeignKey argument was specified
+                        # as table name only, in which case we match the column name to the same
+                        # column on the parent.
                         key = self.parent
                         self._column = table.c[self.parent.key]
                     else:
                         self._column = table.c[colname]
                 except KeyError, e:
-                    raise exceptions.ArgumentError("Could not create ForeignKey '%s' on table '%s': table '%s' has no column named '%s'" % (self._colspec, parenttable.name, table.name, e.args[0]))
+                    raise exceptions.ArgumentError("Could not create ForeignKey '%s' on table '%s': table '%s' has no column named '%s'" % (self._colspec, parenttable.name, table.name, str(e)))
             else:
                 self._column = self._colspec
         # propigate TypeEngine to parent if it didnt have one
