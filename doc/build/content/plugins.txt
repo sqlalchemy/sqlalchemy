@@ -449,6 +449,8 @@ To use `assign_mapper`:
 
 **Author:** Jonathan LaCour
 
+Please note that ActiveMapper has been deprecated in favor of [Elixir](http://elixir.ematia.de/), a more comprehensive solution to declarative mapping, of which Jonathan is a co-author.
+
 ActiveMapper is a so-called "declarative layer" which allows the construction of a class, a `Table`, and a `Mapper` all in one step:
 
     {python}
