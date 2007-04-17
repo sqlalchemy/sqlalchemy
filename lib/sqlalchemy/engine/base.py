@@ -577,6 +577,7 @@ class Connection(Connectable):
         except Exception, e:
             if self.dialect.is_disconnect(e):
                 self.__connection.invalidate(e=e)
+                self.engine.connection_provider.dispose()
             self._autorollback()
             if self.__close_with_result:
                 self.close()
@@ -588,6 +589,7 @@ class Connection(Connectable):
         except Exception, e:
             if self.dialect.is_disconnect(e):
                 self.__connection.invalidate(e=e)
+                self.engine.connection_provider.dispose()
             self._autorollback()
             if self.__close_with_result:
                 self.close()

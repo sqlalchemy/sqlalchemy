@@ -142,7 +142,20 @@ class Pool(object):
 
     def create_connection(self):
         return _ConnectionRecord(self)
+    
+    def recreate(self):
+        """return a new instance of this Pool's class with identical creation arguments."""
+        raise NotImplementedError()
 
+    def dispose(self):
+        """dispose of this pool.
+        
+        this method leaves the possibility of checked-out connections remaining opened,
+        so it is advised to not reuse the pool once dispose() is called, and to instead
+        use a new pool constructed by the recreate() method.
+        """
+        raise NotImplementedError()
+        
     def connect(self):
         if not self._use_threadlocal:
             return _ConnectionFairy(self).checkout()
@@ -172,17 +185,15 @@ class Pool(object):
     def log(self, msg):
         self.logger.info(msg)
 
-    def dispose(self):
-        raise NotImplementedError()
-
 class _ConnectionRecord(object):
     def __init__(self, pool):
         self.__pool = pool
         self.connection = self.__connect()
 
     def close(self):
-        self.__pool.log("Closing connection %s" % repr(self.connection))
-        self.connection.close()
+        if self.connection is not None:
+            self.__pool.log("Closing connection %s" % repr(self.connection))
+            self.connection.close()
 
     def invalidate(self, e=None):
         if e is not None:
@@ -348,7 +359,17 @@ class SingletonThreadPool(Pool):
         self._conns = {}
         self.size = pool_size
 
+    def recreate(self):
+        self.log("Pool recreating")
+        return SingletonThreadPool(self._creator, pool_size=self.size, recycle=self._recycle, echo=self.echo, use_threadlocal=self._use_threadlocal, auto_close_cursors=self.auto_close_cursors, disallow_open_cursors=self.disallow_open_cursors)
+        
     def dispose(self):
+        """dispose of this pool.
+        
+        this method leaves the possibility of checked-out connections remaining opened,
+        so it is advised to not reuse the pool once dispose() is called, and to instead
+        use a new pool constructed by the recreate() method.
+        """
         for key, conn in self._conns.items():
             try:
                 conn.close()
@@ -425,6 +446,10 @@ class QueuePool(Pool):
         self._overflow = 0 - pool_size
         self._max_overflow = max_overflow
         self._timeout = timeout
+
+    def recreate(self):
+        self.log("Pool recreating")
+        return QueuePool(self._creator, pool_size=self._pool.maxsize, max_overflow=self._max_overflow, timeout=self._timeout, recycle=self._recycle, echo=self.echo, use_threadlocal=self._use_threadlocal, auto_close_cursors=self.auto_close_cursors, disallow_open_cursors=self.disallow_open_cursors)
 
     def do_return_conn(self, conn):
         try:

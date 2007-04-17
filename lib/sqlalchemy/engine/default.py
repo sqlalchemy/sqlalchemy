@@ -20,9 +20,8 @@ class PoolConnectionProvider(base.ConnectionProvider):
 
     def dispose(self):
         self._pool.dispose()
-        if hasattr(self, '_dbproxy'):
-            self._dbproxy.dispose()
-
+        self._pool = self._pool.recreate()
+        
 class DefaultDialect(base.Dialect):
     """Default implementation of Dialect"""
 

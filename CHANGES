@@ -12,8 +12,11 @@
     - server side cursor support fully functional in postgres
       [ticket:514].
     - improved framework for auto-invalidation of connections that have
-      lost their underlying database - the error catching/invalidate
-      step is totally moved to the connection pool. #516
+      lost their underlying database, via dialect-specific detection
+      of exceptions corresponding to that database's disconnect
+      related error messages.  Additionally, when a "connection no 
+      longer open" condition is detected, the entire connection pool 
+      is discarded and replaced with a new instance.  #516
 - sql:
     - preliminary support for unicode table names, column names and 
       SQL statements added, for databases which can support them.

@@ -180,6 +180,14 @@ class PoolTest(PersistTest):
         c1 = p.connect()
         assert c1.connection.id != c_id
 
+    def test_recreate(self):
+        dbapi = MockDBAPI()
+        p = pool.QueuePool(creator = lambda: dbapi.connect('foo.db'), pool_size = 1, max_overflow = 0, use_threadlocal = False)
+        p2 = p.recreate()
+        assert p2.size() == 1
+        assert p2._use_threadlocal is False
+        assert p2._max_overflow == 0
+        
     def test_reconnect(self):
         dbapi = MockDBAPI()
         p = pool.QueuePool(creator = lambda: dbapi.connect('foo.db'), pool_size = 1, max_overflow = 0, use_threadlocal = False)
