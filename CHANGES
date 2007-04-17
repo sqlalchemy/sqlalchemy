@@ -54,6 +54,11 @@
     - slight tweak to raw execute() change to also support tuples
       for positional parameters, not just lists [ticket:523]
 - orm:
+    - added query.with_parent(someinstance) method.  searches for
+      target instance using lazy join criterion from parent instance.
+      takes optional string "property" to isolate the desired relation.
+      also adds static Query.query_from_parent(instance, property)
+      version. [ticket:541]
     - corresponding to label/bindparam name generataion, eager loaders 
       generate deterministic names for the aliases they create using 
       md5 hashes.

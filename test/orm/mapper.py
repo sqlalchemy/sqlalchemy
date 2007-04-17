@@ -284,9 +284,57 @@ class MapperTest(MapperSuperTest):
         q = create_session().query(m)
         l = q.select()
         self.assert_result(l, User, *result)
+
+    def testwithparent(self):
+        """test the with_parent()) method and one-to-many relationships"""
+        
+        m = mapper(User, users, properties={
+            'orders':relation(mapper(Order, orders, properties={
+                'items':relation(mapper(Item, orderitems))
+            }))
+        })
+
+        sess = create_session()
+        q = sess.query(m)
+        u1 = q.get_by(user_name='jack')
+
+        # test auto-lookup of property
+        o = sess.query(Order).with_parent(u1).list()
+        self.assert_result(o, Order, *user_all_result[0]['orders'][1])
+
+        # test with explicit property
+        o = sess.query(Order).with_parent(u1, property='orders').list()
+        self.assert_result(o, Order, *user_all_result[0]['orders'][1])
+
+        # test static method
+        o = Query.query_from_parent(u1, property='orders', session=sess).list()
+        self.assert_result(o, Order, *user_all_result[0]['orders'][1])
+
+        # test generative criterion
+        o = sess.query(Order).with_parent(u1).select_by(orders.c.order_id>2)
+        self.assert_result(o, Order, *user_all_result[0]['orders'][1][1:])
+
+        try:
+            q = sess.query(Item).with_parent(u1)
+            assert False
+        except exceptions.InvalidRequestError, e:
+            assert str(e) == "Could not locate a property which relates instances of class 'Item' to instances of class 'User'"
+            
+    def testwithparentm2m(self):
+        """test the with_parent() method and many-to-many relationships"""
+        
+        m = mapper(Item, orderitems, properties = {
+                'keywords' : relation(mapper(Keyword, keywords), itemkeywords)
+        })
+        sess = create_session()
+        i1 = sess.query(Item).get_by(item_id=2)
+        k = sess.query(Keyword).with_parent(i1)
+        self.assert_result(k, Keyword, *item_keyword_result[1]['keywords'][1])
+
         
     def testjoinvia(self):
         """test the join_via and join_to functions"""
+        
         m = mapper(User, users, properties={
             'orders':relation(mapper(Order, orders, properties={
                 'items':relation(mapper(Item, orderitems))
@@ -319,7 +367,8 @@ class MapperTest(MapperSuperTest):
             assert False
         except AttributeError:
             assert True
-
+    
+        
     def testjoinviam2m(self):
         """test the join_via and join_to functions"""
         m = mapper(Order, orders, properties = {

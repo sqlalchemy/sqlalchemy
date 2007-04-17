@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from sqlalchemy import sql, util, exceptions, sql_util, logging, schema
-from sqlalchemy.orm import mapper, class_mapper
+from sqlalchemy.orm import mapper, class_mapper, object_mapper
 from sqlalchemy.orm.interfaces import OperationContext, SynonymProperty
 
 __all__ = ['Query', 'QueryContext', 'SelectionContext']
@@ -347,6 +347,79 @@ class Query(object):
 
         t = sql.text(text)
         return self.execute(t, params=params)
+
+    def _with_parent_criterion(cls, mapper, instance, prop):
+        """extract query criterion from a LazyLoader strategy given a Mapper, 
+        source persisted/detached instance and PropertyLoader.
+        
+        ."""
+        from sqlalchemy.orm import strategies
+        # this could be done very slickly with prop.compare() and join_via(),
+        # but we are using the less generic LazyLoader clause so that we
+        # retain the ability to do a self-referential join (also the lazy 
+        # clause typically requires only the primary table with no JOIN)
+        loader = prop._get_strategy(strategies.LazyLoader)
+        criterion = loader.lazywhere.copy_container()
+        bind_to_col = dict([(loader.lazybinds[col].key, col) for col in loader.lazybinds])
+
+        class Visitor(sql.ClauseVisitor):
+            def visit_bindparam(self, bindparam):
+                bindparam.value = mapper.get_attr_by_column(instance, bind_to_col[bindparam.key])
+        Visitor().traverse(criterion)
+        return criterion
+    _with_parent_criterion = classmethod(_with_parent_criterion)
+    
+    def query_from_parent(cls, instance, property, **kwargs):
+        """return a newly constructed Query object, with criterion corresponding to 
+        a relationship to the given parent instance.
+
+            instance
+                a persistent or detached instance which is related to class represented
+                by this query.
+
+            property
+                string name of the property which relates this query's class to the 
+                instance. 
+                
+            \**kwargs
+                all extra keyword arguments are propigated to the constructor of
+                Query.
+                
+        """
+        
+        mapper = object_mapper(instance)
+        prop = mapper.props[property]
+        target = prop.mapper
+        criterion = cls._with_parent_criterion(mapper, instance, prop)
+        return Query(target, **kwargs).filter(criterion)
+    query_from_parent = classmethod(query_from_parent)
+        
+    def with_parent(self, instance, property=None):
+        """add a join criterion corresponding to a relationship to the given parent instance.
+
+            instance
+                a persistent or detached instance which is related to class represented
+                by this query.
+
+            property
+                string name of the property which relates this query's class to the 
+                instance.  if None, the method will attempt to find a suitable property.
+
+        currently, this method only works with immediate parent relationships, but in the
+        future may be enhanced to work across a chain of parent mappers.    
+        """
+
+        from sqlalchemy.orm import properties
+        mapper = object_mapper(instance)
+        if property is None:
+            for prop in mapper.props.values():
+                if isinstance(prop, properties.PropertyLoader) and prop.mapper is self.mapper:
+                    break
+            else:
+                raise exceptions.InvalidRequestError("Could not locate a property which relates instances of class '%s' to instances of class '%s'" % (self.mapper.class_.__name__, instance.__class__.__name__))
+        else:
+            prop = mapper.props[property]
+        return self.filter(Query._with_parent_criterion(mapper, instance, prop))
 
     def add_entity(self, entity):
         """add a mapped entity to the list of result columns to be returned.
