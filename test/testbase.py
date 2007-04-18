@@ -224,6 +224,17 @@ class AssertMixin(PersistTest):
         finally:
             self.assert_(testdata.sql_count == count, "desired statement count %d does not match %d" % (count, testdata.sql_count))
 
+    def capture_sql(self, db, callable_):
+        global testdata
+        testdata = TestData(db)
+        buffer = StringIO.StringIO()
+        testdata.buffer = buffer
+        try:
+            callable_()
+            return buffer.getvalue()
+        finally:
+            testdata.buffer = None
+            
 class ORMTest(AssertMixin):
     keep_mappers = False
     keep_data = False
@@ -251,6 +262,7 @@ class TestData(object):
         self.logger = engine.logger
         self.set_assert_list(None, None)
         self.sql_count = 0
+        self.buffer = None
         
     def set_assert_list(self, unittest, list):
         self.unittest = unittest
@@ -270,6 +282,8 @@ class ExecutionContextWrapper(object):
         ctx = self.ctx
         statement = unicode(ctx.compiled)
         statement = re.sub(r'\n', '', ctx.statement)
+        if testdata.buffer is not None:
+            testdata.buffer.write(statement + "\n")
 
         if testdata.assert_list is not None:
             item = testdata.assert_list[-1]

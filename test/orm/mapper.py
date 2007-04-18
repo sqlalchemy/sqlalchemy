@@ -541,6 +541,15 @@ class MapperTest(MapperSuperTest):
             assert len(u.addresses) == 3
         self.assert_sql_count(db, go, 0)
 
+        sess.clear()
+        
+        # test that eager loading doesnt modify parent mapper
+        def go():
+            u = sess.query(User).get_by(user_id=8)
+            assert u.user_id == 8
+            assert len(u.addresses) == 3
+        assert "tbl_row_count" not in self.capture_sql(db, go)
+        
     def testlazyoptionswithlimit(self):
         sess = create_session()
         mapper(User, users, properties = dict(

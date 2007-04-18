@@ -317,7 +317,8 @@ class EagerLoader(AbstractRelationLoader):
                 "to child class '%s': Cant use eager loading on a self "
                 "referential relationship." %
                 (self.key, repr(self.parent.class_), repr(self.mapper.class_)))
-        self.parent._eager_loaders.add(self.parent_property)
+        if self.is_default:
+            self.parent._eager_loaders.add(self.parent_property)
 
         self.clauses = {}
         self.clauses_by_lead_mapper = {}

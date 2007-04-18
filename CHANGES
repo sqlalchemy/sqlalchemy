@@ -58,6 +58,10 @@
     - slight tweak to raw execute() change to also support tuples
       for positional parameters, not just lists [ticket:523]
 - orm:
+    - fixed critical issue when, after options(eagerload()) is used,
+      the mapper would then always apply query "wrapping" behavior
+      for all subsequent LIMIT/OFFSET/DISTINCT queries, even if no
+      eager loading was applied on those subsequent queries.
     - added query.with_parent(someinstance) method.  searches for
       target instance using lazy join criterion from parent instance.
       takes optional string "property" to isolate the desired relation.
