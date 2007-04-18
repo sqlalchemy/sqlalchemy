@@ -828,10 +828,15 @@ class CRUDTest(SQLTest):
         u = update(table1, table1.c.name == 'jack', values = {table1.c.name : s})
         self.runtest(u, "UPDATE mytable SET name=(SELECT myothertable.otherid, myothertable.othername FROM myothertable WHERE myothertable.otherid = mytable.myid) WHERE mytable.name = :mytable_name")
 
-        # test a correlated WHERE clause
+        # test a non-correlated WHERE clause
         s = select([table2.c.othername], table2.c.otherid == 7)
         u = update(table1, table1.c.name==s)
         self.runtest(u, "UPDATE mytable SET myid=:myid, name=:name, description=:description WHERE mytable.name = (SELECT myothertable.othername FROM myothertable WHERE myothertable.otherid = :myothertable_otherid)")
+
+        # test one that is actually correlated...
+        s = select([table2.c.othername], table2.c.otherid == table1.c.myid)
+        u = table1.update(table1.c.name==s)
+        self.runtest(u, "UPDATE mytable SET myid=:myid, name=:name, description=:description WHERE mytable.name = (SELECT myothertable.othername FROM myothertable WHERE myothertable.otherid = mytable.myid)")
         
     def testdelete(self):
         self.runtest(delete(table1, table1.c.myid == 7), "DELETE FROM mytable WHERE mytable.myid = :mytable_myid")
