@@ -446,7 +446,7 @@ class Session(object):
         for c in [object] + list(_object_mapper(object).cascade_iterator('delete', object)):
             self.uow.register_deleted(c)
 
-    def merge(self, object,entity_name=None, _recursive=None):
+    def merge(self, object, entity_name=None, _recursive=None):
         """Copy the state of the given `object` onto the persistent
         object with the same identifier.
 
@@ -462,21 +462,31 @@ class Session(object):
 
         if _recursive is None:
             _recursive = util.Set()
-        mapper = _object_mapper(object, entity_name=entity_name)
-        key = getattr(object, '_instance_key', None)
-        if key is None:
-            merged = mapper._create_instance(self)
+        if entity_name is not None:
+            mapper = _class_mapper(object.__class__, entity_name=entity_name)
         else:
-            if key in self.identity_map:
-                merged = self.identity_map[key]
+            mapper = _object_mapper(object)
+        if mapper in _recursive or object in _recursive:
+            return None
+        _recursive.add(mapper)
+        _recursive.add(object)
+        try:
+            key = getattr(object, '_instance_key', None)
+            if key is None:
+                merged = mapper._create_instance(self)
             else:
-                merged = self.get(mapper.class_, key[1])
-        for prop in mapper.props.values():
-            prop.merge(self, object, merged, _recursive)
-        if key is None:
-            self.save(merged)
-        return merged
-
+                if key in self.identity_map:
+                    merged = self.identity_map[key]
+                else:
+                    merged = self.get(mapper.class_, key[1])
+            for prop in mapper.props.values():
+                prop.merge(self, object, merged, _recursive)
+            if key is None:
+                self.save(merged, entity_name=mapper.entity_name)
+            return merged
+        finally:
+            _recursive.remove(mapper)
+            
     def identity_key(self, *args, **kwargs):
         """Get an identity key.
 

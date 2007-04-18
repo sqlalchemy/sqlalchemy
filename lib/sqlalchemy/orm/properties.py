@@ -62,9 +62,10 @@ class PropertyLoader(StrategizedProperty):
     of items that correspond to a related database table.
     """
 
-    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, foreign_keys=None, foreignkey=None, uselist=None, private=False, association=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False, cascade=None, viewonly=False, lazy=True, collection_class=None, passive_deletes=False, remote_side=None, enable_typechecks=True):
+    def __init__(self, argument, secondary, primaryjoin, secondaryjoin, entity_name=None, foreign_keys=None, foreignkey=None, uselist=None, private=False, association=None, order_by=False, attributeext=None, backref=None, is_backref=False, post_update=False, cascade=None, viewonly=False, lazy=True, collection_class=None, passive_deletes=False, remote_side=None, enable_typechecks=True):
         self.uselist = uselist
         self.argument = argument
+        self.entity_name = entity_name
         self.secondary = secondary
         self.primaryjoin = primaryjoin
         self.secondaryjoin = secondaryjoin
@@ -120,24 +121,24 @@ class PropertyLoader(StrategizedProperty):
         return str(self.parent.class_.__name__) + "." + self.key + " (" + str(self.mapper.class_.__name__)  + ")"
 
     def merge(self, session, source, dest, _recursive):
-        if not "merge" in self.cascade or source in _recursive:
+        if not "merge" in self.cascade or self.mapper in _recursive:
             return
-        _recursive.add(source)
-        try:
-            childlist = sessionlib.attribute_manager.get_history(source, self.key, passive=True)
-            if childlist is None:
-                return
-            if self.uselist:
-                # sets a blank list according to the correct list class
-                dest_list = getattr(self.parent.class_, self.key).initialize(dest)
-                for current in list(childlist):
-                    dest_list.append(session.merge(current, _recursive=_recursive))
-            else:
-                current = list(childlist)[0]
-                if current is not None:
-                    setattr(dest, self.key, session.merge(current, _recursive=_recursive))
-        finally:
-            _recursive.remove(source)
+        childlist = sessionlib.attribute_manager.get_history(source, self.key, passive=True)
+        if childlist is None:
+            return
+        if self.uselist:
+            # sets a blank list according to the correct list class
+            dest_list = getattr(self.parent.class_, self.key).initialize(dest)
+            for current in list(childlist):
+                obj = session.merge(current, entity_name=self.mapper.entity_name, _recursive=_recursive)
+                if obj is not None:
+                    dest_list.append(obj)
+        else:
+            current = list(childlist)[0]
+            if current is not None:
+                obj = session.merge(current, entity_name=self.mapper.entity_name, _recursive=_recursive)
+                if obj is not None:
+                    setattr(dest, self.key, obj)
 
     def cascade_iterator(self, type, object, recursive, halt_on=None):
         if not type in self.cascade:
@@ -188,7 +189,7 @@ class PropertyLoader(StrategizedProperty):
 
     def _determine_targets(self):
         if isinstance(self.argument, type):
-            self.mapper = mapper.class_mapper(self.argument, compile=False)._check_compile()
+            self.mapper = mapper.class_mapper(self.argument, entity_name=self.entity_name, compile=False)._check_compile()
         elif isinstance(self.argument, mapper.Mapper):
             self.mapper = self.argument._check_compile()
         else:
@@ -199,7 +200,7 @@ class PropertyLoader(StrategizedProperty):
 
         if self.association is not None:
             if isinstance(self.association, type):
-                self.association = mapper.class_mapper(self.association, compile=False)._check_compile()
+                self.association = mapper.class_mapper(self.association, entity_name=self.entity_name, compile=False)._check_compile()
 
         self.target = self.mapper.mapped_table
         self.select_mapper = self.mapper.get_select_mapper()

@@ -71,6 +71,8 @@
       methods on them during lazy loads)
     - fix to many-to-many relationships targeting polymorphic mappers
       [ticket:533]
+    - making progress with session.merge() as well as combining its
+      usage with entity_name [ticket:543]
 - sqlite:
     - removed silly behavior where sqlite would reflect UNIQUE indexes
       as part of the primary key (?!)
