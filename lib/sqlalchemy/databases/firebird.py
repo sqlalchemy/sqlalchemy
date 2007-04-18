@@ -167,6 +167,12 @@ class FBDialect(ansisql.ANSIDialect):
         else:
             return False
 
+    def is_disconnect(self, e):
+        if isinstance(e, self.dbapi.OperationalError):
+            return 'Unable to complete network request to host' in str(e)
+        else:
+            return False
+
     def reflecttable(self, connection, table):
         #TODO: map these better
         column_func = {
