@@ -566,16 +566,18 @@ class InstrumentedList(object):
 
     def __contains__(self, item): return item in self.data
 
-    def __len__(self): return len(self.data)
+    def __len__(self):
+        try:
+            return len(self.data)
+        except TypeError:
+            return len(list(self.data))
 
     def __setslice__(self, i, j, other):
-        i = max(i, 0); j = max(j, 0)
-        [self.__delrecord(x) for x in self.data[i:]]
+        [self.__delrecord(x) for x in self.data[i:j]]
         g = [a for a in list(other) if self.__setrecord(a)]
-        self.data[i:] = g
+        self.data[i:j] = g
 
     def __delslice__(self, i, j):
-        i = max(i, 0); j = max(j, 0)
         for a in self.data[i:j]:
             self.__delrecord(a)
         del self.data[i:j]
