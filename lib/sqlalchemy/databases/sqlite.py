@@ -10,6 +10,7 @@ import sys, StringIO, string, types, re
 from sqlalchemy import sql, engine, schema, ansisql, exceptions, pool, PassiveDefault
 import sqlalchemy.engine.default as default
 import sqlalchemy.types as sqltypes
+import sqlalchemy.util as util
 import datetime,time
 
     
@@ -179,7 +180,15 @@ class SQLiteDialect(ansisql.ANSIDialect):
 
     def create_connect_args(self, url):
         filename = url.database or ':memory:'
-        return ([filename], url.query)
+
+        opts = url.query.copy()
+        util.coerce_kw_type(opts, 'timeout', float)
+        util.coerce_kw_type(opts, 'isolation_level', str)
+        util.coerce_kw_type(opts, 'detect_types', int)
+        util.coerce_kw_type(opts, 'check_same_thread', bool)
+        util.coerce_kw_type(opts, 'cached_statements', int)
+
+        return ([filename], opts)
 
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)

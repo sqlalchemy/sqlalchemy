@@ -98,6 +98,17 @@ def get_func_kwargs(func):
     """Return the full set of legal kwargs for the given `func`."""
     return [vn for vn in func.func_code.co_varnames]
 
+def coerce_kw_type(kw, key, type_, flexi_bool=True):
+    """If 'key' is present in dict 'kw', coerce its value to type 'type_' if
+    necessary.  If 'flexi_bool' is True, the string '0' is considered false
+    when coercing to boolean.
+    """
+    if key in kw and type(kw[key]) is not type_ and kw[key] is not None:
+        if type_ is bool and flexi_bool and kw[key] == '0':
+            kw[key] = False
+        else:
+            kw[key] = type_(kw[key])
+
 class SimpleProperty(object):
     """A *default* property accessor."""
 

@@ -10,6 +10,7 @@ from sqlalchemy import sql,engine,schema,ansisql
 from sqlalchemy.engine import default
 import sqlalchemy.types as sqltypes
 import sqlalchemy.exceptions as exceptions
+import sqlalchemy.util as util
 from array import array
 
 
@@ -285,16 +286,13 @@ class MySQLDialect(ansisql.ANSIDialect):
     def create_connect_args(self, url):
         opts = url.translate_connect_args(['host', 'db', 'user', 'passwd', 'port'])
         opts.update(url.query)
-        def coercetype(param, type):
-            if param in opts and type(param) is not type:
-                if type is bool:
-                    opts[param] = bool(int(opts[param]))
-                else:
-                    opts[param] = type(opts[param])
-        coercetype('compress', bool)
-        coercetype('connect_timeout', int)
-        coercetype('use_unicode', bool)   # this could break SA Unicode type
-        coercetype('charset', str)        # this could break SA Unicode type
+
+        util.coerce_kw_type(opts, 'compress', bool)
+        util.coerce_kw_type(opts, 'connect_timeout', int)
+        util.coerce_kw_type(opts, 'client_flag', int)
+        # note: these two could break SA Unicode type
+        util.coerce_kw_type(opts, 'use_unicode', bool)   
+        util.coerce_kw_type(opts, 'charset', str)
         # TODO: what about options like "ssl", "cursorclass" and "conv" ?
 
         client_flag = opts.get('client_flag', 0)
