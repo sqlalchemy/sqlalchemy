@@ -40,8 +40,9 @@ class ExecuteTest(testbase.PersistTest):
             conn.execute("insert into users (user_id, user_name) values (%s, %s)", [1,"jack"])
             conn.execute("insert into users (user_id, user_name) values (%s, %s)", [2,"ed"], [3,"horse"])
             conn.execute("insert into users (user_id, user_name) values (%s, %s)", 4, 'sally')
+            conn.execute("insert into users (user_id) values (%s)", 5)
             res = conn.execute("select * from users")
-            assert res.fetchall() == [(1, "jack"), (2, "ed"), (3, "horse"), (4, 'sally')]
+            assert res.fetchall() == [(1, "jack"), (2, "ed"), (3, "horse"), (4, 'sally'), (5, None)]
             conn.execute("delete from users")
             
     @testbase.supported('postgres')
