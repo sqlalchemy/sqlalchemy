@@ -34,7 +34,7 @@ class ExecuteTest(testbase.PersistTest):
             assert res.fetchall() == [(1, "jack"), (2, "fred"), (3, "ed"), (4, "horse"), (5, "barney"), (6, "donkey"), (7, 'sally')]
             conn.execute("delete from users")
 
-    @testbase.supported('mysql')
+    @testbase.supported('mysql', 'postgres')
     def test_raw_sprintf(self):
         for conn in (testbase.db, testbase.db.connect()):
             conn.execute("insert into users (user_id, user_name) values (%s, %s)", [1,"jack"])

@@ -180,8 +180,10 @@ class DefaultExecutionContext(base.ExecutionContext):
             return params
         else:
             def proc(d):
-                if d is None:
-                    return None
+                # sigh, sometimes we get positional arguments with a dialect
+                # that doesnt specify positional (because of execute_text())
+                if not isinstance(d, dict):
+                    return d
                 return dict([(k.encode(self.dialect.encoding), d[k]) for k in d])
             if isinstance(params, list):
                 return [proc(d) for d in params]
