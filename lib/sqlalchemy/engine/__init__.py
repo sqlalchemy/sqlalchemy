@@ -4,6 +4,47 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+"""defines the basic components used to interface DBAPI modules with
+higher-level statement-construction, connection-management, 
+execution and result contexts.  The primary "entry point" class into
+this package is the Engine.
+
+The package is represented among several individual modules, including:
+
+    base.py
+        Defines interface classes and some implementation classes
+        which comprise the basic components used to interface between
+        a DBAPI, constructed and plain-text statements, 
+        connections, transactions, and results.
+        
+    default.py
+        Contains default implementations of some of the components 
+        defined in base.py.  All current database dialects use the 
+        classes in default.py as base classes for their own database-specific
+        implementations.
+    
+    strategies.py
+        the mechanics of constructing ``Engine`` objects are represented here.
+        Defines the ``EngineStrategy`` class which represents how to go from 
+        arguments specified to the ``create_engine()`` function, to a fully
+        constructed ``Engine``, including initialization of connection pooling,
+        dialects, and specific subclasses of ``Engine``.
+        
+    threadlocal.py
+        the ``TLEngine`` class is defined here, which is a subclass of the generic
+        ``Engine`` and tracks ``Connection`` and ``Transaction`` objects against
+        the identity of the current thread.  This allows certain programming patterns
+        based around the concept of a "thread-local connection" to be possible.  The
+        ``TLEngine`` is created by using the "threadlocal" engine strategy in 
+        conjunction with the ``create_engine()`` function.
+        
+    url.py
+        Defines the ``URL`` class which represents the individual components of a 
+        string URL passed to ``create_engine()``.  Also defines a basic module-loading
+        strategy for the dialect specifier within a URL.
+        
+"""
+
 from sqlalchemy import databases
 from sqlalchemy.engine.base import *
 from sqlalchemy.engine import strategies
@@ -45,10 +86,10 @@ def create_engine(*args, **kwargs):
     dialect and connection arguments, with additional keyword
     arguments sent as options to the dialect and resulting Engine.
 
-    The URL is in the form 
+    The URL is a string in the form 
     ``dialect://user:password@host/dbname[?key=value..]``, where 
     ``dialect`` is a name such as ``mysql``, ``oracle``, ``postgres``,
-    etc.
+    etc.  Alternatively, the URL can be an instance of ``sqlalchemy.engine.url.URL``.
 
     `**kwargs` represents options to be sent to the Engine itself as
     well as the components of the Engine, including the Dialect, the

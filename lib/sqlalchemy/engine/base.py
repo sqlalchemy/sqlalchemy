@@ -1,3 +1,13 @@
+# engine/base.py
+# Copyright (C) 2005, 2006, 2007 Michael Bayer mike_mp@zzzcomputing.com
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: http://www.opensource.org/licenses/mit-license.php
+
+"""defines the basic components used to interface DBAPI modules with
+higher-level statement-construction, connection-management, 
+execution and result contexts."""
+
 from sqlalchemy import exceptions, sql, schema, util, types, logging
 import StringIO, sys, re
 
@@ -1018,6 +1028,16 @@ class ResultProxy(object):
             self.close()
 
 class BufferedRowResultProxy(ResultProxy):
+    """``ResultProxy`` that buffers the contents of a selection of rows before 
+    ``fetchone()`` is called.  This is to allow the results of 
+    ``cursor.description`` to be available immediately, when interfacing
+    with a DBAPI that requires rows to be consumed before this information is
+    available (currently psycopg2, when used with server-side cursors).
+    
+    The pre-fetching behavior fetches only one row initially, and then grows
+    its buffer size by a fixed amount with each successive need for additional 
+    rows up to a size of 100.
+    """
     def _init_metadata(self):
         self.__buffer_rows()
         super(BufferedRowResultProxy, self)._init_metadata()
@@ -1062,9 +1082,13 @@ class BufferedRowResultProxy(ResultProxy):
         return self.__rowbuffer + list(self.cursor.fetchall())
 
 class BufferedColumnResultProxy(ResultProxy):
-    """ResultProxy that loads all columns into memory each time fetchone() is
+    """``ResultProxy`` that loads all columns into memory each time fetchone() is
     called.  If fetchmany() or fetchall() are called, the full grid of results
-    is fetched.
+    is fetched.  This is to operate with databases where result rows contain "live"
+    results that fall out of scope unless explicitly fetched.  Currently this includes
+    just cx_Oracle LOB objects, but this behavior is known to exist in other DBAPIs as 
+    well (Pygresql, currently unsupported).
+
     """
     def _get_col(self, row, key):
         rec = self._convert_key(key)
