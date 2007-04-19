@@ -182,7 +182,7 @@ class DefaultExecutionContext(base.ExecutionContext):
             def proc(d):
                 if d is None:
                     return None
-                return dict((k.encode(self.dialect.encoding), d[k]) for k in d)
+                return dict([(k.encode(self.dialect.encoding), d[k]) for k in d])
             if isinstance(params, list):
                 return [proc(d) for d in params]
             else:
