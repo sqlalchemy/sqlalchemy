@@ -2,7 +2,7 @@ from testbase import PersistTest
 import testbase
 from sqlalchemy import *
 from sqlalchemy.databases import sqlite, postgres, mysql, oracle, firebird, mssql
-import unittest, re
+import unittest, re, operator
 
 
 # the select test now tests almost completely with TableClause/ColumnClause objects,
@@ -245,6 +245,50 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         self.runtest(
             literal("a") + literal("b") * literal("c"), ":literal + (:literal_1 * :literal_2)"
         )
+
+        # exercise arithmetic operators
+        for (py_op, sql_op) in ((operator.add, '+'), (operator.mul, '*'),
+                                (operator.sub, '-'), (operator.div, '/'),
+                                ):
+            for (lhs, rhs, res) in (
+                ('a', table1.c.myid, ':mytable_myid %s mytable.myid'),
+                ('a', literal('b'), ':literal %s :literal_1'),
+                (table1.c.myid, 'b', 'mytable.myid %s :mytable_myid'),
+                (table1.c.myid, literal('b'), 'mytable.myid %s :literal'),
+                (table1.c.myid, table1.c.myid, 'mytable.myid %s mytable.myid'),
+                (literal('a'), 'b', ':literal %s :literal_1'),
+                (literal('a'), table1.c.myid, ':literal %s mytable.myid'),
+                (literal('a'), literal('b'), ':literal %s :literal_1'),
+                ):
+                self.runtest(py_op(lhs, rhs), res % sql_op)
+
+        # exercise comparison operators
+        for (py_op, fwd_op, rev_op) in ((operator.lt, '<', '>'),
+                                        (operator.gt, '>', '<'),
+                                        (operator.eq, '=', '='),
+                                        (operator.ne, '!=', '!='),
+                                        (operator.le, '<=', '>='),
+                                        (operator.ge, '>=', '<=')):
+            for (lhs, rhs, l_sql, r_sql) in (
+                ('a', table1.c.myid, ':mytable_myid', 'mytable.myid'),
+                ('a', literal('b'), ':literal_1', ':literal'), # note swap!
+                (table1.c.myid, 'b', 'mytable.myid', ':mytable_myid'),
+                (table1.c.myid, literal('b'), 'mytable.myid', ':literal'),
+                (table1.c.myid, table1.c.myid, 'mytable.myid', 'mytable.myid'),
+                (literal('a'), 'b', ':literal', ':literal_1'),
+                (literal('a'), table1.c.myid, ':literal', 'mytable.myid'),
+                (literal('a'), literal('b'), ':literal', ':literal_1'),
+                ):
+
+                # the compiled clause should match either (e.g.):
+                # 'a' < 'b' -or- 'b' > 'a'.
+                compiled = str(py_op(lhs, rhs))
+                fwd_sql = "%s %s %s" % (l_sql, fwd_op, r_sql)
+                rev_sql = "%s %s %s" % (r_sql, rev_op, l_sql)
+
+                self.assert_(compiled == fwd_sql or compiled == rev_sql,
+                             "\n'" + compiled + "'\n does not match\n'" +
+                             fwd_sql + "'\n or\n'" + rev_sql + "'")
 
         # test the op() function, also that its results are further usable in expressions
         self.runtest(
@@ -700,6 +744,54 @@ myothertable.othername != :myothertable_othername AND EXISTS (select yay from fo
         assert [str(c) for c in s.c] == ["id", "hoho"]
         
     def testin(self):
+        self.runtest(select([table1], table1.c.myid.in_('a')),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = :mytable_myid")
+
+        self.runtest(select([table1], table1.c.myid.in_('a', 'b')),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid, :mytable_myid_1)")
+
+        self.runtest(select([table1], table1.c.myid.in_(literal('a'))),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = :literal")
+
+        self.runtest(select([table1], table1.c.myid.in_(literal('a'), 'b')),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:literal, :mytable_myid)")
+
+        self.runtest(select([table1], table1.c.myid.in_(literal('a'), literal('b'))),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:literal, :literal_1)")
+
+        self.runtest(select([table1], table1.c.myid.in_('a', literal('b'))),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid, :literal)")
+
+        self.runtest(select([table1], table1.c.myid.in_(literal('a') + 'a')),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = (:literal + :literal_1)")
+
+        self.runtest(select([table1], table1.c.myid.in_(literal('a') +'a', 'b')),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:literal + :literal_1, :mytable_myid)")
+
+        self.runtest(select([table1], table1.c.myid.in_(literal('a') + literal('a'), literal('b'))),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:literal + :literal_1, :literal_2)")
+
+        self.runtest(select([table1], table1.c.myid.in_('a', literal('b') +'b')),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid, :literal + :literal_1)")
+
+        self.runtest(select([table1], table1.c.myid.in_(literal('a') < 'b')),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = (:literal < :literal_1)")
+
+        self.runtest(select([table1], table1.c.myid.in_(table1.c.myid)),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = mytable.myid")
+
+        self.runtest(select([table1], table1.c.myid.in_('a', table1.c.myid)),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid, mytable.myid)")
+
+        self.runtest(select([table1], table1.c.myid.in_(literal('a'), table1.c.myid)),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:literal, mytable.myid)")
+
+        self.runtest(select([table1], table1.c.myid.in_(literal('a'), table1.c.myid +'a')),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:literal, mytable.myid + :mytable_myid)")
+
+        self.runtest(select([table1], table1.c.myid.in_(literal('a'), 'a' + table1.c.myid)),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:literal, :mytable_myid + mytable.myid)")
+
         self.runtest(select([table1], table1.c.myid.in_(1, 2, 3)),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid, :mytable_myid_1, :mytable_myid_2)")
 
