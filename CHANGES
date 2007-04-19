@@ -32,6 +32,10 @@
       of unicode situations that occur in db's such as MS-SQL to be
       better handled and allows subclassing of the Unicode datatype.
       [ticket:522]
+    - ClauseElements can be used in in_() clauses now, such as bind 
+      parameters, etc. #476
+    - reverse operators implemented for `CompareMixin` elements,
+      allows expressions like "5 + somecolumn" etc. #474
     - the "where" criterion of an update() and delete() now correlates
       embedded select() statements against the table being updated or
       deleted.  this works the same as nested select() statement
