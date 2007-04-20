@@ -55,7 +55,7 @@ class DefaultDialect(base.Dialect):
     def max_identifier_length(self):
         # TODO: probably raise this and fill out
         # db modules better
-        return 30
+        return 9999
 
     def supports_alter(self):
         return True
