@@ -25,6 +25,10 @@ files = [
     'docstrings'
     ]
 
+argfile = len(sys.argv) > 1 and sys.argv[1]
+if argfile:
+    files = [argfile]
+    
 title='SQLAlchemy 0.3 Documentation'
 version = '0.3.6'
 
@@ -35,11 +39,14 @@ shutil.copy('./content/docstrings.html', './output/docstrings.html')
 shutil.copy('./content/documentation.html', './output/documentation.html')
 
 read_markdown.parse_markdown_files(root, files)
-docstrings = gen_docstrings.make_all_docs()
-doc_files = gen_docstrings.create_docstring_toc(docstrings, root)
 
-pickle.dump(docstrings, file('./output/compiled_docstrings.pickle', 'w'))
-pickle.dump(root, file('./output/table_of_contents.pickle', 'w'))
+if not argfile:
+    docstrings = gen_docstrings.make_all_docs()
+    doc_files = gen_docstrings.create_docstring_toc(docstrings, root)
+
+    pickle.dump(docstrings, file('./output/compiled_docstrings.pickle', 'w'))
+
+    pickle.dump(root, file('./output/table_of_contents.pickle', 'w'))
 
 template_dirs = ['./templates', './output']
 output = os.path.dirname(os.getcwd())
@@ -59,11 +66,12 @@ for filename in files:
     except:
         print exceptions.text_error_template().render()
 
-for filename in doc_files:
-    try:
-        genfile(filename, os.path.join(os.getcwd(), '../', os.path.basename(filename) + ".html"))
-    except:
-        print exceptions.text_error_template().render()
+if not argfile:
+    for filename in doc_files:
+        try:
+            genfile(filename, os.path.join(os.getcwd(), '../', os.path.basename(filename) + ".html"))
+        except:
+            print exceptions.text_error_template().render()
         
 
 

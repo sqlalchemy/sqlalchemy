@@ -18,11 +18,11 @@ The primary method on `Query` for loading objects is its `select()` method, whic
 
 The three configurational elements to be defined, i.e. the `Table` metadata, the user-defined class, and the `Mapper`, are typically defined as module-level variables, and may be defined in any fashion suitable to the application, with the only requirement being that the class and table metadata are described before the mapper.  For the sake of example, we will be defining these elements close together, but this should not be construed as a requirement; since SQLAlchemy is not a framework, those decisions are left to the developer or an external framework.
 
-Also, keep in mind that the examples in this section deal with explicit `Session` objects mapped directly to `Engine` objects, which represents the most explicit style of using the ORM.  Options exist for how this is configured, including binding `Table` objects directly to `Engines` (described in [metadata_tables_binding](rel:metadata_tables_binding)), as well as using the "Threadlocal" plugin which provides various code shortcuts by using an implicit Session associated to the current thread (described in [plugins_threadlocal](rel:plugins_threadlocal)).
+Also, keep in mind that the examples in this section deal with explicit `Session` objects mapped directly to `Engine` objects, which represents the most explicit style of using the ORM.  Options exist for how this is configured, including binding `Table` objects directly to `Engines` (described in [metadata_tables_binding](rel:metadata_tables_binding)), as well as using an auto-generating "contextual" session via the SessionContext plugin (described in [plugins_sessioncontext](rel:plugins_sessioncontext)).
 
 ### Synopsis {@name=synopsis}
 
-Starting with a `Table` definition and a minimal class construct, the two are associated with each other via the `mapper()` function, which generates an object called a `Mapper` and registers the class as being handled by it:
+Starting with a `Table` definition and a minimal class construct, the two are associated with each other via the `mapper()` function [[api](rel:docstrings_sqlalchemy.orm.mapper_Mapper)], which generates an object called a `Mapper`.  SA associates the class and all instances of that class with this particular `Mapper`, which is then stored in a global registry.
 
     {python}
     from sqlalchemy import *
@@ -54,11 +54,11 @@ Thats all for configuration.  Next, we will create an `Engine` and bind it to a 
     # session
     session = create_session(bind_to=engine)
 
-The `session` represents a "workspace" which can load objects and persist changes to the database.  Next we illustrate a rudimental query for a single object instance, modify one of its attributes, and persist the change back to the database.
+The `session` represents a "workspace" which can load objects and persist changes to the database.  A `Session` [[doc](rel:unitofwork)] [[api](rel:docstrings_sqlalchemy.orm.session_Session)] is best created as local to a particular set of related data operations, such as scoped within a function call, or within a single application request cycle.  Next we illustrate a rudimental query which will load a single object instance.  We will modify one of its attributes and persist the change back to the database.
 
     {python}
     # select
-    {sql}user = session.query(User).get_by(user_name='fred')
+    {sql}user = session.query(User).selectfirst_by(user_name='fred')
     SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
     users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
@@ -69,16 +69,19 @@ The `session` represents a "workspace" which can load objects and persist change
     user.user_name = 'fred jones'
     
     # flush - saves everything that changed
+    # within the scope of our Session
     {sql}session.flush()
+    BEGIN
     UPDATE users SET user_name=:user_name 
      WHERE users.user_id = :user_id
     [{'user_name': 'fred jones', 'user_id': 1}]        
-
-Things to note from the above include that the loaded `User` object has an attribute named `user_name` on it, which corresponds to the `user_name` column in the `users_table`; this attribute was configured at the class level when the `Mapper` which we created first compiled itself.  Our modify operation on this attribute caused the object to be marked as `dirty`, which was picked up automatically within the subsequent `flush()` process.  The `flush()` is the single point at which changes on objects are persisted to the database.
+    COMMIT
+    
+Things to note from the above include that the loaded `User` object has an attribute named `user_name` on it, which corresponds to the `user_name` column in the `users_table`; this attribute was configured at the class level when the `Mapper` which we created first compiled itself.  Our modify operation on this attribute caused the object to be marked as `dirty`, which was picked up automatically within the subsequent `flush()` process.  The `flush()` is the point at which all changes to objects within the `Session` are persisted to the database, and the `User` object is no longer marked as `dirty` until it is again modified.
 
 ### The Query Object {@name=query}
 
-The method `session.query(class_or_mapper)` returns a `Query` object.  `Query` implements a large set of methods which are used to produce and execute select statements tailored for loading object instances.  It returns objects in most cases either as lists of objects or as single instances, depending on the type of query issued.
+The method `session.query(class_or_mapper)` returns a `Query` object [[api](rel:docstrings_sqlalchemy.orm.query_Query)].  `Query` implements a large set of methods which are used to produce and execute select statements tailored for loading object instances.  It returns objects in most cases either as lists of objects or as single instances, depending on the type of query issued.
 
 A `Query` is always initially generated starting with the `Session` that we're working with, and is always created relative to a particular class, which is the primary class we wish to load.
 
@@ -97,24 +100,37 @@ Alternatively, an actual `Mapper` instance can be specified instead of a class:
     
 Dealing with mappers explicitly as above is usually not needed except for more advanced patterns where a class may have multiple mappers associated with it.
 
-Once we have a query, we can start loading objects.  The two most rudimental and general purpose methods are `select()` and `select_by()`.  `select()` is oriented towards query criterion constructed as a `ClauseElement` object, which is the kind of object generated when constructing SQL expressions as described in the [SQL](rel:sql) section.  `select_by()` can also accodate `ClauseElement` objects but is generally more oriented towards keyword arguments which correspond to mapped attribute names.  In both cases, its primarily the `WHERE` criterion which is constructed by the user.  The `Query` object will use this criterion to **compile** the full SQL query issued to the database, combining the clause with the appropriate column selection clauses and `FROM` criterion, incuding whatever modifications are required to control ordering, number of rows returned, joins for loading related objects, etc.
+Once we have a query, we can start loading objects.  The two most rudimental and general purpose methods are `select()` and `select_by()`.  `select()` is oriented towards query criterion constructed as a `ClauseElement` object, which is the kind of object generated when constructing SQL expressions as described in the [SQL](rel:sql) section.  `select_by()` can also accomodate `ClauseElement` objects but is generally more oriented towards keyword arguments which correspond to mapped attribute names.  In both cases, the criterion specified is used to construct the `WHERE` criterion of the generated SQL.  The `Query` object will use this criterion to **compile** the full SQL query issued to the database, combining the `WHERE` condition with the appropriate column selection clauses and `FROM` criterion, incuding whatever modifications are required to control ordering, number of rows returned, joins for loading related objects, etc.
 
-First, `select_by()`.  The general form of this method is:
+The general form of `select_by()` is:
 
     {python}
     def select_by(self, *clause_elements, **keyword_criterion)
 
-Where `*clause_elements` is a set of zero or more `ClauseElement` objects that are similar to the `WHERE` criterion of a `SELECT` statement, and `**keyword_criterion` are key/value pairs which will generate additional `WHERE` criterion using simple equality comparisons.  The full set of clause elements and key/value pairs are joined together in the resulting SQL statement via `AND`.
+Where `*clause_elements` is a set of zero or more `ClauseElement` objects, and `**keyword_criterion` are key/value pairs each of which correspond to a simple equality comparison.  The full set of clause elements and key/value pairs are joined together in the resulting SQL statement via `AND`.
 
     {python}
     # using select_by with keyword arguments
-    result = query.select_by(name='john', fullname='John Smith')
+    {sql}result = query.select_by(name='john', fullname='John Smith')
+    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
+    users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.user_name = :users_user_name AND users.fullname = :users_fullname
+    ORDER BY users.oid
+    {'users_user_name': 'john', 'users_fullname': 'John Smith'}
 
     # using select_by with preceding ClauseElements followed by keywords
-    result = query.select_by(users_table.c.user_name=='john', 
-            addresses_table.c.zip_code=='12345', street='123 green street')
+    result = query.select_by(users_table.c.user_id>224, 
+    {sql}        users_table.c.user_name=='john', fullname='John Smith')
+    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
+    users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.user_id>:users_user_id AND users.user_name = :users_user_name 
+    AND users.fullname = :users_fullname
+    ORDER BY users.oid
+    {'users_user_name': 'john', 'users_fullname': 'John Smith', 'users_user_id': 224}
 
-Note that a `ClauseElement` is generated by each `==` operation that's performed against a `Column` object - recall that this operator is overloaded to return a binary clause construct.  But the `street="123 green street"` argument is not using any kind of overloading, and is a regular Python keyword argument.   Additionally, while `ClauseElements` are constructed against the `Column` elements configured on the mapped `Table`, the keyword-based criterion is constructed against the class-level attribute names which were configured by the mapper.  While they are the same name as their columns in this particular example, they can be configured to have names distinct from their columns.  So it follows that using `ClauseElements` for criterion are closer to the relational side of things, and using keyword arguments are closer towards the class-level domain object side of things.
+Note that a `ClauseElement` is generated by each boolean operator (i.e. `==`, `>`) that's performed against a `Column` object - recall that this operator is overloaded to return a binary clause construct.  But the `fullname="John Smith"` argument is not using any kind of overloading, and is a regular Python keyword argument.   Additionally, while `ClauseElements` are constructed against the `Column` elements configured on the mapped `Table`, the keyword-based criterion is constructed against the class-level attribute names which were configured by the mapper.  While they are the same name as their columns in this particular example, they can be configured to have names distinct from their columns.  So it follows that using `ClauseElements` for criterion are closer to the relational side of things, and using keyword arguments are closer towards the domain object side of things.
 
 The `select()` method, unlike the `select_by()` method, is purely `ClauseElement`/relationally oriented and has no domain-level awareness.  Its basic argument signature:
 
@@ -126,7 +142,7 @@ The `clause_element` argument again represents a `ClauseElement` which correspon
     {python}
     result = query.select(users_table.c.user_name=='john')
 
-To generate `AND` criterion the way `select_by()` does, you use the `and_()` construct from the sql construction system:
+To generate `AND` criterion the way `select_by()` does, you use the `and_()` construct from the sql construction system, which generates just another `ClauseElement` containing two sub-`ClauseElement`s:
 
     {python}
     result = query.select(and_(users_table.c.user_name=='john', 
@@ -137,30 +153,55 @@ From this, one can see that `select()` is stricter in its operation and does not
     {python}
     result = query.select(
         or_(users_table.c.user_name == 'john', users_table.c.user_name=='fred')
-    )
+    {sql})
+    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
+    users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.user_name = :users_user_name  OR users.user_name = :users_user_name_1
+    ORDER BY users.oid
+    {'users_user_name': 'john', 'users_user_name_1': 'fred'}
     
 The keyword portion of `select()` is used to indicate further modifications to the generated SQL, including common arguments like ordering, limits and offsets:
 
     {python}
     result = query.select(users_table.c.user_name=='john', 
-                order_by=[users_table.c.fullname], limit=10, offset=12)
+    {sql}            order_by=[users_table.c.fullname], limit=10, offset=12)
+    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
+    users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.user_name = :users_user_name 
+    ORDER BY users.fullname LIMIT 10 OFFSET 12
+    {'users_user_name': 'john'}
 
-An additional calling style on `select()` is to send a fully constructed selection construct to it, the construct that is created when using the `select()` function from the SQL construction system.
+#### Issuing Full SELECT statements {@name=fullselect}
+
+`select()` also provides an additional calling style, which is to pass a fully constructed `Select` construct to it.
 
     {python}
     # using a full select object
-    result = query.select(users_table.select(users_table.c.user_name=='john'))
+    {sql}result = query.select(users_table.select(users_table.c.user_name=='john'))
+    SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
+    users.fullname AS users_fullname, users.password AS users_password 
+    FROM users 
+    WHERE users.user_name = :users_user_name
+    {'users_user_name': 'john'}
 
-When a full select is passed, the `Query` object does not generate its own SQL.  Instead, the select construct passed in is used without modification.  Therefore its expected that the construct will include the proper column clause as appropriate to the mapped class being loaded.  
+When a full select is passed, the `Query` object does not generate its own SQL.  Instead, the select construct passed in is used without modification, except that its `use_labels` flag is switched on to prevent column name collisions.  Therefore its expected that the construct will include the proper column clause as appropriate to the mapped class being loaded.
 
-The twin calling styles presented by `select()` and `select_by()` are mirrored in other methods on the `Query` object.  For each method that indicates a verb such as `select()` and accepts a single `ClauseElement`, the `_by()` version accepts a list of `ClauseElement` objects and keyword arguments which are joined by `AND`.  These include:
+The techniques used when querying with a full select construct are similar to another query method called `instances()`, which is described in [advdatamapping_resultset](rel:advdatamapping_resultset).
 
-    * `selectfirst()` / `selectfirst_by()` - select the first row of the result set and return a single object instance
-    * `selectone()` / `selectone_by()` - select the first row of the result, assert that no further rows exist, and return a single object instance
-    * `filter` / `filter_by()` - apply the criterion to the `Query` object generatively, and return a new `Query` object with the criterion built in.
-    * `count` / `count_by()` - return the total number of object instances that would be returned.
+#### Two General Calling Styles {@name=callingstyles}
 
-Other key methods on query include the `get()` method, which is given the primary key value of the desired instance:
+The twin calling styles presented by `select()` and `select_by()` are mirrored in several other methods on `Query`.  For each method that indicates a verb such as `select()` and accepts a single `ClauseElement` followed by keyword-based options, the `_by()` version accepts a list of `ClauseElement` objects followed by keyword-based argument criterion.  These include:
+
+* `selectfirst()` / `selectfirst_by()` - select with LIMIT 1 and return a single object instance
+* `selectone()` / `selectone_by()` - select with LIMIT 2, assert that only one row is present, and return a single object instance
+* `filter()` / `filter_by()` - apply the criterion to the `Query` object generatively, and return a new `Query` object with the criterion built in.
+* `count()` / `count_by()` - return the total number of object instances that would be returned.
+
+#### Loading by Primary Key {@name=primarykey}
+
+The `get()` method loads a single instance, given the primary key value of the desired entity:
 
     {python}
     # load user with primary key 15
@@ -172,6 +213,10 @@ To issue a composite primary key to `get()`, use a tuple.  The order of the argu
 
     {python}
     myobj = query.get((27, 3, 'receipts'))
+
+Another special method on `Query` is `load()`.  This method has the same signature as `get()`, except it always **refreshes** the returned instance with the latest data from the database.  This is in fact a unique behavior, since as we will see in the [unitofwork](rel:unitofwork) chapter, the `Query` usually does not refresh the contents of instances which are already present in the session.
+
+#### Column Objects Available via their Mapped Class {@name=columnsonclass}
 
 Some of the above examples above illustrate the usage of the mapper's Table object to provide the columns for a WHERE Clause.  These columns are also accessible off of the mapped class directly.  When a mapper is assigned to a class, it also attaches a special property accessor `c` to the class itself, which can be used just like the table metadata to access the columns of the table:
 
@@ -190,27 +235,55 @@ The `filter()` and `filter_by()` methods on `Query` are known as "generative" me
     query = query.filter_by(user_name="john") 
     
     # filter by email address column using filter()
-    query = query.filter(User.c.email_address=="john@foo.com")  
+    query = query.filter(User.c.fullname=="John Smith")  
     
     # execute - the list() method returns a list.  this is equivalent to just saying query.select()
     {sql}result = query.list()
-    SELECT users.user_name AS users_user_name, 
+    SELECT users.user_name AS users_user_name, users.fullname as users_fullname,
     users.password AS users_password, users.user_id AS users_user_id 
     FROM users 
     WHERE ((users.user_name = :users_user_name) 
-    AND users.password = :users_password) ORDER BY users.oid
+    AND users.fullname = :users_fullname) ORDER BY users.oid
 
+Other generative behavior includes list-based indexing and slice operations, which translate into `LIMIT` and `OFFSET` criterion:
+
+    {python}
+    {sql}session.query(User).filter(user_table.c.fullname.like('j%'))[20:30]
+    SELECT users.user_name AS users_user_name, users.fullname as users_fullname,
+    users.password AS users_password, users.user_id AS users_user_id 
+    FROM users 
+    WHERE users.fullname LIKE :users_fullname 
+    ORDER BY users.oid LIMIT 10 OFFSET 20
+    {'users_fullname': 'j%'}
+    
+Iterable behavior:
+
+    {python}
+    for user in session.query(User).filter_by(user_name='john'):
+        # etc.
+        
+Applying modifiers generatively:
+
+    {python}
+    {sql}session.query(User).filter(user_table.c.fullname.like('j%')).
+        limit(10).offset(20).order_by(user_table.c.user_id).list()
+    SELECT users.user_name AS users_user_name, users.fullname as users_fullname,
+    users.password AS users_password, users.user_id AS users_user_id 
+    FROM users 
+    WHERE users.fullname LIKE :users_fullname 
+    ORDER BY users.user_id LIMIT 10 OFFSET 20
+    
 There is no restriction to mixing the "generative" methods like `filter()`, `join()`, `order_by()` etc. with the "non-generative" methods like `select()` and `select_by()`.  The only difference is that `select...` methods return results immediately, whereas generative methods return a new `Query` from which results can be retrieved using any number of methods such as `list()`, `select()`, `select_by()`, `selectfirst()`, etc.  Options that are specified to the `select...` methods build upon options that were already built up generatively.
 
 The `Query` object will be described further in subsequent sections dealing with joins.  Also, be sure to consult the full generated documentation for `Query`: [Query](rel:docstrings_sqlalchemy.orm.query_Query).
 
 ### Saving Objects {@name=saving}
 
-When objects corresponding to mapped classes are created or manipulated, all changes are logged by the `Session` object.  The changes are then written to the database when an application calls `flush()`.  This pattern is known as a *Unit of Work*, and has many advantages over saving individual objects or attributes on those objects with individual method invocations.  Domain models can be built with far greater complexity with no concern over the order of saves and deletes, excessive database round-trips and write operations, or deadlocking issues.  The `flush()` operation batches its SQL statements into a transaction, and can also perform optimistic concurrency checks (using a version id column) to ensure the proper number of rows were in fact affected (not supported with the current MySQL drivers). 
+When objects corresponding to mapped classes are created or manipulated, all changes are logged by the `Session` object.  The changes are then written to the database when an application calls `flush()`.  This pattern is known as a *Unit of Work*, and has many advantages over saving individual objects or attributes on those objects with individual method invocations.  Domain models can be built with far greater complexity with no concern over the order of saves and deletes, excessive database round-trips and write operations, or deadlocking issues.  The `flush()` operation batches its SQL statements into a transaction, and can also perform optimistic concurrency checks (using a version id column) to ensure the proper number of rows were in fact affected. 
 
 The Unit of Work is a powerful tool, and has some important concepts that should be understood in order to use it effectively.  See the [unitofwork](rel:unitofwork) section for a full description on all its operations.
 
-When a mapper is created, the target class has its mapped properties decorated by specialized property accessors that track changes.  New objects by default must be explicitly added to the `Session` using the `save()` method, however this can be made automatic by using the [plugins_sessioncontext](rel:plugins_sessioncontext) extension.
+When a mapper is created, the target class has its mapped properties decorated by specialized property accessors that track changes.  New objects by default must be explicitly added to the `Session` using the `save()` method:
 
     {python}
     mapper(User, users_table)
@@ -248,6 +321,8 @@ When a mapper is created, the target class has its mapped properties decorated b
     {'password': 'hello123', 'user_name': 'jane'}
     INSERT INTO users (user_name, password) VALUES (:user_name, :password)
     {'password': 'lalalala', 'user_name': 'ed'}
+
+The requirement that new instances be explicitly stored in the `Session` via `save()` operation can be modified by using the [plugins_sessioncontext](rel:plugins_sessioncontext) extension module.
         
 The mapped class can also specify whatever methods and/or constructor it wants:
 
@@ -280,7 +355,7 @@ SQLAlchemy will only place columns into UPDATE statements for which the value of
 
 ### Defining and Using Relationships {@name=relations}
 
-So that covers how to map the columns in a table to an object, how to load objects, create new ones, and save changes.  The next step is how to define an object's relationships to other database-persisted objects.  This is done via the `relation` function provided by the `orm` module.
+So that covers how to map the columns in a table to an object, how to load objects, create new ones, and save changes.  The next step is how to define an object's relationships to other database-persisted objects.  This is done via the `relation` function [[doc](rel:advdatamapping_properties_relationoptions)][[api](rel:docstrings_sqlalchemy.orm_modfunc_relation)] provided by the `orm` module.
 
 #### One to Many {@name=onetomany}
 
@@ -538,7 +613,7 @@ Note that `select_from()` takes either a single scalar element or a list of sele
 
 Another way that joins can be created is by using the `select_by` method or the generative `filter_by` methods of `Query`, which have the ability to create joins across relationships automatically.  These methods are in many circumstances more convenient than, but not as flexible as, the more SQL-level approach using the `select()`/`select_from()` methods described in the previous section.
 
-To issue a join using `select_by()`, just specify a key in the argument list which is not present in the primary mapper's list of properties or columns, but *is* present in the property list of some relationship down the line of objects.  The `Query` object will recursively traverse along the mapped relationships starting with the lead class and descending into child classes, until it finds a property matching the given name.  For each new mapper it encounters along the path to the located property, it constructs a join across that relationship:
+To issue a join using `select_by()`, just specify a key in the keyword-based argument list which is not present in the primary mapper's list of properties or columns, but *is* present in the property list of some relationship down the line of objects.  The `Query` object will recursively traverse along the mapped relationships starting with the lead class and descending into child classes, until it finds a property matching the given name.  For each new mapper it encounters along the path to the located property, it constructs a join across that relationship:
 
     {python}
     {sql}l = session.query(User).select_by(street='123 Green Street')
@@ -558,36 +633,29 @@ The above example is shorthand for:
              Address.c.street=='123 Green Street')
        )
 
-All keyword arguments sent to `select_by()` and `filter_by()` are used to create WHERE criterion.  To add modifiers such as `order_by` and `limit`, use the "generative" methods, such as `order_by()`, `limit()`, `offset()`, etc. (new in 0.3.6).  Here is an example using `filter_by()`:
-
-    {python}
-    {sql}l = session.query(User).filter_by(street='123 Green Street').
-                order_by(User.c.user_name).limit(10).offset(5).list()
-    SELECT users.user_id AS users_user_id, 
-    users.user_name AS users_user_name, users.password AS users_password
-    FROM users, addresses 
-    WHERE (addresses.street=:addresses_street
-    AND users.user_id=addresses.user_id)
-    ORDER BY users.user_name LIMIT 10 OFFSET 5
-    {'addresses_street', '123 Green Street'}
-
-Note that the `select_by()` and `filter_by()` methods, while they primarily use keyword arguments, also can accomodate `ClauseElement` objects positionally; recall that a `ClauseElement` is genearated when producing a comparison off of a `Column` expression, such as `users.c.name=='ed'`.  When using `ClauseElements` with `select_by()` or `filter_by()`, these clauses are passed directly to the generated SQL and are **not** used to further locate join criterion.  
-
 `select_by()` and its related functions can compare not only column-based attributes to column-based values, but also relations to object instances:
 
     {python}
-    # get an instance of Address
+    # get an instance of Address. assume its primary key identity
+    # is 12.
     someaddress = session.query(Address).get_by(street='123 Green Street')
     
     # look for User instances which have the 
     # "someaddress" instance in their "addresses" collection
-    l = session.query(User).select_by(addresses=someaddress)
+    {sql}l = session.query(User).select_by(addresses=someaddress)
+    SELECT users.user_id AS users_user_id, 
+    users.user_name AS users_user_name, users.password AS users_password
+    FROM users, addresses 
+    WHERE users.user_id=addresses.user_id
+    AND addresses.address_id=:addresses_address_id
+    ORDER BY users.oid
+    {'addresses_addresses_id': 12}
 
 Where above, the comparison denoted by `addresses=someaddress` is constructed by comparing all the primary key columns in the `Address` mapper to each corresponding primary key value in the `someaddress` entity.  In other words, its equivalent to saying `select_by(address_id=someaddress.address_id)`.
 
 #### Generating Join Criterion Using join() {@name=jointo}
 
-The `join()` method, new in version 0.3.6, is a generative method which can apply join conditions to a `Query` based on the names of relationships, using a similar mechanism as that of `select_by()` and similar methods.  By specifying the string name of a relation as its only argument, the resulting `Query` will automatically join from the starting class' mapper to the target mapper, indicated by searching for a relationship of that name along the relationship path.
+The `join()` method is a generative method which can apply join conditions to a `Query` based on the names of relationships, using a similar mechanism as that of `select_by()` and similar methods.  By specifying the string name of a relation as its only argument, the resulting `Query` will automatically join from the starting class' mapper to the target mapper, indicated by searching for a relationship of that name along the relationship path.
 
     {python}
     {sql}l = session.query(User).join('addresses').list()
@@ -610,21 +678,35 @@ To traverse more deeply into relationships, specify multiple relationship names 
     {python}
     orders = session.query(Order).join(['customer', 'addresses']).select_by(email_address="foo@bar.com")
 
-The `join()` method is an easier-to-use version of the `join_by()`, `join_to()` and `join_via()` methods, all of which produce `ClauseElements` that can be constructed into a query criterion.  Consult the generated documentation for information on these methods.
+For those familiar with older versions of `Query`, the `join()` method is an easier-to-use version of the `join_by()`, `join_to()` and `join_via()` methods, all of which produce `ClauseElements` that can be constructed into a query criterion.  Consult the generated documentation for information on these methods.
 
 #### Joining from a Parent Object {@name=joinparent}
 
-(new in 0.3.7) To help in navigating collections, the `with_parent()` generative method adds join criterion which corresponds to instances which belong to a particular parent.  This method makes use of the same "lazy loading" criterion used to load relationships normally, which means it also works seamlessly for self-referential relationships.  For example, to load all the `Address` objects which belong to a particular `User`:
+(new in 0.3.7) To help in navigating collections, the `with_parent()` generative method adds criterion which corresponds to instances which belong to a particular parent.  This method makes use of the same "lazy loading" criterion used to load relationships normally, which means for a typical non-many-to-many relationship it will **not** actually create a join, and instead places bind parameters at the point at which the parent table's columns are normally specified.  This means you get a lighter weight query which also works with self-referential relationships, which otherwise would require an explicit `alias` object in order to create self-joins.  For example, to load all the `Address` objects which belong to a particular `User`:
 
     {python}
     # load a user
     someuser = session.query(User).get(2)
     
     # load the addresses of that user
-    addresses = session.query(Address).with_parent(someuser).list()
+    {sql}addresses = session.query(Address).with_parent(someuser).list()
+    SELECT addresses.address_id AS addresses_address_id, 
+    addresses.user_id AS addresses_user_id, addresses.street AS addresses_street, 
+    addresses.city AS addresses_city, addresses.state AS addresses_state, 
+    addresses.zip AS addresses_zip FROM addresses
+    WHERE addresses.user_id = :users_user_id ORDER BY addresses.oid
+    {'users_user_id': 1}
     
     # filter the results
-    someaddresses = session.query(Address).with_parent(someuser).filter_by(email_address="foo@bar.com").list()
+    {sql}someaddresses = session.query(Address).with_parent(someuser).
+        filter_by(email_address="foo@bar.com").list()
+    SELECT addresses.address_id AS addresses_address_id, 
+    addresses.user_id AS addresses_user_id, addresses.street AS addresses_street, 
+    addresses.city AS addresses_city, addresses.state AS addresses_state, 
+    addresses.zip AS addresses_zip FROM addresses
+    WHERE addresses.email_address =  :addresses_email_address AND 
+    addresses.user_id = :users_user_id ORDER BY addresses.oid
+    {'users_user_id': 1, 'addresses_email_address': 'foo@bar.com'}
     
 
 #### Eager Loading {@name=eagerload}

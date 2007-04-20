@@ -119,8 +119,9 @@ class Query(object):
         return instance
 
     def get_by(self, *args, **params):
-        """Return a single object instance based on the given
-        key/value criterion.
+        """Like ``select_by()``, but only return the first 
+        as a scalar, or None if no object found.
+        Synonymous with ``selectfirst_by()``.
 
         The criterion is constructed in the same way as the
         ``select_by()`` method.
@@ -213,9 +214,9 @@ class Query(object):
         return clause
 
     def selectfirst_by(self, *args, **params):
-        """Like ``select_by()``, but only return the first result by
-        itself, or None if no objects returned.  Synonymous with
-        ``get_by()``.
+        """Like ``select_by()``, but only return the first 
+        as a scalar, or None if no object found.
+        Synonymous with ``get_by()``.
 
         The criterion is constructed in the same way as the
         ``select_by()`` method.
@@ -250,8 +251,12 @@ class Query(object):
         return self.count(self.join_by(*args, **params))
 
     def selectfirst(self, arg=None, **kwargs):
-        """Like ``select()``, but only return the first result by
-        itself, or None if no objects returned.
+        """Query for a single instance using the given criterion.
+        
+        Arguments are the same as ``select()``. In the case that 
+        the given criterion represents ``WHERE`` criterion only, 
+        LIMIT 1 is applied to the fully generated statement.
+
         """
 
         if isinstance(arg, sql.FromClause) and arg.supports_execution():
@@ -265,11 +270,20 @@ class Query(object):
             return None
 
     def selectone(self, arg=None, **kwargs):
-        """Like ``selectfirst()``, but throw an error if not exactly
-        one result was returned.
-        """
+        """Query for a single instance using the given criterion.
+        
+        Unlike ``selectfirst``, this method asserts that only one
+        row exists.  In the case that the given criterion represents
+        ``WHERE`` criterion only, LIMIT 2 is applied to the fully
+        generated statement.
 
-        ret = list(self.select(arg, **kwargs)[0:2])
+        """
+        
+        if isinstance(arg, sql.FromClause) and arg.supports_execution():
+            ret = self.select_statement(arg, **kwargs)
+        else:
+            kwargs['limit'] = 2
+            ret = self.select_whereclause(whereclause=arg, **kwargs)
         if len(ret) == 1:
             return ret[0]
         elif len(ret) == 0:
