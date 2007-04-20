@@ -45,12 +45,22 @@ class ExecuteTest(testbase.PersistTest):
             assert res.fetchall() == [(1, "jack"), (2, "ed"), (3, "horse"), (4, 'sally'), (5, None)]
             conn.execute("delete from users")
             
-    @testbase.supported('postgres')
+    @testbase.supported('postgres', 'mysql')
     def test_raw_python(self):
         for conn in (testbase.db, testbase.db.connect()):
             conn.execute("insert into users (user_id, user_name) values (%(id)s, %(name)s)", {'id':1, 'name':'jack'})
             conn.execute("insert into users (user_id, user_name) values (%(id)s, %(name)s)", {'id':2, 'name':'ed'}, {'id':3, 'name':'horse'})
             conn.execute("insert into users (user_id, user_name) values (%(id)s, %(name)s)", id=4, name='sally')
+            res = conn.execute("select * from users")
+            assert res.fetchall() == [(1, "jack"), (2, "ed"), (3, "horse"), (4, 'sally')]
+            conn.execute("delete from users")
+
+    @testbase.supported('sqlite')
+    def test_raw_named(self):
+        for conn in (testbase.db, testbase.db.connect()):
+            conn.execute("insert into users (user_id, user_name) values (:id, :name)", {'id':1, 'name':'jack'})
+            conn.execute("insert into users (user_id, user_name) values (:id, :name)", {'id':2, 'name':'ed'}, {'id':3, 'name':'horse'})
+            conn.execute("insert into users (user_id, user_name) values (:id, :name)", id=4, name='sally')
             res = conn.execute("select * from users")
             assert res.fetchall() == [(1, "jack"), (2, "ed"), (3, "horse"), (4, 'sally')]
             conn.execute("delete from users")

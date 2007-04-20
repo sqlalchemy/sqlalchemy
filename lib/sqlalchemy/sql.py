@@ -82,18 +82,103 @@ def select(columns=None, whereclause = None, from_obj = [], **kwargs):
 
     This can also be called via the table's ``select()`` method.
 
+    All arguments which accept ``ClauseElement`` arguments also
+    accept string arguments, which will be converted as appropriate
+    into either ``text()`` or ``literal_column()`` constructs.
+    
     columns
-      A list of columns and/or selectable items to select columns from
-      `whereclause` is a text or ``ClauseElement`` expression which
-      will form the ``WHERE`` clause.
-
+      A list of ``ClauseElement``s, typically ``ColumnElement``
+      objects or subclasses, which will form
+      the columns clause of the resulting statement.  For all
+      members which are instances of ``Selectable``, the individual
+      ``ColumnElement`` members of the ``Selectable`` will be 
+      added individually to the columns clause.  For example, specifying
+      a ``Table`` instance will result in all the contained ``Column``
+      objects within to be added to the columns clause. 
+    
+    whereclause
+      A ``ClauseElement`` expression which will be used to form the 
+      ``WHERE`` clause.
+      
     from_obj
-      A list of additional ``FROM`` objects, such as ``Join`` objects,
-      which will extend or override the default ``FROM`` objects
-      created from the column list and the whereclause.
+      A list of ``ClauseElement`` objects which will be added to the ``FROM``
+      clause of the resulting statement.  Note that "from" objects
+      are automatically located within the columns and whereclause
+      ClauseElements.  Use this parameter to explicitly specify
+      "from" objects which are not automatically locatable.
+      This could include ``Table`` objects that aren't otherwise
+      present, or ``Join`` objects whose presence will supercede
+      that of the ``Table`` objects already located in the other
+      clauses.
 
     \**kwargs
-      Additional parameters for the ``Select`` object.
+      Additional parameters include:
+        order_by
+          a scalar or list of ``ClauseElement``s
+          which will comprise the ``ORDER BY`` clause of the resulting
+          select.
+         
+        group_by
+          a list of ``ClauseElement``s which will comprise
+          the ``GROUP BY`` clause of the resulting select.
+          
+        having
+          a ``ClauseElement`` that will comprise the ``HAVING`` 
+          clause of the resulting select when ``GROUP BY`` is used.
+          
+        use_labels=False
+          when ``True``, the statement will be generated using 
+          labels for each column in the columns clause, which qualify
+          each column with its parent table's (or aliases) name so 
+          that name conflicts between columns in different tables don't
+          occur.  The format of the label is <tablename>_<column>.  The
+          "c" collection of the resulting ``Select`` object will use these
+          names as well for targeting column members.
+          
+        distinct=False
+          when ``True``, applies a ``DISTINCT`` qualifier to the 
+          columns clause of the resulting statement.
+          
+        for_update=False
+          when ``True``, applies ``FOR UPDATE`` to the end of the
+          resulting statement.  Certain database dialects also
+          support alternate values for this parameter, for example
+          mysql supports "read" which translates to ``LOCK IN SHARE MODE``,
+          and oracle supports "nowait" which translates to 
+          ``FOR UPDATE NOWAIT``.
+          
+        engine=None
+          an ``Engine`` instance to which the resulting ``Select`` 
+          object will be bound.  The ``Select`` object will otherwise
+          automatically bind to whatever ``Engine`` instances can be located
+          within its contained ``ClauseElement`` members.
+        
+        limit=None
+          a numerical value which usually compiles to a ``LIMIT`` expression
+          in the resulting select.  Databases that don't support ``LIMIT``
+          will attempt to provide similar functionality.
+          
+        offset=None
+          a numerical value which usually compiles to an ``OFFSET`` expression
+          in the resulting select.  Databases that don't support ``OFFSET``
+          will attempt to provide similar functionality.
+          
+        scalar=False
+          when ``True``, indicates that the resulting ``Select`` object
+          is to be used in the "columns" clause of another select statement,
+          where the evaluated value of the column is the scalar result of 
+          this statement.  Normally, placing any ``Selectable`` within the 
+          columns clause of a ``select()`` call will expand the member 
+          columns of the ``Selectable`` individually.
+
+        correlate=True
+          indicates that this ``Select`` object should have its contained
+          ``FromClause`` elements "correlated" to an enclosing ``Select``
+          object.  This means that any ``ClauseElement`` instance within 
+          the "froms" collection of this ``Select`` which is also present
+          in the "froms" collection of an enclosing select will not be
+          rendered in the ``FROM`` clause of this select statement.
+      
     """
 
     return Select(columns, whereclause = whereclause, from_obj = from_obj, **kwargs)
@@ -1732,7 +1817,12 @@ class _FunctionGenerator(object):
         return _Function(self.__names[-1], packagenames=self.__names[0:-1], *c, **kwargs)
 
 class _BinaryClause(ClauseElement):
-    """Represent two clauses with an operator in between."""
+    """Represent two clauses with an operator in between.
+    
+    This class serves as the base class for ``_BinaryExpression``
+    and ``_BooleanExpression``, both of which add additional 
+    semantics to the base ``_BinaryClause`` construct.
+    """
 
     def __init__(self, left, right, operator, type=None):
         self.left = left
@@ -1774,14 +1864,25 @@ class _BinaryExpression(_BinaryClause, ColumnElement):
     """Represent a binary expression, which can be in a ``WHERE``
     criterion or in the column list of a ``SELECT``.
 
-    By adding ``ColumnElement`` to its inherited list, it becomes a
-    ``Selectable`` unit which can be placed in the column list of a
-    ``SELECT``."""
+    This class differs from ``_BinaryClause`` in that it mixes
+    in ``ColumnElement``.  The effect is that elements of this 
+    type become ``Selectable`` units which can be placed in the 
+    column list of a ``select()`` construct.
+    
+    """
 
     pass
 
 class _BooleanExpression(_BinaryExpression):
-    """Represent a boolean expression."""
+    """Represent a boolean expression.
+    
+    ``_BooleanExpression`` is constructed as the result of compare operations
+    involving ``CompareMixin`` subclasses, such as when comparing a ``ColumnElement``
+    to a scalar value via the ``==`` operator, ``CompareMixin``'s ``__eq__()`` method
+    produces a ``_BooleanExpression`` consisting of the ``ColumnElement`` and a
+    ``_BindParamClause``.
+    
+    """
 
     def __init__(self, *args, **kwargs):
         self.negate = kwargs.pop('negate', None)
@@ -1803,6 +1904,14 @@ class _Exists(_BooleanExpression):
         return self._get_from_objects()
 
 class Join(FromClause):
+    """represent a ``JOIN`` construct between two ``FromClause``
+    elements.
+    
+    the public constructor function for ``Join`` is the module-level
+    ``join()`` function, as well as the ``join()`` method available
+    off all ``FromClause`` subclasses.
+    
+    """
     def __init__(self, left, right, onclause=None, isouter = False):
         self.left = left._selectable()
         self.right = right._selectable()
@@ -1916,7 +2025,8 @@ class Join(FromClause):
           this one as well.
           
         \**kwargs
-          all other kwargs are sent to the underlying ``select()`` function
+          all other kwargs are sent to the underlying ``select()`` function.
+          See the ``select()`` module level function for details.
           
         """
         if fold_equivalents:
@@ -1949,6 +2059,16 @@ class Join(FromClause):
         return [self] + self.onclause._get_from_objects() + self.left._get_from_objects() + self.right._get_from_objects()
 
 class Alias(FromClause):
+    """represent an alias, as typically applied to any 
+    table or sub-select within a SQL statement using the 
+    ``AS`` keyword (or without the keyword on certain databases
+    such as Oracle).
+
+    this object is constructed from the ``alias()`` module level function
+    as well as the ``alias()`` method available on all ``FromClause``
+    subclasses.
+    
+    """
     def __init__(self, selectable, alias=None):
         baseselectable = selectable
         while isinstance(baseselectable, Alias):
@@ -2000,6 +2120,15 @@ class Alias(FromClause):
     engine = property(lambda s: s.selectable.engine)
 
 class _Label(ColumnElement):
+    """represent a label, as typically applied to any column-level element
+    using the ``AS`` sql keyword.
+    
+    this object is constructed from the ``label()`` module level function
+    as well as the ``label()`` method available on all ``ColumnElement``
+    subclasses.
+    
+    """
+    
     def __init__(self, name, obj, type=None):
         self.name = name
         while isinstance(obj, _Label):
@@ -2137,6 +2266,14 @@ class _ColumnClause(ColumnElement):
         return False
 
 class TableClause(FromClause):
+    """represents a "table" construct.
+    
+    Note that this represents tables only as another 
+    syntactical construct within SQL expressions; it 
+    does not provide schema-level functionality.
+    
+    """
+    
     def __init__(self, name, *columns):
         super(TableClause, self).__init__(name)
         self.name = self.fullname = name
@@ -2322,7 +2459,10 @@ class Select(_SelectBaseMixin, FromClause):
                  use_labels=False, distinct=False, for_update=False,
                  engine=None, limit=None, offset=None, scalar=False,
                  correlate=True):
-        # TODO: docstring ! 
+        """construct a Select object.
+        
+        See the ``select()`` module-level function for argument descriptions.
+        """
         _SelectBaseMixin.__init__(self)
         self.__froms = util.OrderedSet()
         self.__hide_froms = util.Set([self])
