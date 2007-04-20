@@ -6,7 +6,7 @@ Data Mapping {@name=datamapping}
 
 ### Basic Data Mapping {@name=datamapping}
 
-Data mapping describes the process of defining *Mapper* objects, which associate table metadata with user-defined classes.  
+Data mapping describes the process of defining *Mapper* objects, which associate table metadata with user-defined classes.
 
 The `Mapper`'s role is to perform SQL operations upon the database, associating individual table rows with instances of those classes, and individual database columns with properties upon those instances, to transparently associate in-memory objects with a persistent database representation. 
 
@@ -22,11 +22,11 @@ Also, keep in mind that the examples in this section deal with explicit `Session
 
 ### Synopsis {@name=synopsis}
 
-First, the metadata/mapper configuration code:
+Starting with a `Table` definition and a minimal class construct, the two are associated with each other via the `mapper()` function, which generates an object called a `Mapper` and registers the class as being handled by it:
 
     {python}
     from sqlalchemy import *
-    
+
     # metadata
     meta = MetaData()
 
@@ -34,6 +34,7 @@ First, the metadata/mapper configuration code:
     users_table = Table('users', meta, 
         Column('user_id', Integer, primary_key=True),
         Column('user_name', String(16)),
+        Column('fullname', String(100)),
         Column('password', String(20))
     )
     
@@ -44,7 +45,7 @@ First, the metadata/mapper configuration code:
     # create a mapper and associate it with the User class.
     mapper(User, users_table)
 
-Note that no database definitions are required.  Next we will define an `Engine` and connect a `Session` to it, and perform a simple select:
+Thats all for configuration.  Next, we will create an `Engine` and bind it to a `Session`, which represents a local collection of mapped objects to be operated upon.
 
     {python}
     # engine
@@ -52,13 +53,16 @@ Note that no database definitions are required.  Next we will define an `Engine`
     
     # session
     session = create_session(bind_to=engine)
-    
+
+The `session` represents a "workspace" which can load objects and persist changes to the database.  Next we illustrate a rudimental query for a single object instance, modify one of its attributes, and persist the change back to the database.
+
+    {python}
     # select
-    {sql}user = session.query(User).select_by(user_name='fred')[0]  
+    {sql}user = session.query(User).get_by(user_name='fred')
     SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
-    users.password AS users_password 
+    users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
-    WHERE users.user_name = :users_user_name ORDER BY users.oid
+    WHERE users.user_name = :users_user_name ORDER BY users.oid LIMIT 1
     {'users_user_name': 'fred'}
         
     # modify
@@ -70,59 +74,104 @@ Note that no database definitions are required.  Next we will define an `Engine`
      WHERE users.user_id = :user_id
     [{'user_name': 'fred jones', 'user_id': 1}]        
 
+Things to note from the above include that the loaded `User` object has an attribute named `user_name` on it, which corresponds to the `user_name` column in the `users_table`; this attribute was configured at the class level when the `Mapper` which we created first compiled itself.  Our modify operation on this attribute caused the object to be marked as `dirty`, which was picked up automatically within the subsequent `flush()` process.  The `flush()` is the single point at which changes on objects are persisted to the database.
+
 ### The Query Object {@name=query}
 
-The method `session.query(class_or_mapper)` returns a `Query` object.  Below is a synopsis of things you can do with `Query`:
+The method `session.query(class_or_mapper)` returns a `Query` object.  `Query` implements a large set of methods which are used to produce and execute select statements tailored for loading object instances.  It returns objects in most cases either as lists of objects or as single instances, depending on the type of query issued.
+
+A `Query` is always initially generated starting with the `Session` that we're working with, and is always created relative to a particular class, which is the primary class we wish to load.
 
     {python}
     # get a query from a Session based on class:
     query = session.query(User)
+
+Alternatively, an actual `Mapper` instance can be specified instead of a class:
     
-    # get a query from a Session given a Mapper:
+    {python}
+    # locate the mapper corresponding to the User class
+    usermapper = class_mapper(User)
+
+    # create query for the User
     query = session.query(usermapper)
     
-    # select_by, which takes keyword arguments.  the
-    # keyword arguments represent property names and the values
-    # represent values which will be compared via the = operator.
-    # the comparisons are joined together via "AND".
-    result = query.select_by(name='john', street='123 green street')
+Dealing with mappers explicitly as above is usually not needed except for more advanced patterns where a class may have multiple mappers associated with it.
 
-    # select_by can also combine ClauseElements with key/value properties.
-    # all ClauseElements and keyword-based criterion are combined together
-    # via "AND". 
+Once we have a query, we can start loading objects.  The two most rudimental and general purpose methods are `select()` and `select_by()`.  `select()` is oriented towards query criterion constructed as a `ClauseElement` object, which is the kind of object generated when constructing SQL expressions as described in the [SQL](rel:sql) section.  `select_by()` can also accodate `ClauseElement` objects but is generally more oriented towards keyword arguments which correspond to mapped attribute names.  In both cases, its primarily the `WHERE` criterion which is constructed by the user.  The `Query` object will use this criterion to **compile** the full SQL query issued to the database, combining the clause with the appropriate column selection clauses and `FROM` criterion, incuding whatever modifications are required to control ordering, number of rows returned, joins for loading related objects, etc.
+
+First, `select_by()`.  The general form of this method is:
+
+    {python}
+    def select_by(self, *clause_elements, **keyword_criterion)
+
+Where `*clause_elements` is a set of zero or more `ClauseElement` objects that are similar to the `WHERE` criterion of a `SELECT` statement, and `**keyword_criterion` are key/value pairs which will generate additional `WHERE` criterion using simple equality comparisons.  The full set of clause elements and key/value pairs are joined together in the resulting SQL statement via `AND`.
+
+    {python}
+    # using select_by with keyword arguments
+    result = query.select_by(name='john', fullname='John Smith')
+
+    # using select_by with preceding ClauseElements followed by keywords
     result = query.select_by(users_table.c.user_name=='john', 
             addresses_table.c.zip_code=='12345', street='123 green street')
+
+Note that a `ClauseElement` is generated by each `==` operation that's performed against a `Column` object - recall that this operator is overloaded to return a binary clause construct.  But the `street="123 green street"` argument is not using any kind of overloading, and is a regular Python keyword argument.   Additionally, while `ClauseElements` are constructed against the `Column` elements configured on the mapped `Table`, the keyword-based criterion is constructed against the class-level attribute names which were configured by the mapper.  While they are the same name as their columns in this particular example, they can be configured to have names distinct from their columns.  So it follows that using `ClauseElements` for criterion are closer to the relational side of things, and using keyword arguments are closer towards the class-level domain object side of things.
+
+The `select()` method, unlike the `select_by()` method, is purely `ClauseElement`/relationally oriented and has no domain-level awareness.  Its basic argument signature:
+
+    {python}
+    def select(self, clause_element, **additional_options)
+
+The `clause_element` argument again represents a `ClauseElement` which corresponds to the `WHERE` criterion of a `SELECT` statement.  Here, there is only a single `ClauseElement` and it will be used to form the entire set of criterion.  A basic `select()` operation looks like this:
+
+    {python}
+    result = query.select(users_table.c.user_name=='john')
+
+To generate `AND` criterion the way `select_by()` does, you use the `and_()` construct from the sql construction system:
+
+    {python}
+    result = query.select(and_(users_table.c.user_name=='john', 
+        users_table.c.fullname=='John Smith'))
+
+From this, one can see that `select()` is stricter in its operation and does not make any kind of assumptions about how to join multiple criterion together.  Of course in all cases where `ClauseElement` is used, any expression can be created using combinations of `and_()`, `or_()`, `not_()`, etc.
+
+    {python}
+    result = query.select(
+        or_(users_table.c.user_name == 'john', users_table.c.user_name=='fred')
+    )
     
-    # get_by, which takes the same arguments as select_by
-    # returns a single scalar result or None if no results
-    user = query.get_by(id=12)
-    
-    # "dynamic" versions of select_by and get_by - everything past the 
-    # "select_by_" or "get_by_" is used as the key, and the function argument
-    # as the value
-    result = query.select_by_name('fred')
-    u = query.get_by_name('fred')
-    
-    # get an object directly from its primary key.  this will bypass the SQL
-    # call if the object has already been loaded
-    u = query.get(15)
-    
-    # get an object that has a composite primary key of three columns.
-    # the order of the arguments matches that of the table meta data.
-    myobj = query.get((27, 3, 'receipts'))
-    
-    # using a WHERE criterion
-    result = query.select(or_(users_table.c.user_name == 'john', users_table.c.user_name=='fred'))
-    
-    # using a WHERE criterion to get a scalar
-    u = query.selectfirst(users_table.c.user_name=='john')
-    
-    # selectone() is a stricter version of selectfirst() which
-    # will raise an exception if there is not exactly one row
-    u = query.selectone(users_table.c.user_name=='john')
-    
+The keyword portion of `select()` is used to indicate further modifications to the generated SQL, including common arguments like ordering, limits and offsets:
+
+    {python}
+    result = query.select(users_table.c.user_name=='john', 
+                order_by=[users_table.c.fullname], limit=10, offset=12)
+
+An additional calling style on `select()` is to send a fully constructed selection construct to it, the construct that is created when using the `select()` function from the SQL construction system.
+
+    {python}
     # using a full select object
     result = query.select(users_table.select(users_table.c.user_name=='john'))
+
+When a full select is passed, the `Query` object does not generate its own SQL.  Instead, the select construct passed in is used without modification.  Therefore its expected that the construct will include the proper column clause as appropriate to the mapped class being loaded.  
+
+The twin calling styles presented by `select()` and `select_by()` are mirrored in other methods on the `Query` object.  For each method that indicates a verb such as `select()` and accepts a single `ClauseElement`, the `_by()` version accepts a list of `ClauseElement` objects and keyword arguments which are joined by `AND`.  These include:
+
+    * `selectfirst()` / `selectfirst_by()` - select the first row of the result set and return a single object instance
+    * `selectone()` / `selectone_by()` - select the first row of the result, assert that no further rows exist, and return a single object instance
+    * `filter` / `filter_by()` - apply the criterion to the `Query` object generatively, and return a new `Query` object with the criterion built in.
+    * `count` / `count_by()` - return the total number of object instances that would be returned.
+
+Other key methods on query include the `get()` method, which is given the primary key value of the desired instance:
+
+    {python}
+    # load user with primary key 15
+    user = query.get(15)
+
+The `get()` method, because it has the actual primary key value of the instance, can return an already-loaded instance from the `Session` without performing any SQL.  It is the only method on `Query` that does not issue SQL to the database in all cases.
+
+To issue a composite primary key to `get()`, use a tuple.  The order of the arguments matches that of the table meta data.
+
+    {python}
+    myobj = query.get((27, 3, 'receipts'))
 
 Some of the above examples above illustrate the usage of the mapper's Table object to provide the columns for a WHERE Clause.  These columns are also accessible off of the mapped class directly.  When a mapper is assigned to a class, it also attaches a special property accessor `c` to the class itself, which can be used just like the table metadata to access the columns of the table:
 
@@ -131,7 +180,7 @@ Some of the above examples above illustrate the usage of the mapper's Table obje
 
 #### Generative Query Methods {@name=generative}
 
-The Query also includes as of version 0.3.6 "generative" methods, used for building more complex queries.  These methods imitate the behavior of the [plugins_selectresults](rel:plugins_selectresults) plugin which is effectively replaced by these methods.  The key behavior of a "generative" method is that calling it produces a **new** `Query` object,which contains all the attributes of the previous `Query` object plus some new modifications.  The simplest example is the `filter_by()` method:
+The `filter()` and `filter_by()` methods on `Query` are known as "generative" methods, in that instead of returning results, they return a newly constructed `Query` object which contains the "filter" criterion as part of its internal state.  This is another method of stringing together criterion via `AND` clauses.  But when using the `Query` generatively, it becomes a much more flexible object, as there are generative methods for adding all kinds of criterion and modifiers, some of which are relationally oriented and others which are domain oriented.  The key behavior of a "generative" method is that calling it produces a **new** `Query` object, which contains all the attributes of the previous `Query` object plus some new modifications.  
 
     {python}
     # create a Query
