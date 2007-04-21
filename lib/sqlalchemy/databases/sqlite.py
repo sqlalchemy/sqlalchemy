@@ -10,8 +10,8 @@ import sys, StringIO, string, types, re
 from sqlalchemy import sql, engine, schema, ansisql, exceptions, pool, PassiveDefault
 import sqlalchemy.engine.default as default
 import sqlalchemy.types as sqltypes
+import datetime,time, warnings
 import sqlalchemy.util as util
-import datetime,time
 
     
 class SLNumeric(sqltypes.Numeric):
@@ -143,12 +143,19 @@ class SQLiteExecutionContext(default.DefaultExecutionContext):
         super(SQLiteExecutionContext, self).post_exec()
         
 class SQLiteDialect(ansisql.ANSIDialect):
+    
     def __init__(self, **kwargs):
         ansisql.ANSIDialect.__init__(self, default_paramstyle='qmark', **kwargs)
         def vers(num):
             return tuple([int(x) for x in num.split('.')])
         self.supports_cast = (self.dbapi is None or vers(self.dbapi.sqlite_version) >= vers("3.2.3"))
-
+        if self.dbapi is not None:
+            sqlite_ver = self.dbapi.version_info
+            if sqlite_ver < (2,2) and sqlite_ver != (2,1,'3'):
+                warnings.warn(RuntimeWarning("The installed version of pysqlite2 is out-dated, and will cause errors in some cases.  Version 2.1.3 or greater is recommended."))
+            if vers(self.dbapi.sqlite_version) < vers("3.3.13"):
+                warnings.warn(RuntimeWarning("The installed version of sqlite is out-dated, and will cause errors in some cases.  Version 3.3.13 or greater is recommended."))
+        
     def dbapi(cls):
         try:
             from pysqlite2 import dbapi2 as sqlite

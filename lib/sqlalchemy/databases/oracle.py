@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-import sys, StringIO, string, re
+import sys, StringIO, string, re, warnings
 
 from sqlalchemy import util, sql, engine, schema, ansisql, exceptions, logging
 from sqlalchemy.engine import default, base
@@ -391,7 +391,7 @@ class OracleDialect(ansisql.ANSIDialect):
                    fks[cons_name] = fk
                 if remote_table is None:
                     # ticket 363
-                    self.logger.warn("Got 'None' querying 'table_name' from all_cons_columns%(dblink)s - does the user have proper rights to the table?" % {'dblink':dblink})
+                    warnings.warn("Got 'None' querying 'table_name' from all_cons_columns%(dblink)s - does the user have proper rights to the table?" % {'dblink':dblink})
                     continue
                 refspec = ".".join([remote_table, remote_column])
                 schema.Table(remote_table, table.metadata, autoload=True, autoload_with=connection, owner=remote_owner)
