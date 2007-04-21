@@ -518,7 +518,7 @@ class Connection(Connectable):
 
     def execute_text(self, statement, *multiparams, **params):
         if len(multiparams) == 0:
-            parameters = params
+            parameters = params or None
         elif len(multiparams) == 1 and (isinstance(multiparams[0], list) or isinstance(multiparams[0], tuple) or isinstance(multiparams[0], dict)):
             parameters = multiparams[0]
         else:

@@ -595,7 +595,7 @@ class OracleSchemaDropper(ansisql.ANSISchemaDropper):
 
 class OracleDefaultRunner(ansisql.ANSIDefaultRunner):
     def exec_default_sql(self, default):
-        c = sql.select([default.arg], from_obj=["DUAL"], engine=self.engine).compile()
+        c = sql.select([default.arg], from_obj=["DUAL"]).compile(engine=self.connection)
         return self.connection.execute_compiled(c).scalar()
 
     def visit_sequence(self, seq):

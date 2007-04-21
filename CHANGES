@@ -86,6 +86,9 @@
       [ticket:533]
     - making progress with session.merge() as well as combining its
       usage with entity_name [ticket:543]
+- informix:
+    - informix support added !  courtesy James Zhang, who put a ton
+      of effort in.
 - sqlite:
     - removed silly behavior where sqlite would reflect UNIQUE indexes
       as part of the primary key (?!)

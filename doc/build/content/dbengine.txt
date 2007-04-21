@@ -19,7 +19,7 @@ Underneath the public-facing API of `Engine`, several components are provided by
 
 ### Supported Databases {@name=supported}
 
-Engines exist for SQLite, Postgres, MySQL, and Oracle, using the Pysqlite, Psycopg2 (Psycopg1 will work to a limited degree, but it is **not supported**), MySQLDB, and cx_Oracle modules.  There is also preliminary support for MS-SQL using adodbapi or pymssql, as well as Firebird.   For each engine, a distinct Python module exists in the `sqlalchemy.databases` package, which provides implementations of some of the objects mentioned in the previous section.
+Engines exist for SQLite, Postgres, MySQL, and Oracle, using the Pysqlite, Psycopg2 (Psycopg1 will work to a limited degree, but it is **not supported**), MySQLDB, and cx_Oracle modules.  There is also preliminary support for MS-SQL using pyodbc, adodbapi or pymssql, Firebird with kinterbasdb, and Informix with informixdb.   For each engine, a distinct Python module exists in the `sqlalchemy.databases` package, which provides implementations of some of the objects mentioned in the previous section.
 
 Downloads for each DBAPI at the time of this writing are as follows:
 
@@ -29,6 +29,7 @@ Downloads for each DBAPI at the time of this writing are as follows:
 * Oracle:  [cx_Oracle](http://www.cxtools.net/default.aspx?nav=home)
 * MS-SQL:  [adodbapi](http://adodbapi.sourceforge.net/)  [pymssql](http://pymssql.sourceforge.net/)
 * Firebird:  [kinterbasdb](http://kinterbasdb.sourceforge.net/)
+* Informix:  [informixdb](http://informixdb.sourceforge.net/)
 
 The SQLAlchemy Wiki contains a page of database notes, describing whatever quirks and behaviors have been observed.  Its a good place to check for issues with specific databases.  [Database Notes](http://www.sqlalchemy.org/trac/wiki/DatabaseNotes)
 
