@@ -189,6 +189,8 @@ class PoolTest(PersistTest):
         assert p2._max_overflow == 0
         
     def test_reconnect(self):
+        """tests reconnect operations at the pool level.  SA's engine/dialect includes another 
+        layer of reconnect support for 'database was lost' errors."""
         dbapi = MockDBAPI()
         p = pool.QueuePool(creator = lambda: dbapi.connect('foo.db'), pool_size = 1, max_overflow = 0, use_threadlocal = False)
         c1 = p.connect()

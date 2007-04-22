@@ -7,6 +7,7 @@ def suite():
         # connectivity, execution
 	    'engine.parseconnect',
         'engine.pool', 
+        'engine.reconnect',
         'engine.execute',
         'engine.transaction',
         
