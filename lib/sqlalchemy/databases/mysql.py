@@ -293,8 +293,18 @@ class MySQLDialect(ansisql.ANSIDialect):
         # note: these two could break SA Unicode type
         util.coerce_kw_type(opts, 'use_unicode', bool)   
         util.coerce_kw_type(opts, 'charset', str)
-        # TODO: what about options like "ssl", "cursorclass" and "conv" ?
+        
+        # ssl
+        ssl = {}
+        for key in ['ssl_ca', 'ssl_key', 'ssl_cert', 'ssl_capath', 'ssl_cipher']:
+            if key in opts:
+                ssl[key[4:]] = opts[key]
+                util.coerce_kw_type(ssl, key[4:], str)
+                del opts[key]
+        if len(ssl):
+            opts['ssl'] = ssl
 
+        # TODO: what about options like "cursorclass" and "conv" ?
         client_flag = opts.get('client_flag', 0)
         if self.dbapi is not None:
             try:
@@ -302,7 +312,7 @@ class MySQLDialect(ansisql.ANSIDialect):
                 client_flag |= CLIENT_FLAGS.FOUND_ROWS
             except:
                 pass
-        opts['client_flag'] = client_flag
+            opts['client_flag'] = client_flag
         return [[], opts]
 
     def create_execution_context(self, *args, **kwargs):
