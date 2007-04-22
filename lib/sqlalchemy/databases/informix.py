@@ -20,9 +20,6 @@ import sqlalchemy.types as sqltypes
 import sqlalchemy.exceptions as exceptions
 import sqlalchemy.pool as pool
 
-def dbapi():
-    import informixdb
-    return informixdb
 
 # for offset
 
@@ -206,6 +203,11 @@ class InfoDialect(ansisql.ANSIDialect):
         self.use_ansi = use_ansi
         ansisql.ANSIDialect.__init__(self, **kwargs)
         self.paramstyle = 'qmark'
+
+    def dbapi(cls):
+        import informixdb
+        return informixdb
+    dbapi = classmethod(dbapi)
 
     def max_identifier_length( self ):
         # for informix 7.31
