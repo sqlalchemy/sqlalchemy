@@ -271,23 +271,10 @@ To continue the `MyClass` example:
     # delete it
     result.delete()
     
-    # commit the change
-    result.flush()
-
-It should be noted that the `flush()` method on the instance need not be called.  You're probably better off calling `flush()` on the actual session, so that all changes are properly written to the database simultaneously:
-
-    {python}
-    # create a MyClass.
-    mc = MyClass()
-
-    # load some MyClass objects
-    result = MyClass.select(MyClass.c.name=='bar')
-
-    # delete one of them
-    result[1].delete()
-
     # commit all changes
     ctx.current.flush()
+
+**Note:** : while the `flush()` method is also available on individual object instances, the instance-local flush() **does not flush dependent objects**.  For this reason this method may be removed in a future release and replaced with a more explicit version.
 
 ### associationproxy
 
