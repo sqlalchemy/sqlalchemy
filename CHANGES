@@ -100,7 +100,9 @@
 - mysql
     - support for SSL arguments given as inline within URL query string,
       prefixed with "ssl_", courtesy terjeros@gmail.com.
-      
+- extensions
+    - big fix to AssociationProxy so that multiple AssociationProxy
+      objects can be associated with a single association collection. 
 0.3.6
 - sql:
     - bindparam() names are now repeatable!  specify two

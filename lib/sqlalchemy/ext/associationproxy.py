@@ -29,10 +29,11 @@ class AssociationProxy(object):
           ``__init__()`` constructor and setting the proxied
           attribute.
         """
+        
         self.targetcollection = targetcollection
         self.attr = attr
         self.creator = creator
-
+        
     def __init_deferred(self):
         prop = class_mapper(self._owner_class).props[self.targetcollection]
         self._cls = prop.mapper.class_
@@ -67,7 +68,7 @@ class AssociationProxy(object):
         self._owner_class = owner
         if obj is None:
             return self
-        storage_key = '_AssociationProxy_%s' % self.targetcollection
+        storage_key = '_AssociationProxy_%s_%s' % (self.targetcollection, self.attr)
         if self.uselist:
             try:
                 return getattr(obj, storage_key)
