@@ -136,16 +136,16 @@ class QueryTest(PersistTest):
         self.users.insert().execute(user_id = 7, user_name = 'jack')
         self.users.insert().execute(user_id = 8, user_name = 'fred')
 
-        u = bindparam('uid')
+        u = bindparam('userid')
         s = self.users.select(or_(self.users.c.user_name==u, self.users.c.user_name==u))
-        r = s.execute(uid='fred').fetchall()
+        r = s.execute(userid='fred').fetchall()
         assert len(r) == 1
     
     def test_bindparam_shortname(self):
         """test the 'shortname' field on BindParamClause."""
         self.users.insert().execute(user_id = 7, user_name = 'jack')
         self.users.insert().execute(user_id = 8, user_name = 'fred')
-        u = bindparam('uid', shortname='someshortname')
+        u = bindparam('userid', shortname='someshortname')
         s = self.users.select(self.users.c.user_name==u)
         r = s.execute(someshortname='fred').fetchall()
         assert len(r) == 1
@@ -223,12 +223,12 @@ class QueryTest(PersistTest):
     def test_keys(self):
         self.users.insert().execute(user_id=1, user_name='foo')
         r = self.users.select().execute().fetchone()
-        self.assertEqual(r.keys(), ['user_id', 'user_name'])
+        self.assertEqual([x.lower() for x in r.keys()], ['user_id', 'user_name'])
 
     def test_items(self):
         self.users.insert().execute(user_id=1, user_name='foo')
         r = self.users.select().execute().fetchone()
-        self.assertEqual(r.items(), [('user_id', 1), ('user_name', 'foo')])
+        self.assertEqual([(x[0].lower(), x[1]) for x in r.items()], [('user_id', 1), ('user_name', 'foo')])
 
     def test_len(self):
         self.users.insert().execute(user_id=1, user_name='foo')
@@ -269,11 +269,11 @@ class QueryTest(PersistTest):
         and that column-level defaults get overridden"""
         meta = BoundMetaData(testbase.db)
         t = Table('t1', meta,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, Sequence('t1idseq', optional=True), primary_key=True),
             Column('value', Integer)
         )
         t2 = Table('t2', meta,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, Sequence('t2idseq', optional=True), primary_key=True),
             Column('value', Integer, default="7"),
             Column('stuff', String(20), onupdate="thisisstuff")
         )
@@ -334,7 +334,7 @@ class QueryTest(PersistTest):
         r = self.users.select(self.users.c.user_id==1).execute().fetchone()
         self.assertEqual(r[0], 1)
         self.assertEqual(r[1], 'foo')
-        self.assertEqual(r.keys(), ['user_id', 'user_name'])
+        self.assertEqual([x.lower() for x in r.keys()], ['user_id', 'user_name'])
         self.assertEqual(r.values(), [1, 'foo'])
         
     def test_column_order_with_text_query(self):
@@ -343,7 +343,7 @@ class QueryTest(PersistTest):
         r = testbase.db.execute('select user_name, user_id from query_users', {}).fetchone()
         self.assertEqual(r[0], 'foo')
         self.assertEqual(r[1], 1)
-        self.assertEqual(r.keys(), ['user_name', 'user_id'])
+        self.assertEqual([x.lower() for x in r.keys()], ['user_name', 'user_id'])
         self.assertEqual(r.values(), ['foo', 1])
     
     @testbase.unsupported('oracle', 'firebird') 
@@ -384,18 +384,18 @@ class CompoundTest(PersistTest):
         global metadata, t1, t2, t3
         metadata = BoundMetaData(testbase.db)
         t1 = Table('t1', metadata, 
-            Column('col1', Integer, primary_key=True),
+            Column('col1', Integer, Sequence('t1pkseq'), primary_key=True),
             Column('col2', String(30)),
             Column('col3', String(40)),
             Column('col4', String(30))
             )
         t2 = Table('t2', metadata, 
-            Column('col1', Integer, primary_key=True),
+            Column('col1', Integer, Sequence('t2pkseq'), primary_key=True),
             Column('col2', String(30)),
             Column('col3', String(40)),
             Column('col4', String(30)))
         t3 = Table('t3', metadata, 
-            Column('col1', Integer, primary_key=True),
+            Column('col1', Integer, Sequence('t3pkseq'), primary_key=True),
             Column('col2', String(30)),
             Column('col3', String(40)),
             Column('col4', String(30)))
@@ -425,7 +425,7 @@ class CompoundTest(PersistTest):
                     select([t1.c.col3, t1.c.col4], t1.c.col2.in_("t1col2r1", "t1col2r2")),
             select([t2.c.col3, t2.c.col4], t2.c.col2.in_("t2col2r2", "t2col2r3"))
         )        
-        u = union(s1, s2)
+        u = union(s1, s2, order_by=[s1.c.col3])
         assert u.execute().fetchall() == [('aaa', 'aaa'), ('bbb', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
         assert u.alias('bar').select().execute().fetchall() == [('aaa', 'aaa'), ('bbb', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
         
@@ -438,7 +438,7 @@ class CompoundTest(PersistTest):
         assert i.execute().fetchall() == [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
         assert i.alias('bar').select().execute().fetchall() == [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
 
-    @testbase.unsupported('mysql')
+    @testbase.unsupported('mysql', 'oracle')
     def test_except_style1(self):
         e = except_(union(
             select([t1.c.col3, t1.c.col4]),
@@ -447,7 +447,7 @@ class CompoundTest(PersistTest):
         parens=True), select([t2.c.col3, t2.c.col4]))
         assert e.alias('bar').select().execute().fetchall() == [('aaa', 'aaa'), ('aaa', 'ccc'), ('bbb', 'aaa'), ('bbb', 'bbb'), ('ccc', 'bbb'), ('ccc', 'ccc')]
 
-    @testbase.unsupported('mysql')
+    @testbase.unsupported('mysql', 'oracle')
     def test_except_style2(self):
         e = except_(union(
             select([t1.c.col3, t1.c.col4]),

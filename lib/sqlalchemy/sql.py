@@ -331,7 +331,11 @@ def case(whens, value=None, else_=None):
     whenlist = [_CompoundClause(None, 'WHEN', c, 'THEN', r) for (c,r) in whens]
     if not else_ is None:
         whenlist.append(_CompoundClause(None, 'ELSE', else_))
-    cc = _CalculatedClause(None, 'CASE', value, *whenlist + ['END'])
+    if len(whenlist):
+        type = list(whenlist[-1])[-1].type
+    else:
+        type = None
+    cc = _CalculatedClause(None, 'CASE', value, type=type, *whenlist + ['END'])
     for c in cc.clauses:
         c.parens = False
     return cc
@@ -1575,6 +1579,13 @@ class _TextClause(ClauseElement):
         if bindparams is not None:
             for b in bindparams:
                 self.bindparams[b.key] = b
+
+    def _get_type(self):
+        if self.typemap is not None and len(self.typemap) == 1:
+            return list(self.typemap)[0]
+        else:
+            return None
+    type = property(_get_type)
 
     columns = property(lambda s:[])
 

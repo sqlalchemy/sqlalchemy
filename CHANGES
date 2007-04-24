@@ -66,6 +66,8 @@
       for **kwargs compat
     - slight tweak to raw execute() change to also support tuples
       for positional parameters, not just lists [ticket:523]
+    - fix to case() construct to propigate the type of the first
+      WHEN condition as the return type of the case statement
 - orm:
     - fixed critical issue when, after options(eagerload()) is used,
       the mapper would then always apply query "wrapping" behavior

@@ -49,7 +49,7 @@ class QuoteTest(PersistTest):
         meta2 = BoundMetaData(testbase.db)
         t2 = Table('WorstCase2', meta2, autoload=True, quote=True)
         assert t2.c.has_key('MixedCase')
-    
+
     def testlabels(self):
         table1.insert().execute({'lowercase':1,'UPPERCASE':2,'MixedCase':3,'a123':4},
                 {'lowercase':2,'UPPERCASE':2,'MixedCase':3,'a123':4},
@@ -77,7 +77,8 @@ class QuoteTest(PersistTest):
         assert lcmetadata.case_sensitive is False
         assert t1.c.UcCol.case_sensitive is False
         assert t2.c.normalcol.case_sensitive is False
-    
+   
+    @testbase.unsupported('oracle') 
     def testlabels(self):
         """test the quoting of labels.
         

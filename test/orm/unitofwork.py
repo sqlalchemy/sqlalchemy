@@ -217,7 +217,7 @@ class MutableTypesTest(UnitOfWorkTest):
         global metadata, table
         metadata = BoundMetaData(testbase.db)
         table = Table('mutabletest', metadata,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, Sequence('mutableidseq', optional=True), primary_key=True),
             Column('data', PickleType),
             Column('value', Unicode(30)))
         table.create()
@@ -1223,7 +1223,7 @@ class ManyToManyTest(UnitOfWorkTest):
     def tearDown(self):
         tables.delete()
         UnitOfWorkTest.tearDown(self)
-        
+
     def testmanytomany(self):
         items = orderitems
 
@@ -1348,7 +1348,7 @@ class ManyToManyTest(UnitOfWorkTest):
                 
         mapper(Keyword, keywords)
         mapper(Item, orderitems, properties = dict(
-                keywords = relation(Keyword, secondary=itemkeywords, lazy=False),
+                keywords = relation(Keyword, secondary=itemkeywords, lazy=False, order_by=keywords.c.name),
             ))
 
         (k1, k2, k3) = (Keyword('keyword 1'), Keyword('keyword 2'), Keyword('keyword 3'))
@@ -1457,7 +1457,7 @@ class ManyToManyTest(UnitOfWorkTest):
         k.keyword_name = 'a keyword'
         ctx.current.flush()
         print m.instance_key(k)
-        id = (k.user_id, k.keyword_id)
+        id = (k.keyword_id, k.user_id)
         ctx.current.clear()
         k = ctx.current.query(KeywordUser).get(id)
         assert k.user_name == 'keyworduser'
