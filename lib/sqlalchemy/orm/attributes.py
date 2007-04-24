@@ -595,6 +595,11 @@ class InstrumentedList(object):
         self.__delrecord(item)
         self.data.remove(item)
 
+    def discard(self, item):
+        if item in self.data:
+            self.__delrecord(item)
+            self.data.remove(item)
+
     def extend(self, item_list):
         for item in item_list:
             self.append(item)
