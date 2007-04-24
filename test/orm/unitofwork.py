@@ -1438,7 +1438,7 @@ class ManyToManyTest(UnitOfWorkTest):
         j = join(users, userkeywords, 
                 users.c.user_id==userkeywords.c.user_id).join(keywords, 
                    userkeywords.c.keyword_id==keywords.c.keyword_id)
-
+        print "PK", j.primary_key
         # a class 
         class KeywordUser(object):
             pass
@@ -1448,16 +1448,16 @@ class ManyToManyTest(UnitOfWorkTest):
         m = mapper(KeywordUser, j, properties={
             'user_id':[users.c.user_id, userkeywords.c.user_id],
             'keyword_id':[userkeywords.c.keyword_id, keywords.c.keyword_id],
-            'keyword_name':keywords.c.name
-
-        })
+            'keyword_name':keywords.c.name,
+        }, )
 
         k = KeywordUser()
         k.user_name = 'keyworduser'
         k.keyword_name = 'a keyword'
         ctx.current.flush()
         print m.instance_key(k)
-        id = (k.keyword_id, k.user_id)
+        
+        id = (k.user_id, k.keyword_id)
         ctx.current.clear()
         k = ctx.current.query(KeywordUser).get(id)
         assert k.user_name == 'keyworduser'

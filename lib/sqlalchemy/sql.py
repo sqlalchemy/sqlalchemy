@@ -1938,7 +1938,7 @@ class Join(FromClause):
     encodedname = property(lambda s: s.name.encode('ascii', 'backslashreplace'))
 
     def _init_primary_key(self):
-        pkcol = util.Set()
+        pkcol = util.OrderedSet()
         for col in self._adjusted_exportable_columns():
             if col.primary_key:
                 pkcol.add(col)

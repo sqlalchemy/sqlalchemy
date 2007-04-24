@@ -1,7 +1,6 @@
 0.3.7
 - engines
-    - SA default loglevel is now "WARN".  we have a few warnings
-      for things that should be available by default.
+    - warnings module used for issuing warnings (instead of logging)
     - cleanup of DBAPI import strategies across all engines 
       [ticket:480]
     - refactoring of engine internals which reduces complexity,
