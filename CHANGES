@@ -21,6 +21,9 @@
       same as always, but if none found will fall back to trying
       pkg_resources to load an external module [ticket:521]
 - sql:
+    - keys() of result set columns are not lowercased, come back
+      exactly as they're expressed in cursor.description.  note this
+      causes colnames to be all caps in oracle.
     - preliminary support for unicode table names, column names and 
       SQL statements added, for databases which can support them.
       Works with sqlite and postgres so far.  Mysql *mostly* works
