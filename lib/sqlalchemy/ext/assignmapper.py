@@ -5,6 +5,7 @@ def monkeypatch_query_method(ctx, class_, name):
     def do(self, *args, **kwargs):
         query = Query(class_, session=ctx.current)
         return getattr(query, name)(*args, **kwargs)
+    do.__name__ = name
     setattr(class_, name, classmethod(do))
 
 def monkeypatch_objectstore_method(ctx, class_, name):
@@ -14,6 +15,7 @@ def monkeypatch_objectstore_method(ctx, class_, name):
             # flush expects a list of objects
             self = [self]
         return getattr(session, name)(self, *args, **kwargs)
+    do.__name__ = name
     setattr(class_, name, do)
     
 def assign_mapper(ctx, class_, *args, **kwargs):

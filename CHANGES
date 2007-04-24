@@ -107,6 +107,8 @@
 - extensions
     - big fix to AssociationProxy so that multiple AssociationProxy
       objects can be associated with a single association collection. 
+    - assign_mapper names methods according to their keys (i.e. __name__)
+      #551
 0.3.6
 - sql:
     - bindparam() names are now repeatable!  specify two
