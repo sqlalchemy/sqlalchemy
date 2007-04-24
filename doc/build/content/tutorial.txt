@@ -263,9 +263,9 @@ Next, lets put a few rows in:
 With two related tables, we can now construct a join amongst them using the `join` method:
 
     {python}
-    >>> r = users_table.join(email_addresses_table).select().execute()
+    >>> r = users_table.join(email_addresses_table).select(order_by=users_table.c.user_id).execute()
     SELECT users.user_id, users.user_name, users.password, email_addresses.address_id, email_addresses.email_address, email_addresses.user_id 
-    FROM users JOIN email_addresses ON users.user_id = email_addresses.user_id
+    FROM users JOIN email_addresses ON users.user_id = email_addresses.user_id ORDER BY users.user_id
     []
     >>> print [row for row in r]
     [(1, u'Mary', u'secure', 2, u'mary@mary.com', 1), (2, u'Tom', None, 1, u'tom@tom.com', 2)]
