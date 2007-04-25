@@ -43,6 +43,8 @@ class Query(object):
         self._offset = kwargs.pop('offset', None)
         self._limit = kwargs.pop('limit', None)
         self._criterion = None
+        self._col = None
+        self._func = None
         self._joinpoint = self.mapper
         self._from_obj = [self.table]
 
@@ -71,6 +73,8 @@ class Query(object):
         q._from_obj = list(self._from_obj)
         q._joinpoint = self._joinpoint
         q._criterion = self._criterion
+        q._col = self._col
+        q._func = self._func
         return q
     
     def _get_session(self):
@@ -318,7 +322,6 @@ class Query(object):
         """Given a ``WHERE`` criterion, create a ``SELECT`` statement,
         execute and return the resulting instances.
         """
-
         statement = self.compile(whereclause, **kwargs)
         return self._select_statement(statement, params=params)
 
@@ -611,6 +614,41 @@ class Query(object):
             raise exceptions.InvalidRequestError("Can't locate property named '%s'" % key)
         return [keys, p]
 
+    def _generative_col_aggregate(self, col, func):
+        """apply the given aggregate function to the query and return the newly
+        resulting ``Query``.
+        """
+        if self._col is not None or self._func is not None:
+            raise exceptions.InvalidRequestError("Query already contains an aggregate column or function")
+        q = self._clone()
+        q._col = col
+        q._func = func
+        return q
+
+    def apply_min(self, col):
+        """apply the SQL ``min()`` function against the given column to the
+        query and return the newly resulting ``Query``.
+        """
+        return self._generative_col_aggregate(col, sql.func.min)
+
+    def apply_max(self, col):
+        """apply the SQL ``max()`` function against the given column to the
+        query and return the newly resulting ``Query``.
+        """
+        return self._generative_col_aggregate(col, sql.func.max)
+
+    def apply_sum(self, col):
+        """apply the SQL ``sum()`` function against the given column to the
+        query and return the newly resulting ``Query``.
+        """
+        return self._generative_col_aggregate(col, sql.func.sum)
+
+    def apply_avg(self, col):
+        """apply the SQL ``avg()`` function against the given column to the
+        query and return the newly resulting ``Query``.
+        """
+        return self._generative_col_aggregate(col, sql.func.avg)
+
     def _col_aggregate(self, col, func):
         """Execute ``func()`` function against the given column.
 
@@ -767,6 +805,12 @@ class Query(object):
         """
 
         return list(self)
+
+    def scalar(self):
+        if self._col is None or self._func is None: 
+            return self[0]
+        else:
+            return self._col_aggregate(self._col, self._func)
     
     def __iter__(self):
         return iter(self.select_whereclause())

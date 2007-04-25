@@ -80,6 +80,9 @@
       takes optional string "property" to isolate the desired relation.
       also adds static Query.query_from_parent(instance, property)
       version. [ticket:541]
+    - added generative versions of aggregates, i.e. sum(), avg(), etc.
+      to query. used via query.apply_max(), apply_sum(), etc. 
+      #552
     - corresponding to label/bindparam name generataion, eager loaders 
       generate deterministic names for the aliases they create using 
       md5 hashes.
