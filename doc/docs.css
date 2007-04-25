@@ -65,14 +65,24 @@ h3 {
     margin:26px 4px 0px 5px;
 }
 
-.section {
+.sectionL1 {
     line-height: 1.5em;
     padding:8px 10px 20px 10px;
     margin:10px 0px 0px;
 }
 
-.subsection {
+.sectionL2 {
     margin:0px 0px 0px 20px;
+    line-height: 1.5em;
+}
+
+.sectionL3 {
+    margin:0px 0px 0px 40px;
+    line-height: 1.5em;
+}
+
+.sectionL4 {
+    margin:0px 0px 0px 40px;
     line-height: 1.5em;
 }
 

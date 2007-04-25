@@ -22,10 +22,11 @@
 
         item = toc.get_by_path(path)
         subsection = item.depth > 1
+        level = min(item.depth, 4)
     %>
     <A name="${item.path}"></a>
     
-    <div class="${subsection and 'subsection' or 'section'}">
+    <div class="${'sectionL%d' % level}">
 
     % if (subsection):
     <h3>${description or item.description}</h3>
@@ -33,7 +34,7 @@
     
     ${content}
 
-    % if (subsection and item.next and item.next.depth >= item.depth) or not subsection:
+    % if len(item.children) == 0:
         % if paged:
             <a href="#top">back to section top</a>
         % else:
