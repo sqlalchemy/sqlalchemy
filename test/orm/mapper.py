@@ -154,6 +154,35 @@ class MapperTest(MapperSuperTest):
             assert False
         except TypeError, e:
             pass
+
+    def testconstructorexceptions(self):
+        """test that exceptions raised raised in the mapped class are not masked by sa decorations""" 
+        ex = AssertionError('oops')
+        sess = create_session()
+
+        class Foo(object):
+            def __init__(self):
+                raise ex
+        mapper(Foo, users)
+        
+        try:
+            Foo()
+            assert False
+        except Exception, e:
+            assert e is ex
+
+        class Bar(object):
+            def __init__(self):
+                object_session(self).expunge(self)
+                raise ex
+
+        mapper(Bar, orders)
+
+        try:
+            Bar(_sa_session=sess)
+            assert False
+        except Exception, e:
+            assert e is ex
             
     def testrefresh_lazy(self):
         """test that when a lazy loader is set as a trigger on an object's attribute (at the attribute level, not the class level), a refresh() operation doesnt fire the lazy loader or create any problems"""

@@ -670,10 +670,13 @@ class Mapper(object):
             if oldinit is not None:
                 try:
                     oldinit(self, *args, **kwargs)
-                except:
-                    if session is not None:
-                        session.expunge(self)
-                    raise
+                except Exception, e:
+                    try:
+                        if session is not None:
+                            session.expunge(self)
+                    except:
+                        pass # raise original exception instead
+                    raise e
         # override oldinit, insuring that its not already a Mapper-decorated init method
         if oldinit is None or not hasattr(oldinit, '_sa_mapper_init'):
             init._sa_mapper_init = True
