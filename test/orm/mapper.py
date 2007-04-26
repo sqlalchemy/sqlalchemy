@@ -387,8 +387,13 @@ class MapperTest(MapperSuperTest):
 
         # test comparing to an object instance
         item = sess.query(Item).get_by(item_name='item 4')
+
+        l = sess.query(Order).select_by(items=item)
+        self.assert_result(l, Order, user_all_result[0]['orders'][1][1])
+
         l = q.select_by(items=item)
         self.assert_result(l, User, user_result[0])
+    
     
         try:
             # this should raise AttributeError

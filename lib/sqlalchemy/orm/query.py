@@ -365,27 +365,25 @@ class Query(object):
         t = sql.text(text)
         return self.execute(t, params=params)
 
-    def _with_parent_criterion(cls, mapper, instance, prop):
+    def _with_lazy_criterion(cls, instance, prop, reverse=False):
         """extract query criterion from a LazyLoader strategy given a Mapper, 
         source persisted/detached instance and PropertyLoader.
         
-        ."""
+        """
+        
         from sqlalchemy.orm import strategies
-        # this could be done very slickly with prop.compare() and join_via(),
-        # but we are using the less generic LazyLoader clause so that we
-        # retain the ability to do a self-referential join (also the lazy 
-        # clause typically requires only the primary table with no JOIN)
-        loader = prop._get_strategy(strategies.LazyLoader)
-        criterion = loader.lazywhere.copy_container()
-        bind_to_col = dict([(loader.lazybinds[col].key, col) for col in loader.lazybinds])
+        (criterion, lazybinds, rev) = strategies.LazyLoader._create_lazy_clause(prop, reverse_direction=reverse)
+        bind_to_col = dict([(lazybinds[col].key, col) for col in lazybinds])
 
         class Visitor(sql.ClauseVisitor):
             def visit_bindparam(self, bindparam):
+                mapper = reverse and prop.mapper or prop.parent
                 bindparam.value = mapper.get_attr_by_column(instance, bind_to_col[bindparam.key])
         Visitor().traverse(criterion)
         return criterion
-    _with_parent_criterion = classmethod(_with_parent_criterion)
+    _with_lazy_criterion = classmethod(_with_lazy_criterion)
     
+        
     def query_from_parent(cls, instance, property, **kwargs):
         """return a newly constructed Query object, with criterion corresponding to 
         a relationship to the given parent instance.
@@ -407,7 +405,7 @@ class Query(object):
         mapper = object_mapper(instance)
         prop = mapper.props[property]
         target = prop.mapper
-        criterion = cls._with_parent_criterion(mapper, instance, prop)
+        criterion = cls._with_lazy_criterion(instance, prop)
         return Query(target, **kwargs).filter(criterion)
     query_from_parent = classmethod(query_from_parent)
         
@@ -436,7 +434,7 @@ class Query(object):
                 raise exceptions.InvalidRequestError("Could not locate a property which relates instances of class '%s' to instances of class '%s'" % (self.mapper.class_.__name__, instance.__class__.__name__))
         else:
             prop = mapper.props[property]
-        return self.filter(Query._with_parent_criterion(mapper, instance, prop))
+        return self.filter(Query._with_lazy_criterion(instance, prop))
 
     def add_entity(self, entity):
         """add a mapped entity to the list of result columns to be returned.
@@ -567,7 +565,8 @@ class Query(object):
         The criterion is constructed in the same way as the
         ``select_by()`` method.
         """
-
+        import properties
+        
         clause = None
         for arg in args:
             if clause is None:
@@ -577,7 +576,10 @@ class Query(object):
 
         for key, value in params.iteritems():
             (keys, prop) = self._locate_prop(key, start=start)
-            c = prop.compare(value) & self.join_via(keys)
+            if isinstance(prop, properties.PropertyLoader):
+                c = self._with_lazy_criterion(value, prop, True) & self.join_via(keys[:-1])
+            else:
+                c = prop.compare(value) & self.join_via(keys)
             if clause is None:
                 clause =  c
             else:

@@ -161,7 +161,7 @@ NoLoader.logger = logging.class_logger(NoLoader)
 class LazyLoader(AbstractRelationLoader):
     def init(self):
         super(LazyLoader, self).init()
-        (self.lazywhere, self.lazybinds, self.lazyreverse) = self._create_lazy_clause(self.polymorphic_primaryjoin, self.polymorphic_secondaryjoin, self.remote_side)
+        (self.lazywhere, self.lazybinds, self.lazyreverse) = self._create_lazy_clause(self)
 
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
@@ -246,12 +246,17 @@ class LazyLoader(AbstractRelationLoader):
                 # to load data into it.
                 sessionlib.attribute_manager.reset_instance_attribute(instance, self.key)
 
-    def _create_lazy_clause(self, primaryjoin, secondaryjoin, remote_side):
+    def _create_lazy_clause(cls, prop, reverse_direction=False):
+        (primaryjoin, secondaryjoin, remote_side) = (prop.polymorphic_primaryjoin, prop.polymorphic_secondaryjoin, prop.remote_side)
+        
         binds = {}
         reverse = {}
 
         def should_bind(targetcol, othercol):
-            return othercol in remote_side
+            if reverse_direction:
+                return targetcol in remote_side
+            else:
+                return othercol in remote_side
 
         def find_column_in_expr(expr):
             if not isinstance(expr, sql.ColumnElement):
@@ -300,9 +305,11 @@ class LazyLoader(AbstractRelationLoader):
             secondaryjoin = secondaryjoin.copy_container()
             lazywhere = sql.and_(lazywhere, secondaryjoin)
  
-        LazyLoader.logger.info(str(self.parent_property) + " lazy loading clause " + str(lazywhere))
+        if hasattr(cls, 'parent_property'):
+            LazyLoader.logger.info(str(cls.parent_property) + " lazy loading clause " + str(lazywhere))
         return (lazywhere, binds, reverse)
-
+    _create_lazy_clause = classmethod(_create_lazy_clause)
+    
 LazyLoader.logger = logging.class_logger(LazyLoader)
 
 

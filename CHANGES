@@ -80,6 +80,10 @@
       takes optional string "property" to isolate the desired relation.
       also adds static Query.query_from_parent(instance, property)
       version. [ticket:541]
+    - improved query.XXX_by(someprop=someinstance) querying to use
+      similar methodology to with_parent, i.e. using the "lazy" clause
+      which prevents adding the remote instance's table to the SQL, 
+      thereby making more complex conditions possible [ticket:554]
     - added generative versions of aggregates, i.e. sum(), avg(), etc.
       to query. used via query.apply_max(), apply_sum(), etc. 
       #552
