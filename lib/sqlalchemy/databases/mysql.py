@@ -377,7 +377,7 @@ class MySQLDialect(ansisql.ANSIDialect):
             cs = cs.tostring()
         case_sensitive = int(cs) == 0
 
-        decode_from = connection.execute("show variables like 'character_Set_results'").fetchone()[1]
+        decode_from = connection.execute("show variables like 'character_set_results'").fetchone()[1]
 
         if not case_sensitive:
             table.name = table.name.lower()
