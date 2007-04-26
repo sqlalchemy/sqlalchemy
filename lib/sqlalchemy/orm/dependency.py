@@ -160,6 +160,9 @@ class DependencyProcessor(object):
                     uowcommit.register_object(obj, postupdate=True, post_update_cols=self.syncrules.dest_columns())
                     break
 
+    def __str__(self):
+        return "%s(%s)" % (self.__class__.__name__, str(self.prop))
+
 class OneToManyDP(DependencyProcessor):
     def register_dependencies(self, uowcommit):
         if self.post_update:
@@ -424,6 +427,9 @@ class MapperStub(object):
         self.class_ = mapper.class_
         self._inheriting_mappers = []
 
+    def polymorphic_iterator(self):
+        return iter([self])
+        
     def register_dependencies(self, uowcommit):
         pass
 

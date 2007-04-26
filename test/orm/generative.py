@@ -74,6 +74,7 @@ class GenerativeQueryTest(PersistTest):
     def test_aggregate_2_int(self):
         assert int(self.res.filter(foo.c.bar<30).avg(foo.c.bar)) == 14
 
+    @testbase.unsupported('postgres', 'mysql', 'firebird', 'mssql')
     def test_aggregate_3(self):
         assert self.res.filter(foo.c.bar<30).apply_avg(foo.c.bar).scalar() == 14.5
         

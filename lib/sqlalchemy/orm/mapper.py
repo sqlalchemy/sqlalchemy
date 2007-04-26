@@ -728,12 +728,10 @@ class Mapper(object):
         To iterate through an entire hierarchy, use
         ``mapper.base_mapper().polymorphic_iterator()``."""
 
-        def iterate(m):
-            yield m
-            for mapper in m._inheriting_mappers:
-                for x in iterate(mapper):
-                    yield x
-        return iterate(self)
+        yield self
+        for mapper in self._inheriting_mappers:
+            for m in mapper.polymorphic_iterator():
+                yield m
 
     def _get_inherited_column_equivalents(self):
         """Return a map of all *equivalent* columns, based on
@@ -1260,42 +1258,53 @@ class Mapper(object):
 
         connection = uowtransaction.transaction.connection(self)
 
-        [self.extension.before_delete(self, connection, obj) for obj in objects]
+        for obj in objects:
+            for mapper in object_mapper(obj).iterate_to_root():
+                mapper.extension.before_delete(mapper, connection, obj)
+        
         deleted_objects = util.Set()
-        for table in self.tables.sort(reverse=True):
-            if not self._has_pks(table):
-                continue
+        table_to_mapper = {}
+        for mapper in self.base_mapper().polymorphic_iterator():
+            for t in mapper.tables:
+                table_to_mapper.setdefault(t, mapper)
+
+        for table in sqlutil.TableCollection(list(table_to_mapper.keys())).sort(reverse=True):
             delete = []
             for obj in objects:
-                params = {}
-                if not hasattr(obj, "_instance_key"):
+                mapper = object_mapper(obj)
+                if table not in mapper.tables or not mapper._has_pks(table):
                     continue
-                else:
-                    delete.append(params)
-                for col in self.pks_by_table[table]:
-                    params[col.key] = self.get_attr_by_column(obj, col)
-                if self.version_id_col is not None:
-                    params[self.version_id_col.key] = self.get_attr_by_column(obj, self.version_id_col)
+                instance_key = mapper.instance_key(obj)
+
+                params = {}
+                delete.append(params)
+                for col in mapper.pks_by_table[table]:
+                    params[col.key] = mapper.get_attr_by_column(obj, col)
+                if mapper.version_id_col is not None:
+                    params[mapper.version_id_col.key] = mapper.get_attr_by_column(obj, mapper.version_id_col)
                 deleted_objects.add(obj)
             if len(delete):
+                mapper = table_to_mapper[table]
                 def comparator(a, b):
-                    for col in self.pks_by_table[table]:
+                    for col in mapper.pks_by_table[table]:
                         x = cmp(a[col.key],b[col.key])
                         if x != 0:
                             return x
                     return 0
                 delete.sort(comparator)
                 clause = sql.and_()
-                for col in self.pks_by_table[table]:
+                for col in mapper.pks_by_table[table]:
                     clause.clauses.append(col == sql.bindparam(col.key, type=col.type, unique=True))
-                if self.version_id_col is not None:
-                    clause.clauses.append(self.version_id_col == sql.bindparam(self.version_id_col.key, type=self.version_id_col.type, unique=True))
+                if mapper.version_id_col is not None:
+                    clause.clauses.append(mapper.version_id_col == sql.bindparam(mapper.version_id_col.key, type=mapper.version_id_col.type, unique=True))
                 statement = table.delete(clause)
                 c = connection.execute(statement, delete)
                 if c.supports_sane_rowcount() and c.rowcount != len(delete):
                     raise exceptions.ConcurrentModificationError("Updated rowcount %d does not match number of objects updated %d" % (c.cursor.rowcount, len(delete)))
 
-        [self.extension.after_delete(self, connection, obj) for obj in deleted_objects]
+        for obj in deleted_objects:
+            for mapper in object_mapper(obj).iterate_to_root():
+                mapper.extension.after_delete(mapper, connection, obj)
 
     def _has_pks(self, table):
         try:
