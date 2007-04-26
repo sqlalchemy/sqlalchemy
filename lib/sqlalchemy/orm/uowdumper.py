@@ -135,9 +135,9 @@ class UOWDumper(unitofwork.UOWExecutor):
 
     def _dump_processor(self, proc, deletes):
         if deletes:
-            val = proc.targettask.todelete_elements
+            val = proc.targettask.polymorphic_todelete_elements
         else:
-            val = proc.targettask.tosave_elements
+            val = proc.targettask.polymorphic_tosave_elements
 
         if self.verbose:
             self.buf.write(self._indent() + "   |- %s attribute on %s (UOWDependencyProcessor(%d) processing %s)\n" % (

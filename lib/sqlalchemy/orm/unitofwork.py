@@ -656,14 +656,8 @@ class UOWTask(object):
     polymorphic_tosave_elements = property(lambda self: [rec for rec in self.polymorphic_elements
                                              if not rec.isdelete])
                                              
-    tosave_elements = property(lambda self: [rec for rec in self.elements
-                                             if not rec.isdelete])
-
     polymorphic_todelete_elements = property(lambda self:[rec for rec in self.polymorphic_elements
                                                if rec.isdelete])
-
-    todelete_elements = property(lambda self:[rec for rec in self.elements
-                                              if rec.isdelete])
 
     polymorphic_tosave_objects = property(lambda self:[rec.obj for rec in self.polymorphic_elements
                                           if rec.obj is not None and not rec.listonly and rec.isdelete is False])
