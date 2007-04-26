@@ -497,12 +497,21 @@ class MapperTest(MapperSuperTest):
         mapper(User, users, properties = dict(
             addresses = relation(mapper(Address, addresses), lazy = True),
             uname = synonym('user_name', proxy=True),
-            adlist = synonym('addresses', proxy=True)
+            adlist = synonym('addresses', proxy=True),
+            adname = synonym('addresses')
         ))
         
         u = sess.query(User).get_by(uname='jack')
         self.assert_result(u.adlist, Address, *(user_address_result[0]['addresses'][1]))
 
+        assert hasattr(u, 'adlist')
+        assert not hasattr(u, 'adname')
+        
+        addr = sess.query(Address).get_by(address_id=user_address_result[0]['addresses'][1][0]['address_id'])
+        u = sess.query(User).get_by(adname=addr)
+        u2 = sess.query(User).get_by(adlist=addr)
+        assert u is u2
+        
         assert u not in sess.dirty
         u.uname = "some user name"
         assert u.uname == "some user name"
