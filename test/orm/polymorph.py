@@ -158,6 +158,40 @@ class InsertOrderTest(PolymorphTest):
 
         assert [e.get_name() for e in c.employees] == ['pointy haired boss', 'dilbert', 'joesmith', 'wally', 'jsmith']
 
+class RelationToSubclassTest(PolymorphTest):
+    def testrelationtosubclass(self):
+        """test a relation to an inheriting mapper where the relation is to a subclass
+        but the join condition is expressed by the parent table.  
+        
+        also test that backrefs work in this case.
+        
+        this test touches upon a lot of the join/foreign key determination code in properties.py
+        and creates the need for properties.py to search for conditions individually within 
+        the mapper's local table as well as the mapper's 'mapped' table, so that relations
+        requiring lots of specificity (like self-referential joins) as well as relations requiring
+        more generalization (like the example here) both come up with proper results."""
+        
+        mapper(Person, people)
+        
+        mapper(Engineer, engineers, inherits=Person)
+        mapper(Manager, managers, inherits=Person)
+
+        mapper(Company, companies, properties={
+            'managers': relation(Manager, lazy=True,backref="company")
+        })
+        
+        sess = create_session()
+
+        c = Company(name='company1')
+        c.managers.append(Manager(status='AAB', manager_name='manager1', name='pointy haired boss'))
+        sess.save(c)
+        sess.flush()
+        sess.clear()
+
+        sess.query(Company).get_by(company_id=c.company_id)
+        assert sets.Set([e.get_name() for e in c.managers]) == sets.Set(['pointy haired boss'])
+        assert c.managers[0].company is c
+        
 def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_colprop=False, use_literal_join=False):
     """generates a round trip test.
     

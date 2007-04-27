@@ -216,17 +216,28 @@ class PropertyLoader(StrategizedProperty):
         if self.secondaryjoin is not None and self.secondary is None:
             raise exceptions.ArgumentError("Property '" + self.key + "' specified with secondary join condition but no secondary argument")
         # if join conditions were not specified, figure them out based on foreign keys
+        
+        def _search_for_join(mapper, table):
+            """find a join between the given mapper's mapped table and the given table.
+            will try the mapper's local table first for more specificity, then if not 
+            found will try the more general mapped table, which in the case of inheritance
+            is a join."""
+            try:
+                return sql.join(mapper.local_table, table)
+            except exceptions.ArgumentError, e:
+                return sql.join(mapper.mapped_table, table)
+        
         try:
             if self.secondary is not None:
                 if self.secondaryjoin is None:
-                    self.secondaryjoin = sql.join(self.mapper.unjoined_table, self.secondary).onclause
+                    self.secondaryjoin = _search_for_join(self.mapper, self.secondary).onclause
                 if self.primaryjoin is None:
-                    self.primaryjoin = sql.join(self.parent.unjoined_table, self.secondary).onclause
+                    self.primaryjoin = _search_for_join(self.parent, self.secondary).onclause
             else:
                 if self.primaryjoin is None:
-                    self.primaryjoin = sql.join(self.parent.unjoined_table, self.target).onclause
+                    self.primaryjoin = _search_for_join(self.parent, self.target).onclause
         except exceptions.ArgumentError, e:
-            raise exceptions.ArgumentError("Error determining primary and/or secondary join for relationship '%s'.  If the underlying error cannot be corrected, you should specify the 'primaryjoin' (and 'secondaryjoin', if there is an association table present) keyword arguments to the relation() function (or for backrefs, by specifying the backref using the backref() function with keyword arguments) to explicitly specify the join conditions.  Nested error is \"%s\"" % (str(self), str(e)))
+            raise exceptions.ArgumentError("""Error determining primary and/or secondary join for relationship '%s'. If the underlying error cannot be corrected, you should specify the 'primaryjoin' (and 'secondaryjoin', if there is an association table present) keyword arguments to the relation() function (or for backrefs, by specifying the backref using the backref() function with keyword arguments) to explicitly specify the join conditions. Nested error is \"%s\"""" % (str(self), str(e)))
 
         # if using polymorphic mapping, the join conditions must be agasint the base tables of the mappers,
         # as the loader strategies expect to be working with those now (they will adapt the join conditions
@@ -246,10 +257,10 @@ class PropertyLoader(StrategizedProperty):
 
         def col_is_part_of_mappings(col):
             if self.secondary is None:
-                return self.parent.unjoined_table.corresponding_column(col, raiseerr=False) is not None or \
+                return self.parent.mapped_table.corresponding_column(col, raiseerr=False) is not None or \
                     self.target.corresponding_column(col, raiseerr=False) is not None
             else:
-                return self.parent.unjoined_table.corresponding_column(col, raiseerr=False) is not None or \
+                return self.parent.mapped_table.corresponding_column(col, raiseerr=False) is not None or \
                     self.target.corresponding_column(col, raiseerr=False) is not None or \
                     self.secondary.corresponding_column(col, raiseerr=False) is not None
 
@@ -326,24 +337,29 @@ class PropertyLoader(StrategizedProperty):
             else:
                 self.direction = sync.ONETOMANY
         else:
-            onetomany = len([c for c in self.foreign_keys if self.mapper.unjoined_table.c.contains_column(c)])
-            manytoone = len([c for c in self.foreign_keys if self.parent.unjoined_table.c.contains_column(c)])
+            for mappedtable, parenttable in [(self.mapper.mapped_table, self.parent.mapped_table), (self.mapper.local_table, self.parent.local_table)]:
+                onetomany = len([c for c in self.foreign_keys if mappedtable.c.contains_column(c)])
+                manytoone = len([c for c in self.foreign_keys if parenttable.c.contains_column(c)])
 
-            if not onetomany and not manytoone:
-                raise exceptions.ArgumentError(
-                    "Can't determine relation direction for relationship '%s' "
-                    "- foreign key columns are not present in neither the "
-                    "parent nor the child's mapped tables" %(str(self)))
-            elif onetomany and manytoone:
+                if not onetomany and not manytoone:
+                    raise exceptions.ArgumentError(
+                        "Can't determine relation direction for relationship '%s' "
+                        "- foreign key columns are present in neither the "
+                        "parent nor the child's mapped tables" %(str(self)))
+                elif onetomany and manytoone:
+                    continue
+                elif onetomany:
+                    self.direction = sync.ONETOMANY
+                    break
+                elif manytoone:
+                    self.direction = sync.MANYTOONE
+                    break
+            else:
                 raise exceptions.ArgumentError(
                     "Can't determine relation direction for relationship '%s' "
                     "- foreign key columns are present in both the parent and "
                     "the child's mapped tables.  Specify 'foreign_keys' "
                     "argument." % (str(self)))
-            elif onetomany:
-                self.direction = sync.ONETOMANY
-            elif manytoone:
-                self.direction = sync.MANYTOONE
 
     def _determine_remote_side(self):
         if len(self.remote_side):

@@ -97,6 +97,9 @@
       [ticket:533]
     - making progress with session.merge() as well as combining its
       usage with entity_name [ticket:543]
+    - the usual adjustments to relationships between inheriting mappers,
+      in this case establishing relation()s to subclass mappers where
+      the join conditions come from the superclass' table
 - informix:
     - informix support added !  courtesy James Zhang, who put a ton
       of effort in.
