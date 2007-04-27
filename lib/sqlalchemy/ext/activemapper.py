@@ -271,11 +271,11 @@ class ActiveMapperMeta(type):
                 cls.table = Table(table_name, _metadata, autoload=True, **table_opts)
                 cls.columns = cls.table._columns
             
-            # check for inheritence
             if version_id_col is not None:
                 version_id_col_object = getattr(cls.table.c, version_id_col, None)
                 assert(version_id_col_object is not None, "version_id_col (%s) does not exist." % version_id_col)
 
+            # check for inheritence
             if hasattr(bases[0], "mapping"):
                 cls._base_mapper= bases[0].mapper
                 assign_mapper(objectstore.context, cls, cls.table, 

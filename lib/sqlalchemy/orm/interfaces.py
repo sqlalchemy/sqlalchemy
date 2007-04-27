@@ -72,6 +72,7 @@ class MapperProperty(object):
         """
 
         pass
+
     def is_primary(self):
         """Return True if this ``MapperProperty``'s mapper is the
         primary mapper for its class.
@@ -155,6 +156,7 @@ class StrategizedProperty(MapperProperty):
             return strategy
 
     def setup(self, querycontext, **kwargs):
+
         self._get_context_strategy(querycontext).setup_query(querycontext, **kwargs)
 
     def execute(self, selectcontext, instance, row, identitykey, isnew):

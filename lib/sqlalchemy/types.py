@@ -164,7 +164,7 @@ def adapt_type(typeobj, colspecs):
     # if we adapted the given generic type to a database-specific type,
     # but it turns out the originally given "generic" type
     # is actually a subclass of our resulting type, then we were already
-    # were given a more specific type than that required; so use that.
+    # given a more specific type than that required; so use that.
     if (issubclass(typeobj.__class__, impltype)):
         return typeobj
     return typeobj.adapt(impltype)

@@ -156,7 +156,7 @@ class MapperTest(MapperSuperTest):
             pass
 
     def testconstructorexceptions(self):
-        """test that exceptions raised raised in the mapped class are not masked by sa decorations""" 
+        """test that exceptions raised in the mapped class are not masked by sa decorations""" 
         ex = AssertionError('oops')
         sess = create_session()
 
