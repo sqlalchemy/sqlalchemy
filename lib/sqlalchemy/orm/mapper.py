@@ -473,14 +473,12 @@ class Mapper(object):
         # local_table - the Selectable that was passed to this Mapper's constructor, if any
         # select_table - the Selectable that will be used during queries.  if this is specified
         # as a constructor keyword argument, it takes precendence over mapped_table, otherwise its mapped_table
-        # unjoined_table - our Selectable, minus any joins constructed against the inherits table.
         # this is either select_table if it was given explicitly, or in the case of a mapper that inherits
         # its local_table
         # tables - a collection of underlying Table objects pulled from mapped_table
 
         if self.select_table is None:
             self.select_table = self.mapped_table
-        self.unjoined_table = self.local_table
 
         # locate all tables contained within the "table" passed in, which
         # may be a join or other construct
