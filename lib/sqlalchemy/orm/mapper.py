@@ -1274,10 +1274,12 @@ class Mapper(object):
                 mapper = object_mapper(obj)
                 if table not in mapper.tables or not mapper._has_pks(table):
                     continue
-                instance_key = mapper.instance_key(obj)
 
                 params = {}
-                delete.append(params)
+                if not hasattr(obj, '_instance_key'):
+                    continue
+                else:
+                    delete.append(params)
                 for col in mapper.pks_by_table[table]:
                     params[col.key] = mapper.get_attr_by_column(obj, col)
                 if mapper.version_id_col is not None:
