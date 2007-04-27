@@ -422,10 +422,10 @@ class CompoundTest(PersistTest):
         
     def test_union(self):
         (s1, s2) = (
-                    select([t1.c.col3.label('col3'), t1.c.col4], t1.c.col2.in_("t1col2r1", "t1col2r2")),
-            select([t2.c.col3.label('col3'), t2.c.col4], t2.c.col2.in_("t2col2r2", "t2col2r3"))
+                    select([t1.c.col3.label('col3'), t1.c.col4.label('col4')], t1.c.col2.in_("t1col2r1", "t1col2r2")),
+            select([t2.c.col3.label('col3'), t2.c.col4.label('col4')], t2.c.col2.in_("t2col2r2", "t2col2r3"))
         )        
-        u = union(s1, s2, order_by=['col3'])
+        u = union(s1, s2, order_by=['col3', 'col4'])
         assert u.execute().fetchall() == [('aaa', 'aaa'), ('bbb', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
         assert u.alias('bar').select().execute().fetchall() == [('aaa', 'aaa'), ('bbb', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
         
