@@ -278,14 +278,32 @@ class MutableTypesTest(UnitOfWorkTest):
         f1 = Foo()
         f1.data = pickleable.BarWithoutCompare(4,5)
         ctx.current.flush()
+        
+        def go():
+            ctx.current.flush()
+        self.assert_sql_count(db, go, 0)
+        
         ctx.current.clear()
+
         f2 = ctx.current.query(Foo).get_by(id=f1.id)
+
+        def go():
+            ctx.current.flush()
+        self.assert_sql_count(db, go, 0)
+
         f2.data.y = 19
-        ctx.current.flush()
+        def go():
+            ctx.current.flush()
+        self.assert_sql_count(db, go, 1)
+        
         ctx.current.clear()
         f3 = ctx.current.query(Foo).get_by(id=f1.id)
         print f2.data, f3.data
         assert (f3.data.x, f3.data.y) == (4,19)
+
+        def go():
+            ctx.current.flush()
+        self.assert_sql_count(db, go, 0)
         
     def testunicode(self):
         """test that two equivalent unicode values dont get flagged as changed.
