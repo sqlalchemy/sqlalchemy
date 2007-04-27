@@ -48,7 +48,7 @@
       that gets truncated to 30 chars will go out to 63 characters
       on postgres.  Also, the true labelname is always attached as the
       accessor on the parent Selectable so theres no need to be aware
-      of the genrerated label names [ticket:512].
+      of the "truncated" label names [ticket:512].
     - column label and bind param "truncation" also generate 
       deterministic names now, based on their ordering within the 
       full statement being compiled.  this means the same statement

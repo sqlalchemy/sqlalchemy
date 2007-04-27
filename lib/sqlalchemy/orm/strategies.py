@@ -268,14 +268,8 @@ class LazyLoader(AbstractRelationLoader):
             FindColumnInColumnClause().traverse(expr)
             return len(columns) and columns[0] or None
         
-        def col_in_collection(column, collection):
-            for c in collection:
-                if column.shares_lineage(c):
-                    return True
-            else:
-                return False
-                
         def bind_label():
+            # TODO: make this generation deterministic
             return "lazy_" + hex(random.randint(0, 65535))[2:]
 
         def visit_binary(binary):
