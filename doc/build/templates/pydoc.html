@@ -32,8 +32,19 @@ def whitespace(content):
     
 def formatdocstring(content):
     return publish_parts(whitespace(content), writer_name='html')['body']
-    
 %>
+
+<%def name="inline_links(toc, extension, paged)"><%
+    def link(match):
+        (module, desc) = match.group(1,2)
+        if desc.endswith('()'):
+            path = "docstrings_" + module + "_modfunc_" + desc[:-2]
+        else:
+            path = "docstrings_" + module + "_" + desc
+        return capture(nav.toclink, toc=toc, path=path, description=desc, extension=extension, paged=paged)
+    return lambda content: re.sub(r'\[(.+?)#(.+?)?\]', link, content)
+%></%def>
+
 <%namespace name="formatting" file="formatting.html"/>
 <%namespace name="nav" file="nav.html"/>
 
@@ -54,14 +65,14 @@ def formatdocstring(content):
 
     <%call expr="formatting.section(toc=toc, path=obj.toc_path, description=htmldescription, paged=paged, extension=extension)">
     % if obj.doc:
-    <div class="darkcell">${obj.doc or '' |formatdocstring}</div>
+    <div class="darkcell">${obj.doc or '' | formatdocstring, inline_links(toc, extension, paged)}</div>
     % endif
     
     % if not obj.isclass and obj.functions:
 
         <%call expr="formatting.section(toc=toc, path=obj.mod_path, paged=paged, extension=extension)">
             % for func in obj.functions:
-                ${function_doc(func=func,toc=toc)}
+                ${function_doc(func=func,toc=toc, extension=extension, paged=paged)}
             % endfor
         </%call>
 
@@ -70,7 +81,7 @@ def formatdocstring(content):
         % if obj.functions:
             % for func in obj.functions:
                 % if isinstance(func, docstring.FunctionDoc):
-                    ${function_doc(func=func, toc=toc)}
+                    ${function_doc(func=func, toc=toc, extension=extension, paged=paged)}
                 % elif isinstance(func, docstring.PropertyDoc):
                     ${property_doc(prop=func)}
                 % endif
@@ -86,7 +97,7 @@ def formatdocstring(content):
     </%call>
 </%def>
 
-<%def name="function_doc(func, toc)">
+<%def name="function_doc(func, toc, extension, paged)">
     <div class="darkcell">
     <%
         if hasattr(func, 'toc_path'):
@@ -97,7 +108,7 @@ def formatdocstring(content):
     <A name="${item and item.path or ''}"></a>
     <b>def ${func.name}(${", ".join(map(lambda k: "<i>%s</i>" % k, func.arglist))})</b>
     <div class="docstring">
-    ${func.doc or '' | formatdocstring}
+    ${func.doc or '' | formatdocstring, inline_links(toc, extension, paged)}
     </div>
     </div>
 </%def>

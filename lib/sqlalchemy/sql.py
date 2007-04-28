@@ -4,7 +4,25 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Define the base components of SQL expression trees."""
+"""Define the base components of SQL expression trees.
+
+All components are derived from a common base class [sqlalchemy.sql#ClauseElement].
+Common behaviors are organized based on class hierarchies, in some cases
+via mixins.  
+
+All object construction from this package occurs via functions which in some
+cases will construct composite ``ClauseElement`` structures together, and
+in other cases simply return a single ``ClauseElement`` constructed directly.
+The function interface affords a more "DSL-ish" feel to constructing SQL expressions
+and also allows future class reorganizations.
+
+Even though classes are not constructed directly from the outside, most 
+classes which have additional public methods are considered to be public (i.e. have no leading underscore).
+Other classes which are "semi-public" are marked with a single leading
+underscore; these classes usually have few or no public methods and
+are less guaranteed to stay the same in future releases.
+
+"""
 
 from sqlalchemy import util, exceptions, logging
 from sqlalchemy import types as sqltypes
@@ -41,19 +59,25 @@ def asc(column):
 
 def outerjoin(left, right, onclause=None, **kwargs):
     """Return an ``OUTER JOIN`` clause element.
+    
+    The returned object is an instance of [sqlalchemy.sql#Join].
 
-    left
-      The left side of the join.
+    Similar functionality is also available via the ``outerjoin()`` method on any
+    [sqlalchemy.sql#FromClause].
 
-    right
-      The right side of the join.
+      left
+        The left side of the join.
 
-    onclause
-      Optional criterion for the ``ON`` clause, is derived from
-      foreign key relationships otherwise.
+      right
+        The right side of the join.
 
-    To chain joins together, use the resulting
-    ``Join`` object's ``join()`` or ``outerjoin()`` methods.
+      onclause
+        Optional criterion for the ``ON`` clause, is derived from
+        foreign key relationships established between left and right
+        otherwise.
+
+    To chain joins together, use the ``join()`` or ``outerjoin()``
+    methods on the resulting ``Join`` object.
     """
 
     return Join(left, right, onclause, isouter = True, **kwargs)
@@ -61,18 +85,24 @@ def outerjoin(left, right, onclause=None, **kwargs):
 def join(left, right, onclause=None, **kwargs):
     """Return a ``JOIN`` clause element (regular inner join).
 
-    left
-      The left side of the join.
+    The returned object is an instance of [sqlalchemy.sql#Join].
 
-    right
-      The right side of the join.
+    Similar functionality is also available via the ``join()`` method on any
+    [sqlalchemy.sql#FromClause].
 
-    onclause
-      Optional criterion for the ``ON`` clause, is derived from
-      foreign key relationships otherwise
+      left
+        The left side of the join.
 
-    To chain joins together, use the resulting ``Join`` object's
-    ``join()`` or ``outerjoin()`` methods.
+      right
+        The right side of the join.
+
+      onclause
+        Optional criterion for the ``ON`` clause, is derived from
+        foreign key relationships established between left and right
+        otherwise.
+
+    To chain joins together, use the ``join()`` or ``outerjoin()``
+    methods on the resulting ``Join`` object.
     """
 
     return Join(left, right, onclause, **kwargs)
@@ -80,52 +110,59 @@ def join(left, right, onclause=None, **kwargs):
 def select(columns=None, whereclause = None, from_obj = [], **kwargs):
     """Returns a ``SELECT`` clause element.
 
-    This can also be called via the table's ``select()`` method.
+    Similar functionality is also available via the ``select()`` method on any
+    [sqlalchemy.sql#FromClause].
+    
+    The returned object is an instance of [sqlalchemy.sql#Select].
 
     All arguments which accept ``ClauseElement`` arguments also
     accept string arguments, which will be converted as appropriate
     into either ``text()`` or ``literal_column()`` constructs.
     
-    columns
-      A list of ``ClauseElement``s, typically ``ColumnElement``
-      objects or subclasses, which will form
-      the columns clause of the resulting statement.  For all
-      members which are instances of ``Selectable``, the individual
-      ``ColumnElement`` members of the ``Selectable`` will be 
-      added individually to the columns clause.  For example, specifying
-      a ``Table`` instance will result in all the contained ``Column``
-      objects within to be added to the columns clause. 
+      columns
+        A list of ``ClauseElement`` objects, typically ``ColumnElement``
+        objects or subclasses, which will form
+        the columns clause of the resulting statement.  For all
+        members which are instances of ``Selectable``, the individual
+        ``ColumnElement`` members of the ``Selectable`` will be 
+        added individually to the columns clause.  For example, specifying
+        a ``Table`` instance will result in all the contained ``Column``
+        objects within to be added to the columns clause. 
     
-    whereclause
-      A ``ClauseElement`` expression which will be used to form the 
-      ``WHERE`` clause.
+        This argument is not present on the form of ``select()`` available
+        on ``Table``.
       
-    from_obj
-      A list of ``ClauseElement`` objects which will be added to the ``FROM``
-      clause of the resulting statement.  Note that "from" objects
-      are automatically located within the columns and whereclause
-      ClauseElements.  Use this parameter to explicitly specify
-      "from" objects which are not automatically locatable.
-      This could include ``Table`` objects that aren't otherwise
-      present, or ``Join`` objects whose presence will supercede
-      that of the ``Table`` objects already located in the other
-      clauses.
+      whereclause
+        A ``ClauseElement`` expression which will be used to form the 
+        ``WHERE`` clause.
+      
+      from_obj
+        A list of ``ClauseElement`` objects which will be added to the ``FROM``
+        clause of the resulting statement.  Note that "from" objects
+        are automatically located within the columns and whereclause
+        ClauseElements.  Use this parameter to explicitly specify
+        "from" objects which are not automatically locatable.
+        This could include ``Table`` objects that aren't otherwise
+        present, or ``Join`` objects whose presence will supercede
+        that of the ``Table`` objects already located in the other
+        clauses.
 
-    \**kwargs
-      Additional parameters include:
+      \**kwargs
+        Additional parameters include:
+
         order_by
-          a scalar or list of ``ClauseElement``s
+          a scalar or list of ``ClauseElement`` objects
           which will comprise the ``ORDER BY`` clause of the resulting
           select.
-         
+       
         group_by
-          a list of ``ClauseElement``s which will comprise
+          a list of ``ClauseElement`` objects which will comprise
           the ``GROUP BY`` clause of the resulting select.
-          
+        
         having
           a ``ClauseElement`` that will comprise the ``HAVING`` 
           clause of the resulting select when ``GROUP BY`` is used.
-          
+        
         use_labels=False
           when ``True``, the statement will be generated using 
           labels for each column in the columns clause, which qualify
@@ -134,11 +171,11 @@ def select(columns=None, whereclause = None, from_obj = [], **kwargs):
           occur.  The format of the label is <tablename>_<column>.  The
           "c" collection of the resulting ``Select`` object will use these
           names as well for targeting column members.
-          
+        
         distinct=False
           when ``True``, applies a ``DISTINCT`` qualifier to the 
           columns clause of the resulting statement.
-          
+        
         for_update=False
           when ``True``, applies ``FOR UPDATE`` to the end of the
           resulting statement.  Certain database dialects also
@@ -146,23 +183,23 @@ def select(columns=None, whereclause = None, from_obj = [], **kwargs):
           mysql supports "read" which translates to ``LOCK IN SHARE MODE``,
           and oracle supports "nowait" which translates to 
           ``FOR UPDATE NOWAIT``.
-          
+        
         engine=None
           an ``Engine`` instance to which the resulting ``Select`` 
           object will be bound.  The ``Select`` object will otherwise
           automatically bind to whatever ``Engine`` instances can be located
           within its contained ``ClauseElement`` members.
-        
+      
         limit=None
           a numerical value which usually compiles to a ``LIMIT`` expression
           in the resulting select.  Databases that don't support ``LIMIT``
           will attempt to provide similar functionality.
-          
+        
         offset=None
           a numerical value which usually compiles to an ``OFFSET`` expression
           in the resulting select.  Databases that don't support ``OFFSET``
           will attempt to provide similar functionality.
-          
+        
         scalar=False
           when ``True``, indicates that the resulting ``Select`` object
           is to be used in the "columns" clause of another select statement,
@@ -184,25 +221,35 @@ def select(columns=None, whereclause = None, from_obj = [], **kwargs):
     return Select(columns, whereclause = whereclause, from_obj = from_obj, **kwargs)
 
 def subquery(alias, *args, **kwargs):
+    """Return an [sqlalchemy.sql#Alias] object derived from a [sqlalchemy.sql#Select].
+    
+      name
+        alias name
+
+      \*args, \**kwargs
+        all other arguments are delivered to the [sqlalchemy.sql#select()] function.
+    
+    """
+    
     return Select(*args, **kwargs).alias(alias)
 
 def insert(table, values = None, **kwargs):
-    """Return an ``INSERT`` clause element.
+    """Return an [sqlalchemy.sql#_Insert] clause element.
 
-    This can also be called from a table directly via the table's
-    ``insert()`` method.
+    Similar functionality is available via the ``insert()`` 
+    method on [sqlalchemy.schema#Table].
 
-    table
-      The table to be inserted into.
+      table
+        The table to be inserted into.
 
-    values
-      A dictionary which specifies the column specifications of the
-      ``INSERT``, and is optional.  If left as None, the column
-      specifications are determined from the bind parameters used
-      during the compile phase of the ``INSERT`` statement.  If the
-      bind parameters also are None during the compile phase, then the
-      column specifications will be generated from the full list of
-      table columns.
+      values
+        A dictionary which specifies the column specifications of the
+        ``INSERT``, and is optional.  If left as None, the column
+        specifications are determined from the bind parameters used
+        during the compile phase of the ``INSERT`` statement.  If the
+        bind parameters also are None during the compile phase, then the
+        column specifications will be generated from the full list of
+        table columns.
 
     If both `values` and compile-time bind parameters are present, the
     compile-time bind parameters override the information specified
@@ -223,26 +270,26 @@ def insert(table, values = None, **kwargs):
     return _Insert(table, values, **kwargs)
 
 def update(table, whereclause = None, values = None, **kwargs):
-    """Return an ``UPDATE`` clause element.
+    """Return an [sqlalchemy.sql#_Update] clause element.
 
-    This can also be called from a table directly via the table's
-    ``update()`` method.
+    Similar functionality is available via the ``update()`` 
+    method on [sqlalchemy.schema#Table].
 
-    table
-      The table to be updated.
+      table
+        The table to be updated.
 
-    whereclause
-      A ``ClauseElement`` describing the ``WHERE`` condition of the
-      ``UPDATE`` statement.
+      whereclause
+        A ``ClauseElement`` describing the ``WHERE`` condition of the
+        ``UPDATE`` statement.
 
-    values
-      A dictionary which specifies the ``SET`` conditions of the
-      ``UPDATE``, and is optional. If left as None, the ``SET``
-      conditions are determined from the bind parameters used during
-      the compile phase of the ``UPDATE`` statement.  If the bind
-      parameters also are None during the compile phase, then the
-      ``SET`` conditions will be generated from the full list of table
-      columns.
+      values
+        A dictionary which specifies the ``SET`` conditions of the
+        ``UPDATE``, and is optional. If left as None, the ``SET``
+        conditions are determined from the bind parameters used during
+        the compile phase of the ``UPDATE`` statement.  If the bind
+        parameters also are None during the compile phase, then the
+        ``SET`` conditions will be generated from the full list of table
+        columns.
 
     If both `values` and compile-time bind parameters are present, the
     compile-time bind parameters override the information specified
@@ -263,33 +310,36 @@ def update(table, whereclause = None, values = None, **kwargs):
     return _Update(table, whereclause, values, **kwargs)
 
 def delete(table, whereclause = None, **kwargs):
-    """Return a ``DELETE`` clause element.
+    """Return a [sqlalchemy.sql#_Delete] clause element.
 
-    This can also be called from a table directly via the table's
-    ``delete()`` method.
+    Similar functionality is available via the ``delete()`` 
+    method on [sqlalchemy.schema#Table].
 
-    table
-      The table to be updated.
+      table
+        The table to be updated.
 
-    whereclause
-      A ``ClauseElement`` describing the ``WHERE`` condition of the
-      ``UPDATE`` statement.
+      whereclause
+        A ``ClauseElement`` describing the ``WHERE`` condition of the
+        ``UPDATE`` statement.
+
     """
 
     return _Delete(table, whereclause, **kwargs)
 
 def and_(*clauses):
-    """Join a list of clauses together by the ``AND`` operator.
+    """Join a list of clauses together using the ``AND`` operator.
 
-    The ``&`` operator can be used as well.
+    The ``&`` operator is also overloaded on all [sqlalchemy.sql#_CompareMixin]
+    subclasses to produce the same result.
     """
 
     return _compound_clause('AND', *clauses)
 
 def or_(*clauses):
-    """Join a list of clauses together by the ``OR`` operator.
+    """Join a list of clauses together using the ``OR`` operator.
 
-    The ``|`` operator can be used as well.
+    The ``|`` operator is also overloaded on all [sqlalchemy.sql#_CompareMixin]
+    subclasses to produce the same result.
     """
 
     return _compound_clause('OR', *clauses)
@@ -297,35 +347,40 @@ def or_(*clauses):
 def not_(clause):
     """Return a negation of the given clause, i.e. ``NOT(clause)``.
 
-    The ``~`` operator can be used as well.
+    The ``~`` operator is also overloaded on all [sqlalchemy.sql#_CompareMixin]
+    subclasses to produce the same result.
     """
 
     return clause._negate()
 
 def between(ctest, cleft, cright):
-    """Return ``BETWEEN`` predicate clause.
+    """Return a ``BETWEEN`` predicate clause.
 
     Equivalent of SQL ``clausetest BETWEEN clauseleft AND clauseright``.
 
-    This is better called off a ``ColumnElement`` directly, i.e.::
-
-      column.between(value1, value2)
+    The ``between()`` method on all [sqlalchemy.sql#_CompareMixin] subclasses
+    provides similar functionality.
     """
 
     return _BooleanExpression(ctest, and_(_check_literal(cleft, ctest.type), _check_literal(cright, ctest.type)), 'BETWEEN')
-between_ = between
+
+def between_(*args, **kwargs):
+    """synonym for [sqlalchemy.sql#between()] (deprecated)."""
+    
+    return between(*args, **kwargs)
 
 def case(whens, value=None, else_=None):
-    """``SQL CASE`` statement.
+    """Produce a ``CASE`` statement.
 
-    whens
-      A sequence of pairs to be translated into "when / then" clauses.
+        whens
+          A sequence of pairs to be translated into "when / then" clauses.
 
-    value
-      Optional for simple case statements.
+        value
+          Optional for simple case statements.
 
-    else\_
-      Optional as well, for case defaults.
+        else\_
+          Optional as well, for case defaults.
+
     """
 
     whenlist = [_CompoundClause(None, 'WHEN', c, 'THEN', r) for (c,r) in whens]
@@ -341,11 +396,11 @@ def case(whens, value=None, else_=None):
     return cc
 
 def cast(clause, totype, **kwargs):
-    """Return ``CAST`` function.
+    """Return a ``CAST`` function.
 
     Equivalent of SQL ``CAST(clause AS totype)``.
 
-    Use with a ``sqlalchemy.types.TypeEngine`` object, i.e::
+    Use with a [sqlalchemy.types#TypeEngine] subclass, i.e::
 
       cast(table.c.unit_price * table.c.qty, Numeric(10,4))
 
@@ -357,34 +412,136 @@ def cast(clause, totype, **kwargs):
     return _Cast(clause, totype, **kwargs)
 
 def extract(field, expr):
-    """Return ``extract(field FROM expr)``."""
+    """Return the clause ``extract(field FROM expr)``."""
 
     expr = _BinaryClause(text(field), expr, "FROM")
     return func.extract(expr)
 
 def exists(*args, **kwargs):
+    """Return an ``EXISTS`` clause as applied to a [sqlalchemy.sql#Select] object.
+    
+    The resulting [sqlalchemy.sql#_Exists] object can be executed by itself
+    or used as a subquery within an enclosing select.
+    
+        \*args, \**kwargs
+          all arguments are sent directly to the [sqlalchemy.sql#select()] function
+          to produce a ``SELECT`` statement.
+          
+    """
+    
     return _Exists(*args, **kwargs)
 
-def union(*selects, **params):
-    return _compound_select('UNION', *selects, **params)
+def union(*selects, **kwargs):
+    """Return a ``UNION`` of multiple selectables.
+    
+    The returned object is an instance of [sqlalchemy.sql#CompoundSelect].
+    
+    A similar ``union()`` method is available on all [sqlalchemy.sql#FromClause]
+    subclasses.
+    
+      \*selects
+        a list of [sqlalchemy.sql#Select] instances.
 
-def union_all(*selects, **params):
-    return _compound_select('UNION ALL', *selects, **params)
+      \**kwargs
+         available keyword arguments are the same as those of [sqlalchemy.sql#select()].
+    
+    """
+    
+    return _compound_select('UNION', *selects, **kwargs)
 
-def except_(*selects, **params):
-    return _compound_select('EXCEPT', *selects, **params)
+def union_all(*selects, **kwargs):
+    """Return a ``UNION ALL`` of multiple selectables.
+    
+    The returned object is an instance of [sqlalchemy.sql#CompoundSelect].
+    
+    A similar ``union_all()`` method is available on all [sqlalchemy.sql#FromClause]
+    subclasses.
 
-def except_all(*selects, **params):
-    return _compound_select('EXCEPT ALL', *selects, **params)
+        \*selects
+          a list of [sqlalchemy.sql#Select] instances.
+        
+        \**kwargs
+          available keyword arguments are the same as those of [sqlalchemy.sql#select()].
+          
+    """
+    return _compound_select('UNION ALL', *selects, **kwargs)
 
-def intersect(*selects, **params):
-    return _compound_select('INTERSECT', *selects, **params)
+def except_(*selects, **kwargs):
+    """Return an ``EXCEPT`` of multiple selectables.
+    
+    The returned object is an instance of [sqlalchemy.sql#CompoundSelect].
 
-def intersect_all(*selects, **params):
-    return _compound_select('INTERSECT ALL', *selects, **params)
+        \*selects
+          a list of [sqlalchemy.sql#Select] instances.
+        
+        \**kwargs
+          available keyword arguments are the same as those of [sqlalchemy.sql#select()].
+          
+    """
+    return _compound_select('EXCEPT', *selects, **kwargs)
 
-def alias(*args, **params):
-    return Alias(*args, **params)
+def except_all(*selects, **kwargs):
+    """Return an ``EXCEPT ALL`` of multiple selectables.
+    
+    The returned object is an instance of [sqlalchemy.sql#CompoundSelect].
+
+        \*selects
+          a list of [sqlalchemy.sql#Select] instances.
+        
+        \**kwargs
+          available keyword arguments are the same as those of [sqlalchemy.sql#select()].
+          
+    """
+    return _compound_select('EXCEPT ALL', *selects, **kwargs)
+
+def intersect(*selects, **kwargs):
+    """Return an ``INTERSECT`` of multiple selectables.
+    
+    The returned object is an instance of [sqlalchemy.sql#CompoundSelect].
+
+        \*selects
+          a list of [sqlalchemy.sql#Select] instances.
+        
+        \**kwargs
+          available keyword arguments are the same as those of [sqlalchemy.sql#select()].
+          
+    """
+    return _compound_select('INTERSECT', *selects, **kwargs)
+
+def intersect_all(*selects, **kwargs):
+    """Return an ``INTERSECT ALL`` of multiple selectables.
+    
+    The returned object is an instance of [sqlalchemy.sql#CompoundSelect].
+
+        \*selects
+          a list of [sqlalchemy.sql#Select] instances.
+        
+        \**kwargs
+          available keyword arguments are the same as those of [sqlalchemy.sql#select()].
+          
+    """
+    return _compound_select('INTERSECT ALL', *selects, **kwargs)
+
+def alias(selectable, alias=None):
+    """Return an [sqlalchemy.sql#Alias] object.
+    
+    An ``Alias`` represents any [sqlalchemy.sql#FromClause] with
+    an alternate name assigned within SQL, typically using the ``AS``
+    clause when generated, e.g. ``SELECT * FROM table AS aliasname``.
+    
+    Similar functionality is available via the ``alias()`` method 
+    available on all ``FromClause`` subclasses.
+    
+      selectable
+        any ``FromClause`` subclass, such as a table, select statement, etc..
+        
+      alias
+        string name to be assigned as the alias.  If ``None``, a random
+        name will be generated.
+        
+    """
+        
+    return Alias(selectable, alias=alias)
 
 def _check_literal(value, type):
     if _is_literal(value):
@@ -395,48 +552,96 @@ def _check_literal(value, type):
 def literal(value, type=None):
     """Return a literal clause, bound to a bind parameter.
 
-    Literal clauses are created automatically when used as the
-    right-hand side of a boolean or math operation against a column
-    object.  Use this function when a literal is needed on the
-    left-hand side (and optionally on the right as well).
+    Literal clauses are created automatically when non-
+    ``ClauseElement`` objects (such as strings, ints, dates, etc.) are used in 
+    a comparison operation with a [sqlalchemy.sql.#_CompareMixin]
+    subclass, such as a ``Column`` object.  Use this function
+    to force the generation of a literal clause, which will 
+    be created as a [sqlalchemy.sql#_BindParamClause] with a bound
+    value.
+    
+      value
+        the value to be bound.  can be any Python object supported by
+        the underlying DBAPI, or is translatable via the given type
+        argument.
+    
+      type
+        an optional [sqlalchemy.types#TypeEngine] which will provide
+        bind-parameter translation for this literal.
 
-    The optional type parameter is a ``sqlalchemy.types.TypeEngine``
-    object which indicates bind-parameter and result-set translation
-    for this literal.
     """
 
     return _BindParamClause('literal', value, type=type, unique=True)
 
 def label(name, obj):
-    """Return a ``_Label`` object for the given selectable, used in
-    the column list for a select statement.
+    """Return a [sqlalchemy.sql#_Label] object for the given [sqlalchemy.sql#ColumnElement].
+    
+    A label changes the name of an element in the columns clause 
+    of a ``SELECT`` statement, typically via the ``AS`` SQL keyword.
+    
+    This functionality is more conveniently available via 
+    the ``label()`` method on ``ColumnElement``.
+    
+      name
+        label name
+        
+      obj
+        a ``ColumnElement``.
+        
     """
 
     return _Label(name, obj)
 
 def column(text, type=None):
-    """Return a textual column clause, relative to a table.
+    """Return a textual column clause, as would be in the columns 
+    clause of a ``SELECT`` statement.
     
-    The object returned is an instance of ``sqlalchemy.sql._ColumnClause``.
-
-    This is also the primitive version of a ``schema.Column`` which is
-    a subclass.
+    The object returned is an instance of [sqlalchemy.sql#_ColumnClause],
+    which represents the "syntactical" portion of the schema-level
+    [sqlalchemy.schema#Column] object.
+    
+      text
+        the name of the column.  Quoting rules will be applied to 
+        the clause like any other column name.  For textual column
+        constructs that are not to be quoted, use the [sqlalchemy.sql#literal_column()]
+        function.
+        
+      type
+        an optional [sqlalchemy.types#TypeEngine] object which will provide
+        result-set translation for this column.
+        
     """
 
     return _ColumnClause(text, type=type)
 
-def literal_column(text, table=None, type=None, **kwargs):
-    """Return a textual column clause with the `literal` flag set.
-
-    This column will not be quoted.
+def literal_column(text, type=None):
+    """Return a textual column clause, as would be in the columns
+    clause of a ``SELECT`` statement.
+  
+    The object returned is an instance of [sqlalchemy.sql#_ColumnClause],
+    which represents the "syntactical" portion of the schema-level
+    [sqlalchemy.schema#Column] object.
+    
+  
+      text
+        the name of the column.  Quoting rules will not be applied 
+        to the column.   For textual column
+        constructs that should be quoted like any other column 
+        construct, use the [sqlalchemy.sql#column()]
+        function.
+      
+      type
+        an optional [sqlalchemy.types#TypeEngine] object which will provide
+        result-set translation for this column.
+      
     """
 
-    return _ColumnClause(text, table, type, is_literal=True, **kwargs)
+    return _ColumnClause(text, type=type, is_literal=True)
 
 def table(name, *columns):
-    """Return a table clause.
+    """Return a [sqlalchemy.sql#Table] object.
 
-    This is a primitive version of the ``schema.Table`` object, which
+    This is a primitive version of the [sqlalchemy.schema#Table] object, which
     is a subclass of this object.
     """
 
@@ -445,21 +650,21 @@ def table(name, *columns):
 def bindparam(key, value=None, type=None, shortname=None, unique=False):
     """Create a bind parameter clause with the given key.
 
-     value
-       a default value for this bind parameter.  a bindparam with a value
-       is called a ``value-based bindparam``.
-     
-     shortname
-       an ``alias`` for this bind parameter.  usually used to alias the ``key`` and 
-       ``label`` of a column, i.e. ``somecolname`` and ``sometable_somecolname``
-       
-     type
-       a sqlalchemy.types.TypeEngine object indicating the type of this bind param, will
-       invoke type-specific bind parameter processing
-     
-     unique
-       if True, bind params sharing the same name will have their underlying ``key`` modified
-       to a uniquely generated name.  mostly useful with value-based bind params.
+        value
+         a default value for this bind parameter.  a bindparam with a value
+         is called a ``value-based bindparam``.
+
+        shortname
+         an ``alias`` for this bind parameter.  usually used to alias the ``key`` and 
+         ``label`` of a column, i.e. ``somecolname`` and ``sometable_somecolname``
+
+        type
+         a sqlalchemy.types.TypeEngine object indicating the type of this bind param, will
+         invoke type-specific bind parameter processing
+
+        unique
+         if True, bind params sharing the same name will have their underlying ``key`` modified
+         to a uniquely generated name.  mostly useful with value-based bind params.
        
     """
 
@@ -478,29 +683,28 @@ def text(text, engine=None, *args, **kwargs):
     outside of other ``ClauseElement`` objects, or optionally wherever
     plain text is to be used.
 
-    Arguments include:
+      text
+        The text of the SQL statement to be created.  use ``:<param>``
+        to specify bind parameters; they will be compiled to their
+        engine-specific format.
 
-    text
-      The text of the SQL statement to be created.  use ``:<param>``
-      to specify bind parameters; they will be compiled to their
-      engine-specific format.
+      engine
+        An optional engine to be used for this text query.
 
-    engine
-      An optional engine to be used for this text query.
+      bindparams
+        A list of ``bindparam()`` instances which can be used to define
+        the types and/or initial values for the bind parameters within
+        the textual statement; the keynames of the bindparams must match
+        those within the text of the statement.  The types will be used
+        for pre-processing on bind values.
 
-    bindparams
-      A list of ``bindparam()`` instances which can be used to define
-      the types and/or initial values for the bind parameters within
-      the textual statement; the keynames of the bindparams must match
-      those within the text of the statement.  The types will be used
-      for pre-processing on bind values.
+      typemap
+        A dictionary mapping the names of columns represented in the
+        ``SELECT`` clause of the textual statement to type objects,
+        which will be used to perform post-processing on columns within
+        the result set (for textual statements that produce result
+        sets).
 
-    typemap
-      A dictionary mapping the names of columns represented in the
-      ``SELECT`` clause of the textual statement to type objects,
-      which will be used to perform post-processing on columns within
-      the result set (for textual statements that produce result
-      sets).
     """
 
     return _TextClause(text, engine=engine, *args, **kwargs)
@@ -2178,26 +2382,26 @@ class _ColumnClause(ColumnElement):
     created publically via the ``column()`` function or the 
     ``column_literal()`` function.
     
-    text
-      the text of the element.
+      text
+        the text of the element.
         
-    selectable
-      parent selectable.
+      selectable
+        parent selectable.
       
-    type
-      ``TypeEngine`` object which can associate this ``_ColumnClause`` 
-      with a type.
+      type
+        ``TypeEngine`` object which can associate this ``_ColumnClause`` 
+        with a type.
       
-    case_sensitive
-      defines whether identifier quoting rules will be applied to the
-      generated text of this ``_ColumnClause`` so that it is identified in
-      a case-sensitive manner.
+      case_sensitive
+        defines whether identifier quoting rules will be applied to the
+        generated text of this ``_ColumnClause`` so that it is identified in
+        a case-sensitive manner.
       
-    is_literal
-      if True, the ``_ColumnClause`` is assumed to be an exact expression
-      that will be delivered to the output with no quoting rules applied
-      regardless of case sensitive settings.  the ``column_literal()`` function is
-      usually used to create such a ``_ColumnClause``.
+      is_literal
+        if True, the ``_ColumnClause`` is assumed to be an exact expression
+        that will be delivered to the output with no quoting rules applied
+        regardless of case sensitive settings.  the ``column_literal()`` function is
+        usually used to create such a ``_ColumnClause``.
     
     """
 
@@ -2463,6 +2667,7 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
 class Select(_SelectBaseMixin, FromClause):
     """Represent a ``SELECT`` statement, with appendable clauses, as
     well as the ability to execute itself and return a result set.
+    
     """
 
     def __init__(self, columns=None, whereclause=None, from_obj=[],
@@ -2472,7 +2677,8 @@ class Select(_SelectBaseMixin, FromClause):
                  correlate=True):
         """construct a Select object.
         
-        See the ``select()`` module-level function for argument descriptions.
+        The public constructor for Select is the [sqlalchemy.sql#select()] function; 
+        see that function for argument descriptions.
         """
         _SelectBaseMixin.__init__(self)
         self.__froms = util.OrderedSet()
