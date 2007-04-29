@@ -375,6 +375,32 @@ class QueryTest(PersistTest):
             r.close()
         finally:
             shadowed.drop(checkfirst=True)
+    
+    @testbase.supported('mssql')
+    def test_fetchid_trigger(self):
+        meta = BoundMetaData(testbase.db)
+        t1 = Table('t1', meta,
+                Column('id', Integer, Sequence('fred', 100, 1), primary_key=True),
+                Column('descr', String(200)))
+        t2 = Table('t2', meta,
+                Column('id', Integer, Sequence('fred', 200, 1), primary_key=True),
+                Column('descr', String(200)))
+        meta.create_all()
+        con = testbase.db.connect()
+        con.execute("""create trigger paj on t1 for insert as
+            insert into t2 (descr) select descr from inserted""")
+
+        try:
+            tr = con.begin()
+            r = con.execute(t2.insert(), descr='hello')
+            self.assert_(r.last_inserted_ids() == [200])
+            r = con.execute(t1.insert(), descr='hello')
+            self.assert_(r.last_inserted_ids() == [100])
+
+        finally:
+            tr.commit()
+            con.execute("""drop trigger paj""")
+            meta.drop_all()
 
 
 class CompoundTest(PersistTest):

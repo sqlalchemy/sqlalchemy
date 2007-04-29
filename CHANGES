@@ -121,6 +121,17 @@
       objects can be associated with a single association collection. 
     - assign_mapper names methods according to their keys (i.e. __name__)
       #551
+- mssql
+    - pyodbc is now the preferred DB-API for MSSQL, and if no module is 
+      specifically requested, will be loaded first on a module probe.
+
+    - The @@SCOPE_IDENTITY is now used instead of @@IDENTITY. This 
+      behavior may be overridden with the engine_connect
+      "use_scope_identity" keyword parameter, which may also be specified 
+      in the dburi.
+
+
+     
 0.3.6
 - sql:
     - bindparam() names are now repeatable!  specify two
