@@ -132,7 +132,7 @@ To bind `MetaData` to a single `Engine`, use `BoundMetaData`:
     # create the Engine and MetaData in one step
     meta = BoundMetaData('postgres://db/', **kwargs)
     
-Another form of `MetaData` exists which allows connecting to any number of engines, within the context of the current thread.  This is `DynamicMetaData`:
+Another form of `MetaData` exists which can connect to an engine within the context of the current thread only, allowing different engines to be connected within other concurrent threads.  This is `DynamicMetaData`:
 
     {python}
     meta = DynamicMetaData()
@@ -141,7 +141,7 @@ Another form of `MetaData` exists which allows connecting to any number of engin
     
     meta.connect('mysql://user@host/dsn')   # create a new Engine and connect
 
-`DynamicMetaData` is ideal for applications that need to use the same set of `Tables` for many different database connections in the same process, such as a CherryPy web application which handles multiple application instances in one process.
+`DynamicMetaData` is intended for applications that need to use the same set of `Tables` for many different database connections in the same process, such as a CherryPy web application which handles multiple application instances in one process.
 
 #### Using the global Metadata object
 
