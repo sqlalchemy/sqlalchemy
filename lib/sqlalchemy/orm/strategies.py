@@ -20,17 +20,13 @@ class ColumnLoader(LoaderStrategy):
         self.columns = self.parent_property.columns
         self._should_log_debug = logging.is_debug_enabled(self.logger)
         
-    def setup_query(self, context, eagertable=None, **kwargs):
+    def setup_query(self, context, eagertable=None, parentclauses=None, **kwargs):
         for c in self.columns:
-            if eagertable is not None:
-                conv = eagertable.corresponding_column(c, raiseerr=False)
-                if conv:
-                    context.statement.append_column(conv)
-                else:
-                    context.statement.append_column(c)
+            if parentclauses is not None:
+                context.statement.append_column(parentclauses.aliased_column(c))
             else:
                 context.statement.append_column(c)
-
+        
     def init_class_attribute(self):
         self.logger.info("register managed attribute %s on class %s" % (self.key, self.parent.class_.__name__))
         coltype = self.columns[0].type
@@ -366,6 +362,7 @@ class EagerLoader(AbstractRelationLoader):
             self.parent = eagerloader
             self.target = eagerloader.select_table
             self.eagertarget = eagerloader.select_table.alias(self._aliashash("/target"))
+            self.extra_cols = {}
             
             if eagerloader.secondary:
                 self.eagersecondary = eagerloader.secondary.alias(self._aliashash("/secondary"))
@@ -392,6 +389,25 @@ class EagerLoader(AbstractRelationLoader):
 
             self._row_decorator = self._create_decorator_row()
         
+        def aliased_column(self, column):
+            """return the aliased version of the given column, creating a new label for it if not already
+            present in this AliasedClauses eagertable."""
+
+            conv = self.eagertarget.corresponding_column(column, raiseerr=False)
+            if conv:
+                return conv
+
+            if column in self.extra_cols:
+                return self.extra_cols[column]
+            
+            aliased_column = column.copy_container()
+            sql_util.ClauseAdapter(self.eagertarget).traverse(aliased_column)
+            alias = self._aliashash(column.name)
+            aliased_column = aliased_column.label(alias)
+            self._row_decorator.map[column] = alias
+            self.extra_cols[column] = aliased_column
+            return aliased_column
+            
         def _aliashash(self, extra):
             """return a deterministic 4 digit hash value for this AliasedClause's id + extra."""
             # use the first 4 digits of an MD5 hash
@@ -423,6 +439,7 @@ class EagerLoader(AbstractRelationLoader):
                 map[parent] = c
                 map[parent._label] = c
                 map[parent.name] = c
+            EagerRowAdapter.map = map
             return EagerRowAdapter
 
         def _decorate_row(self, row):

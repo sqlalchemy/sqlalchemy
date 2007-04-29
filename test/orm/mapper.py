@@ -455,10 +455,6 @@ class MapperTest(MapperSuperTest):
             assert str(e) == "Column '%s' is not represented in mapper's table.  Use the `column_property()` function to force this column to be mapped as a read-only attribute." % str(f)
             clear_mappers()
         
-        mapper(Address, addresses, properties={
-            'user':relation(User, lazy=False)
-        })    
-        
         mapper(User, users, properties={
             'concat': column_property(f),
             'count': column_property(select([func.count(addresses.c.address_id)], users.c.user_id==addresses.c.user_id, scalar=True).label('count'))
@@ -473,12 +469,22 @@ class MapperTest(MapperSuperTest):
         
         ### eager loads, not really working across all DBs, no column aliasing in place so
         # results still wont be good for larger situations
-        #l = sess.query(Address).select()
-        l = sess.query(Address).options(lazyload('user')).select()
-        for a in l:
-            print "User", a.user.user_id, a.user.user_name, a.user.concat, a.user.count
-        assert l[0].user.concat == l[0].user.user_id * 2 == 14
-        assert l[1].user.concat == l[1].user.user_id * 2 == 16
+        clear_mappers()
+        mapper(Address, addresses, properties={
+            'user':relation(User, lazy=False)
+        })    
+        
+        mapper(User, users, properties={
+            'concat': column_property(f),
+        })
+
+        for x in range(0, 2):
+            sess.clear()
+            l = sess.query(Address).select()
+            for a in l:
+                print "User", a.user.user_id, a.user.user_name, a.user.concat
+            assert l[0].user.concat == l[0].user.user_id * 2 == 14
+            assert l[1].user.concat == l[1].user.user_id * 2 == 16
             
         
     @testbase.unsupported('firebird') 
