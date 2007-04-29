@@ -129,7 +129,7 @@ h3 {
 }
 
 .darkcell {
-    font-family: courier, "courier new", serif;
+    /*font-family: courier, "courier new", serif;*/
 	margin:0px 0px 10px 0px;
 	padding:4px 4px 4px 4px;
 	background-color: #f0f0f0;	
