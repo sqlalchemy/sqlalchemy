@@ -344,7 +344,7 @@ class Query(object):
         if self.table not in alltables:
             from_obj.append(self.table)
         if self._nestable(**kwargs):
-            s = sql.select([self.table], whereclause, **kwargs).alias('getcount').count()
+            s = sql.select([self.table], whereclause, from_obj=from_obj, **kwargs).alias('getcount').count()
         else:
             primary_key = self.primary_key_columns
             s = sql.select([sql.func.count(list(primary_key)[0])], whereclause, from_obj=from_obj, **kwargs)

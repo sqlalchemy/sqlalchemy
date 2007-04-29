@@ -89,6 +89,8 @@
     - added generative versions of aggregates, i.e. sum(), avg(), etc.
       to query. used via query.apply_max(), apply_sum(), etc. 
       #552
+    - fix to using distinct() or distinct=True in combination with 
+      join() and similar
     - corresponding to label/bindparam name generataion, eager loaders 
       generate deterministic names for the aliases they create using 
       md5 hashes.

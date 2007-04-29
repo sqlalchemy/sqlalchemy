@@ -459,7 +459,7 @@ class MapperTest(MapperSuperTest):
         
     @testbase.unsupported('firebird') 
     def testcount(self):
-        """test the count function on Query
+        """test the count function on Query.
         
         (why doesnt this work on firebird?)"""
         mapper(User, users)
@@ -467,7 +467,13 @@ class MapperTest(MapperSuperTest):
         self.assert_(q.count()==3)
         self.assert_(q.count(users.c.user_id.in_(8,9))==2)
         self.assert_(q.count_by(user_name='fred')==1)
-            
+
+    def testmanytomany_count(self):
+        mapper(Item, orderitems, properties = dict(
+                keywords = relation(mapper(Keyword, keywords), itemkeywords, lazy = True),
+            ))
+        q = create_session().query(Item)
+        assert q.join('keywords').distinct().count(Keyword.c.name=="red") == 2
 
     def testoverride(self):
         # assert that overriding a column raises an error
@@ -1098,7 +1104,9 @@ class LazyTest(MapperSuperTest):
             {'item_id' : 1, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 4}, {'keyword_id' : 6}])},
             {'item_id' : 2, 'keywords' : (Keyword, [{'keyword_id' : 2}, {'keyword_id' : 5}, {'keyword_id' : 7}])},
         )
+    
 
+        
 class EagerTest(MapperSuperTest):
     def testbasic(self):
         """tests a basic one-to-many eager load"""
