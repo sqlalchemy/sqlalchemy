@@ -676,11 +676,12 @@ class Engine(Connectable):
         self.echo = echo
         self.logger = logging.instance_logger(self)
 
-    name = property(lambda s:sys.modules[s.dialect.__module__].descriptor()['name'])
+    name = property(lambda s:sys.modules[s.dialect.__module__].descriptor()['name'], doc="String name of the [sqlalchemy.engine#Dialect] in use by this ``Engine``.")
     engine = property(lambda s:s)
-    dialect = property(lambda s:s._dialect)
+    dialect = property(lambda s:s._dialect, doc="the [sqlalchemy.engine#Dialect] in use by this engine.")
     echo = logging.echo_property()
-
+    url = property(lambda s:s.connection_provider.url, doc="The [sqlalchemy.engine.url#URL] object representing this ``Engine`` object's datasource.")
+    
     def dispose(self):
         self.connection_provider.dispose()
 

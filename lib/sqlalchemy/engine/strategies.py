@@ -92,7 +92,7 @@ class DefaultEngineStrategy(EngineStrategy):
             else:
                 pool = pool
 
-        provider = self.get_pool_provider(pool)
+        provider = self.get_pool_provider(u, pool)
 
         # create engine.
         engineclass = self.get_engine_cls()
@@ -110,7 +110,7 @@ class DefaultEngineStrategy(EngineStrategy):
     def pool_threadlocal(self):
         raise NotImplementedError()
 
-    def get_pool_provider(self, pool):
+    def get_pool_provider(self, url, pool):
         raise NotImplementedError()
 
     def get_engine_cls(self):
@@ -123,8 +123,8 @@ class PlainEngineStrategy(DefaultEngineStrategy):
     def pool_threadlocal(self):
         return False
 
-    def get_pool_provider(self, pool):
-        return default.PoolConnectionProvider(pool)
+    def get_pool_provider(self, url, pool):
+        return default.PoolConnectionProvider(url, pool)
 
     def get_engine_cls(self):
         return base.Engine
@@ -138,8 +138,8 @@ class ThreadLocalEngineStrategy(DefaultEngineStrategy):
     def pool_threadlocal(self):
         return True
 
-    def get_pool_provider(self, pool):
-        return threadlocal.TLocalConnectionProvider(pool)
+    def get_pool_provider(self, url, pool):
+        return threadlocal.TLocalConnectionProvider(url, pool)
 
     def get_engine_cls(self):
         return threadlocal.TLEngine

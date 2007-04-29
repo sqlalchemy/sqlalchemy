@@ -20,6 +20,8 @@
       entry points. loading the built-in database dialects works the
       same as always, but if none found will fall back to trying
       pkg_resources to load an external module [ticket:521]
+    - Engine contains a "url" attribute referencing the url.URL object
+      used by create_engine().
 - sql:
     - keys() of result set columns are not lowercased, come back
       exactly as they're expressed in cursor.description.  note this

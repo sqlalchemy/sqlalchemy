@@ -12,7 +12,8 @@ from sqlalchemy.engine import base
 """Provide default implementations of the engine interfaces"""
 
 class PoolConnectionProvider(base.ConnectionProvider):
-    def __init__(self, pool):
+    def __init__(self, url, pool):
+        self.url = url
         self._pool = pool
 
     def get_connection(self):

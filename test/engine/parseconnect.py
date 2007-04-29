@@ -125,7 +125,17 @@ class CreateEngineTest(PersistTest):
             assert False
         except exceptions.DBAPIError:
             assert True
-            
+    
+    def testurlattr(self):
+        """test the url attribute on ``Engine``."""
+        
+        e = create_engine('mysql://scott:tiger@localhost/test', module=MockDBAPI())
+        u = url.make_url('mysql://scott:tiger@localhost/test')
+        e2 = create_engine(u, module=MockDBAPI())
+        assert e.url.drivername == e2.url.drivername == 'mysql'
+        assert e.url.username == e2.url.username == 'scott'
+        assert e2.url is u
+        
     def testpoolargs(self):
         """test that connection pool args make it thru"""
         e = create_engine('postgres://', creator=None, pool_recycle=-1, echo_pool=None, auto_close_cursors=False, disallow_open_cursors=True, module=MockDBAPI())
