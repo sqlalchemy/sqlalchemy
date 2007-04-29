@@ -55,7 +55,7 @@ class ObjectDoc(AbstractDoc):
                     and 
                     (getattr(obj, x).__name__ == '__init__' or not getattr(obj,x).__name__[0] == '_')
                     ] + 
-                    [(x, getattr(obj, x)) for x in obj.__dict__.keys() if isinstance(getattr(obj,x), property) 
+                    [(x, getattr(obj, x)) for x in obj.__dict__.keys() if _is_property(getattr(obj,x)) 
                     and 
                     not x[0] == '_'
                     ]
@@ -111,6 +111,9 @@ class ObjectDoc(AbstractDoc):
     def accept_visitor(self, visitor):
         visitor.visit_object(self)
 
+def _is_property(elem):
+    return isinstance(elem, property) or (hasattr(elem, '__get__') and hasattr(elem, '__set__'))
+    
 class FunctionDoc(AbstractDoc):
     def __init__(self, func):
         super(FunctionDoc, self).__init__(func)

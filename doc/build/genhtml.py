@@ -8,10 +8,11 @@ import gen_docstrings, read_markdown, toc
 from mako.lookup import TemplateLookup
 from mako import exceptions, runtime
 import time
+import optparse
 
 files = [
     'index',
-    'documentation',
+#    'documentation',
     'tutorial',
     'dbengine',
     'metadata',
@@ -25,10 +26,14 @@ files = [
     'docstrings'
     ]
 
-argfile = len(sys.argv) > 1 and sys.argv[1]
-if argfile:
-    files = [argfile]
-    
+parser = optparse.OptionParser(usage = "usage: %prog [options] [tests...]")
+parser.add_option("--file", action="store", dest="file", help="only generate file <file>")
+parser.add_option("--docstrings", action="store_true", dest="docstrings", help="only generate docstrings")
+
+(options, args) = parser.parse_args()
+if options.file:
+    files = [file]
+
 title='SQLAlchemy 0.3 Documentation'
 version = '0.3.6'
 
@@ -38,9 +43,10 @@ shutil.copy('./content/index.html', './output/index.html')
 shutil.copy('./content/docstrings.html', './output/docstrings.html')
 shutil.copy('./content/documentation.html', './output/documentation.html')
 
-read_markdown.parse_markdown_files(root, files)
+if not options.docstrings:
+    read_markdown.parse_markdown_files(root, files)
 
-if not argfile:
+if not options.file or options.docstrings:
     docstrings = gen_docstrings.make_all_docs()
     doc_files = gen_docstrings.create_docstring_toc(docstrings, root)
 
@@ -60,13 +66,14 @@ def genfile(name, outname):
     t = lookup.get_template(infile)
     outfile.write(t.render(attributes={}))
 
-for filename in files:
-    try:
-        genfile(filename, os.path.join(os.getcwd(), '../', filename + ".html"))
-    except:
-        print exceptions.text_error_template().render()
+if not options.docstrings:
+    for filename in files:
+        try:
+            genfile(filename, os.path.join(os.getcwd(), '../', filename + ".html"))
+        except:
+            print exceptions.text_error_template().render()
 
-if not argfile:
+if not options.file or options.docstrings:
     for filename in doc_files:
         try:
             genfile(filename, os.path.join(os.getcwd(), '../', os.path.basename(filename) + ".html"))

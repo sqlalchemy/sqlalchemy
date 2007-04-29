@@ -83,7 +83,7 @@ def formatdocstring(content):
                 % if isinstance(func, docstring.FunctionDoc):
                     ${function_doc(func=func, toc=toc, extension=extension, paged=paged)}
                 % elif isinstance(func, docstring.PropertyDoc):
-                    ${property_doc(prop=func)}
+                    ${property_doc(prop=func, toc=toc, extension=extension, paged=paged)}
                 % endif
             % endfor
         % endif
@@ -113,12 +113,12 @@ def formatdocstring(content):
     </div>
 </%def>
 
-<%def name="property_doc(prop)">
+<%def name="property_doc(prop, toc, extension, paged)">
          <div class="darkcell">
          <A name=""></a>
          <b>${prop.name} = property()</b>
          <div class="docstring">
-         ${prop.doc or '' | formatdocstring}
+         ${prop.doc or '' | formatdocstring, inline_links(toc, extension, paged)}
          </div> 
          </div>
 </%def>

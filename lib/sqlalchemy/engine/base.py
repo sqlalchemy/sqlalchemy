@@ -399,11 +399,8 @@ class Connectable(sql.Executor):
     def execute(self, object, *multiparams, **params):
         raise NotImplementedError()
 
-    def _not_impl(self):
-        raise NotImplementedError()
-
-    engine = property(_not_impl, doc="The Engine which this Connectable is associated with.")
-    dialect = property(_not_impl, doc="Dialect which this Connectable is associated with.")
+    engine = util.NotImplProperty("The Engine which this Connectable is associated with.")
+    dialect = util.NotImplProperty("Dialect which this Connectable is associated with.")
 
 class Connection(Connectable):
     """Represent a single DBAPI connection returned from the underlying connection pool.

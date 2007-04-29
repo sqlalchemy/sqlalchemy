@@ -1342,7 +1342,17 @@ class _CompareMixin(object):
         return obj.type
 
 class Selectable(ClauseElement):
-    """Represent a column list-holding object."""
+    """Represent a column list-holding object.
+    
+    this is the common base class of [sqlalchemy.sql#ColumnElement]
+    and [sqlalchemy.sql#FromClause].  The reason ``ColumnElement``
+    is marked as a "list-holding" object is so that it can be treated
+    similarly to ``FromClause`` in column-selection scenarios; it 
+    contains a list of columns consisting of itself.
+    
+    """
+
+    columns = util.NotImplProperty("""a [sqlalchemy.sql#ColumnCollection] containing ``ColumnElement`` instances.""")
 
     def _selectable(self):
         return self
@@ -2792,7 +2802,7 @@ class Select(_SelectBaseMixin, FromClause):
 
     def append_column(self, column):
         if _is_literal(column):
-            column = literal_column(str(column), table=self)
+            column = literal_column(str(column))
 
         self._raw_columns.append(column)
 

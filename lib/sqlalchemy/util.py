@@ -127,6 +127,24 @@ class SimpleProperty(object):
         else:
             return getattr(obj, self.key)
 
+class NotImplProperty(object):
+  """a property that raises ``NotImplementedError``."""
+  
+  def __init__(self, doc):
+      self.__doc__ = doc
+      
+  def __set__(self, obj, value):
+      raise NotImplementedError()
+
+  def __delete__(self, obj):
+      raise NotImplementedError()
+
+  def __get__(self, obj, owner):
+      if obj is None:
+          return self
+      else:
+          raise NotImplementedError()
+  
 class OrderedProperties(object):
     """An object that maintains the order in which attributes are set upon it.
 
