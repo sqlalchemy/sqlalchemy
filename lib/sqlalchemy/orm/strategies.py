@@ -23,7 +23,11 @@ class ColumnLoader(LoaderStrategy):
     def setup_query(self, context, eagertable=None, **kwargs):
         for c in self.columns:
             if eagertable is not None:
-                context.statement.append_column(eagertable.corresponding_column(c))
+                conv = eagertable.corresponding_column(c, raiseerr=False)
+                if conv:
+                    context.statement.append_column(conv)
+                else:
+                    context.statement.append_column(c)
             else:
                 context.statement.append_column(c)
 

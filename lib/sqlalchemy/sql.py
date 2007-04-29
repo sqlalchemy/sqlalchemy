@@ -1617,7 +1617,7 @@ class FromClause(Selectable):
             if not raiseerr:
                 return None
             else:
-                raise exceptions.InvalidRequestError("Given column '%s', attached to table '%s', failed to locate a corresponding column from table '%s'" % (str(column), str(column.table), self.name))
+                raise exceptions.InvalidRequestError("Given column '%s', attached to table '%s', failed to locate a corresponding column from table '%s'" % (str(column), str(getattr(column, 'table', None)), self.name))
 
     def _get_exported_attribute(self, name):
         try:

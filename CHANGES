@@ -94,12 +94,17 @@
       #552
     - fix to using distinct() or distinct=True in combination with 
       join() and similar
-    - corresponding to label/bindparam name generataion, eager loaders 
+    - corresponding to label/bindparam name generation, eager loaders 
       generate deterministic names for the aliases they create using 
       md5 hashes.
     - improved/fixed custom collection classes when giving it "set"/
       "sets.Set" classes or subclasses (was still looking for append()
       methods on them during lazy loads)
+    - restored old "column_property()" ORM function (used to be called
+      "column()") to force any column expression to be added as a property
+      on a mapper, particularly those that aren't present in the mapped
+      selectable.  this allows "scalar expressions" of any kind to be
+      added as relations (though they have issues with eager loads).
     - fix to many-to-many relationships targeting polymorphic mappers
       [ticket:533]
     - making progress with session.merge() as well as combining its

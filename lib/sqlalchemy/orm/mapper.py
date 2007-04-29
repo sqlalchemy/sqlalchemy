@@ -792,33 +792,24 @@ class Mapper(object):
             self._compile_all()
             self._compile_property(key, prop, init=True)
 
-    def _create_prop_from_column(self, column, skipmissing=False):
-        if sql.is_column(column):
-            try:
-                column = self.mapped_table.corresponding_column(column)
-            except KeyError:
-                if skipmissing:
-                    return
-                raise exceptions.ArgumentError("Column '%s' is not represented in mapper's table" % prop._label)
-            return ColumnProperty(column)
-        elif isinstance(column, list) and sql.is_column(column[0]):
-            try:
-                column = [self.mapped_table.corresponding_column(c) for c in column]
-            except KeyError, e:
-                # TODO: want to take the columns we have from this
-                if skipmissing:
-                    return
-                raise exceptions.ArgumentError("Column '%s' is not represented in mapper's table" % e.args[0])
-            return ColumnProperty(*column)
-        else:
+    def _create_prop_from_column(self, column):
+        column = util.to_list(column)
+        if not sql.is_column(column[0]):
             return None
+        mapped_column = []
+        for c in column:
+            mc = self.mapped_table.corresponding_column(c, raiseerr=False)
+            if not mc:
+                raise exceptions.ArgumentError("Column '%s' is not represented in mapper's table.  Use the `column_property()` function to force this column to be mapped as a read-only attribute." % str(c))
+            mapped_column.append(mc)
+        return ColumnProperty(*mapped_column)
 
     def _adapt_inherited_property(self, key, prop):
         if not self.concrete:
             self._compile_property(key, prop, init=False, setparent=False)
         # TODO: concrete properties dont adapt at all right now....will require copies of relations() etc.
 
-    def _compile_property(self, key, prop, init=True, skipmissing=False, setparent=True):
+    def _compile_property(self, key, prop, init=True, setparent=True):
         """Add a ``MapperProperty`` to this or another ``Mapper``,
         including configuration of the property.
 
@@ -833,7 +824,7 @@ class Mapper(object):
         self.__log("_compile_property(%s, %s)" % (key, prop.__class__.__name__))
 
         if not isinstance(prop, MapperProperty):
-            col = self._create_prop_from_column(prop, skipmissing=skipmissing)
+            col = self._create_prop_from_column(prop)
             if col is None:
                 raise exceptions.ArgumentError("%s=%r is not an instance of MapperProperty or Column" % (key, prop))
             prop = col

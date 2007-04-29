@@ -19,7 +19,7 @@ from sqlalchemy.orm import properties, strategies, interfaces
 from sqlalchemy.orm.session import Session as create_session
 from sqlalchemy.orm.session import object_session, attribute_manager
 
-__all__ = ['relation', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer', 'extension',
+__all__ = ['relation', 'column_property', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer', 'extension',
         'mapper', 'clear_mappers', 'compile_mappers', 'clear_mapper', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query',
         'cascade_mappers', 'polymorphic_union', 'create_session', 'synonym', 'contains_alias', 'contains_eager', 'EXT_PASS', 'object_session'
         ]
@@ -34,6 +34,33 @@ def relation(*args, **kwargs):
         raise exceptions.ArgumentError("relation(class, table, **kwargs) is deprecated.  Please use relation(class, **kwargs) or relation(mapper, **kwargs).")
     return _relation_loader(*args, **kwargs)
 
+def column_property(*args, **kwargs):
+    """Provide a column-level property for use with a Mapper.
+    
+    Normally, custom column-level properties that represent columns
+    directly or indirectly present within the mapped selectable 
+    can just be added to the ``properties`` dictionary directly,
+    in which case this function's usage is not necessary.
+      
+    In the case of a ``ColumnElement`` directly present within the
+    ``properties`` dictionary, the given column is converted to be the exact column 
+    located within the mapped selectable, in the case that the mapped selectable 
+    is not the exact parent selectable of the given column, but shares a common
+    base table relationship with that column.
+    
+    Use this function when the column expression being added does not 
+    correspond to any single column within the mapped selectable,
+    such as a labeled function or scalar-returning subquery, to force the element
+    to become a mapped property regardless of it not being present within the
+    mapped selectable.
+    
+    Note that persistence of instances is driven from the collection of columns
+    within the mapped selectable, so column properties attached to a Mapper which have
+    no direct correspondence to the mapped selectable will effectively be non-persisted
+    attributes.
+    """
+    return properties.ColumnProperty(*args, **kwargs)
+    
 def _relation_loader(mapper, secondary=None, primaryjoin=None, secondaryjoin=None, lazy=True, **kwargs):
     return properties.PropertyLoader(mapper, secondary, primaryjoin, secondaryjoin, lazy=lazy, **kwargs)
 

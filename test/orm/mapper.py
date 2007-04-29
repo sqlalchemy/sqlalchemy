@@ -21,6 +21,9 @@ class MapperSuperTest(AssertMixin):
         pass
     
 class MapperTest(MapperSuperTest):
+    # TODO: MapperTest has grown much larger than it originally was and needs
+    # to be broken up among various functions, including querying, session operations,
+    # mapper configurational issues
     def testget(self):
         s = create_session()
         mapper(User, users)
@@ -248,24 +251,6 @@ class MapperTest(MapperSuperTest):
 
         s.refresh(u) #hangs
         
-    def testmagic(self):
-        """not sure what this is really testing."""
-        mapper(User, users, properties = {
-            'addresses' : relation(mapper(Address, addresses))
-        })
-        sess = create_session()
-        l = sess.query(User).select_by(user_name='fred')
-        self.assert_result(l, User, *[{'user_id':9}])
-        u = l[0]
-        
-        u2 = sess.query(User).get_by_user_name('fred')
-        self.assert_(u is u2)
-        
-        l = sess.query(User).select_by(email_address='ed@bettyboop.com')
-        self.assert_result(l, User, *[{'user_id':8}])
-
-        l = sess.query(User).select_by(User.c.user_name=='fred', addresses.c.email_address!='ed@bettyboop.com', user_id=9)
-
     def testprops(self):
         """tests the various attributes of the properties attached to classes"""
         m = mapper(User, users, properties = {
@@ -273,8 +258,8 @@ class MapperTest(MapperSuperTest):
         }).compile()
         self.assert_(User.addresses.property is m.props['addresses'])
         
-    def testload(self):
-        """tests loading rows with a mapper and producing object instances"""
+    def testquery(self):
+        """test a basic Query.select() operation."""
         mapper(User, users)
         l = create_session().query(User).select()
         self.assert_result(l, User, *user_result)
@@ -456,6 +441,45 @@ class MapperTest(MapperSuperTest):
             print "User", u.user_id, u.user_name, u.concat, u.count
         assert l[0].concat == l[0].user_id * 2 == 14
         assert l[1].concat == l[1].user_id * 2 == 16
+
+    def testexternalcolumns(self):
+        """test creating mappings that reference external columns or functions"""
+
+        f = (users.c.user_id *2).label('concat')
+        try:
+            mapper(User, users, properties={
+                'concat': f,
+            })
+            class_mapper(User)
+        except exceptions.ArgumentError, e:
+            assert str(e) == "Column '%s' is not represented in mapper's table.  Use the `column_property()` function to force this column to be mapped as a read-only attribute." % str(f)
+            clear_mappers()
+        
+        mapper(Address, addresses, properties={
+            'user':relation(User, lazy=False)
+        })    
+        
+        mapper(User, users, properties={
+            'concat': column_property(f),
+            'count': column_property(select([func.count(addresses.c.address_id)], users.c.user_id==addresses.c.user_id, scalar=True).label('count'))
+        })
+        
+        sess = create_session()
+        l = sess.query(User).select()
+        for u in l:
+            print "User", u.user_id, u.user_name, u.concat, u.count
+        assert l[0].concat == l[0].user_id * 2 == 14
+        assert l[1].concat == l[1].user_id * 2 == 16
+        
+        ### eager loads, not really working across all DBs, no column aliasing in place so
+        # results still wont be good for larger situations
+        #l = sess.query(Address).select()
+        l = sess.query(Address).options(lazyload('user')).select()
+        for a in l:
+            print "User", a.user.user_id, a.user.user_name, a.user.concat, a.user.count
+        assert l[0].user.concat == l[0].user.user_id * 2 == 14
+        assert l[1].user.concat == l[1].user.user_id * 2 == 16
+            
         
     @testbase.unsupported('firebird') 
     def testcount(self):
@@ -562,9 +586,6 @@ class MapperTest(MapperSuperTest):
         assert l.TEST_2 == "also hello world"
         assert not hasattr(l.addresses[0], 'TEST')
         assert not hasattr(l.addresses[0], 'TEST2')
-        
-        
-        
         
     def testeageroptions(self):
         """tests that a lazy relation can be upgraded to an eager relation via the options method"""
