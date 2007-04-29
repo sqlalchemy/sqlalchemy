@@ -2360,7 +2360,7 @@ class _Label(ColumnElement):
             obj = obj.obj
         self.obj = obj
         self.case_sensitive = getattr(obj, "case_sensitive", True)
-        self.type = sqltypes.to_instance(type)
+        self.type = sqltypes.to_instance(type or getattr(obj, 'type', None))
         obj.parens=True
 
     key = property(lambda s: s.name)

@@ -60,6 +60,9 @@
       are to work around glitchy SQLite behavior that doesnt understand
       "foo.id" as equivalent to "id", are now only generated in the case 
       that those named columns are selected from (part of [ticket:513])
+    - the label() method on ColumnElement will properly propigate the
+      TypeEngine of the base element out to the label, including a label()
+      created from a scalar=True select() statement.
     - MS-SQL better detects when a query is a subquery and knows not to
       generate ORDER BY phrases for those [ticket:513]
     - fix for fetchmany() "size" argument being positional in most
