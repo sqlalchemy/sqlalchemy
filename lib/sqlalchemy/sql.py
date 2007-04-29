@@ -2706,7 +2706,10 @@ class Select(_SelectBaseMixin, FromClause):
         # into the column clause of an enclosing select, and should instead
         # act like a single scalar column
         self.is_scalar = scalar
-
+        if scalar:
+            # allow corresponding_column to return None
+            self.orig_set = []
+            
         # indicates if this select statement, as a subquery, should automatically correlate
         # its FROM clause to that of an enclosing select, update, or delete statement.
         # note that the "correlate" method can be used to explicitly add a value to be correlated.
@@ -2729,6 +2732,7 @@ class Select(_SelectBaseMixin, FromClause):
         self.__wherecorrelator = Select._CorrelatedVisitor(self, True)
         self.__fromvisitor = Select._FromVisitor(self)
 
+        
         self.order_by_clause = self.group_by_clause = None
         
         if columns is not None:
