@@ -67,15 +67,22 @@ def is_info_enabled(logger):
 class echo_property(object):
     level_map={logging.DEBUG : "debug", logging.INFO:True}
     
-    __doc__ = "when ``True``, enable echoing for this element."
+    __doc__ = """when ``True``, enable log output for this element.
+    
+    This has the effect of setting the Python logging level for the 
+    namespace of this element's class and object reference.  A value
+    of boolean ``True`` indicates that the loglevel ``logging.INFO`` will be 
+    set for the logger, whereas the string value ``debug`` will set the loglevel
+    to ``logging.DEBUG``.
+    """
     
     def __get__(self, instance, owner):
+        if instance is None:
+            return self
         level = logging.getLogger(_get_instance_name(instance)).getEffectiveLevel()
         return echo_property.level_map.get(level, False)
         
     def __set__(self, instance, value):
-        if instance is None:
-            return self
         if value:
             default_logging(_get_instance_name(instance))
             logging.getLogger(_get_instance_name(instance)).setLevel(value == 'debug' and logging.DEBUG or logging.INFO)
