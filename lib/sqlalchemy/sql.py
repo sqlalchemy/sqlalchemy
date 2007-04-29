@@ -1393,19 +1393,19 @@ class ColumnElement(Selectable, _CompareMixin):
 
     primary_key = property(lambda self:getattr(self, '_primary_key', False),
                            doc=\
-        """Primary key flag.  Indicates if this Column represents part or 
-        whole of a primary key.
+        """Primary key flag.  Indicates if this ``Column`` represents part or 
+        whole of a primary key for its parent table.
         """)
     foreign_keys = property(lambda self:getattr(self, '_foreign_keys', []),
                             doc=\
-        """Foreign key accessor.  Points to a list of ForeignKey objects 
-        which represents a Foreign Key placed on this column's ultimate
+        """Foreign key accessor.  References a list of ``ForeignKey`` objects 
+        which each represent a foreign key placed on this column's ultimate
         ancestor.
         """)
     columns = property(lambda self:[self],
                        doc=\
-        """Columns accessor which just returns self, to provide compatibility 
-        with Selectable objects.
+        """Columns accessor which returns ``self``, to provide compatibility 
+        with ``Selectable`` objects.
         """)
 
     def _one_fkey(self):
