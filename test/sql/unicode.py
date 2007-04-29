@@ -28,10 +28,6 @@ class UnicodeSchemaTest(testbase.PersistTest):
     def tearDownAll(self):
         metadata.drop_all()
         
-        # has_table() doesnt handle the unicode names on mysql
-        if testbase.db.name == 'mysql':
-            t2.drop()
-        
     def test_insert(self):
         t1.insert().execute({u'méil':1, u'éXXm':5})
         t2.insert().execute({'a':1, 'b':1})

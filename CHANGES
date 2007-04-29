@@ -116,6 +116,10 @@
 - mysql
     - support for SSL arguments given as inline within URL query string,
       prefixed with "ssl_", courtesy terjeros@gmail.com.
+    - mysql uses "DESCRIBE [<schemaname>].<tablename>", catching exceptions
+      if table doesnt exist, in order to determine if a table exists.
+      this supports unicode table names as well as schema names. tested
+      with MySQL5 but should work with 4.1 series as well. (#557)
 - extensions
     - big fix to AssociationProxy so that multiple AssociationProxy
       objects can be associated with a single association collection. 

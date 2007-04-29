@@ -364,11 +364,24 @@ class MySQLDialect(ansisql.ANSIDialect):
 
     def has_table(self, connection, table_name, schema=None):
         # TODO: this does not work for table names that contain multibyte characters.
-        # i have tried dozens of approaches here with no luck.  statements like
-        # DESCRIBE and SHOW CREATE TABLE work better, but they raise an error when
-        # the table does not exist.
-        cursor = connection.execute("show table status like %s", [table_name])
-        return bool( not not cursor.rowcount )
+
+        # http://dev.mysql.com/doc/refman/5.0/en/error-messages-server.html
+
+        # Error: 1146 SQLSTATE: 42S02 (ER_NO_SUCH_TABLE)
+        # Message: Table '%s.%s' doesn't exist
+
+        # Error: 1046 SQLSTATE: 3D000 (ER_NO_DB_ERROR)
+        # Message: No database selected
+
+        try:
+            name = schema and ("%s.%s" % (schema, table_name)) or table_name
+            connection.execute("DESCRIBE `%s`" % name)
+            return True
+        except exceptions.SQLError, e:
+            if e.orig.args[0] in (1146, 1046): 
+                return False
+            else:
+                raise
 
     def reflecttable(self, connection, table):
         # reference:  http://dev.mysql.com/doc/refman/5.0/en/name-case-sensitivity.html
