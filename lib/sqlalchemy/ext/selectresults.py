@@ -7,7 +7,7 @@ class SelectResultsExt(orm.MapperExtension):
     def select_by(self, query, *args, **params):
         return SelectResults(query, query.join_by(*args, **params))
     def select(self, query, arg=None, **kwargs):
-        if hasattr(arg, '_selectable'):
+        if isinstance(arg, sql.FromClause) and arg.supports_execution():
             return orm.EXT_PASS
         else:
             return SelectResults(query, arg, ops=kwargs)

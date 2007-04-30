@@ -1,3 +1,7 @@
+-extensions
+    - small fix to SelectResultsExt to not bypass itself during
+      select().
+
 0.3.7
 - engines
     - warnings module used for issuing warnings (instead of logging)
