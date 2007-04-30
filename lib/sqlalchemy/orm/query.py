@@ -737,7 +737,8 @@ class Query(object):
         return q
 
     def select_from(self, from_obj):
-        """Set the `from_obj` parameter of the query.
+        """Set the `from_obj` parameter of the query and return the newly 
+        resulting ``Query``.
 
         `from_obj` is a list of one or more tables.
         """
@@ -764,14 +765,15 @@ class Query(object):
         if isinstance(item, slice):
             start = item.start
             stop = item.stop
+            # if we slice from the end we need to execute the query
             if (isinstance(start, int) and start < 0) or \
                (isinstance(stop, int) and stop < 0):
                 return list(self)[item]
             else:
                 res = self._clone()
                 if start is not None and stop is not None:
-                    res._offset = (self._offset or 0)+ start
-                    res._limit = stop-start
+                    res._offset = (self._offset or 0) + start
+                    res._limit = stop - start
                 elif start is None and stop is not None:
                     res._limit = stop
                 elif start is not None and stop is None:
@@ -784,17 +786,23 @@ class Query(object):
             return list(self[item:item+1])[0]
 
     def limit(self, limit):
-        """Apply a ``LIMIT`` to the query."""
+        """Apply a ``LIMIT`` to the query and return the newly resulting
+        ``Query``.
+        """
 
         return self[:limit]
 
     def offset(self, offset):
-        """Apply an ``OFFSET`` to the query."""
+        """Apply an ``OFFSET`` to the query and return the newly resulting
+        ``Query``.
+        """
 
         return self[offset:]
 
     def distinct(self):
-        """Apply a ``DISTINCT`` to the query."""
+        """Apply a ``DISTINCT`` to the query and return the newly resulting
+        ``Query``.
+        """
 
         new = self._clone()
         new._distinct = True
@@ -809,6 +817,10 @@ class Query(object):
         return list(self)
 
     def scalar(self):
+        """Return the first result of this ``Query``.
+
+        This results in an execution of the underlying query.
+        """
         if self._col is None or self._func is None: 
             return self[0]
         else:

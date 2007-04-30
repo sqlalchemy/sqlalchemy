@@ -331,6 +331,9 @@ class OrderedSet(Set):
       super(OrderedSet, self).clear()
       self._list=[]
 
+    def __getitem__(self, key):
+        return self._list[key]
+
     def __iter__(self):
         return iter(self._list)
 
