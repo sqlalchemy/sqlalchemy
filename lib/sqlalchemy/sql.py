@@ -554,7 +554,7 @@ def literal(value, type=None):
 
     Literal clauses are created automatically when non-
     ``ClauseElement`` objects (such as strings, ints, dates, etc.) are used in 
-    a comparison operation with a [sqlalchemy.sql.#_CompareMixin]
+    a comparison operation with a [sqlalchemy.sql#_CompareMixin]
     subclass, such as a ``Column`` object.  Use this function
     to force the generation of a literal clause, which will 
     be created as a [sqlalchemy.sql#_BindParamClause] with a bound
@@ -747,10 +747,10 @@ class AbstractDialect(object):
 class ClauseParameters(object):
     """Represent a dictionary/iterator of bind parameter key names/values.
 
-    Tracks the original ``BindParam`` objects as well as the
+    Tracks the original [sqlalchemy.sql#_BindParamClause] objects as well as the
     keys/position of each parameter, and can return parameters as a
     dictionary or a list.  Will process parameter values according to
-    the ``TypeEngine`` objects present in the ``BindParams``.
+    the ``TypeEngine`` objects present in the ``_BindParamClause`` instances.
     """
 
     def __init__(self, dialect, positional=None):
@@ -929,7 +929,7 @@ class Compiled(ClauseVisitor):
     """
 
     def __init__(self, dialect, statement, parameters, engine=None, traversal=None):
-        """Construct a new Compiled object.
+        """Construct a new ``Compiled`` object.
 
         statement
           ``ClauseElement`` to be compiled.

@@ -47,66 +47,51 @@ class Dialect(sql.AbstractDialect):
 
     All Dialects implement the following attributes:
 
-    positional
-      True if the paramstyle for this Dialect is positional
+      positional
+        True if the paramstyle for this Dialect is positional
 
-    paramstyle
-      The paramstyle to be used (some DBAPIs support multiple paramstyles)
+      paramstyle
+        The paramstyle to be used (some DBAPIs support multiple paramstyles)
 
-    supports_autoclose_results
-      Usually True; if False, indicates that rows returned by
-      fetchone() might not be just plain tuples, and may be
-      "live" proxy objects which still require the cursor to be open
-      in order to be read (such as pyPgSQL which has active
-      filehandles for BLOBs).  In that case, an auto-closing
-      ResultProxy cannot automatically close itself after results are
-      consumed.
+      convert_unicode
+        True if unicode conversion should be applied to all str types
 
-    convert_unicode
-      True if unicode conversion should be applied to all str types
-
-    encoding
-      type of encoding to use for unicode, usually defaults to 'utf-8'
+      encoding
+        type of encoding to use for unicode, usually defaults to 'utf-8'
     """
 
-    def create_connect_args(self, opts):
+    def create_connect_args(self, url):
         """Build DBAPI compatible connection arguments.
 
-        Given a dictionary of key-valued connect parameters, returns a
+        Given a [sqlalchemy.engine.url#URL] object, returns a
         tuple consisting of a `*args`/`**kwargs` suitable to send directly
-        to the dbapi's connect function.  The connect args will have
-        any number of the following keynames: host, hostname,
-        database, dbname, user, username, password, pw, passwd,
-        filename.
+        to the dbapi's connect function. 
         """
 
         raise NotImplementedError()
 
     def convert_compiled_params(self, parameters):
-        """Build DBAPI execute arguments from a ClauseParameters.
+        """Build DBAPI execute arguments from a [sqlalchemy.sql#ClauseParameters] instance.
 
-        Given a sql.ClauseParameters object, returns an array or
-        dictionary suitable to pass directly to this Dialect's DBAPI's
+        Returns an array or dictionary suitable to pass directly to this ``Dialect`` instance's DBAPI's
         execute method.
         """
 
         raise NotImplementedError()
 
     def type_descriptor(self, typeobj):
-        """Transform the type from generic to database-specific.
+        """Transform the given [sqlalchemy.types#TypeEngine] instance from generic to database-specific.
 
-        Provides a database-specific TypeEngine object, given the
-        generic object which comes from the types module.  Subclasses
-        will usually use the adapt_type() method in the types module
+        Subclasses will usually use the [sqlalchemy.types#adapt_type()] method in the types module
         to make this job easy.
         """
 
         raise NotImplementedError()
 
     def oid_column_name(self, column):
-        """Return the oid column name for this dialect, or None if the dialect can't/won't support OID/ROWID.
+        """Return the oid column name for this dialect, or ``None`` if the dialect can't/won't support OID/ROWID.
 
-        The Column instance which represents OID for the query being
+        The [sqlalchemy.schema#Column] instance which represents OID for the query being
         compiled is passed, so that the dialect can inspect the column
         and its parent selectable to determine if OID/ROWID is not
         selected for a particular selectable (i.e. oracle doesnt
@@ -116,21 +101,23 @@ class Dialect(sql.AbstractDialect):
         raise NotImplementedError()
 
     def supports_alter(self):
-        """return True if the database supports ALTER TABLE."""
+        """return ``True`` if the database supports ``ALTER TABLE``."""
         raise NotImplementedError()
 
     def max_identifier_length(self):
         """Return the maximum length of identifier names.
         
-        Return None if no limit."""
+        Return ``None`` if no limit."""
+        
         return None
 
     def supports_unicode_statements(self):
         """indicate whether the DBAPI can receive SQL statements as Python unicode strings"""
+        
         raise NotImplementedError()
         
     def supports_sane_rowcount(self):
-        """Indicate whether the dialect properly implements statements rowcount.
+        """Indicate whether the dialect properly implements rowcount for ``UPDATE`` and ``DELETE`` statements.
 
         This was needed for MySQL which had non-standard behavior of rowcount,
         but this issue has since been resolved.
@@ -139,10 +126,10 @@ class Dialect(sql.AbstractDialect):
         raise NotImplementedError()
 
     def schemagenerator(self, connection, **kwargs):
-        """Return a ``schema.SchemaVisitor`` instance that can generate schemas.
+        """Return a [sqlalchemy.schema#SchemaVisitor] instance that can generate schemas.
 
             connection
-                a Connection to use for statement execution
+                a [sqlalchemy.engine#Connection] to use for statement execution
                 
         `schemagenerator()` is called via the `create()` method on Table,
         Index, and others.
@@ -151,10 +138,10 @@ class Dialect(sql.AbstractDialect):
         raise NotImplementedError()
 
     def schemadropper(self, connection, **kwargs):
-        """Return a ``schema.SchemaVisitor`` instance that can drop schemas.
+        """Return a [sqlalchemy.schema#SchemaVisitor] instance that can drop schemas.
 
             connection
-                a Connection to use for statement execution
+                a [sqlalchemy.engine#Connection] to use for statement execution
 
         `schemadropper()` is called via the `drop()` method on Table,
         Index, and others.
@@ -163,21 +150,19 @@ class Dialect(sql.AbstractDialect):
         raise NotImplementedError()
 
     def defaultrunner(self, connection, **kwargs):
-        """Return a ``schema.SchemaVisitor`` instance that can execute defaults.
+        """Return a [sqlalchemy.schema#SchemaVisitor] instance that can execute defaults.
         
             connection
-                a Connection to use for statement execution
+                a [sqlalchemy.engine#Connection] to use for statement execution
         
         """
 
         raise NotImplementedError()
 
     def compiler(self, statement, parameters):
-        """Return a ``sql.ClauseVisitor`` able to transform a ``ClauseElement`` into a string.
+        """Return a [sqlalchemy.sql#Compiled] object for the given statement/parameters.
 
-        The returned object is usually a subclass of
-        ansisql.ANSICompiler, and will produce a string representation
-        of the given ClauseElement and `parameters` dictionary.
+        The returned object is usually a subclass of [sqlalchemy.ansisql#ANSICompiler].
 
         """
 
@@ -186,7 +171,7 @@ class Dialect(sql.AbstractDialect):
     def reflecttable(self, connection, table):
         """Load table description from the database.
 
-        Given a ``Connection`` and a ``Table`` object, reflect its
+        Given a [sqlalchemy.engine#Connection] and a [sqlalchemy.schema#Table] object, reflect its
         columns and properties from the database.
         """
 
@@ -195,7 +180,7 @@ class Dialect(sql.AbstractDialect):
     def has_table(self, connection, table_name, schema=None):
         """Check the existence of a particular table in the database.
 
-        Given a ``Connection`` object and a `table_name`, return True
+        Given a [sqlalchemy.engine#Connection] object and a string `table_name`, return True
         if the given table (possibly within the specified `schema`)
         exists in the database, False otherwise.
         """
@@ -205,7 +190,7 @@ class Dialect(sql.AbstractDialect):
     def has_sequence(self, connection, sequence_name):
         """Check the existence of a particular sequence in the database.
 
-        Given a ``Connection`` object and a `sequence_name`, return
+        Given a [sqlalchemy.engine#Connection] object and a string `sequence_name`, return
         True if the given sequence exists in the database, False
         otherwise.
         """
@@ -213,51 +198,53 @@ class Dialect(sql.AbstractDialect):
         raise NotImplementedError()
 
     def get_default_schema_name(self, connection):
-        """Return the currently selected schema given a connection"""
+        """Return the string name of the currently selected schema given a [sqlalchemy.engine#Connection]."""
 
         raise NotImplementedError()
 
     def create_execution_context(self, connection, compiled=None, compiled_parameters=None, statement=None, parameters=None):
-        """Return a new ExecutionContext object."""
+        """Return a new [sqlalchemy.engine#ExecutionContext] object."""
+        
         raise NotImplementedError()
 
     def do_begin(self, connection):
-        """Provide an implementation of connection.begin()."""
+        """Provide an implementation of *connection.begin()*, given a DBAPI connection."""
 
         raise NotImplementedError()
 
     def do_rollback(self, connection):
-        """Provide an implementation of connection.rollback()."""
+        """Provide an implementation of *connection.rollback()*, given a DBAPI connection."""
 
         raise NotImplementedError()
 
     def do_commit(self, connection):
-        """Provide an implementation of connection.commit()"""
+        """Provide an implementation of *connection.commit()*, given a DBAPI connection."""
 
         raise NotImplementedError()
 
     def do_executemany(self, cursor, statement, parameters):
-        """Execute a single SQL statement looping over a sequence of parameters."""
+        """Provide an implementation of *cursor.executemany(statement, parameters)*."""
 
         raise NotImplementedError()
 
     def do_execute(self, cursor, statement, parameters):
-        """Execute a single SQL statement with given parameters."""
+        """Provide an implementation of *cursor.execute(statement, parameters)*."""
 
         raise NotImplementedError()
 
 
     def compile(self, clauseelement, parameters=None):
-        """Compile the given ClauseElement using this Dialect.
-
-        A convenience method which simply flips around the compile()
-        call on ClauseElement.
+        """Compile the given [sqlalchemy.sql#ClauseElement] using this Dialect.
+        
+        Returns [sqlalchemy.sql#Compiled].  A convenience method which 
+        flips around the compile() call on ``ClauseElement``.
         """
 
         return clauseelement.compile(dialect=self, parameters=parameters)
 
     def is_disconnect(self, e):
         """Return True if the given DBAPI error indicates an invalid connection"""
+        
         raise NotImplementedError()
 
 
@@ -890,7 +877,7 @@ class ResultProxy(object):
         if not self.closed:
             self.closed = True
             self.cursor.close()
-            if self.connection.should_close_with_result and self.dialect.supports_autoclose_results:
+            if self.connection.should_close_with_result:
                 self.connection.close()
             
     def _convert_key(self, key):

@@ -28,7 +28,6 @@ class DefaultDialect(base.Dialect):
 
     def __init__(self, convert_unicode=False, encoding='utf-8', default_paramstyle='named', paramstyle=None, dbapi=None, **kwargs):
         self.convert_unicode = convert_unicode
-        self.supports_autoclose_results = True
         self.encoding = encoding
         self.positional = False
         self._ischema = None
