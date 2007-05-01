@@ -70,7 +70,18 @@ class LongLabelsTest(testbase.PersistTest):
     def test_subquery(self):
         q = table1.select(table1.c.this_is_the_primarykey_column == 4, use_labels=True)
         x = select([q])
-        print str(x)
-        
+        print x.execute().fetchall()
+      
+    def test_subquery2(self):
+      # this is the test that fails if the "max identifier length" is shorter than the 
+      # length of the actual columns created, because the column names get truncated.
+      # if you try to separate "physical columns" from "labels", and only truncate the labels,
+      # the ansisql.visit_select() logic which auto-labels columns in a subquery (for the purposes of sqlite compat) breaks the code,
+      # since it is creating "labels" on the fly but not affecting derived columns, which think they are
+      # still "physical"
+      q = table1.select(table1.c.this_is_the_primarykey_column == 4).alias('foo')
+      x = select([q])
+      print x.execute().fetchall()
+      
 if __name__ == '__main__':
     testbase.main()
