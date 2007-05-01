@@ -115,10 +115,10 @@ class ColumnsTest(AssertMixin):
     def testcolumns(self):
         expectedResults = { 'int_column': 'int_column INTEGER',
                             'smallint_column': 'smallint_column SMALLINT',
-                                   'varchar_column': 'varchar_column VARCHAR(20)',
-                                   'numeric_column': 'numeric_column NUMERIC(12, 3)',
-                                   'float_column': 'float_column NUMERIC(25, 2)'
-                                 }
+                            'varchar_column': 'varchar_column VARCHAR(20)',
+                            'numeric_column': 'numeric_column NUMERIC(12, 3)',
+                            'float_column': 'float_column NUMERIC(25, 2)'
+                          }
 
         if not db.name=='sqlite' and not db.name=='oracle':
             expectedResults['float_column'] = 'float_column FLOAT(25)'
@@ -134,6 +134,202 @@ class ColumnsTest(AssertMixin):
 
         for aCol in testTable.c:
             self.assertEquals(expectedResults[aCol.name], db.dialect.schemagenerator(db, None, None).get_column_specification(aCol))
+
+    @testbase.supported('mysql')
+    def test_mysql_numeric(self):
+        import sqlalchemy.databases.mysql as my
+
+        columns = [
+            # column type, args, kwargs, expected ddl
+            # e.g. Column(Integer(10, unsigned=True)) == 'INTEGER(10) UNSIGNED'
+            (my.MSNumeric, [], {},
+             'NUMERIC(10, 2)'),
+            (my.MSNumeric, [None], {},
+             'NUMERIC'),
+            (my.MSNumeric, [12], {},
+             'NUMERIC(12, 2)'),
+            (my.MSNumeric, [12, 4], {'unsigned':True},
+             'NUMERIC(12, 4) UNSIGNED'),
+            (my.MSNumeric, [12, 4], {'zerofill':True},
+             'NUMERIC(12, 4) ZEROFILL'),
+            (my.MSNumeric, [12, 4], {'zerofill':True, 'unsigned':True},
+             'NUMERIC(12, 4) UNSIGNED ZEROFILL'),
+
+            (my.MSDecimal, [], {},
+             'DECIMAL(10, 2)'),
+            (my.MSDecimal, [None], {},
+             'DECIMAL'),
+            (my.MSDecimal, [12], {},
+             'DECIMAL(12, 2)'),
+            (my.MSDecimal, [12, None], {},
+             'DECIMAL(12)'),
+            (my.MSDecimal, [12, 4], {'unsigned':True},
+             'DECIMAL(12, 4) UNSIGNED'),
+            (my.MSDecimal, [12, 4], {'zerofill':True},
+             'DECIMAL(12, 4) ZEROFILL'),
+            (my.MSDecimal, [12, 4], {'zerofill':True, 'unsigned':True},
+             'DECIMAL(12, 4) UNSIGNED ZEROFILL'),
+
+            (my.MSDouble, [None, None], {},
+             'DOUBLE'),
+            (my.MSDouble, [12], {},
+             'DOUBLE(12, 2)'),
+            (my.MSDouble, [12, 4], {'unsigned':True},
+             'DOUBLE(12, 4) UNSIGNED'),
+            (my.MSDouble, [12, 4], {'zerofill':True},
+             'DOUBLE(12, 4) ZEROFILL'),
+            (my.MSDouble, [12, 4], {'zerofill':True, 'unsigned':True},
+             'DOUBLE(12, 4) UNSIGNED ZEROFILL'),
+
+            (my.MSFloat, [], {},
+             'FLOAT(10)'),
+            (my.MSFloat, [None], {},
+             'FLOAT'),
+            (my.MSFloat, [12], {},
+             'FLOAT(12)'),
+            (my.MSFloat, [12, 4], {},
+             'FLOAT(12, 4)'),
+            (my.MSFloat, [12, 4], {'unsigned':True},
+             'FLOAT(12, 4) UNSIGNED'),
+            (my.MSFloat, [12, 4], {'zerofill':True},
+             'FLOAT(12, 4) ZEROFILL'),
+            (my.MSFloat, [12, 4], {'zerofill':True, 'unsigned':True},
+             'FLOAT(12, 4) UNSIGNED ZEROFILL'),
+
+            (my.MSInteger, [], {},
+             'INTEGER'),
+            (my.MSInteger, [4], {},
+             'INTEGER(4)'),
+            (my.MSInteger, [4], {'unsigned':True},
+             'INTEGER(4) UNSIGNED'),
+            (my.MSInteger, [4], {'zerofill':True},
+             'INTEGER(4) ZEROFILL'),
+            (my.MSInteger, [4], {'zerofill':True, 'unsigned':True},
+             'INTEGER(4) UNSIGNED ZEROFILL'),
+
+            (my.MSBigInteger, [], {},
+             'BIGINT'),
+            (my.MSBigInteger, [4], {},
+             'BIGINT(4)'),
+            (my.MSBigInteger, [4], {'unsigned':True},
+             'BIGINT(4) UNSIGNED'),
+            (my.MSBigInteger, [4], {'zerofill':True},
+             'BIGINT(4) ZEROFILL'),
+            (my.MSBigInteger, [4], {'zerofill':True, 'unsigned':True},
+             'BIGINT(4) UNSIGNED ZEROFILL'),
+
+            (my.MSSmallInteger, [], {},
+             'SMALLINT'),
+            (my.MSSmallInteger, [4], {},
+             'SMALLINT(4)'),
+            (my.MSSmallInteger, [4], {'unsigned':True},
+             'SMALLINT(4) UNSIGNED'),
+            (my.MSSmallInteger, [4], {'zerofill':True},
+             'SMALLINT(4) ZEROFILL'),
+            (my.MSSmallInteger, [4], {'zerofill':True, 'unsigned':True},
+             'SMALLINT(4) UNSIGNED ZEROFILL'),
+           ]
+
+        table_args = ['testMyNumeric', db]
+        for index, spec in enumerate(columns):
+            type_, args, kw, res = spec
+            table_args.append(Column('c%s' % index, type_(*args, **kw)))
+
+        numeric_table = Table(*table_args)
+        gen = db.dialect.schemagenerator(db, None, None)
+        
+        for col in numeric_table.c:
+            index = int(col.name[1:])
+            self.assertEquals(gen.get_column_specification(col),
+                              "%s %s" % (col.name, columns[index][3]))
+
+        try:
+            numeric_table.create(checkfirst=True)
+            assert True
+        except:
+            raise
+        numeric_table.drop()
+
+
+class CharsetTest(AssertMixin):
+
+    @testbase.supported('mysql')
+    def testcharset(self):
+        import sqlalchemy.databases.mysql as my
+
+        columns = [
+            (my.MSChar, [1], {},
+             'CHAR(1)'),
+            (my.MSChar, [1], {'binary':True},
+             'CHAR(1) BINARY'),
+            (my.MSChar, [1], {'ascii':True},
+             'CHAR(1) ASCII'),
+            (my.MSChar, [1], {'unicode':True},
+             'CHAR(1) UNICODE'),
+            (my.MSChar, [1], {'ascii':True, 'binary':True},
+             'CHAR(1) ASCII BINARY'),
+            (my.MSChar, [1], {'unicode':True, 'binary':True},
+             'CHAR(1) UNICODE BINARY'),
+            (my.MSChar, [1], {'charset':'utf8'},
+             'CHAR(1) CHARACTER SET utf8'),
+            (my.MSChar, [1], {'charset':'utf8', 'binary':True},
+             'CHAR(1) CHARACTER SET utf8 BINARY'),
+            (my.MSChar, [1], {'charset':'utf8', 'unicode':True},
+             'CHAR(1) CHARACTER SET utf8'),
+            (my.MSChar, [1], {'charset':'utf8', 'ascii':True},
+             'CHAR(1) CHARACTER SET utf8'),
+            (my.MSChar, [1], {'collation': 'utf8_bin'},
+             'CHAR(1) COLLATE utf8_bin'),
+            (my.MSChar, [1], {'charset': 'utf8', 'collation': 'utf8_bin'},
+             'CHAR(1) CHARACTER SET utf8 COLLATE utf8_bin'),
+            (my.MSChar, [1], {'charset': 'utf8', 'binary': True},
+             'CHAR(1) CHARACTER SET utf8 BINARY'),
+            (my.MSChar, [1], {'charset': 'utf8', 'collation': 'utf8_bin',
+                              'binary': True},
+             'CHAR(1) CHARACTER SET utf8 COLLATE utf8_bin'),
+            (my.MSChar, [1], {'national':True},
+             'NATIONAL CHAR(1)'),
+            (my.MSChar, [1], {'national':True, 'charset':'utf8'},
+             'NATIONAL CHAR(1)'),
+            (my.MSChar, [1], {'national':True, 'charset':'utf8', 'binary':True},
+             'NATIONAL CHAR(1) BINARY'),
+            (my.MSChar, [1], {'national':True, 'binary':True, 'unicode':True},
+             'NATIONAL CHAR(1) BINARY'),
+            (my.MSChar, [1], {'national':True, 'collation':'utf8_bin'},
+             'NATIONAL CHAR(1) COLLATE utf8_bin'),
+            (my.MSString, [1], {'charset':'utf8', 'collation':'utf8_bin'},
+             'VARCHAR(1) CHARACTER SET utf8 COLLATE utf8_bin'),
+            (my.MSString, [1], {'national':True, 'collation':'utf8_bin'},
+             'NATIONAL VARCHAR(1) COLLATE utf8_bin'),
+            (my.MSTinyText, [], {'charset':'utf8', 'collation':'utf8_bin'},
+             'TINYTEXT CHARACTER SET utf8 COLLATE utf8_bin'),
+            (my.MSMediumText, [], {'charset':'utf8', 'binary':True},
+             'MEDIUMTEXT CHARACTER SET utf8 BINARY'), 
+            (my.MSLongText, [], {'ascii':True},
+             'LONGTEXT ASCII'),
+            (my.MSEnum, ["'foo'", "'bar'"], {'unicode':True},
+             '''ENUM('foo','bar') UNICODE''')
+           ]
+
+        table_args = ['testCharset', db]
+        for index, spec in enumerate(columns):
+            type_, args, kw, res = spec
+            table_args.append(Column('c%s' % index, type_(*args, **kw)))
+
+        charset_table = Table(*table_args)
+        gen = db.dialect.schemagenerator(db, None, None)
+        
+        for col in charset_table.c:
+            index = int(col.name[1:])
+            self.assertEquals(gen.get_column_specification(col),
+                              "%s %s" % (col.name, columns[index][3]))
+
+        try:
+            charset_table.create(checkfirst=True)
+            assert True
+        except:
+            raise
+        charset_table.drop()
         
 class UnicodeTest(AssertMixin):
     """tests the Unicode type.  also tests the TypeDecorator with instances in the types package."""
@@ -372,7 +568,6 @@ class BooleanTest(AssertMixin):
         res2 = bool_table.select(bool_table.c.value==False).execute().fetchall()
         print res2
         assert(res2==[(2, False)])
-        
-        
+
 if __name__ == "__main__":
     testbase.main()

@@ -1,3 +1,6 @@
+- mysql
+    - support for column-level CHARACTER SET and COLLATE declarations,
+      as well as ASCII, UNICODE, NATIONAL and BINARY shorthand.
 -extensions
     - small fix to SelectResultsExt to not bypass itself during
       select().
