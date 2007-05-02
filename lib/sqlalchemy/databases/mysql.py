@@ -283,7 +283,10 @@ class MSEnum(MSString):
 
         strict
           Defaults to False: ensure that a given value is in this ENUM's
-          range of permissible value when inserting or updating rows.
+          range of permissible values when inserting or updating rows.
+          Note that MySQL will not raise a fatal error if you attempt to
+          store an out of range value- an alternate value will be stored
+          instead.  (See MySQL ENUM documentation.)
 
         charset
           Defaults to None: a column-level character set for this string

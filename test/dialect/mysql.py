@@ -263,6 +263,7 @@ class TypesTest(AssertMixin):
                                ('a', 'a', 'a', 'a'),
                                ('b', 'b', 'b', 'b'),
                                ('', '', 'a', 'a')])
+        enum_table.drop()
 
 if __name__ == "__main__":
     testbase.main()
