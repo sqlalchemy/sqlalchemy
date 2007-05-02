@@ -363,27 +363,31 @@ class EagerLoader(AbstractRelationLoader):
             self.target = eagerloader.select_table
             self.eagertarget = eagerloader.select_table.alias(self._aliashash("/target"))
             self.extra_cols = {}
-            
+
             if eagerloader.secondary:
                 self.eagersecondary = eagerloader.secondary.alias(self._aliashash("/secondary"))
-                self.aliasizer = sql_util.Aliasizer(eagerloader.target, eagerloader.secondary, aliases={
-                        eagerloader.target:self.eagertarget,
-                        eagerloader.secondary:self.eagersecondary
-                        })
+                if parentclauses is not None:
+                    aliasizer = sql_util.ClauseAdapter(self.eagertarget).\
+                            chain(sql_util.ClauseAdapter(self.eagersecondary)).\
+                            chain(sql_util.ClauseAdapter(parentclauses.eagertarget))
+                else:
+                    aliasizer = sql_util.ClauseAdapter(self.eagertarget).\
+                        chain(sql_util.ClauseAdapter(self.eagersecondary))
                 self.eagersecondaryjoin = eagerloader.polymorphic_secondaryjoin.copy_container()
-                self.aliasizer.traverse(self.eagersecondaryjoin)
+                aliasizer.traverse(self.eagersecondaryjoin)
                 self.eagerprimary = eagerloader.polymorphic_primaryjoin.copy_container()
-                self.aliasizer.traverse(self.eagerprimary)
+                aliasizer.traverse(self.eagerprimary)
             else:
                 self.eagerprimary = eagerloader.polymorphic_primaryjoin.copy_container()
-                self.aliasizer = sql_util.Aliasizer(self.target, aliases={self.target:self.eagertarget})
-                self.aliasizer.traverse(self.eagerprimary)
-
-            if parentclauses is not None:
-                parentclauses.aliasizer.traverse(self.eagerprimary)
+                if parentclauses is not None: 
+                    aliasizer = sql_util.ClauseAdapter(self.eagertarget)
+                    aliasizer.chain(sql_util.ClauseAdapter(parentclauses.eagertarget, exclude=eagerloader.parent_property.remote_side))
+                else:
+                    aliasizer = sql_util.ClauseAdapter(self.eagertarget)
+                aliasizer.traverse(self.eagerprimary)
 
             if eagerloader.order_by:
-                self.eager_order_by = self._aliasize_orderby(eagerloader.order_by)
+                self.eager_order_by = sql_util.ClauseAdapter(self.eagertarget).copy_and_process(util.to_list(eagerloader.order_by))
             else:
                 self.eager_order_by = None
 
@@ -413,14 +417,6 @@ class EagerLoader(AbstractRelationLoader):
             # use the first 4 digits of an MD5 hash
             return "anon_" + util.hash(self.id + extra)[0:4]
             
-        def _aliasize_orderby(self, orderby, copy=True):
-            if copy:
-                return self.aliasizer.copy_and_process(util.to_list(orderby))
-            else:
-                orderby = util.to_list(orderby)
-                self.aliasizer.process_list(orderby)
-                return orderby
-
         def _create_decorator_row(self):
             class EagerRowAdapter(object):
                 def __init__(self, row):

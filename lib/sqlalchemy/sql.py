@@ -828,7 +828,21 @@ class ClauseVisitor(object):
     def traverse(self, obj):
         for n in obj.get_children(**self.__traverse_options__):
             self.traverse(n)
-        obj.accept_visitor(self)
+        v = self
+        while v is not None:
+            obj.accept_visitor(v)
+            v = getattr(v, '_next', None)
+        
+    def chain(self, visitor):
+        """'chain' an additional ClauseVisitor onto this ClauseVisitor.
+        
+        the chained visitor will receive all visit events after this one."""
+        tail = self
+        while getattr(tail, '_next', None) is not None:
+            tail = tail._next
+        tail._next = visitor
+        return self
+        
     def visit_column(self, column):
         pass
     def visit_table(self, table):

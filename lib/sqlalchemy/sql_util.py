@@ -151,31 +151,8 @@ class AbstractClauseProcessor(sql.NoColumnVisitor):
         if elem is not None:
             binary.right = elem
 
-class Aliasizer(AbstractClauseProcessor):
-    """Convert a table instance within an expression to be an alias of that table."""
-
-    def __init__(self, *tables, **kwargs):
-        self.tables = {}
-        self.aliases = kwargs.get('aliases', {})
-        for t in tables:
-            self.tables[t] = t
-            if not self.aliases.has_key(t):
-                self.aliases[t] = sql.alias(t)
-            if isinstance(t, sql.Join):
-                for t2 in t.columns:
-                    self.tables[t2.table] = t2
-                    self.aliases[t2.table] = self.aliases[t]
-        self.binary = None
-
-    def get_alias(self, table):
-        return self.aliases[table]
-
-    def convert_element(self, elem):
-        if isinstance(elem, sql.ColumnElement) and hasattr(elem, 'table') and self.tables.has_key(elem.table):
-            return self.get_alias(elem.table).corresponding_column(elem)
-        else:
-            return None
-
+    # TODO: visit_select().  
+    
 class ClauseAdapter(AbstractClauseProcessor):
     """Given a clause (like as in a WHERE criterion), locate columns
     which are embedded within a given selectable, and changes those
