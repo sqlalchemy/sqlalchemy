@@ -68,11 +68,6 @@ class LongLabelsTest(testbase.PersistTest):
         table1.insert().execute(**{"this_is_the_data_column":"data4"})
         
     def test_subquery(self):
-        q = table1.select(table1.c.this_is_the_primarykey_column == 4, use_labels=True)
-        x = select([q])
-        print x.execute().fetchall()
-      
-    def test_subquery2(self):
       # this is the test that fails if the "max identifier length" is shorter than the 
       # length of the actual columns created, because the column names get truncated.
       # if you try to separate "physical columns" from "labels", and only truncate the labels,
