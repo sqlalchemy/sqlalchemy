@@ -265,21 +265,68 @@ class MSMediumBlob(MSBinary):
         return "MEDIUMBLOB"
 
 class MSEnum(MSString):
+    """MySQL ENUM datatype."""
+    
     def __init__(self, *enums, **kw):
-        self.__enums_hidden = enums
-        length = 0
+        """
+        Construct an ENUM.
+
+        Example:
+          Column('myenum', MSEnum("'foo'", "'bar'", "'baz'"))
+          Column('another', MSEnum("'foo'", "'bar'", "'baz'", strict=True))
+
+        Arguments are:
+        
+        enums
+          The range of valid values for this ENUM.  Values will be used
+          exactly as they appear when generating schemas
+
+        strict
+          Defaults to False: ensure that a given value is in this ENUM's
+          range of permissible value when inserting or updating rows.
+
+        charset
+          Defaults to None: a column-level character set for this string
+          value.  Takes precendence to 'ascii' or 'unicode' short-hand.
+
+        collation
+          Defaults to None: a column-level collation for this string value.
+          Takes precedence to 'binary' short-hand.
+
+        ascii
+          Defaults to False: short-hand for the ascii character set,
+          generates ASCII in schema.
+
+        unicode
+          Defaults to False: short-hand for the utf8 character set,
+          generates UNICODE in schema.
+
+        binary
+          Defaults to False: short-hand, pick the binary collation type
+          that matches the column's character set.  Generates BINARY in schema.
+        """
+        
+        self.__ddl_values = enums
+
         strip_enums = []
         for a in enums:
             if a[0:1] == '"' or a[0:1] == "'":
                 a = a[1:-1]
-            if len(a) > length:
-                length=len(a)
             strip_enums.append(a)
+            
         self.enums = strip_enums
+        self.strict = kw.pop('strict', False)
+        length = max([len(v) for v in strip_enums])
         super(MSEnum, self).__init__(length, **kw)
 
+    def convert_bind_param(self, value, engine): 
+        if self.strict and value is not None and value not in self.enums:
+            raise exceptions.InvalidRequestError('"%s" not a valid value for '
+                                                 'this enum' % value)
+        return super(MSEnum, self).convert_bind_param(value, engine)
+
     def get_col_spec(self):
-        return self._extend("ENUM(%s)" % ",".join(self.__enums_hidden))
+        return self._extend("ENUM(%s)" % ",".join(self.__ddl_values))
 
 class MSBoolean(sqltypes.Boolean):
     def get_col_spec(self):
@@ -406,6 +453,10 @@ class MySQLDialect(ansisql.ANSIDialect):
 
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)
+
+    # identifiers are 64, however aliases can be 255...
+    def max_identifier_length(self):
+        return 255;
 
     def supports_sane_rowcount(self):
         return True
