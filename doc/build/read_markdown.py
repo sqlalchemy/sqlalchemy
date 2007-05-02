@@ -9,9 +9,12 @@ import sys, re, os
 from toc import TOCElement
 
 try:
-    import elementtree.ElementTree as et
-except:
-    raise "This module requires ElementTree to run (http://effbot.org/zone/element-index.htm)"
+    import xml.etree.ElementTree as et
+except ImportError:
+    try:
+        import elementtree.ElementTree as et
+    except:
+        raise "This module requires ElementTree to run (http://effbot.org/zone/element-index.htm)"
 
 import markdown
 
