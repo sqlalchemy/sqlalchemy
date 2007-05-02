@@ -7,6 +7,7 @@ import sqlalchemy.ext.proxy as proxy
 import sqlalchemy.ext.sessioncontext as sessioncontext
 import sqlalchemy.mods.threadlocal as threadlocal
 import sqlalchemy.ext.selectresults as selectresults
+import sqlalchemy.ext.orderinglist as orderinglist
 
 def make_doc(obj, classes=None, functions=None, **kwargs):
     """generate a docstring.ObjectDoc structure for an individual module, list of classes, and list of functions."""
@@ -36,6 +37,7 @@ def make_all_docs():
         make_doc(obj=threadlocal),
         make_doc(obj=selectresults),
         make_doc(obj=proxy),
+        make_doc(obj=orderinglist, classes=[orderinglist.OrderingList]),
     ] + [make_doc(getattr(__import__('sqlalchemy.databases.%s' % m).databases, m)) for m in databases.__all__]
     return objects
     

@@ -2,6 +2,8 @@
     - support for column-level CHARACTER SET and COLLATE declarations,
       as well as ASCII, UNICODE, NATIONAL and BINARY shorthand.
 -extensions
+    - added orderinglist, a custom list class that synchronizes an object
+      attribute with that object's position in the list
     - small fix to SelectResultsExt to not bypass itself during
       select().
 
@@ -1279,8 +1281,7 @@ an association table
 - added a "mods" system which allows pluggable modules that modify/augment
 core functionality, using the function "install_mods(*modnames)".
 - added the first "mod", SelectResults, which modifies mapper selects to
-return generators that turn ranges into LIMIT/OFFSET queries (Jonas Borgström)
-- factored out querying capabilities of Mapper into a separate Query object
+return generators that turn ranges into LIMIT/OFFSET queries (Jonas Borgstr?- factored out querying capabilities of Mapper into a separate Query object
 which is Session-centric.  this improves the performance of mapper.using(session)
 and makes other things possible.
 - objectstore/Session refactored, the official way to save objects is now 
