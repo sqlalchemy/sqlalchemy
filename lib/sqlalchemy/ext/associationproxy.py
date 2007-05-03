@@ -114,13 +114,15 @@ class AssociationProxy(object):
         return self._get_property().mapper.class_
     target_class = property(_target_class)
 
+    def _target_is_scalar(self):
+        return not self._get_property().uselist
         
     def __get__(self, obj, class_):
         if obj is None:
             self.owning_class = class_
             return
         elif self.scalar is None:
-            self.scalar = not self._get_property().uselist
+            self.scalar = self._target_is_scalar()
 
         if self.scalar:
             return getattr(getattr(obj, self.target_collection), self.value_attr)
@@ -133,6 +135,9 @@ class AssociationProxy(object):
                 return proxy
 
     def __set__(self, obj, values):
+        if self.scalar is None:
+            self.scalar = self._target_is_scalar()
+
         if self.scalar:
             creator = self.creator and self.creator or self.target_class
             target = getattr(obj, self.target_collection)
