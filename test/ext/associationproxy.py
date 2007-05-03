@@ -32,7 +32,6 @@ class ObjectCollection(object):
 class _CollectionOperations(PersistTest):
     def setUp(self):
         collection_class = self.collection_class
-        lazy = self.lazy if hasattr(self, 'lazy') else False
 
         metadata = BoundMetaData(db)
     
@@ -62,7 +61,7 @@ class _CollectionOperations(PersistTest):
                     self.name = name
 
         mapper(Parent, parents_table, properties={
-            '_children': relation(Child, lazy=lazy,
+            '_children': relation(Child, lazy=False,
                                   collection_class=collection_class)})
         mapper(Child, children_table)
 

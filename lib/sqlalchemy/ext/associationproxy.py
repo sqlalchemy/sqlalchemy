@@ -243,7 +243,10 @@ class _AssociationList(object):
         return len(self.col)
 
     def __nonzero__(self):
-        return True if self.col else False
+        if self.col:
+            return True
+        else:
+            return False
 
     def __getitem__(self, index):
         return self._get(self.col[index])
@@ -355,7 +358,10 @@ class _AssociationDict(object):
         return len(self.col)
 
     def __nonzero__(self):
-        return True if self.col else False
+        if self.col:
+            return True
+        else:
+            return False
 
     def __getitem__(self, key):
         return self._get(self.col[key])
@@ -497,7 +503,10 @@ class _AssociationSet(object):
         return len(self.col)
 
     def __nonzero__(self):
-        return True if self.col else False
+        if self.col:
+            return True
+        else:
+            return False
 
     def __contains__(self, value):
         for member in self.col:
