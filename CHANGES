@@ -2,6 +2,8 @@
     - support for column-level CHARACTER SET and COLLATE declarations,
       as well as ASCII, UNICODE, NATIONAL and BINARY shorthand.
 -extensions
+    - new association proxy implementation, implementing complete
+      proxies to list, dict and set-based relation collections
     - added orderinglist, a custom list class that synchronizes an object
       attribute with that object's position in the list
     - small fix to SelectResultsExt to not bypass itself during

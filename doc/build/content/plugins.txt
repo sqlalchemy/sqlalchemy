@@ -278,7 +278,7 @@ To continue the `MyClass` example:
 
 ### associationproxy
 
-**Author:** Mike Bayer<br/>
+**Author:** Mike Bayer and Jason Kirtland<br/>
 **Version:** 0.3.1 or greater
 
 `associationproxy` is used to create a transparent proxy to the associated object in an association relationship, thereby decreasing the verbosity of the pattern in cases where explicit access to the association object is not required.  The association relationship pattern is a richer form of a many-to-many relationship, which is described in [datamapping_association](rel:datamapping_association).  It is strongly recommended to fully understand the association object pattern in its explicit form before using this extension; see the examples in the SQLAlchemy distribution under the directory `examples/association/`.
@@ -286,7 +286,7 @@ To continue the `MyClass` example:
 When dealing with association relationships, the **association object** refers to the object that maps to a row in the association table (i.e. the many-to-many table), while the **associated object** refers to the "endpoint" of the association, i.e. the ultimate object referenced by the parent.  The proxy can return collections of objects attached to association objects, and can also create new association objects given only the associated object.  An example using the Keyword mapping described in the data mapping documentation is as follows:
 
     {python}
-    from sqlalchemy.ext.associationproxy import AssociationProxy
+    from sqlalchemy.ext.associationproxy import association_proxy
     
     class User(object):
         pass
@@ -300,7 +300,7 @@ When dealing with association relationships, the **association object** refers t
         # the collection is called 'keyword_associations', the endpoint
         # attribute of each association object is called 'keyword'.  the 
         # class itself of the association object will be figured out automatically  .
-        keywords = AssociationProxy('keyword_associations', 'keyword')
+        keywords = association_proxy('keyword_associations', 'keyword')
 
     class KeywordAssociation(object):
         pass
@@ -323,7 +323,7 @@ When dealing with association relationships, the **association object** refers t
     mapper(Keyword, keywords_table)
 
     # now, Keywords can be attached to an Article directly;
-    # KeywordAssociation will be created by the AssociationProxy, and have the 
+    # KeywordAssociation will be created by the association_proxy, and have the 
     # 'keyword' attribute set to the new Keyword.
     # note that these KeywordAssociation objects will not have a User attached to them.
     article = Article()
@@ -341,9 +341,9 @@ When dealing with association relationships, the **association object** refers t
     article.keyword_associations.append(KeywordAssociation())
     print [ka for ka in article.keyword_associations]
     
-Note that the above operations on the `keywords` collection are proxying operations to and from the `keyword_associations` collection, which exists normally and can be accessed directly.  `AssociationProxy` will also detect if the collection is list or scalar based and will configure the proxied property to act the same way.
+Note that the above operations on the `keywords` collection are proxying operations to and from the `keyword_associations` collection, which exists normally and can be accessed directly.  `association_proxy` will also detect if the collection is list or scalar based and will configure the proxied property to act the same way.
 
-For the common case where the association object's creation needs to be specified by the application, `AssociationProxy` takes an optional callable `creator()` which takes a single associated object as an argument, and returns a new association object.
+For the common case where the association object's creation needs to be specified by the application, `association_proxy` takes an optional callable `creator()` which takes a single associated object as an argument, and returns a new association object.
 
     {python}
     def create_keyword_association(keyword):
@@ -353,7 +353,21 @@ For the common case where the association object's creation needs to be specifie
         
     class Article(object):
         # create "keywords" proxied association
-        keywords = AssociationProxy('keyword_associations', 'keyword', creator=create_keyword_association)
+        keywords = association_proxy('keyword_associations', 'keyword', creator=create_keyword_association)
+
+Proxy properties are implemented by the `AssociationProxy` class, which is
+also available in the module.  The `association_proxy` function is not present
+in SQLAlchemy versions 0.3.1 through 0.3.7, instead instantiate the class
+directly:
+
+    {python}
+    from sqlalchemy.ext.associationproxy import AssociationProxy
+
+    class Article(object):
+       keywords = AssociationProxy('keyword_associations', 'keyword')
+
+
+The `association_proxy` function is
 
 ### orderinglist
 
