@@ -2380,6 +2380,9 @@ class _Label(ColumnElement):
     key = property(lambda s: s.name)
     _label = property(lambda s: s.name)
     orig_set = property(lambda s:s.obj.orig_set)
+
+    def _compare_self(self):
+        return self.obj
     
     def get_children(self, **kwargs):
         return self.obj,
