@@ -410,7 +410,7 @@ class RelationTest4(testbase.ORMTest):
         class B(object):pass
         for cascade in (
                     "save-update, delete",
-                    "save-update, delete-orphan",
+                    #"save-update, delete-orphan",
                     "save-update, delete, delete-orphan"):
 
             mapper(B, tableB, properties={
@@ -437,7 +437,7 @@ class RelationTest4(testbase.ORMTest):
         class B(object):pass
         for cascade in (
                     "save-update, delete",
-                    "save-update, delete-orphan",
+                    #"save-update, delete-orphan",
                     "save-update, delete, delete-orphan"):
             mapper(A, tableA, properties={
                 'bs':relation(B, cascade=cascade)

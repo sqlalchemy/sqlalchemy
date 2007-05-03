@@ -15,7 +15,7 @@ class CascadeOptions(object):
     def __init__(self, arg=""):
         values = util.Set([c.strip() for c in arg.split(',')])
         self.delete_orphan = "delete-orphan" in values
-        self.delete = "delete" in values or self.delete_orphan or "all" in values
+        self.delete = "delete" in values or "all" in values
         self.save_update = "save-update" in values or "all" in values
         self.merge = "merge" in values or "all" in values
         self.expunge = "expunge" in values or "all" in values

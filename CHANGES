@@ -2,6 +2,9 @@
     - _Label class overrides compare_self to return its ultimate object.
       meaning, if you say someexpr.label('foo') == 5, it produces
       the correct "someexpr == 5".
+- orm
+    - "delete-orphan" no longer implies "delete". ongoing effort to 
+      separate the behavior of these two operations.
 - mysql
     - support for column-level CHARACTER SET and COLLATE declarations,
       as well as ASCII, UNICODE, NATIONAL and BINARY shorthand.

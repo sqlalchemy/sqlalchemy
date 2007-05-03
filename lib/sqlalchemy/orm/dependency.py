@@ -180,6 +180,8 @@ class OneToManyDP(DependencyProcessor):
         if delete:
             # head object is being deleted, and we manage its list of child objects
             # the child objects have to have their foreign key to the parent set to NULL
+            
+            # TODO: this cascade should be "delete" cascade
             if not self.cascade.delete_orphan or self.post_update:
                 for obj in deplist:
                     childlist = self.get_object_dependencies(obj, uowcommit, passive=self.passive_deletes)
@@ -211,6 +213,8 @@ class OneToManyDP(DependencyProcessor):
             # the child objects have to have their foreign key to the parent set to NULL
             if self.post_update:
                 pass
+            # TODO: this block based on "delete_orphan" should technically be "delete", but also
+            # is entirely not necessary
             elif self.cascade.delete_orphan:
                 for obj in deplist:
                     childlist = self.get_object_dependencies(obj, uowcommit, passive=self.passive_deletes)
