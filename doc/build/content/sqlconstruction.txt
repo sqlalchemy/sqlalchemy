@@ -46,7 +46,7 @@ For this section, we will mostly use the implcit style of execution, meaning the
 
 ### Simple Select {@name=select}
 
-A select is done by constructing a `Select` object with the proper arguments, adding any extra arguments if desired, then calling its `execute()` method.
+A select is done by constructing a `Select` object with the proper arguments  [[api](rel:docstrings_sqlalchemy.sql_modfunc_select)], adding any extra arguments if desired, then calling its `execute()` method.
 
     {python title="Basic Select"}
     from sqlalchemy import *
