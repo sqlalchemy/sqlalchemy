@@ -362,11 +362,15 @@ class ManyToManyDP(DependencyProcessor):
                     self._synchronize(obj, child, associationrow, False, uowcommit)
                     uowcommit.attributes[(self, "manytomany", obj, child)] = True
                     secondary_delete.append(associationrow)
+
         if len(secondary_delete):
             secondary_delete.sort()
             # TODO: precompile the delete/insert queries?
-            statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key) for c in self.secondary.c if c.key in associationrow]))
-            connection.execute(statement, secondary_delete)
+            statement = self.secondary.delete(sql.and_(*[c == sql.bindparam(c.key, type=c.type) for c in self.secondary.c if c.key in associationrow]))
+            result = connection.execute(statement, secondary_delete)
+            if result.supports_sane_rowcount() and result.rowcount != len(secondary_delete):
+                raise exceptions.ConcurrentModificationError("Deleted rowcount %d does not match number of objects deleted %d" % (result.rowcount, len(secondary_delete)))
+
         if len(secondary_insert):
             statement = self.secondary.insert()
             connection.execute(statement, secondary_insert)

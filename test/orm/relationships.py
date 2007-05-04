@@ -673,6 +673,56 @@ class TypeMatchTest(testbase.ORMTest):
         except exceptions.AssertionError, err:
             assert str(err) == "Attribute 'a' on class '%s' doesn't handle objects of type '%s'" % (D, B)
 
+class TypedAssociationTable(testbase.ORMTest):
+    def define_tables(self, metadata):
+        global t1, t2, t3
+        
+        class MySpecialType(TypeDecorator):
+            impl = String
+            def convert_bind_param(self, value, dialect):
+                return "lala" + value
+            def convert_result_value(self, value, dialect):
+                return value[4:]
+            
+        t1 = Table('t1', metadata, 
+            Column('col1', MySpecialType(30), primary_key=True),
+            Column('col2', String(30)))
+        t2 = Table('t2', metadata, 
+            Column('col1', MySpecialType(30), primary_key=True),
+            Column('col2', String(30)))
+        t3 = Table('t3', metadata,
+            Column('t1c1', MySpecialType(30), ForeignKey('t1.col1')),
+            Column('t2c1', MySpecialType(30), ForeignKey('t2.col1')),
+        )
+    def testm2m(self):
+        """test many-to-many tables with special types for candidate keys"""
+        
+        class T1(object):pass
+        class T2(object):pass
+        mapper(T2, t2)
+        mapper(T1, t1, properties={
+            't2s':relation(T2, secondary=t3, backref='t1s')
+        })
+        a = T1()
+        a.col1 = "aid"
+        b = T2()
+        b.col1 = "bid"
+        c = T2()
+        c.col1 = "cid"
+        a.t2s.append(b)
+        a.t2s.append(c)
+        sess = create_session()
+        sess.save(a)
+        sess.flush()
+
+        assert t3.count().scalar() == 2
+        
+        a.t2s.remove(c)
+        sess.flush()
+        
+        assert t3.count().scalar() == 1
+        
+# TODO: move these tests to either attributes.py test or its own module
 class CustomCollectionsTest(testbase.ORMTest):
     def define_tables(self, metadata):
         global sometable, someothertable

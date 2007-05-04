@@ -5,6 +5,11 @@
 - orm
     - "delete-orphan" no longer implies "delete". ongoing effort to 
       separate the behavior of these two operations.
+    - many-to-many relationships properly set the type of bind params
+      for delete operations on the association table
+    - many-to-many relationships check that the number of rows deleted
+      from the association table by a delete operation matches the expected 
+      results
 - mysql
     - support for column-level CHARACTER SET and COLLATE declarations,
       as well as ASCII, UNICODE, NATIONAL and BINARY shorthand.
