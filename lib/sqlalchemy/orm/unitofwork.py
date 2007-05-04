@@ -192,25 +192,16 @@ class UnitOfWork(object):
         # store objects whose fate has been decided
         processed = util.Set()
 
-
-        # put all saves/updates into the flush context.  detect orphans and throw them into deleted.
+        # put all saves/updates into the flush context.  detect top-level orphans and throw them into deleted.
         for obj in self.new.union(dirty).intersection(objset).difference(self.deleted):
             if obj in processed:
                 continue
-            if object_mapper(obj)._is_orphan(obj):
-                for c in [obj] + list(object_mapper(obj).cascade_iterator('delete', obj)):
-                    if c in processed:
-                        continue
-                    flush_context.register_object(c, isdelete=True)
-                    processed.add(c)
-            else:
-                flush_context.register_object(obj)
-                processed.add(obj)
+
+            flush_context.register_object(obj, isdelete=object_mapper(obj)._is_orphan(obj))
+            processed.add(obj)
 
         # put all remaining deletes into the flush context.
-        for obj in self.deleted:
-            if (objset is not None and not obj in objset) or obj in processed:
-                continue
+        for obj in self.deleted.intersection(objset).difference(processed):
             flush_context.register_object(obj, isdelete=True)
 
         trans = session.create_transaction(autoflush=False)

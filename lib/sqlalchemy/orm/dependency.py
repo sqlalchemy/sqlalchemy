@@ -180,9 +180,9 @@ class OneToManyDP(DependencyProcessor):
         if delete:
             # head object is being deleted, and we manage its list of child objects
             # the child objects have to have their foreign key to the parent set to NULL
-            
-            # TODO: this cascade should be "delete" cascade
-            if not self.cascade.delete_orphan or self.post_update:
+            # this phase can be called safely for any cascade but is unnecessary if delete cascade
+            # is on.
+            if not self.cascade.delete or self.post_update:
                 for obj in deplist:
                     childlist = self.get_object_dependencies(obj, uowcommit, passive=self.passive_deletes)
                     if childlist is not None:
@@ -211,25 +211,7 @@ class OneToManyDP(DependencyProcessor):
         if delete:
             # head object is being deleted, and we manage its list of child objects
             # the child objects have to have their foreign key to the parent set to NULL
-            if self.post_update:
-                pass
-            # TODO: this block based on "delete_orphan" should technically be "delete", but also
-            # is entirely not necessary
-            elif self.cascade.delete_orphan:
-                for obj in deplist:
-                    childlist = self.get_object_dependencies(obj, uowcommit, passive=self.passive_deletes)
-                    if childlist is not None:
-                        for child in childlist.deleted_items():
-                            if child is not None and childlist.hasparent(child) is False:
-                                uowcommit.register_object(child, isdelete=True)
-                                for c in self.mapper.cascade_iterator('delete', child):
-                                    uowcommit.register_object(c, isdelete=True)
-                        for child in childlist.unchanged_items():
-                            if child is not None:
-                                uowcommit.register_object(child, isdelete=True)
-                                for c in self.mapper.cascade_iterator('delete', child):
-                                    uowcommit.register_object(c, isdelete=True)
-            else:
+            if not self.post_update and not self.cascade.delete:
                 for obj in deplist:
                     childlist = self.get_object_dependencies(obj, uowcommit, passive=self.passive_deletes)
                     if childlist is not None:
