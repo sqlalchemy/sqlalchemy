@@ -2,6 +2,8 @@
     - _Label class overrides compare_self to return its ultimate object.
       meaning, if you say someexpr.label('foo') == 5, it produces
       the correct "someexpr == 5".
+    - fix to long name generation when using oid_column as an order by
+      (oids used heavily in mapper queries)
 - orm
     - "delete-orphan" no longer implies "delete". ongoing effort to 
       separate the behavior of these two operations.

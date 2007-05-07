@@ -265,7 +265,7 @@ class ANSICompiler(sql.Compiled):
             name = self._truncated_identifier("colident", column.name)
         else:
             name = column.name
-                
+
         if column.table is None or not column.table.named_with_column():
             self.strings[column] = self.preparer.format_column(column, name=name)
         else:
@@ -274,7 +274,9 @@ class ANSICompiler(sql.Compiled):
                 if n is not None:
                     self.strings[column] = "%s.%s" % (self.preparer.format_table(column.table, use_schema=False), n)
                 elif len(column.table.primary_key) != 0:
-                    self.strings[column] = self.preparer.format_column_with_table(list(column.table.primary_key)[0])
+                    pk = list(column.table.primary_key)[0]
+                    pkname = (pk.is_literal and name or self._truncated_identifier("colident", pk.name))
+                    self.strings[column] = self.preparer.format_column_with_table(list(column.table.primary_key)[0], column_name=pkname)
                 else:
                     self.strings[column] = None
             else:

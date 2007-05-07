@@ -22,6 +22,7 @@ class LongLabelsTest(testbase.PersistTest):
             Column("this_is_the_primarykey_column", Integer, Sequence("this_is_some_large_seq"), primary_key=True),
             Column("this_is_the_data_column", String(30))
             )
+            
         metadata.create_all()
     def tearDown(self):
         table1.delete().execute()
@@ -77,6 +78,17 @@ class LongLabelsTest(testbase.PersistTest):
       q = table1.select(table1.c.this_is_the_primarykey_column == 4).alias('foo')
       x = select([q])
       print x.execute().fetchall()
-      
+    
+    def test_oid(self):
+        """test that a primary key column compiled as the 'oid' column gets proper length truncation"""
+        from sqlalchemy.databases import postgres
+        dialect = postgres.PGDialect()
+        dialect.max_identifier_length = lambda: 30
+        tt = table1.select(use_labels=True).alias('foo')
+        x = select([tt], use_labels=True, order_by=tt.oid_column).compile(dialect=dialect)
+        #print x
+        # assert it doesnt end with "ORDER BY foo.some_large_named_table_this_is_the_primarykey_column"
+        assert str(x).endswith("""ORDER BY foo.some_large_named_table_t_1""")
+
 if __name__ == '__main__':
     testbase.main()
