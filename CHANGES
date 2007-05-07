@@ -10,6 +10,7 @@
     - many-to-many relationships check that the number of rows deleted
       from the association table by a delete operation matches the expected 
       results
+    - session.get() and session.load() propigate **kwargs through to query
 - mysql
     - support for column-level CHARACTER SET and COLLATE declarations,
       as well as ASCII, UNICODE, NATIONAL and BINARY shorthand.

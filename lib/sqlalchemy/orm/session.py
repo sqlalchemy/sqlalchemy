@@ -314,8 +314,8 @@ class Session(object):
         query.
         """
 
-        entity_name = kwargs.get('entity_name', None)
-        return self.query(class_, entity_name=entity_name).get(ident)
+        entity_name = kwargs.pop('entity_name', None)
+        return self.query(class_, entity_name=entity_name).get(ident, **kwargs)
 
     def load(self, class_, ident, **kwargs):
         """Return an instance of the object based on the given
@@ -332,8 +332,8 @@ class Session(object):
         query.
         """
 
-        entity_name = kwargs.get('entity_name', None)
-        return self.query(class_, entity_name=entity_name).load(ident)
+        entity_name = kwargs.pop('entity_name', None)
+        return self.query(class_, entity_name=entity_name).load(ident, **kwargs)
 
     def refresh(self, obj):
         """Reload the attributes for the given object from the
