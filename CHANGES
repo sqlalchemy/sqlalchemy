@@ -16,6 +16,8 @@
 - mysql
     - support for column-level CHARACTER SET and COLLATE declarations,
       as well as ASCII, UNICODE, NATIONAL and BINARY shorthand.
+- firebird
+    - set max identifier length to 31
 -extensions
     - new association proxy implementation, implementing complete
       proxies to list, dict and set-based relation collections

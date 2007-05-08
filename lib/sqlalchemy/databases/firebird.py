@@ -154,6 +154,9 @@ class FBDialect(ansisql.ANSIDialect):
     def preparer(self):
         return FBIdentifierPreparer(self)
 
+    def max_identifier_length(self):
+        return 31
+
     def has_table(self, connection, table_name, schema=None):
         tblqry = """
         SELECT count(*)
