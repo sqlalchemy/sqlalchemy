@@ -260,7 +260,8 @@ class _ConnectionFairy(object):
     def invalidate(self, e=None):
         if self.connection is None:
             raise exceptions.InvalidRequestError("This connection is closed")
-        self._connection_record.invalidate(e=e)
+        if self._connection_record is not None:
+            self._connection_record.invalidate(e=e)
         self.connection = None
         self._cursors = None
         self._close()
@@ -281,6 +282,12 @@ class _ConnectionFairy(object):
             raise exceptions.InvalidRequestError("This connection is closed")
         self.__counter +=1
         return self
+
+    def detach(self):
+        if self._connection_record is not None:
+            self._connection_record.connection = None        
+            self._pool.do_return_conn(self._connection_record)
+            self._connection_record = None
 
     def close_open_cursors(self):
         if self._cursors is not None:
@@ -307,6 +314,9 @@ class _ConnectionFairy(object):
         if self.connection is not None:
             try:
                 self.connection.rollback()
+                # Immediately close detached instances
+                if self._connection_record is None:
+                    self.connection.close()
             except Exception, e:
                 if self._connection_record is not None:
                     self._connection_record.invalidate(e=e)

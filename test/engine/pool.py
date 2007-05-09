@@ -17,9 +17,10 @@ class MockConnection(object):
     def __init__(self):
         global mcid
         self.id = mcid
+        self.closed = False
         mcid += 1
     def close(self):
-        pass
+        self.closed = True
     def rollback(self):
         pass
     def cursor(self):
@@ -205,6 +206,30 @@ class PoolTest(PersistTest):
 
         c1 = p.connect()
         assert c1.connection.id != c_id
+
+    def test_detach(self):
+        dbapi = MockDBAPI()
+        p = pool.QueuePool(creator = lambda: dbapi.connect('foo.db'), pool_size = 1, max_overflow = 0, use_threadlocal = False)
+
+        c1 = p.connect()
+        c1.detach()
+        c_id = c1.connection.id
+
+        c2 = p.connect()
+        assert c2.connection.id != c1.connection.id
+        dbapi.raise_error = True
+
+        c2.invalidate()
+        c2 = None
+
+        c2 = p.connect()
+        assert c2.connection.id != c1.connection.id
+
+        con = c1.connection
+
+        assert not con.closed
+        c1.close()
+        assert con.closed
         
     def testthreadlocal_del(self):
         self._do_testthreadlocal(useclose=False)
