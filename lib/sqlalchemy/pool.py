@@ -258,6 +258,11 @@ class _ConnectionFairy(object):
     is_valid = property(lambda self:self.connection is not None)
     
     def invalidate(self, e=None):
+        """Mark this connection as invalidated.
+        
+        The connection will be immediately closed.  The 
+        containing ConnectionRecord will create a new connection when next used.
+        """
         if self.connection is None:
             raise exceptions.InvalidRequestError("This connection is closed")
         if self._connection_record is not None:
@@ -284,6 +289,14 @@ class _ConnectionFairy(object):
         return self
 
     def detach(self):
+        """Separate this Connection from its Pool.
+        
+        This means that the connection will no longer be returned to the 
+        pool when closed, and will instead be literally closed.  The 
+        containing ConnectionRecord is separated from the DBAPI connection, and
+        will create a new connection when next used.
+        """
+        
         if self._connection_record is not None:
             self._connection_record.connection = None        
             self._pool.do_return_conn(self._connection_record)

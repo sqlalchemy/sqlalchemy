@@ -1,6 +1,8 @@
 - engines
-    - connections can be detached from their pool, closing on dereference
-      instead of returning to the pool for reuse
+    - added detach() to Connection, allows underlying DBAPI connection to be detached 
+      from its pool, closing on dereference/close() instead of being reused by the pool.
+    - added invalidate() to Connection, immediately invalidates the Connection and its
+      underlying DBAPI connection.
 - sql
     - _Label class overrides compare_self to return its ultimate object.
       meaning, if you say someexpr.label('foo') == 5, it produces

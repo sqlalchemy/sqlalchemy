@@ -427,6 +427,30 @@ class Connection(Connectable):
         """contextual_connect() is implemented to return self so that an incoming Engine or Connection object can be treated similarly."""
         return self
 
+    def invalidate(self):
+        """invalidate the underying DBAPI connection and immediately close this Connection.
+        
+        The underlying DBAPI connection is literally closed (if possible), and is discarded.
+        Its source connection pool will typically create a new connection to replace it, once
+        requested.
+        """
+        
+        self.__connection.invalidate()
+        self.__connection = None
+
+    def detach(self):
+        """detach the underlying DBAPI connection from its connection pool.
+        
+        This Connection instance will remain useable.  When closed, the 
+        DBAPI connection will be literally closed and not returned to its pool.
+        The pool will typically create a new connection to replace it, once requested.
+        
+        This method can be used to insulate the rest of an application from a modified
+        state on a connection (such as a transaction isolation level or similar).
+        """
+        
+        self.__connection.detach()
+        
     def begin(self):
         if self.__transaction is None:
             self.__transaction = self._create_transaction(None)
