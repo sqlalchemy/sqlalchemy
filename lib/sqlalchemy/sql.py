@@ -2393,6 +2393,9 @@ class _Label(ColumnElement):
     def _get_from_objects(self):
         return self.obj._get_from_objects()
 
+    def _hide_froms(self):
+        return self.obj._hide_froms()
+        
     def _make_proxy(self, selectable, name = None):
         if isinstance(self.obj, Selectable):
             return self.obj._make_proxy(selectable, name=self.name)
@@ -2829,7 +2832,7 @@ class Select(_SelectBaseMixin, FromClause):
 
         if self.is_scalar and not hasattr(self, 'type'):
             self.type = column.type
-
+        
         # if the column is a Select statement itself,
         # accept visitor
         self.__correlator.traverse(column)

@@ -7,6 +7,8 @@
     - _Label class overrides compare_self to return its ultimate object.
       meaning, if you say someexpr.label('foo') == 5, it produces
       the correct "someexpr == 5".
+    - _Label propigates "_hide_froms()" so that scalar selects
+      behave more properly with regards to FROM clause #574 
     - fix to long name generation when using oid_column as an order by
       (oids used heavily in mapper queries)
 - orm
