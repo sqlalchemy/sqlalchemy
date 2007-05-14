@@ -441,7 +441,12 @@ class OracleCompiler(ansisql.ANSICompiler):
             return ansisql.ANSICompiler.visit_join(self, join)
 
         self.froms[join] = self.get_from_text(join.left) + ", " + self.get_from_text(join.right)
-        self.wheres[join] = sql.and_(self.wheres.get(join.left, None), join.onclause)
+        where = self.wheres.get(join.left, None)
+        if where is not None:
+            self.wheres[join] = sql.and_(where, join.onclause)
+        else:
+            self.wheres[join] = join.onclause
+#        self.wheres[join] = sql.and_(self.wheres.get(join.left, None), join.onclause)
         self.strings[join] = self.froms[join]
 
         if join.isouter:
@@ -454,7 +459,7 @@ class OracleCompiler(ansisql.ANSICompiler):
 
             self._outertable = None
 
-        self.visit_compound(self.wheres[join])
+        self.wheres[join].accept_visitor(self)
 
     def visit_insert_sequence(self, column, sequence, parameters):
         """This is the `sequence` equivalent to ``ANSICompiler``'s

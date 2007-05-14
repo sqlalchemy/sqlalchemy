@@ -139,7 +139,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
 
         self.runtest(select([table1, exists([1], from_obj=[table2])]), "SELECT mytable.myid, mytable.name, mytable.description, EXISTS (SELECT 1 FROM myothertable) FROM mytable", params={})
 
-        self.runtest(select([table1, exists([1], from_obj=[table2]).label('foo')]), "SELECT mytable.myid, mytable.name, mytable.description, (EXISTS (SELECT 1 FROM myothertable)) AS foo FROM mytable", params={})
+        self.runtest(select([table1, exists([1], from_obj=[table2]).label('foo')]), "SELECT mytable.myid, mytable.name, mytable.description, EXISTS (SELECT 1 FROM myothertable) AS foo FROM mytable", params={})
         
     def testwheresubquery(self):
         # TODO: this tests that you dont get a "SELECT column" without a FROM but its not working yet.
@@ -426,6 +426,9 @@ WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid =
             "SELECT column1 AS foobar, column2 AS hoho, mytable.myid AS mytable_myid FROM mytable"
         )
         
+        print "---------------------------------------------"
+        s1 = select(["column1 AS foobar", "column2 AS hoho", table1.c.myid], from_obj=[table1])
+        print "---------------------------------------------"
         # test that "auto-labeling of subquery columns" doesnt interfere with literal columns,
         # exported columns dont get quoted
         self.runtest(
@@ -633,7 +636,7 @@ FROM myothertable ORDER BY myid \
         
         query = select(
                 [table1, table2],
-                and_(
+                or_(
                     table1.c.name == 'fred',
                     table1.c.myid == 10,
                     table2.c.othername != 'jack',
@@ -641,21 +644,22 @@ FROM myothertable ORDER BY myid \
                 ),
                 from_obj = [ outerjoin(table1, table2, table1.c.myid == table2.c.otherid) ]
                 )
-                
-        self.runtest(query, 
-            "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername \
-FROM mytable LEFT OUTER JOIN myothertable ON mytable.myid = myothertable.otherid \
-WHERE mytable.name = %(mytable_name)s AND mytable.myid = %(mytable_myid)s AND \
-myothertable.othername != %(myothertable_othername)s AND \
-EXISTS (select yay from foo where boo = lar)",
-            dialect=postgres.dialect()
-            )
+        if False:
+            self.runtest(query, 
+                "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername \
+    FROM mytable LEFT OUTER JOIN myothertable ON mytable.myid = myothertable.otherid \
+    WHERE mytable.name = %(mytable_name)s OR mytable.myid = %(mytable_myid)s OR \
+    myothertable.othername != %(myothertable_othername)s OR \
+    EXISTS (select yay from foo where boo = lar)",
+                dialect=postgres.dialect()
+                )
 
+        print "-------------------------------------------------"
         self.runtest(query, 
             "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername \
 FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid(+) AND \
-mytable.name = :mytable_name AND mytable.myid = :mytable_myid AND \
-myothertable.othername != :myothertable_othername AND EXISTS (select yay from foo where boo = lar)",
+(mytable.name = :mytable_name OR mytable.myid = :mytable_myid OR \
+myothertable.othername != :myothertable_othername OR EXISTS (select yay from foo where boo = lar))",
             dialect=oracle.OracleDialect(use_ansi = False))
 
         query = table1.outerjoin(table2, table1.c.myid==table2.c.otherid).outerjoin(table3, table3.c.userid==table2.c.otherid)

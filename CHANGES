@@ -11,6 +11,12 @@
       behave more properly with regards to FROM clause #574 
     - fix to long name generation when using oid_column as an order by
       (oids used heavily in mapper queries)
+    - parenthesis are applied to clauses via a new _Grouping construct.
+      uses operator precedence to more intelligently apply parenthesis 
+      to clauses, provides cleaner nesting of clauses (doesnt mutate
+      clauses placed in other clauses, i.e. no 'parens' flag)
+    - added 'modifier' keyword, works like func.<foo> except does not
+      add parenthesis.  e.g. select([modifier.DISTINCT(...)]) etc.
 - orm
     - "delete-orphan" no longer implies "delete". ongoing effort to 
       separate the behavior of these two operations.

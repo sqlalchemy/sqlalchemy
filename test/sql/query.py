@@ -470,7 +470,7 @@ class CompoundTest(PersistTest):
             select([t1.c.col3, t1.c.col4]),
             select([t2.c.col3, t2.c.col4]),
             select([t3.c.col3, t3.c.col4]),
-        parens=True), select([t2.c.col3, t2.c.col4]))
+        ), select([t2.c.col3, t2.c.col4]))
         assert e.alias('bar').select().execute().fetchall() == [('aaa', 'aaa'), ('aaa', 'ccc'), ('bbb', 'aaa'), ('bbb', 'bbb'), ('ccc', 'bbb'), ('ccc', 'ccc')]
 
     @testbase.unsupported('mysql', 'oracle')

@@ -714,7 +714,7 @@ class Engine(Connectable):
             connection.close()
 
     def _func(self):
-        return sql._FunctionGenerator(self)
+        return sql._FunctionGenerator(engine=self)
 
     func = property(_func)
 
