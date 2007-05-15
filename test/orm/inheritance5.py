@@ -672,6 +672,8 @@ class GenerativeTest(testbase.AssertMixin):
         session.save(dead)
         session.flush()
 
+        # TODO: we haven't created assertions for all the data combinations created here
+        
         # creating 5 managers named from M1 to M5 and 5 engineers named from E1 to E5
         # M4, M5, E4 and E5 are dead
         for i in range(1,5):
@@ -694,12 +696,18 @@ class GenerativeTest(testbase.AssertMixin):
         session.save(car2)
         session.flush()
 
-        # test these twice because theres caching involved
+        # test these twice because theres caching involved, as well previous issues that modified the polymorphic union
         for x in range(0, 2):
             r = session.query(Person).filter_by(people.c.name.like('%2')).join('status').filter_by(name="active")
             assert str(list(r)) == "[Manager M2, category YYYYYYYYY, status Status active, Engineer E2, field X, status Status active]"
             r = session.query(Engineer).join('status').filter(people.c.name.in_('E2', 'E3', 'E4', 'M4', 'M2', 'M1') & (status.c.name=="active"))
             assert str(list(r)) == "[Engineer E2, field X, status Status active, Engineer E3, field X, status Status active]"
+            # this test embeds the original polymorphic union (employee_join) fully 
+            # into the WHERE criterion, using a correlated select. ticket #577 tracks 
+            # that Query's adaptation of the WHERE clause does not dig into the 
+            # mapped selectable itself, which permanently breaks the mapped selectable.
+            r = session.query(Person).filter(Car.c.owner == select([Car.c.owner], Car.c.owner==employee_join.c.person_id))
+            assert str(list(r)) == "[Engineer E4, field X, status Status dead]"
         
 class MultiLevelTest(testbase.ORMTest):
     def define_tables(self, metadata):

@@ -967,7 +967,7 @@ class Query(object):
             # adapt the given WHERECLAUSE to adjust instances of this query's mapped 
             # table to be that of our select_table,
             # which may be the "polymorphic" selectable used by our mapper.
-            sql_util.ClauseAdapter(self.table).traverse(whereclause)
+            sql_util.ClauseAdapter(self.table).traverse(whereclause, stop_on=util.Set([self.table]))
 
             # if extra entities, adapt the criterion to those as well
             for m in self._entities:
@@ -975,7 +975,7 @@ class Query(object):
                     m = mapper.class_mapper(m)
                 if isinstance(m, mapper.Mapper):
                     table = m.select_table
-                    sql_util.ClauseAdapter(m.select_table).traverse(whereclause)
+                    sql_util.ClauseAdapter(m.select_table).traverse(whereclause, stop_on=util.Set([m.select_table]))
         
         # get/create query context.  get the ultimate compile arguments
         # from there
@@ -1050,7 +1050,7 @@ class Query(object):
         # it has no relations() on it.  should we compile those too into the query ?  (i.e. eagerloads)
         for value in self.select_mapper.props.values():
             value.setup(context)
-
+        
         # additional entities/columns, add those to selection criterion
         for m in self._entities:
             if isinstance(m, type):
