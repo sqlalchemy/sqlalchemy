@@ -644,17 +644,15 @@ FROM myothertable ORDER BY myid \
                 ),
                 from_obj = [ outerjoin(table1, table2, table1.c.myid == table2.c.otherid) ]
                 )
-        if False:
-            self.runtest(query, 
-                "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername \
-    FROM mytable LEFT OUTER JOIN myothertable ON mytable.myid = myothertable.otherid \
-    WHERE mytable.name = %(mytable_name)s OR mytable.myid = %(mytable_myid)s OR \
-    myothertable.othername != %(myothertable_othername)s OR \
-    EXISTS (select yay from foo where boo = lar)",
-                dialect=postgres.dialect()
-                )
+        self.runtest(query, 
+            "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername \
+FROM mytable LEFT OUTER JOIN myothertable ON mytable.myid = myothertable.otherid \
+WHERE mytable.name = %(mytable_name)s OR mytable.myid = %(mytable_myid)s OR \
+myothertable.othername != %(myothertable_othername)s OR \
+EXISTS (select yay from foo where boo = lar)",
+            dialect=postgres.dialect()
+            )
 
-        print "-------------------------------------------------"
         self.runtest(query, 
             "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername \
 FROM mytable, myothertable WHERE mytable.myid = myothertable.otherid(+) AND \
