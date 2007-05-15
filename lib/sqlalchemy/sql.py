@@ -862,7 +862,7 @@ class ClauseVisitor(object):
     (column_collections=False) or to return Schema-level items
     (schema_visitor=True)."""
     __traverse_options__ = {}
-    def traverse(self, obj, stop_on=None, echo=False):
+    def traverse(self, obj, stop_on=None):
         stack = [obj]
         traversal = []
         while len(stack) > 0:
@@ -873,8 +873,6 @@ class ClauseVisitor(object):
                     stack.append(c)
         for target in traversal:
             v = self
-            if echo:
-                print "VISITING", repr(target), "STOP ON", stop_on
             while v is not None:
                 target.accept_visitor(v)
                 v = getattr(v, '_next', None)
@@ -938,16 +936,24 @@ class LoggingClauseVisitor(ClauseVisitor):
     'sqlalchemy.sql.ClauseVisitor' **before** you import the 
     sqlalchemy.sql module.
     """
-    
-    def traverse(self, obj):
-        indent = getattr(self, '_indent', "")
-        self.logger.debug(indent + "START " + repr(obj))
-        setattr(self, "_indent", indent + "    ")
-        for n in obj.get_children(**self.__traverse_options__):
-            self.traverse(n)
-        obj.accept_visitor(self)
-        setattr(self, "_indent", indent)
-        self.logger.debug(indent+ "END " + repr(obj))
+
+    def traverse(self, obj, stop_on=None):
+        stack = [(obj, "")]
+        traversal = []
+        while len(stack) > 0:
+            (t, indent) = stack.pop()
+            if stop_on is None or t not in stop_on:
+                traversal.insert(0, (t, indent))
+                for c in t.get_children(**self.__traverse_options__):
+                    stack.append((c, indent + "    "))
+        
+        for (target, indent) in traversal:
+            self.logger.debug(indent + repr(target))
+            v = self
+            while v is not None:
+                target.accept_visitor(v)
+                v = getattr(v, '_next', None)
+        return obj
 
 LoggingClauseVisitor.logger = logging.class_logger(ClauseVisitor)
 
