@@ -72,6 +72,41 @@ class O2MCascadeTest(testbase.AssertMixin):
         sess.flush()
         sess.clear()
 
+    def testassignlist(self):
+        sess = create_session()
+        u = tables.User()
+        u.user_name = 'jack'
+        o1 = tables.Order()
+        o1.description ='someorder'
+        o2 = tables.Order()
+        o2.description = 'someotherorder'
+        l = [o1, o2]
+        sess.save(u)
+        u.orders = l
+        assert o1 in sess
+        assert o2 in sess
+        sess.flush()
+        sess.clear()
+        
+        u = sess.query(tables.User).get(u.user_id)
+        o3 = tables.Order()
+        o3.description='order3'
+        o4 = tables.Order()
+        o4.description = 'order4'
+        u.orders = [o3, o4]
+        assert o3 in sess
+        assert o4 in sess
+        sess.flush()
+        
+        o5 = tables.Order()
+        o5.description='order5'
+        sess.save(o5)
+        try:
+            sess.flush()
+            assert False
+        except exceptions.FlushError, e:
+            assert "is an orphan" in str(e)
+        
         
     def testdelete(self):
         sess = create_session()
