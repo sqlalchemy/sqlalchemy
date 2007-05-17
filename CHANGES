@@ -28,6 +28,8 @@
     - session.get() and session.load() propigate **kwargs through to query
     - fix to polymorphic query which allows the original polymorphic_union
       to be embedded into a correlated subquery [ticket:577]
+    - fix to select_by(<propname>=<object instance>) -style joins in conjunction
+      with many-to-many relationships, bug introduced in r2556 
 - mysql
     - support for column-level CHARACTER SET and COLLATE declarations,
       as well as ASCII, UNICODE, NATIONAL and BINARY shorthand.

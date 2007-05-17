@@ -418,6 +418,8 @@ class PropertyLoader(StrategizedProperty):
         if logging.is_info_enabled(self.logger):
             self.logger.info(str(self) + " setup primary join " + str(self.primaryjoin))
             self.logger.info(str(self) + " setup polymorphic primary join " + str(self.polymorphic_primaryjoin))
+            self.logger.info(str(self) + " setup secondary join " + str(self.secondaryjoin))
+            self.logger.info(str(self) + " setup polymorphic secondary join " + str(self.polymorphic_secondaryjoin))
             self.logger.info(str(self) + " foreign keys " + str([str(c) for c in self.foreign_keys]))
             self.logger.info(str(self) + " remote columns " + str([str(c) for c in self.remote_side]))
             self.logger.info(str(self) + " relation direction " + (self.direction is sync.ONETOMANY and "one-to-many" or (self.direction is sync.MANYTOONE and "many-to-one" or "many-to-many")))

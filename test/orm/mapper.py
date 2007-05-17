@@ -346,8 +346,8 @@ class MapperTest(MapperSuperTest):
         self.assert_result(k, Keyword, *item_keyword_result[1]['keywords'][1])
 
         
-    def testjoinvia(self):
-        """test the join_via and join_to functions"""
+    def testautojoin(self):
+        """test functions derived from Query's _join_to function."""
         
         m = mapper(User, users, properties={
             'orders':relation(mapper(Order, orders, properties={
@@ -386,10 +386,10 @@ class MapperTest(MapperSuperTest):
             assert False
         except AttributeError:
             assert True
-    
         
-    def testjoinviam2m(self):
-        """test the join_via and join_to functions"""
+    def testautojoinm2m(self):
+        """test functions derived from Query's _join_to function."""
+        
         m = mapper(Order, orders, properties = {
             'items' : relation(mapper(Item, orderitems, properties = {
                 'keywords' : relation(mapper(Keyword, keywords), itemkeywords)
@@ -402,10 +402,15 @@ class MapperTest(MapperSuperTest):
         l = q.filter(keywords.c.name=='square').join(['items', 'keywords']).list()
         self.assert_result(l, Order, order_result[1])
 
+        # test comparing to an object instance
+        item = sess.query(Item).selectfirst()
+        l = sess.query(Item).select_by(keywords=item.keywords[0])
+        assert item == l[0]
         
     def testcustomjoin(self):
         """test that the from_obj parameter to query.select() can be used
         to totally replace the FROM parameters of the generated query."""
+
         m = mapper(User, users, properties={
             'orders':relation(mapper(Order, orders, properties={
                 'items':relation(mapper(Item, orderitems))

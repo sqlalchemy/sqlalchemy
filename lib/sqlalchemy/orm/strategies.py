@@ -253,7 +253,7 @@ class LazyLoader(AbstractRelationLoader):
         reverse = {}
 
         def should_bind(targetcol, othercol):
-            if reverse_direction:
+            if reverse_direction and not secondaryjoin:
                 return targetcol in remote_side
             else:
                 return othercol in remote_side
@@ -293,10 +293,14 @@ class LazyLoader(AbstractRelationLoader):
 
         lazywhere = primaryjoin.copy_container()
         li = mapperutil.BinaryVisitor(visit_binary)
-        li.traverse(lazywhere)
+        
+        if not secondaryjoin or not reverse_direction:
+            li.traverse(lazywhere)
         
         if secondaryjoin is not None:
             secondaryjoin = secondaryjoin.copy_container()
+            if reverse_direction:
+                li.traverse(secondaryjoin)
             lazywhere = sql.and_(lazywhere, secondaryjoin)
  
         if hasattr(cls, 'parent_property'):
