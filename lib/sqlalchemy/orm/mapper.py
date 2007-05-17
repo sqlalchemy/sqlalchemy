@@ -199,7 +199,7 @@ class Mapper(object):
         self.class_ = class_
         self.entity_name = entity_name
         self.class_key = ClassKey(class_, entity_name)
-        self.primary_key = primary_key
+        self.primary_key_argument = primary_key
         self.non_primary = non_primary
         self.order_by = order_by
         self.always_refresh = always_refresh
@@ -486,17 +486,19 @@ class Mapper(object):
 
         # determine primary key columns, either passed in, or get them from our set of tables
         self.pks_by_table = {}
-        if self.primary_key is not None:
+        if self.primary_key_argument is not None:
             # determine primary keys using user-given list of primary key columns as a guide
             #
             # TODO: this might not work very well for joined-table and/or polymorphic
             # inheritance mappers since local_table isnt taken into account nor is select_table
             # need to test custom primary key columns used with inheriting mappers
-            for k in self.primary_key:
+            for k in self.primary_key_argument:
                 self.pks_by_table.setdefault(k.table, util.OrderedSet()).add(k)
                 if k.table != self.mapped_table:
                     # associate pk cols from subtables to the "main" table
-                    self.pks_by_table.setdefault(self.mapped_table, util.OrderedSet()).add(k)
+                    corr = self.mapped_table.corresponding_column(k, raiseerr=False)
+                    if corr is not None:
+                        self.pks_by_table.setdefault(self.mapped_table, util.OrderedSet()).add(corr)
         else:
             # no user-defined primary key columns - go through all of our represented tables
             # and assemble primary key columns
@@ -515,7 +517,7 @@ class Mapper(object):
         if len(self.pks_by_table[self.mapped_table]) == 0:
             raise exceptions.ArgumentError("Could not assemble any primary key columns for mapped table '%s'" % (self.mapped_table.name))
         self.primary_key = self.pks_by_table[self.mapped_table]
-
+        
     def _compile_properties(self):
         """Inspect the properties dictionary sent to the Mapper's
         constructor as well as the mapped_table, and create
@@ -615,7 +617,7 @@ class Mapper(object):
                         props[key] = self.select_table.corresponding_column(prop)
                     elif (isinstance(prop, list) and sql.is_column(prop[0])):
                         props[key] = [self.select_table.corresponding_column(c) for c in prop]
-            self.__surrogate_mapper = Mapper(self.class_, self.select_table, non_primary=True, properties=props, _polymorphic_map=self.polymorphic_map, polymorphic_on=self.select_table.corresponding_column(self.polymorphic_on))
+            self.__surrogate_mapper = Mapper(self.class_, self.select_table, non_primary=True, properties=props, _polymorphic_map=self.polymorphic_map, polymorphic_on=self.select_table.corresponding_column(self.polymorphic_on), primary_key=self.primary_key_argument)
 
     def _compile_class(self):
         """If this mapper is to be a primary mapper (i.e. the

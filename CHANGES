@@ -30,6 +30,9 @@
       to be embedded into a correlated subquery [ticket:577]
     - fix to select_by(<propname>=<object instance>) -style joins in conjunction
       with many-to-many relationships, bug introduced in r2556 
+    - the "primary_key" argument to mapper() is propigated to the "polymorphic"
+      mapper.  primary key columns in this list get normalized to that of the mapper's 
+      local table.
 - mysql
     - support for column-level CHARACTER SET and COLLATE declarations,
       as well as ASCII, UNICODE, NATIONAL and BINARY shorthand.
