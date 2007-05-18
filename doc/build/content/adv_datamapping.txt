@@ -913,10 +913,10 @@ Mappers can have functionality augmented or replaced at many points in its execu
             this is a good place to set up primary key values and such that arent handled otherwise."""
             return EXT_PASS
         def before_update(self, mapper, connection, instance):
-            """called before an object instnace is UPDATED"""
+            """called before an object instance is UPDATED"""
             return EXT_PASS
         def after_update(self, mapper, connection, instance):
-            """called after an object instnace is UPDATED"""
+            """called after an object instance is UPDATED"""
             return EXT_PASS
         def after_insert(self, mapper, connection, instance):
             """called after an object instance has been INSERTed"""
