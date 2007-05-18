@@ -17,6 +17,8 @@
       clauses placed in other clauses, i.e. no 'parens' flag)
     - added 'modifier' keyword, works like func.<foo> except does not
       add parenthesis.  e.g. select([modifier.DISTINCT(...)]) etc.
+    - removed "no group by's in a select thats part of a UNION"
+      restriction [ticket:578]
 - orm
     - "delete-orphan" no longer implies "delete". ongoing effort to 
       separate the behavior of these two operations.

@@ -2686,7 +2686,6 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
 
         # some DBs do not like ORDER BY in the inner queries of a UNION, etc.
         for s in selects:
-            s.group_by(None)
             s.order_by(None)
 
         self.group_by(*kwargs.pop('group_by', [None]))

@@ -628,6 +628,17 @@ FROM myothertable ORDER BY myid \
  LIMIT 5 OFFSET 10"
             )
             
+            self.runtest(
+                union(
+                    select([table1.c.myid, table1.c.name, func.max(table1.c.description)], table1.c.name=='name2', group_by=[table1.c.myid, table1.c.name]),
+                    table1.select(table1.c.name=='name1')
+                )
+                ,
+                "SELECT mytable.myid, mytable.name, max(mytable.description) FROM mytable \
+WHERE mytable.name = :mytable_name GROUP BY mytable.myid, mytable.name UNION SELECT mytable.myid, mytable.name, mytable.description \
+FROM mytable WHERE mytable.name = :mytable_name_1"
+            )
+            
     def testouterjoin(self):
         # test an outer join.  the oracle module should take the ON clause of the join and
         # move it up to the WHERE clause of its parent select, and append (+) to all right-hand-side columns
