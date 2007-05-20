@@ -162,6 +162,8 @@ class LazyLoader(AbstractRelationLoader):
     def init(self):
         super(LazyLoader, self).init()
         (self.lazywhere, self.lazybinds, self.lazyreverse) = self._create_lazy_clause(self)
+        
+        self.logger.info(str(self.parent_property) + " lazy loading clause " + str(self.lazywhere))
 
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
@@ -304,8 +306,7 @@ class LazyLoader(AbstractRelationLoader):
             if reverse_direction:
                 li.traverse(secondaryjoin)
             lazywhere = sql.and_(lazywhere, secondaryjoin)
- 
-        LazyLoader.logger.info(str(prop.parent_property) + " lazy loading clause " + str(lazywhere))
+
         return (lazywhere, binds, reverse)
     _create_lazy_clause = classmethod(_create_lazy_clause)
     
