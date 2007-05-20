@@ -1,3 +1,13 @@
+0.4.0
+
+- orm
+    - deferred inheritance loading: polymorphic mappers can be constructed *without* 
+      a select_table argument.  inheriting mappers whose tables were not 
+      represented in the initial load will issue a second SQL query immediately,
+      once per instance (i.e. not very efficient for large lists), 
+      in order to load the remaining columns.
+    
+0.3.XXX
 - engines
     - added detach() to Connection, allows underlying DBAPI connection to be detached 
       from its pool, closing on dereference/close() instead of being reused by the pool.

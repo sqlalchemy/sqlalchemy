@@ -1964,7 +1964,9 @@ class ClauseList(ClauseElement):
         including a comparison of all the clause items.
         """
 
-        if isinstance(other, ClauseList) and len(self.clauses) == len(other.clauses):
+        if not isinstance(other, ClauseList) and len(self.clauses) == 1:
+            return self.clauses[0].compare(other)
+        elif isinstance(other, ClauseList) and len(self.clauses) == len(other.clauses):
             for i in range(0, len(self.clauses)):
                 if not self.clauses[i].compare(other.clauses[i]):
                     return False

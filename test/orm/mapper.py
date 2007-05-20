@@ -1087,6 +1087,22 @@ class LazyTest(MapperSuperTest):
         self.echo(repr(l[0].user))
         self.assert_(l[0].user is not None)
 
+    def testuseget(self):
+        """test that a simple many-to-one lazyload optimizes to use query.get().
+        
+        this is done currently by comparing the 'get' SQL clause of the query
+        to the 'lazy' SQL clause of the lazy loader, so it relies heavily on 
+        ClauseElement.compare()"""
+        
+        m = mapper(Address, addresses, properties = dict(
+            user = relation(mapper(User, users), lazy = True)
+        ))
+        sess = create_session()
+        a1 = sess.query(Address).get_by(email_address = "ed@wood.com")
+        u1 = sess.query(User).get(8)
+        def go():
+            assert a1.user is u1
+        self.assert_sql_count(db, go, 0)
 
     def testdouble(self):
         """tests lazy loading with two relations simulatneously, from the same table, using aliases.  """
@@ -1618,6 +1634,20 @@ class InstancesTest(MapperSuperTest):
             (user7, 1),
             (user8, 3),
             (user9, 0)
+        ]
+        
+    def testmappersplustwocolumns(self):
+        mapper(User, users)
+        s = select([users, func.count(addresses.c.address_id).label('count'), ("Name:" + users.c.user_name).label('concat')], from_obj=[users.outerjoin(addresses)], group_by=[c for c in users.c], order_by=[users.c.user_id])
+        sess = create_session()
+        (user7, user8, user9) = sess.query(User).select()
+        q = sess.query(User)
+        l = q.instances(s.execute(), "count", "concat")
+        print l
+        assert l == [
+            (user7, 1, "Name:jack"),
+            (user8, 3, "Name:ed"),
+            (user9, 0, "Name:fred")
         ]
 
 

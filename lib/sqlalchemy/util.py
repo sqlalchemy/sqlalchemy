@@ -426,7 +426,10 @@ class UniqueAppender(object):
         if item not in self.set:
             self.set.add(item)
             self._data_appender(item)
-
+    
+    def __iter__(self):
+        return iter(self.data)
+        
 class ScopedRegistry(object):
     """A Registry that can store one or multiple instances of a single
     class on a per-thread scoped basis, or on a customized scope.

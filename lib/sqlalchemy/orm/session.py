@@ -593,12 +593,12 @@ class Session(object):
     def _attach(self, obj):
         """Attach the given object to this ``Session``."""
 
-        if getattr(obj, '_sa_session_id', None) != self.hash_key:
-            old = getattr(obj, '_sa_session_id', None)
-            if old is not None and _sessions.has_key(old):
+        old_id = getattr(obj, '_sa_session_id', None)
+        if old_id != self.hash_key:
+            if old_id is not None and _sessions.has_key(old_id):
                 raise exceptions.InvalidRequestError("Object '%s' is already attached "
                                                      "to session '%s' (this is '%s')" %
-                                                     (repr(obj), old, id(self)))
+                                                     (repr(obj), old_id, id(self)))
 
                 # auto-removal from the old session is disabled.  but if we decide to
                 # turn it back on, do it as below: gingerly since _sessions is a WeakValueDict

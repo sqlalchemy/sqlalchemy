@@ -882,16 +882,20 @@ class Query(object):
                 if isinstance(m, type):
                     m = mapper.class_mapper(m)
                 if isinstance(m, mapper.Mapper):
-                    appender = []
-                    def proc(context, row):
-                        if not m._instance(context, row, appender):
-                            appender.append(None)
-                    process.append((proc, appender))
+                    def x(m):
+                        appender = []
+                        def proc(context, row):
+                            if not m._instance(context, row, appender):
+                                appender.append(None)
+                        process.append((proc, appender))
+                    x(m)
                 elif isinstance(m, sql.ColumnElement) or isinstance(m, basestring):
-                    res = []
-                    def proc(context, row):
-                        res.append(row[m])
-                    process.append((proc, res))
+                    def y(m):
+                        res = []
+                        def proc(context, row):
+                            res.append(row[m])
+                        process.append((proc, res))
+                    y(m)
             result = []
         else:
             result = util.UniqueAppender([])
@@ -901,6 +905,9 @@ class Query(object):
             for proc in process:
                 proc[0](context, row)
 
+        for value in context.identity_map.values():
+            object_mapper(value)._post_instance(context, value)
+        
         # store new stuff in the identity map
         for value in context.identity_map.values():
             session._register_persistent(value)

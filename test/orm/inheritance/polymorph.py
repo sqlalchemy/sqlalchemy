@@ -192,7 +192,7 @@ class RelationToSubclassTest(PolymorphTest):
         assert sets.Set([e.get_name() for e in c.managers]) == sets.Set(['pointy haired boss'])
         assert c.managers[0].company is c
         
-def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_colprop=False, use_literal_join=False):
+def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_colprop=False, use_literal_join=False, use_union=False):
     """generates a round trip test.
     
     include_base - whether or not to include the base 'person' type in the union.
@@ -203,7 +203,9 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
     class RoundTripTest(PolymorphTest):
         def test_roundtrip(self):
             # create a union that represents both types of joins.  
-            if include_base:
+            if not use_union:
+                person_join = None
+            elif include_base:
                 person_join = polymorphic_union(
                     {
                         'engineer':people.join(engineers),
@@ -218,9 +220,9 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
                     }, None, 'pjoin')
 
             if redefine_colprop:
-                person_mapper = mapper(Person, people, select_table=person_join, polymorphic_on=person_join.c.type, polymorphic_identity='person', properties= {'person_name':people.c.name})
+                person_mapper = mapper(Person, people, select_table=person_join, polymorphic_on=people.c.type, polymorphic_identity='person', properties= {'person_name':people.c.name})
             else:
-                person_mapper = mapper(Person, people, select_table=person_join, polymorphic_on=person_join.c.type, polymorphic_identity='person')
+                person_mapper = mapper(Person, people, select_table=person_join, polymorphic_on=people.c.type, polymorphic_identity='person')
             
             mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
             mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
@@ -260,9 +262,9 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
             for e in c.employees:
                 print e, e._instance_key, e.company
             if include_base:
-                assert sets.Set([e.get_name() for e in c.employees]) == sets.Set(['pointy haired boss', 'dilbert', 'joesmith', 'wally', 'jsmith'])
+                assert sets.Set([(e.get_name(), getattr(e, 'status', None)) for e in c.employees]) == sets.Set([('pointy haired boss', 'AAB'), ('dilbert', 'BBA'), ('joesmith', None), ('wally', 'CGG'), ('jsmith', 'ABA')])
             else:
-                assert sets.Set([e.get_name() for e in c.employees]) == sets.Set(['pointy haired boss', 'dilbert', 'wally', 'jsmith'])
+                assert sets.Set([(e.get_name(), e.status) for e in c.employees]) == sets.Set([('pointy haired boss', 'AAB'), ('dilbert', 'BBA'), ('wally', 'CGG'), ('jsmith', 'ABA')])
             print "\n"
 
         
@@ -300,7 +302,7 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
         (lazy_relation and "Lazy" or "Eager"),
         (include_base and "Inclbase" or ""),
         (redefine_colprop and "Redefcol" or ""),
-        (use_literal_join and "Litjoin" or "")
+        (not use_union and "Nounion" or (use_literal_join and "Litjoin" or ""))
     )
     return RoundTripTest
 
@@ -308,8 +310,9 @@ for include_base in [True, False]:
     for lazy_relation in [True, False]:
         for redefine_colprop in [True, False]:
             for use_literal_join in [True, False]:
-                testclass = generate_round_trip_test(include_base, lazy_relation, redefine_colprop, use_literal_join)
-                exec("%s = testclass" % testclass.__name__)
+                for use_union in [True, False]:
+                    testclass = generate_round_trip_test(include_base, lazy_relation, redefine_colprop, use_literal_join, use_union)
+                    exec("%s = testclass" % testclass.__name__)
                 
 if __name__ == "__main__":    
     testbase.main()

@@ -1403,9 +1403,11 @@ class Mapper(object):
             if discriminator is not None:
                 mapper = self.polymorphic_map[discriminator]
                 if mapper is not self:
+                    if ('needsload', mapper) not in context.attributes:
+                        context.attributes[('needsload', mapper)] = (self, [t for t in mapper.tables if t not in self.tables])
                     row = self.translate_row(mapper, row)
                     return mapper._instance(context, row, result=result, skip_polymorphic=True)
-
+                    
         # look in main identity map.  if its there, we dont do anything to it,
         # including modifying any of its related items lists, as its already
         # been exposed to being modified by the application.
@@ -1484,6 +1486,43 @@ class Mapper(object):
 
         return obj
 
+    def _post_instance(self, context, instance):
+        (hosted_mapper, needs_tables) = context.attributes.get(('needsload', self), (None, None))
+        if needs_tables is None or len(needs_tables) == 0:
+            return
+        
+        self.__log_debug("Post query loading instance " + mapperutil.instance_str(instance))
+        if ('post_select', self) not in context.attributes:
+            cond = self.inherit_condition.copy_container()
+
+            param_names = []
+            def visit_binary(binary):
+                leftcol = binary.left
+                rightcol = binary.right
+                if leftcol is None or rightcol is None:
+                    return
+                if leftcol.table not in needs_tables:
+                    binary.left = sql.bindparam(leftcol.name, None, type=binary.right.type, unique=True)
+                    param_names.append(leftcol)
+                elif rightcol not in needs_tables:
+                    binary.right = sql.bindparam(rightcol.name, None, type=binary.right.type, unique=True)
+                    param_names.append(rightcol)
+            mapperutil.BinaryVisitor(visit_binary).traverse(cond)
+            statement = sql.select(needs_tables, cond)
+            context.attributes[('post_select', self)] = (statement, param_names)
+            
+        (statement, binds) = context.attributes.get(('post_select', self))
+        
+        identitykey = self.instance_key(instance)
+        
+        params = {}
+        for c in binds:
+            params[c.name] = self.get_attr_by_column(instance, c)
+        row = context.session.connection(self).execute(statement, **params).fetchone()
+        for prop in self.__props.values():
+            if prop.parent is not hosted_mapper:
+                prop.execute(context, instance, row, identitykey, True)
+
     def translate_row(self, tomapper, row):
         """Translate the column keys of a row into a new or proxied
         row that can be understood by another mapper.
@@ -1494,8 +1533,8 @@ class Mapper(object):
 
         newrow = util.DictDecorator(row)
         for c in tomapper.mapped_table.c:
-            c2 = self.mapped_table.corresponding_column(c, keys_ok=True, raiseerr=True)
-            if row.has_key(c2):
+            c2 = self.mapped_table.corresponding_column(c, keys_ok=True, raiseerr=False)
+            if c2 and row.has_key(c2):
                 newrow[c] = row[c2]
         return newrow
 
@@ -1504,6 +1543,7 @@ class Mapper(object):
 
         This method iterates through the list of MapperProperty objects attached to this Mapper
         and calls each properties execute() method."""
+        
         for prop in self.__props.values():
             prop.execute(selectcontext, instance, row, identitykey, isnew)
 
