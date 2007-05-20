@@ -37,6 +37,8 @@
     - the "primary_key" argument to mapper() is propigated to the "polymorphic"
       mapper.  primary key columns in this list get normalized to that of the mapper's 
       local table.
+    - restored logging of "lazy loading clause" under sa.orm.strategies logger,
+      got removed in 0.3.7
 - mysql
     - support for column-level CHARACTER SET and COLLATE declarations,
       as well as ASCII, UNICODE, NATIONAL and BINARY shorthand.

@@ -166,6 +166,8 @@ class LazyLoader(AbstractRelationLoader):
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
         self.use_get = not self.uselist and query.Query(self.mapper)._get_clause.compare(self.lazywhere)
+        if self.use_get:
+            self.logger.info(str(self.parent_property) + " will use query.get() to optimize instance loads")
 
     def init_class_attribute(self):
         self._register_attribute(self.parent.class_, callable_=lambda i: self.setup_loader(i))
@@ -303,8 +305,7 @@ class LazyLoader(AbstractRelationLoader):
                 li.traverse(secondaryjoin)
             lazywhere = sql.and_(lazywhere, secondaryjoin)
  
-        if hasattr(cls, 'parent_property'):
-            LazyLoader.logger.info(str(cls.parent_property) + " lazy loading clause " + str(lazywhere))
+        LazyLoader.logger.info(str(prop.parent_property) + " lazy loading clause " + str(lazywhere))
         return (lazywhere, binds, reverse)
     _create_lazy_clause = classmethod(_create_lazy_clause)
     
