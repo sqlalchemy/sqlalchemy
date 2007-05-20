@@ -1087,6 +1087,22 @@ class LazyTest(MapperSuperTest):
         self.echo(repr(l[0].user))
         self.assert_(l[0].user is not None)
 
+    def testuseget(self):
+        """test that a simple many-to-one lazyload optimizes to use query.get().
+        
+        this is done currently by comparing the 'get' SQL clause of the query
+        to the 'lazy' SQL clause of the lazy loader, so it relies heavily on 
+        ClauseElement.compare()"""
+        
+        m = mapper(Address, addresses, properties = dict(
+            user = relation(mapper(User, users), lazy = True)
+        ))
+        sess = create_session()
+        a1 = sess.query(Address).get_by(email_address = "ed@wood.com")
+        u1 = sess.query(User).get(8)
+        def go():
+            assert a1.user is u1
+        self.assert_sql_count(db, go, 0)
 
     def testdouble(self):
         """tests lazy loading with two relations simulatneously, from the same table, using aliases.  """
