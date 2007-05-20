@@ -1619,6 +1619,20 @@ class InstancesTest(MapperSuperTest):
             (user8, 3),
             (user9, 0)
         ]
+        
+    def testmappersplustwocolumns(self):
+        mapper(User, users)
+        s = select([users, func.count(addresses.c.address_id).label('count'), ("Name:" + users.c.user_name).label('concat')], from_obj=[users.outerjoin(addresses)], group_by=[c for c in users.c], order_by=[users.c.user_id])
+        sess = create_session()
+        (user7, user8, user9) = sess.query(User).select()
+        q = sess.query(User)
+        l = q.instances(s.execute(), "count", "concat")
+        print l
+        assert l == [
+            (user7, 1, "Name:jack"),
+            (user8, 3, "Name:ed"),
+            (user9, 0, "Name:fred")
+        ]
 
 
 if __name__ == "__main__":    

@@ -20,6 +20,8 @@
     - removed "no group by's in a select thats part of a UNION"
       restriction [ticket:578]
 - orm
+    - fixed bug in query.instances() that wouldnt handle more than
+      on additional mapper or one additional column.
     - "delete-orphan" no longer implies "delete". ongoing effort to 
       separate the behavior of these two operations.
     - many-to-many relationships properly set the type of bind params

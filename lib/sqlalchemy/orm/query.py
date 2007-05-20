@@ -882,16 +882,20 @@ class Query(object):
                 if isinstance(m, type):
                     m = mapper.class_mapper(m)
                 if isinstance(m, mapper.Mapper):
-                    appender = []
-                    def proc(context, row):
-                        if not m._instance(context, row, appender):
-                            appender.append(None)
-                    process.append((proc, appender))
+                    def x(m):
+                        appender = []
+                        def proc(context, row):
+                            if not m._instance(context, row, appender):
+                                appender.append(None)
+                        process.append((proc, appender))
+                    x(m)
                 elif isinstance(m, sql.ColumnElement) or isinstance(m, basestring):
-                    res = []
-                    def proc(context, row):
-                        res.append(row[m])
-                    process.append((proc, res))
+                    def y(m):
+                        res = []
+                        def proc(context, row):
+                            res.append(row[m])
+                        process.append((proc, res))
+                    y(m)
             result = []
         else:
             result = util.UniqueAppender([])
