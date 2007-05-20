@@ -1,6 +1,8 @@
 import testbase
 import unittest
 
+import inheritance.alltests as inheritance
+
 def suite():
     modules_to_test = (
 	'orm.attributes',
@@ -21,20 +23,11 @@ def suite():
         'orm.memusage',
         
         'orm.cycles',
-        'orm.poly_linked_list',
 
         'orm.entity',
         'orm.compile',
         'orm.manytomany',
         'orm.onetoone',
-        'orm.inheritance',
-        'orm.inheritance2',
-        'orm.inheritance3',
-        'orm.inheritance4',
-        'orm.inheritance5',
-        'orm.abc_inheritance',
-        'orm.single',
-        'orm.polymorph'        
         )
     alltests = unittest.TestSuite()
     for name in modules_to_test:
@@ -42,6 +35,7 @@ def suite():
         for token in name.split('.')[1:]:
             mod = getattr(mod, token)
         alltests.addTest(unittest.findTestCases(mod, suiteClass=None))
+    alltests.addTest(inheritance.suite())
     return alltests
 
 
