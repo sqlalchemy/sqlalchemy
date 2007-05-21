@@ -484,39 +484,53 @@ class Mapper(object):
         # may be a join or other construct
         self.tables = sqlutil.TableFinder(self.mapped_table)
 
-        # determine primary key columns, either passed in, or get them from our set of tables
+        # determine primary key columns
         self.pks_by_table = {}
+
+        # go through all of our represented tables
+        # and assemble primary key columns
+        for t in self.tables + [self.mapped_table]:
+            try:
+                l = self.pks_by_table[t]
+            except KeyError:
+                l = self.pks_by_table.setdefault(t, util.OrderedSet())
+            for k in t.primary_key:
+                l.add(k)
+                
         if self.primary_key_argument is not None:
-            # determine primary keys using user-given list of primary key columns as a guide
-            #
-            # TODO: this might not work very well for joined-table and/or polymorphic
-            # inheritance mappers since local_table isnt taken into account nor is select_table
-            # need to test custom primary key columns used with inheriting mappers
             for k in self.primary_key_argument:
                 self.pks_by_table.setdefault(k.table, util.OrderedSet()).add(k)
-                if k.table != self.mapped_table:
-                    # associate pk cols from subtables to the "main" table
-                    corr = self.mapped_table.corresponding_column(k, raiseerr=False)
-                    if corr is not None:
-                        self.pks_by_table.setdefault(self.mapped_table, util.OrderedSet()).add(corr)
-        else:
-            # no user-defined primary key columns - go through all of our represented tables
-            # and assemble primary key columns
-            for t in self.tables + [self.mapped_table]:
-                try:
-                    l = self.pks_by_table[t]
-                except KeyError:
-                    l = self.pks_by_table.setdefault(t, util.OrderedSet())
-                for k in t.primary_key:
-                    #if k.key not in t.c and k._label not in t.c:
-                        # this is a condition that was occurring when table reflection was doubling up primary keys
-                        # that were overridden in the Table constructor
-                    #    raise exceptions.AssertionError("Column " + str(k) + " not located in the column set of table " + str(t))
-                    l.add(k)
-
+                
         if len(self.pks_by_table[self.mapped_table]) == 0:
             raise exceptions.ArgumentError("Could not assemble any primary key columns for mapped table '%s'" % (self.mapped_table.name))
-        self.primary_key = self.pks_by_table[self.mapped_table]
+
+        # create the "primary_key" for this mapper.  this will flatten "equivalent" primary key columns
+        # into one column, where "equivalent" means that one column references the other via foreign key, or
+        # multiple columns that all reference a common parent column.  it will also resolve the column
+        # against the "mapped_table" of this mapper.
+        primary_key = sql.ColumnCollection()
+        equivs = {}
+        for col in (self.primary_key_argument or self.pks_by_table[self.mapped_table]):
+            if not len(col.foreign_keys):
+                equivs.setdefault(col, util.Set()).add(col)
+            else:
+                for fk in col.foreign_keys:
+                    equivs.setdefault(fk.column, util.Set()).add(col)
+        for col in equivs:
+            c = self.mapped_table.corresponding_column(col, raiseerr=False)
+            if c is None:
+                for cc in equivs[col]:
+                    c = self.mapped_table.corresponding_column(cc, raiseerr=False)
+                    if c is not None:
+                        break
+                else:
+                    raise exceptions.ArgumentError("Cant resolve column " + str(col))
+            primary_key.add(c)
+                
+        if len(primary_key) == 0:
+            raise exceptions.ArgumentError("Could not assemble any primary key columns for mapped table '%s'" % (self.mapped_table.name))
+
+        self.primary_key = primary_key
         
     def _compile_properties(self):
         """Inspect the properties dictionary sent to the Mapper's
@@ -576,8 +590,7 @@ class Mapper(object):
 
             # its a ColumnProperty - match the ultimate table columns
             # back to the property
-            proplist = self.columntoproperty.setdefault(column, [])
-            proplist.append(prop)
+            self.columntoproperty.setdefault(column, []).append(prop)
 
 
     def _initialize_properties(self):
@@ -921,7 +934,7 @@ class Mapper(object):
           dictionary corresponding result-set ``ColumnElement``
           instances to their values within a row.
         """
-        return (self.class_, tuple([row[column] for column in self.pks_by_table[self.mapped_table]]), self.entity_name)
+        return (self.class_, tuple([row[column] for column in self.primary_key]), self.entity_name)
 
     def identity_key_from_primary_key(self, primary_key):
         """Return an identity-map key for use in storing/retrieving an
@@ -946,7 +959,7 @@ class Mapper(object):
         instance.
         """
 
-        return [self.get_attr_by_column(instance, column) for column in self.pks_by_table[self.mapped_table]]
+        return [self.get_attr_by_column(instance, column) for column in self.primary_key]
 
     def canload(self, instance):
         """return true if this mapper is capable of loading the given instance"""
@@ -1434,14 +1447,14 @@ class Mapper(object):
             return instance
         else:
             if self.__should_log_debug:
-                self.__log_debug("_instance(): identity key %s not in session" % str(identitykey) + repr([mapperutil.instance_str(x) for x in context.session]))
+                self.__log_debug("_instance(): identity key %s not in session" % str(identitykey))
         # look in result-local identitymap for it.
         exists = context.identity_map.has_key(identitykey)
         if not exists:
             if self.allow_null_pks:
                 # check if *all* primary key cols in the result are None - this indicates
                 # an instance of the object is not present in the row.
-                for col in self.pks_by_table[self.mapped_table]:
+                for col in self.primary_key:
                     if row[col] is not None:
                         break
                 else:
@@ -1449,7 +1462,7 @@ class Mapper(object):
             else:
                 # otherwise, check if *any* primary key cols in the result are None - this indicates
                 # an instance of the object is not present in the row.
-                for col in self.pks_by_table[self.mapped_table]:
+                for col in self.primary_key:
                     if row[col] is None:
                         return None
 

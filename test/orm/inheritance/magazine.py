@@ -64,8 +64,8 @@ class MagazinePage(Page):
 class ClassifiedPage(MagazinePage):
     pass
 
-class InheritTest(testbase.ORMTest):
-    """tests a large polymorphic relationship"""
+
+class MagazineTest(testbase.ORMTest):
     def define_tables(self, metadata):
         global publication_table, issue_table, location_table, location_name_table, magazine_table, \
         page_table, magazine_page_table, classified_page_table, page_size_table
@@ -116,6 +116,8 @@ class InheritTest(testbase.ORMTest):
             Column('name', String(45), default=''),
         )
 
+def generate_round_trip_test(use_unions=False):
+    def test_roundtrip(self):
         publication_mapper = mapper(Publication, publication_table)
 
         issue_mapper = mapper(Issue, issue_table, properties = {
@@ -133,33 +135,42 @@ class InheritTest(testbase.ORMTest):
 
         page_size_mapper = mapper(PageSize, page_size_table)
 
-        page_join = polymorphic_union(
-            {
-                'm': page_table.join(magazine_page_table),
-                'c': page_table.join(magazine_page_table).join(classified_page_table),
-                'p': page_table.select(page_table.c.type=='p'),
-            }, None, 'page_join')
-
-        magazine_join = polymorphic_union(
-            {
-                'm': page_table.join(magazine_page_table),
-                'c': page_table.join(magazine_page_table).join(classified_page_table),
-            }, None, 'page_join')
-
         magazine_mapper = mapper(Magazine, magazine_table, properties = {
             'location': relation(Location, backref=backref('magazine', uselist=False)),
             'size': relation(PageSize),
         })
 
-        page_mapper = mapper(Page, page_table, select_table=page_join, polymorphic_on=page_join.c.type, polymorphic_identity='p')
+        if use_unions:
+            page_join = polymorphic_union(
+                {
+                    'm': page_table.join(magazine_page_table),
+                    'c': page_table.join(magazine_page_table).join(classified_page_table),
+                    'p': page_table.select(page_table.c.type=='p'),
+                }, None, 'page_join')
+            page_mapper = mapper(Page, page_table, select_table=page_join, polymorphic_on=page_join.c.type, polymorphic_identity='p')
+        else:
+            page_mapper = mapper(Page, page_table, polymorphic_on=page_table.c.type, polymorphic_identity='p')
 
-        magazine_page_mapper = mapper(MagazinePage, magazine_page_table, select_table=magazine_join, inherits=page_mapper, polymorphic_identity='m', properties={
-            'magazine': relation(Magazine, backref=backref('pages', order_by=magazine_join.c.page_no))
-        })
+        if use_unions:
+            magazine_join = polymorphic_union(
+                {
+                    'm': page_table.join(magazine_page_table),
+                    'c': page_table.join(magazine_page_table).join(classified_page_table),
+                }, None, 'page_join')
+            magazine_page_mapper = mapper(MagazinePage, magazine_page_table, select_table=magazine_join, inherits=page_mapper, polymorphic_identity='m', properties={
+                'magazine': relation(Magazine, backref=backref('pages', order_by=magazine_join.c.page_no))
+            })
+        else:
+            magazine_page_mapper = mapper(MagazinePage, magazine_page_table, inherits=page_mapper, polymorphic_identity='m', properties={
+                'magazine': relation(Magazine, backref=backref('pages', order_by=page_table.c.page_no))
+            })
 
-        classified_page_mapper = mapper(ClassifiedPage, classified_page_table, inherits=magazine_page_mapper, polymorphic_identity='c')
+        classified_page_mapper = mapper(ClassifiedPage, classified_page_table, inherits=magazine_page_mapper, polymorphic_identity='c', primary_key=[page_table.c.id])
+        compile_mappers()
+        print [str(s) for s in classified_page_mapper.primary_key]
+        print classified_page_mapper.columntoproperty[page_table.c.id]
 
-    def testone(self):
+
         session = create_session()
 
         pub = Publication(name='Test')
@@ -174,7 +185,7 @@ class InheritTest(testbase.ORMTest):
         page2 = MagazinePage(magazine=magazine,page_no=2)
         page3 = ClassifiedPage(magazine=magazine,page_no=3)
         session.save(pub)
-        
+    
         session.flush()
         print [x for x in session]
         session.clear()
@@ -186,6 +197,13 @@ class InheritTest(testbase.ORMTest):
         print p.issues[0].locations[0].magazine.pages
         print [page, page2, page3]
         assert repr(p.issues[0].locations[0].magazine.pages) == repr([page, page2, page3])
+    
+    test_roundtrip.__name__ = "test_%s" % (not use_union and "Nounion" or "Unions")
+    setattr(MagazineTest, test_roundtrip.__name__, test_roundtrip)
+    
+for use_union in [True, False]:
+    generate_round_trip_test(use_union)
+
         
 if __name__ == '__main__':
     testbase.main()

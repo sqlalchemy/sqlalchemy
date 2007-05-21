@@ -84,7 +84,7 @@ class Query(object):
             return self._session
 
     table = property(lambda s:s.select_mapper.mapped_table)
-    primary_key_columns = property(lambda s:s.select_mapper.pks_by_table[s.select_mapper.mapped_table])
+    primary_key_columns = property(lambda s:s.select_mapper.primary_key)
     session = property(_get_session)
 
     def get(self, ident, **kwargs):

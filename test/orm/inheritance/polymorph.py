@@ -191,7 +191,10 @@ class RelationToSubclassTest(PolymorphTest):
         sess.query(Company).get_by(company_id=c.company_id)
         assert sets.Set([e.get_name() for e in c.managers]) == sets.Set(['pointy haired boss'])
         assert c.managers[0].company is c
-        
+
+class RoundTripTest(PolymorphTest):
+    pass
+          
 def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_colprop=False, use_literal_join=False, use_union=False):
     """generates a round trip test.
     
@@ -200,119 +203,117 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
     redefine_colprop - if we redefine the 'name' column to be 'people_name' on the base Person class
     use_literal_join - primary join condition is explicitly specified
     """
-    class RoundTripTest(PolymorphTest):
-        def test_roundtrip(self):
-            # create a union that represents both types of joins.  
-            if not use_union:
-                person_join = None
-            elif include_base:
-                person_join = polymorphic_union(
-                    {
-                        'engineer':people.join(engineers),
-                        'manager':people.join(managers),
-                        'person':people.select(people.c.type=='person'),
-                    }, None, 'pjoin')
-            else:
-                person_join = polymorphic_union(
-                    {
-                        'engineer':people.join(engineers),
-                        'manager':people.join(managers),
-                    }, None, 'pjoin')
+    def test_roundtrip(self):
+        # create a union that represents both types of joins.  
+        if not use_union:
+            person_join = None
+        elif include_base:
+            person_join = polymorphic_union(
+                {
+                    'engineer':people.join(engineers),
+                    'manager':people.join(managers),
+                    'person':people.select(people.c.type=='person'),
+                }, None, 'pjoin')
+        else:
+            person_join = polymorphic_union(
+                {
+                    'engineer':people.join(engineers),
+                    'manager':people.join(managers),
+                }, None, 'pjoin')
 
-            if redefine_colprop:
-                person_mapper = mapper(Person, people, select_table=person_join, polymorphic_on=people.c.type, polymorphic_identity='person', properties= {'person_name':people.c.name})
-            else:
-                person_mapper = mapper(Person, people, select_table=person_join, polymorphic_on=people.c.type, polymorphic_identity='person')
-            
-            mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
-            mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
-
-            if use_literal_join:
-                mapper(Company, companies, properties={
-                    'employees': relation(Person, lazy=lazy_relation, primaryjoin=people.c.company_id==companies.c.company_id, private=True, 
-                    backref="company"
-                    )
-                })
-            else:
-                mapper(Company, companies, properties={
-                    'employees': relation(Person, lazy=lazy_relation, private=True, 
-                    backref="company"
-                    )
-                })
-            
-            if redefine_colprop:
-                person_attribute_name = 'person_name'
-            else:
-                person_attribute_name = 'name'
+        if redefine_colprop:
+            person_mapper = mapper(Person, people, select_table=person_join, polymorphic_on=people.c.type, polymorphic_identity='person', properties= {'person_name':people.c.name})
+        else:
+            person_mapper = mapper(Person, people, select_table=person_join, polymorphic_on=people.c.type, polymorphic_identity='person')
         
-            session = create_session()
-            c = Company(name='company1')
-            c.employees.append(Manager(status='AAB', manager_name='manager1', **{person_attribute_name:'pointy haired boss'}))
-            c.employees.append(Engineer(status='BBA', engineer_name='engineer1', primary_language='java', **{person_attribute_name:'dilbert'}))
-            if include_base:
-                c.employees.append(Person(status='HHH', **{person_attribute_name:'joesmith'}))
-            c.employees.append(Engineer(status='CGG', engineer_name='engineer2', primary_language='python', **{person_attribute_name:'wally'}))
-            c.employees.append(Manager(status='ABA', manager_name='manager2', **{person_attribute_name:'jsmith'}))
-            session.save(c)
-            print session.new
-            session.flush()
-            session.clear()
-            id = c.company_id
-            c = session.query(Company).get(id)
-            for e in c.employees:
-                print e, e._instance_key, e.company
-            if include_base:
-                assert sets.Set([(e.get_name(), getattr(e, 'status', None)) for e in c.employees]) == sets.Set([('pointy haired boss', 'AAB'), ('dilbert', 'BBA'), ('joesmith', None), ('wally', 'CGG'), ('jsmith', 'ABA')])
-            else:
-                assert sets.Set([(e.get_name(), e.status) for e in c.employees]) == sets.Set([('pointy haired boss', 'AAB'), ('dilbert', 'BBA'), ('wally', 'CGG'), ('jsmith', 'ABA')])
-            print "\n"
+        mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
+        mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
 
+        if use_literal_join:
+            mapper(Company, companies, properties={
+                'employees': relation(Person, lazy=lazy_relation, primaryjoin=people.c.company_id==companies.c.company_id, private=True, 
+                backref="company"
+                )
+            })
+        else:
+            mapper(Company, companies, properties={
+                'employees': relation(Person, lazy=lazy_relation, private=True, 
+                backref="company"
+                )
+            })
         
-            # test selecting from the query, using the base mapped table (people) as the selection criterion.
-            # in the case of the polymorphic Person query, the "people" selectable should be adapted to be "person_join"
-            dilbert = session.query(Person).selectfirst(people.c.name=='dilbert')
-            dilbert2 = session.query(Engineer).selectfirst(people.c.name=='dilbert')
-            assert dilbert is dilbert2
+        if redefine_colprop:
+            person_attribute_name = 'person_name'
+        else:
+            person_attribute_name = 'name'
+    
+        session = create_session()
+        c = Company(name='company1')
+        c.employees.append(Manager(status='AAB', manager_name='manager1', **{person_attribute_name:'pointy haired boss'}))
+        c.employees.append(Engineer(status='BBA', engineer_name='engineer1', primary_language='java', **{person_attribute_name:'dilbert'}))
+        if include_base:
+            c.employees.append(Person(status='HHH', **{person_attribute_name:'joesmith'}))
+        c.employees.append(Engineer(status='CGG', engineer_name='engineer2', primary_language='python', **{person_attribute_name:'wally'}))
+        c.employees.append(Manager(status='ABA', manager_name='manager2', **{person_attribute_name:'jsmith'}))
+        session.save(c)
+        print session.new
+        session.flush()
+        session.clear()
+        id = c.company_id
+        c = session.query(Company).get(id)
+        for e in c.employees:
+            print e, e._instance_key, e.company
+        if include_base:
+            assert sets.Set([(e.get_name(), getattr(e, 'status', None)) for e in c.employees]) == sets.Set([('pointy haired boss', 'AAB'), ('dilbert', 'BBA'), ('joesmith', None), ('wally', 'CGG'), ('jsmith', 'ABA')])
+        else:
+            assert sets.Set([(e.get_name(), e.status) for e in c.employees]) == sets.Set([('pointy haired boss', 'AAB'), ('dilbert', 'BBA'), ('wally', 'CGG'), ('jsmith', 'ABA')])
+        print "\n"
 
-            # test selecting from the query, joining against an alias of the base "people" table.  test that
-            # the "palias" alias does *not* get sucked up into the "person_join" conversion.
-            palias = people.alias("palias")
-            session.query(Person).selectfirst((palias.c.name=='dilbert') & (palias.c.person_id==people.c.person_id))
-            dilbert2 = session.query(Engineer).selectfirst((palias.c.name=='dilbert') & (palias.c.person_id==people.c.person_id))
-            assert dilbert is dilbert2
+    
+        # test selecting from the query, using the base mapped table (people) as the selection criterion.
+        # in the case of the polymorphic Person query, the "people" selectable should be adapted to be "person_join"
+        dilbert = session.query(Person).selectfirst(people.c.name=='dilbert')
+        dilbert2 = session.query(Engineer).selectfirst(people.c.name=='dilbert')
+        assert dilbert is dilbert2
 
-            session.query(Person).selectfirst((engineers.c.engineer_name=="engineer1") & (engineers.c.person_id==people.c.person_id))
-            dilbert2 = session.query(Engineer).selectfirst(engineers.c.engineer_name=="engineer1")
-            assert dilbert is dilbert2
-        
-        
-            dilbert.engineer_name = 'hes dibert!'
+        # test selecting from the query, joining against an alias of the base "people" table.  test that
+        # the "palias" alias does *not* get sucked up into the "person_join" conversion.
+        palias = people.alias("palias")
+        session.query(Person).selectfirst((palias.c.name=='dilbert') & (palias.c.person_id==people.c.person_id))
+        dilbert2 = session.query(Engineer).selectfirst((palias.c.name=='dilbert') & (palias.c.person_id==people.c.person_id))
+        assert dilbert is dilbert2
 
-            session.flush()
-            session.clear()
+        session.query(Person).selectfirst((engineers.c.engineer_name=="engineer1") & (engineers.c.person_id==people.c.person_id))
+        dilbert2 = session.query(Engineer).selectfirst(engineers.c.engineer_name=="engineer1")
+        assert dilbert is dilbert2
+    
+    
+        dilbert.engineer_name = 'hes dibert!'
 
-            c = session.query(Company).get(id)
-            for e in c.employees:
-                print e, e._instance_key
+        session.flush()
+        session.clear()
 
-            session.delete(c)
-            session.flush()
+        c = session.query(Company).get(id)
+        for e in c.employees:
+            print e, e._instance_key
 
-    RoundTripTest.__name__ = "Test%s%s%s%s" % (
-        (lazy_relation and "Lazy" or "Eager"),
-        (include_base and "Inclbase" or ""),
-        (redefine_colprop and "Redefcol" or ""),
-        (not use_union and "Nounion" or (use_literal_join and "Litjoin" or ""))
+        session.delete(c)
+        session.flush()
+
+    test_roundtrip.__name__ = "test_%s%s%s%s" % (
+        (lazy_relation and "lazy" or "eager"),
+        (include_base and "_inclbase" or ""),
+        (redefine_colprop and "_redefcol" or ""),
+        (not use_union and "_nounion" or (use_literal_join and "_litjoin" or ""))
     )
-    return RoundTripTest
+    setattr(RoundTripTest, test_roundtrip.__name__, test_roundtrip)
 
 for include_base in [True, False]:
     for lazy_relation in [True, False]:
         for redefine_colprop in [True, False]:
             for use_literal_join in [True, False]:
                 for use_union in [True, False]:
-                    testclass = generate_round_trip_test(include_base, lazy_relation, redefine_colprop, use_literal_join, use_union)
-                    exec("%s = testclass" % testclass.__name__)
+                    generate_round_trip_test(include_base, lazy_relation, redefine_colprop, use_literal_join, use_union)
                 
 if __name__ == "__main__":    
     testbase.main()

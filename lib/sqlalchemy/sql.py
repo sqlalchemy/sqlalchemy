@@ -2599,6 +2599,7 @@ class TableClause(FromClause):
             return [c for c in self.c]
         else:
             return []
+            
     def accept_visitor(self, visitor):
         visitor.visit_table(self)
 

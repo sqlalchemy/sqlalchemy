@@ -329,6 +329,9 @@ class RelationTest4(testbase.ORMTest):
         manager_mapper  = mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
         car_mapper      = mapper(Car, cars, properties= {'employee':relation(person_mapper)})
         
+        print class_mapper(Person).primary_key
+        print person_mapper.get_select_mapper().primary_key
+        
         # so the primaryjoin is "people.c.person_id==cars.c.owner".  the "lazy" clause will be
         # "people.c.person_id=?".  the employee_join is two selects union'ed together, one of which 
         # will contain employee.c.person_id the other contains manager.c.person_id.  people.c.person_id is not explicitly in 
@@ -361,9 +364,13 @@ class RelationTest4(testbase.ORMTest):
 
         session.clear()
         
+        print "----------------------------"
         car1 = session.query(Car).get(car1.car_id)
+        print "----------------------------"
         usingGet = session.query(person_mapper).get(car1.owner)
+        print "----------------------------"
         usingProperty = car1.employee
+        print "----------------------------"
 
         # All print should output the same person (engineer E4)
         assert str(engineer4) == "Engineer E4, status X"

@@ -100,7 +100,8 @@ class InheritTest2(testbase.ORMTest):
         
         mapper(Foo, foo)
         mapper(Bar, bar, inherits=Foo)
-        
+        print foo.join(bar).primary_key
+        print class_mapper(Bar).primary_key
         b = Bar('somedata')
         sess = create_session()
         sess.save(b)
