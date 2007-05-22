@@ -1325,6 +1325,27 @@ class EagerTest(MapperSuperTest):
         
         l = m.instances(s.execute(emailad = 'jack@bean.com'), session)
         self.echo(repr(l))
+    
+    def testonselect(self):
+        """test eager loading of a mapper which is against a select"""
+        
+        s = select([orders], orders.c.isopen==1).alias('openorders')
+        mapper(Order, s, properties={
+            'user':relation(User, lazy=False)
+        })
+        mapper(User, users)
+        
+        q = create_session().query(Order)
+        self.assert_result(q.list(), Order,
+            {'order_id':3, 'user' : (User, {'user_id':7})},
+            {'order_id':4, 'user' : (User, {'user_id':9})},
+        )
+
+        q = q.select_from(s.outerjoin(orderitems)).filter(orderitems.c.item_name != 'item 2')
+        self.assert_result(q.list(), Order,
+            {'order_id':3, 'user' : (User, {'user_id':7})},
+        )
+        
         
     def testmulti(self):
         """tests eager loading with two relations simultaneously"""

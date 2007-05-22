@@ -39,6 +39,9 @@
       local table.
     - restored logging of "lazy loading clause" under sa.orm.strategies logger,
       got removed in 0.3.7
+    - improved support for eagerloading of properties off of mappers that are mapped
+      to select() statements; i.e. eagerloader is better at locating the correct
+      selectable with which to attach its LEFT OUTER JOIN.
 - mysql
     - support for column-level CHARACTER SET and COLLATE declarations,
       as well as ASCII, UNICODE, NATIONAL and BINARY shorthand.

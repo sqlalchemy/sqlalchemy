@@ -65,14 +65,19 @@ class TableCollection(object):
 
 
 class TableFinder(TableCollection, sql.NoColumnVisitor):
-    """Given a ``Clause``, locate all the ``Tables`` within it into a list."""
+    """locate all Tables within a clause."""
 
-    def __init__(self, table, check_columns=False):
+    def __init__(self, table, check_columns=False, include_aliases=False):
         TableCollection.__init__(self)
         self.check_columns = check_columns
+        self.include_aliases = include_aliases
         if table is not None:
             self.traverse(table)
 
+    def visit_alias(self, alias):
+        if self.include_aliases:
+            self.tables.append(alias)
+            
     def visit_table(self, table):
         self.tables.append(table)
 

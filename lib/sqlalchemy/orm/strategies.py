@@ -470,22 +470,23 @@ class EagerLoader(AbstractRelationLoader):
         
         if hasattr(statement, '_outerjoin'):
             towrap = statement._outerjoin
-        elif isinstance(localparent.mapped_table, schema.Table):
-            # if the mapper is against a plain Table, look in the from_obj of the select statement
-            # to join against whats already there.
-            for (fromclause, finder) in [(x, sql_util.TableFinder(x)) for x in statement.froms]:
-                # dont join against an Alias'ed Select.  we are really looking either for the 
-                # table itself or a Join that contains the table.  this logic still might need
-                # adjustments for scenarios not thought of yet.
-                if not isinstance(fromclause, sql.Alias) and localparent.mapped_table in finder:
+        elif isinstance(localparent.mapped_table, sql.Join):
+            towrap = localparent.mapped_table
+        else:
+            # look for the mapper's selectable expressed within the current "from" criterion.
+            # this will locate the selectable inside of any containers it may be a part of (such
+            # as a join).  if its inside of a join, we want to outer join on that join, not the 
+            # selectable.
+            for fromclause in statement.froms:
+                if fromclause is localparent.mapped_table:
                     towrap = fromclause
                     break
+                elif isinstance(fromclause, sql.Join):
+                    if localparent.mapped_table in sql_util.TableFinder(fromclause, include_aliases=True):
+                        towrap = fromclause
+                        break
             else:
-                raise exceptions.InvalidRequestError("EagerLoader cannot locate a clause with which to outer join to, in query '%s' %s" % (str(statement), self.localparent.mapped_table))
-        else:
-            # if the mapper is against a select statement or something, we cant handle that at the
-            # same time as a custom FROM clause right now.
-            towrap = localparent.mapped_table
+                raise exceptions.InvalidRequestError("EagerLoader cannot locate a clause with which to outer join to, in query '%s' %s" % (str(statement), localparent.mapped_table))
         
         try:
             clauses = self.clauses[parentclauses]
