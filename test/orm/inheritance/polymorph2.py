@@ -374,6 +374,7 @@ class RelationTest4(testbase.ORMTest):
 
         # All print should output the same person (engineer E4)
         assert str(engineer4) == "Engineer E4, status X"
+        print str(usingGet)
         assert str(usingGet) == "Engineer E4, status X"
         assert str(usingProperty) == "Engineer E4, status X"
 

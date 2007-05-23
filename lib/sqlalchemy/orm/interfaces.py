@@ -27,6 +27,11 @@ class MapperProperty(object):
 
         raise NotImplementedError()
 
+    def post_execute(self, selectcontext, instance):
+        """Called after all result rows have been received"""
+
+        raise NotImplementedError()
+        
     def cascade_iterator(self, type, object, recursive=None, halt_on=None):
         return []
 

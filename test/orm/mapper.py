@@ -839,7 +839,8 @@ class DeferredTest(MapperSuperTest):
             'description':deferred(orders.c.description, group='primary'),
             'opened':deferred(orders.c.isopen, group='primary')
         })
-        q = create_session().query(m)
+        sess = create_session()
+        q = sess.query(m)
         def go():
             l = q.select()
             o2 = l[2]
@@ -853,6 +854,37 @@ class DeferredTest(MapperSuperTest):
             ("SELECT orders.user_id AS orders_user_id, orders.description AS orders_description, orders.isopen AS orders_isopen FROM orders WHERE orders.order_id = :orders_order_id", {'orders_order_id':3})
         ])
         
+        o2 = q.select()[2]
+#        assert o2.opened == 1
+        assert o2.description == 'order 3'
+        assert o2 not in sess.dirty
+        o2.description = 'order 3'
+        def go():
+            sess.flush()
+        self.assert_sql_count(db, go, 0)
+    
+    def testcommitsstate(self):
+        """test that when deferred elements are loaded via a group, they get the proper CommittedState
+        and dont result in changes being committed"""
+        
+        m = mapper(Order, orders, properties = {
+            'userident':deferred(orders.c.user_id, group='primary'),
+            'description':deferred(orders.c.description, group='primary'),
+            'opened':deferred(orders.c.isopen, group='primary')
+        })
+        sess = create_session()
+        q = sess.query(m)
+        o2 = q.select()[2]
+        # this will load the group of attributes
+        assert o2.description == 'order 3'
+        assert o2 not in sess.dirty
+        # this will mark it as 'dirty', but nothing actually changed
+        o2.description = 'order 3'
+        def go():
+            # therefore the flush() shouldnt actually issue any SQL
+            sess.flush()
+        self.assert_sql_count(db, go, 0)
+            
     def testoptions(self):
         """tests using options on a mapper to create deferred and undeferred columns"""
         m = mapper(Order, orders)

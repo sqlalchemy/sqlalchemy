@@ -55,6 +55,7 @@ class Mapper(object):
                 polymorphic_on=None,
                 _polymorphic_map=None,
                 polymorphic_identity=None,
+                polymorphic_fetch=None,
                 concrete=False,
                 select_table=None,
                 allow_null_pks=False,
@@ -150,7 +151,14 @@ class Mapper(object):
           A value which will be stored in the Column denoted by
           polymorphic_on, corresponding to the *class identity* of
           this mapper.
-
+        
+        polymorphic_fetch
+          specifies how subclasses mapped through joined-table 
+          inheritance will be fetched.  options are 'union', 
+          'select', and 'deferred'.  if the select_table argument 
+          is present, defaults to 'union', otherwise defaults to
+          'select'.
+          
         concrete
           If True, indicates this mapper should use concrete table
           inheritance with its parent mapper.
@@ -227,6 +235,13 @@ class Mapper(object):
         # indicates this Mapper should be used to construct the object instance for that row.
         self.polymorphic_identity = polymorphic_identity
 
+        if polymorphic_fetch not in (None, 'union', 'select', 'deferred'):
+            raise exceptions.ArgumentError("Invalid option for 'polymorphic_fetch': '%s'" % polymorphic_fetch)
+        if polymorphic_fetch is None:
+            self.polymorphic_fetch = (self.select_table is None) and 'select' or 'union'
+        else:
+            self.polymorphic_fetch = polymorphic_fetch
+        
         # a dictionary of 'polymorphic identity' names, associating those names with
         # Mappers that will be used to construct object instances upon a select operation.
         if _polymorphic_map is None:
@@ -531,6 +546,12 @@ class Mapper(object):
             raise exceptions.ArgumentError("Could not assemble any primary key columns for mapped table '%s'" % (self.mapped_table.name))
 
         self.primary_key = primary_key
+
+        _get_clause = sql.and_()
+        for primary_key in self.primary_key:
+            _get_clause.clauses.append(primary_key == sql.bindparam(primary_key._label, type=primary_key.type, unique=True))
+        self._get_clause = _get_clause
+
         
     def _compile_properties(self):
         """Inspect the properties dictionary sent to the Mapper's
@@ -1416,8 +1437,8 @@ class Mapper(object):
             if discriminator is not None:
                 mapper = self.polymorphic_map[discriminator]
                 if mapper is not self:
-                    if ('needsload', mapper) not in context.attributes:
-                        context.attributes[('needsload', mapper)] = (self, [t for t in mapper.tables if t not in self.tables])
+                    if ('polymorphic_fetch', mapper, self.polymorphic_fetch) not in context.attributes:
+                        context.attributes[('polymorphic_fetch', mapper, self.polymorphic_fetch)] = (self, [t for t in mapper.tables if t not in self.tables])
                     row = self.translate_row(mapper, row)
                     return mapper._instance(context, row, result=result, skip_polymorphic=True)
                     
@@ -1499,32 +1520,37 @@ class Mapper(object):
 
         return obj
 
+    def _deferred_inheritance_condition(self, needs_tables):
+        cond = self.inherit_condition.copy_container()
+
+        param_names = []
+        def visit_binary(binary):
+            leftcol = binary.left
+            rightcol = binary.right
+            if leftcol is None or rightcol is None:
+                return
+            if leftcol.table not in needs_tables:
+                binary.left = sql.bindparam(leftcol.name, None, type=binary.right.type, unique=True)
+                param_names.append(leftcol)
+            elif rightcol not in needs_tables:
+                binary.right = sql.bindparam(rightcol.name, None, type=binary.right.type, unique=True)
+                param_names.append(rightcol)
+        mapperutil.BinaryVisitor(visit_binary).traverse(cond)
+        return cond, param_names
+
     def _post_instance(self, context, instance):
-        (hosted_mapper, needs_tables) = context.attributes.get(('needsload', self), (None, None))
+        (hosted_mapper, needs_tables) = context.attributes.get(('polymorphic_fetch', self, 'select'), (None, None))
         if needs_tables is None or len(needs_tables) == 0:
             return
         
+        # TODO: this logic needs to be merged with the same logic in DeferredColumnLoader
         self.__log_debug("Post query loading instance " + mapperutil.instance_str(instance))
         if ('post_select', self) not in context.attributes:
-            cond = self.inherit_condition.copy_container()
-
-            param_names = []
-            def visit_binary(binary):
-                leftcol = binary.left
-                rightcol = binary.right
-                if leftcol is None or rightcol is None:
-                    return
-                if leftcol.table not in needs_tables:
-                    binary.left = sql.bindparam(leftcol.name, None, type=binary.right.type, unique=True)
-                    param_names.append(leftcol)
-                elif rightcol not in needs_tables:
-                    binary.right = sql.bindparam(rightcol.name, None, type=binary.right.type, unique=True)
-                    param_names.append(rightcol)
-            mapperutil.BinaryVisitor(visit_binary).traverse(cond)
-            statement = sql.select(needs_tables, cond)
+            cond, param_names = self._deferred_inheritance_condition(needs_tables)
+            statement = sql.select(needs_tables, cond, use_labels=True)
             context.attributes[('post_select', self)] = (statement, param_names)
             
-        (statement, binds) = context.attributes.get(('post_select', self))
+        (statement, binds) = context.attributes[('post_select', self)]
         
         identitykey = self.instance_key(instance)
         

@@ -1,10 +1,15 @@
 from sqlalchemy import *
 import sets
 
-# this example illustrates a polymorphic load of two classes, where each class has a very 
+import logging
+logging.basicConfig()
+logging.getLogger('sqlalchemy.orm').setLevel(logging.DEBUG)
+logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
+
+# this example illustrates a polymorphic load of two classes, where each class has a  
 # different set of properties
 
-metadata = BoundMetaData('sqlite://', echo='True')
+metadata = BoundMetaData('sqlite://')
 
 # a table to store companies
 companies = Table('companies', metadata, 
@@ -63,8 +68,8 @@ person_join = polymorphic_union(
         'person':people.select(people.c.type=='person'),
     }, None, 'pjoin')
 
-#person_mapper = mapper(Person, people, select_table=person_join, polymorphic_on=person_join.c.type, polymorphic_identity='person')
-person_mapper = mapper(Person, people, select_table=person_join,polymorphic_on=person_join.c.type, polymorphic_identity='person')
+#person_mapper = mapper(Person, people, select_table=person_join,polymorphic_on=person_join.c.type, polymorphic_identity='person')
+person_mapper = mapper(Person, people, polymorphic_on=people.c.type, polymorphic_identity='person')
 mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
 mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
 

@@ -195,7 +195,7 @@ class RelationToSubclassTest(PolymorphTest):
 class RoundTripTest(PolymorphTest):
     pass
           
-def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_colprop=False, use_literal_join=False, use_union=False):
+def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_colprop=False, use_literal_join=False, polymorphic_fetch=None):
     """generates a round trip test.
     
     include_base - whether or not to include the base 'person' type in the union.
@@ -205,7 +205,7 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
     """
     def test_roundtrip(self):
         # create a union that represents both types of joins.  
-        if not use_union:
+        if not polymorphic_fetch == 'union':
             person_join = None
         elif include_base:
             person_join = polymorphic_union(
@@ -222,9 +222,9 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
                 }, None, 'pjoin')
 
         if redefine_colprop:
-            person_mapper = mapper(Person, people, select_table=person_join, polymorphic_on=people.c.type, polymorphic_identity='person', properties= {'person_name':people.c.name})
+            person_mapper = mapper(Person, people, select_table=person_join, polymorphic_fetch=polymorphic_fetch, polymorphic_on=people.c.type, polymorphic_identity='person', properties= {'person_name':people.c.name})
         else:
-            person_mapper = mapper(Person, people, select_table=person_join, polymorphic_on=people.c.type, polymorphic_identity='person')
+            person_mapper = mapper(Person, people, select_table=person_join, polymorphic_fetch=polymorphic_fetch, polymorphic_on=people.c.type, polymorphic_identity='person')
         
         mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
         mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
@@ -304,7 +304,7 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
         (lazy_relation and "lazy" or "eager"),
         (include_base and "_inclbase" or ""),
         (redefine_colprop and "_redefcol" or ""),
-        (not use_union and "_nounion" or (use_literal_join and "_litjoin" or ""))
+        (polymorphic_fetch != 'union' and '_' + polymorphic_fetch or (use_literal_join and "_litjoin" or ""))
     )
     setattr(RoundTripTest, test_roundtrip.__name__, test_roundtrip)
 
@@ -312,8 +312,8 @@ for include_base in [True, False]:
     for lazy_relation in [True, False]:
         for redefine_colprop in [True, False]:
             for use_literal_join in [True, False]:
-                for use_union in [True, False]:
-                    generate_round_trip_test(include_base, lazy_relation, redefine_colprop, use_literal_join, use_union)
+                for polymorphic_fetch in ['union', 'select', 'deferred']:
+                    generate_round_trip_test(include_base, lazy_relation, redefine_colprop, use_literal_join, polymorphic_fetch)
                 
 if __name__ == "__main__":    
     testbase.main()

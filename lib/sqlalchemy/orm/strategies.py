@@ -9,6 +9,7 @@
 from sqlalchemy import sql, schema, util, exceptions, sql_util, logging
 from sqlalchemy.orm import mapper, query
 from sqlalchemy.orm.interfaces import *
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil
 import random
@@ -39,7 +40,9 @@ class ColumnLoader(LoaderStrategy):
             try:
                 instance.__dict__[self.key] = row[self.columns[0]]
             except KeyError:
-                pass
+                if self._should_log_debug:
+                    self.logger.debug("degrade to deferred column on %s" % mapperutil.attribute_str(instance, self.key))
+                self.parent_property._get_strategy(DeferredColumnLoader).process_row(selectcontext, instance, row, identitykey, isnew)
         
 ColumnLoader.logger = logging.class_logger(ColumnLoader)
 
@@ -66,58 +69,76 @@ class DeferredColumnLoader(LoaderStrategy):
     def process_row(self, selectcontext, instance, row, identitykey, isnew):
         if isnew:
             if not self.is_default or len(selectcontext.options):
-                sessionlib.attribute_manager.init_instance_attribute(instance, self.key, False, callable_=self.setup_loader(instance, selectcontext.options))
+                sessionlib.attribute_manager.init_instance_attribute(instance, self.key, False, callable_=self.setup_loader(instance, selectcontext))
             else:
                 sessionlib.attribute_manager.reset_instance_attribute(instance, self.key)
 
-    def setup_loader(self, instance, options=None):
-        if not mapper.has_mapper(instance):
+    def setup_loader(self, instance, context=None):
+        localparent = mapper.object_mapper(instance, raiseerror=False)
+        if localparent is None:
             return None
-        else:
-            prop = mapper.object_mapper(instance).props[self.key]
-            if prop is not self.parent_property:
-                return prop._get_strategy(DeferredColumnLoader).setup_loader(instance)
-        def lazyload():
-            if self._should_log_debug:
-                self.logger.debug("deferred load %s group %s" % (mapperutil.attribute_str(instance, self.key), str(self.group)))
+            
+        prop = localparent.props[self.key]
+        if prop is not self.parent_property:
+            return prop._get_strategy(DeferredColumnLoader).setup_loader(instance)
 
+        if context is not None and ('polymorphic_fetch', localparent, 'deferred') in context.attributes:
+            (hosted_mapper, needs_tables) = context.attributes[('polymorphic_fetch', localparent, 'deferred')]
+            loadall = True
+        else:
+            loadall = False
+
+        # clear context so it doesnt hang around attached to the instance
+        context = None
+        
+        def lazyload():
             if not mapper.has_identity(instance):
                 return None
 
-            try:
-                pk = self.parent.pks_by_table[self.columns[0].table]
-            except KeyError:
-                pk = self.columns[0].table.primary_key
-
-            clause = sql.and_()
-            for primary_key in pk:
-                attr = self.parent.get_attr_by_column(instance, primary_key)
-                if not attr:
-                    return None
-                clause.clauses.append(primary_key == attr)
+            if loadall:
+                # TODO: this logic needs to be merged with the same logic in Mapper
+                group = [p for p in localparent.props.values() if isinstance(p.strategy, ColumnLoader) and p.columns[0].table in needs_tables]
+            elif self.group is not None:
+                group = [p for p in localparent.props.values() if isinstance(p.strategy, DeferredColumnLoader) and p.group==self.group]
+            else:
+                group = None
+                
+            if self._should_log_debug:
+                self.logger.debug("deferred load %s group %s" % (mapperutil.attribute_str(instance, self.key), group and ','.join([p.key for p in group]) or 'None'))
 
             session = sessionlib.object_session(instance)
             if session is None:
                 raise exceptions.InvalidRequestError("Parent instance %s is not bound to a Session; deferred load operation of attribute '%s' cannot proceed" % (instance.__class__, self.key))
-
-            localparent = mapper.object_mapper(instance)
-            if self.group is not None:
-                groupcols = [p for p in localparent.props.values() if isinstance(p.strategy, DeferredColumnLoader) and p.group==self.group]
-                result = session.execute(localparent, sql.select([g.columns[0] for g in groupcols], clause, use_labels=True), None)
+                
+            if loadall:
+                # TODO: this logic needs to be merged with the same logic in Mapper
+                cond, param_names = localparent._deferred_inheritance_condition(needs_tables)
+                statement = sql.select(needs_tables, cond, use_labels=True)
+                params = {}
+                for c in param_names:
+                    params[c.name] = localparent.get_attr_by_column(instance, c)
+            else:
+                clause = localparent._get_clause
+                ident = instance._instance_key[1]
+                params = {}
+                for i, primary_key in enumerate(localparent.primary_key):
+                    params[primary_key._label] = ident[i]
+                if group is not None:
+                    statement = sql.select([p.columns[0] for p in group], clause, from_obj=[localparent.mapped_table], use_labels=True)
+                else:
+                    statement = sql.select([self.columns[0]], clause, from_obj=[localparent.mapped_table], use_labels=True)
+                    
+            if group is not None:
+                result = session.execute(localparent, statement, params)
                 try:
                     row = result.fetchone()
-                    for prop in groupcols:
-                        if prop is self:
-                            continue
-                        # set a scalar object instance directly on the object, 
-                        # bypassing SmartProperty event handlers.
-                        sessionlib.attribute_manager.init_instance_attribute(instance, prop.key, uselist=False)
-                        instance.__dict__[prop.key] = row[prop.columns[0]]
-                    return row[self.columns[0]]    
+                    for prop in group:
+                        InstrumentedAttribute.get_instrument(instance, prop.key).set_committed_value(instance, row[prop.columns[0]])
+                    return InstrumentedAttribute.ATTR_WAS_SET
                 finally:
                     result.close()
             else:
-                return session.scalar(localparent, sql.select([self.columns[0]], clause, use_labels=True),None)
+                return session.scalar(localparent, sql.select([self.columns[0]], clause, from_obj=[localparent.mapped_table], use_labels=True),params)
 
         return lazyload
                 
@@ -525,10 +546,10 @@ class EagerLoader(AbstractRelationLoader):
         """
         
         # check for a user-defined decorator in the SelectContext (which was set up by the contains_eager() option)
-        if selectcontext.attributes.has_key((EagerLoader, self.parent_property)):
+        if selectcontext.attributes.has_key(("eager_row_processor", self.parent_property)):
             # custom row decoration function, placed in the selectcontext by the 
             # contains_eager() mapper option
-            decorator = selectcontext.attributes[(EagerLoader, self.parent_property)]
+            decorator = selectcontext.attributes[("eager_row_processor", self.parent_property)]
             if decorator is None:
                 decorator = lambda row: row
         else:
@@ -589,7 +610,7 @@ class EagerLoader(AbstractRelationLoader):
                     self.logger.debug("eagerload scalar instance on %s" % mapperutil.attribute_str(instance, self.key))
                 if isnew:
                     # set a scalar object instance directly on the parent object, 
-                    # bypassing SmartProperty event handlers.
+                    # bypassing InstrumentedAttribute event handlers.
                     instance.__dict__[self.key] = self.mapper._instance(selectcontext, decorated_row, None)
                 else:
                     # call _instance on the row, even though the object has been created,
@@ -599,8 +620,9 @@ class EagerLoader(AbstractRelationLoader):
                 if isnew:
                     if self._should_log_debug:
                         self.logger.debug("initialize UniqueAppender on %s" % mapperutil.attribute_str(instance, self.key))
-                    # call the SmartProperty's initialize() method to create a new, blank list
-                    l = getattr(instance.__class__, self.key).initialize(instance)
+
+                    # call the InstrumentedAttribute's initialize() method to create a new, blank list
+                    l = InstrumentedAttribute.get_instrument(instance, self.key).initialize(instance)
                 
                     # create an appender object which will add set-like semantics to the list
                     appender = util.UniqueAppender(l.data)
@@ -639,6 +661,16 @@ class EagerLazyOption(StrategizedOption):
 
 EagerLazyOption.logger = logging.class_logger(EagerLazyOption)
 
+class FetchModeOption(PropertyOption):
+    def __init__(self, key, type):
+        super(FetchModeOption, self).__init__(key)
+        if type not in ('join', 'select'):
+            raise exceptions.ArgumentError("Fetchmode must be one of 'join' or 'select'")
+        self.type = type
+        
+    def process_selection_property(self, context, property):
+        context.attributes[('fetchmode', property)] = self.type
+        
 class RowDecorateOption(PropertyOption):
     def __init__(self, key, decorator=None, alias=None):
         super(RowDecorateOption, self).__init__(key)
@@ -655,7 +687,7 @@ class RowDecorateOption(PropertyOption):
                     d[c] = row[self.alias.corresponding_column(c)]
                 return d
             self.decorator = decorate
-        context.attributes[(EagerLoader, property)] = self.decorator
+        context.attributes[("eager_row_processor", property)] = self.decorator
 
 RowDecorateOption.logger = logging.class_logger(RowDecorateOption)
         

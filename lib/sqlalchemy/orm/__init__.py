@@ -165,6 +165,9 @@ def lazyload(name):
 
     return strategies.EagerLazyOption(name, lazy=True)
 
+def fetchmode(name, type):
+    return strategies.FetchModeOption(name, type)
+    
 def noload(name):
     """Return a ``MapperOption`` that will convert the property of the
     given name into a non-load.

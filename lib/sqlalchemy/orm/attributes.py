@@ -17,7 +17,8 @@ class InstrumentedAttribute(object):
     """
 
     PASSIVE_NORESULT = object()
-
+    ATTR_WAS_SET = object()
+    
     def __init__(self, manager, key, uselist, callable_, typecallable, trackparent=False, extension=None, copy_function=None, compare_function=None, mutable_scalars=False, **kwargs):
         self.manager = manager
         self.key = key
@@ -52,6 +53,10 @@ class InstrumentedAttribute(object):
             return self
         return self.get(obj)
 
+    def get_instrument(cls, obj, key):
+        return getattr(obj.__class__, key)
+    get_instrument = classmethod(get_instrument)
+        
     def check_mutable_modified(self, obj):
         if self.mutable_scalars:
             h = self.get_history(obj, passive=True)
@@ -178,6 +183,28 @@ class InstrumentedAttribute(object):
             obj.__dict__[self.key] = None
             return None
 
+    def set_committed_value(self, obj, value):
+        """set an attribute value on the given instance and 'commit' it.
+        
+        this indicates that the given value is the "persisted" value,
+        and history will be logged only if a newly set value is not
+        equal to this value.
+        
+        this is typically used by deferred/lazy attribute loaders
+        to set object attributes after the initial load.
+        """
+        
+        state = obj._state
+        orig = state.get('original', None)
+        if self.uselist:
+            value = InstrumentedList(self, obj, value, init=False)
+        if orig is not None:
+            orig.commit_attribute(self, obj, value)
+        # remove per-instance callable, if any
+        state.pop(('callable', self), None)
+        obj.__dict__[self.key] = value
+        return value
+        
     def get(self, obj, passive=False, raiseerr=True):
         """Retrieve a value from the given object.
 
@@ -199,47 +226,27 @@ class InstrumentedAttribute(object):
                 trig()
                 return self.get(obj, passive=passive, raiseerr=raiseerr)
 
-            if self.uselist:
-                callable_ = self._get_callable(obj)
-                if callable_ is not None:
-                    if passive:
-                        return InstrumentedAttribute.PASSIVE_NORESULT
-                    self.logger.debug("Executing lazy callable on %s.%s" % (orm_util.instance_str(obj), self.key))
-                    values = callable_()
-                    l = InstrumentedList(self, obj, values, init=False)
-
-                    # if a callable was executed, then its part of the "committed state"
-                    # if any, so commit the newly loaded data
-                    orig = state.get('original', None)
-                    if orig is not None:
-                        orig.commit_attribute(self, obj, l)
-
+            callable_ = self._get_callable(obj)
+            if callable_ is not None:
+                if passive:
+                    return InstrumentedAttribute.PASSIVE_NORESULT
+                self.logger.debug("Executing lazy callable on %s.%s" % (orm_util.instance_str(obj), self.key))
+                value = callable_()
+                if value is not InstrumentedAttribute.ATTR_WAS_SET:
+                    return self.set_committed_value(obj, value)
                 else:
+                    return obj.__dict__[self.key]
+            else:
+                if self.uselist:
                     # note that we arent raising AttributeErrors, just creating a new
                     # blank list and setting it.
                     # this might be a good thing to be changeable by options.
-                    l = InstrumentedList(self, obj, self._blank_list(), init=False)
-                obj.__dict__[self.key] = l
-                return l
-            else:
-                callable_ = self._get_callable(obj)
-                if callable_ is not None:
-                    if passive:
-                        return InstrumentedAttribute.PASSIVE_NORESULT
-                    self.logger.debug("Executing lazy callable on %s.%s" % (orm_util.instance_str(obj), self.key))
-                    value = callable_()
-                    obj.__dict__[self.key] = value
-
-                    # if a callable was executed, then its part of the "committed state"
-                    # if any, so commit the newly loaded data
-                    orig = state.get('original', None)
-                    if orig is not None:
-                        orig.commit_attribute(self, obj)
-                    return value
+                    return self.set_committed_value(obj, self._blank_list())
                 else:
                     # note that we arent raising AttributeErrors, just returning None.
                     # this might be a good thing to be changeable by options.
-                    return None
+                    value = None
+                return value
 
     def set(self, event, obj, value):
         """Set a value on the given object.
