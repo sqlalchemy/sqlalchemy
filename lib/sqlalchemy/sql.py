@@ -2698,6 +2698,9 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
 
     name = property(lambda s:s.keyword + " statement")
 
+    def self_group(self, against=None):
+        return _Grouping(self)
+
     def _locate_oid_column(self):
         return self.selects[0].oid_column
 
