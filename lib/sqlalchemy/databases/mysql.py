@@ -985,6 +985,8 @@ class MySQLDialect(ansisql.ANSIDialect):
         if len(ssl):
             opts['ssl'] = ssl
         
+        # FOUND_ROWS must be set in CLIENT_FLAGS for to enable
+        # supports_sane_rowcount.
         client_flag = opts.get('client_flag', 0)
         if self.dbapi is not None:
             try:
