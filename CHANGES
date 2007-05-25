@@ -43,6 +43,10 @@
       to select() statements; i.e. eagerloader is better at locating the correct
       selectable with which to attach its LEFT OUTER JOIN.
 - mysql
+    - Nearly all MySQL column types are now supported for declaration and
+      reflection. Added NCHAR, NVARCHAR, VARBINARY, TINYBLOB, LONGBLOB, YEAR
+    - The sqltypes.Binary passthrough now builds a VARBINARY rather than a
+      BINARY if given a length
     - support for column-level CHARACTER SET and COLLATE declarations,
       as well as ASCII, UNICODE, NATIONAL and BINARY shorthand.
 - firebird
