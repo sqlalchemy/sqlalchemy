@@ -137,7 +137,7 @@ class FBDialect(ansisql.ANSIDialect):
         return sqltypes.adapt_type(typeobj, colspecs)
 
     def supports_sane_rowcount(self):
-        return True
+        return False
 
     def compiler(self, statement, bindparams, **kwargs):
         return FBCompiler(self, statement, bindparams, **kwargs)
