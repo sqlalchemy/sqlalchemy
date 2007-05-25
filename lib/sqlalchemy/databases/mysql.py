@@ -969,9 +969,11 @@ class MySQLDialect(ansisql.ANSIDialect):
         util.coerce_kw_type(opts, 'compress', bool)
         util.coerce_kw_type(opts, 'connect_timeout', int)
         util.coerce_kw_type(opts, 'client_flag', int)
+        util.coerce_kw_type(opts, 'local_infile', int)
         # note: these two could break SA Unicode type
         util.coerce_kw_type(opts, 'use_unicode', bool)   
         util.coerce_kw_type(opts, 'charset', str)
+        # TODO: cursorclass and conv:  support via query string or punt?
         
         # ssl
         ssl = {}
@@ -982,8 +984,7 @@ class MySQLDialect(ansisql.ANSIDialect):
                 del opts[key]
         if len(ssl):
             opts['ssl'] = ssl
-
-        # TODO: what about options like "cursorclass" and "conv" ?
+        
         client_flag = opts.get('client_flag', 0)
         if self.dbapi is not None:
             try:
