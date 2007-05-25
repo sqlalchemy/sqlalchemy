@@ -194,6 +194,7 @@ class OracleDialect(ansisql.ANSIDialect):
             threaded = self.threaded
             )
         opts.update(url.query)
+        util.coerce_kw_type(opts, 'use_ansi', bool)
         return ([], opts)
 
     def type_descriptor(self, typeobj):
