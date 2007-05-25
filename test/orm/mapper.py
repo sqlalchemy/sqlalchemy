@@ -1659,7 +1659,14 @@ class InstancesTest(MapperSuperTest):
         
     def testmappersplustwocolumns(self):
         mapper(User, users)
-        s = select([users, func.count(addresses.c.address_id).label('count'), ("Name:" + users.c.user_name).label('concat')], from_obj=[users.outerjoin(addresses)], group_by=[c for c in users.c], order_by=[users.c.user_id])
+
+        # Fixme ticket #475!
+        if db.engine.name == 'sqlite':
+            col2 = ("Name:" + users.c.user_name).label('concat')
+        else:
+            col2 = func.concat("Name:", users.c.user_name).label('concat')
+        
+        s = select([users, func.count(addresses.c.address_id).label('count'), col2], from_obj=[users.outerjoin(addresses)], group_by=[c for c in users.c], order_by=[users.c.user_id])
         sess = create_session()
         (user7, user8, user9) = sess.query(User).select()
         q = sess.query(User)
