@@ -206,14 +206,15 @@ class ReflectionTest(PersistTest):
             Column('num1', mysql.MSInteger(unsigned=True)),
             Column('text1', mysql.MSLongText),
             Column('text2', mysql.MSLongText()),
-             Column('num2', mysql.MSBigInteger),
-             Column('num3', mysql.MSBigInteger()),
-             Column('num4', mysql.MSDouble),
-             Column('num5', mysql.MSDouble()),
-             Column('enum1', mysql.MSEnum('"black"', '"white"')),
+            Column('num2', mysql.MSBigInteger),
+            Column('num3', mysql.MSBigInteger()),
+            Column('num4', mysql.MSDouble),
+            Column('num5', mysql.MSDouble()),
+            Column('enum1', mysql.MSEnum('"black"', '"white"')),
             )
         try:
-            table.create(checkfirst=True)
+            table.drop(checkfirst=True)
+            table.create()
             meta2 = BoundMetaData(testbase.db)
             t2 = Table('mysql_types', meta2, autoload=True)
             assert isinstance(t2.c.num1.type, mysql.MSInteger)
