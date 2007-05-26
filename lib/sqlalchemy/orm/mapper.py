@@ -1472,7 +1472,7 @@ class Mapper(object):
             if self.__should_log_debug:
                 self.__log_debug("_instance(): identity key %s not in session" % str(identitykey))
         # look in result-local identitymap for it.
-        exists = context.identity_map.has_key(identitykey)
+        exists = identitykey in context.identity_map
         if not exists:
             if self.allow_null_pks:
                 # check if *all* primary key cols in the result are None - this indicates
@@ -1505,9 +1505,10 @@ class Mapper(object):
 
         # call further mapper properties on the row, to pull further
         # instances from the row and possibly populate this item.
-        if extension.populate_instance(self, context, row, instance, **{'instancekey':identitykey, 'isnew':isnew}) is EXT_PASS:
-            self.populate_instance(context, instance, row, **{'instancekey':identitykey, 'isnew':isnew})
-        if extension.append_result(self, context, row, instance, result, **{'instancekey':identitykey, 'isnew':isnew}) is EXT_PASS:
+        flags = {'instancekey':identitykey, 'isnew':isnew}
+        if extension.populate_instance(self, context, row, instance, **flags) is EXT_PASS:
+            self.populate_instance(context, instance, row, **flags)
+        if extension.append_result(self, context, row, instance, result, **flags) is EXT_PASS:
             if result is not None:
                 result.append(instance)
         return instance
@@ -1799,7 +1800,7 @@ class _ExtensionCarrier(MapperExtension):
 
     def __iter__(self):
         return iter(self.__elements)
-        
+
     def insert(self, extension):
         """Insert a MapperExtension at the beginning of this ExtensionCarrier's list."""
 
@@ -1809,62 +1810,34 @@ class _ExtensionCarrier(MapperExtension):
         """Append a MapperExtension at the end of this ExtensionCarrier's list."""
 
         self.__elements.append(extension)
+        
+    def _create_do(funcname):
+        def _do(self, *args, **kwargs):
+            for elem in self.__elements:
+                ret = getattr(elem, funcname)(*args, **kwargs)
+                if ret is not EXT_PASS:
+                    return ret
+            else:
+                return EXT_PASS
+        return _do
+        
+    get_session = _create_do('get_session')
+    load = _create_do('load')
+    get = _create_do('get')
+    get_by = _create_do('get_by')
+    select_by = _create_do('select_by')
+    select = _create_do('select')
+    translate_row = _create_do('translate_row')
+    create_instance = _create_do('create_instance')
+    append_result = _create_do('append_result')
+    populate_instance = _create_do('populate_instance')
+    before_insert = _create_do('before_insert')
+    before_update = _create_do('before_update')
+    after_update = _create_do('after_update')
+    after_insert = _create_do('after_insert')
+    before_delete = _create_do('before_delete')
+    after_delete = _create_do('after_delete')
 
-    def get_session(self, *args, **kwargs):
-        return self._do('get_session', *args, **kwargs)
-
-    def load(self, *args, **kwargs):
-        return self._do('load', *args, **kwargs)
-
-    def get(self, *args, **kwargs):
-        return self._do('get', *args, **kwargs)
-
-    def get_by(self, *args, **kwargs):
-        return self._do('get_by', *args, **kwargs)
-
-    def select_by(self, *args, **kwargs):
-        return self._do('select_by', *args, **kwargs)
-
-    def select(self, *args, **kwargs):
-        return self._do('select', *args, **kwargs)
-
-    def translate_row(self, *args, **kwargs):
-        return self._do('translate_row', *args, **kwargs)
-
-    def create_instance(self, *args, **kwargs):
-        return self._do('create_instance', *args, **kwargs)
-
-    def append_result(self, *args, **kwargs):
-        return self._do('append_result', *args, **kwargs)
-
-    def populate_instance(self, *args, **kwargs):
-        return self._do('populate_instance', *args, **kwargs)
-
-    def before_insert(self, *args, **kwargs):
-        return self._do('before_insert', *args, **kwargs)
-
-    def before_update(self, *args, **kwargs):
-        return self._do('before_update', *args, **kwargs)
-
-    def after_update(self, *args, **kwargs):
-        return self._do('after_update', *args, **kwargs)
-
-    def after_insert(self, *args, **kwargs):
-        return self._do('after_insert', *args, **kwargs)
-
-    def before_delete(self, *args, **kwargs):
-        return self._do('before_delete', *args, **kwargs)
-
-    def after_delete(self, *args, **kwargs):
-        return self._do('after_delete', *args, **kwargs)
-
-    def _do(self, funcname, *args, **kwargs):
-        for elem in self.__elements:
-            ret = getattr(elem, funcname)(*args, **kwargs)
-            if ret is not EXT_PASS:
-                return ret
-        else:
-            return EXT_PASS
 
 class ExtensionOption(MapperOption):
     def __init__(self, ext):

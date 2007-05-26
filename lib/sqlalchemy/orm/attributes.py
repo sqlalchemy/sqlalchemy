@@ -154,7 +154,7 @@ class InstrumentedAttribute(object):
             pass
 
     def _get_callable(self, obj):
-        if obj._state.has_key(('callable', self)):
+        if ('callable', self) in obj._state:
             return obj._state[('callable', self)]
         elif self.callable_ is not None:
             return self.callable_(obj)
@@ -220,7 +220,7 @@ class InstrumentedAttribute(object):
             state = obj._state
             # if an instance-wide "trigger" was set, call that
             # and start again
-            if state.has_key('trigger'):
+            if 'trigger' in state:
                 trig = state['trigger']
                 del state['trigger']
                 trig()
@@ -259,7 +259,7 @@ class InstrumentedAttribute(object):
         if event is not self:
             state = obj._state
             # if an instance-wide "trigger" was set, call that
-            if state.has_key('trigger'):
+            if 'trigger' in state:
                 trig = state['trigger']
                 del state['trigger']
                 trig()
@@ -680,7 +680,7 @@ class CommittedState(object):
         """
 
         if value is CommittedState.NO_VALUE:
-            if obj.__dict__.has_key(attr.key):
+            if attr.key in obj.__dict__:
                 value = obj.__dict__[attr.key]
         if value is not CommittedState.NO_VALUE:
             self.data[attr.key] = attr.copy(value)
@@ -928,7 +928,7 @@ class AttributeManager(object):
         by ``trigger_history()``.
         """
 
-        return obj._state.has_key('trigger')
+        return 'trigger' in obj._state
 
     def reset_instance_attribute(self, obj, key):
         """Remove any per-instance callable functions corresponding to

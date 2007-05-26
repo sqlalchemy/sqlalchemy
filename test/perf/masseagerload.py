@@ -8,8 +8,8 @@ import time
 
 db = testbase.db
 
-NUM = 500
-DIVISOR = 50
+NUM = 25000
+DIVISOR = 500
 
 class LoadTest(AssertMixin):
     def setUpAll(self):

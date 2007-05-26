@@ -494,11 +494,11 @@ class EagerLoader(AbstractRelationLoader):
                 def __init__(self, row):
                     self.row = row
                 def __contains__(self, key):
-                    return self.has_key(key)
+                    return key in map or key in self.row
                 def has_key(self, key):
-                    return map.has_key(key) or self.row.has_key(key)
+                    return key in self
                 def __getitem__(self, key):
-                    if map.has_key(key):
+                    if key in map:
                         key = map[key]
                     return self.row[key]
                 def keys(self):
