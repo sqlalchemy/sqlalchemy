@@ -999,7 +999,7 @@ class Compiled(ClauseVisitor):
     defaults.
     """
 
-    def __init__(self, dialect, statement, parameters, engine=None, traversal=None):
+    def __init__(self, dialect, statement, parameters, engine=None):
         """Construct a new ``Compiled`` object.
 
         statement
@@ -1022,7 +1022,6 @@ class Compiled(ClauseVisitor):
         engine
           Optional Engine to compile this statement against.
         """
-        ClauseVisitor.__init__(self, traversal=traversal)
         self.dialect = dialect
         self.statement = statement
         self.parameters = parameters
