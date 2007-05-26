@@ -519,26 +519,26 @@ class SchemaTest(PersistTest):
     
     @testbase.supported('postgres')
     def testpg(self):
-        """note: this test requires that the 'test_schema' schema be separate and accessible by the test user"""
+        """note: this test requires that the 'alt_schema' schema be separate and accessible by the test user"""
         
         meta1 = BoundMetaData(testbase.db)
         users = Table('users', meta1,
             Column('user_id', Integer, primary_key = True),
             Column('user_name', String(30), nullable = False),
-            schema="test_schema"
+            schema="alt_schema"
             )
 
         addresses = Table('email_addresses', meta1,
             Column('address_id', Integer, primary_key = True),
             Column('remote_user_id', Integer, ForeignKey(users.c.user_id)),
             Column('email_address', String(20)),
-            schema="test_schema"
+            schema="alt_schema"
         )
         meta1.create_all()
         try:
             meta2 = BoundMetaData(testbase.db)
-            addresses = Table('email_addresses', meta2, autoload=True, schema="test_schema")
-            users = Table('users', meta2, mustexist=True, schema="test_schema")
+            addresses = Table('email_addresses', meta2, autoload=True, schema="alt_schema")
+            users = Table('users', meta2, mustexist=True, schema="alt_schema")
 
             print users
             print addresses
