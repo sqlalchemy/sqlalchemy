@@ -417,21 +417,22 @@ class OrderedSet(Set):
     __isub__ = difference_update
 
 class UniqueAppender(object):
-    """appends items to a list such that consecutive repeats of
-    a particular item are skipped."""
+    """appends items to a collection such that only unique items
+    are added."""
     
     def __init__(self, data):
         self.data = data
+        self._unique = Set()
         if hasattr(data, 'append'):
             self._data_appender = data.append
         elif hasattr(data, 'add'):
+            # TODO: we think its a set here.  bypass unneeded uniquing logic ?
             self._data_appender = data.add
-        self.__last = None
         
     def append(self, item):
-        if item is not self.__last:
+        if item not in self._unique:
             self._data_appender(item)
-            self.__last = item
+            self._unique.add(item)
     
     def __iter__(self):
         return iter(self.data)

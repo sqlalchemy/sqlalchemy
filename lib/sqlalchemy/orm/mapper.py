@@ -523,20 +523,14 @@ class Mapper(object):
         # into one column, where "equivalent" means that one column references the other via foreign key, or
         # multiple columns that all reference a common parent column.  it will also resolve the column
         # against the "mapped_table" of this mapper.
+        equivalent_columns = self._get_equivalent_columns()
+        
         primary_key = sql.ColumnCollection()
-        # TODO: wrong !  this is a duplicate / slightly different approach to 
-        # _get_inherited_column_equivalents().  pick one approach and stick with it !
-        equivs = {}
+
         for col in (self.primary_key_argument or self.pks_by_table[self.mapped_table]):
-            if not len(col.foreign_keys):
-                equivs.setdefault(col, util.Set()).add(col)
-            else:
-                for fk in col.foreign_keys:
-                    equivs.setdefault(fk.column, util.Set()).add(col)
-        for col in equivs:
             c = self.mapped_table.corresponding_column(col, raiseerr=False)
             if c is None:
-                for cc in equivs[col]:
+                for cc in equivalent_columns[col]:
                     c = self.mapped_table.corresponding_column(cc, raiseerr=False)
                     if c is not None:
                         break
@@ -548,12 +542,66 @@ class Mapper(object):
             raise exceptions.ArgumentError("Could not assemble any primary key columns for mapped table '%s'" % (self.mapped_table.name))
 
         self.primary_key = primary_key
-
+        self.__log("Identified primary key columns: " + str(primary_key))
+        
         _get_clause = sql.and_()
         for primary_key in self.primary_key:
             _get_clause.clauses.append(primary_key == sql.bindparam(primary_key._label, type=primary_key.type, unique=True))
         self._get_clause = _get_clause
 
+    def _get_equivalent_columns(self):
+        """Create a map of all *equivalent* columns, based on
+        the determination of column pairs that are equated to
+        one another either by an established foreign key relationship
+        or by a joined-table inheritance join.
+
+        This is used to determine the minimal set of primary key 
+        columns for the mapper, as well as when relating 
+        columns to those of a polymorphic selectable (i.e. a UNION of
+        several mapped tables), as that selectable usually only contains
+        one column in its columns clause out of a group of several which
+        are equated to each other.
+
+        The resulting structure is a dictionary of columns mapped
+        to lists of equivalent columns, i.e.
+
+        {
+            tablea.col1: 
+                set([tableb.col1, tablec.col1]),
+            tablea.col2:
+                set([tabled.col2])
+        }
+        
+        this method is called repeatedly during the compilation process as 
+        the resulting dictionary contains more equivalents as more inheriting 
+        mappers are compiled.  the repetition of this process may be open to some optimization.
+        """
+
+        result = {}
+        def visit_binary(binary):
+            if binary.operator == '=':
+                if binary.left in result:
+                    result[binary.left].add(binary.right)
+                else:
+                    result[binary.left] = util.Set([binary.right])
+                if binary.right in result:
+                    result[binary.right].add(binary.left)
+                else:
+                    result[binary.right] = util.Set([binary.left])
+        vis = mapperutil.BinaryVisitor(visit_binary)
+
+        for mapper in self.base_mapper().polymorphic_iterator():
+            if mapper.inherit_condition is not None:
+                vis.traverse(mapper.inherit_condition)
+
+        for col in (self.primary_key_argument or self.pks_by_table[self.mapped_table]):
+            if not len(col.foreign_keys):
+                result.setdefault(col, util.Set()).add(col)
+            else:
+                for fk in col.foreign_keys:
+                    result.setdefault(fk.column, util.Set()).add(col)
+
+        return result
         
     def _compile_properties(self):
         """Inspect the properties dictionary sent to the Mapper's
@@ -769,43 +817,6 @@ class Mapper(object):
             for m in mapper.polymorphic_iterator():
                 yield m
 
-    def _get_inherited_column_equivalents(self):
-        """Return a map of all *equivalent* columns, based on
-        traversing the full set of inherit_conditions across all
-        inheriting mappers and determining column pairs that are
-        equated to one another.
-
-        This is used when relating columns to those of a polymorphic
-        selectable, as the selectable usually only contains one of two (or more)
-        columns that are equated to one another.
-        
-        The resulting structure is a dictionary of columns mapped
-        to lists of equivalent columns, i.e.
-        
-        {
-            tablea.col1: 
-                [tableb.col1, tablec.col1],
-            tablea.col2:
-                [tabled.col2]
-        }
-        """
-
-        result = {}
-        def visit_binary(binary):
-            if binary.operator == '=':
-                if binary.left in result:
-                    result[binary.left].append(binary.right)
-                else:
-                    result[binary.left] = [binary.right]
-                if binary.right in result:
-                    result[binary.right].append(binary.left)
-                else:
-                    result[binary.right] = [binary.left]
-        vis = mapperutil.BinaryVisitor(visit_binary)
-        for mapper in self.base_mapper().polymorphic_iterator():
-            if mapper.inherit_condition is not None:
-                vis.traverse(mapper.inherit_condition)
-        return result
 
     def add_properties(self, dict_of_properties):
         """Add the given dictionary of properties to this mapper,

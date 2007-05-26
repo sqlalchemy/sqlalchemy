@@ -383,8 +383,9 @@ class PropertyLoader(StrategizedProperty):
         # as we will be using the polymorphic selectables (i.e. select_table argument to Mapper) to figure this out,
         # first create maps of all the "equivalent" columns, since polymorphic selectables will often munge
         # several "equivalent" columns (such as parent/child fk cols) into just one column.
-        target_equivalents = self.mapper._get_inherited_column_equivalents()
 
+        target_equivalents = self.mapper._get_equivalent_columns()
+            
         # if the target mapper loads polymorphically, adapt the clauses to the target's selectable
         if self.loads_polymorphic:
             if self.secondaryjoin:
@@ -403,7 +404,7 @@ class PropertyLoader(StrategizedProperty):
             for c in list(self.remote_side):
                 if self.secondary and c in self.secondary.columns:
                     continue
-                for equiv in [c] + (c in target_equivalents and target_equivalents[c] or []): 
+                for equiv in [c] + (c in target_equivalents and list(target_equivalents[c]) or []): 
                     corr = self.mapper.select_table.corresponding_column(equiv, raiseerr=False)
                     if corr:
                         self.remote_side.add(corr)
@@ -454,7 +455,7 @@ class PropertyLoader(StrategizedProperty):
         try:
             return self._parent_join_cache[(parent, primary, secondary)]
         except KeyError:
-            parent_equivalents = parent._get_inherited_column_equivalents()
+            parent_equivalents = parent._get_equivalent_columns()
             primaryjoin = self.polymorphic_primaryjoin.copy_container()
             if self.secondaryjoin is not None:
                 secondaryjoin = self.polymorphic_secondaryjoin.copy_container()

@@ -888,6 +888,9 @@ class ResultProxy(object):
                 self.__keys.append(colname)
                 self.__props[i] = rec
 
+            if self.__echo:
+                self.context.engine.logger.debug("Cls " + repr(tuple([x[0] for x in metadata])))
+
     def close(self):
         """Close this ResultProxy, and the underlying DBAPI cursor corresponding to the execution.
 

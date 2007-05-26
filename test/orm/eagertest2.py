@@ -231,9 +231,8 @@ class EagerTest(AssertMixin):
         ctx.current.clear()
 
         i = ctx.current.query(Invoice).get(invoice_id)
-        self.echo(repr(i))
 
-        self.assert_(repr(i.company) == repr(c))
+        assert repr(i.company) == repr(c), repr(i.company) +  " does not match " + repr(c)
         
 if __name__ == "__main__":    
     testbase.main()
