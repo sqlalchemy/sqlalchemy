@@ -901,12 +901,12 @@ class Query(object):
             for proc in process:
                 proc[0](context, row)
 
-        for value in context.identity_map.values():
-            object_mapper(value)._post_instance(context, value)
+        for instance in context.identity_map.values():
+            context.attributes.get(('populating_mapper', instance), object_mapper(instance))._post_instance(context, instance)
         
         # store new stuff in the identity map
-        for value in context.identity_map.values():
-            session._register_persistent(value)
+        for instance in context.identity_map.values():
+            session._register_persistent(instance)
 
         if mappers_or_columns:
             return zip(*([result] + [o[1] for o in process]))

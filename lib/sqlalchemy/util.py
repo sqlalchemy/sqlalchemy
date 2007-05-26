@@ -319,7 +319,13 @@ class DictDecorator(dict):
             return dict.__getitem__(self, key)
         except KeyError:
             return self.decorate[key]
-
+            
+    def __contains__(self, key):
+        return dict.__contains__(self, key) or key in self.decorate
+    
+    def has_key(self, key):
+        return key in self
+            
     def __repr__(self):
         return dict.__repr__(self) + repr(self.decorate)
 

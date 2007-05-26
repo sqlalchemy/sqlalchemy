@@ -19,18 +19,34 @@ class MapperProperty(object):
 
         pass
 
-    def execute(self, selectcontext, instance, row, identitykey, isnew):
-        """Called when the mapper receives a row.
-
-        `instance` is the parent instance corresponding to the `row`.
+    def create_row_processor(self, selectcontext, mapper, row):
+        """return a tuple of a row processing and a row post-processing function.
+        
+        Input arguments are the query.SelectionContext and the *first*
+        row of a result set obtained within query.Query.instances().
+        By looking at the columns present within the row, MapperProperty
+        returns two callables which will be used to process the instance 
+        that results from the row.
+        
+        callables are of the following form:
+        
+            def execute(instance, row, identitykey, isnew):
+                # process incoming instance, given row, identitykey, 
+                # isnew flag indicating if this is the first row corresponding to this
+                # instance
+                
+            def post_execute(instance):
+                # process instance after all result rows have been processed.  this
+                # function should be used to issue additional selections in order to
+                # eagerly load additional properties.
+                
+            return (execute, post_execute)
+            
+        either tuple value can also be None in which case no function is called.
+        
         """
-
         raise NotImplementedError()
-
-    def post_execute(self, selectcontext, instance):
-        """Called after all result rows have been received"""
-
-        raise NotImplementedError()
+        
         
     def cascade_iterator(self, type, object, recursive=None, halt_on=None):
         return []
@@ -111,8 +127,8 @@ class SynonymProperty(MapperProperty):
     def setup(self, querycontext, **kwargs):
         pass
 
-    def execute(self, selectcontext, instance, row, identitykey, isnew):
-        pass
+    def create_row_processor(self, selectcontext, mapper, row):
+        return (None, None)
 
     def do_init(self):
         if not self.proxy:
@@ -161,11 +177,10 @@ class StrategizedProperty(MapperProperty):
             return strategy
 
     def setup(self, querycontext, **kwargs):
-
         self._get_context_strategy(querycontext).setup_query(querycontext, **kwargs)
 
-    def execute(self, selectcontext, instance, row, identitykey, isnew):
-        self._get_context_strategy(selectcontext).process_row(selectcontext, instance, row, identitykey, isnew)
+    def create_row_processor(self, selectcontext, mapper, row):
+        return self._get_context_strategy(selectcontext).create_row_processor(selectcontext, mapper, row)
 
     def do_init(self):
         self._all_strategies = {}
@@ -296,5 +311,12 @@ class LoaderStrategy(object):
     def setup_query(self, context, **kwargs):
         pass
 
-    def process_row(self, selectcontext, instance, row, identitykey, isnew):
-        pass
+    def create_row_processor(self, selectcontext, mapper, row):
+        """return row processing functions which fulfill the contract specified
+        by MapperProperty.create_row_processor.
+        
+        
+        StrategizedProperty delegates its create_row_processor method
+        directly to this method.
+        """
+        raise NotImplementedError()

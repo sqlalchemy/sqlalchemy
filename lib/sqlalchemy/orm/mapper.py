@@ -524,6 +524,8 @@ class Mapper(object):
         # multiple columns that all reference a common parent column.  it will also resolve the column
         # against the "mapped_table" of this mapper.
         primary_key = sql.ColumnCollection()
+        # TODO: wrong !  this is a duplicate / slightly different approach to 
+        # _get_inherited_column_equivalents().  pick one approach and stick with it !
         equivs = {}
         for col in (self.primary_key_argument or self.pks_by_table[self.mapped_table]):
             if not len(col.foreign_keys):
@@ -1437,8 +1439,8 @@ class Mapper(object):
             if discriminator is not None:
                 mapper = self.polymorphic_map[discriminator]
                 if mapper is not self:
-                    if ('polymorphic_fetch', mapper, self.polymorphic_fetch) not in context.attributes:
-                        context.attributes[('polymorphic_fetch', mapper, self.polymorphic_fetch)] = (self, [t for t in mapper.tables if t not in self.tables])
+                    if ('polymorphic_fetch', mapper) not in context.attributes:
+                        context.attributes[('polymorphic_fetch', mapper)] = (self, [t for t in mapper.tables if t not in self.tables])
                     row = self.translate_row(mapper, row)
                     return mapper._instance(context, row, result=result, skip_polymorphic=True)
                     
@@ -1538,30 +1540,6 @@ class Mapper(object):
         mapperutil.BinaryVisitor(visit_binary).traverse(cond)
         return cond, param_names
 
-    def _post_instance(self, context, instance):
-        (hosted_mapper, needs_tables) = context.attributes.get(('polymorphic_fetch', self, 'select'), (None, None))
-        if needs_tables is None or len(needs_tables) == 0:
-            return
-        
-        # TODO: this logic needs to be merged with the same logic in DeferredColumnLoader
-        self.__log_debug("Post query loading instance " + mapperutil.instance_str(instance))
-        if ('post_select', self) not in context.attributes:
-            cond, param_names = self._deferred_inheritance_condition(needs_tables)
-            statement = sql.select(needs_tables, cond, use_labels=True)
-            context.attributes[('post_select', self)] = (statement, param_names)
-            
-        (statement, binds) = context.attributes[('post_select', self)]
-        
-        identitykey = self.instance_key(instance)
-        
-        params = {}
-        for c in binds:
-            params[c.name] = self.get_attr_by_column(instance, c)
-        row = context.session.connection(self).execute(statement, **params).fetchone()
-        for prop in self.__props.values():
-            if prop.parent is not hosted_mapper:
-                prop.execute(context, instance, row, identitykey, True)
-
     def translate_row(self, tomapper, row):
         """Translate the column keys of a row into a new or proxied
         row that can be understood by another mapper.
@@ -1578,14 +1556,63 @@ class Mapper(object):
         return newrow
 
     def populate_instance(self, selectcontext, instance, row, identitykey, isnew):
-        """populate an instance from a result row.
+        """populate an instance from a result row."""
 
-        This method iterates through the list of MapperProperty objects attached to this Mapper
-        and calls each properties execute() method."""
+        populators = selectcontext.attributes.get(('instance_populators', self), None)
+        if populators is None:
+            populators = []
+            post_processors = []
+            for prop in self.__props.values():
+                (pop, post_proc) = prop.create_row_processor(selectcontext, self, row)
+                if pop is not None:
+                    populators.append(pop)
+                if post_proc is not None:
+                    post_processors.append(post_proc)
+                    
+            poly_select_loader = self._get_poly_select_loader(selectcontext, row)
+            if poly_select_loader is not None:
+                post_processors.append(poly_select_loader)
+                
+            selectcontext.attributes[('instance_populators', self)] = populators
+            selectcontext.attributes[('post_processors', self)] = post_processors
+
+        for p in populators:
+            p(instance, row, identitykey, isnew)
+            
+        if self.non_primary:
+            selectcontext.attributes[('populating_mapper', instance)] = self
         
-        for prop in self.__props.values():
-            prop.execute(selectcontext, instance, row, identitykey, isnew)
+    def _post_instance(self, selectcontext, instance):
+        post_processors = selectcontext.attributes[('post_processors', self)]
+        for p in post_processors:
+            p(instance)
 
+    def _get_poly_select_loader(self, selectcontext, row):
+        # 'select' or 'union'+col not present
+        (hosted_mapper, needs_tables) = selectcontext.attributes.get(('polymorphic_fetch', self), (None, None))
+        if hosted_mapper is None or len(needs_tables)==0 or hosted_mapper.polymorphic_fetch == 'deferred':
+            return
+        
+        from strategies import ColumnLoader
+        from attributes import InstrumentedAttribute
+            
+        cond, param_names = self._deferred_inheritance_condition(needs_tables)
+        statement = sql.select(needs_tables, cond, use_labels=True)
+        group = [p for p in self.props.values() if isinstance(p.strategy, ColumnLoader) and p.columns[0].table in needs_tables]
+        
+        def post_execute(instance):
+            self.__log_debug("Post query loading instance " + mapperutil.instance_str(instance))
+
+            identitykey = self.instance_key(instance)
+
+            params = {}
+            for c in param_names:
+                params[c.name] = self.get_attr_by_column(instance, c)
+            row = selectcontext.session.connection(self).execute(statement, **params).fetchone()
+            for prop in group:
+                InstrumentedAttribute.get_instrument(instance, prop.key).set_committed_value(instance, row[prop.columns[0]])
+        return post_execute
+            
 Mapper.logger = logging.class_logger(Mapper)
 
 
