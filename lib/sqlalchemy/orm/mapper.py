@@ -1462,9 +1462,9 @@ class Mapper(object):
                 if not context.identity_map.has_key(identitykey):
                     context.identity_map[identitykey] = instance
                     isnew = True
-                if extension.populate_instance(self, context, row, instance, identitykey, isnew) is EXT_PASS:
-                    self.populate_instance(context, instance, row, identitykey, isnew)
-            if extension.append_result(self, context, row, instance, identitykey, result, isnew) is EXT_PASS:
+                if extension.populate_instance(self, context, row, instance, {'instancekey':identitykey, 'isnew':isnew}) is EXT_PASS:
+                    self.populate_instance(context, instance, row, {'instancekey':identitykey, 'isnew':isnew})
+            if extension.append_result(self, context, row, instance, result, {'instancekey':identitykey, 'isnew':isnew}) is EXT_PASS:
                 if result is not None:
                     result.append(instance)
             return instance
@@ -1505,9 +1505,9 @@ class Mapper(object):
 
         # call further mapper properties on the row, to pull further
         # instances from the row and possibly populate this item.
-        if extension.populate_instance(self, context, row, instance, identitykey, isnew) is EXT_PASS:
-            self.populate_instance(context, instance, row, identitykey, isnew)
-        if extension.append_result(self, context, row, instance, identitykey, result, isnew) is EXT_PASS:
+        if extension.populate_instance(self, context, row, instance, {'instancekey':identitykey, 'isnew':isnew}) is EXT_PASS:
+            self.populate_instance(context, instance, row, {'instancekey':identitykey, 'isnew':isnew})
+        if extension.append_result(self, context, row, instance, result, {'instancekey':identitykey, 'isnew':isnew}) is EXT_PASS:
             if result is not None:
                 result.append(instance)
         return instance
@@ -1555,10 +1555,10 @@ class Mapper(object):
                 newrow[c] = row[c2]
         return newrow
 
-    def populate_instance(self, selectcontext, instance, row, identitykey, isnew):
+    def populate_instance(self, selectcontext, instance, row, flags):
         """populate an instance from a result row."""
 
-        populators = selectcontext.attributes.get(('instance_populators', self), None)
+        populators = selectcontext.attributes.get(('instance_populators', self, flags.get('ispostselect')), None)
         if populators is None:
             populators = []
             post_processors = []
@@ -1573,19 +1573,19 @@ class Mapper(object):
             if poly_select_loader is not None:
                 post_processors.append(poly_select_loader)
                 
-            selectcontext.attributes[('instance_populators', self)] = populators
-            selectcontext.attributes[('post_processors', self)] = post_processors
+            selectcontext.attributes[('instance_populators', self, flags.get('ispostselect'))] = populators
+            selectcontext.attributes[('post_processors', self, flags.get('ispostselect'))] = post_processors
 
         for p in populators:
-            p(instance, row, identitykey, isnew)
+            p(instance, row, flags)
             
         if self.non_primary:
             selectcontext.attributes[('populating_mapper', instance)] = self
         
     def _post_instance(self, selectcontext, instance):
-        post_processors = selectcontext.attributes[('post_processors', self)]
+        post_processors = selectcontext.attributes[('post_processors', self, None)]
         for p in post_processors:
-            p(instance)
+            p(instance, {})
 
     def _get_poly_select_loader(self, selectcontext, row):
         # 'select' or 'union'+col not present
@@ -1593,14 +1593,9 @@ class Mapper(object):
         if hosted_mapper is None or len(needs_tables)==0 or hosted_mapper.polymorphic_fetch == 'deferred':
             return
         
-        from strategies import ColumnLoader
-        from attributes import InstrumentedAttribute
-            
         cond, param_names = self._deferred_inheritance_condition(needs_tables)
         statement = sql.select(needs_tables, cond, use_labels=True)
-        group = [p for p in self.props.values() if isinstance(p.strategy, ColumnLoader) and p.columns[0].table in needs_tables]
-        
-        def post_execute(instance):
+        def post_execute(instance, flags):
             self.__log_debug("Post query loading instance " + mapperutil.instance_str(instance))
 
             identitykey = self.instance_key(instance)
@@ -1609,8 +1604,8 @@ class Mapper(object):
             for c in param_names:
                 params[c.name] = self.get_attr_by_column(instance, c)
             row = selectcontext.session.connection(self).execute(statement, **params).fetchone()
-            for prop in group:
-                InstrumentedAttribute.get_instrument(instance, prop.key).set_committed_value(instance, row[prop.columns[0]])
+            self.populate_instance(selectcontext, instance, row, {'isnew':False, 'instancekey':identitykey, 'ispostselect':True})
+
         return post_execute
             
 Mapper.logger = logging.class_logger(Mapper)
@@ -1715,7 +1710,7 @@ class MapperExtension(object):
 
         return EXT_PASS
 
-    def append_result(self, mapper, selectcontext, row, instance, identitykey, result, isnew):
+    def append_result(self, mapper, selectcontext, row, instance, result, flags):
         """Receive an object instance before that instance is appended
         to a result list.
 
@@ -1737,22 +1732,17 @@ class MapperExtension(object):
         instance
           The object instance to be appended to the result.
 
-        identitykey
-          The identity key of the instance.
-
         result
           List to which results are being appended.
 
-        isnew
-          Indicates if this is the first time we have seen this object
-          instance in the current result set.  if you are selecting
-          from a join, such as an eager load, you might see the same
-          object instance many times in the same result set.
+        flags
+          extra information about the row, same as criterion in
+          `create_row_processor()` method of [sqlalchemy.orm.interfaces#MapperProperty]
         """
 
         return EXT_PASS
 
-    def populate_instance(self, mapper, selectcontext, row, instance, identitykey, isnew):
+    def populate_instance(self, mapper, selectcontext, row, instance, flags):
         """Receive a newly-created instance before that instance has
         its attributes populated.
 

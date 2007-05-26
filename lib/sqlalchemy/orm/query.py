@@ -1123,8 +1123,10 @@ class SelectionContext(OperationContext):
       yet been added as persistent to the Session.
 
     attributes
-      A dictionary to store arbitrary data; eager loaders use it to
-      store additional result lists.
+      A dictionary to store arbitrary data; mappers, strategies, and
+      options all store various state information here in order
+      to communicate with each other and to themselves.
+      
 
     populate_existing
       Indicates if its OK to overwrite the attributes of instances

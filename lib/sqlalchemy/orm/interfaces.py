@@ -23,19 +23,25 @@ class MapperProperty(object):
         """return a tuple of a row processing and a row post-processing function.
         
         Input arguments are the query.SelectionContext and the *first*
-        row of a result set obtained within query.Query.instances().
+        applicable row of a result set obtained within query.Query.instances(), called
+        the first time mapper.populate_instance() is invoked for a particular
+        result, and only once per result.
+        
         By looking at the columns present within the row, MapperProperty
         returns two callables which will be used to process the instance 
         that results from the row.
         
         callables are of the following form:
         
-            def execute(instance, row, identitykey, isnew):
-                # process incoming instance, given row, identitykey, 
-                # isnew flag indicating if this is the first row corresponding to this
-                # instance
+            def execute(instance, row, flags):
+                # process incoming instance and given row.
+                # flags is a dictionary containing at least the following attributes:
+                #   isnew - indicates if the instance was newly created as a result of reading this row
+                #   instancekey - identity key of the instance
+                # optional attribute:
+                #   ispostselect - indicates if this row resulted from a 'post' select of additional tables/columns
                 
-            def post_execute(instance):
+            def post_execute(instance, flags):
                 # process instance after all result rows have been processed.  this
                 # function should be used to issue additional selections in order to
                 # eagerly load additional properties.
@@ -46,7 +52,6 @@ class MapperProperty(object):
         
         """
         raise NotImplementedError()
-        
         
     def cascade_iterator(self, type, object, recursive=None, halt_on=None):
         return []

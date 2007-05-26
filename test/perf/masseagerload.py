@@ -8,7 +8,8 @@ import time
 
 db = testbase.db
 
-NUM = 25000
+NUM = 500
+DIVISOR = 50
 
 class LoadTest(AssertMixin):
     def setUpAll(self):
@@ -27,15 +28,16 @@ class LoadTest(AssertMixin):
     def setUp(self):
         clear_mappers()
         l = []
-        for x in range(1,NUM/500):
+        for x in range(1,NUM/DIVISOR):
             l.append({'item_id':x, 'value':'this is item #%d' % x})
+        print l
         items.insert().execute(*l)
-        for x in range(1, NUM/500):
+        for x in range(1, NUM/DIVISOR):
             l = []
-            for y in range(1, NUM/(NUM/500)):
-                z = ((x-1) * NUM/(NUM/500)) + y
+            for y in range(1, NUM/(NUM/DIVISOR)):
+                z = ((x-1) * NUM/(NUM/DIVISOR)) + y
                 l.append({'sub_id':z,'value':'this is iteim #%d' % z, 'parent_id':x})
-            #print l
+            print l
             subitems.insert().execute(*l)    
     def testload(self):
         class Item(object):pass

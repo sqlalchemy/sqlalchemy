@@ -574,7 +574,7 @@ class MapperTest(MapperSuperTest):
     def testextensionoptions(self):
         sess  = create_session()
         class ext1(MapperExtension):
-            def populate_instance(self, mapper, selectcontext, row, instance, identitykey, isnew):
+            def populate_instance(self, mapper, selectcontext, row, instance, flags):
                 """test options at the Mapper._instance level"""
                 instance.TEST = "hello world"
                 return EXT_PASS
@@ -585,7 +585,7 @@ class MapperTest(MapperSuperTest):
             def select_by(self, *args, **kwargs):
                 """test options at the Query level"""
                 return "HI"
-            def populate_instance(self, mapper, selectcontext, row, instance, identitykey, isnew):
+            def populate_instance(self, mapper, selectcontext, row, instance, flags):
                 """test options at the Mapper._instance level"""
                 instance.TEST_2 = "also hello world"
                 return EXT_PASS
