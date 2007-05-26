@@ -791,7 +791,7 @@ class ClauseParameters(object):
     """
 
     def __init__(self, dialect, positional=None):
-        super(ClauseParameters, self).__init__(self)
+        super(ClauseParameters, self).__init__()
         self.dialect = dialect
         self.binds = {}
         self.binds_to_names = {}
