@@ -35,8 +35,8 @@ class ColumnLoader(LoaderStrategy):
 
     def create_row_processor(self, selectcontext, mapper, row):
         if self.columns[0] in row:
-            def execute(instance, row, flags):
-                if flags['isnew'] or flags.get('ispostselect'):
+            def execute(instance, row, isnew, ispostselect=None, **flags):
+                if isnew or ispostselect:
                     if self._should_log_debug:
                         self.logger.debug("populating %s with %s/%s" % (mapperutil.attribute_str(instance, self.key), row.__class__.__name__, self.columns[0].key))
                     instance.__dict__[self.key] = row[self.columns[0]]
@@ -48,8 +48,8 @@ class ColumnLoader(LoaderStrategy):
                 return (None, None)
             
             if hosted_mapper.polymorphic_fetch == 'deferred':
-                def execute(instance, row, flags):
-                    if flags['isnew']:
+                def execute(instance, row, isnew, **flags):
+                    if isnew:
                         sessionlib.attribute_manager.init_instance_attribute(instance, self.key, False, callable_=self._get_deferred_loader(instance, mapper, needs_tables))
                 self.logger.debug("Returning deferred column fetcher for %s %s" % (mapper, self.key))
                 return (execute, None)
@@ -96,15 +96,15 @@ class DeferredColumnLoader(LoaderStrategy):
     
     def create_row_processor(self, selectcontext, mapper, row):
         if not self.is_default or len(selectcontext.options):
-            def execute(instance, row, flags):
-                if flags['isnew']:
+            def execute(instance, row, isnew, **flags):
+                if isnew:
                     if self._should_log_debug:
                         self.logger.debug("set deferred callable on %s" % mapperutil.attribute_str(instance, self.key))
                     sessionlib.attribute_manager.init_instance_attribute(instance, self.key, False, callable_=self.setup_loader(instance))
             return (execute, None)
         else:
-            def execute(instance, row, flags):
-                if flags['isnew']:
+            def execute(instance, row, isnew, **flags):
+                if isnew:
                     if self._should_log_debug:
                         self.logger.debug("set deferred callable on %s" % mapperutil.attribute_str(instance, self.key))
                     sessionlib.attribute_manager.reset_instance_attribute(instance, self.key)
@@ -205,7 +205,7 @@ class NoLoader(AbstractRelationLoader):
 
     def create_row_processor(self, selectcontext, mapper, row):
         if not self.is_default or len(selectcontext.options):
-            def execute(instance, row, identitykey, isnew):
+            def execute(instance, row, isnew, **flags):
                 if isnew:
                     if self._should_log_debug:
                         self.logger.debug("set instance-level no loader on %s" % mapperutil.attribute_str(instance, self.key))
@@ -296,8 +296,8 @@ class LazyLoader(AbstractRelationLoader):
 
     def create_row_processor(self, selectcontext, mapper, row):
         if not self.is_default or len(selectcontext.options):
-            def execute(instance, row, flags):
-                if flags['isnew']:
+            def execute(instance, row, isnew, **flags):
+                if isnew:
                     if self._should_log_debug:
                         self.logger.debug("set instance-level lazy loader on %s" % mapperutil.attribute_str(instance, self.key))
                     # we are not the primary manager for this attribute on this class - set up a per-instance lazyloader,
@@ -305,8 +305,8 @@ class LazyLoader(AbstractRelationLoader):
                     self._init_instance_attribute(instance, callable_=self.setup_loader(instance, selectcontext.options))
             return (execute, None)
         else:
-            def execute(instance, row, flags):
-                if flags['isnew']:
+            def execute(instance, row, isnew, **flags):
+                if isnew:
                     if self._should_log_debug:
                         self.logger.debug("set class-level lazy loader on %s" % mapperutil.attribute_str(instance, self.key))
                     # we are the primary manager for this attribute on this class - reset its per-instance attribute state, 
@@ -621,7 +621,7 @@ class EagerLoader(AbstractRelationLoader):
     def create_row_processor(self, selectcontext, mapper, row):
         row_decorator = self._create_row_decorator(selectcontext, row)
         if row_decorator is not None:
-            def execute(instance, row, flags):
+            def execute(instance, row, isnew, **flags):
                 if self in selectcontext.recursion_stack:
                     return
                 decorated_row = row_decorator(row)
@@ -633,7 +633,7 @@ class EagerLoader(AbstractRelationLoader):
                     if not self.uselist:
                         if self._should_log_debug:
                             self.logger.debug("eagerload scalar instance on %s" % mapperutil.attribute_str(instance, self.key))
-                        if flags['isnew']:
+                        if isnew:
                             # set a scalar object instance directly on the parent object, 
                             # bypassing InstrumentedAttribute event handlers.
                             instance.__dict__[self.key] = self.mapper._instance(selectcontext, decorated_row, None)
@@ -642,7 +642,7 @@ class EagerLoader(AbstractRelationLoader):
                             # so that we further descend into properties
                             self.mapper._instance(selectcontext, decorated_row, None)
                     else:
-                        if flags['isnew']:
+                        if isnew:
                             if self._should_log_debug:
                                 self.logger.debug("initialize UniqueAppender on %s" % mapperutil.attribute_str(instance, self.key))
 

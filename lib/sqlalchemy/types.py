@@ -12,23 +12,16 @@ __all__ = [ 'TypeEngine', 'TypeDecorator', 'NullTypeEngine',
             ]
 
 from sqlalchemy import util, exceptions
-import inspect, weakref
+import inspect
 try:
     import cPickle as pickle
 except:
     import pickle
 
-_impl_cache = weakref.WeakKeyDictionary()
-
 class AbstractType(object):
-    def _get_impl_dict(self):
-        try:
-            return _impl_cache[self]
-        except KeyError:
-            return _impl_cache.setdefault(self, {})
-
-    impl_dict = property(_get_impl_dict)
-
+    def __init__(self, *args, **kwargs):
+        pass
+        
     def copy_value(self, value):
         return value
 
@@ -50,14 +43,14 @@ class AbstractType(object):
         return "%s(%s)" % (self.__class__.__name__, ",".join(["%s=%s" % (k, getattr(self, k)) for k in inspect.getargspec(self.__init__)[0][1:]]))
 
 class TypeEngine(AbstractType):
-    def __init__(self, *args, **params):
-        pass
-
     def dialect_impl(self, dialect):
         try:
-            return self.impl_dict[dialect]
+            return self._impl_dict[dialect]
+        except AttributeError:
+            self._impl_dict = {}
+            return self._impl_dict.setdefault(dialect, dialect.type_descriptor(self))
         except KeyError:
-            return self.impl_dict.setdefault(dialect, dialect.type_descriptor(self))
+            return self._impl_dict.setdefault(dialect, dialect.type_descriptor(self))
 
     def get_col_spec(self):
         raise NotImplementedError()
@@ -87,15 +80,20 @@ class TypeDecorator(AbstractType):
 
     def dialect_impl(self, dialect):
         try:
-            return self.impl_dict[dialect]
-        except:
-            typedesc = dialect.type_descriptor(self.impl)
-            tt = self.copy()
-            if not isinstance(tt, self.__class__):
-                raise exceptions.AssertionError("Type object %s does not properly implement the copy() method, it must return an object of type %s" % (self, self.__class__))
-            tt.impl = typedesc
-            self.impl_dict[dialect] = tt
-            return tt
+            return self._impl_dict[dialect]
+        except AttributeError:
+            self._impl_dict = {}
+            return self._impl_dict.setdefault(dialect, self._create_dialect_impl(dialect))
+        except KeyError:
+            return self._impl_dict.setdefault(dialect, self._create_dialect_impl(dialect))
+
+    def _create_dialect_impl(self, dialect):
+        typedesc = dialect.type_descriptor(self.impl)
+        tt = self.copy()
+        if not isinstance(tt, self.__class__):
+            raise exceptions.AssertionError("Type object %s does not properly implement the copy() method, it must return an object of type %s" % (self, self.__class__))
+        tt.impl = typedesc
+        return tt
 
     def __getattr__(self, key):
         """Proxy all other undefined accessors to the underlying implementation."""

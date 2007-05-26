@@ -33,7 +33,7 @@ class MapperProperty(object):
         
         callables are of the following form:
         
-            def execute(instance, row, flags):
+            def execute(instance, row, **flags):
                 # process incoming instance and given row.
                 # flags is a dictionary containing at least the following attributes:
                 #   isnew - indicates if the instance was newly created as a result of reading this row
@@ -41,7 +41,7 @@ class MapperProperty(object):
                 # optional attribute:
                 #   ispostselect - indicates if this row resulted from a 'post' select of additional tables/columns
                 
-            def post_execute(instance, flags):
+            def post_execute(instance, **flags):
                 # process instance after all result rows have been processed.  this
                 # function should be used to issue additional selections in order to
                 # eagerly load additional properties.
