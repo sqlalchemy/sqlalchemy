@@ -284,9 +284,6 @@ class OrderedDict(dict):
             self._list.append(key)
         dict.__setitem__(self, key, object)
 
-    def __getitem__(self, key):
-        return dict.__getitem__(self, key)
-
 class ThreadLocal(object):
     """An object in which attribute access occurs only within the context of the current thread."""
 
@@ -420,18 +417,21 @@ class OrderedSet(Set):
     __isub__ = difference_update
 
 class UniqueAppender(object):
+    """appends items to a list such that consecutive repeats of
+    a particular item are skipped."""
+    
     def __init__(self, data):
         self.data = data
         if hasattr(data, 'append'):
             self._data_appender = data.append
         elif hasattr(data, 'add'):
             self._data_appender = data.add
-        self.set = Set()
-
+        self.__last = None
+        
     def append(self, item):
-        if item not in self.set:
-            self.set.add(item)
+        if item is not self.__last:
             self._data_appender(item)
+            self.__last = item
     
     def __iter__(self):
         return iter(self.data)

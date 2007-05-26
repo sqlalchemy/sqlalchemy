@@ -1477,17 +1477,16 @@ class Mapper(object):
             if self.allow_null_pks:
                 # check if *all* primary key cols in the result are None - this indicates
                 # an instance of the object is not present in the row.
-                for col in self.primary_key:
-                    if row[col] is not None:
+                for x in identitykey[1]:
+                    if x is not None:
                         break
                 else:
                     return None
             else:
                 # otherwise, check if *any* primary key cols in the result are None - this indicates
                 # an instance of the object is not present in the row.
-                for col in self.primary_key:
-                    if row[col] is None:
-                        return None
+                if None in identitykey[1]:
+                    return None
 
             # plugin point
             instance = extension.create_instance(self, context, row, self.class_)
