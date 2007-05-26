@@ -378,8 +378,13 @@ class MapperTest(MapperSuperTest):
 
         l = q.select_by(items=item)
         self.assert_result(l, User, user_result[0])
-    
-    
+        
+        # TODO: this works differently from:
+        #q = sess.query(User).join(['orders', 'items']).select_by(order_id=3)
+        # because select_by() doesnt respect query._joinpoint, whereas filter_by does
+        q = sess.query(User).join(['orders', 'items']).filter_by(order_id=3).list()
+        self.assert_result(l, User, user_result[0])
+        
         try:
             # this should raise AttributeError
             l = q.select_by(items=5)
@@ -1661,10 +1666,10 @@ class InstancesTest(MapperSuperTest):
         mapper(User, users)
 
         # Fixme ticket #475!
-        if db.engine.name == 'sqlite':
-            col2 = ("Name:" + users.c.user_name).label('concat')
-        else:
+        if db.engine.name == 'mysql':
             col2 = func.concat("Name:", users.c.user_name).label('concat')
+        else:
+            col2 = ("Name:" + users.c.user_name).label('concat')
         
         s = select([users, func.count(addresses.c.address_id).label('count'), col2], from_obj=[users.outerjoin(addresses)], group_by=[c for c in users.c], order_by=[users.c.user_id])
         sess = create_session()
