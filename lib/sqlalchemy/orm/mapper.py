@@ -1586,7 +1586,7 @@ class Mapper(object):
     def _post_instance(self, selectcontext, instance):
         post_processors = selectcontext.attributes[('post_processors', self, None)]
         for p in post_processors:
-            p(instance, {})
+            p(instance)
 
     def _get_poly_select_loader(self, selectcontext, row):
         # 'select' or 'union'+col not present

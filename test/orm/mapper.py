@@ -378,8 +378,13 @@ class MapperTest(MapperSuperTest):
 
         l = q.select_by(items=item)
         self.assert_result(l, User, user_result[0])
-    
-    
+        
+        # TODO: this works differently from:
+        #q = sess.query(User).join(['orders', 'items']).select_by(order_id=3)
+        # because select_by() doesnt respect query._joinpoint, whereas filter_by does
+        q = sess.query(User).join(['orders', 'items']).filter_by(order_id=3).list()
+        self.assert_result(l, User, user_result[0])
+        
         try:
             # this should raise AttributeError
             l = q.select_by(items=5)
@@ -1357,6 +1362,27 @@ class EagerTest(MapperSuperTest):
         
         l = m.instances(s.execute(emailad = 'jack@bean.com'), session)
         self.echo(repr(l))
+    
+    def testonselect(self):
+        """test eager loading of a mapper which is against a select"""
+        
+        s = select([orders], orders.c.isopen==1).alias('openorders')
+        mapper(Order, s, properties={
+            'user':relation(User, lazy=False)
+        })
+        mapper(User, users)
+        
+        q = create_session().query(Order)
+        self.assert_result(q.list(), Order,
+            {'order_id':3, 'user' : (User, {'user_id':7})},
+            {'order_id':4, 'user' : (User, {'user_id':9})},
+        )
+
+        q = q.select_from(s.outerjoin(orderitems)).filter(orderitems.c.item_name != 'item 2')
+        self.assert_result(q.list(), Order,
+            {'order_id':3, 'user' : (User, {'user_id':7})},
+        )
+        
         
     def testmulti(self):
         """tests eager loading with two relations simultaneously"""
@@ -1670,7 +1696,14 @@ class InstancesTest(MapperSuperTest):
         
     def testmappersplustwocolumns(self):
         mapper(User, users)
-        s = select([users, func.count(addresses.c.address_id).label('count'), ("Name:" + users.c.user_name).label('concat')], from_obj=[users.outerjoin(addresses)], group_by=[c for c in users.c], order_by=[users.c.user_id])
+
+        # Fixme ticket #475!
+        if db.engine.name == 'mysql':
+            col2 = func.concat("Name:", users.c.user_name).label('concat')
+        else:
+            col2 = ("Name:" + users.c.user_name).label('concat')
+        
+        s = select([users, func.count(addresses.c.address_id).label('count'), col2], from_obj=[users.outerjoin(addresses)], group_by=[c for c in users.c], order_by=[users.c.user_id])
         sess = create_session()
         (user7, user8, user9) = sess.query(User).select()
         q = sess.query(User)

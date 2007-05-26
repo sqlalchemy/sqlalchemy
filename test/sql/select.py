@@ -821,6 +821,16 @@ myothertable.othername != :myothertable_othername OR EXISTS (select yay from foo
 
         self.runtest(select([table1], ~table1.c.myid.in_(select([table2.c.otherid]))),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid NOT IN (SELECT myothertable.otherid FROM myothertable)")
+
+        self.runtest(select([table1], table1.c.myid.in_(
+            union(
+                  select([table1], table1.c.myid == 5),
+                  select([table1], table1.c.myid == 12),
+            )
+        )), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable \
+WHERE mytable.myid IN (\
+SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = :mytable_myid \
+UNION SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = :mytable_myid_1)")
         
         # test that putting a select in an IN clause does not blow away its ORDER BY clause
         self.runtest(

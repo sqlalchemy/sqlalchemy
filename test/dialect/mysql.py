@@ -223,7 +223,7 @@ class TypesTest(AssertMixin):
         self.assertEqual(spec(enum_table.c.e2), """e2 ENUM("a",'b') NOT NULL""")
         self.assertEqual(spec(enum_table.c.e3), """e3 ENUM("a",'b')""")
         self.assertEqual(spec(enum_table.c.e4), """e4 ENUM("a",'b') NOT NULL""")
-        enum_table.drop()
+        enum_table.drop(checkfirst=True)
         enum_table.create()
 
         try:
@@ -244,26 +244,100 @@ class TypesTest(AssertMixin):
 
         # Insert out of range enums, push stderr aside to avoid expected
         # warnings cluttering test output
-        try:
-            aside = sys.stderr
-            sys.stderr = StringIO.StringIO()
-
-            con = db.connect()
-            self.assert_(not con.connection.show_warnings())
+        con = db.connect()
+        if not hasattr(con.connection, 'show_warnings'):
             con.execute(insert(enum_table, {'e1':'c', 'e2':'c',
                                             'e3':'a', 'e4':'a'}))
-            self.assert_(con.connection.show_warnings())
-        finally:
-            sys.stderr = aside
+        else:
+            try:
+                aside = sys.stderr
+                sys.stderr = StringIO.StringIO()
+
+                self.assert_(not con.connection.show_warnings())
+
+                con.execute(insert(enum_table, {'e1':'c', 'e2':'c',
+                                                'e3':'a', 'e4':'a'}))
+
+                self.assert_(con.connection.show_warnings())
+            finally:
+                sys.stderr = aside
 
         res = enum_table.select().execute().fetchall()
 
-        # This is known to fail with MySQLDB versions < 1.2.2
-        self.assertEqual(res, [(None, 'a', None, 'a'),
-                               ('a', 'a', 'a', 'a'),
-                               ('b', 'b', 'b', 'b'),
-                               ('', '', 'a', 'a')])
+        expected = [(None, 'a', None, 'a'),
+                    ('a', 'a', 'a', 'a'),
+                    ('b', 'b', 'b', 'b'),
+                    ('', '', 'a', 'a')]
+
+        # This is known to fail with MySQLDB 1.2.2 beta versions
+        # which return these as sets.Set(['a']), sets.Set(['b'])
+        # (even on Pythons with __builtin__.set)
+        if db.dialect.dbapi.version_info < (1, 2, 2, 'beta', 3) and \
+           db.dialect.dbapi.version_info >= (1, 2, 2):
+            # these mysqldb seem to always uses 'sets', even on later pythons
+            import sets 
+            def convert(value):
+                if value is None:
+                    return value
+                if value == '':
+                    return sets.Set([])
+                else:
+                    return sets.Set([value])
+                
+            e = []
+            for row in expected:
+                e.append(tuple([convert(c) for c in row]))
+            expected = e
+
+        self.assertEqual(res, expected)
         enum_table.drop()
+
+    @testbase.supported('mysql')
+    def test_type_reflection(self):
+        # (ask_for, roundtripped_as_if_different)
+        specs = [( String(), mysql.MSText(), ),
+                 ( String(1), mysql.MSString(1), ),
+                 ( String(3), mysql.MSString(3), ),
+                 ( mysql.MSChar(1), ),
+                 ( mysql.MSChar(3), ),
+                 ( NCHAR(2), mysql.MSChar(2), ),
+                 ( mysql.MSNChar(2), mysql.MSChar(2), ), # N is CREATE only
+                 ( mysql.MSNVarChar(22), mysql.MSString(22), ),
+                 ( Smallinteger(), mysql.MSSmallInteger(), ),
+                 ( Smallinteger(4), mysql.MSSmallInteger(4), ),
+                 ( mysql.MSSmallInteger(), ),
+                 ( mysql.MSSmallInteger(4), mysql.MSSmallInteger(4), ),
+                 ( Binary(3), mysql.MSVarBinary(3), ),
+                 ( Binary(), mysql.MSBlob() ),
+                 ( mysql.MSBinary(3), mysql.MSBinary(3), ),
+                 ( mysql.MSBaseBinary(), mysql.MSBlob(), ),
+                 ( mysql.MSBaseBinary(3), mysql.MSVarBinary(3), ),
+                 ( mysql.MSVarBinary(3),),
+                 ( mysql.MSVarBinary(), mysql.MSBlob()),
+                 ( mysql.MSTinyBlob(),),
+                 ( mysql.MSBlob(),),
+                 ( mysql.MSBlob(1234), mysql.MSBlob()),
+                 ( mysql.MSMediumBlob(),),
+                 ( mysql.MSLongBlob(),),
+                 ]
+
+        columns = [Column('c%i' % (i + 1), t[0]) for i, t in enumerate(specs)]
+
+        m = BoundMetaData(db)
+        t_table = Table('mysql_types', m, *columns)
+        m.drop_all()
+        m.create_all()
+        
+        m2 = BoundMetaData(db)
+        rt = Table('mysql_types', m2, autoload=True)
+
+        expected = [len(c) > 1 and c[1] or c[0] for c in specs]
+        for i, reflected in enumerate(rt.c):
+            #print (reflected, specs[i][0], '->',
+            #       reflected.type, '==', expected[i])
+            assert type(reflected.type) == type(expected[i])
+
+        #m.drop_all()
 
 if __name__ == "__main__":
     testbase.main()

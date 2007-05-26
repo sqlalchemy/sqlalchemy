@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import sys, StringIO, string, types, re, datetime
+import sys, StringIO, string, types, re, datetime, inspect
 
 from sqlalchemy import sql,engine,schema,ansisql
 from sqlalchemy.engine import default
@@ -84,7 +84,9 @@ class _StringType(object):
         self.national = national
 
     def _extend(self, spec):
-        "Extend a string-type declaration with MySQL specific extensions."
+        """Extend a string-type declaration with standard SQL CHARACTER SET /
+        COLLATE annotations and MySQL specific extensions.
+        """
         
         if self.charset:
             charset = 'CHARACTER SET %s' % self.charset
@@ -109,8 +111,41 @@ class _StringType(object):
         return ' '.join([c for c in (spec, charset, collation)
                          if c is not None])
 
+    def __repr__(self):
+        attributes = inspect.getargspec(self.__init__)[0][1:]
+        attributes.extend(inspect.getargspec(_StringType.__init__)[0][1:])
+        
+        params = {}
+        for attr in attributes:
+            val = getattr(self, attr)
+            if val is not None and val is not False:
+                params[attr] = val
+
+        return "%s(%s)" % (self.__class__.__name__,
+                           ','.join(['%s=%s' % (k, params[k]) for k in params]))
+
 class MSNumeric(sqltypes.Numeric, _NumericType):
+    """MySQL NUMERIC type"""
+    
     def __init__(self, precision = 10, length = 2, **kw):
+        """Construct a NUMERIC.
+
+        precision
+          Total digits in this number.  If length and precision are both
+          None, values are stored to limits allowed by the server.
+
+        length
+          The number of digits after the decimal point.
+
+        unsigned
+          Optional.
+
+        zerofill
+          Optional. If true, values will be stored as strings left-padded with
+          zeros. Note that this does not effect the values returned by the
+          underlying database API, which continue to be numeric.
+        """
+
         _NumericType.__init__(self, **kw)
         sqltypes.Numeric.__init__(self, precision, length)
 
@@ -121,6 +156,29 @@ class MSNumeric(sqltypes.Numeric, _NumericType):
             return self._extend("NUMERIC(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length})
 
 class MSDecimal(MSNumeric):
+    """MySQL DECIMAL type"""
+
+    def __init__(self, precision=10, length=2, **kw):
+        """Construct a DECIMAL.
+
+        precision
+          Total digits in this number.  If length and precision are both None,
+          values are stored to limits allowed by the server.
+
+        length
+          The number of digits after the decimal point.
+
+        unsigned
+          Optional.
+
+        zerofill
+          Optional. If true, values will be stored as strings left-padded with
+          zeros. Note that this does not effect the values returned by the
+          underlying database API, which continue to be numeric.
+        """
+
+        super(MSDecimal, self).__init__(precision, length, **kw)
+    
     def get_col_spec(self):
         if self.precision is None:
             return self._extend("DECIMAL")
@@ -130,19 +188,62 @@ class MSDecimal(MSNumeric):
             return self._extend("DECIMAL(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length})
 
 class MSDouble(MSNumeric):
+    """MySQL DOUBLE type"""
+
     def __init__(self, precision=10, length=2, **kw):
-        if (precision is None and length is not None) or (precision is not None and length is None):
+        """Construct a DOUBLE.
+
+        precision
+          Total digits in this number.  If length and precision are both None,
+          values are stored to limits allowed by the server.
+
+        length
+          The number of digits after the decimal point.
+
+        unsigned
+          Optional.
+
+        zerofill
+          Optional. If true, values will be stored as strings left-padded with
+          zeros. Note that this does not effect the values returned by the
+          underlying database API, which continue to be numeric.
+        """
+
+        if ((precision is None and length is not None) or
+            (precision is not None and length is None)):
             raise exceptions.ArgumentError("You must specify both precision and length or omit both altogether.")
         super(MSDouble, self).__init__(precision, length, **kw)
 
     def get_col_spec(self):
         if self.precision is not None and self.length is not None:
-            return self._extend("DOUBLE(%(precision)s, %(length)s)" % {'precision': self.precision, 'length' : self.length})
+            return self._extend("DOUBLE(%(precision)s, %(length)s)" %
+                                {'precision': self.precision,
+                                 'length' : self.length})
         else:
             return self._extend('DOUBLE')
 
 class MSFloat(sqltypes.Float, _NumericType):
+    """MySQL FLOAT type"""
+
     def __init__(self, precision=10, length=None, **kw):
+        """Construct a FLOAT.
+          
+        precision
+          Total digits in this number.  If length and precision are both None,
+          values are stored to limits allowed by the server.
+
+        length
+          The number of digits after the decimal point.
+
+        unsigned
+          Optional.
+
+        zerofill
+          Optional. If true, values will be stored as strings left-padded with
+          zeros. Note that this does not effect the values returned by the
+          underlying database API, which continue to be numeric.
+        """
+
         if length is not None:
             self.length=length
         _NumericType.__init__(self, **kw)
@@ -157,7 +258,23 @@ class MSFloat(sqltypes.Float, _NumericType):
             return self._extend("FLOAT")
 
 class MSInteger(sqltypes.Integer, _NumericType):
+    """MySQL INTEGER type"""
+
     def __init__(self, length=None, **kw):
+        """Construct an INTEGER.
+
+        length
+          Optional, maximum display width for this number.
+
+        unsigned
+          Optional.
+
+        zerofill
+          Optional. If true, values will be stored as strings left-padded with
+          zeros. Note that this does not effect the values returned by the
+          underlying database API, which continue to be numeric.
+        """
+
         self.length = length
         _NumericType.__init__(self, **kw)
         sqltypes.Integer.__init__(self)
@@ -169,6 +286,25 @@ class MSInteger(sqltypes.Integer, _NumericType):
             return self._extend("INTEGER")
 
 class MSBigInteger(MSInteger):
+    """MySQL BIGINTEGER type"""
+
+    def __init__(self, length=None, **kw):
+        """Construct a BIGINTEGER.
+
+        length
+          Optional, maximum display width for this number.
+
+        unsigned
+          Optional.
+
+        zerofill
+          Optional. If true, values will be stored as strings left-padded with
+          zeros. Note that this does not effect the values returned by the
+          underlying database API, which continue to be numeric.
+        """
+
+        super(MSBigInteger, self).__init__(length, **kw)
+
     def get_col_spec(self):
         if self.length is not None:
             return self._extend("BIGINT(%(length)s)" % {'length': self.length})
@@ -176,10 +312,26 @@ class MSBigInteger(MSInteger):
             return self._extend("BIGINT")
 
 class MSSmallInteger(sqltypes.Smallinteger, _NumericType):
+    """MySQL SMALLINTEGER type"""
+
     def __init__(self, length=None, **kw):
+        """Construct a SMALLINTEGER.
+
+        length
+          Optional, maximum display width for this number.
+
+        unsigned
+          Optional.
+
+        zerofill
+          Optional. If true, values will be stored as strings left-padded with
+          zeros. Note that this does not effect the values returned by the
+          underlying database API, which continue to be numeric.
+        """
+
         self.length = length
         _NumericType.__init__(self, **kw)
-        sqltypes.Smallinteger.__init__(self)
+        sqltypes.Smallinteger.__init__(self, length)
 
     def get_col_spec(self):
         if self.length is not None:
@@ -188,14 +340,20 @@ class MSSmallInteger(sqltypes.Smallinteger, _NumericType):
             return self._extend("SMALLINT")
 
 class MSDateTime(sqltypes.DateTime):
+    """MySQL DATETIME type"""
+
     def get_col_spec(self):
         return "DATETIME"
 
 class MSDate(sqltypes.Date):
+    """MySQL DATE type"""
+
     def get_col_spec(self):
         return "DATE"
 
 class MSTime(sqltypes.Time):
+    """MySQL TIME type"""
+
     def get_col_spec(self):
         return "TIME"
 
@@ -207,49 +365,377 @@ class MSTime(sqltypes.Time):
             return None
 
 class MSTimeStamp(sqltypes.TIMESTAMP):
+    """MySQL TIMESTAMP type
+
+    To signal the orm to automatically re-select modified rows to retrieve
+    the timestamp, add a PassiveDefault to your column specification:
+
+        from sqlalchemy.databases import mysql
+        Column('updated', mysql.MSTimeStamp, PassiveDefault(text('CURRENT_TIMESTAMP()')))
+    """
+
     def get_col_spec(self):
         return "TIMESTAMP"
 
-class MSText(sqltypes.TEXT, _StringType):
-    def __init__(self, **kwargs):
-        _StringType.__init__(self, **kwargs)
-        sqltypes.TEXT.__init__(self)
+class MSYear(sqltypes.String):
+    """MySQL YEAR type, for single byte storage of years 1901-2155"""
 
     def get_col_spec(self):
-        return self._extend("TEXT")
+        if self.length is None:
+            return "YEAR"
+        else:
+            return "YEAR(%d)" % self.length
+
+class MSText(_StringType, sqltypes.TEXT):
+    """MySQL TEXT type, for text up to 2^16 characters""" 
+    
+    def __init__(self, length=None, **kwargs):
+        """Construct a TEXT.
+        
+        length
+          Optional, if provided the server may optimize storage by
+          subsitituting the smallest TEXT type sufficient to store
+          ``length`` characters.
+
+        charset
+          Optional, a column-level character set for this string
+          value.  Takes precendence to 'ascii' or 'unicode' short-hand.
+
+        collation
+          Optional, a column-level collation for this string value.
+          Takes precedence to 'binary' short-hand.
+
+        ascii
+          Defaults to False: short-hand for the ``latin1`` character set,
+          generates ASCII in schema.
+
+        unicode
+          Defaults to False: short-hand for the ``ucs2`` character set,
+          generates UNICODE in schema.
+
+        national
+          Optional. If true, use the server's configured national
+          character set.
+
+        binary
+          Defaults to False: short-hand, pick the binary collation type
+          that matches the column's character set.  Generates BINARY in
+          schema.  This does not affect the type of data stored, only the
+          collation of character data.
+        """
+
+        _StringType.__init__(self, **kwargs)
+        sqltypes.TEXT.__init__(self, length)
+
+    def get_col_spec(self):
+        if self.length:
+            return self._extend("TEXT(%d)" % self.length)
+        else:
+            return self._extend("TEXT")
+            
 
 class MSTinyText(MSText):
+    """MySQL TINYTEXT type, for text up to 2^8 characters""" 
+
+    def __init__(self, **kwargs):
+        """Construct a TINYTEXT.
+        
+        charset
+          Optional, a column-level character set for this string
+          value.  Takes precendence to 'ascii' or 'unicode' short-hand.
+
+        collation
+          Optional, a column-level collation for this string value.
+          Takes precedence to 'binary' short-hand.
+
+        ascii
+          Defaults to False: short-hand for the ``latin1`` character set,
+          generates ASCII in schema.
+
+        unicode
+          Defaults to False: short-hand for the ``ucs2`` character set,
+          generates UNICODE in schema.
+
+        national
+          Optional. If true, use the server's configured national
+          character set.
+
+        binary
+          Defaults to False: short-hand, pick the binary collation type
+          that matches the column's character set.  Generates BINARY in
+          schema.  This does not affect the type of data stored, only the
+          collation of character data.
+        """
+
+        super(MSTinyText, self).__init__(**kwargs)
+
     def get_col_spec(self):
         return self._extend("TINYTEXT")
 
 class MSMediumText(MSText):
+    """MySQL MEDIUMTEXT type, for text up to 2^24 characters""" 
+
+    def __init__(self, **kwargs):
+        """Construct a MEDIUMTEXT.
+        
+        charset
+          Optional, a column-level character set for this string
+          value.  Takes precendence to 'ascii' or 'unicode' short-hand.
+
+        collation
+          Optional, a column-level collation for this string value.
+          Takes precedence to 'binary' short-hand.
+
+        ascii
+          Defaults to False: short-hand for the ``latin1`` character set,
+          generates ASCII in schema.
+
+        unicode
+          Defaults to False: short-hand for the ``ucs2`` character set,
+          generates UNICODE in schema.
+
+        national
+          Optional. If true, use the server's configured national
+          character set.
+
+        binary
+          Defaults to False: short-hand, pick the binary collation type
+          that matches the column's character set.  Generates BINARY in
+          schema.  This does not affect the type of data stored, only the
+          collation of character data.
+        """
+
+        super(MSMediumText, self).__init__(**kwargs)
+
     def get_col_spec(self):
         return self._extend("MEDIUMTEXT")
 
 class MSLongText(MSText):
+    """MySQL LONGTEXT type, for text up to 2^32 characters""" 
+
+    def __init__(self, **kwargs):
+        """Construct a LONGTEXT.
+        
+        charset
+          Optional, a column-level character set for this string
+          value.  Takes precendence to 'ascii' or 'unicode' short-hand.
+
+        collation
+          Optional, a column-level collation for this string value.
+          Takes precedence to 'binary' short-hand.
+
+        ascii
+          Defaults to False: short-hand for the ``latin1`` character set,
+          generates ASCII in schema.
+
+        unicode
+          Defaults to False: short-hand for the ``ucs2`` character set,
+          generates UNICODE in schema.
+
+        national
+          Optional. If true, use the server's configured national
+          character set.
+
+        binary
+          Defaults to False: short-hand, pick the binary collation type
+          that matches the column's character set.  Generates BINARY in
+          schema.  This does not affect the type of data stored, only the
+          collation of character data.
+        """
+
+        super(MSLongText, self).__init__(**kwargs)
+
     def get_col_spec(self):
         return self._extend("LONGTEXT")
 
-class MSString(sqltypes.String, _StringType):
-    def __init__(self, length, national=False, **kwargs):
-        _StringType.__init__(self, national=national, **kwargs)
-        sqltypes.String.__init__(self, length, kwargs.get('convert_unicode', False))
+class MSString(_StringType, sqltypes.String):
+    """MySQL VARCHAR type, for variable-length character data."""
+
+    def __init__(self, length=None, **kwargs):
+        """Construct a VARCHAR.
+        
+        length
+          Maximum data length, in characters.
+
+        charset
+          Optional, a column-level character set for this string
+          value.  Takes precendence to 'ascii' or 'unicode' short-hand.
+
+        collation
+          Optional, a column-level collation for this string value.
+          Takes precedence to 'binary' short-hand.
+
+        ascii
+          Defaults to False: short-hand for the ``latin1`` character set,
+          generates ASCII in schema.
+
+        unicode
+          Defaults to False: short-hand for the ``ucs2`` character set,
+          generates UNICODE in schema.
+
+        national
+          Optional. If true, use the server's configured national
+          character set.
+
+        binary
+          Defaults to False: short-hand, pick the binary collation type
+          that matches the column's character set.  Generates BINARY in
+          schema.  This does not affect the type of data stored, only the
+          collation of character data.
+        """
+
+        _StringType.__init__(self, **kwargs)
+        sqltypes.String.__init__(self, length,
+                                 kwargs.get('convert_unicode', False))
 
     def get_col_spec(self):
-        return self._extend("VARCHAR(%(length)s)" % {'length' : self.length})
+        if self.length:
+            return self._extend("VARCHAR(%d)" % self.length)
+        else:
+            return self._extend("TEXT")
 
-class MSChar(sqltypes.CHAR, _StringType):
-    def __init__(self, length, national=False, **kwargs):
-        _StringType.__init__(self, national=national, **kwargs)
-        sqltypes.CHAR.__init__(self, length, kwargs.get('convert_unicode', False))
+class MSChar(_StringType, sqltypes.CHAR):
+    """MySQL CHAR type, for fixed-length character data."""
+    
+    def __init__(self, length, **kwargs):
+        """Construct an NCHAR.
+        
+        length
+          Maximum data length, in characters.
+
+        binary
+          Optional, use the default binary collation for the national character
+          set.  This does not affect the type of data stored, use a BINARY
+          type for binary data.
+
+        collation
+          Optional, request a particular collation.  Must be compatibile
+          with the national character set.
+        """
+        _StringType.__init__(self, **kwargs)
+        sqltypes.CHAR.__init__(self, length,
+                               kwargs.get('convert_unicode', False))
 
     def get_col_spec(self):
         return self._extend("CHAR(%(length)s)" % {'length' : self.length})
 
-class MSBinary(sqltypes.Binary):
+class MSNVarChar(_StringType, sqltypes.String):
+    """MySQL NVARCHAR type, for variable-length character data in the
+    server's configured national character set.
+    """
+
+    def __init__(self, length=None, **kwargs):
+        """Construct an NVARCHAR.
+        
+        length
+          Maximum data length, in characters.
+
+        binary
+          Optional, use the default binary collation for the national character
+          set.  This does not affect the type of data stored, use a VARBINARY
+          type for binary data.
+
+        collation
+          Optional, request a particular collation.  Must be compatibile
+          with the national character set.
+        """
+
+        kwargs['national'] = True
+        _StringType.__init__(self, **kwargs)
+        sqltypes.String.__init__(self, length,
+                                 kwargs.get('convert_unicode', False))
+
     def get_col_spec(self):
-        if self.length is not None and self.length <=255:
-            # the binary2G type seems to return a value that is null-padded
+        # We'll actually generate the equiv. "NATIONAL VARCHAR" instead
+        # of "NVARCHAR".
+        return self._extend("VARCHAR(%(length)s)" % {'length': self.length})
+    
+class MSNChar(_StringType, sqltypes.CHAR):
+    """MySQL NCHAR type, for fixed-length character data in the
+    server's configured national character set.
+    """
+
+    def __init__(self, length=None, **kwargs):
+        """Construct an NCHAR.  Arguments are:
+
+        length
+          Maximum data length, in characters.
+
+        binary
+          Optional, request the default binary collation for the
+          national character set.
+
+        collation
+          Optional, request a particular collation.  Must be compatibile
+          with the national character set.
+        """
+
+        kwargs['national'] = True
+        _StringType.__init__(self, **kwargs)
+        sqltypes.CHAR.__init__(self, length,
+                               kwargs.get('convert_unicode', False))
+    def get_col_spec(self):
+        # We'll actually generate the equiv. "NATIONAL CHAR" instead of "NCHAR".
+        return self._extend("CHAR(%(length)s)" % {'length': self.length})
+
+class MSBaseBinary(sqltypes.Binary):
+    """Flexible binary type"""
+
+    def __init__(self, length=None, **kw):
+        """Flexibly construct a binary column type.  Will construct a
+        VARBINARY or BLOB depending on the length requested, if any.
+
+        length
+          Maximum data length, in bytes.
+        """
+        super(MSBaseBinary, self).__init__(length, **kw)
+
+    def get_col_spec(self):
+        if self.length and self.length <= 255:
+            return "VARBINARY(%d)" % self.length
+        else:
+            return "BLOB"
+
+    def convert_result_value(self, value, dialect):
+        if value is None:
+            return None
+        else:
+            return buffer(value)
+
+class MSVarBinary(MSBaseBinary):
+    """MySQL VARBINARY type, for variable length binary data"""
+
+    def __init__(self, length=None, **kw):
+        """Construct a VARBINARY.  Arguments are:
+
+        length
+          Maximum data length, in bytes.
+        """
+        super(MSVarBinary, self).__init__(length, **kw)
+
+    def get_col_spec(self):
+        if self.length:
+            return "VARBINARY(%d)" % self.length
+        else:
+            return "BLOB"
+
+class MSBinary(MSBaseBinary):
+    """MySQL BINARY type, for fixed length binary data"""
+
+    def __init__(self, length=None, **kw):
+        """Construct a BINARY.  This is a fixed length type, and short
+        values will be right-padded with a server-version-specific
+        pad value.
+
+        length
+          Maximum data length, in bytes.  If not length is specified, this
+          will generate a BLOB.  This usage is deprecated.
+        """
+
+        super(MSBinary, self).__init__(length, **kw)
+
+    def get_col_spec(self):
+        if self.length:
             return "BINARY(%d)" % self.length
         else:
             return "BLOB"
@@ -260,20 +746,64 @@ class MSBinary(sqltypes.Binary):
         else:
             return buffer(value)
 
-class MSMediumBlob(MSBinary):
+class MSBlob(MSBaseBinary):
+    """MySQL BLOB type, for binary data up to 2^16 bytes""" 
+
+
+    def __init__(self, length=None, **kw):
+        """Construct a BLOB.  Arguments are:
+
+        length
+          Optional, if provided the server may optimize storage by
+          subsitituting the smallest TEXT type sufficient to store
+          ``length`` characters.
+        """
+
+        super(MSBlob, self).__init__(length, **kw)
+
+    def get_col_spec(self):
+        if self.length:
+            return "BLOB(%d)" % self.length
+        else:
+            return "BLOB"
+
+    def convert_result_value(self, value, dialect):
+        if value is None:
+            return None
+        else:
+            return buffer(value)
+
+    def __repr__(self):
+        return "%s()" % self.__class__.__name__
+
+class MSTinyBlob(MSBlob):
+    """MySQL TINYBLOB type, for binary data up to 2^8 bytes""" 
+
+    def get_col_spec(self):
+        return "TINYBLOB"
+
+class MSMediumBlob(MSBlob): 
+    """MySQL MEDIUMBLOB type, for binary data up to 2^24 bytes"""
+
     def get_col_spec(self):
         return "MEDIUMBLOB"
 
+class MSLongBlob(MSBlob):
+    """MySQL LONGBLOB type, for binary data up to 2^32 bytes"""
+
+    def get_col_spec(self):
+        return "LONGBLOB"
+
 class MSEnum(MSString):
-    """MySQL ENUM datatype."""
+    """MySQL ENUM type."""
     
     def __init__(self, *enums, **kw):
         """
         Construct an ENUM.
 
         Example:
+
           Column('myenum', MSEnum("'foo'", "'bar'", "'baz'"))
-          Column('another', MSEnum("'foo'", "'bar'", "'baz'", strict=True))
 
         Arguments are:
         
@@ -289,24 +819,26 @@ class MSEnum(MSString):
           instead.  (See MySQL ENUM documentation.)
 
         charset
-          Defaults to None: a column-level character set for this string
+          Optional, a column-level character set for this string
           value.  Takes precendence to 'ascii' or 'unicode' short-hand.
 
         collation
-          Defaults to None: a column-level collation for this string value.
+          Optional, a column-level collation for this string value.
           Takes precedence to 'binary' short-hand.
 
         ascii
-          Defaults to False: short-hand for the ascii character set,
+          Defaults to False: short-hand for the ``latin1`` character set,
           generates ASCII in schema.
 
         unicode
-          Defaults to False: short-hand for the utf8 character set,
+          Defaults to False: short-hand for the ``ucs2`` character set,
           generates UNICODE in schema.
 
         binary
           Defaults to False: short-hand, pick the binary collation type
-          that matches the column's character set.  Generates BINARY in schema.
+          that matches the column's character set.  Generates BINARY in
+          schema.  This does not affect the type of data stored, only the
+          collation of character data.
         """
         
         self.__ddl_values = enums
@@ -350,7 +882,7 @@ class MSBoolean(sqltypes.Boolean):
         else:
             return value and True or False
 
-# TODO: NCHAR, NVARCHAR, SET
+# TODO: SET, BIT
 
 colspecs = {
     sqltypes.Integer : MSInteger,
@@ -361,38 +893,49 @@ colspecs = {
     sqltypes.Date : MSDate,
     sqltypes.Time : MSTime,
     sqltypes.String : MSString,
-    sqltypes.Binary : MSBinary,
+    sqltypes.Binary : MSVarBinary,
     sqltypes.Boolean : MSBoolean,
     sqltypes.TEXT : MSText,
     sqltypes.CHAR: MSChar,
-    sqltypes.TIMESTAMP: MSTimeStamp
+    sqltypes.NCHAR: MSNChar,
+    sqltypes.TIMESTAMP: MSTimeStamp,
+    sqltypes.BLOB: MSBlob,
+    MSBaseBinary: MSBaseBinary,
 }
 
 
 ischema_names = {
-    'boolean':MSBoolean,
     'bigint' : MSBigInteger,
-    'int' : MSInteger,
-    'mediumint' : MSInteger,
-    'smallint' : MSSmallInteger,
-    'tinyint' : MSSmallInteger,
-    'varchar' : MSString,
-    'char' : MSChar,
-    'text' : MSText,
-    'tinytext' : MSTinyText,
-    'mediumtext': MSMediumText,
-    'longtext': MSLongText,
-    'decimal' : MSDecimal,
-    'numeric' : MSNumeric,
-    'float' : MSFloat,
-    'double' : MSDouble,
-    'timestamp' : MSTimeStamp,
-    'datetime' : MSDateTime,
-    'date' : MSDate,
-    'time' : MSTime,
     'binary' : MSBinary,
-    'blob' : MSBinary,
+    'blob' : MSBlob,
+    'boolean':MSBoolean,
+    'char' : MSChar,
+    'date' : MSDate,
+    'datetime' : MSDateTime,
+    'decimal' : MSDecimal,
+    'double' : MSDouble,
     'enum': MSEnum,
+    'fixed': MSDecimal,
+    'float' : MSFloat,
+    'int' : MSInteger,
+    'integer' : MSInteger,
+    'longblob': MSLongBlob,
+    'longtext': MSLongText,
+    'mediumblob': MSMediumBlob,
+    'mediumint' : MSInteger,
+    'mediumtext': MSMediumText,
+    'nchar': MSNChar,
+    'nvarchar': MSNVarChar,
+    'numeric' : MSNumeric,
+    'smallint' : MSSmallInteger,
+    'text' : MSText,
+    'time' : MSTime,
+    'timestamp' : MSTimeStamp,
+    'tinyblob': MSTinyBlob,
+    'tinyint' : MSSmallInteger,
+    'tinytext' : MSTinyText,
+    'varbinary' : MSVarBinary,
+    'varchar' : MSString,
 }
 
 def descriptor():
@@ -426,9 +969,11 @@ class MySQLDialect(ansisql.ANSIDialect):
         util.coerce_kw_type(opts, 'compress', bool)
         util.coerce_kw_type(opts, 'connect_timeout', int)
         util.coerce_kw_type(opts, 'client_flag', int)
+        util.coerce_kw_type(opts, 'local_infile', int)
         # note: these two could break SA Unicode type
         util.coerce_kw_type(opts, 'use_unicode', bool)   
         util.coerce_kw_type(opts, 'charset', str)
+        # TODO: cursorclass and conv:  support via query string or punt?
         
         # ssl
         ssl = {}
@@ -439,8 +984,9 @@ class MySQLDialect(ansisql.ANSIDialect):
                 del opts[key]
         if len(ssl):
             opts['ssl'] = ssl
-
-        # TODO: what about options like "cursorclass" and "conv" ?
+        
+        # FOUND_ROWS must be set in CLIENT_FLAGS for to enable
+        # supports_sane_rowcount.
         client_flag = opts.get('client_flag', 0)
         if self.dbapi is not None:
             try:
@@ -561,6 +1107,7 @@ class MySQLDialect(ansisql.ANSIDialect):
 
             #print "coltype: " + repr(col_type) + " args: " + repr(args) + "extras:" + repr(extra_1) + ' ' + repr(extra_2)
             coltype = ischema_names.get(col_type, MSString)
+
             kw = {}
             if extra_1 is not None:
                 kw[extra_1] = True

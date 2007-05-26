@@ -1,6 +1,6 @@
 import sys
 sys.path.insert(0, './lib/')
-import os, unittest, StringIO, re
+import os, unittest, StringIO, re, ConfigParser
 import sqlalchemy
 from sqlalchemy import sql, engine, pool
 import sqlalchemy.engine.base as base
@@ -33,10 +33,24 @@ def parse_argv():
     DBTYPE = 'sqlite'
     PROXY = False
 
+    base_config = """
+[db]
+sqlite=sqlite:///:memory:
+sqlite_file=sqlite:///querytest.db
+postgres=postgres://scott:tiger@127.0.0.1:5432/test
+mysql=mysql://scott:tiger@127.0.0.1:3306/test
+oracle=oracle://scott:tiger@127.0.0.1:1521
+oracle8=oracle://scott:tiger@127.0.0.1:1521/?use_ansi=0
+mssql=mssql://scott:tiger@SQUAWK\\SQLEXPRESS/test
+firebird=firebird://sysdba:s@localhost/tmp/test.fdb
+"""
+    config = ConfigParser.ConfigParser()
+    config.readfp(StringIO.StringIO(base_config))
+    config.read(['test.cfg', os.path.expanduser('~/.satest.cfg')])
 
     parser = optparse.OptionParser(usage = "usage: %prog [options] [tests...]")
     parser.add_option("--dburi", action="store", dest="dburi", help="database uri (overrides --db)")
-    parser.add_option("--db", action="store", dest="db", default="sqlite", help="prefab database uri (sqlite, sqlite_file, postgres, mysql, oracle, oracle8, mssql, firebird)")
+    parser.add_option("--db", action="store", dest="db", default="sqlite", help="prefab database uri (%s)" % ', '.join(config.options('db')))
     parser.add_option("--mockpool", action="store_true", dest="mockpool", help="use mock pool (asserts only one connection used)")
     parser.add_option("--verbose", action="store_true", dest="verbose", help="enable stdout echoing/printing")
     parser.add_option("--quiet", action="store_true", dest="quiet", help="suppress unittest output")
@@ -47,6 +61,7 @@ def parse_argv():
     parser.add_option("--coverage", action="store_true", dest="coverage", help="Dump a full coverage report after running")
     parser.add_option("--reversetop", action="store_true", dest="topological", help="Reverse the collection ordering for topological sorts (helps reveal dependency issues)")
     parser.add_option("--serverside", action="store_true", dest="serverside", help="Turn on server side cursors for PG")
+    parser.add_option("--require", action="append", dest="require", help="Require a particular driver or module version", default=[])
     
     (options, args) = parser.parse_args()
     sys.argv[1:] = args
@@ -57,25 +72,34 @@ def parse_argv():
     elif options.db:
         DBTYPE = param = options.db
 
+    if options.require or (config.has_section('require') and
+                           config.items('require')):
+        try:
+            import pkg_resources
+        except ImportError:
+            raise "setuptools is required for version requirements"
+
+        cmdline = []
+        for requirement in options.require:
+            pkg_resources.require(requirement)
+            cmdline.append(re.split('\s*(<!>=)', requirement, 1)[0])
+
+        if config.has_section('require'):
+            for label, requirement in config.items('require'):
+                if not label == DBTYPE or label.startswith('%s.' % DBTYPE):
+                    continue
+                seen = [c for c in cmdline if requirement.startswith(c)]
+                if seen:
+                    continue
+                pkg_resources.require(requirement)
+        
     opts = {}
     if (None == db_uri):
-        if DBTYPE == 'sqlite':
-            db_uri = 'sqlite:///:memory:'
-        elif DBTYPE == 'sqlite_file':
-            db_uri = 'sqlite:///querytest.db'
-        elif DBTYPE == 'postgres':
-            db_uri = 'postgres://scott:tiger@127.0.0.1:5432/test'
-        elif DBTYPE == 'mysql':
-            db_uri = 'mysql://scott:tiger@127.0.0.1:3306/test'
-        elif DBTYPE == 'oracle':
-            db_uri = 'oracle://scott:tiger@127.0.0.1:1521'
-        elif DBTYPE == 'oracle8':
-            db_uri = 'oracle://scott:tiger@127.0.0.1:1521'
-            opts['use_ansi'] = False
-        elif DBTYPE == 'mssql':
-            db_uri = 'mssql://scott:tiger@SQUAWK\\SQLEXPRESS/test'
-        elif DBTYPE == 'firebird':
-            db_uri = 'firebird://sysdba:s@localhost/tmp/test.fdb'
+        if DBTYPE not in config.options('db'):
+            raise ("Could not create engine.  specify --db <%s> to " 
+                   "test runner." % '|'.join(config.options('db')))
+
+        db_uri = config.get('db', DBTYPE)
 
     if not db_uri:
         raise "Could not create engine.  specify --db <sqlite|sqlite_file|postgres|mysql|oracle|oracle8|mssql|firebird> to test runner."

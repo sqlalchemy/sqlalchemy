@@ -30,6 +30,8 @@
     - removed "no group by's in a select thats part of a UNION"
       restriction [ticket:578]
 - orm
+    - fixed bug in query.instances() that wouldnt handle more than
+      on additional mapper or one additional column.
     - "delete-orphan" no longer implies "delete". ongoing effort to 
       separate the behavior of these two operations.
     - many-to-many relationships properly set the type of bind params
@@ -45,11 +47,22 @@
     - the "primary_key" argument to mapper() is propigated to the "polymorphic"
       mapper.  primary key columns in this list get normalized to that of the mapper's 
       local table.
+    - restored logging of "lazy loading clause" under sa.orm.strategies logger,
+      got removed in 0.3.7
+    - improved support for eagerloading of properties off of mappers that are mapped
+      to select() statements; i.e. eagerloader is better at locating the correct
+      selectable with which to attach its LEFT OUTER JOIN.
 - mysql
+    - Nearly all MySQL column types are now supported for declaration and
+      reflection. Added NCHAR, NVARCHAR, VARBINARY, TINYBLOB, LONGBLOB, YEAR
+    - The sqltypes.Binary passthrough now builds a VARBINARY rather than a
+      BINARY if given a length
     - support for column-level CHARACTER SET and COLLATE declarations,
       as well as ASCII, UNICODE, NATIONAL and BINARY shorthand.
 - firebird
     - set max identifier length to 31
+    - supports_sane_rowcount() set to False due to ticket #370.
+      versioned_id_col feature wont work in FB.
 -extensions
     - new association proxy implementation, implementing complete
       proxies to list, dict and set-based relation collections

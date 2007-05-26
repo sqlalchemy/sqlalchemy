@@ -367,8 +367,6 @@ directly:
        keywords = AssociationProxy('keyword_associations', 'keyword')
 
 
-The `association_proxy` function is
-
 ### orderinglist
 
 **Author:** Jason Kirtland

@@ -206,14 +206,15 @@ class ReflectionTest(PersistTest):
             Column('num1', mysql.MSInteger(unsigned=True)),
             Column('text1', mysql.MSLongText),
             Column('text2', mysql.MSLongText()),
-             Column('num2', mysql.MSBigInteger),
-             Column('num3', mysql.MSBigInteger()),
-             Column('num4', mysql.MSDouble),
-             Column('num5', mysql.MSDouble()),
-             Column('enum1', mysql.MSEnum('"black"', '"white"')),
+            Column('num2', mysql.MSBigInteger),
+            Column('num3', mysql.MSBigInteger()),
+            Column('num4', mysql.MSDouble),
+            Column('num5', mysql.MSDouble()),
+            Column('enum1', mysql.MSEnum('"black"', '"white"')),
             )
         try:
-            table.create(checkfirst=True)
+            table.drop(checkfirst=True)
+            table.create()
             meta2 = BoundMetaData(testbase.db)
             t2 = Table('mysql_types', meta2, autoload=True)
             assert isinstance(t2.c.num1.type, mysql.MSInteger)
@@ -518,26 +519,26 @@ class SchemaTest(PersistTest):
     
     @testbase.supported('postgres')
     def testpg(self):
-        """note: this test requires that the 'test_schema' schema be separate and accessible by the test user"""
+        """note: this test requires that the 'alt_schema' schema be separate and accessible by the test user"""
         
         meta1 = BoundMetaData(testbase.db)
         users = Table('users', meta1,
             Column('user_id', Integer, primary_key = True),
             Column('user_name', String(30), nullable = False),
-            schema="test_schema"
+            schema="alt_schema"
             )
 
         addresses = Table('email_addresses', meta1,
             Column('address_id', Integer, primary_key = True),
             Column('remote_user_id', Integer, ForeignKey(users.c.user_id)),
             Column('email_address', String(20)),
-            schema="test_schema"
+            schema="alt_schema"
         )
         meta1.create_all()
         try:
             meta2 = BoundMetaData(testbase.db)
-            addresses = Table('email_addresses', meta2, autoload=True, schema="test_schema")
-            users = Table('users', meta2, mustexist=True, schema="test_schema")
+            addresses = Table('email_addresses', meta2, autoload=True, schema="alt_schema")
+            users = Table('users', meta2, mustexist=True, schema="alt_schema")
 
             print users
             print addresses

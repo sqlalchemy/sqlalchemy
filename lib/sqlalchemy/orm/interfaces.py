@@ -20,7 +20,7 @@ class MapperProperty(object):
         pass
 
     def create_row_processor(self, selectcontext, mapper, row):
-        """return a tuple of a row processing and a row post-processing function.
+        """return a tuple of a row processing and an instance post-processing function.
         
         Input arguments are the query.SelectionContext and the *first*
         applicable row of a result set obtained within query.Query.instances(), called
@@ -28,8 +28,7 @@ class MapperProperty(object):
         result, and only once per result.
         
         By looking at the columns present within the row, MapperProperty
-        returns two callables which will be used to process the instance 
-        that results from the row.
+        returns two callables which will be used to process all rows and instances.
         
         callables are of the following form:
         
