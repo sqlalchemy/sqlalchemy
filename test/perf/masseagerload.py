@@ -36,8 +36,8 @@ class LoadTest(AssertMixin):
         items.insert().execute(*l)
         for x in range(1, NUM/DIVISOR + 1):
             l = []
-            for y in range(1, NUM/(NUM/DIVISOR) + 1):
-                z = ((x-1) * NUM/(NUM/DIVISOR)) + y
+            for y in range(1, DIVISOR + 1):
+                z = ((x-1) * DIVISOR) + y
                 l.append({'sub_id':z,'value':'this is iteim #%d' % z, 'parent_id':x})
             #print l
             subitems.insert().execute(*l)    
