@@ -253,9 +253,8 @@ class testcase(testbase.PersistTest):
         objectstore.flush()
         objectstore.clear()
         
-        results = Person.select(
-            Address.c.postal_code.like('30075') &
-            Person.join_to('addresses')
+        results = Person.join('addresses').select(
+            Address.c.postal_code.like('30075') 
         )
         self.assertEquals(len(results), 1)
 

@@ -193,7 +193,8 @@ class InheritTest3(testbase.ORMTest):
         })
 
         sess = create_session()
-        b = Bar('bar #1', _sa_session=sess)
+        b = Bar('bar #1')
+        sess.save(b)
         b.foos.append(Foo("foo #1"))
         b.foos.append(Foo("foo #2"))
         sess.flush()
@@ -226,10 +227,12 @@ class InheritTest3(testbase.ORMTest):
         })
 
         sess = create_session()
-        f1 = Foo("foo #1", _sa_session=sess)
-        b1 = Bar("bar #1", _sa_session=sess)
-        b2 = Bar("bar #2", _sa_session=sess)
-        bl1 = Blub("blub #1", _sa_session=sess)
+        f1 = Foo("foo #1")
+        b1 = Bar("bar #1")
+        b2 = Bar("bar #2")
+        bl1 = Blub("blub #1")
+        for o in (f1, b1, b2, bl1):
+            sess.save(o)
         bl1.foos.append(f1)
         bl1.bars.append(b2)
         sess.flush()

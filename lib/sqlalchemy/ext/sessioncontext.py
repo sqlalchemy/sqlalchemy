@@ -1,5 +1,6 @@
 from sqlalchemy.util import ScopedRegistry
-from sqlalchemy.orm.mapper import MapperExtension
+from sqlalchemy.orm.mapper import MapperExtension, EXT_PASS
+from sqlalchemy.orm import create_session
 
 __all__ = ['SessionContext', 'SessionContextExt']
 
@@ -24,7 +25,9 @@ class SessionContext(object):
                           # be created on the next call to context.current)
     """
 
-    def __init__(self, session_factory, scopefunc=None):
+    def __init__(self, session_factory=None, scopefunc=None):
+        if session_factory is None:
+            session_factory = create_session
         self.registry = ScopedRegistry(session_factory, scopefunc)
         super(SessionContext, self).__init__()
 
@@ -60,3 +63,21 @@ class SessionContextExt(MapperExtension):
 
     def get_session(self):
         return self.context.current
+
+    def init_instance(self, mapper, class_, instance, args, kwargs):
+        session = kwargs.pop('_sa_session', self.context.current)
+        session._save_impl(instance, entity_name=kwargs.pop('_sa_entity_name', None))
+        return EXT_PASS
+
+    def init_failed(self, mapper, class_, instance, args, kwargs):
+        object_session(instance).expunge(instance)
+        return EXT_PASS
+        
+    def dispose_class(self, mapper, class_):
+        if hasattr(class_, '__init__') and hasattr(class_.__init__, '_oldinit'):
+            if class_.__init__._oldinit is not None:
+                class_.__init__ = class_.__init__._oldinit
+            else:
+                delattr(class_, '__init__')
+                
+            

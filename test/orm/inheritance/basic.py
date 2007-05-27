@@ -43,9 +43,12 @@ class O2MTest(testbase.ORMTest):
         })
 
         sess = create_session()
-        b1 = Blub("blub #1", _sa_session=sess)
-        b2 = Blub("blub #2", _sa_session=sess)
-        f = Foo("foo #1", _sa_session=sess)
+        b1 = Blub("blub #1")
+        b2 = Blub("blub #2")
+        f = Foo("foo #1")
+        sess.save(b1)
+        sess.save(b2)
+        sess.save(f)
         b1.parent_foo = f
         b2.parent_foo = f
         sess.flush()

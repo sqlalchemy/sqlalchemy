@@ -3,7 +3,7 @@ import testbase
 import unittest, sys, os
 from sqlalchemy import *
 import sqlalchemy.exceptions as exceptions
-from sqlalchemy.ext.sessioncontext import SessionContext
+from sqlalchemy.ext.sessioncontext import SessionContext, SessionContextExt
 from tables import *
 import tables
 
@@ -167,7 +167,7 @@ class MapperTest(MapperSuperTest):
             def __init__(self):
                 raise ex
         mapper(Foo, users)
-        
+
         try:
             Foo()
             assert False
@@ -179,7 +179,7 @@ class MapperTest(MapperSuperTest):
                 object_session(self).expunge(self)
                 raise ex
 
-        mapper(Bar, orders)
+        mapper(Bar, orders, extension=SessionContextExt(SessionContext()))
 
         try:
             Bar(_sa_session=sess)

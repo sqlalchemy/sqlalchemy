@@ -319,6 +319,16 @@ class Mapper(object):
     props = property(_get_props, doc="compiles this mapper if needed, and returns the "
                      "dictionary of MapperProperty objects associated with this mapper.")
 
+    def dispose(self):
+        attribute_manager.reset_class_managed(self.class_)
+        if hasattr(self.class_, 'c'):
+            del self.class_.c
+        if hasattr(self.class_, '__init__') and hasattr(self.class_.__init__, '_oldinit'):
+            if self.class_.__init__._oldinit is not None:
+                self.class_.__init__ = self.class_.__init__._oldinit
+            else:
+                delattr(self.class_, '__init__')
+        
     def compile(self):
         """Compile this mapper into its final internal format.
 
@@ -574,7 +584,7 @@ class Mapper(object):
         
         this method is called repeatedly during the compilation process as 
         the resulting dictionary contains more equivalents as more inheriting 
-        mappers are compiled.  the repetition of this process may be open to some optimization.
+        mappers are compiled.  the repetition process may be open to some optimization.
         """
 
         result = {}
@@ -723,54 +733,31 @@ class Mapper(object):
         attribute_manager.reset_class_managed(self.class_)
 
         oldinit = self.class_.__init__
-        def init(self, *args, **kwargs):
-            entity_name = kwargs.pop('_sa_entity_name', None)
-            mapper = mapper_registry.get(ClassKey(self.__class__, entity_name))
-            if mapper is not None:
-                mapper = mapper.compile()
-
-                # this gets the AttributeManager to do some pre-initialization,
-                # in order to save on KeyErrors later on
-                attribute_manager.init_attr(self)
-
-            if kwargs.has_key('_sa_session'):
-                session = kwargs.pop('_sa_session')
-            else:
-                # works for whatever mapper the class is associated with
-                if mapper is not None:
-                    session = mapper.extension.get_session()
-                    if session is EXT_PASS:
-                        session = None
-                else:
-                    session = None
-            # if a session was found, either via _sa_session or via mapper extension,
-            # and we have found a mapper, save() this instance to the session, and give it an associated entity_name.
-            # otherwise, this instance will not have a session or mapper association until it is
-            # save()d to some session.
-            if session is not None and mapper is not None:
-                self._entity_name = entity_name
-                session._register_pending(self)
+        def init(instance, *args, **kwargs):
+            self.compile()
+            self.extension.init_instance(self, self.class_, instance, args, kwargs)
 
             if oldinit is not None:
                 try:
-                    oldinit(self, *args, **kwargs)
+                    oldinit(instance, *args, **kwargs)
                 except Exception, e:
                     try:
-                        if session is not None:
-                            session.expunge(self)
+                        self.extension.init_failed(self, self.class_, instance, args, kwargs)
                     except:
                         pass # raise original exception instead
                     raise e
-        # override oldinit, insuring that its not already a Mapper-decorated init method
-        if oldinit is None or not hasattr(oldinit, '_sa_mapper_init'):
-            init._sa_mapper_init = True
+
+        # override oldinit, ensuring that its not already a Mapper-decorated init method
+        if oldinit is None or not hasattr(oldinit, '_oldinit'):
             try:
                 init.__name__ = oldinit.__name__
                 init.__doc__ = oldinit.__doc__
             except:
                 # cant set __name__ in py 2.3 !
                 pass
+            init._oldinit = oldinit
             self.class_.__init__ = init
+        
         mapper_registry[self.class_key] = self
         if self.entity_name is None:
             self.class_.c = self.c
@@ -1629,6 +1616,12 @@ class MapperExtension(object):
     is not overridden.
     """
 
+    def init_instance(self, mapper, class_, instance, args, kwargs):
+        return EXT_PASS
+
+    def init_failed(self, mapper, class_, instance, args, kwargs):
+        return EXT_PASS
+
     def get_session(self):
         """Retrieve a contextual Session instance with which to
         register a new object.
@@ -1830,7 +1823,10 @@ class _ExtensionCarrier(MapperExtension):
             else:
                 return EXT_PASS
         return _do
-        
+    
+    init_instance = _create_do('init_instance')
+    init_failed = _create_do('init_failed')
+    dispose_class = _create_do('dispose_class')
     get_session = _create_do('get_session')
     load = _create_do('load')
     get = _create_do('get')

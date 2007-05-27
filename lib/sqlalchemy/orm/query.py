@@ -179,7 +179,7 @@ class Query(object):
         ``select_by()`` method.
         """
 
-        return self._join_by(args, params)
+        return self._join_by(args, params, start=self._joinpoint)
 
 
     def join_to(self, key):
@@ -201,7 +201,7 @@ class Query(object):
         mapper.
         """
 
-        mapper = self.mapper
+        mapper = self._joinpoint
         clause = None
         for key in keys:
             prop = mapper.props[key]

@@ -82,7 +82,7 @@ class SelectResultsTest(PersistTest):
     
     def test_options(self):
         class ext1(MapperExtension):
-            def populate_instance(self, mapper, selectcontext, row, instance, identitykey, isnew):
+            def populate_instance(self, mapper, selectcontext, row, instance, **flags):
                 instance.TEST = "hello world"
                 return EXT_PASS
         objectstore.clear()

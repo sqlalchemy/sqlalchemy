@@ -118,9 +118,7 @@ def clear_mappers():
     """
 
     for mapper in mapper_registry.values():
-        attribute_manager.reset_class_managed(mapper.class_)
-        if hasattr(mapper.class_, 'c'):
-            del mapper.class_.c
+        mapper.dispose()
     mapper_registry.clear()
     sautil.ArgSingleton.instances.clear()
 
