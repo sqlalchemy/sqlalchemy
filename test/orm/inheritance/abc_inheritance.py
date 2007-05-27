@@ -53,6 +53,8 @@ def produce_test(parent, child, direction):
             parent_table = {"a":ta, "b":tb, "c": tc}[parent]
             child_table = {"a":ta, "b":tb, "c": tc}[child]
 
+            remote_side = None
+            
             if direction == MANYTOONE:
                 foreign_keys = [parent_table.c.child_id]
             elif direction == ONETOMANY:
@@ -65,6 +67,8 @@ def produce_test(parent, child, direction):
                 relationjoin = parent_table.c.id==child_table.c.parent_id
             elif direction == MANYTOONE:
                 relationjoin = parent_table.c.child_id==child_table.c.id
+                if parent is child:
+                    remote_side = [child_table.c.id]
 
             abcjoin = polymorphic_union(
                 {"a":ta.select(tb.c.id==None, from_obj=[ta.outerjoin(tb, onclause=atob)]),
@@ -79,8 +83,9 @@ def produce_test(parent, child, direction):
             "c":tc.join(tb, onclause=btoc).join(ta, onclause=atob)
             },"type", "bcjoin"
             )
-
-            class A(object):pass
+            class A(object):
+                def __init__(self, name):
+                    self.a_data = name
             class B(A):pass
             class C(B):pass
 
@@ -94,24 +99,24 @@ def produce_test(parent, child, direction):
             parent_class = parent_mapper.class_
             child_class = child_mapper.class_
 
-            parent_mapper.add_property("collection", relation(child_mapper, primaryjoin=relationjoin, foreign_keys=foreign_keys, uselist=True))
+            parent_mapper.add_property("collection", relation(child_mapper, primaryjoin=relationjoin, foreign_keys=foreign_keys, remote_side=remote_side, uselist=True))
 
             sess = create_session()
 
-            parent_obj = parent_class()
-            child_obj = child_class()
-            somea = A()
-            someb = B()
-            somec = C()
+            parent_obj = parent_class('parent1')
+            child_obj = child_class('child1')
+            somea = A('somea')
+            someb = B('someb')
+            somec = C('somec')
             print "APPENDING", parent.__class__.__name__ , "TO", child.__class__.__name__
             sess.save(parent_obj)
             parent_obj.collection.append(child_obj)
             if direction == ONETOMANY:
-                child2 = child_class()
+                child2 = child_class('child2')
                 parent_obj.collection.append(child2)
                 sess.save(child2)
             elif direction == MANYTOONE:
-                parent2 = parent_class()
+                parent2 = parent_class('parent2')
                 parent2.collection.append(child_obj)
                 sess.save(parent2)
             sess.save(somea)
@@ -150,8 +155,6 @@ def produce_test(parent, child, direction):
 # test all combinations of polymorphic a/b/c related to another of a/b/c
 for parent in ["a", "b", "c"]:
     for child in ["a", "b", "c"]:
-        if parent == child:
-            continue
         for direction in [ONETOMANY, MANYTOONE]:
             testclass = produce_test(parent, child, direction)
             exec("%s = testclass" % testclass.__name__)
