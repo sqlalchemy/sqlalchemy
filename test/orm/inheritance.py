@@ -97,9 +97,9 @@ class InheritTest2(testbase.ORMTest):
             Column('bar_id', Integer, ForeignKey('bar.bid')))
 
     def testget(self):
-        class Foo(object):pass
-        def __init__(self, data=None):
-            self.data = data
+        class Foo(object):
+            def __init__(self, data=None):
+                self.data = data
         class Bar(Foo):pass
         
         mapper(Foo, foo)
@@ -418,7 +418,9 @@ class InheritTest7(testbase.ORMTest):
             
     def testone(self):
         class User(object):pass
-        class Role(object):pass
+        class Role(object):
+            def __init__(self, description):
+                self.description = description
         class Admin(User):pass
         role_mapper = mapper(Role, roles)
         user_mapper = mapper(User, users, properties = {
