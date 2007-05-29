@@ -15,10 +15,11 @@ flexibility in its usage.
 As in the previous example, a little bit of property magic is used
 to smooth the edges.
 
+For a more genericized version of this example, see 
+poly_assoc_generic.py.
 """
 
 from sqlalchemy import *
-from sqlalchemy.ext.associationproxy import association_proxy
 
 metadata = BoundMetaData('sqlite://', echo=False)
 
@@ -49,8 +50,7 @@ class AddressAssoc(object):
 def addressable(cls, name, uselist=True):
     """addressable 'interface'.
     
-    we create this function here to imitate the style used in poly_assoc.py.  if 
-    you really wanted to make a "generic" version of this function, it's straightforward.
+    we create this function here to imitate the style used in poly_assoc.py.  
     
     """
     mapper = class_mapper(cls)
@@ -87,7 +87,7 @@ users = Table("users", metadata,
     Column('id', Integer, primary_key=True),
     Column('name', String(50), nullable=False),
     # this column ties the users table into the address association
-    Column('address_id', None, ForeignKey('address_associations.assoc_id'))
+    Column('assoc_id', None, ForeignKey('address_associations.assoc_id'))
     )
     
 class User(object):
@@ -103,7 +103,7 @@ orders = Table("orders", metadata,
     Column('id', Integer, primary_key=True),
     Column('description', String(50), nullable=False),
     # this column ties the orders table into the address association
-    Column('address_id', None, ForeignKey('address_associations.assoc_id'))
+    Column('assoc_id', None, ForeignKey('address_associations.assoc_id'))
     )
     
 class Order(object):

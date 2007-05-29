@@ -12,19 +12,17 @@ In this example we illustrate the relationship in both directions.
 A little bit of property magic is used to smooth the edges.
 
 AR creates this relationship in such a way that disallows
-any foreign key constraint from existing on the association.  The comments suggest
-implementing triggers if you really want constraints.
-
-For a modification of this method which is normalized,  see the other script in this directory,
+any foreign key constraint from existing on the association.  
+For a different way of doing this,  see 
 poly_assoc_fks.py.  The interface is the same, the efficiency is more or less the same,
-but full foreign key constraints are used.  That example also better separates
+but foreign key constraints may be used.  That example also better separates
 the associated target object from those which associate with it.
 
 """
 
 from sqlalchemy import *
 
-metadata = BoundMetaData('sqlite://', echo=True)
+metadata = BoundMetaData('sqlite://', echo=False)
 
 #######
 # addresses table, class, 'addressable interface'.
