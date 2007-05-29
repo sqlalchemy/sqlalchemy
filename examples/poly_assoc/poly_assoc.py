@@ -24,7 +24,7 @@ the associated target object from those which associate with it.
 
 from sqlalchemy import *
 
-metadata = BoundMetaData('sqlite://', echo=False)
+metadata = BoundMetaData('sqlite://', echo=True)
 
 #######
 # addresses table, class, 'addressable interface'.
@@ -64,14 +64,17 @@ def addressable(cls, name, uselist=True):
     table = mapper.local_table
     cls.create_address = create_address
     # no constraints.  therefore define constraints in an ad-hoc fashion.
-    primaryjoin = (list(table.primary_key)[0] == addresses.c.addressable_id) & (addresses.c.addressable_type == table.name)
+    primaryjoin = and_(
+            list(table.primary_key)[0] == addresses.c.addressable_id,
+            addresses.c.addressable_type == table.name
+     )
     foreign_keys = [addresses.c.addressable_id]
     mapper.add_property(name, relation(
-            Address, 
-            primaryjoin=primaryjoin, uselist=uselist, foreign_keys=foreign_keys, 
-            backref=backref('_backref_%s' % table.name, primaryjoin=primaryjoin, foreign_keys=foreign_keys)
+            Address,
+            primaryjoin=primaryjoin, uselist=uselist, foreign_keys=foreign_keys,
+            backref=backref('_backref_%s' % table.name, primaryjoin=list(table.primary_key)[0] == addresses.c.addressable_id, foreign_keys=foreign_keys)
         )
-    )
+    )    
 
 mapper(Address, addresses)
 
@@ -80,7 +83,8 @@ mapper(Address, addresses)
 
 users = Table("users", metadata, 
     Column('id', Integer, primary_key=True),
-    Column('name', String(50), nullable=False))
+    Column('name', String(50), nullable=False)
+    )
     
 class User(object):
     pass
