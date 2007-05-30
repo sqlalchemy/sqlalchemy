@@ -53,6 +53,7 @@
     - set max identifier length to 31
     - supports_sane_rowcount() set to False due to ticket #370.
       versioned_id_col feature wont work in FB.
+    - some execution fixes
 -extensions
     - new association proxy implementation, implementing complete
       proxies to list, dict and set-based relation collections
