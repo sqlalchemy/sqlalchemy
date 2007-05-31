@@ -857,12 +857,12 @@ class ResultProxy(object):
     def __init__(self, context):
         """ResultProxy objects are constructed via the execute() method on SQLEngine."""
         self.context = context
+        self.dialect = context.dialect
         self.closed = False
         self.cursor = context.cursor
         self.__echo = logging.is_debug_enabled(context.engine.logger)
         self._init_metadata()
         
-    dialect = property(lambda s:s.context.dialect)
     rowcount = property(lambda s:s.context.get_rowcount())
     connection = property(lambda s:s.context.connection)
     
