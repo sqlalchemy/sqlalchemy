@@ -11,7 +11,7 @@ except ImportError:
     import dummy_threading as threading
 
 import md5
-
+import sys
 import __builtin__
 
 try:
@@ -30,43 +30,30 @@ except:
             i -= 1
         raise StopIteration()
 
-try:
-    from collections import defaultdict
-except:
-    class defaultdict(dict):
-        def __init__(self, default_factory=None, *a, **kw):
-            if (default_factory is not None and
-                not hasattr(default_factory, '__call__')):
-                raise TypeError('first argument must be callable')
-            dict.__init__(self, *a, **kw)
-            self.default_factory = default_factory
+if sys.version_info >= (2, 5):
+    class PopulateDict(dict):
+        """a dict which populates missing values via a creation function.
+        
+        note the creation function takes a key, unlike collections.defaultdict.
+        """
+        
+        def __init__(self, creator):
+            self.creator = creator
+        def __missing__(self, key):
+            self[key] = val = self.creator(key)
+            return val
+else:
+    class PopulateDict(dict):
+        """a dict which populates missing values via a creation function."""
+
+        def __init__(self, creator):
+            self.creator = creator
         def __getitem__(self, key):
             try:
                 return dict.__getitem__(self, key)
             except KeyError:
-                value = self[key] = self.__missing__(key)
+                self[key] = value = self.creator(key)
                 return value
-        def __missing__(self, key):
-            if self.default_factory is None:
-                raise KeyError(key)
-            return self.default_factory()
-        def __reduce__(self):
-            if self.default_factory is None:
-                args = tuple()
-            else:
-                args = self.default_factory,
-            return type(self), args, None, None, iter(self)
-        def copy(self):
-            return self.__copy__()
-        def __copy__(self):
-            return type(self)(self.default_factory, self)
-        def __deepcopy__(self, memo):
-            import copy
-            return type(self)(self.default_factory,
-                              copy.deepcopy(self.items()))
-        def __repr__(self):
-            return 'defaultdict(%s, %s)' % (self.default_factory,
-                                            dict.__repr__(self))
 
 def to_list(x):
     if x is None:

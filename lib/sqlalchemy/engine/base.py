@@ -869,8 +869,8 @@ class ResultProxy(object):
     def _init_metadata(self):
         if hasattr(self, '_ResultProxy__props'):
             return
-        self.__key_cache = {}
         self.__props = {}
+        self._key_cache = self._create_key_cache()
         self.__keys = []
         metadata = self.cursor.description
 
@@ -894,6 +894,30 @@ class ResultProxy(object):
             if self.__echo:
                 self.context.engine.logger.debug("Col " + repr(tuple([x[0] for x in metadata])))
 
+    def _create_key_cache(self):
+        # local copies to avoid circular ref against 'self'
+        props = self.__props
+        context = self.context
+        def lookup_key(key):
+            """Given a key, which could be a ColumnElement, string, etc.,
+            matches it to the appropriate key we got from the result set's
+            metadata; then cache it locally for quick re-access."""
+
+            if isinstance(key, int) and key in props:
+                rec = props[key]
+            elif isinstance(key, basestring) and key.lower() in props:
+                rec = props[key.lower()]
+            elif isinstance(key, sql.ColumnElement):
+                label = context.column_labels.get(key._label, key.name).lower()
+                if label in props:
+                    rec = props[label]
+
+            if not "rec" in locals():
+                raise exceptions.NoSuchColumnError("Could not locate column in row for column '%s'" % (repr(key)))
+
+            return rec
+        return util.PopulateDict(lookup_key)
+        
     def close(self):
         """Close this ResultProxy, and the underlying DBAPI cursor corresponding to the execution.
 
@@ -909,38 +933,12 @@ class ResultProxy(object):
             self.cursor.close()
             if self.connection.should_close_with_result:
                 self.connection.close()
-            
-    def _convert_key(self, key):
-        """Convert and cache a key.
-
-        Given a key, which could be a ColumnElement, string, etc.,
-        matches it to the appropriate key we got from the result set's
-        metadata; then cache it locally for quick re-access.
-        """
-
-        if key in self.__key_cache:
-            return self.__key_cache[key]
-        else:
-            if isinstance(key, int) and key in self.__props:
-                rec = self.__props[key]
-            elif isinstance(key, basestring) and key.lower() in self.__props:
-                rec = self.__props[key.lower()]
-            elif isinstance(key, sql.ColumnElement):
-                label = self.context.column_labels.get(key._label, key.name).lower()
-                if label in self.__props:
-                    rec = self.__props[label]
-                        
-            if not "rec" in locals():
-                raise exceptions.NoSuchColumnError("Could not locate column in row for column '%s'" % (repr(key)))
-
-            self.__key_cache[key] = rec
-            return rec
     
     keys = property(lambda s:s.__keys)
     
     def _has_key(self, row, key):
         try:
-            self._convert_key(key)
+            self._key_cache[key]
             return True
         except KeyError:
             return False
@@ -994,7 +992,7 @@ class ResultProxy(object):
         return self.context.supports_sane_rowcount()
 
     def _get_col(self, row, key):
-        rec = self._convert_key(key)
+        rec = self._key_cache[key]
         return rec[1].convert_result_value(row[rec[2]], self.dialect)
     
     def _fetchone_impl(self):
@@ -1106,7 +1104,7 @@ class BufferedColumnResultProxy(ResultProxy):
 
     """
     def _get_col(self, row, key):
-        rec = self._convert_key(key)
+        rec = self._key_cache[key]
         return row[rec[2]]
     
     def _process_row(self, row):
