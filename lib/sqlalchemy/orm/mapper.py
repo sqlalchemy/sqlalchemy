@@ -1446,8 +1446,8 @@ class Mapper(object):
         # including modifying any of its related items lists, as its already
         # been exposed to being modified by the application.
 
-        populate_existing = context.populate_existing or self.always_refresh
         identitykey = self.identity_key_from_row(row)
+        populate_existing = context.populate_existing or self.always_refresh
         if context.session.has_key(identitykey):
             instance = context.session._get(identitykey)
             if self.__should_log_debug:

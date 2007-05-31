@@ -873,14 +873,17 @@ class ResultProxy(object):
         self.__props = {}
         self.__keys = []
         metadata = self.cursor.description
+
         if metadata is not None:
             for i, item in enumerate(metadata):
                 # sqlite possibly prepending table name to colnames so strip
                 colname = item[0].split('.')[-1]
                 if self.context.typemap is not None:
-                    rec = (self.context.typemap.get(colname.lower(), types.NULLTYPE), i)
+                    type = self.context.typemap.get(colname.lower(), types.NULLTYPE)
                 else:
-                    rec = (types.NULLTYPE, i)
+                    type = types.NULLTYPE
+                rec = (type, type.dialect_impl(self.dialect), i)
+
                 if rec[0] is None:
                     raise DBAPIError("None for metadata " + colname)
                 if self.__props.setdefault(colname.lower(), rec) is not rec:
@@ -992,7 +995,7 @@ class ResultProxy(object):
 
     def _get_col(self, row, key):
         rec = self._convert_key(key)
-        return rec[0].dialect_impl(self.dialect).convert_result_value(row[rec[1]], self.dialect)
+        return rec[1].convert_result_value(row[rec[2]], self.dialect)
     
     def _fetchone_impl(self):
         return self.cursor.fetchone()
@@ -1104,7 +1107,7 @@ class BufferedColumnResultProxy(ResultProxy):
     """
     def _get_col(self, row, key):
         rec = self._convert_key(key)
-        return row[rec[1]]
+        return row[rec[2]]
     
     def _process_row(self, row):
         sup = super(BufferedColumnResultProxy, self)
