@@ -1,11 +1,19 @@
 0.4.0
-
 - orm
-    - deferred inheritance loading: polymorphic mappers can be constructed *without* 
+    - along with recent speedups to ResultProxy, total number of function calls
+      significantly reduced for large loads.  test/perf/masseagerload.py reports
+      0.4 as having the fewest number of function calls across all SA versions 
+      (0.1, 0.2, and 0.3)
+    - secondary inheritance loading: polymorphic mappers can be constructed *without* 
       a select_table argument.  inheriting mappers whose tables were not 
       represented in the initial load will issue a second SQL query immediately,
       once per instance (i.e. not very efficient for large lists), 
       in order to load the remaining columns.
+    - secondary inheritance loading can also move its second query into a column-
+      level "deferred" load, via the "polymorphic_fetch" argument, which can be set
+      to 'select' or 'deferred'
+    - added undefer_group() MapperOption, sets a set of "deferred" columns joined by a
+      "group" to load as "undeferred".
     
 0.3.XXX
 - engines

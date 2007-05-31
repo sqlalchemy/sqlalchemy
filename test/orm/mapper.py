@@ -914,6 +914,27 @@ class DeferredTest(MapperSuperTest):
             ("SELECT orders.order_id AS orders_order_id, orders.user_id AS orders_user_id, orders.description AS orders_description, orders.isopen AS orders_isopen FROM orders ORDER BY %s" % orderby, {}),
         ])
 
+    def testundefergroup(self):
+        """tests undefer_group()"""
+        m = mapper(Order, orders, properties = {
+            'userident':deferred(orders.c.user_id, group='primary'),
+            'description':deferred(orders.c.description, group='primary'),
+            'opened':deferred(orders.c.isopen, group='primary')
+        })
+        sess = create_session()
+        q = sess.query(m)
+        def go():
+            l = q.options(undefer_group('primary')).select()
+            o2 = l[2]
+            print o2.opened, o2.description, o2.userident
+            assert o2.opened == 1
+            assert o2.userident == 7
+            assert o2.description == 'order 3'
+        orderby = str(orders.default_order_by()[0].compile(db))
+        self.assert_sql(db, go, [
+            ("SELECT orders.user_id AS orders_user_id, orders.description AS orders_description, orders.isopen AS orders_isopen, orders.order_id AS orders_order_id FROM orders ORDER BY %s" % orderby, {}),
+        ])
+
         
     def testdeepoptions(self):
         m = mapper(User, users, properties={

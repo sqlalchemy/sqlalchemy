@@ -310,6 +310,7 @@ class ExecutionContextWrapper(object):
             testdata.buffer.write(statement + "\n")
 
         if testdata.assert_list is not None:
+            assert len(testdata.assert_list), "Received query but no more assertions: %s" % statement
             item = testdata.assert_list[-1]
             if not isinstance(item, dict):
                 item = testdata.assert_list.pop()
@@ -330,7 +331,7 @@ class ExecutionContextWrapper(object):
                         testdata.assert_list.pop()
                     item = (statement, entry)
                 except KeyError:
-                    self.unittest.assert_(False, "Testing for one of the following queries: %s, received '%s'" % (repr([k for k in item.keys()]), statement))
+                    assert False, "Testing for one of the following queries: %s, received '%s'" % (repr([k for k in item.keys()]), statement)
 
             (query, params) = item
             if callable(params):
@@ -344,7 +345,7 @@ class ExecutionContextWrapper(object):
                 parameters = [p.get_original_dict() for p in ctx.compiled_parameters]
                     
             query = self.convert_statement(query)
-            testdata.unittest.assert_(statement == query and (params is None or params == parameters), "Testing for query '%s' params %s, received '%s' with params %s" % (query, repr(params), statement, repr(parameters)))
+            assert statement == query and (params is None or params == parameters), "Testing for query '%s' params %s, received '%s' with params %s" % (query, repr(params), statement, repr(parameters))
         testdata.sql_count += 1
         self.ctx.post_exec()
         

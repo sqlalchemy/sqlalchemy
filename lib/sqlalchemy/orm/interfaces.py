@@ -161,13 +161,7 @@ class StrategizedProperty(MapperProperty):
     """
 
     def _get_context_strategy(self, context):
-        try:
-            return context.attributes[id(self)]
-        except KeyError:
-            # cache the located strategy per StrategizedProperty in the given context for faster re-lookup
-            ctx_strategy = self._get_strategy(context.attributes.get((LoaderStrategy, self), self.strategy.__class__))
-            context.attributes[id(self)] = ctx_strategy
-            return ctx_strategy
+        return self._get_strategy(context.attributes.get(("loaderstrategy", self), self.strategy.__class__))
 
     def _get_strategy(self, cls):
         try:
@@ -266,11 +260,11 @@ class StrategizedOption(PropertyOption):
 
     def process_query_property(self, context, property):
         self.logger.debug("applying option to QueryContext, property key '%s'" % self.key)
-        context.attributes[(LoaderStrategy, property)] = self.get_strategy_class()
+        context.attributes[("loaderstrategy", property)] = self.get_strategy_class()
 
     def process_selection_property(self, context, property):
         self.logger.debug("applying option to SelectionContext, property key '%s'" % self.key)
-        context.attributes[(LoaderStrategy, property)] = self.get_strategy_class()
+        context.attributes[("loaderstrategy", property)] = self.get_strategy_class()
 
     def get_strategy_class(self):
         raise NotImplementedError()

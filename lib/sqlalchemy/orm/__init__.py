@@ -19,7 +19,7 @@ from sqlalchemy.orm import properties, strategies, interfaces
 from sqlalchemy.orm.session import Session as create_session
 from sqlalchemy.orm.session import object_session, attribute_manager
 
-__all__ = ['relation', 'column_property', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer', 'extension',
+__all__ = ['relation', 'column_property', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer', 'undefer_group', 'extension',
         'mapper', 'clear_mappers', 'compile_mappers', 'clear_mapper', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query',
         'cascade_mappers', 'polymorphic_union', 'create_session', 'synonym', 'contains_alias', 'contains_eager', 'EXT_PASS', 'object_session'
         ]
@@ -241,7 +241,14 @@ def undefer(name):
 
     return strategies.DeferredOption(name, defer=False)
 
+def undefer_group(name):
+    """Return a ``MapperOption`` that will convert the given 
+    group of deferred column properties into a non-deferred (regular column) load.
 
+    Used with ``query.options()``.
+    """
+    return strategies.UndeferGroupOption(name)
+    
 def cascade_mappers(*classes_or_mappers):
     """Attempt to create a series of ``relations()`` between mappers
     automatically, via introspecting the foreign key relationships of

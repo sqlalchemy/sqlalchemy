@@ -624,7 +624,7 @@ class Mapper(object):
         """
 
         # object attribute names mapped to MapperProperty objects
-        self.__props = {}
+        self.__props = util.OrderedDict()
 
         # table columns mapped to lists of MapperProperty objects
         # using a list allows a single column to be defined as

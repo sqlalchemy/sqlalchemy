@@ -95,7 +95,9 @@ class DeferredColumnLoader(LoaderStrategy):
     """
     
     def create_row_processor(self, selectcontext, mapper, row):
-        if not self.is_default or len(selectcontext.options):
+        if self.group is not None and selectcontext.attributes.get(('undefer', self.group), False):
+            return self.parent_property._get_strategy(ColumnLoader).create_row_processor(selectcontext, mapper, row)
+        elif not self.is_default or len(selectcontext.options):
             def execute(instance, row, isnew, **flags):
                 if isnew:
                     if self._should_log_debug:
@@ -121,7 +123,8 @@ class DeferredColumnLoader(LoaderStrategy):
         sessionlib.attribute_manager.register_attribute(self.parent.class_, self.key, uselist=False, callable_=lambda i:self.setup_loader(i), copy_function=lambda x: self.columns[0].type.copy_value(x), compare_function=lambda x,y:self.columns[0].type.compare_values(x,y), mutable_scalars=self.columns[0].type.is_mutable())
 
     def setup_query(self, context, **kwargs):
-        pass
+        if self.group is not None and context.attributes.get(('undefer', self.group), False):
+            self.parent_property._get_strategy(ColumnLoader).setup_query(context, **kwargs)
         
     def setup_loader(self, instance):
         localparent = mapper.object_mapper(instance, raiseerror=False)
@@ -184,6 +187,15 @@ class DeferredOption(StrategizedOption):
             return DeferredColumnLoader
         else:
             return ColumnLoader
+
+class UndeferGroupOption(MapperOption):
+    def __init__(self, group):
+        self.group = group
+    def process_query_context(self, context):
+        context.attributes[('undefer', self.group)] = True
+
+    def process_selection_context(self, context):
+        context.attributes[('undefer', self.group)] = True
 
 class AbstractRelationLoader(LoaderStrategy):
     def init(self):
@@ -689,6 +701,8 @@ class EagerLazyOption(StrategizedOption):
             return NoLoader
 
 EagerLazyOption.logger = logging.class_logger(EagerLazyOption)
+
+
 
 class FetchModeOption(PropertyOption):
     def __init__(self, key, type):
