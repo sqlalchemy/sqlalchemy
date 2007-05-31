@@ -294,6 +294,10 @@ class TypesTest(AssertMixin):
 
     @testbase.supported('mysql')
     def test_type_reflection(self):
+        # FIXME: older versions need their own test
+        if db.dialect.get_version_info(db) < (5, 0):
+            return
+
         # (ask_for, roundtripped_as_if_different)
         specs = [( String(), mysql.MSText(), ),
                  ( String(1), mysql.MSString(1), ),
@@ -307,11 +311,9 @@ class TypesTest(AssertMixin):
                  ( Smallinteger(4), mysql.MSSmallInteger(4), ),
                  ( mysql.MSSmallInteger(), ),
                  ( mysql.MSSmallInteger(4), mysql.MSSmallInteger(4), ),
-                 ( Binary(3), mysql.MSVarBinary(3), ),
+                 ( Binary(3), mysql.MSBlob(3), ),
                  ( Binary(), mysql.MSBlob() ),
                  ( mysql.MSBinary(3), mysql.MSBinary(3), ),
-                 ( mysql.MSBaseBinary(), mysql.MSBlob(), ),
-                 ( mysql.MSBaseBinary(3), mysql.MSVarBinary(3), ),
                  ( mysql.MSVarBinary(3),),
                  ( mysql.MSVarBinary(), mysql.MSBlob()),
                  ( mysql.MSTinyBlob(),),
@@ -331,13 +333,14 @@ class TypesTest(AssertMixin):
         m2 = BoundMetaData(db)
         rt = Table('mysql_types', m2, autoload=True)
 
+        #print
         expected = [len(c) > 1 and c[1] or c[0] for c in specs]
         for i, reflected in enumerate(rt.c):
             #print (reflected, specs[i][0], '->',
             #       reflected.type, '==', expected[i])
-            assert type(reflected.type) == type(expected[i])
+            assert isinstance(reflected.type, type(expected[i]))
 
-        #m.drop_all()
+        m.drop_all()
 
 if __name__ == "__main__":
     testbase.main()

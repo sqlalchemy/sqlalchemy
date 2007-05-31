@@ -25,9 +25,11 @@ class ReflectionTest(PersistTest):
         if use_string_defaults:
             deftype2 = String
             defval2 = "im a default"
+            deftype3 = DateTime
+            defval3 = '1999-09-09 00:00:00'
         else:
-            deftype2 = Integer
-            defval2 = "15"
+            deftype2, deftype3 = Integer, Integer
+            defval2, defval3 = "15", "16"
         
         meta = BoundMetaData(testbase.db)
         
@@ -46,6 +48,7 @@ class ReflectionTest(PersistTest):
             Column('test_passivedefault', deftype, PassiveDefault(defval)),
             Column('test_passivedefault2', Integer, PassiveDefault("5")),
             Column('test_passivedefault3', deftype2, PassiveDefault(defval2)),
+            Column('test_passivedefault4', deftype3, PassiveDefault(defval3)),
             Column('test9', Binary(100)),
             Column('test_numeric', Numeric(None, None)),
             mysql_engine='InnoDB'
@@ -58,7 +61,7 @@ class ReflectionTest(PersistTest):
             mysql_engine='InnoDB'
         )
         meta.drop_all()
-        
+
         users.create()
         addresses.create()
 

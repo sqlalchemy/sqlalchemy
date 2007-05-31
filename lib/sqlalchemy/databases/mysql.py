@@ -678,21 +678,12 @@ class MSNChar(_StringType, sqltypes.CHAR):
         # We'll actually generate the equiv. "NATIONAL CHAR" instead of "NCHAR".
         return self._extend("CHAR(%(length)s)" % {'length': self.length})
 
-class MSBaseBinary(sqltypes.Binary):
-    """Flexible binary type"""
-
-    def __init__(self, length=None, **kw):
-        """Flexibly construct a binary column type.  Will construct a
-        VARBINARY or BLOB depending on the length requested, if any.
-
-        length
-          Maximum data length, in bytes.
-        """
-        super(MSBaseBinary, self).__init__(length, **kw)
+class _BinaryType(sqltypes.Binary):
+    """MySQL binary types"""
 
     def get_col_spec(self):
-        if self.length and self.length <= 255:
-            return "VARBINARY(%d)" % self.length
+        if self.length:
+            return "BLOB(%d)" % self.length
         else:
             return "BLOB"
 
@@ -702,7 +693,7 @@ class MSBaseBinary(sqltypes.Binary):
         else:
             return buffer(value)
 
-class MSVarBinary(MSBaseBinary):
+class MSVarBinary(_BinaryType):
     """MySQL VARBINARY type, for variable length binary data"""
 
     def __init__(self, length=None, **kw):
@@ -719,7 +710,7 @@ class MSVarBinary(MSBaseBinary):
         else:
             return "BLOB"
 
-class MSBinary(MSBaseBinary):
+class MSBinary(_BinaryType):
     """MySQL BINARY type, for fixed length binary data"""
 
     def __init__(self, length=None, **kw):
@@ -746,7 +737,7 @@ class MSBinary(MSBaseBinary):
         else:
             return buffer(value)
 
-class MSBlob(MSBaseBinary):
+class MSBlob(_BinaryType):
     """MySQL BLOB type, for binary data up to 2^16 bytes""" 
 
 
@@ -865,7 +856,7 @@ class MSEnum(MSString):
 
 class MSBoolean(sqltypes.Boolean):
     def get_col_spec(self):
-        return "BOOLEAN"
+        return "BOOL"
 
     def convert_result_value(self, value, dialect):
         if value is None:
@@ -893,14 +884,14 @@ colspecs = {
     sqltypes.Date : MSDate,
     sqltypes.Time : MSTime,
     sqltypes.String : MSString,
-    sqltypes.Binary : MSVarBinary,
+    sqltypes.Binary : MSBlob,
     sqltypes.Boolean : MSBoolean,
     sqltypes.TEXT : MSText,
     sqltypes.CHAR: MSChar,
     sqltypes.NCHAR: MSNChar,
     sqltypes.TIMESTAMP: MSTimeStamp,
     sqltypes.BLOB: MSBlob,
-    MSBaseBinary: MSBaseBinary,
+    _BinaryType: _BinaryType,
 }
 
 
@@ -1069,6 +1060,19 @@ class MySQLDialect(ansisql.ANSIDialect):
             else:
                 raise
 
+    def get_version_info(self, connectable):
+        if hasattr(connectable, 'connect'):
+            con = connectable.connect().connection
+        else:
+            con = connectable
+        version = []
+        for n in con.get_server_info().split('.'):
+            try:
+                version.append(int(n))
+            except ValueError:
+                version.append(n)
+        return tuple(version)
+
     def reflecttable(self, connection, table):
         # reference:  http://dev.mysql.com/doc/refman/5.0/en/name-case-sensitivity.html
         cs = connection.execute("show variables like 'lower_case_table_names'").fetchone()[1]
@@ -1125,7 +1129,11 @@ class MySQLDialect(ansisql.ANSIDialect):
 
             colargs= []
             if default:
-                colargs.append(schema.PassiveDefault(sql.text(default)))
+                if col_type == 'timestamp' and default == 'CURRENT_TIMESTAMP':
+                    arg = sql.text(default)
+                else:
+                    arg = default
+                colargs.append(schema.PassiveDefault(arg))
             table.append_column(schema.Column(name, coltype, *colargs,
                                             **dict(primary_key=primary_key,
                                                    nullable=nullable,

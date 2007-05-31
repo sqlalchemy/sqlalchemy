@@ -48,8 +48,8 @@
 - mysql
     - Nearly all MySQL column types are now supported for declaration and
       reflection. Added NCHAR, NVARCHAR, VARBINARY, TINYBLOB, LONGBLOB, YEAR
-    - The sqltypes.Binary passthrough now builds a VARBINARY rather than a
-      BINARY if given a length
+    - The sqltypes.Binary passthrough now always builds a BLOB, avoiding
+      problems with very old database versions
     - support for column-level CHARACTER SET and COLLATE declarations,
       as well as ASCII, UNICODE, NATIONAL and BINARY shorthand.
 - firebird
