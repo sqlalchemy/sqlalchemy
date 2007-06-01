@@ -1,6 +1,6 @@
 import sys
-sys.path.insert(0, './lib/')
 import os, unittest, StringIO, re, ConfigParser
+sys.path.insert(0, os.path.join(os.getcwd(), 'lib'))
 import sqlalchemy
 from sqlalchemy import sql, engine, pool
 import sqlalchemy.engine.base as base

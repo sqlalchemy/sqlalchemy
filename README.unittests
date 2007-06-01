@@ -9,13 +9,19 @@ Python 2.4 or greater is required since the unit tests use decorators.
 
 cd into the SQLAlchemy distribution directory.
 
-Set up the PYTHONPATH:
+Set up the PYTHONPATH.  In bash:
 
     export PYTHONPATH=./test/
 
-The unittest framework will automatically prepend './lib/' to sys.path.  this forces the local 
-version of SQLAlchemy to be used, bypassing any setuptools-installed installations 
-(setuptools places .egg files ahead of plain directories, even if on PYTHONPATH, unfortunately).
+On windows:
+
+    set PYTHONPATH=test\
+
+The unittest framework will automatically prepend the lib directory to
+sys.path.  This forces the local version of SQLAlchemy to be used,
+bypassing any setuptools-installed installations (setuptools places
+.egg files ahead of plain directories, even if on PYTHONPATH,
+unfortunately).
 
 RUNNING ALL TESTS
 -----------------
