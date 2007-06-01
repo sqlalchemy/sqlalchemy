@@ -65,12 +65,17 @@ single column.  This allows using keyword arguments as column names::
     >>> db.users.selectone_by(name='Bhargan Basepair')
     MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)
 
+Since name is the primary key, this is equivalent to
+
+    >>> db.users.get('Bhargan Basepair')
+    MappedUsers(name='Bhargan Basepair',email='basepair@example.edu',password='basepair',classname=None,admin=1)
+
 
 Select variants
 ---------------
 
 All the SQLAlchemy Query select variants are available.  Here's a
-quick summary of these methods::
+quick summary of these methods:
 
 - ``get(PK)``: load a single object identified by its primary key
   (either a scalar, or a tuple)
@@ -101,7 +106,7 @@ for general info and examples, `sql construction`__ for details on
 constructing ``WHERE`` clauses.
 
 __ http://www.sqlalchemy.org/docs/datamapping.myt#datamapping_query
-__http://www.sqlalchemy.org/docs/sqlconstruction.myt
+__ http://www.sqlalchemy.org/docs/sqlconstruction.myt
 
 
 Modifying objects
@@ -241,11 +246,22 @@ mapping a Select is reusability, both standalone and in Joins. (And if
 you go to full SQLAlchemy, you can perform mappings like this directly
 to your object models.)
 
+An easy way to save mapped selectables like this is to just hang them on
+your db object::
+
+    >>> db.years_with_count = years_with_count
+
+Python is flexible like that!
+
 
 Raw SQL
 -------
 
-You can access the SqlSoup's `engine` attribute to compose SQL
+SqlSoup works fine with SQLAlchemy's `text block support`__.
+
+__ http://www.sqlalchemy.org/docs/documentation.myt#sql_textual
+
+You can also access the SqlSoup's `engine` attribute to compose SQL
 directly.  The engine's ``execute`` method corresponds to the one of a
 DBAPI cursor, and returns a ``ResultProxy`` that has ``fetch`` methods
 you would also see on a cursor::
@@ -271,7 +287,7 @@ Boring tests here.  Nothing of real expository value.
     >>> db.nopk
     Traceback (most recent call last):
     ...
-    PKNotFoundError: table 'nopk' does not have a primary key defined
+    PKNotFoundError: table 'nopk' does not have a primary key defined [columns: i]
 
     >>> db.nosuchtable
     Traceback (most recent call last):
@@ -301,7 +317,7 @@ from sqlalchemy.exceptions import *
 
 _testsql = """
 CREATE TABLE books (
-    id                   integer PRIMARY KEY, -- auto-SERIAL in sqlite
+    id                   integer PRIMARY KEY, -- auto-increments in sqlite
     title                text NOT NULL,
     published_year       char(4) NOT NULL,
     authors              text NOT NULL
@@ -451,12 +467,12 @@ def class_for_table(selectable, **mapper_kwargs):
     for m in ['__cmp__', '__repr__']:
         setattr(klass, m, eval(m))
     klass._table = selectable
-    klass._mapper = mapper(klass,
-                           selectable,
-                           extension=objectstore.mapper_extension,
-                           allow_null_pks=_is_outer_join(selectable),
-                           **mapper_kwargs)
-    klass._query = Query(klass._mapper)
+    mappr = mapper(klass,
+                   selectable,
+                   extension=objectstore.mapper_extension,
+                   allow_null_pks=_is_outer_join(selectable),
+                   **mapper_kwargs)
+    klass._query = Query(mappr)
     return klass
 
 class SqlSoup:
@@ -515,7 +531,7 @@ class SqlSoup:
         except KeyError:
             table = Table(attr, self._metadata, autoload=True, schema=self.schema)
             if not table.primary_key.columns:
-                raise PKNotFoundError('table %r does not have a primary key defined' % attr)
+                raise PKNotFoundError('table %r does not have a primary key defined [columns: %s]' % (attr, ','.join(table.c.keys())))
             if table.columns:
                 t = class_for_table(table)
             else:
