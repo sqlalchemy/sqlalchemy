@@ -78,6 +78,7 @@
       object attribute with that object's position in the list
     - small fix to SelectResultsExt to not bypass itself during
       select().
+    - added filter(), filter_by() to assignmapper
 
 0.3.7
 - engines
