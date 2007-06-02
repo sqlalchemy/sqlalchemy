@@ -30,6 +30,7 @@ def make_all_docs():
         make_doc(obj=ansisql),
         make_doc(obj=orm),
         make_doc(obj=orm.mapperlib, classes=[orm.mapperlib.MapperExtension, orm.mapperlib.Mapper]),
+        make_doc(obj=orm.interfaces),
         make_doc(obj=orm.query, classes=[orm.query.Query, orm.query.QueryContext, orm.query.SelectionContext]),
         make_doc(obj=orm.session, classes=[orm.session.Session, orm.session.SessionTransaction]),
         make_doc(obj=exceptions),
