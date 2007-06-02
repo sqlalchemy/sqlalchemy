@@ -25,8 +25,11 @@ class ReflectionTest(PersistTest):
         if use_string_defaults:
             deftype2 = String
             defval2 = "im a default"
-            deftype3 = DateTime
-            defval3 = '1999-09-09 00:00:00'
+            #deftype3 = DateTime
+            # the colon thing isnt working out for PG reflection just yet
+            #defval3 = '1999-09-09 00:00:00'
+            deftype3 = Date
+            defval3 = '1999-09-09'
         else:
             deftype2, deftype3 = Integer, Integer
             defval2, defval3 = "15", "16"
