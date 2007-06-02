@@ -736,6 +736,18 @@ class Query(object):
         q._joinpoint = mapper
         return q
 
+    def reset_joinpoint(self):
+        """return a new Query reset the 'joinpoint' of this Query reset 
+        back to the starting mapper.  Subsequent generative calls will
+        be constructed from the new joinpoint.
+        
+        This is an interim method which will not be needed with new behavior
+        to be released in 0.4."""
+        
+        q = self._clone()
+        q._joinpoint = q._mapper
+        return q
+
     def select_from(self, from_obj):
         """Set the `from_obj` parameter of the query and return the newly 
         resulting ``Query``.
