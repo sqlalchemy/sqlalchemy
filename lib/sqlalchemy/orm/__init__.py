@@ -11,17 +11,18 @@ packages and tying operations to class properties and constructors.
 
 from sqlalchemy import exceptions
 from sqlalchemy import util as sautil
-from sqlalchemy.orm.mapper import *
+from sqlalchemy.orm.mapper import Mapper, object_mapper, class_mapper, mapper_registry
+from sqlalchemy.orm.interfaces import SynonymProperty, MapperExtension, EXT_PASS, ExtensionOption
+from sqlalchemy.orm.properties import PropertyLoader, ColumnProperty, BackRef
 from sqlalchemy.orm import mapper as mapperlib
 from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.util import polymorphic_union
-from sqlalchemy.orm import properties, strategies, interfaces
 from sqlalchemy.orm.session import Session as create_session
 from sqlalchemy.orm.session import object_session, attribute_manager
 
 __all__ = ['relation', 'column_property', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer', 'undefer_group', 'extension',
         'mapper', 'clear_mappers', 'compile_mappers', 'clear_mapper', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query',
-        'cascade_mappers', 'polymorphic_union', 'create_session', 'synonym', 'contains_alias', 'contains_eager', 'EXT_PASS', 'object_session'
+        'polymorphic_union', 'create_session', 'synonym', 'contains_alias', 'contains_eager', 'EXT_PASS', 'object_session'
         ]
 
 def relation(*args, **kwargs):
@@ -59,10 +60,10 @@ def column_property(*args, **kwargs):
     no direct correspondence to the mapped selectable will effectively be non-persisted
     attributes.
     """
-    return properties.ColumnProperty(*args, **kwargs)
+    return ColumnProperty(*args, **kwargs)
     
 def _relation_loader(mapper, secondary=None, primaryjoin=None, secondaryjoin=None, lazy=True, **kwargs):
-    return properties.PropertyLoader(mapper, secondary, primaryjoin, secondaryjoin, lazy=lazy, **kwargs)
+    return PropertyLoader(mapper, secondary, primaryjoin, secondaryjoin, lazy=lazy, **kwargs)
 
 def backref(name, **kwargs):
     """Create a BackRef object with explicit arguments, which are the same arguments one
@@ -72,7 +73,7 @@ def backref(name, **kwargs):
     place of a string argument.
     """
 
-    return properties.BackRef(name, **kwargs)
+    return BackRef(name, **kwargs)
 
 def deferred(*columns, **kwargs):
     """Return a ``DeferredColumnProperty``, which indicates this
@@ -82,7 +83,7 @@ def deferred(*columns, **kwargs):
     Used with the `properties` dictionary sent to ``mapper()``.
     """
 
-    return properties.ColumnProperty(deferred=True, *columns, **kwargs)
+    return ColumnProperty(deferred=True, *columns, **kwargs)
 
 def mapper(class_, table=None, *args, **params):
     """Return a new ``Mapper`` object.
@@ -98,7 +99,7 @@ def synonym(name, proxy=False):
     Used with the `properties` dictionary sent to ``mapper()``.
     """
 
-    return interfaces.SynonymProperty(name, proxy=proxy)
+    return SynonymProperty(name, proxy=proxy)
 
 def compile_mappers():
     """Compile all mappers that have been defined.
@@ -249,63 +250,3 @@ def undefer_group(name):
     """
     return strategies.UndeferGroupOption(name)
     
-def cascade_mappers(*classes_or_mappers):
-    """Attempt to create a series of ``relations()`` between mappers
-    automatically, via introspecting the foreign key relationships of
-    the underlying tables.
-
-    Given a list of classes and/or mappers, identify the foreign key
-    relationships between the given mappers or corresponding class
-    mappers, and create ``relation()`` objects representing those
-    relationships, including a backreference. Attempt to find the
-    *secondary* table in a many-to-many relationship as well.
-
-    The names of the relations will be a lowercase version of the
-    related class.  In the case of one-to-many or many-to-many, the
-    name will be *pluralized*, which currently is based on the English
-    language (i.e. an 's' or 'es' added to it).
-
-    NOTE: this method usually works poorly, and its usage is generally
-    not advised.
-    """
-
-    table_to_mapper = {}
-    for item in classes_or_mappers:
-        if isinstance(item, Mapper):
-            m = item
-        else:
-            klass = item
-            m = class_mapper(klass)
-        table_to_mapper[m.mapped_table] = m
-
-    def pluralize(name):
-        # oh crap, do we need locale stuff now
-        if name[-1] == 's':
-            return name + "es"
-        else:
-            return name + "s"
-
-    for table,mapper in table_to_mapper.iteritems():
-        for fk in table.foreign_keys:
-            if fk.column.table is table:
-                continue
-            secondary = None
-            try:
-                m2 = table_to_mapper[fk.column.table]
-            except KeyError:
-                if len(fk.column.table.primary_key):
-                    continue
-                for sfk in fk.column.table.foreign_keys:
-                    if sfk.column.table is table:
-                        continue
-                    m2 = table_to_mapper.get(sfk.column.table)
-                    secondary = fk.column.table
-            if m2 is None:
-                continue
-            if secondary:
-                propname = pluralize(m2.class_.__name__.lower())
-                propname2 = pluralize(mapper.class_.__name__.lower())
-            else:
-                propname = m2.class_.__name__.lower()
-                propname2 = pluralize(mapper.class_.__name__.lower())
-            mapper.add_property(propname, relation(m2, secondary=secondary, backref=propname2))

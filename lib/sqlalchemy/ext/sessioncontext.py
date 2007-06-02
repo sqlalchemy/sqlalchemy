@@ -1,6 +1,5 @@
 from sqlalchemy.util import ScopedRegistry
-from sqlalchemy.orm.mapper import MapperExtension, EXT_PASS
-from sqlalchemy.orm import create_session
+from sqlalchemy.orm import create_session, MapperExtension, EXT_PASS
 
 __all__ = ['SessionContext', 'SessionContextExt']
 

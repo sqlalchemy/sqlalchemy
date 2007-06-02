@@ -2,6 +2,7 @@ from testbase import PersistTest, AssertMixin
 import testbase
 import unittest, sys, os
 from sqlalchemy import *
+from sqlalchemy.orm import *
 import sqlalchemy.exceptions as exceptions
 from sqlalchemy.ext.sessioncontext import SessionContext, SessionContextExt
 from tables import *

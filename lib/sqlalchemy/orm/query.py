@@ -7,6 +7,7 @@
 from sqlalchemy import sql, util, exceptions, sql_util, logging, schema
 from sqlalchemy.orm import mapper, class_mapper, object_mapper
 from sqlalchemy.orm.interfaces import OperationContext, SynonymProperty
+from sqlalchemy.orm.util import ExtensionCarrier
 
 __all__ = ['Query', 'QueryContext', 'SelectionContext']
 
@@ -22,7 +23,7 @@ class Query(object):
         self.select_mapper = self.mapper.get_select_mapper().compile()
         self.always_refresh = kwargs.pop('always_refresh', self.mapper.always_refresh)
         self.lockmode = lockmode
-        self.extension = mapper._ExtensionCarrier()
+        self.extension = ExtensionCarrier()
         if extension is not None:
             self.extension.append(extension)
         self.extension.append(self.mapper.extension)
@@ -59,9 +60,7 @@ class Query(object):
         q._session = self.session
         q.is_polymorphic = self.is_polymorphic
         q.lockmode = self.lockmode
-        q.extension = mapper._ExtensionCarrier()
-        for ext in self.extension:
-            q.extension.append(ext)
+        q.extension = self.extension.copy()
         q._offset = self._offset
         q._limit = self._limit
         q._group_by = self._group_by

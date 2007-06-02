@@ -1,6 +1,7 @@
 from testbase import PersistTest, AssertMixin
 import unittest
 from sqlalchemy import *
+from sqlalchemy.orm import *
 import testbase
 from sqlalchemy.ext.sessioncontext import SessionContext
 

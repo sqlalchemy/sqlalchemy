@@ -1,5 +1,7 @@
 import testbase
 from sqlalchemy import *
+from sqlalchemy.orm import *
+
 import sets
 
 # tests basic polymorphic mapper loading/saving, minimal relations

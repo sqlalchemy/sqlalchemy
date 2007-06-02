@@ -7,7 +7,6 @@
 from sqlalchemy.types import *
 from sqlalchemy.sql import *
 from sqlalchemy.schema import *
-from sqlalchemy.orm import *
 
 from sqlalchemy.engine import create_engine
 from sqlalchemy.schema import default_metadata

@@ -1,6 +1,7 @@
 from testbase import PersistTest, AssertMixin, ORMTest
 import unittest, sys, os
 from sqlalchemy import *
+from sqlalchemy.orm import *
 import StringIO
 import testbase
 

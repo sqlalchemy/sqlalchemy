@@ -1,6 +1,7 @@
 from testbase import PersistTest, AssertMixin
 import testbase
 from sqlalchemy import *
+from sqlalchemy.orm import *
 from tables import *
 import tables
 

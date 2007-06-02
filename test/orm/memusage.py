@@ -1,4 +1,5 @@
 from sqlalchemy import *
+from sqlalchemy.orm import *
 from sqlalchemy.orm import mapperlib, session, unitofwork, attributes
 Mapper = mapperlib.Mapper
 import gc

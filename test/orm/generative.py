@@ -3,6 +3,7 @@ import testbase
 import tables
 
 from sqlalchemy import *
+from sqlalchemy.orm import *
 from sqlalchemy import exceptions
 
 class Foo(object):

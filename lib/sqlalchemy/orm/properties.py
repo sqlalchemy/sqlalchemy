@@ -18,6 +18,8 @@ from sqlalchemy.orm import util as mapperutil
 import sets, random
 from sqlalchemy.orm.interfaces import *
 
+__all__ = ['ColumnProperty', 'PropertyLoader', 'BackRef']
+
 class ColumnProperty(StrategizedProperty):
     """Describes an object attribute that corresponds to a table column."""
 
@@ -38,6 +40,9 @@ class ColumnProperty(StrategizedProperty):
         else:
             return strategies.ColumnLoader(self)
 
+    def get_sub_mapper(self):
+        return None
+
     def getattr(self, object):
         return getattr(object, self.key)
 
@@ -57,6 +62,8 @@ ColumnProperty.logger = logging.class_logger(ColumnProperty)
 
 mapper.ColumnProperty = ColumnProperty
 
+        
+        
 class PropertyLoader(StrategizedProperty):
     """Describes an object property that holds a single item or list
     of items that correspond to a related database table.
@@ -108,6 +115,9 @@ class PropertyLoader(StrategizedProperty):
         return sql.and_(*[x==y for (x, y) in zip(self.mapper.primary_key, self.mapper.primary_key_from_instance(value))])
 
     private = property(lambda s:s.cascade.delete_orphan)
+
+    def get_sub_mapper(self):
+        return self.mapper
 
     def create_strategy(self):
         if self.lazy:

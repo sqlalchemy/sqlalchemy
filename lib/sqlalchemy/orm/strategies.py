@@ -7,7 +7,7 @@
 """sqlalchemy.orm.interfaces.LoaderStrategy implementations, and related MapperOptions."""
 
 from sqlalchemy import sql, schema, util, exceptions, sql_util, logging
-from sqlalchemy.orm import mapper, query
+from sqlalchemy.orm import mapper
 from sqlalchemy.orm.interfaces import *
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm import session as sessionlib
@@ -237,6 +237,7 @@ class LazyLoader(AbstractRelationLoader):
 
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
+        from sqlalchemy.orm import query
         self.use_get = not self.uselist and query.Query(self.mapper)._get_clause.compare(self.lazywhere)
         if self.use_get:
             self.logger.info(str(self.parent_property) + " will use query.get() to optimize instance loads")

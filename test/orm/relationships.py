@@ -5,6 +5,7 @@ db = testbase.db
 #db. 
 
 from sqlalchemy import *
+from sqlalchemy.orm import *
 
 
 class RelationTest(testbase.PersistTest):

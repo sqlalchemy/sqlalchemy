@@ -19,7 +19,7 @@ installed will reference this global context when creating new mapped
 object instances.
 """
 
-from sqlalchemy import util, engine, mapper
+from sqlalchemy import util, engine
 from sqlalchemy.ext.sessioncontext import SessionContext
 import sqlalchemy.ext.assignmapper as assignmapper
 from sqlalchemy.orm.mapper import global_extensions

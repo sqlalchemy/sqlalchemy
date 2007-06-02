@@ -2,6 +2,7 @@ from testbase import PersistTest, AssertMixin
 import testbase
 import unittest, sys, os
 from sqlalchemy import *
+from sqlalchemy.orm import *
 import datetime
 
 class LazyTest(AssertMixin):

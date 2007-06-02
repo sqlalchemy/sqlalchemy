@@ -1,5 +1,6 @@
-from sqlalchemy import mapper, util, Query, exceptions
+from sqlalchemy import util, exceptions
 import types
+from sqlalchemy.orm import mapper, Query
 
 def monkeypatch_query_method(ctx, class_, name):
     def do(self, *args, **kwargs):

@@ -1,6 +1,7 @@
 import testbase
 
 from sqlalchemy import *
+from sqlalchemy.orm import *
 
 
 class AssociationTest(testbase.PersistTest):

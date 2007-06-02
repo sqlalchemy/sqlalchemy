@@ -3,6 +3,7 @@ import unittest, sys, datetime
 
 from sqlalchemy.ext.sessioncontext import SessionContext
 from sqlalchemy import *
+from sqlalchemy.orm import *
 
 class O2MCascadeTest(testbase.AssertMixin):
     def tearDown(self):

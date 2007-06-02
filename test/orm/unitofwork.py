@@ -1,5 +1,6 @@
 from testbase import PersistTest, AssertMixin
 from sqlalchemy import *
+from sqlalchemy.orm import *
 import testbase
 import pickleable
 from sqlalchemy.orm.mapper import global_extensions

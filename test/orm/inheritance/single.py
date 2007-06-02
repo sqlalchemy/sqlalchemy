@@ -1,4 +1,6 @@
 from sqlalchemy import *
+from sqlalchemy.orm import *
+
 import testbase
 
 class SingleInheritanceTest(testbase.AssertMixin):

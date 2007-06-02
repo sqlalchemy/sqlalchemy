@@ -3,6 +3,8 @@ import unittest, sys, os
 from sqlalchemy.ext.sessioncontext import SessionContext
 from sqlalchemy.orm.session import object_session, Session
 from sqlalchemy import *
+from sqlalchemy.orm import *
+
 import testbase
 
 metadata = MetaData()

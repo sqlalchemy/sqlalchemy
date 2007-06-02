@@ -5,6 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from sqlalchemy import sql, util, exceptions
+from sqlalchemy.orm.interfaces import MapperExtension, EXT_PASS
 
 all_cascades = util.Set(["delete", "delete-orphan", "all", "merge",
                          "expunge", "save-update", "refresh-expire", "none"])
@@ -108,6 +109,56 @@ class TranslatingDict(dict):
 
     def setdefault(self, col, value):
         return super(TranslatingDict, self).setdefault(self.__translate_col(col), value)
+
+class ExtensionCarrier(MapperExtension):
+    def __init__(self, _elements=None):
+        self.__elements = _elements or []
+
+    def copy(self):
+        return ExtensionCarrier(list(self.__elements))
+        
+    def __iter__(self):
+        return iter(self.__elements)
+
+    def insert(self, extension):
+        """Insert a MapperExtension at the beginning of this ExtensionCarrier's list."""
+
+        self.__elements.insert(0, extension)
+
+    def append(self, extension):
+        """Append a MapperExtension at the end of this ExtensionCarrier's list."""
+
+        self.__elements.append(extension)
+
+    def _create_do(funcname):
+        def _do(self, *args, **kwargs):
+            for elem in self.__elements:
+                ret = getattr(elem, funcname)(*args, **kwargs)
+                if ret is not EXT_PASS:
+                    return ret
+            else:
+                return EXT_PASS
+        return _do
+
+    init_instance = _create_do('init_instance')
+    init_failed = _create_do('init_failed')
+    dispose_class = _create_do('dispose_class')
+    get_session = _create_do('get_session')
+    load = _create_do('load')
+    get = _create_do('get')
+    get_by = _create_do('get_by')
+    select_by = _create_do('select_by')
+    select = _create_do('select')
+    translate_row = _create_do('translate_row')
+    create_instance = _create_do('create_instance')
+    append_result = _create_do('append_result')
+    populate_instance = _create_do('populate_instance')
+    before_insert = _create_do('before_insert')
+    before_update = _create_do('before_update')
+    after_update = _create_do('after_update')
+    after_insert = _create_do('after_insert')
+    before_delete = _create_do('before_delete')
+    after_delete = _create_do('after_delete')
 
 class BinaryVisitor(sql.ClauseVisitor):
     def __init__(self, func):

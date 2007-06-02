@@ -1,5 +1,7 @@
 import testbase
 from sqlalchemy import *
+from sqlalchemy.orm import *
+
 
 class CompileTest(testbase.AssertMixin):
     """test various mapper compilation scenarios"""

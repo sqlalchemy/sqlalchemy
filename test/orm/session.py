@@ -7,6 +7,7 @@ from tables import *
 
 db = testbase.db
 from sqlalchemy import *
+from sqlalchemy.orm import *
 
 
 class SessionTest(AssertMixin):

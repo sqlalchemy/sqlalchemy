@@ -1,6 +1,7 @@
 from testbase import PersistTest, AssertMixin
 import testbase
 from sqlalchemy import *
+from sqlalchemy.orm import *
 from sqlalchemy.ext.selectresults import SelectResults
 import random
 

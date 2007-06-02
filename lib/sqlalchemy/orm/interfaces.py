@@ -7,6 +7,198 @@
 
 from sqlalchemy import util, logging
 
+# returned by a MapperExtension method to indicate a "do nothing" response
+EXT_PASS = object()
+
+class MapperExtension(object):
+    """Base implementation for an object that provides overriding
+    behavior to various Mapper functions.  For each method in
+    MapperExtension, a result of EXT_PASS indicates the functionality
+    is not overridden.
+    """
+
+
+    def init_instance(self, mapper, class_, instance, args, kwargs):
+        return EXT_PASS
+
+    def init_failed(self, mapper, class_, instance, args, kwargs):
+        return EXT_PASS
+
+    def get_session(self):
+        """Retrieve a contextual Session instance with which to
+        register a new object.
+
+        Note: this is not called if a session is provided with the
+        `__init__` params (i.e. `_sa_session`).
+        """
+
+        return EXT_PASS
+
+    def load(self, query, *args, **kwargs):
+        """Override the `load` method of the Query object.
+
+        The return value of this method is used as the result of
+        ``query.load()`` if the value is anything other than EXT_PASS.
+        """
+
+        return EXT_PASS
+
+    def get(self, query, *args, **kwargs):
+        """Override the `get` method of the Query object.
+
+        The return value of this method is used as the result of
+        ``query.get()`` if the value is anything other than EXT_PASS.
+        """
+
+        return EXT_PASS
+
+    def get_by(self, query, *args, **kwargs):
+        """Override the `get_by` method of the Query object.
+
+        The return value of this method is used as the result of
+        ``query.get_by()`` if the value is anything other than
+        EXT_PASS.
+        """
+
+        return EXT_PASS
+
+    def select_by(self, query, *args, **kwargs):
+        """Override the `select_by` method of the Query object.
+
+        The return value of this method is used as the result of
+        ``query.select_by()`` if the value is anything other than
+        EXT_PASS.
+        """
+
+        return EXT_PASS
+
+    def select(self, query, *args, **kwargs):
+        """Override the `select` method of the Query object.
+
+        The return value of this method is used as the result of
+        ``query.select()`` if the value is anything other than
+        EXT_PASS.
+        """
+
+        return EXT_PASS
+
+
+    def translate_row(self, mapper, context, row):
+        """Perform pre-processing on the given result row and return a
+        new row instance.
+
+        This is called as the very first step in the ``_instance()``
+        method.
+        """
+
+        return EXT_PASS
+
+    def create_instance(self, mapper, selectcontext, row, class_):
+        """Receive a row when a new object instance is about to be
+        created from that row.
+
+        The method can choose to create the instance itself, or it can
+        return None to indicate normal object creation should take
+        place.
+
+        mapper
+          The mapper doing the operation
+
+        selectcontext
+          SelectionContext corresponding to the instances() call
+
+        row
+          The result row from the database
+
+        class\_
+          The class we are mapping.
+        """
+
+        return EXT_PASS
+
+    def append_result(self, mapper, selectcontext, row, instance, result, **flags):
+        """Receive an object instance before that instance is appended
+        to a result list.
+
+        If this method returns EXT_PASS, result appending will proceed
+        normally.  if this method returns any other value or None,
+        result appending will not proceed for this instance, giving
+        this extension an opportunity to do the appending itself, if
+        desired.
+
+        mapper
+          The mapper doing the operation.
+
+        selectcontext
+          SelectionContext corresponding to the instances() call.
+
+        row
+          The result row from the database.
+
+        instance
+          The object instance to be appended to the result.
+
+        result
+          List to which results are being appended.
+
+        \**flags
+          extra information about the row, same as criterion in
+          `create_row_processor()` method of [sqlalchemy.orm.interfaces#MapperProperty]
+        """
+
+        return EXT_PASS
+
+    def populate_instance(self, mapper, selectcontext, row, instance, **flags):
+        """Receive a newly-created instance before that instance has
+        its attributes populated.
+
+        The normal population of attributes is according to each
+        attribute's corresponding MapperProperty (which includes
+        column-based attributes as well as relationships to other
+        classes).  If this method returns EXT_PASS, instance
+        population will proceed normally.  If any other value or None
+        is returned, instance population will not proceed, giving this
+        extension an opportunity to populate the instance itself, if
+        desired.
+        """
+
+        return EXT_PASS
+
+    def before_insert(self, mapper, connection, instance):
+        """Receive an object instance before that instance is INSERTed
+        into its table.
+
+        This is a good place to set up primary key values and such
+        that aren't handled otherwise.
+        """
+
+        return EXT_PASS
+
+    def before_update(self, mapper, connection, instance):
+        """Receive an object instance before that instance is UPDATEed."""
+
+        return EXT_PASS
+
+    def after_update(self, mapper, connection, instance):
+        """Receive an object instance after that instance is UPDATEed."""
+
+        return EXT_PASS
+
+    def after_insert(self, mapper, connection, instance):
+        """Receive an object instance after that instance is INSERTed."""
+
+        return EXT_PASS
+
+    def before_delete(self, mapper, connection, instance):
+        """Receive an object instance before that instance is DELETEed."""
+
+        return EXT_PASS
+
+    def after_delete(self, mapper, connection, instance):
+        """Receive an object instance after that instance is DELETEed."""
+
+        return EXT_PASS
+
 class MapperProperty(object):
     """Manage the relationship of a ``Mapper`` to a single class
     attribute, as well as that attribute as it appears on individual
@@ -75,6 +267,9 @@ class MapperProperty(object):
     def set_parent(self, parent):
         self.parent = parent
 
+    def get_sub_mapper(self):
+        raise NotImplementedError()
+
     def init(self, key, parent):
         """Called after all mappers are compiled to assemble
         relationships between mappers, establish instrumented class
@@ -123,33 +318,7 @@ class MapperProperty(object):
 
         raise NotImplementedError()
 
-class SynonymProperty(MapperProperty):
-    def __init__(self, name, proxy=False):
-        self.name = name
-        self.proxy = proxy
 
-    def setup(self, querycontext, **kwargs):
-        pass
-
-    def create_row_processor(self, selectcontext, mapper, row):
-        return (None, None)
-
-    def do_init(self):
-        if not self.proxy:
-            return
-        class SynonymProp(object):
-            def __set__(s, obj, value):
-                setattr(obj, self.name, value)
-            def __delete__(s, obj):
-                delattr(obj, self.name)
-            def __get__(s, obj, owner):
-                if obj is None:
-                    return s
-                return getattr(obj, self.name)
-        setattr(self.parent.class_, self.key, SynonymProp())
-
-    def merge(self, session, source, dest, _recursive):
-        pass
 
 class StrategizedProperty(MapperProperty):
     """A MapperProperty which uses selectable strategies to affect
@@ -216,6 +385,46 @@ class MapperOption(object):
         pass
 
     def process_query(self, query):
+        pass
+
+class ExtensionOption(MapperOption):
+    """a MapperOption that applies a MapperExtension to a query operation."""
+    
+    def __init__(self, ext):
+        self.ext = ext
+
+    def process_query(self, query):
+        query.extension.append(self.ext)
+
+class SynonymProperty(MapperProperty):
+    def __init__(self, name, proxy=False):
+        self.name = name
+        self.proxy = proxy
+
+    def setup(self, querycontext, **kwargs):
+        pass
+
+    def get_sub_mapper(self):
+        return self.parent.props[self.name].get_sub_mapper()
+
+    def create_row_processor(self, selectcontext, mapper, row):
+        return (None, None)
+
+    def do_init(self):
+        if not self.proxy:
+            return
+        class SynonymProp(object):
+            def __set__(s, obj, value):
+                setattr(obj, self.name, value)
+            def __delete__(s, obj):
+                delattr(obj, self.name)
+            def __get__(s, obj, owner):
+                if obj is None:
+                    return s
+                return getattr(obj, self.name)
+        setattr(self.parent.class_, self.key, SynonymProp())
+
+    def merge(self, session, source, dest, _recursive):
         pass
 
 class PropertyOption(MapperOption):

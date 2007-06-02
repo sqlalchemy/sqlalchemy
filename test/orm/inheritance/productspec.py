@@ -1,5 +1,7 @@
 import testbase
 from sqlalchemy import *
+from sqlalchemy.orm import *
+
 from datetime import datetime
 
 class InheritTest(testbase.ORMTest):
