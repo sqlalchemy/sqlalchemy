@@ -189,6 +189,12 @@ class GetTest(QueryTest):
         class LocalFoo(Base):pass
         mapper(LocalFoo, table)
         assert create_session().query(LocalFoo).get(ustring) == LocalFoo(id=ustring, data=ustring)
+
+class SliceTest(QueryTest):
+    def test_first(self):
+        assert create_session().query(User).first() == User(id=7)
+        
+        assert create_session().query(User).filter(users.c.id==27).first() is None
         
 class FilterTest(QueryTest):
     def test_basic(self):
