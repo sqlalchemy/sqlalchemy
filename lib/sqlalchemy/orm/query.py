@@ -535,23 +535,28 @@ class Query(object):
         else:
             [keys,p] = self._locate_prop(prop, start=start)
         clause = self._from_obj[-1]
+
+        currenttables = sql_util.TableFinder(self._from_obj, include_aliases=True)
+            
         mapper = start
         for key in keys:
             prop = mapper.props[key]
             if prop._is_self_referential():
                 raise exceptions.InvalidRequestError("Self-referential query on '%s' property must be constructed manually using an Alias object for the related table." % str(prop))
-            if outerjoin:
-                if prop.secondary:
-                    clause = clause.outerjoin(prop.secondary, prop.get_join(mapper, primary=True, secondary=False))
-                    clause = clause.outerjoin(prop.select_table, prop.get_join(mapper, primary=False))
+            # dont re-join to a table already in our from objects
+            if prop.select_table not in currenttables:
+                if outerjoin:
+                    if prop.secondary:
+                        clause = clause.outerjoin(prop.secondary, prop.get_join(mapper, primary=True, secondary=False))
+                        clause = clause.outerjoin(prop.select_table, prop.get_join(mapper, primary=False))
+                    else:
+                        clause = clause.outerjoin(prop.select_table, prop.get_join(mapper))
                 else:
-                    clause = clause.outerjoin(prop.select_table, prop.get_join(mapper))
-            else:
-                if prop.secondary:
-                    clause = clause.join(prop.secondary, prop.get_join(mapper, primary=True, secondary=False))
-                    clause = clause.join(prop.select_table, prop.get_join(mapper, primary=False))
-                else:
-                    clause = clause.join(prop.select_table, prop.get_join(mapper))
+                    if prop.secondary:
+                        clause = clause.join(prop.secondary, prop.get_join(mapper, primary=True, secondary=False))
+                        clause = clause.join(prop.select_table, prop.get_join(mapper, primary=False))
+                    else:
+                        clause = clause.join(prop.select_table, prop.get_join(mapper))
             mapper = prop.mapper
         return (clause, mapper)
 

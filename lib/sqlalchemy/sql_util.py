@@ -71,7 +71,7 @@ class TableFinder(TableCollection, sql.NoColumnVisitor):
         TableCollection.__init__(self)
         self.check_columns = check_columns
         self.include_aliases = include_aliases
-        if clause is not None:
+        for clause in util.to_list(clause):
             self.traverse(clause)
 
     def visit_alias(self, alias):
