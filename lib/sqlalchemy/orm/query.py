@@ -519,9 +519,12 @@ class Query(object):
         """
         return self.filter(self._join_by(args, kwargs, start=self._joinpoint))
 
-    def _join_to(self, prop, outerjoin=False):
+    def _join_to(self, prop, outerjoin=False, start=None):
+        if start is None:
+            start = self._joinpoint
+            
         if isinstance(prop, list):
-            mapper = self._joinpoint
+            mapper = start
             keys = []
             for key in prop:
                 p = mapper.props[key]
@@ -530,9 +533,9 @@ class Query(object):
                 keys.append(key)
                 mapper = p.mapper
         else:
-            [keys,p] = self._locate_prop(prop, start=self._joinpoint)
+            [keys,p] = self._locate_prop(prop, start=start)
         clause = self._from_obj[-1]
-        mapper = self._joinpoint
+        mapper = start
         for key in keys:
             prop = mapper.props[key]
             if prop._is_self_referential():
@@ -699,6 +702,18 @@ class Query(object):
         else:
             q._group_by.extend(util.to_list(criterion))
         return q
+
+    def reset_joinpoint(self):
+        """return a new Query reset the 'joinpoint' of this Query reset 
+        back to the starting mapper.  Subsequent generative calls will
+        be constructed from the new joinpoint.
+
+        This is an interim method which will not be needed with new behavior
+        to be released in 0.4."""
+
+        q = self._clone()
+        q._joinpoint = q.mapper
+        return q
     
     def join(self, prop):
         """create a join of this ``Query`` object's criterion
@@ -711,7 +726,7 @@ class Query(object):
         """
         
         q = self._clone()
-        (clause, mapper) = self._join_to(prop, outerjoin=False)
+        (clause, mapper) = self._join_to(prop, outerjoin=False, start=self.mapper)
         q._from_obj = [clause]
         q._joinpoint = mapper
         return q
