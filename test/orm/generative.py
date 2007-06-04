@@ -162,7 +162,7 @@ class RelationsTest(AssertMixin):
         })
         session = create_session()
         query = session.query(tables.User)
-        x = query.join('orders').join('items').filter(tables.Item.c.item_id==2)
+        x = query.join(['orders', 'items']).filter(tables.Item.c.item_id==2)
         print x.compile()
         self.assert_result(list(x), tables.User, tables.user_result[2])
     def test_outerjointo(self):
