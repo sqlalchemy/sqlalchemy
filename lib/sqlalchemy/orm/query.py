@@ -535,8 +535,13 @@ class Query(object):
         else:
             [keys,p] = self._locate_prop(prop, start=start)
         clause = self._from_obj[-1]
-
-        currenttables = sql_util.TableFinder(self._from_obj, include_aliases=True)
+        
+        currenttables = [clause]
+        class FindJoinedTables(sql.NoColumnVisitor):
+            def visit_join(self, join):
+                currenttables.append(join.left)
+                currenttables.append(join.right)
+        FindJoinedTables().traverse(clause)
             
         mapper = start
         for key in keys:
@@ -823,15 +828,19 @@ class Query(object):
         new._distinct = True
         return new
 
-    def list(self):
+    def all(self):
         """Return the results represented by this ``Query`` as a list.
 
         This results in an execution of the underlying query.
         """
+        return list(self)
+        
+    def list(self):
+        """deprecated.  use all()"""
 
         return list(self)
-
-    def scalar(self):
+    
+    def first(self):
         """Return the first result of this ``Query``.
 
         This results in an execution of the underlying query.
@@ -840,6 +849,24 @@ class Query(object):
             return self[0]
         else:
             return self._col_aggregate(self._col, self._func)
+
+    def scalar(self):
+        """deprecated.  use first()"""
+        return self.first()
+
+    def one(self):
+        """Return the first result of this ``Query``, raising an exception if more than one row exists.
+
+        This results in an execution of the underlying query.
+        """
+        ret = list(self[0:2])
+        
+        if len(ret) == 1:
+            return ret[0]
+        elif len(ret) == 0:
+            raise exceptions.InvalidRequestError('No rows returned for one()')
+        else:
+            raise exceptions.InvalidRequestError('Multiple rows returned for one()')
     
     def __iter__(self):
         return iter(self.select_whereclause())

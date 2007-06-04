@@ -22,36 +22,6 @@ class MapperSuperTest(AssertMixin):
         pass
     
 class MapperTest(MapperSuperTest):
-    # TODO: MapperTest has grown much larger than it originally was and needs
-    # to be broken up among various functions, including querying, session operations,
-    # mapper configurational issues
-    def testget(self):
-        s = create_session()
-        mapper(User, users)
-        self.assert_(s.get(User, 19) is None)
-        u = s.get(User, 7)
-        u2 = s.get(User, 7)
-        self.assert_(u is u2)
-        s.clear()
-        u2 = s.get(User, 7)
-        self.assert_(u is not u2)
-
-    def testunicodeget(self):
-        """test that Query.get properly sets up the type for the bind parameter.  using unicode would normally fail 
-        on postgres, mysql and oracle unless it is converted to an encoded string"""
-        metadata = BoundMetaData(db)
-        table = Table('foo', metadata, 
-            Column('id', Unicode(10), primary_key=True),
-            Column('data', Unicode(40)))
-        try:
-            table.create()
-            class LocalFoo(object):pass
-            mapper(LocalFoo, table)
-            crit = 'petit voix m\xe2\x80\x99a '.decode('utf-8')
-            print repr(crit)
-            create_session().query(LocalFoo).get(crit)
-        finally:
-            table.drop()
 
     def testpropconflict(self):
         """test that a backref created against an existing mapper with a property name
@@ -259,13 +229,6 @@ class MapperTest(MapperSuperTest):
         }).compile()
         self.assert_(User.addresses.property is m.props['addresses'])
         
-    def testquery(self):
-        """test a basic Query.select() operation."""
-        mapper(User, users)
-        l = create_session().query(User).select()
-        self.assert_result(l, User, *user_result)
-        l = create_session().query(User).select(users.c.user_name.endswith('ed'))
-        self.assert_result(l, User, *user_result[1:3])
 
     def testrecursiveselectby(self):
         """test that no endless loop occurs when traversing for select_by"""
@@ -300,118 +263,6 @@ class MapperTest(MapperSuperTest):
         l = q.select()
         self.assert_result(l, User, *result)
 
-    def testwithparent(self):
-        """test the with_parent()) method and one-to-many relationships"""
-        
-        m = mapper(User, users, properties={
-            'orders':relation(mapper(Order, orders, properties={
-                'items':relation(mapper(Item, orderitems))
-            }))
-        })
-
-        sess = create_session()
-        q = sess.query(m)
-        u1 = q.get_by(user_name='jack')
-
-        # test auto-lookup of property
-        o = sess.query(Order).with_parent(u1).list()
-        self.assert_result(o, Order, *user_all_result[0]['orders'][1])
-
-        # test with explicit property
-        o = sess.query(Order).with_parent(u1, property='orders').list()
-        self.assert_result(o, Order, *user_all_result[0]['orders'][1])
-
-        # test static method
-        o = Query.query_from_parent(u1, property='orders', session=sess).list()
-        self.assert_result(o, Order, *user_all_result[0]['orders'][1])
-
-        # test generative criterion
-        o = sess.query(Order).with_parent(u1).select_by(orders.c.order_id>2)
-        self.assert_result(o, Order, *user_all_result[0]['orders'][1][1:])
-
-        try:
-            q = sess.query(Item).with_parent(u1)
-            assert False
-        except exceptions.InvalidRequestError, e:
-            assert str(e) == "Could not locate a property which relates instances of class 'Item' to instances of class 'User'"
-            
-    def testwithparentm2m(self):
-        """test the with_parent() method and many-to-many relationships"""
-        
-        m = mapper(Item, orderitems, properties = {
-                'keywords' : relation(mapper(Keyword, keywords), itemkeywords)
-        })
-        sess = create_session()
-        i1 = sess.query(Item).get_by(item_id=2)
-        k = sess.query(Keyword).with_parent(i1)
-        self.assert_result(k, Keyword, *item_keyword_result[1]['keywords'][1])
-
-        
-    def testautojoin(self):
-        """test functions derived from Query's _join_to function."""
-        
-        m = mapper(User, users, properties={
-            'orders':relation(mapper(Order, orders, properties={
-                'items':relation(mapper(Item, orderitems))
-            }))
-        })
-
-        sess = create_session()
-        q = sess.query(m)
-
-        l = q.filter(orderitems.c.item_name=='item 4').join(['orders', 'items']).list()
-        self.assert_result(l, User, user_result[0])
-        
-        l = q.select_by(item_name='item 4')
-        self.assert_result(l, User, user_result[0])
-
-        l = q.filter(orderitems.c.item_name=='item 4').join('item_name').list()
-        self.assert_result(l, User, user_result[0])
-
-        l = q.filter(orderitems.c.item_name=='item 4').join('items').list()
-        self.assert_result(l, User, user_result[0])
-
-        # test comparing to an object instance
-        item = sess.query(Item).get_by(item_name='item 4')
-
-        l = sess.query(Order).select_by(items=item)
-        self.assert_result(l, Order, user_all_result[0]['orders'][1][1])
-
-        l = q.select_by(items=item)
-        self.assert_result(l, User, user_result[0])
-        
-        # TODO: this works differently from:
-        #q = sess.query(User).join(['orders', 'items']).select_by(order_id=3)
-        # because select_by() doesnt respect query._joinpoint, whereas filter_by does
-        q = sess.query(User).join(['orders', 'items']).filter_by(order_id=3).list()
-        self.assert_result(l, User, user_result[0])
-        
-        try:
-            # this should raise AttributeError
-            l = q.select_by(items=5)
-            assert False
-        except AttributeError:
-            assert True
-        
-    def testautojoinm2m(self):
-        """test functions derived from Query's _join_to function."""
-        
-        m = mapper(Order, orders, properties = {
-            'items' : relation(mapper(Item, orderitems, properties = {
-                'keywords' : relation(mapper(Keyword, keywords), itemkeywords)
-            }))
-        })
-        
-        sess = create_session()
-        q = sess.query(m)
-
-        l = q.filter(keywords.c.name=='square').join(['items', 'keywords']).list()
-        self.assert_result(l, Order, order_result[1])
-
-        # test comparing to an object instance
-        item = sess.query(Item).selectfirst()
-        l = sess.query(Item).select_by(keywords=item.keywords[0])
-        assert item == l[0]
         
     def testcustomjoin(self):
         """test that the from_obj parameter to query.select() can be used
