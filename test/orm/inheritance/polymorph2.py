@@ -118,6 +118,10 @@ class RelationTest2(testbase.ORMTest):
         self.do_test("join1", True)
     def testrelationonsubclass_j2_data(self):
         self.do_test("join2", True)
+    def testrelationonsubclass_j3_nodata(self):
+        self.do_test("join3", False)
+    def testrelationonsubclass_j3_data(self):
+        self.do_test("join3", True)
                 
     def do_test(self, jointype="join1", usedata=False):
         class Person(AttrSettable):
@@ -130,19 +134,24 @@ class RelationTest2(testbase.ORMTest):
                 'person':people.select(people.c.type=='person'),
                 'manager':join(people, managers, people.c.person_id==managers.c.person_id)
             }, None)
+            polymorphic_on=poly_union.c.type
         elif jointype == "join2":
             poly_union = polymorphic_union({
                 'person':people.select(people.c.type=='person'),
                 'manager':managers.join(people, people.c.person_id==managers.c.person_id)
             }, None)
-
+            polymorphic_on=poly_union.c.type
+        elif jointype == "join3":
+            poly_union = None
+            polymorphic_on = people.c.type
+            
         if usedata:
             class Data(object):
                 def __init__(self, data):
                     self.data = data
             mapper(Data, data)
             
-        mapper(Person, people, select_table=poly_union, polymorphic_identity='person', polymorphic_on=poly_union.c.type)
+        mapper(Person, people, select_table=poly_union, polymorphic_identity='person', polymorphic_on=polymorphic_on)
 
         if usedata:
             mapper(Manager, managers, inherits=Person, inherit_condition=people.c.person_id==managers.c.person_id, polymorphic_identity='manager',
@@ -204,6 +213,10 @@ class RelationTest3(testbase.ORMTest):
        self.do_test("join1", True)
     def testrelationonbaseclass_j2_data(self):
        self.do_test("join2", True)
+    def testrelationonbaseclass_j3_nodata(self):
+       self.do_test("join3", False)
+    def testrelationonbaseclass_j3_data(self):
+       self.do_test("join3", True)
 
     def do_test(self, jointype="join1", usedata=False):
         class Person(AttrSettable):
@@ -226,6 +239,8 @@ class RelationTest3(testbase.ORMTest):
                 'manager':join(people, managers, people.c.person_id==managers.c.person_id),
                 'person':people.select(people.c.type=='person')
             }, None)
+        elif jointype == "join3":
+            poly_union=None
             
         if usedata:
             mapper(Data, data)

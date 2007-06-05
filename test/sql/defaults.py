@@ -4,6 +4,7 @@ import unittest, sys, os
 import sqlalchemy.schema as schema
 import testbase
 from sqlalchemy import *
+from sqlalchemy.orm import mapper, create_session
 import sqlalchemy
 
 db = testbase.db
@@ -159,6 +160,9 @@ class AutoIncrementTest(PersistTest):
             table.drop()    
 
     def testfetchid(self):
+        
+        # TODO: what does this test do that all the various ORM tests dont ?
+        
         meta = BoundMetaData(testbase.db)
         table = Table("aitest", meta, 
             Column('id', Integer, primary_key=True),

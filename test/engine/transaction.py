@@ -4,6 +4,7 @@ import unittest, sys, datetime
 import tables
 db = testbase.db
 from sqlalchemy import *
+from sqlalchemy.orm import *
 
 
 class TransactionTest(testbase.PersistTest):

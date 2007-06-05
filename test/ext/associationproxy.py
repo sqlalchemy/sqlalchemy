@@ -3,6 +3,7 @@ import sqlalchemy.util as util
 import unittest
 import testbase
 from sqlalchemy import *
+from sqlalchemy.orm import *
 from sqlalchemy.ext.associationproxy import *
 
 db = testbase.db

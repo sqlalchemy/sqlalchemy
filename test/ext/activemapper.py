@@ -1,7 +1,8 @@
 import testbase
 from sqlalchemy.ext.activemapper           import ActiveMapper, column, one_to_many, one_to_one, many_to_many, objectstore
-from sqlalchemy             import and_, or_, clear_mappers, backref, create_session, exceptions
+from sqlalchemy             import and_, or_, exceptions
 from sqlalchemy             import ForeignKey, String, Integer, DateTime, Table, Column
+from sqlalchemy.orm         import clear_mappers, backref, create_session, class_mapper
 from datetime               import datetime
 import sqlalchemy
 
@@ -10,7 +11,7 @@ import sqlalchemy.ext.activemapper as activemapper
 
 class testcase(testbase.PersistTest):
     def setUpAll(self):
-        sqlalchemy.clear_mappers()
+        clear_mappers()
         objectstore.clear()
         global Person, Preferences, Address
         
@@ -262,7 +263,7 @@ class testcase(testbase.PersistTest):
 
 class testmanytomany(testbase.PersistTest):
      def setUpAll(self):
-         sqlalchemy.clear_mappers()
+         clear_mappers()
          objectstore.clear()
          global secondarytable, foo, baz
          secondarytable = Table("secondarytable",
@@ -312,14 +313,14 @@ class testmanytomany(testbase.PersistTest):
 
          # Optimistically based on activemapper one_to_many test, try  to append
          # baz1 to foo1.bazrel - (AttributeError: 'foo' object has no attribute 'bazrel')
-         print sqlalchemy.class_mapper(foo).props
-         print sqlalchemy.class_mapper(baz).props
+         print class_mapper(foo).props
+         print class_mapper(baz).props
          foo1.bazrel.append(baz1)
          assert (foo1.bazrel == [baz1])
         
 class testselfreferential(testbase.PersistTest):
     def setUpAll(self):
-        sqlalchemy.clear_mappers()
+        clear_mappers()
         objectstore.clear()
         global TreeNode
         class TreeNode(activemapper.ActiveMapper):

@@ -3,6 +3,7 @@ import sqlalchemy.util as util
 import unittest, sys, os
 import testbase
 from sqlalchemy import *
+from sqlalchemy.orm import *
 from sqlalchemy.ext.orderinglist import *
 
 db = testbase.db

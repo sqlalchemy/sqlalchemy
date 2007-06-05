@@ -14,7 +14,6 @@ def suite():
         # schema/tables
         'engine.reflection', 
 
-	'engine.proxy_engine'
         )
     alltests = unittest.TestSuite()
     for name in modules_to_test:

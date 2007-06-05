@@ -2,6 +2,7 @@ from testbase import PersistTest, AssertMixin
 import testbase
 
 from sqlalchemy import *
+from sqlalchemy.orm import create_session, clear_mappers, relation, class_mapper
 
 from sqlalchemy.ext.assignmapper import assign_mapper
 from sqlalchemy.ext.sessioncontext import SessionContext
@@ -30,10 +31,7 @@ class OverrideAttributesTest(PersistTest):
         
         ctx = SessionContext(create_session)
         assign_mapper(ctx, SomeObject, table, properties={
-            # this is the current workaround for class attribute name/collection collision: specify collection_class
-            # explicitly.   when we do away with class attributes specifying collection classes, this wont be
-            # needed anymore.
-            'options':relation(SomeOtherObject, collection_class=list)
+            'options':relation(SomeOtherObject)
         })
         assign_mapper(ctx, SomeOtherObject, table2)
         class_mapper(SomeObject)

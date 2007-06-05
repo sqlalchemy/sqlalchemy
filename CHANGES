@@ -22,13 +22,20 @@
       argument, which can be set to 'select' or 'deferred'
     - added undefer_group() MapperOption, sets a set of "deferred"
       columns joined by a "group" to load as "undeferred".
-
 - sql
   - long-identifier detection fixed to use > rather than >= for 
     max ident length [ticket:589]
+
 - mysql
   - added 'fields' to reserved words [ticket:590]
-    
+- extensions
+  - proxyengine is temporarily removed, pending an actually working
+    replacement.
+  - SelectResults has been replaced by Query.  SelectResults / 
+    SelectResultsExt still exist but just return a slightly modified
+    Query object for backwards-compatibility.  join_to() method 
+    from SelectResults isn't present anymore, need to use join(). 
+      
 0.3.8
 - engines
   - added detach() to Connection, allows underlying DBAPI connection

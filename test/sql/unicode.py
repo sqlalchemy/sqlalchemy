@@ -2,6 +2,7 @@
 import testbase
 
 from sqlalchemy import *
+from sqlalchemy.orm import mapper, relation, create_session, eagerload
 
 """verrrrry basic unicode column name testing"""
 

@@ -4,6 +4,7 @@ import unittest
 
 db = testbase.db
 from sqlalchemy import *
+from sqlalchemy.orm import *
 
 from zblog import mappers, tables
 from zblog.user import *

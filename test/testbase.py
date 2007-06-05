@@ -1,11 +1,13 @@
+"""base import for all test cases.  Patches in enhancements to unittest.TestCase, 
+instruments SQLAlchemy dialect/engine to track SQL statements for assertion purposes,
+provides base test classes for common test scenarios."""
+
 import sys
 sys.path.insert(0, './lib/')
-import os, unittest, StringIO, re, ConfigParser
+
+import os, unittest, StringIO, re, ConfigParser, optparse
 import sqlalchemy
-from sqlalchemy import sql, engine, pool
-import sqlalchemy.engine.base as base
-import optparse
-from sqlalchemy.schema import BoundMetaData
+from sqlalchemy import sql, engine, pool, BoundMetaData
 from sqlalchemy.orm import clear_mappers
 
 db = None
@@ -134,9 +136,6 @@ firebird=firebird://sysdba:s@localhost/tmp/test.fdb
         return ExecutionContextWrapper(create_context(*args, **kwargs))
     db.dialect.create_execution_context = create_exec_context
     
-    global testdata
-    testdata = TestData(db)
-    
     if options.topological:
         from sqlalchemy.orm import unitofwork
         from sqlalchemy import topological
@@ -161,6 +160,7 @@ firebird=firebird://sysdba:s@localhost/tmp/test.fdb
     
 def unsupported(*dbs):
     """a decorator that marks a test as unsupported by one or more database implementations"""
+    
     def decorate(func):
         name = db.name
         for d in dbs:
@@ -175,6 +175,7 @@ def unsupported(*dbs):
 
 def supported(*dbs):
     """a decorator that marks a test as supported by one or more database implementations"""
+    
     def decorate(func):
         name = db.name
         for d in dbs:
@@ -189,19 +190,27 @@ def supported(*dbs):
 
         
 class PersistTest(unittest.TestCase):
-    """persist base class, provides default setUpAll, tearDownAll and echo functionality"""
+
     def __init__(self, *args, **params):
         unittest.TestCase.__init__(self, *args, **params)
+
     def echo(self, text):
+        """DEPRECATED.  use print <statement>"""
         echo_text(text)
+        
     def install_threadlocal(self):
+        """DEPRECATED."""
         sqlalchemy.mods.threadlocal.install_plugin()
+        
     def uninstall_threadlocal(self):
+        """DEPRECATED."""
         sqlalchemy.mods.threadlocal.uninstall_plugin()
+
     def setUpAll(self):
         pass
     def tearDownAll(self):
         pass
+
     def shortDescription(self):
         """overridden to not return docstrings"""
         return None
@@ -209,15 +218,18 @@ class PersistTest(unittest.TestCase):
 class AssertMixin(PersistTest):
     """given a list-based structure of keys/properties which represent information within an object structure, and
     a list of actual objects, asserts that the list of objects corresponds to the structure."""
+    
     def assert_result(self, result, class_, *objects):
         result = list(result)
         if echo:
             print repr(result)
         self.assert_list(result, class_, objects)
+        
     def assert_list(self, result, class_, list):
         self.assert_(len(result) == len(list), "result list is not the same size as test list, for class " + class_.__name__)
         for i in range(0, len(list)):
             self.assert_row(class_, result[i], list[i])
+            
     def assert_row(self, class_, rowobj, desc):
         self.assert_(rowobj.__class__ is class_, "item class is not " + repr(class_))
         for key, value in desc.iteritems():
@@ -228,9 +240,10 @@ class AssertMixin(PersistTest):
                     self.assert_row(value[0], getattr(rowobj, key), value[1])
             else:
                 self.assert_(getattr(rowobj, key) == value, "attribute %s value %s does not match %s" % (key, getattr(rowobj, key), value))
+                
     def assert_sql(self, db, callable_, list, with_sequences=None):
         global testdata
-        testdata = TestData(db)
+        testdata = TestData()
         if with_sequences is not None and (db.engine.name == 'postgres' or db.engine.name == 'oracle'):
             testdata.set_assert_list(self, with_sequences)
         else:
@@ -242,7 +255,7 @@ class AssertMixin(PersistTest):
 
     def assert_sql_count(self, db, callable_, count):
         global testdata
-        testdata = TestData(db)
+        testdata = TestData()
         try:
             callable_()
         finally:
@@ -250,7 +263,7 @@ class AssertMixin(PersistTest):
 
     def capture_sql(self, db, callable_):
         global testdata
-        testdata = TestData(db)
+        testdata = TestData()
         buffer = StringIO.StringIO()
         testdata.buffer = buffer
         try:
@@ -281,9 +294,9 @@ class ORMTest(AssertMixin):
                 t.delete().execute().close()
 
 class TestData(object):
-    def __init__(self, engine):
-        self._engine = engine
-        self.logger = engine.logger
+    """tracks SQL expressions as theyre executed via an instrumented ExecutionContext."""
+    
+    def __init__(self):
         self.set_assert_list(None, None)
         self.sql_count = 0
         self.buffer = None
@@ -293,8 +306,13 @@ class TestData(object):
         self.assert_list = list
         if list is not None:
             self.assert_list.reverse()
-    
+
+testdata = TestData()
+
 class ExecutionContextWrapper(object):
+    """instruments the ExecutionContext created by the Engine so that SQL expressions
+    can be tracked."""
+    
     def __init__(self, ctx):
         self.__dict__['ctx'] = ctx
     def __getattr__(self, key):

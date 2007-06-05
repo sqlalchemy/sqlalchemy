@@ -1,11 +1,11 @@
-from sqlalchemy             import create_session, relation, mapper, \
-                                   join, DynamicMetaData, class_mapper, \
-                                   util, Integer
+from sqlalchemy             import join, DynamicMetaData, util, Integer
 from sqlalchemy             import and_, or_
 from sqlalchemy             import Table, Column, ForeignKey
+from sqlalchemy.orm         import class_mapper, relation, mapper, create_session
+                                   
 from sqlalchemy.ext.sessioncontext import SessionContext
 from sqlalchemy.ext.assignmapper import assign_mapper
-from sqlalchemy import backref as create_backref
+from sqlalchemy.orm import backref as create_backref
 import sqlalchemy
 
 import inspect

@@ -122,10 +122,10 @@ class EagerTest(AssertMixin):
     def test_dslish(self):
         """test the same as witheagerload except building the query via SelectResults"""
         s = create_session()
-        q=SelectResults(s.query(Test).options(eagerload('category')))
-        l=q.select ( 
+        q=s.query(Test).options(eagerload('category'))
+        l=q.filter ( 
             and_(tests.c.owner_id==1,or_(options.c.someoption==None,options.c.someoption==False))
-            ).outerjoin_to('owner_option')
+            ).outerjoin('owner_option')
             
         result = ["%d %s" % ( t.id,t.category.name ) for t in l]
         print result
@@ -316,15 +316,9 @@ class EagerTest4(testbase.ORMTest):
         sess.flush()
 
         q = sess.query(Department)
-        filters = [q.join_to('employees'),
-                   Employee.c.name.startswith('J')]
-
-        d = SelectResults(q)
-        d = d.join_to('employees').filter(Employee.c.name.startswith('J'))
-        d = d.distinct()
-        d = d.order_by([desc(Department.c.name)])
-        assert d.count() == 2
-        assert d[0] is d2
+        q = q.join('employees').filter(Employee.c.name.startswith('J')).distinct().order_by([desc(Department.c.name)])
+        assert q.count() == 2
+        assert q[0] is d2
 
 class EagerTest5(testbase.ORMTest):
     """test the construction of AliasedClauses for the same eager load property but different 
