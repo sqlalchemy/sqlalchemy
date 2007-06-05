@@ -19,6 +19,8 @@
 - sql
   - long-identifier detection fixed to use > rather than >= for 
     max ident length [ticket:589]
+- mysql
+  - added 'fields' to reserved words [ticket:590]
     
 0.3.8
 - engines

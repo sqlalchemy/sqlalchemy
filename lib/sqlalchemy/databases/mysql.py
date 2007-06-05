@@ -24,7 +24,7 @@ RESERVED_WORDS = util.Set(
      'declare', 'default', 'delayed', 'delete', 'desc', 'describe',
      'deterministic', 'distinct', 'distinctrow', 'div', 'double', 'drop',
      'dual', 'each', 'else', 'elseif', 'enclosed', 'escaped', 'exists',
-     'exit', 'explain', 'false', 'fetch', 'float', 'float4', 'float8',
+     'exit', 'explain', 'false', 'fetch', 'fields', 'float', 'float4', 'float8',
      'for', 'force', 'foreign', 'from', 'fulltext', 'grant', 'group', 'having',
      'high_priority', 'hour_microsecond', 'hour_minute', 'hour_second', 'if',
      'ignore', 'in', 'index', 'infile', 'inner', 'inout', 'insensitive',
