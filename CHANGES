@@ -1,3 +1,6 @@
+- sql
+    - long-identifier detection fixed to use > rather than >= for 
+      max ident length [ticket:589]
 0.3.8
 - engines
     - added detach() to Connection, allows underlying DBAPI connection
