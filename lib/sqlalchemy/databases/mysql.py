@@ -24,7 +24,7 @@ RESERVED_WORDS = util.Set(
      'declare', 'default', 'delayed', 'delete', 'desc', 'describe',
      'deterministic', 'distinct', 'distinctrow', 'div', 'double', 'drop',
      'dual', 'each', 'else', 'elseif', 'enclosed', 'escaped', 'exists',
-     'exit', 'explain', 'false', 'fetch', 'fields', 'float', 'float4', 'float8',
+     'exit', 'explain', 'false', 'fetch', 'float', 'float4', 'float8',
      'for', 'force', 'foreign', 'from', 'fulltext', 'grant', 'group', 'having',
      'high_priority', 'hour_microsecond', 'hour_minute', 'hour_second', 'if',
      'ignore', 'in', 'index', 'infile', 'inner', 'inout', 'insensitive',
@@ -49,9 +49,11 @@ RESERVED_WORDS = util.Set(
      'union', 'unique', 'unlock', 'unsigned', 'update', 'usage', 'use',
      'using', 'utc_date', 'utc_time', 'utc_timestamp', 'values', 'varbinary',
      'varchar', 'varcharacter', 'varying', 'when', 'where', 'while', 'with',
-     'write', 'x509', 'xor', 'year_month', 'zerofill',
+     'write', 'x509', 'xor', 'year_month', 'zerofill', # 5.0
+     'fields', # 4.1
      'accessible', 'linear', 'master_ssl_verify_server_cert', 'range',
-     'read_only', 'read_write'])
+     'read_only', 'read_write', # 5.1
+     ])
 
 class _NumericType(object):
     "Base for MySQL numeric types."
