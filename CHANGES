@@ -15,71 +15,92 @@
       argument, which can be set to 'select' or 'deferred'
     - added undefer_group() MapperOption, sets a set of "deferred"
       columns joined by a "group" to load as "undeferred".
-    
-0.3.XXX
-- engines
-    - added detach() to Connection, allows underlying DBAPI connection
-      to be detached from its pool, closing on dereference/close()
-      instead of being reused by the pool.
-    - added invalidate() to Connection, immediately invalidates the
-      Connection and its underlying DBAPI connection.
+
 - sql
-    - _Label class overrides compare_self to return its ultimate object.
-      meaning, if you say someexpr.label('foo') == 5, it produces
-      the correct "someexpr == 5".
-    - _Label propigates "_hide_froms()" so that scalar selects
-      behave more properly with regards to FROM clause #574 
-    - fix to long name generation when using oid_column as an order by
-      (oids used heavily in mapper queries)
-    - parenthesis are applied to clauses via a new _Grouping construct.
-      uses operator precedence to more intelligently apply parenthesis 
-      to clauses, provides cleaner nesting of clauses (doesnt mutate
-      clauses placed in other clauses, i.e. no 'parens' flag)
-    - added 'modifier' keyword, works like func.<foo> except does not
-      add parenthesis.  e.g. select([modifier.DISTINCT(...)]) etc.
-    - removed "no group by's in a select thats part of a UNION"
-      restriction [ticket:578]
+  - long-identifier detection fixed to use > rather than >= for 
+    max ident length [ticket:589]
+    
+0.3.8
+- engines
+  - added detach() to Connection, allows underlying DBAPI connection
+    to be detached from its pool, closing on dereference/close()
+    instead of being reused by the pool.
+  - added invalidate() to Connection, immediately invalidates the
+    Connection and its underlying DBAPI connection.
+- sql
+  - _Label class overrides compare_self to return its ultimate
+    object. meaning, if you say someexpr.label('foo') == 5, it
+    produces the correct "someexpr == 5".
+  - _Label propigates "_hide_froms()" so that scalar selects
+    behave more properly with regards to FROM clause #574 
+  - fix to long name generation when using oid_column as an order by
+    (oids used heavily in mapper queries)
+  - significant speed improvement to ResultProxy, pre-caches
+    TypeEngine dialect implementations and saves on function calls
+    per column
+  - parenthesis are applied to clauses via a new _Grouping
+    construct. uses operator precedence to more intelligently apply
+    parenthesis to clauses, provides cleaner nesting of clauses
+    (doesnt mutate clauses placed in other clauses, i.e. no 'parens'
+    flag)
+  - added 'modifier' keyword, works like func.<foo> except does not
+    add parenthesis.  e.g. select([modifier.DISTINCT(...)]) etc.
+  - removed "no group by's in a select thats part of a UNION"
+    restriction [ticket:578]
 - orm
-    - fixed bug in query.instances() that wouldnt handle more than
-      on additional mapper or one additional column.
-    - "delete-orphan" no longer implies "delete". ongoing effort to 
-      separate the behavior of these two operations.
-    - many-to-many relationships properly set the type of bind params
-      for delete operations on the association table
-    - many-to-many relationships check that the number of rows deleted
-      from the association table by a delete operation matches the expected 
-      results
-    - session.get() and session.load() propigate **kwargs through to query
-    - fix to polymorphic query which allows the original polymorphic_union
-      to be embedded into a correlated subquery [ticket:577]
-    - fix to select_by(<propname>=<object instance>) -style joins in conjunction
-      with many-to-many relationships, bug introduced in r2556 
-    - the "primary_key" argument to mapper() is propigated to the "polymorphic"
-      mapper.  primary key columns in this list get normalized to that of the mapper's 
-      local table.
-    - restored logging of "lazy loading clause" under sa.orm.strategies logger,
-      got removed in 0.3.7
-    - improved support for eagerloading of properties off of mappers that are mapped
-      to select() statements; i.e. eagerloader is better at locating the correct
-      selectable with which to attach its LEFT OUTER JOIN.
+  - added reset_joinpoint() method to Query, moves the "join point"
+    back to the starting mapper. 0.4 will change the behavior of
+    join() to reset the "join point" in all cases so this is an
+    interim method. for forwards compatibility, ensure joins across
+    multiple relations are specified using a single join(), i.e.
+    join(['a', 'b', 'c']).
+  - fixed bug in query.instances() that wouldnt handle more than
+    on additional mapper or one additional column.
+  - "delete-orphan" no longer implies "delete". ongoing effort to 
+    separate the behavior of these two operations.
+  - many-to-many relationships properly set the type of bind params
+    for delete operations on the association table
+  - many-to-many relationships check that the number of rows deleted
+    from the association table by a delete operation matches the
+    expected results
+  - session.get() and session.load() propigate **kwargs through to
+    query
+  - fix to polymorphic query which allows the original
+    polymorphic_union to be embedded into a correlated subquery
+    [ticket:577]
+  - fix to select_by(<propname>=<object instance>) -style joins in
+    conjunction with many-to-many relationships, bug introduced in
+    r2556
+  - the "primary_key" argument to mapper() is propigated to the
+    "polymorphic" mapper. primary key columns in this list get
+    normalized to that of the mapper's local table.
+  - restored logging of "lazy loading clause" under
+    sa.orm.strategies logger, got removed in 0.3.7
+  - improved support for eagerloading of properties off of mappers
+    that are mapped to select() statements; i.e. eagerloader is
+    better at locating the correct selectable with which to attach
+    its LEFT OUTER JOIN.
 - mysql
-    - Nearly all MySQL column types are now supported for declaration and
-      reflection. Added NCHAR, NVARCHAR, VARBINARY, TINYBLOB, LONGBLOB, YEAR
-    - The sqltypes.Binary passthrough now builds a VARBINARY rather than a
-      BINARY if given a length
-    - support for column-level CHARACTER SET and COLLATE declarations,
-      as well as ASCII, UNICODE, NATIONAL and BINARY shorthand.
+  - Nearly all MySQL column types are now supported for declaration
+    and reflection. Added NCHAR, NVARCHAR, VARBINARY, TINYBLOB,
+    LONGBLOB, YEAR
+  - The sqltypes.Binary passthrough now always builds a BLOB,
+    avoiding problems with very old database versions
+  - support for column-level CHARACTER SET and COLLATE declarations,
+    as well as ASCII, UNICODE, NATIONAL and BINARY shorthand.
 - firebird
-    - set max identifier length to 31
-    - supports_sane_rowcount() set to False due to ticket #370.
-      versioned_id_col feature wont work in FB.
+  - set max identifier length to 31
+  - supports_sane_rowcount() set to False due to ticket #370.
+    versioned_id_col feature wont work in FB.
+  - some execution fixes
 -extensions
-    - new association proxy implementation, implementing complete
-      proxies to list, dict and set-based relation collections
-    - added orderinglist, a custom list class that synchronizes an object
-      attribute with that object's position in the list
-    - small fix to SelectResultsExt to not bypass itself during
-      select().
+  - new association proxy implementation, implementing complete
+    proxies to list, dict and set-based relation collections
+  - added orderinglist, a custom list class that synchronizes an
+    object attribute with that object's position in the list
+  - small fix to SelectResultsExt to not bypass itself during
+    select().
+  - added filter(), filter_by() to assignmapper
 
 0.3.7
 - engines

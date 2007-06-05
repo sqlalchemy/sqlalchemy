@@ -399,7 +399,7 @@ class ANSICompiler(sql.Compiled):
             return self.bind_names[bindparam]
             
         bind_name = bindparam.key
-        if len(bind_name) >= self.dialect.max_identifier_length():
+        if len(bind_name) > self.dialect.max_identifier_length():
             bind_name = self._truncated_identifier("bindparam", bind_name)
             # add to bind_names for translation
             self.bind_names[bindparam] = bind_name
@@ -408,7 +408,7 @@ class ANSICompiler(sql.Compiled):
     def _truncated_identifier(self, ident_class, name):
         if (ident_class, name) in self.generated_ids:
             return self.generated_ids[(ident_class, name)]
-        if len(name) >= self.dialect.max_identifier_length():
+        if len(name) > self.dialect.max_identifier_length():
             counter = self.generated_ids.get(ident_class, 1)
             truncname = name[0:self.dialect.max_identifier_length() - 6] + "_" + hex(counter)[2:]
             self.generated_ids[ident_class] = counter + 1
