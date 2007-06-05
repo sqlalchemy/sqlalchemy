@@ -394,7 +394,8 @@ class ExtensionOption(MapperOption):
         self.ext = ext
 
     def process_query(self, query):
-        query.extension.append(self.ext)
+        query._extension = query._extension.copy()
+        query._extension.append(self.ext)
 
 class SynonymProperty(MapperProperty):
     def __init__(self, name, proxy=False):

@@ -1,5 +1,12 @@
 0.4.0
 - orm
+    - major interface pare-down for Query:  all selectXXX methods
+      are deprecated.  generative methods are now the standard
+      way to do things, i.e. filter(), filter_by(), all(), one(),
+      etc.  Deprecated methods are docstring'ed with their 
+      new replacements.
+    - query.list() replaced with query.all()
+    - removed ancient query.select_by_attributename() capability.
     - along with recent speedups to ResultProxy, total number of
       function calls significantly reduced for large loads.
       test/perf/masseagerload.py reports 0.4 as having the fewest number

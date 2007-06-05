@@ -60,7 +60,8 @@ class GenerativeQueryTest(PersistTest):
         assert self.query.count() == 100
         assert self.query.filter(foo.c.bar<30).min(foo.c.bar) == 0
         assert self.query.filter(foo.c.bar<30).max(foo.c.bar) == 29
-        assert self.query.filter(foo.c.bar<30).apply_max(foo.c.bar).scalar() == 29
+        assert self.query.filter(foo.c.bar<30).apply_max(foo.c.bar).first() == 29
+        assert self.query.filter(foo.c.bar<30).apply_max(foo.c.bar).one() == 29
 
     @testbase.unsupported('mysql')
     def test_aggregate_1(self):
@@ -77,7 +78,8 @@ class GenerativeQueryTest(PersistTest):
 
     @testbase.unsupported('postgres', 'mysql', 'firebird', 'mssql')
     def test_aggregate_3(self):
-        assert self.res.filter(foo.c.bar<30).apply_avg(foo.c.bar).scalar() == 14.5
+        assert self.res.filter(foo.c.bar<30).apply_avg(foo.c.bar).first() == 14.5
+        assert self.res.filter(foo.c.bar<30).apply_avg(foo.c.bar).one() == 14.5
         
     def test_filter(self):
         assert self.query.count() == 100
