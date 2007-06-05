@@ -238,7 +238,7 @@ class LazyLoader(AbstractRelationLoader):
         # determine if our "lazywhere" clause is the same as the mapper's
         # get() clause.  then we can just use mapper.get()
         from sqlalchemy.orm import query
-        self.use_get = not self.uselist and query.Query(self.mapper)._get_clause.compare(self.lazywhere)
+        self.use_get = not self.uselist and self.mapper._get_clause.compare(self.lazywhere)
         if self.use_get:
             self.logger.info(str(self.parent_property) + " will use query.get() to optimize instance loads")
 
@@ -283,27 +283,31 @@ class LazyLoader(AbstractRelationLoader):
 
             # if we have a simple straight-primary key load, use mapper.get()
             # to possibly save a DB round trip
+            q = session.query(self.mapper)
             if self.use_get:
                 ident = []
+                # TODO: when options are added to allow switching between union-based and non-union
+                # based polymorphic loads on a per-query basis, this code needs to switch between "mapper" and "select_mapper",
+                # probably via the query's own "mapper" property, and also use one of two "lazy" clauses,
+                # one against the "union" the other not
                 for primary_key in self.select_mapper.pks_by_table[self.select_mapper.mapped_table]:
                     bind = self.lazyreverse[primary_key]
                     ident.append(params[bind.key])
-                return session.query(self.mapper).get(ident)
+                return q.get(ident)
             elif self.order_by is not False:
-                order_by = self.order_by
+                q = q.order_by(self.order_by)
             elif self.secondary is not None and self.secondary.default_order_by() is not None:
-                order_by = self.secondary.default_order_by()
-            else:
-                order_by = False
-            result = session.query(self.mapper, with_options=options).select_whereclause(self.lazywhere, order_by=order_by, params=params)
+                q = q.order_by(self.secondary.default_order_by())
+
+            if options:
+                q = q.options(*options)
+            q = q.filter(self.lazywhere).params(**params)
 
             if self.uselist:
-                return result
+                return q.all()
             else:
-                if len(result):
-                    return result[0]
-                else:
-                    return None
+                return q.first()
+
         return lazyload
 
 
