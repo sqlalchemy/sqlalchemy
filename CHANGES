@@ -1,6 +1,10 @@
 - sql
     - long-identifier detection fixed to use > rather than >= for 
       max ident length [ticket:589]
+    - fixed bug where selectable.corresponding_column(selectable.c.col)
+      would not return selectable.c.col, if the selectable is a join
+      of a table and another join involving the same table.  messed
+      up ORM decision making [ticket:593]
 - mysql
     - added 'fields' to reserved words [ticket:590]
     

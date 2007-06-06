@@ -1670,7 +1670,9 @@ class FromClause(Selectable):
           it merely shares a common anscestor with one of
           the exported columns of this ``FromClause``.
         """
-
+        if column in self.c:
+            return column
+            
         if require_embedded and column not in util.Set(self._get_all_embedded_columns()):
             if not raiseerr:
                 return None
