@@ -249,6 +249,11 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             table1.select((table1.c.myid != 12) & ~(table1.c.name=='john')), 
             "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != :mytable_myid AND NOT (mytable.name = :mytable_name)"
         )
+
+        self.runtest(
+            table1.select((table1.c.myid != 12) & ~table1.c.name), 
+            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != :mytable_myid AND NOT mytable.name"
+        )
         
         self.runtest(
             literal("a") + literal("b") * literal("c"), ":literal + (:literal_1 * :literal_2)"

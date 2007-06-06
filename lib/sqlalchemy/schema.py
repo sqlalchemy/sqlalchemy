@@ -103,6 +103,13 @@ class SchemaItem(object):
         return True
 
     def _get_case_sensitive(self):
+        """late-compile the 'case-sensitive' setting when first accessed.
+        
+        typically the SchemaItem will be assembled into its final structure
+        of other SchemaItems at this point, whereby it can attain this setting 
+        from its containing SchemaItem if not defined locally.
+        """
+        
         try:
             return self.__case_sensitive
         except AttributeError:
