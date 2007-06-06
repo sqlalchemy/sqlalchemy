@@ -573,6 +573,9 @@ class MSSQLDialect_pymssql(MSSQLDialect):
     def supports_sane_rowcount(self):
         return True
 
+    def max_identifier_length(self):
+        return 30
+
     def do_rollback(self, connection):
         # pymssql throws an error on repeated rollbacks. Ignore it.
         # TODO: this is normal behavior for most DBs.  are we sure we want to ignore it ?
