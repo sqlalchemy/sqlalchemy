@@ -1734,6 +1734,8 @@ class FromClause(Selectable):
         for co in self._adjusted_exportable_columns():
             cp = self._proxy_column(co)
             for ci in cp.orig_set:
+                # note that some ambiguity is raised here, whereby a selectable might have more than 
+                # one column that maps to an "original" column.  examples include unions and joins
                 self._orig_cols[ci] = cp
         if self.oid_column is not None:
             for ci in self.oid_column.orig_set:
