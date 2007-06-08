@@ -5,6 +5,9 @@
       can just string all the tables together via outerjoin().
       The UNION still applies if concrete tables are involved, 
       though (since nothing to join them on).
+    - small fix to eager loading to better work with eager loads
+      to polymorphic mappers that are using a straight "outerjoin"
+      clause
 - sql
     - long-identifier detection fixed to use > rather than >= for 
       max ident length [ticket:589]
