@@ -118,7 +118,7 @@ class MagazineTest(testbase.ORMTest):
             Column('name', String(45), default=''),
         )
 
-def generate_round_trip_test(use_unions=False):
+def generate_round_trip_test(use_unions=False, use_joins=False):
     def test_roundtrip(self):
         publication_mapper = mapper(Publication, publication_table)
 
@@ -150,6 +150,9 @@ def generate_round_trip_test(use_unions=False):
                     'p': page_table.select(page_table.c.type=='p'),
                 }, None, 'page_join')
             page_mapper = mapper(Page, page_table, select_table=page_join, polymorphic_on=page_join.c.type, polymorphic_identity='p')
+        elif use_joins:
+            page_join = page_table.outerjoin(magazine_page_table).outerjoin(classified_page_table)
+            page_mapper = mapper(Page, page_table, select_table=page_join, polymorphic_on=page_table.c.type, polymorphic_identity='p')
         else:
             page_mapper = mapper(Page, page_table, polymorphic_on=page_table.c.type, polymorphic_identity='p')
 
@@ -162,15 +165,20 @@ def generate_round_trip_test(use_unions=False):
             magazine_page_mapper = mapper(MagazinePage, magazine_page_table, select_table=magazine_join, inherits=page_mapper, polymorphic_identity='m', properties={
                 'magazine': relation(Magazine, backref=backref('pages', order_by=magazine_join.c.page_no))
             })
+        elif use_joins:
+            magazine_join = page_table.join(magazine_page_table).outerjoin(classified_page_table)
+            magazine_page_mapper = mapper(MagazinePage, magazine_page_table, select_table=magazine_join, inherits=page_mapper, polymorphic_identity='m', properties={
+                'magazine': relation(Magazine, backref=backref('pages', order_by=page_table.c.page_no))
+            })
         else:
             magazine_page_mapper = mapper(MagazinePage, magazine_page_table, inherits=page_mapper, polymorphic_identity='m', properties={
                 'magazine': relation(Magazine, backref=backref('pages', order_by=page_table.c.page_no))
             })
 
         classified_page_mapper = mapper(ClassifiedPage, classified_page_table, inherits=magazine_page_mapper, polymorphic_identity='c', primary_key=[page_table.c.id])
-        compile_mappers()
-        print [str(s) for s in classified_page_mapper.primary_key]
-        print classified_page_mapper.columntoproperty[page_table.c.id]
+        #compile_mappers()
+        #print [str(s) for s in classified_page_mapper.primary_key]
+        #print classified_page_mapper.columntoproperty[page_table.c.id]
 
 
         session = create_session()
@@ -198,13 +206,13 @@ def generate_round_trip_test(use_unions=False):
 
         print p.issues[0].locations[0].magazine.pages
         print [page, page2, page3]
-        assert repr(p.issues[0].locations[0].magazine.pages) == repr([page, page2, page3])
+        assert repr(p.issues[0].locations[0].magazine.pages) == repr([page, page2, page3]), repr(p.issues[0].locations[0].magazine.pages)
     
-    test_roundtrip.__name__ = "test_%s" % (not use_union and "Nounion" or "Unions")
+    test_roundtrip.__name__ = "test_%s" % (not use_union and (use_joins and "joins" or "select") or "unions")
     setattr(MagazineTest, test_roundtrip.__name__, test_roundtrip)
     
-for use_union in [True, False]:
-    generate_round_trip_test(use_union)
+for (use_union, use_join) in [(True, False), (False, True), (False, False)]:
+    generate_round_trip_test(use_union, use_join)
 
         
 if __name__ == '__main__':

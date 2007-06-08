@@ -1,15 +1,10 @@
 from sqlalchemy import *
+from sqlalchemy.orm import *
 import sets
 
-import logging
-logging.basicConfig()
-logging.getLogger('sqlalchemy.orm').setLevel(logging.DEBUG)
-logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
+# this example illustrates a polymorphic load of two classes
 
-# this example illustrates a polymorphic load of two classes, where each class has a  
-# different set of properties
-
-metadata = BoundMetaData('sqlite://')
+metadata = BoundMetaData('sqlite://', echo='True')
 
 # a table to store companies
 companies = Table('companies', metadata, 
@@ -60,16 +55,9 @@ class Company(object):
         return "Company %s" % self.name
 
 
-# create a union that represents both types of joins.  
-person_join = polymorphic_union(
-    {
-        'engineer':people.join(engineers),
-        'manager':people.join(managers),
-        'person':people.select(people.c.type=='person'),
-    }, None, 'pjoin')
+person_join = people.outerjoin(engineers).outerjoin(managers)
 
-#person_mapper = mapper(Person, people, select_table=person_join,polymorphic_on=person_join.c.type, polymorphic_identity='person')
-person_mapper = mapper(Person, people, polymorphic_on=people.c.type, polymorphic_identity='person')
+person_mapper = mapper(Person, people, select_table=person_join,polymorphic_on=people.c.type, polymorphic_identity='person')
 mapper(Engineer, engineers, inherits=person_mapper, polymorphic_identity='engineer')
 mapper(Manager, managers, inherits=person_mapper, polymorphic_identity='manager')
 
