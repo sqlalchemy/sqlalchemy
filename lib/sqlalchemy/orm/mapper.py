@@ -545,6 +545,27 @@ class Mapper(object):
                         break
                 else:
                     raise exceptions.ArgumentError("Cant resolve column " + str(col))
+
+            # this step attempts to resolve the column to an equivalent which is not
+            # a foreign key elsewhere.  this helps with joined table inheritance
+            # so that PKs are expressed in terms of the base table which is always
+            # present in the initial select
+            # TODO: this is a little hacky right now, the "tried" list is to prevent
+            # endless loops between cyclical FKs, try to make this cleaner/work better/etc.,
+            # perhaps via topological sort (pick the leftmost item)
+            tried = util.Set()
+            while True:
+                if not len(c.foreign_keys) or c in tried:
+                    break
+                for cc in c.foreign_keys:
+                    cc = cc.column
+                    c2 = self.mapped_table.corresponding_column(cc, raiseerr=False)
+                    if c2 is not None:
+                        c = c2
+                        tried.add(c)
+                        break
+                else:
+                    break
             primary_key.add(c)
                 
         if len(primary_key) == 0:
