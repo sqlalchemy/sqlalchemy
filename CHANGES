@@ -1,3 +1,10 @@
+- orm
+    - remember all that stuff about polymorphic_union ?  for 
+      joined table inheritance ?  Funny thing...
+      You sort of don't need it for joined table inheritance, you 
+      can just string all the tables together via outerjoin().
+      The UNION still applies if concrete tables are involved, 
+      though (since nothing to join them on).
 - sql
     - long-identifier detection fixed to use > rather than >= for 
       max ident length [ticket:589]

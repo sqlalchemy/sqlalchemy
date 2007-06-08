@@ -607,7 +607,7 @@ class EagerLoader(AbstractRelationLoader):
                 result_list = selectcontext.attributes[(instance, self.key)]
                 if self._should_log_debug:
                     self.logger.debug("eagerload list instance on %s" % mapperutil.attribute_str(instance, self.key))
-                self.mapper._instance(selectcontext, decorated_row, result_list)
+                self.select_mapper._instance(selectcontext, decorated_row, result_list)
         finally:
             selectcontext.recursion_stack.remove(self)
 
