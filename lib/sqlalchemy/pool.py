@@ -536,6 +536,31 @@ class NullPool(Pool):
     def do_get(self):
         return self.create_connection()
 
+class StaticPool(Pool):
+    """A Pool implementation which stores exactly one connection that is 
+    returned for all requests."""
+
+    def __init__(self, creator, **params):
+        Pool.__init__(self, creator, **params)
+        self._conn = creator()
+        self.connection = _ConnectionRecord(self)
+
+    def status(self):
+        return "StaticPool"
+
+    def create_connection(self):
+        return self._conn
+
+    def do_return_conn(self, conn):
+        pass
+
+    def do_return_invalid(self, conn):
+        pass
+
+    def do_get(self):
+        return self.connection
+    
+    
 class AssertionPool(Pool):
     """A Pool implementation that allows at most one checked out
     connection at a time.
