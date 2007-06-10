@@ -205,20 +205,8 @@ class RelationTest3(testbase.ORMTest):
            Column('data', String(30))
            )
 
-    def testrelationonbaseclass_j1_nodata(self):
-       self.do_test("join1", False)
-    def testrelationonbaseclass_j2_nodata(self):
-       self.do_test("join2", False)
-    def testrelationonbaseclass_j1_data(self):
-       self.do_test("join1", True)
-    def testrelationonbaseclass_j2_data(self):
-       self.do_test("join2", True)
-    def testrelationonbaseclass_j3_nodata(self):
-       self.do_test("join3", False)
-    def testrelationonbaseclass_j3_data(self):
-       self.do_test("join3", True)
-
-    def do_test(self, jointype="join1", usedata=False):
+def generate_test(jointype="join1", usedata=False):
+    def do_test(self):
         class Person(AttrSettable):
             pass
         class Manager(Person):
@@ -239,12 +227,14 @@ class RelationTest3(testbase.ORMTest):
                 'manager':join(people, managers, people.c.person_id==managers.c.person_id),
                 'person':people.select(people.c.type=='person')
             }, None)
-        elif jointype == "join3":
+        elif jointype == 'join3':
+            poly_union = people.outerjoin(managers)
+        elif jointype == "join4":
             poly_union=None
-            
+        
         if usedata:
             mapper(Data, data)
-        
+    
         mapper(Manager, managers, inherits=Person, inherit_condition=people.c.person_id==managers.c.person_id, polymorphic_identity='manager')
         if usedata:
             mapper(Person, people, select_table=poly_union, polymorphic_identity='person', polymorphic_on=people.c.type,
@@ -275,7 +265,7 @@ class RelationTest3(testbase.ORMTest):
         sess.save(m)
         sess.save(p)
         sess.flush()
-        
+    
         sess.clear()
         p = sess.query(Person).get(p.person_id)
         p2 = sess.query(Person).get(p2.person_id)
@@ -288,7 +278,15 @@ class RelationTest3(testbase.ORMTest):
         if usedata:
             assert p.data.data == 'ps data'
             assert m.data.data == 'ms data'
+            
+    do_test.__name__ = 'test_relationonbaseclass_%s_%s' % (jointype, data and "nodata" or "data")            
+    return do_test
 
+for jointype in ["join1", "join2", "join3", "join4"]:
+    for data in (True, False):
+        func = generate_test(jointype, data)
+        setattr(RelationTest3, func.__name__, func)
+            
         
 class RelationTest4(testbase.ORMTest):
     def define_tables(self, metadata):
@@ -723,7 +721,7 @@ class GenerativeTest(testbase.AssertMixin):
 
         # test these twice because theres caching involved, as well previous issues that modified the polymorphic union
         for x in range(0, 2):
-            r = session.query(Person).filter_by(people.c.name.like('%2')).join('status').filter_by(name="active")
+            r = session.query(Person).filter(people.c.name.like('%2')).join('status').filter_by(name="active")
             assert str(list(r)) == "[Manager M2, category YYYYYYYYY, status Status active, Engineer E2, field X, status Status active]"
             r = session.query(Engineer).join('status').filter(people.c.name.in_('E2', 'E3', 'E4', 'M4', 'M2', 'M1') & (status.c.name=="active"))
             assert str(list(r)) == "[Engineer E2, field X, status Status active, Engineer E3, field X, status Status active]"

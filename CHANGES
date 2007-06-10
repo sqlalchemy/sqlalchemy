@@ -7,6 +7,11 @@
       new replacements.
     - query.list() replaced with query.all()
     - removed ancient query.select_by_attributename() capability.
+    - added "aliased joins" positional argument to the front of 
+      filter_by(). this allows auto-creation of joins that are aliased
+      locally to the individual filter_by() call.  This allows the 
+      auto-construction of joins which cross the same paths but
+      are querying divergent criteria.
     - along with recent speedups to ResultProxy, total number of
       function calls significantly reduced for large loads.
       test/perf/masseagerload.py reports 0.4 as having the fewest number

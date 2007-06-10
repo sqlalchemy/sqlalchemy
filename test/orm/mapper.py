@@ -848,31 +848,7 @@ class NoLoadTest(MapperSuperTest):
             )
 
 
-class LazyTest(MapperSuperTest):
-
-    def testbasic(self):
-        """tests a basic one-to-many lazy load"""
-        m = mapper(User, users, properties = dict(
-            addresses = relation(mapper(Address, addresses), lazy = True)
-        ))
-        q = create_session().query(m)
-        l = q.select(users.c.user_id == 7)
-        self.assert_result(l, User,
-            {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
-            )
-
-    def testbindstosession(self):
-        ctx = SessionContext(create_session)
-        m = mapper(User, users, properties = dict(
-            addresses = relation(mapper(Address, addresses, extension=ctx.mapper_extension), lazy=True)
-        ), extension=ctx.mapper_extension)
-        q = ctx.current.query(m)
-        u = q.filter(users.c.user_id == 7).selectfirst()
-        ctx.current.expunge(u)
-        self.assert_result([u], User,
-            {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
-            )
-    
+class MapperExtensionTest(MapperSuperTest):
     def testcreateinstance(self):
         class Ext(MapperExtension):
             def create_instance(self, *args, **kwargs):
@@ -885,106 +861,9 @@ class LazyTest(MapperSuperTest):
         q = create_session().query(m)
         l = q.select();
         self.assert_result(l, User, *user_address_result)
-        
-    def testorderby(self):
-        m = mapper(Address, addresses)
+    
+class LazyTest(MapperSuperTest):
 
-        m = mapper(User, users, properties = dict(
-            addresses = relation(m, lazy = True, order_by=addresses.c.email_address),
-        ))
-        q = create_session().query(m)
-        l = q.select()
-
-        self.assert_result(l, User,
-            {'user_id' : 7, 'addresses' : (Address, [{'email_address' : 'jack@bean.com'}])},
-            {'user_id' : 8, 'addresses' : (Address, [{'email_address':'ed@bettyboop.com'}, {'email_address':'ed@lala.com'}, {'email_address':'ed@wood.com'}])},
-            {'user_id' : 9, 'addresses' : (Address, [])}
-            )
-
-    def testorderby_select(self):
-        """tests that a regular mapper select on a single table can order by a relation to a second table"""
-        m = mapper(Address, addresses)
-
-        m = mapper(User, users, properties = dict(
-            addresses = relation(m, lazy = True),
-        ))
-        q = create_session().query(m)
-        l = q.select(users.c.user_id==addresses.c.user_id, order_by=addresses.c.email_address)
-
-        self.assert_result(l, User,
-            {'user_id' : 8, 'addresses' : (Address, [{'email_address':'ed@wood.com'}, {'email_address':'ed@bettyboop.com'}, {'email_address':'ed@lala.com'}, ])},
-            {'user_id' : 7, 'addresses' : (Address, [{'email_address' : 'jack@bean.com'}])},
-        )
-        
-    def testorderby_desc(self):
-        m = mapper(Address, addresses)
-
-        m = mapper(User, users, properties = dict(
-            addresses = relation(m, lazy = True, order_by=[desc(addresses.c.email_address)]),
-        ))
-        q = create_session().query(m)
-        l = q.select()
-
-        self.assert_result(l, User,
-            {'user_id' : 7, 'addresses' : (Address, [{'email_address' : 'jack@bean.com'}])},
-            {'user_id' : 8, 'addresses' : (Address, [{'email_address':'ed@wood.com'}, {'email_address':'ed@lala.com'}, {'email_address':'ed@bettyboop.com'}])},
-            {'user_id' : 9, 'addresses' : (Address, [])},
-            )
-
-    def testorphanstate(self):
-        """test that a lazily loaded child object is not marked as an orphan"""
-        m = mapper(User, users, properties={
-            'addresses':relation(Address, cascade="all,delete-orphan", lazy=True)
-        })
-        mapper(Address, addresses)
-
-        q = create_session().query(m)
-        user = q.get(7)
-        assert getattr(User, 'addresses').hasparent(user.addresses[0], optimistic=True)
-        assert not class_mapper(Address)._is_orphan(user.addresses[0])
-        
-    def testlimit(self):
-        ordermapper = mapper(Order, orders, properties = dict(
-                items = relation(mapper(Item, orderitems), lazy = True)
-            ))
-
-        m = mapper(User, users, properties = dict(
-            addresses = relation(mapper(Address, addresses), lazy = True),
-            orders = relation(ordermapper, primaryjoin = users.c.user_id==orders.c.user_id, lazy = True),
-        ))
-        sess= create_session()
-        q = sess.query(m)
-        
-        if db.engine.name == 'mssql':
-            l = q.select(limit=2)
-            self.assert_result(l, User, *user_all_result[:2])
-        else:        
-            l = q.select(limit=2, offset=1)
-            self.assert_result(l, User, *user_all_result[1:3])
-
-        # use a union all to get a lot of rows to join against
-        u2 = users.alias('u2')
-        s = union_all(u2.select(use_labels=True), u2.select(use_labels=True), u2.select(use_labels=True)).alias('u')
-        print [key for key in s.c.keys()]
-        l = q.select(s.c.u2_user_id==User.c.user_id, distinct=True)
-        self.assert_result(l, User, *user_all_result)
-        
-        sess.clear()
-        clear_mappers()
-        m = mapper(Item, orderitems, properties = dict(
-                keywords = relation(mapper(Keyword, keywords), itemkeywords, lazy = True),
-            ))
-        
-        l = sess.query(m).select((Item.c.item_name=='item 2') | (Item.c.item_name=='item 5') | (Item.c.item_name=='item 3'), order_by=[Item.c.item_id], limit=2)        
-        self.assert_result(l, Item, *[item_keyword_result[1], item_keyword_result[2]])
-
-    def testonetoone(self):
-        m = mapper(User, users, properties = dict(
-            address = relation(mapper(Address, addresses), lazy = True, uselist = False)
-        ))
-        q = create_session().query(m)
-        l = q.select(users.c.user_id == 7)
-        self.assert_result(l, User, {'user_id':7, 'address' : (Address, {'address_id':1})})
 
     def testbackwardsonetoone(self):
         m = mapper(Address, addresses, properties = dict(

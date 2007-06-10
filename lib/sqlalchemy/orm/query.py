@@ -255,22 +255,37 @@ class Query(object):
 
         import properties
         
-        clause = None
+        if len(args) > 1:
+            raise exceptions.InvalidRequestError("filter_by() takes either zero positional arguments, or one scalar or list argument indicating a property search path.")
+        if len(args) == 1:
+            path = args[0]
+            (join, joinpoint, alias) = self._join_to(path, outerjoin=False, start=self.mapper, create_aliases=True)
+            clause = None
+        else:
+            alias = None
+            join = None
+            clause = None
+            joinpoint = self._joinpoint
 
         for key, value in kwargs.iteritems():
-            prop = self._joinpoint.props[key]
+            prop = joinpoint.props[key]
             if isinstance(prop, properties.PropertyLoader):
                 c = self._with_lazy_criterion(value, prop, True) # & self.join_via(keys[:-1]) - use aliasized join feature
             else:
                 c = prop.compare(value) # & self.join_via(keys) - use aliasized join feature
+            if alias is not None:
+                sql_util.ClauseAdapter(alias).traverse(c)
             if clause is None:
                 clause =  c
             else:
                 clause &= c
         
-        return self.filter(clause)
+        if join is not None:
+            return self.select_from(join).filter(clause)
+        else:
+            return self.filter(clause)
 
-    def _join_to(self, prop, outerjoin=False, start=None):
+    def _join_to(self, prop, outerjoin=False, start=None, create_aliases=False):
         if start is None:
             start = self._joinpoint
         
@@ -293,6 +308,7 @@ class Query(object):
         FindJoinedTables().traverse(clause)
             
         mapper = start
+        alias = None
         for key in keys:
             prop = mapper.props[key]
             if prop._is_self_referential():
@@ -307,12 +323,36 @@ class Query(object):
                         clause = clause.outerjoin(prop.select_table, prop.get_join(mapper))
                 else:
                     if prop.secondary:
-                        clause = clause.join(prop.secondary, prop.get_join(mapper, primary=True, secondary=False))
-                        clause = clause.join(prop.select_table, prop.get_join(mapper, primary=False))
+                        if create_aliases:
+                            join = prop.get_join(mapper, primary=True, secondary=False).copy_container()
+                            secondary_alias = prop.secondary.alias()
+                            if alias is not None:
+                                sql_util.ClauseAdapter(alias).traverse(join)
+                            sql_util.ClauseAdapter(secondary_alias).traverse(join)
+                            clause = clause.join(secondary_alias, join)
+                            alias = prop.select_table.alias()
+                            join = prop.get_join(mapper, primary=False).copy_container()
+                            sql_util.ClauseAdapter(secondary_alias).traverse(join)
+                            sql_util.ClauseAdapter(alias).traverse(join)
+                            clause = clause.join(alias, join)
+                        else:
+                            clause = clause.join(prop.secondary, prop.get_join(mapper, primary=True, secondary=False))
+                            clause = clause.join(prop.select_table, prop.get_join(mapper, primary=False))
                     else:
-                        clause = clause.join(prop.select_table, prop.get_join(mapper))
+                        if create_aliases:
+                            join = prop.get_join(mapper).copy_container()
+                            if alias is not None:
+                                sql_util.ClauseAdapter(alias).traverse(join)
+                            alias = prop.select_table.alias()
+                            sql_util.ClauseAdapter(alias).traverse(join)
+                            clause = clause.join(alias, join)
+                        else:
+                            clause = clause.join(prop.select_table, prop.get_join(mapper))
             mapper = prop.mapper
-        return (clause, mapper)
+        if create_aliases:
+            return (clause, mapper, alias)
+        else:
+            return (clause, mapper)
 
     def _generative_col_aggregate(self, col, func):
         """apply the given aggregate function to the query and return the newly

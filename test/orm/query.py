@@ -1,6 +1,7 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
 import testbase
+from fixtures import *
 
 class Base(object):
     def __init__(self, **kwargs):
@@ -42,132 +43,19 @@ class QueryTest(testbase.ORMTest):
     
     def setUpAll(self):
         super(QueryTest, self).setUpAll()
-        self.install_fixture_data()
+        install_fixture_data()
         self.setup_mappers()
-        
-    def define_tables(self, metadata):
-        global users, orders, addresses, items, order_items, item_keywords, keywords
-        
-        users = Table('users', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('name', String(30), nullable=False))
-
-        orders = Table('orders', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('user_id', None, ForeignKey('users.id')),
-            Column('address_id', None, ForeignKey('addresses.id')),
-            Column('description', String(30)),
-            Column('isopen', Integer)
-            )
-
-        addresses = Table('addresses', metadata, 
-            Column('id', Integer, primary_key=True),
-            Column('user_id', None, ForeignKey('users.id')),
-            Column('email_address', String(50), nullable=False))
-            
-        items = Table('items', metadata, 
-            Column('id', Integer, primary_key=True),
-            Column('description', String(30), nullable=False)
-            )
-
-        order_items = Table('order_items', metadata,
-            Column('item_id', None, ForeignKey('items.id')),
-            Column('order_id', None, ForeignKey('orders.id')))
-
-        item_keywords = Table('item_keywords', metadata, 
-            Column('item_id', None, ForeignKey('items.id')),
-            Column('keyword_id', None, ForeignKey('keywords.id')))
-
-        keywords = Table('keywords', metadata, 
-            Column('id', Integer, primary_key=True),
-            Column('name', String(30), nullable=False)
-            )
-        
-    def install_fixture_data(self):
-        users.insert().execute(
-            dict(id = 7, name = 'jack'),
-            dict(id = 8, name = 'ed'),
-            dict(id = 9, name = 'fred'),
-            dict(id = 10, name = 'chuck'),
-            
-        )
-        addresses.insert().execute(
-            dict(id = 1, user_id = 7, email_address = "jack@bean.com"),
-            dict(id = 2, user_id = 8, email_address = "ed@wood.com"),
-            dict(id = 3, user_id = 8, email_address = "ed@bettyboop.com"),
-            dict(id = 4, user_id = 8, email_address = "ed@lala.com"),
-            dict(id = 5, user_id = 9, email_address = "fred@fred.com"),
-        )
-        orders.insert().execute(
-            dict(id = 1, user_id = 7, description = 'order 1', isopen=0, address_id=1),
-            dict(id = 2, user_id = 9, description = 'order 2', isopen=0, address_id=4),
-            dict(id = 3, user_id = 7, description = 'order 3', isopen=1, address_id=1),
-            dict(id = 4, user_id = 9, description = 'order 4', isopen=1, address_id=4),
-            dict(id = 5, user_id = 7, description = 'order 5', isopen=0, address_id=1)
-        )
-        items.insert().execute(
-            dict(id=1, description='item 1'),
-            dict(id=2, description='item 2'),
-            dict(id=3, description='item 3'),
-            dict(id=4, description='item 4'),
-            dict(id=5, description='item 5'),
-        )
-        order_items.insert().execute(
-            dict(item_id=1, order_id=1),
-            dict(item_id=2, order_id=1),
-            dict(item_id=3, order_id=1),
-
-            dict(item_id=1, order_id=2),
-            dict(item_id=2, order_id=2),
-            dict(item_id=3, order_id=2),
-            dict(item_id=2, order_id=2),
-
-            dict(item_id=3, order_id=3),
-            dict(item_id=4, order_id=3),
-            dict(item_id=5, order_id=3),
-            
-            dict(item_id=5, order_id=4),
-            dict(item_id=1, order_id=4),
-            
-            dict(item_id=5, order_id=5),
-        )
-        keywords.insert().execute(
-            dict(id=1, name='blue'),
-            dict(id=2, name='red'),
-            dict(id=3, name='green'),
-            dict(id=4, name='big'),
-            dict(id=5, name='small'),
-            dict(id=6, name='round'),
-            dict(id=7, name='square')
-        )
-
-        # this many-to-many table has the keywords inserted
-        # in primary key order, to appease the unit tests.
-        # this is because postgres, oracle, and sqlite all support 
-        # true insert-order row id, but of course our pal MySQL does not,
-        # so the best it can do is order by, well something, so there you go.
-        item_keywords.insert().execute(
-            dict(keyword_id=2, item_id=1),
-            dict(keyword_id=2, item_id=2),
-            dict(keyword_id=4, item_id=1),
-            dict(keyword_id=6, item_id=1),
-            dict(keyword_id=5, item_id=2),
-            dict(keyword_id=3, item_id=3),
-            dict(keyword_id=4, item_id=3),
-            dict(keyword_id=7, item_id=2),
-            dict(keyword_id=6, item_id=3)
-        )
-
     
-    def setup_mappers(self):
-        global User, Order, Item, Keyword, Address
+    def tearDownAll(self):
+        clear_mappers()
+        super(QueryTest, self).tearDownAll()
+          
+    def define_tables(self, meta):
+        # a slight dirty trick here. 
+        meta.tables = metadata.tables
+        metadata.connect(meta.engine)
         
-        class User(Base):pass
-        class Order(Base):pass
-        class Item(Base):pass
-        class Keyword(Base):pass
-        class Address(Base):pass
-
+    def setup_mappers(self):
         mapper(User, users, properties={
             'addresses':relation(Address),
             'orders':relation(Order, backref='user'), # o2m, m2o
@@ -199,6 +87,30 @@ class QueryTest(testbase.ORMTest):
             User(id=10, addresses=[])
         ]
 
+    @property
+    def user_all_result(self):
+        return [
+            User(id=7, addresses=[
+                Address(id=1)
+            ], orders=[
+                Order(description='order 1', items=[Item(description='item 1'), Item(description='item 2'), Item(description='item 3')]),
+                Order(description='order 3'),
+                Order(description='order 5'),
+            ]), 
+            User(id=8, addresses=[
+                Address(id=2),
+                Address(id=3),
+                Address(id=4)
+            ]), 
+            User(id=9, addresses=[
+                Address(id=5)
+            ], orders=[
+                Order(description='order 2', items=[Item(description='item 1'), Item(description='item 2'), Item(description='item 3')]),
+                Order(description='order 4', items=[Item(description='item 1'), Item(description='item 5')]),
+            ]), 
+            User(id=10, addresses=[])
+        ]
+        
 class GetTest(QueryTest):
     def test_get(self):
         s = create_session()
@@ -289,6 +201,7 @@ class ParentTest(QueryTest):
     
 class JoinTest(QueryTest):
     def test_overlapping_paths(self):
+        # load a user who has an order that contains item id 3 and address id 1 (order 3, owned by jack)
         result = create_session().query(User).join(['orders', 'items']).filter_by(id=3).join(['orders','address']).filter_by(id=1).all()
         assert [User(id=7, name='jack')] == result
     
@@ -378,7 +291,7 @@ class InstancesTest(QueryTest):
 
     def test_multi_columns(self):
         sess = create_session()
-        (user7, user8, user9, user10) = sess.query(User).select()
+        (user7, user8, user9, user10) = sess.query(User).all()
         expected = [(user7, 1),
             (user8, 3),
             (user9, 1),
@@ -398,7 +311,7 @@ class InstancesTest(QueryTest):
     @testbase.unsupported('mysql') # only because of "+" operator requiring "concat" in mysql (fix #475)
     def test_two_columns(self):
         sess = create_session()
-        (user7, user8, user9, user10) = sess.query(User).select()
+        (user7, user8, user9, user10) = sess.query(User).all()
         expected = [
             (user7, 1, "Name:jack"),
             (user8, 3, "Name:ed"),
@@ -410,7 +323,32 @@ class InstancesTest(QueryTest):
         l = q.instances(s.execute(), "count", "concat")
         assert l == expected
 
+class FilterByTest(QueryTest):
+    def test_aliased(self):
+        """test automatic generation of aliased joins using filter_by()."""
+        
+        sess = create_session()
+        
+        # test a basic aliasized path
+        q = sess.query(User).filter_by(['addresses'], email_address='jack@bean.com')
+        assert [User(id=7)] == q.all()
 
+        # test two aliasized paths, one to 'orders' and the other to 'orders','items'.
+        # one row is returned because user 7 has order 3 and also has order 1 which has item 1
+        # this tests a o2m join and a m2m join.
+        q = sess.query(User).filter_by(['orders'], description="order 3").filter_by(['orders', 'items'], description="item 1")
+        assert q.count() == 1
+        assert [User(id=7)] == q.all()
+        
+        # test the control version - same joins but not aliased.  rows are not returned because order 3 does not have item 1
+        # addtionally by placing this test after the previous one, test that the "aliasing" step does not corrupt the
+        # join clauses that are cached by the relationship.
+        q = sess.query(User).join('orders').filter_by(description="order 3").join(['orders', 'items']).filter_by(description="item 1")
+        assert [] == q.all()
+        assert q.count() == 0
+        
+        
+        
 
 if __name__ == '__main__':
     testbase.main()
