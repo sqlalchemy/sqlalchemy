@@ -139,7 +139,7 @@ def descriptor():
 class SQLiteExecutionContext(default.DefaultExecutionContext):
     def post_exec(self):
         if self.compiled.isinsert:
-            self._last_inserted_ids = [self.cursor.lastrowid]
+            self._last_inserted_ids = [self.cursor.lastrowid] + self._last_inserted_ids[1:]
         super(SQLiteExecutionContext, self).post_exec()
         
 class SQLiteDialect(ansisql.ANSIDialect):
