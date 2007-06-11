@@ -125,6 +125,33 @@ class DefaultTest(PersistTest):
         l = l.fetchone()
         self.assert_(l['col3'] == 55)
 
+    @testbase.supported('postgres')
+    def testpassiveoverride(self):
+        """primarily for postgres, tests that when we get a primary key column back 
+        from reflecting a table which has a default value on it, we pre-execute
+        that PassiveDefault upon insert, even though PassiveDefault says 
+        "let the database execute this", because in postgres we must have all the primary
+        key values in memory before insert; otherwise we cant locate the just inserted row."""
+
+        try:
+            meta = BoundMetaData(testbase.db)
+            testbase.db.execute("""
+             CREATE TABLE speedy_users
+             (
+                 speedy_user_id   SERIAL     PRIMARY KEY,
+
+                 user_name        VARCHAR    NOT NULL,
+                 user_password    VARCHAR    NOT NULL
+             );
+            """, None)
+
+            t = Table("speedy_users", meta, autoload=True)
+            t.insert().execute(user_name='user', user_password='lala')
+            l = t.select().execute().fetchall()
+            self.assert_(l == [(1, 'user', 'lala')])
+        finally:
+            testbase.db.execute("drop table speedy_users", None)
+
 class AutoIncrementTest(PersistTest):
     @testbase.supported('postgres', 'mysql')
     def testnonautoincrement(self):

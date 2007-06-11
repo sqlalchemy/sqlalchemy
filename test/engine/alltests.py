@@ -9,6 +9,7 @@ def suite():
         'engine.pool', 
         'engine.reconnect',
         'engine.execute',
+        'engine.metadata',
         'engine.transaction',
         
         # schema/tables

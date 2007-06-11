@@ -1122,6 +1122,16 @@ class MetaData(SchemaItem):
         else:
             self._engine = engine_or_url
 
+    def _get_engine(self):
+        # we are checking is_bound() because _engine wires 
+        # into SchemaItem's _engine mechanism, which raises an error,
+        # whereas we just want to return None.
+        if not self.is_bound():
+            return None
+        return self._engine
+
+    engine = property(_get_engine, connect)
+    
     def clear(self):
         self.tables.clear()
 
@@ -1181,10 +1191,6 @@ class MetaData(SchemaItem):
     def _derived_metadata(self):
         return self
 
-    def _get_engine(self):
-        if not self.is_bound():
-            return None
-        return self._engine
 
 class BoundMetaData(MetaData):
     """``MetaData`` for which the first argument is a required Engine, url string, or URL instance.
@@ -1241,7 +1247,8 @@ thread-local basis.
             return self.context._engine
         else:
             return None
-    engine=property(_get_engine)
+
+    engine = property(_get_engine, connect)
 
 class SchemaVisitor(sql.ClauseVisitor):
     """Define the visiting for ``SchemaItem`` objects."""
