@@ -352,8 +352,8 @@ class ReflectionTest(PersistTest):
 
             
     def testtometadata(self):
-        meta = MetaData('md1')
-        meta2 = MetaData('md2')
+        meta = MetaData()
+        meta2 = MetaData()
         
         table = Table('mytable', meta,
             Column('myid', Integer, primary_key=True),
@@ -401,7 +401,7 @@ class ReflectionTest(PersistTest):
     def test_nonexistent(self):
         self.assertRaises(NoSuchTableError, Table,
                           'fake_table',
-                          testbase.db, autoload=True)
+                          BoundMetaData(testbase.db), autoload=True)
         
     def testoverride(self):
         meta = BoundMetaData(testbase.db)

@@ -12,7 +12,8 @@ db = testbase.db
 class DefaultTest(PersistTest):
 
     def setUpAll(self):
-        global t, f, f2, ts, currenttime
+        global t, f, f2, ts, currenttime, metadata
+        metadata = BoundMetaData(testbase.db)
         x = {'x':50}
         def mydefault():
             x['x'] += 1
@@ -47,7 +48,7 @@ class DefaultTest(PersistTest):
             ts = 3
             deftype = Integer
             
-        t = Table('default_test1', db,
+        t = Table('default_test1', metadata,
             # python function
             Column('col1', Integer, primary_key=True, default=mydefault),
             

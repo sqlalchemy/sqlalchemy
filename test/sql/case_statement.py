@@ -6,8 +6,9 @@ from sqlalchemy import *
 class CaseTest(testbase.PersistTest):
 
     def setUpAll(self):
+        metadata = BoundMetaData(testbase.db)
         global info_table
-        info_table = Table('infos', testbase.db,
+        info_table = Table('infos', metadata,
         	Column('pk', Integer, primary_key=True),
         	Column('info', String(30)))
 

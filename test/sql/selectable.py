@@ -10,8 +10,8 @@ db = testbase.db
 
 from sqlalchemy import *
 
-
-table = Table('table1', db, 
+metadata = BoundMetaData(db)
+table = Table('table1', metadata, 
     Column('col1', Integer, primary_key=True),
     Column('col2', String(20)),
     Column('col3', Integer),
@@ -19,7 +19,7 @@ table = Table('table1', db,
     
 )
 
-table2 = Table('table2', db,
+table2 = Table('table2', metadata,
     Column('col1', Integer, primary_key=True),
     Column('col2', Integer, ForeignKey('table1.col1')),
     Column('col3', String(20)),

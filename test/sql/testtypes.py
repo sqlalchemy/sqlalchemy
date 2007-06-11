@@ -89,7 +89,7 @@ class OverrideTest(PersistTest):
 
     def setUpAll(self):
         global users
-        users = Table('type_users', db, 
+        users = Table('type_users', BoundMetaData(db), 
             Column('user_id', Integer, primary_key = True),
             # totall custom type
             Column('goofy', MyType, nullable = False),
@@ -124,7 +124,7 @@ class ColumnsTest(AssertMixin):
             expectedResults['float_column'] = 'float_column FLOAT(25)'
     
         print db.engine.__module__
-        testTable = Table('testColumns', db,
+        testTable = Table('testColumns', BoundMetaData(db),
             Column('int_column', Integer),
             Column('smallint_column', Smallinteger),
             Column('varchar_column', String(20)),
@@ -139,7 +139,8 @@ class UnicodeTest(AssertMixin):
     """tests the Unicode type.  also tests the TypeDecorator with instances in the types package."""
     def setUpAll(self):
         global unicode_table
-        unicode_table = Table('unicode_table', db, 
+        metadata = BoundMetaData(db)
+        unicode_table = Table('unicode_table', metadata, 
             Column('id', Integer, Sequence('uni_id_seq', optional=True), primary_key=True),
             Column('unicode_data', Unicode(250)),
             Column('plain_data', String(250))
@@ -184,7 +185,7 @@ class UnicodeTest(AssertMixin):
 class BinaryTest(AssertMixin):
     def setUpAll(self):
         global binary_table
-        binary_table = Table('binary_table', db, 
+        binary_table = Table('binary_table', BoundMetaData(db), 
         Column('primary_id', Integer, Sequence('binary_id_seq', optional=True), primary_key=True),
         Column('data', Binary),
         Column('data_slice', Binary(100)),
@@ -278,7 +279,7 @@ class DateTest(AssertMixin):
             collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime(timezone=False)),
                            Column('user_date', Date), Column('user_time', Time)]
  
-        users_with_date = Table('query_users_with_date', db, *collist)
+        users_with_date = Table('query_users_with_date', BoundMetaData(db), *collist)
         users_with_date.create()
         insert_dicts = [dict(zip(fnames, d)) for d in insert_data]
 

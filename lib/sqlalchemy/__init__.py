@@ -9,8 +9,4 @@ from sqlalchemy.sql import *
 from sqlalchemy.schema import *
 
 from sqlalchemy.engine import create_engine
-from sqlalchemy.schema import default_metadata
 
-def global_connect(*args, **kwargs):
-    default_metadata.connect(*args, **kwargs)
-    

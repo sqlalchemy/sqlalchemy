@@ -69,7 +69,7 @@ class SchemaItem(object):
         else:
             raise exceptions.InvalidRequestError("This SchemaItem is not connected to any Engine")
 
-    def _set_casing_strategy(self, name, kwargs, keyname='case_sensitive'):
+    def _set_casing_strategy(self, kwargs, keyname='case_sensitive'):
         """Set the "case_sensitive" argument sent via keywords to the item's constructor.
 
         For the purposes of Table's 'schema' property, the name of the
@@ -77,7 +77,7 @@ class SchemaItem(object):
         """
         setattr(self, '_%s_setting' % keyname, kwargs.pop(keyname, None))
 
-    def _determine_case_sensitive(self, name, keyname='case_sensitive'):
+    def _determine_case_sensitive(self, keyname='case_sensitive'):
         """Determine the `case_sensitive` value for this item.
 
         For the purposes of Table's `schema` property, the name of the
@@ -113,7 +113,7 @@ class SchemaItem(object):
         try:
             return self.__case_sensitive
         except AttributeError:
-            self.__case_sensitive = self._determine_case_sensitive(self.name)
+            self.__case_sensitive = self._determine_case_sensitive()
             return self.__case_sensitive
     case_sensitive = property(_get_case_sensitive)
 
@@ -130,21 +130,6 @@ class _TableSingleton(type):
     """A metaclass used by the ``Table`` object to provide singleton behavior."""
 
     def __call__(self, name, metadata, *args, **kwargs):
-        if isinstance(metadata, sql.Executor):
-            # backwards compatibility - get a BoundSchema associated with the engine
-            engine = metadata
-            if not hasattr(engine, '_legacy_metadata'):
-                engine._legacy_metadata = BoundMetaData(engine)
-            metadata = engine._legacy_metadata
-        elif metadata is not None and not isinstance(metadata, MetaData):
-            # they left MetaData out, so assume its another SchemaItem, add it to *args
-            args = list(args)
-            args.insert(0, metadata)
-            metadata = None
-
-        if metadata is None:
-            metadata = default_metadata
-
         schema = kwargs.get('schema', None)
         autoload = kwargs.pop('autoload', False)
         autoload_with = kwargs.pop('autoload_with', False)
@@ -289,8 +274,8 @@ class Table(SchemaItem, sql.TableClause):
             self.fullname = self.name
         self.owner = kwargs.pop('owner', None)
 
-        self._set_casing_strategy(name, kwargs)
-        self._set_casing_strategy(self.schema or '', kwargs, keyname='case_sensitive_schema')
+        self._set_casing_strategy(kwargs)
+        self._set_casing_strategy(kwargs, keyname='case_sensitive_schema')
 
         if len([k for k in kwargs if not re.match(r'^(?:%s)_' % '|'.join(databases.__all__), k)]):
             raise TypeError("Invalid argument(s) for Table: %s" % repr(kwargs.keys()))
@@ -302,7 +287,7 @@ class Table(SchemaItem, sql.TableClause):
         try:
             return getattr(self, '_case_sensitive_schema')
         except AttributeError:
-            setattr(self, '_case_sensitive_schema', self._determine_case_sensitive(self.schema or '', keyname='case_sensitive_schema'))
+            setattr(self, '_case_sensitive_schema', self._determine_case_sensitive(keyname='case_sensitive_schema'))
             return getattr(self, '_case_sensitive_schema')
     case_sensitive_schema = property(_get_case_sensitive_schema)
 
@@ -510,7 +495,7 @@ class Column(SchemaItem, sql._ColumnClause):
         self.index = kwargs.pop('index', None)
         self.unique = kwargs.pop('unique', None)
         self.quote = kwargs.pop('quote', False)
-        self._set_casing_strategy(name, kwargs)
+        self._set_casing_strategy(kwargs)
         self.onupdate = kwargs.pop('onupdate', None)
         self.autoincrement = kwargs.pop('autoincrement', True)
         self.constraints = util.Set()
@@ -826,7 +811,7 @@ class Sequence(DefaultGenerator):
         self.increment = increment
         self.optional=optional
         self.quote = quote
-        self._set_casing_strategy(name, kwargs)
+        self._set_casing_strategy(kwargs)
 
     def __repr__(self):
         return "Sequence(%s)" % string.join(
@@ -1074,12 +1059,9 @@ class Index(SchemaItem):
 class MetaData(SchemaItem):
     """Represent a collection of Tables and their associated schema constructs."""
 
-    def __init__(self, name=None, url=None, engine=None, **kwargs):
+    def __init__(self, url=None, engine=None, **kwargs):
         """create a new MetaData object.
         
-            name
-                optional name for this MetaData instance.
-            
             url
                 a string or URL instance which will be passed to create_engine(),
                 along with \**kwargs - this MetaData will be bound to the resulting
@@ -1095,9 +1077,8 @@ class MetaData(SchemaItem):
         """        
 
         self.tables = {}
-        self.name = name
         self._engine = None
-        self._set_casing_strategy(name, kwargs)
+        self._set_casing_strategy(kwargs)
         if engine or url:
             self.connect(engine or url, **kwargs)
 
@@ -1197,12 +1178,12 @@ class BoundMetaData(MetaData):
     
     """
 
-    def __init__(self, engine_or_url, name=None, **kwargs):
+    def __init__(self, engine_or_url, **kwargs):
         from sqlalchemy.engine.url import URL
         if isinstance(engine_or_url, basestring) or isinstance(engine_or_url, URL):
-            super(BoundMetaData, self).__init__(name=name, url=engine_or_url, **kwargs)
+            super(BoundMetaData, self).__init__(url=engine_or_url, **kwargs)
         else:
-            super(BoundMetaData, self).__init__(name=name, engine=engine_or_url, **kwargs)
+            super(BoundMetaData, self).__init__(engine=engine_or_url, **kwargs)
             
 
 class DynamicMetaData(MetaData):
@@ -1211,7 +1192,7 @@ multiple ``Engine`` implementations on a dynamically alterable,
 thread-local basis.
     """
 
-    def __init__(self, name=None, threadlocal=True, **kwargs):
+    def __init__(self, threadlocal=True, **kwargs):
         if threadlocal:
             self.context = util.ThreadLocal()
         else:
@@ -1229,6 +1210,8 @@ thread-local basis.
                 self.__engines[engine_or_url] = e
                 self.context._engine = e
         else:
+            # TODO: this is squirrely.  we shouldnt have to hold onto engines
+            # in a case like this
             if not self.__engines.has_key(engine_or_url):
                 self.__engines[engine_or_url] = engine_or_url
             self.context._engine = engine_or_url
@@ -1311,4 +1294,4 @@ class SchemaVisitor(sql.ClauseVisitor):
         """Visit a ``CheckConstraint`` on a ``Column``."""
         pass
 
-default_metadata = DynamicMetaData('default')
+
