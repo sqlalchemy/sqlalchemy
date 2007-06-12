@@ -1198,7 +1198,7 @@ thread-local basis.
         else:
             self.context = self
         self.__engines = {}
-        super(DynamicMetaData, self).__init__(name=name, **kwargs)
+        super(DynamicMetaData, self).__init__(**kwargs)
 
     def connect(self, engine_or_url, **kwargs):
         from sqlalchemy.engine.url import URL
