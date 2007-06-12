@@ -529,6 +529,12 @@ class PGCompiler(ansisql.ANSICompiler):
         else:
             return ""
 
+    def for_update_clause(self, select):
+        if select.for_update == 'nowait':
+            return " FOR UPDATE NOWAIT"
+        else:
+            return super(PGCompiler, self).for_update_clause(select)
+
     def binary_operator_string(self, binary):
         if isinstance(binary.type, sqltypes.String) and binary.operator == '+':
             return '||'
