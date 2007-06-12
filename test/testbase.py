@@ -3,9 +3,9 @@ instruments SQLAlchemy dialect/engine to track SQL statements for assertion purp
 provides base test classes for common test scenarios."""
 
 import sys
-sys.path.insert(0, './lib/')
 
 import os, unittest, StringIO, re, ConfigParser, optparse
+sys.path.insert(0, os.path.join(os.getcwd(), 'lib'))
 import sqlalchemy
 from sqlalchemy import sql, engine, pool, BoundMetaData
 from sqlalchemy.orm import clear_mappers
