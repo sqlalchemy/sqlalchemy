@@ -54,6 +54,13 @@ Help is available via:
                 default)
       --coverage            Dump a full coverage report after running    
 
+NON-SQLITE DATABASES
+--------------------
+The prefab database connections expect to log in to localhost on the
+default port as user "scott", password "tiger", database "test" (where
+applicable).  E.g. for postgresql the this translates to 
+"postgres://scott:tiger@127.0.0.1:5432/test".
+
 RUNNING INDIVIDUAL TESTS
 -------------------------
 Any unittest module can be run directly from the module file (same commandline options):
