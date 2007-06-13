@@ -141,28 +141,35 @@ class UnicodeTest(AssertMixin):
         global unicode_table
         unicode_table = Table('unicode_table', db, 
             Column('id', Integer, Sequence('uni_id_seq', optional=True), primary_key=True),
-            Column('unicode_data', Unicode(250)),
-            Column('plain_data', String(250))
+            Column('unicode_varchar', Unicode(250)),
+            Column('unicode_text', Unicode),
+            Column('plain_varchar', String(250))
             )
         unicode_table.create()
     def tearDownAll(self):
         unicode_table.drop()
+
     def testbasic(self):
-        assert unicode_table.c.unicode_data.type.length == 250
+        assert unicode_table.c.unicode_varchar.type.length == 250
         rawdata = 'Alors vous imaginez ma surprise, au lever du jour, quand une dr\xc3\xb4le de petit voix m\xe2\x80\x99a r\xc3\xa9veill\xc3\xa9. Elle disait: \xc2\xab S\xe2\x80\x99il vous pla\xc3\xaet\xe2\x80\xa6 dessine-moi un mouton! \xc2\xbb\n'
         unicodedata = rawdata.decode('utf-8')
-        unicode_table.insert().execute(unicode_data=unicodedata, plain_data=rawdata)
+        unicode_table.insert().execute(unicode_varchar=unicodedata,
+                                       unicode_text=unicodedata,
+                                       plain_varchar=rawdata)
         x = unicode_table.select().execute().fetchone()
-        self.echo(repr(x['unicode_data']))
-        self.echo(repr(x['plain_data']))
-        self.assert_(isinstance(x['unicode_data'], unicode) and x['unicode_data'] == unicodedata)
-        if isinstance(x['plain_data'], unicode):
+        self.echo(repr(x['unicode_varchar']))
+        self.echo(repr(x['unicode_text']))
+        self.echo(repr(x['plain_varchar']))
+        self.assert_(isinstance(x['unicode_varchar'], unicode) and x['unicode_varchar'] == unicodedata)
+        self.assert_(isinstance(x['unicode_text'], unicode) and x['unicode_text'] == unicodedata)
+        if isinstance(x['plain_varchar'], unicode):
             # SQLLite and MSSQL return non-unicode data as unicode
             self.assert_(db.name in ('sqlite', 'mssql'))
-            self.assert_(x['plain_data'] == unicodedata)
+            self.assert_(x['plain_varchar'] == unicodedata)
             self.echo("it's %s!" % db.name)
         else:
-            self.assert_(not isinstance(x['plain_data'], unicode) and x['plain_data'] == rawdata)
+            self.assert_(not isinstance(x['plain_varchar'], unicode) and x['plain_varchar'] == rawdata)
+
     def testengineparam(self):
         """tests engine-wide unicode conversion"""
         prev_unicode = db.engine.dialect.convert_unicode
@@ -170,16 +177,18 @@ class UnicodeTest(AssertMixin):
             db.engine.dialect.convert_unicode = True
             rawdata = 'Alors vous imaginez ma surprise, au lever du jour, quand une dr\xc3\xb4le de petit voix m\xe2\x80\x99a r\xc3\xa9veill\xc3\xa9. Elle disait: \xc2\xab S\xe2\x80\x99il vous pla\xc3\xaet\xe2\x80\xa6 dessine-moi un mouton! \xc2\xbb\n'
             unicodedata = rawdata.decode('utf-8')
-            unicode_table.insert().execute(unicode_data=unicodedata, plain_data=rawdata)
+            unicode_table.insert().execute(unicode_varchar=unicodedata,
+                                           unicode_text=unicodedata,
+                                           plain_varchar=rawdata)
             x = unicode_table.select().execute().fetchone()
-            self.echo(repr(x['unicode_data']))
-            self.echo(repr(x['plain_data']))
-            self.assert_(isinstance(x['unicode_data'], unicode) and x['unicode_data'] == unicodedata)
-            self.assert_(isinstance(x['plain_data'], unicode) and x['plain_data'] == unicodedata)
+            self.echo(repr(x['unicode_varchar']))
+            self.echo(repr(x['unicode_text']))
+            self.echo(repr(x['plain_varchar']))
+            self.assert_(isinstance(x['unicode_varchar'], unicode) and x['unicode_varchar'] == unicodedata)
+            self.assert_(isinstance(x['unicode_text'], unicode) and x['unicode_text'] == unicodedata)
+            self.assert_(isinstance(x['plain_varchar'], unicode) and x['plain_varchar'] == unicodedata)
         finally:
             db.engine.dialect.convert_unicode = prev_unicode
-    
-
 
 class BinaryTest(AssertMixin):
     def setUpAll(self):

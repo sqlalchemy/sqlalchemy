@@ -427,7 +427,8 @@ class MSText(_StringType, sqltypes.TEXT):
         """
 
         _StringType.__init__(self, **kwargs)
-        sqltypes.TEXT.__init__(self, length)
+        sqltypes.TEXT.__init__(self, length,
+                               kwargs.get('convert_unicode', False))
 
     def get_col_spec(self):
         if self.length:
