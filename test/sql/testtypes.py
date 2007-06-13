@@ -190,6 +190,11 @@ class UnicodeTest(AssertMixin):
         finally:
             db.engine.dialect.convert_unicode = prev_unicode
 
+    def testlength(self):
+        """checks the database correctly understands the length of a unicode string"""
+        teststr = u'aaa\x1234'
+        self.assert_(db.func.length(teststr).scalar() == len(teststr))
+  
 class BinaryTest(AssertMixin):
     def setUpAll(self):
         global binary_table
@@ -312,6 +317,24 @@ class DateTest(AssertMixin):
         
         #x = db.text("select * from query_users_with_date where user_datetime=:date", bindparams=[bindparam('date', )]).execute(date=datetime.datetime(2005, 11, 10, 11, 52, 35)).fetchall()
         #print repr(x)
+
+    @testbase.unsupported('sqlite')
+    def testdate2(self):
+        t = Table('testdate', testbase.metadata, Column('id', Integer, primary_key=True),
+                Column('adate', Date), Column('adatetime', DateTime))
+        t.create()
+        try:
+            d1 = datetime.date(2007, 10, 30)
+            t.insert().execute(adate=d1, adatetime=d1)
+            d2 = datetime.datetime(2007, 10, 30)
+            t.insert().execute(adate=d2, adatetime=d2)
+
+            x = t.select().execute().fetchall()[0]
+            self.assert_(x.adate.__class__ == datetime.date)
+            self.assert_(x.adatetime.__class__ == datetime.datetime)
+
+        finally:
+            t.drop()
 
 class TimezoneTest(AssertMixin):
     """test timezone-aware datetimes.  psycopg will return a datetime with a tzinfo attached to it,

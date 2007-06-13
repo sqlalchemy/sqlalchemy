@@ -402,6 +402,19 @@ class QueryTest(PersistTest):
             con.execute("""drop trigger paj""")
             meta.drop_all()
 
+    @testbase.supported('mssql')
+    def test_insertid_schema(self):
+        meta = BoundMetaData(testbase.db)
+        con = testbase.db.connect()
+        con.execute('create schema paj')
+        tbl = Table('test', meta, Column('id', Integer, primary_key=True), schema='paj')
+        tbl.create()        
+        try:
+            tbl.insert().execute({'id':1})        
+        finally:
+            tbl.drop()
+            con.execute('drop schema paj')
+        
 
 class CompoundTest(PersistTest):
     """test compound statements like UNION, INTERSECT, particularly their ability to nest on

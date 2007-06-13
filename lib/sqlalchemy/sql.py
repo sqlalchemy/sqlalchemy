@@ -2686,6 +2686,7 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
         self.is_compound = True
         self.is_where = False
         self.is_scalar = False
+        self.is_subquery = False
 
         self.selects = selects
 
