@@ -31,6 +31,10 @@
   - result.last_inserted_ids() should return a list that is identically
     sized to the primary key constraint of the table.  values that were 
     "passively" created and not available via cursor.lastrowid will be None.
+  - result sets from CRUD operations close their underlying cursor immediately.
+    will also autoclose the connection if defined for the operation; this 
+    allows more efficient usage of connections for successive CRUD operations
+    with less chance of "dangling connections".
   - long-identifier detection fixed to use > rather than >= for 
     max ident length [ticket:589]
   - fixed bug where selectable.corresponding_column(selectable.c.col)

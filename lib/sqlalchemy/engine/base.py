@@ -861,10 +861,20 @@ class ResultProxy(object):
         self.closed = False
         self.cursor = context.cursor
         self.__echo = logging.is_debug_enabled(context.engine.logger)
-        self._init_metadata()
-        
-    rowcount = property(lambda s:s.context.get_rowcount())
-    connection = property(lambda s:s.context.connection)
+        if context.is_select():
+            self._init_metadata()
+            self._rowcount = None
+        else:
+            self._rowcount = context.get_rowcount()
+            self.close()
+            
+    connection = property(lambda self:self.context.connection)
+    def _get_rowcount(self):
+        if self._rowcount is not None:
+            return self._rowcount
+        else:
+            return self.context.get_rowcount()
+    rowcount = property(_get_rowcount)
     
     def _init_metadata(self):
         if hasattr(self, '_ResultProxy__props'):

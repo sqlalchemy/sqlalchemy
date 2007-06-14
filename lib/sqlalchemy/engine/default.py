@@ -191,7 +191,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                 return proc(params)
                 
     def is_select(self):
-        return re.match(r'SELECT', self.statement.lstrip(), re.I)
+        return re.match(r'SELECT', self.statement.lstrip(), re.I) is not None
 
     def create_cursor(self):
         return self.connection.connection.cursor()

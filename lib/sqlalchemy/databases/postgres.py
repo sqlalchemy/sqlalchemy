@@ -134,11 +134,11 @@ def descriptor():
 
 class PGExecutionContext(default.DefaultExecutionContext):
 
-    def is_select(self):
-        return re.match(r'SELECT', self.statement.lstrip(), re.I) and not re.search(r'FOR UPDATE\s*$', self.statement, re.I)
-    
+    def _is_server_side(self):
+        return self.dialect.server_side_cursors and self.is_select() and not re.search(r'FOR UPDATE(?: NOWAIT)?\s*$', self.statement, re.I)
+        
     def create_cursor(self):
-        if self.dialect.server_side_cursors and self.is_select():
+        if self._is_server_side():
             # use server-side cursors:
             # http://lists.initd.org/pipermail/psycopg/2007-January/005251.html
             ident = "c" + hex(random.randint(0, 65535))[2:]
@@ -147,7 +147,7 @@ class PGExecutionContext(default.DefaultExecutionContext):
             return self.connection.connection.cursor()
 
     def get_result_proxy(self):
-        if self.dialect.server_side_cursors and self.is_select():
+        if self._is_server_side():
             return base.BufferedRowResultProxy(self)
         else:
             return base.ResultProxy(self)

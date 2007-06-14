@@ -141,6 +141,9 @@ class SQLiteExecutionContext(default.DefaultExecutionContext):
         if self.compiled.isinsert:
             self._last_inserted_ids = [self.cursor.lastrowid] + self._last_inserted_ids[1:]
         super(SQLiteExecutionContext, self).post_exec()
+
+    def is_select(self):
+        return re.match(r'SELECT|PRAGMA', self.statement.lstrip(), re.I) is not None
         
 class SQLiteDialect(ansisql.ANSIDialect):
     
