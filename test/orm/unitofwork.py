@@ -62,7 +62,7 @@ class VersioningTest(UnitOfWorkTest):
         UnitOfWorkTest.setUpAll(self)
         ctx.current.clear()
         global version_table
-        version_table = Table('version_test', db,
+        version_table = Table('version_test', BoundMetaData(db),
         Column('id', Integer, Sequence('version_test_seq'), primary_key=True ),
         Column('version_id', Integer, nullable=False),
         Column('value', String(40), nullable=False)
@@ -327,36 +327,31 @@ class MutableTypesTest(UnitOfWorkTest):
 class PKTest(UnitOfWorkTest):
     def setUpAll(self):
         UnitOfWorkTest.setUpAll(self)
-        global table
-        global table2
-        global table3
+        global table, table2, table3
+        metadata = BoundMetaData(db)
         table = Table(
-            'multipk', db, 
+            'multipk', metadata, 
             Column('multi_id', Integer, Sequence("multi_id_seq", optional=True), primary_key=True),
             Column('multi_rev', Integer, primary_key=True),
             Column('name', String(50), nullable=False),
             Column('value', String(100))
         )
         
-        table2 = Table('multipk2', db,
+        table2 = Table('multipk2', metadata,
             Column('pk_col_1', String(30), primary_key=True),
             Column('pk_col_2', String(30), primary_key=True),
             Column('data', String(30), )
             )
-        table3 = Table('multipk3', db,
+        table3 = Table('multipk3', metadata,
             Column('pri_code', String(30), key='primary', primary_key=True),
             Column('sec_code', String(30), key='secondary', primary_key=True),
             Column('date_assigned', Date, key='assigned', primary_key=True),
             Column('data', String(30), )
             )
-        table.create()
-        table2.create()
-        table3.create()
+        metadata.create_all()
 
     def tearDownAll(self):
-        table.drop()
-        table2.drop()
-        table3.drop()
+        metadata.drop_all()
         UnitOfWorkTest.tearDownAll(self)
         
     # not support on sqlite since sqlite's auto-pk generation only works with
@@ -530,21 +525,21 @@ class DefaultTest(UnitOfWorkTest):
             hohotype = Integer
             self.hohoval = 9
             self.althohoval = 15
-        self.table = Table('default_test', db,
+        global default_table
+        metadata = BoundMetaData(db)
+        default_table = Table('default_test', metadata,
         Column('id', Integer, Sequence("dt_seq", optional=True), primary_key=True),
         Column('hoho', hohotype, PassiveDefault(str(self.hohoval))),
         Column('counter', Integer, PassiveDefault("7")),
         Column('foober', String(30), default="im foober", onupdate="im the update")
         )
-        self.table.create()
+        default_table.create()
     def tearDownAll(self):
-        self.table.drop()
+        default_table.drop()
         UnitOfWorkTest.tearDownAll(self)
-    def setUp(self):
-        self.table = Table('default_test', db)
     def testinsert(self):
         class Hoho(object):pass
-        assign_mapper(Hoho, self.table)
+        assign_mapper(Hoho, default_table)
         h1 = Hoho(hoho=self.althohoval)
         h2 = Hoho(counter=12)
         h3 = Hoho(hoho=self.althohoval, counter=12)
@@ -572,7 +567,7 @@ class DefaultTest(UnitOfWorkTest):
     def testinsertnopostfetch(self):
         # populates the PassiveDefaults explicitly so there is no "post-update"
         class Hoho(object):pass
-        assign_mapper(Hoho, self.table)
+        assign_mapper(Hoho, default_table)
         h1 = Hoho(hoho="15", counter="15")
         ctx.current.flush()
         self.assert_(h1.hoho=="15")
@@ -581,7 +576,7 @@ class DefaultTest(UnitOfWorkTest):
         
     def testupdate(self):
         class Hoho(object):pass
-        assign_mapper(Hoho, self.table)
+        assign_mapper(Hoho, default_table)
         h1 = Hoho()
         ctx.current.flush()
         self.assert_(h1.foober == 'im foober')
