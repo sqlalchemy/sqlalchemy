@@ -10,6 +10,7 @@ from sqlalchemy.orm.attributes import InstrumentedList
 import sqlalchemy.exceptions as exceptions
 import sqlalchemy.orm as orm
 import sqlalchemy.util as util
+import weakref
 
 def association_proxy(targetcollection, attr, **kw):
     """Convenience function for use in mapped classes.  Implements a Python
@@ -116,6 +117,18 @@ class AssociationProxy(object):
 
     def _target_is_scalar(self):
         return not self._get_property().uselist
+
+    def _lazy_collection(self, weakobjref):
+        target = self.target_collection
+        del self
+        def lazy_collection():
+            obj = weakobjref()
+            if obj is None:
+                raise exceptions.InvalidRequestError(
+                    "stale association proxy, parent object has gone out of "
+                    "scope")
+            return getattr(obj, target)
+        return lazy_collection
         
     def __get__(self, obj, class_):
         if obj is None:
@@ -130,7 +143,7 @@ class AssociationProxy(object):
             try:
                 return getattr(obj, self.key)
             except AttributeError:
-                proxy = self._new(getattr(obj, self.target_collection))
+                proxy = self._new(self._lazy_collection(weakref.ref(obj)))
                 setattr(obj, self.key, proxy)
                 return proxy
 
@@ -153,30 +166,32 @@ class AssociationProxy(object):
     def __delete__(self, obj):
         delattr(obj, self.key)
 
-    def _new(self, collection):
+    def _new(self, lazy_collection):
         creator = self.creator and self.creator or self.target_class
 
         # Prefer class typing here to spot dicts with the required append()
         # method.
+        collection = lazy_collection()
         if isinstance(collection.data, dict):
             self.collection_class = dict
         else:
             self.collection_class = util.duck_type_collection(collection.data)
+        del collection
 
         if self.proxy_factory:
-            return self.proxy_factory(collection, creator, self.value_attr)
+            return self.proxy_factory(lazy_collection, creator, self.value_attr)
 
         value_attr = self.value_attr
         getter = lambda o: getattr(o, value_attr)
         setter = lambda o, v: setattr(o, value_attr, v)
         
         if self.collection_class is list:
-            return _AssociationList(collection, creator, getter, setter)
+            return _AssociationList(lazy_collection, creator, getter, setter)
         elif self.collection_class is dict:
             kv_setter = lambda o, k, v: setattr(o, value_attr, v)
-            return _AssociationDict(collection, creator, getter, setter)
+            return _AssociationDict(lazy_collection, creator, getter, setter)
         elif self.collection_class is util.Set:
-            return _AssociationSet(collection, creator, getter, setter)
+            return _AssociationSet(lazy_collection, creator, getter, setter)
         else:
             raise exceptions.ArgumentError(
                 'could not guess which interface to use for '
@@ -203,11 +218,11 @@ class _AssociationList(object):
     converting association objects to and from a simplified value.
     """
 
-    def __init__(self, collection, creator, getter, setter):
+    def __init__(self, lazy_collection, creator, getter, setter):
         """
-        collection
-          A list-based collection of entities (usually an object attribute
-          managed by a SQLAlchemy relation())
+        lazy_collection
+          A callable returning a list-based collection of entities (usually
+          an object attribute managed by a SQLAlchemy relation())
           
         creator
           A function that creates new target entities.  Given one parameter:
@@ -223,10 +238,12 @@ class _AssociationList(object):
           that value on the object.
         """
 
-        self.col = collection
+        self.lazy_collection = lazy_collection
         self.creator = creator
         self.getter = getter
         self.setter = setter
+
+    col = property(lambda self: self.lazy_collection())
 
     # For compatibility with 0.3.1 through 0.3.7- pass kw through to creator.
     # (see append() below)
@@ -320,11 +337,11 @@ class _AssociationDict(object):
     converting association objects to and from a simplified value.
     """
 
-    def __init__(self, collection, creator, getter, setter):
+    def __init__(self, lazy_collection, creator, getter, setter):
         """
-        collection
-          A list-based collection of entities (usually an object attribute
-          managed by a SQLAlchemy relation())
+        lazy_collection
+          A callable returning a dict-based collection of entities (usually
+          an object attribute managed by a SQLAlchemy relation())
           
         creator
           A function that creates new target entities.  Given two parameters:
@@ -340,10 +357,12 @@ class _AssociationDict(object):
           that value on the object.
         """
 
-        self.col = collection
+        self.lazy_collection = lazy_collection
         self.creator = creator
         self.getter = getter
         self.setter = setter
+
+    col = property(lambda self: self.lazy_collection())
 
     def _create(self, key, value):
         return self.creator(key, value)
@@ -380,7 +399,7 @@ class _AssociationDict(object):
     has_key = __contains__
 
     def __iter__(self):
-        return iter(self.col)
+        return self.col.iterkeys()
 
     def clear(self):
         self.col.clear()
@@ -465,11 +484,11 @@ class _AssociationSet(object):
     converting association objects to and from a simplified value.
     """
 
-    def __init__(self, collection, creator, getter, setter):
+    def __init__(self, lazy_collection, creator, getter, setter):
         """
         collection
-          A list-based collection of entities (usually an object attribute
-          managed by a SQLAlchemy relation())
+          A callable returning a set-based collection of entities (usually an
+          object attribute managed by a SQLAlchemy relation())
           
         creator
           A function that creates new target entities.  Given one parameter:
@@ -485,10 +504,12 @@ class _AssociationSet(object):
           that value on the object.
         """
 
-        self.col = collection
+        self.lazy_collection = lazy_collection
         self.creator = creator
         self.getter = getter
         self.setter = setter
+
+    col = property(lambda self: self.lazy_collection())
 
     def _create(self, value):
         return self.creator(value)

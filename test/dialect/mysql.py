@@ -104,7 +104,7 @@ class TypesTest(AssertMixin):
              'SMALLINT(4) UNSIGNED ZEROFILL'),
            ]
 
-        table_args = ['test_mysql_numeric', db]
+        table_args = ['test_mysql_numeric', BoundMetaData(db)]
         for index, spec in enumerate(columns):
             type_, args, kw, res = spec
             table_args.append(Column('c%s' % index, type_(*args, **kw)))
@@ -188,7 +188,7 @@ class TypesTest(AssertMixin):
              '''ENUM('foo','bar') UNICODE''')
            ]
 
-        table_args = ['test_mysql_charset', db]
+        table_args = ['test_mysql_charset', BoundMetaData(db)]
         for index, spec in enumerate(columns):
             type_, args, kw, res = spec
             table_args.append(Column('c%s' % index, type_(*args, **kw)))
@@ -212,7 +212,7 @@ class TypesTest(AssertMixin):
     def test_enum(self):
         "Exercise the ENUM type"
 
-        enum_table = Table('mysql_enum', db,
+        enum_table = Table('mysql_enum', BoundMetaData(db),
             Column('e1', mysql.MSEnum('"a"', "'b'")),
             Column('e2', mysql.MSEnum('"a"', "'b'"), nullable=False),
             Column('e3', mysql.MSEnum('"a"', "'b'", strict=True)),
@@ -294,6 +294,10 @@ class TypesTest(AssertMixin):
 
     @testbase.supported('mysql')
     def test_type_reflection(self):
+        # FIXME: older versions need their own test
+        if db.dialect.get_version_info(db) < (5, 0):
+            return
+
         # (ask_for, roundtripped_as_if_different)
         specs = [( String(), mysql.MSText(), ),
                  ( String(1), mysql.MSString(1), ),
@@ -307,11 +311,9 @@ class TypesTest(AssertMixin):
                  ( Smallinteger(4), mysql.MSSmallInteger(4), ),
                  ( mysql.MSSmallInteger(), ),
                  ( mysql.MSSmallInteger(4), mysql.MSSmallInteger(4), ),
-                 ( Binary(3), mysql.MSVarBinary(3), ),
+                 ( Binary(3), mysql.MSBlob(3), ),
                  ( Binary(), mysql.MSBlob() ),
                  ( mysql.MSBinary(3), mysql.MSBinary(3), ),
-                 ( mysql.MSBaseBinary(), mysql.MSBlob(), ),
-                 ( mysql.MSBaseBinary(3), mysql.MSVarBinary(3), ),
                  ( mysql.MSVarBinary(3),),
                  ( mysql.MSVarBinary(), mysql.MSBlob()),
                  ( mysql.MSTinyBlob(),),
@@ -331,13 +333,14 @@ class TypesTest(AssertMixin):
         m2 = BoundMetaData(db)
         rt = Table('mysql_types', m2, autoload=True)
 
+        #print
         expected = [len(c) > 1 and c[1] or c[0] for c in specs]
         for i, reflected in enumerate(rt.c):
             #print (reflected, specs[i][0], '->',
             #       reflected.type, '==', expected[i])
-            assert type(reflected.type) == type(expected[i])
+            assert isinstance(reflected.type, type(expected[i]))
 
-        #m.drop_all()
+        m.drop_all()
 
 if __name__ == "__main__":
     testbase.main()

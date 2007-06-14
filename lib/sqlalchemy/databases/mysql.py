@@ -24,7 +24,7 @@ RESERVED_WORDS = util.Set(
      'declare', 'default', 'delayed', 'delete', 'desc', 'describe',
      'deterministic', 'distinct', 'distinctrow', 'div', 'double', 'drop',
      'dual', 'each', 'else', 'elseif', 'enclosed', 'escaped', 'exists',
-     'exit', 'explain', 'false', 'fetch', 'fields', 'float', 'float4', 'float8',
+     'exit', 'explain', 'false', 'fetch', 'float', 'float4', 'float8',
      'for', 'force', 'foreign', 'from', 'fulltext', 'grant', 'group', 'having',
      'high_priority', 'hour_microsecond', 'hour_minute', 'hour_second', 'if',
      'ignore', 'in', 'index', 'infile', 'inner', 'inout', 'insensitive',
@@ -49,9 +49,11 @@ RESERVED_WORDS = util.Set(
      'union', 'unique', 'unlock', 'unsigned', 'update', 'usage', 'use',
      'using', 'utc_date', 'utc_time', 'utc_timestamp', 'values', 'varbinary',
      'varchar', 'varcharacter', 'varying', 'when', 'where', 'while', 'with',
-     'write', 'x509', 'xor', 'year_month', 'zerofill',
+     'write', 'x509', 'xor', 'year_month', 'zerofill', # 5.0
+     'fields', # 4.1
      'accessible', 'linear', 'master_ssl_verify_server_cert', 'range',
-     'read_only', 'read_write'])
+     'read_only', 'read_write', # 5.1
+     ])
 
 class _NumericType(object):
     "Base for MySQL numeric types."
@@ -425,7 +427,8 @@ class MSText(_StringType, sqltypes.TEXT):
         """
 
         _StringType.__init__(self, **kwargs)
-        sqltypes.TEXT.__init__(self, length)
+        sqltypes.TEXT.__init__(self, length,
+                               kwargs.get('convert_unicode', False))
 
     def get_col_spec(self):
         if self.length:
@@ -678,21 +681,12 @@ class MSNChar(_StringType, sqltypes.CHAR):
         # We'll actually generate the equiv. "NATIONAL CHAR" instead of "NCHAR".
         return self._extend("CHAR(%(length)s)" % {'length': self.length})
 
-class MSBaseBinary(sqltypes.Binary):
-    """Flexible binary type"""
-
-    def __init__(self, length=None, **kw):
-        """Flexibly construct a binary column type.  Will construct a
-        VARBINARY or BLOB depending on the length requested, if any.
-
-        length
-          Maximum data length, in bytes.
-        """
-        super(MSBaseBinary, self).__init__(length, **kw)
+class _BinaryType(sqltypes.Binary):
+    """MySQL binary types"""
 
     def get_col_spec(self):
-        if self.length and self.length <= 255:
-            return "VARBINARY(%d)" % self.length
+        if self.length:
+            return "BLOB(%d)" % self.length
         else:
             return "BLOB"
 
@@ -702,7 +696,7 @@ class MSBaseBinary(sqltypes.Binary):
         else:
             return buffer(value)
 
-class MSVarBinary(MSBaseBinary):
+class MSVarBinary(_BinaryType):
     """MySQL VARBINARY type, for variable length binary data"""
 
     def __init__(self, length=None, **kw):
@@ -719,7 +713,7 @@ class MSVarBinary(MSBaseBinary):
         else:
             return "BLOB"
 
-class MSBinary(MSBaseBinary):
+class MSBinary(_BinaryType):
     """MySQL BINARY type, for fixed length binary data"""
 
     def __init__(self, length=None, **kw):
@@ -746,7 +740,7 @@ class MSBinary(MSBaseBinary):
         else:
             return buffer(value)
 
-class MSBlob(MSBaseBinary):
+class MSBlob(_BinaryType):
     """MySQL BLOB type, for binary data up to 2^16 bytes""" 
 
 
@@ -865,7 +859,7 @@ class MSEnum(MSString):
 
 class MSBoolean(sqltypes.Boolean):
     def get_col_spec(self):
-        return "BOOLEAN"
+        return "BOOL"
 
     def convert_result_value(self, value, dialect):
         if value is None:
@@ -893,14 +887,14 @@ colspecs = {
     sqltypes.Date : MSDate,
     sqltypes.Time : MSTime,
     sqltypes.String : MSString,
-    sqltypes.Binary : MSVarBinary,
+    sqltypes.Binary : MSBlob,
     sqltypes.Boolean : MSBoolean,
     sqltypes.TEXT : MSText,
     sqltypes.CHAR: MSChar,
     sqltypes.NCHAR: MSNChar,
     sqltypes.TIMESTAMP: MSTimeStamp,
     sqltypes.BLOB: MSBlob,
-    MSBaseBinary: MSBaseBinary,
+    _BinaryType: _BinaryType,
 }
 
 
@@ -951,7 +945,10 @@ def descriptor():
 class MySQLExecutionContext(default.DefaultExecutionContext):
     def post_exec(self):
         if self.compiled.isinsert:
-            self._last_inserted_ids = [self.cursor.lastrowid] + self._last_inserted_ids[1:]
+            self._last_inserted_ids = [self.cursor.lastrowid]
+            
+    def is_select(self):
+        return re.match(r'SELECT|SHOW|DESCRIBE', self.statement.lstrip(), re.I) is not None
 
 class MySQLDialect(ansisql.ANSIDialect):
     def __init__(self, **kwargs):
@@ -1069,6 +1066,19 @@ class MySQLDialect(ansisql.ANSIDialect):
             else:
                 raise
 
+    def get_version_info(self, connectable):
+        if hasattr(connectable, 'connect'):
+            con = connectable.connect().connection
+        else:
+            con = connectable
+        version = []
+        for n in con.get_server_info().split('.'):
+            try:
+                version.append(int(n))
+            except ValueError:
+                version.append(n)
+        return tuple(version)
+
     def reflecttable(self, connection, table):
         # reference:  http://dev.mysql.com/doc/refman/5.0/en/name-case-sensitivity.html
         cs = connection.execute("show variables like 'lower_case_table_names'").fetchone()[1]
@@ -1125,7 +1135,11 @@ class MySQLDialect(ansisql.ANSIDialect):
 
             colargs= []
             if default:
-                colargs.append(schema.PassiveDefault(sql.text(default)))
+                if col_type == 'timestamp' and default == 'CURRENT_TIMESTAMP':
+                    arg = sql.text(default)
+                else:
+                    arg = default
+                colargs.append(schema.PassiveDefault(arg))
             table.append_column(schema.Column(name, coltype, *colargs,
                                             **dict(primary_key=primary_key,
                                                    nullable=nullable,

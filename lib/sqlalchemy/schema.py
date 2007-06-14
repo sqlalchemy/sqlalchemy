@@ -283,6 +283,8 @@ class Table(SchemaItem, sql.TableClause):
         # store extra kwargs, which should only contain db-specific options
         self.kwargs = kwargs
 
+    key = property(lambda self:_get_table_key(self.name, self.schema))
+    
     def _get_case_sensitive_schema(self):
         try:
             return getattr(self, '_case_sensitive_schema')
@@ -1116,6 +1118,10 @@ class MetaData(SchemaItem):
     def clear(self):
         self.tables.clear()
 
+    def remove(self, table):
+        # TODO: scan all other tables and remove FK _column 
+        del self.tables[table.key]
+        
     def table_iterator(self, reverse=True, tables=None):
         import sqlalchemy.sql_util
         if tables is None:

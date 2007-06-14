@@ -131,7 +131,10 @@ class _CollectionOperations(PersistTest):
 
         self.assert_(len(p1._children) == 3)
         self.assert_(len(p1.children) == 3)
-        
+
+        p1._children = []
+        self.assert_(len(p1.children) == 0)
+
 class DefaultTest(_CollectionOperations):
     def __init__(self, *args, **kw):
         super(DefaultTest, self).__init__(*args, **kw)
@@ -209,10 +212,15 @@ class CustomDictTest(DictTest):
         self.assert_(len(p1._children) == 3)
         self.assert_(len(p1.children) == 3)
 
+        self.assert_(set(p1.children) == set(['d','e','f']))
+
         del ch
         p1 = self.roundtrip(p1)
         self.assert_(len(p1._children) == 3)
         self.assert_(len(p1.children) == 3)
+
+        p1._children = {}
+        self.assert_(len(p1.children) == 0)
     
 
 class SetTest(_CollectionOperations):
@@ -311,6 +319,9 @@ class SetTest(_CollectionOperations):
         p1.children.remove('a')
         p1 = self.roundtrip(p1)
         self.assert_(p1.children == set(['c']))
+
+        p1._children = []
+        self.assert_(len(p1.children) == 0)
 
     def test_set_comparisons(self):
         Parent, Child = self.Parent, self.Child

@@ -312,18 +312,10 @@ class FBCompiler(ansisql.ANSICompiler):
         else:
             self.strings[func] = func.name
 
-    def visit_insert(self, insert):
-        """Inserts are required to have the primary keys be explicitly present.
-
-         mapper will by default not put them in the insert statement
-         to comply with autoincrement fields that require they not be
-         present. So, put them all in for all primary key columns.
-         """
-
-        for c in insert.table.primary_key:
-            if not self.parameters.has_key(c.key):
-                self.parameters[c.key] = None
-        return ansisql.ANSICompiler.visit_insert(self, insert)
+    def visit_insert_column(self, column, parameters):
+        # all column primary key inserts must be explicitly present
+        if column.primary_key:
+            parameters[column.key] = None
 
     def visit_select_precolumns(self, select):
         """Called when building a ``SELECT`` statement, position is just
@@ -372,7 +364,7 @@ class FBSchemaDropper(ansisql.ANSISchemaDropper):
 
 class FBDefaultRunner(ansisql.ANSIDefaultRunner):
     def exec_default_sql(self, default):
-        c = sql.select([default.arg], from_obj=["rdb$database"]).compile(engine=self.engine)
+        c = sql.select([default.arg], from_obj=["rdb$database"]).compile(engine=self.connection)
         return self.connection.execute_compiled(c).scalar()
 
     def visit_sequence(self, seq):

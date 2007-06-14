@@ -165,8 +165,12 @@ class OrderingList(list):
         return entity
         
     def __setitem__(self, index, entity):
-        super(OrderingList, self).__setitem__(index, entity)
-        self._order_entity(index, entity, True)
+        if isinstance(index, slice):
+            for i in range(index.start or 0, index.stop or 0, index.step or 1):
+                self.__setitem__(i, entity[i])
+        else:
+            self._order_entity(index, entity, True)
+            super(OrderingList, self).__setitem__(index, entity)
             
     def __delitem__(self, index):
         super(OrderingList, self).__delitem__(index)

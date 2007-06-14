@@ -44,8 +44,10 @@ class ExecuteTest(testbase.PersistTest):
             res = conn.execute("select * from users")
             assert res.fetchall() == [(1, "jack"), (2, "ed"), (3, "horse"), (4, 'sally'), (5, None)]
             conn.execute("delete from users")
-            
-    @testbase.supported('postgres', 'mysql')
+
+    # pyformat is supported for mysql, but skipping because a few driver
+    # versions have a bug that bombs out on this test. (1.2.2b3, 1.2.2c1, 1.2.2)
+    @testbase.supported('postgres')
     def test_raw_python(self):
         for conn in (testbase.db, testbase.db.connect()):
             conn.execute("insert into users (user_id, user_name) values (%(id)s, %(name)s)", {'id':1, 'name':'jack'})

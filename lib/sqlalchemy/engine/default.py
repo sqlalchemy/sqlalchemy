@@ -191,6 +191,8 @@ class DefaultExecutionContext(base.ExecutionContext):
                 return proc(params)
                 
     def is_select(self):
+        """return TRUE if the statement is expected to have result rows."""
+        
         return re.match(r'SELECT', self.statement.lstrip(), re.I) is not None
 
     def create_cursor(self):

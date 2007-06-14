@@ -791,7 +791,7 @@ class ClauseParameters(object):
     """
 
     def __init__(self, dialect, positional=None):
-        super(ClauseParameters, self).__init__(self)
+        super(ClauseParameters, self).__init__()
         self.dialect = dialect
         self.binds = {}
         self.binds_to_names = {}
@@ -1670,7 +1670,7 @@ class FromClause(Selectable):
           it merely shares a common anscestor with one of
           the exported columns of this ``FromClause``.
         """
-
+            
         if column in self.c:
             return column
         if require_embedded and column not in util.Set(self._get_all_embedded_columns()):
@@ -1734,6 +1734,8 @@ class FromClause(Selectable):
         for co in self._adjusted_exportable_columns():
             cp = self._proxy_column(co)
             for ci in cp.orig_set:
+                # note that some ambiguity is raised here, whereby a selectable might have more than 
+                # one column that maps to an "original" column.  examples include unions and joins
                 self._orig_cols[ci] = cp
         if self.oid_column is not None:
             for ci in self.oid_column.orig_set:
@@ -2685,6 +2687,7 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
         self.is_compound = True
         self.is_where = False
         self.is_scalar = False
+        self.is_subquery = False
 
         self.selects = selects
 

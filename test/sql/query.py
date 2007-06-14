@@ -33,7 +33,49 @@ class QueryTest(PersistTest):
     def testinsert(self):
         users.insert().execute(user_id = 7, user_name = 'jack')
         assert users.count().scalar() == 1
+    
+    @testbase.unsupported('sqlite')
+    def test_lastrow_accessor(self):
+        """test the last_inserted_ids() and lastrow_has_id() functions"""
         
+        def insert_values(table, values):
+            result = table.insert().execute(**values)
+            ret = values.copy()
+            
+            for col, id in zip(table.primary_key, result.last_inserted_ids()):
+                ret[col.key] = id
+                
+            if result.lastrow_has_defaults():
+                criterion = and_(*[col==id for col, id in zip(table.primary_key, result.last_inserted_ids())])
+                row = table.select(criterion).execute().fetchone()
+                ret.update(row)
+            return ret
+            
+        for table, values, assertvalues in [
+            (
+                Table("t1", metadata, 
+                    Column('id', Integer, primary_key=True),
+                    Column('foo', String(30), primary_key=True)),
+                {'foo':'hi'},
+                {'id':1, 'foo':'hi'}
+            ),
+            (
+                Table("t2", metadata, 
+                    Column('id', Integer, primary_key=True),
+                    Column('foo', String(30), primary_key=True),
+                    Column('bar', String(30), PassiveDefault('hi'))
+                ),
+                {'foo':'hi'},
+                {'id':1, 'foo':'hi', 'bar':'hi'}
+            ),
+            
+        ]:
+            try:
+                table.create()
+                assert insert_values(table, values) == assertvalues
+            finally:
+                table.drop()
+            
     def testupdate(self):
 
         users.insert().execute(user_id = 7, user_name = 'jack')
@@ -360,6 +402,19 @@ class QueryTest(PersistTest):
             con.execute("""drop trigger paj""")
             meta.drop_all()
 
+    @testbase.supported('mssql')
+    def test_insertid_schema(self):
+        meta = BoundMetaData(testbase.db)
+        con = testbase.db.connect()
+        con.execute('create schema paj')
+        tbl = Table('test', meta, Column('id', Integer, primary_key=True), schema='paj')
+        tbl.create()        
+        try:
+            tbl.insert().execute({'id':1})        
+        finally:
+            tbl.drop()
+            con.execute('drop schema paj')
+        
 
 class CompoundTest(PersistTest):
     """test compound statements like UNION, INTERSECT, particularly their ability to nest on
