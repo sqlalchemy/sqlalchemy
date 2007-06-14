@@ -1,3 +1,8 @@
+- ext
+    - iteration over dict association proxies is now dict-like, not
+      InstrumentedList-like (e.g. over keys instead of values)
+    - association proxies no longer bind tightly to source collections
+      [ticket:597], and are constructed with a thunk instead
 - orm
     - remember all that stuff about polymorphic_union ?  for 
       joined table inheritance ?  Funny thing...
