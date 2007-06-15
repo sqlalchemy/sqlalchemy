@@ -245,9 +245,9 @@ class ReflectionTest(PersistTest):
             Column('col1', Integer, Sequence('fooseq')))
         try:
             testbase.db.execute("CREATE SEQUENCE fooseq")
-            t.create()
+            t.create(checkfirst=True)
         finally:
-            t.drop()
+            t.drop(checkfirst=True)
     
     def test_pks_not_uniques(self):
         """test that primary key reflection not tripped up by unique indexes"""
