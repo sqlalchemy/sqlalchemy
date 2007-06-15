@@ -4,9 +4,10 @@ import pickleable
 from sqlalchemy import *
 import string,datetime, re, sys, os
 import sqlalchemy.engine.url as url
-
 import sqlalchemy.types
 from sqlalchemy.databases import mssql, oracle
+from testbase import Table, Column
+
 
 db = testbase.db
 

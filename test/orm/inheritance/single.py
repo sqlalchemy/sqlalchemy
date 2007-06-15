@@ -1,7 +1,8 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
-
+from testbase import Table, Column
 import testbase
+
 
 class SingleInheritanceTest(testbase.AssertMixin):
     def setUpAll(self):

@@ -1,6 +1,7 @@
 import sys
 import testbase
 from sqlalchemy import *
+from testbase import Table, Column
 
 
 class CaseTest(testbase.PersistTest):

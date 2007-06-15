@@ -6,7 +6,7 @@ import sqlalchemy.ansisql as ansisql
 from sqlalchemy import *
 from sqlalchemy.exceptions import NoSuchTableError
 import sqlalchemy.databases.mysql as mysql
-
+from testbase import Table, Column
 import unittest, re, StringIO
 
 class ReflectionTest(PersistTest):
@@ -14,6 +14,10 @@ class ReflectionTest(PersistTest):
         use_function_defaults = testbase.db.engine.name == 'postgres' or testbase.db.engine.name == 'oracle'
         
         use_string_defaults = use_function_defaults or testbase.db.engine.__module__.endswith('sqlite')
+
+        if (testbase.db.engine.name == 'mysql' and
+            testbase.db.dialect.get_version_info(testbase.db) < (4, 1, 1)):
+            return
 
         if use_function_defaults:
             defval = func.current_date()
@@ -54,14 +58,14 @@ class ReflectionTest(PersistTest):
             Column('test_passivedefault4', deftype3, PassiveDefault(defval3)),
             Column('test9', Binary(100)),
             Column('test_numeric', Numeric(None, None)),
-            mysql_engine='InnoDB'
+            test_needs_fk=True,
         )
-
+        
         addresses = Table('engine_email_addresses', meta,
             Column('address_id', Integer, primary_key = True),
             Column('remote_user_id', Integer, ForeignKey(users.c.user_id)),
             Column('email_address', String(20)),
-            mysql_engine='InnoDB'
+            test_needs_fk=True,
         )
         meta.drop_all()
 
@@ -320,6 +324,10 @@ class ReflectionTest(PersistTest):
 
     def test_composite_fk(self):
         """test reflection of composite foreign keys"""
+
+        if (testbase.db.engine.name == 'mysql' and
+            testbase.db.dialect.get_version_info(testbase.db) < (4, 1, 1)):
+            return
         meta = BoundMetaData(testbase.db)
         table = Table(
             'multi', meta, 
@@ -328,7 +336,7 @@ class ReflectionTest(PersistTest):
             Column('multi_hoho', Integer, primary_key=True),
             Column('name', String(50), nullable=False),
             Column('val', String(100)),
-            mysql_engine='InnoDB'
+            test_needs_fk=True,
         )
         table2 = Table('multi2', meta, 
             Column('id', Integer, primary_key=True),
@@ -337,7 +345,7 @@ class ReflectionTest(PersistTest):
             Column('lala', Integer),
             Column('data', String(50)),
             ForeignKeyConstraint(['foo', 'bar', 'lala'], ['multi.multi_id', 'multi.multi_rev', 'multi.multi_hoho']),
-            mysql_engine='InnoDB'
+            test_needs_fk=True,
         )
         assert table.c.multi_hoho
         meta.create_all()

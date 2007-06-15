@@ -1,5 +1,6 @@
 import testbase
 from sqlalchemy import *
+from testbase import Table, Column
 
 class MetaDataTest(testbase.PersistTest):
     def test_metadata_connect(self):

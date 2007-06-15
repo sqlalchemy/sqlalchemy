@@ -7,13 +7,14 @@ import sys
 import os, unittest, StringIO, re, ConfigParser, optparse
 sys.path.insert(0, os.path.join(os.getcwd(), 'lib'))
 import sqlalchemy
-from sqlalchemy import sql, engine, pool, BoundMetaData
+from sqlalchemy import sql, schema, engine, pool, BoundMetaData
 from sqlalchemy.orm import clear_mappers
 
 db = None
 metadata = None
 db_uri = None
 echo = True
+table_options = {}
 
 # redefine sys.stdout so all those print statements go to the echo func
 local_stdout = sys.stdout
@@ -64,6 +65,8 @@ firebird=firebird://sysdba:s@localhost/tmp/test.fdb
     parser.add_option("--reversetop", action="store_true", dest="topological", help="Reverse the collection ordering for topological sorts (helps reveal dependency issues)")
     parser.add_option("--serverside", action="store_true", dest="serverside", help="Turn on server side cursors for PG")
     parser.add_option("--require", action="append", dest="require", help="Require a particular driver or module version", default=[])
+    parser.add_option("--mysql-engine", action="store", dest="mysql_engine", help="Use the specified MySQL storage engine for all tables, default is a db-default/InnoDB combo.", default=None)
+    parser.add_option("--table-option", action="append", dest="tableopts", help="Add a dialect-specific table option, key=value", default=[])
     
     (options, args) = parser.parse_args()
     sys.argv[1:] = args
@@ -105,6 +108,14 @@ firebird=firebird://sysdba:s@localhost/tmp/test.fdb
 
     if not db_uri:
         raise "Could not create engine.  specify --db <sqlite|sqlite_file|postgres|mysql|oracle|oracle8|mssql|firebird> to test runner."
+
+    global table_options
+    for spec in options.tableopts:
+        key, value = spec.split('=')
+        table_options[key] = value
+
+    if options.mysql_engine:
+        table_options['mysql_engine'] = options.mysql_engine
 
     if not options.nothreadlocal:
         __import__('sqlalchemy.mods.threadlocal')
@@ -188,6 +199,27 @@ def supported(*dbs):
             return lala
     return decorate
 
+def Table(*args, **kw):
+    """A schema.Table wrapper/hook for dialect-specific tweaks."""
+
+    test_opts = dict([(k,kw.pop(k)) for k in kw.keys()
+                      if k.startswith('test_')])
+
+    kw.update(table_options)
+
+    if db.engine.name == 'mysql':
+        if 'mysql_engine' not in kw and 'mysql_type' not in kw:
+            if 'test_needs_fk' in test_opts or 'test_needs_acid' in test_opts:
+                kw['mysql_engine'] = 'InnoDB'
+
+    return schema.Table(*args, **kw)
+
+def Column(*args, **kw):
+    """A schema.Column wrapper/hook for dialect-specific tweaks."""
+
+    # TODO: a Column that creates a Sequence automatically for PK columns,
+    # which would help Oracle tests
+    return schema.Column(*args, **kw)
         
 class PersistTest(unittest.TestCase):
 

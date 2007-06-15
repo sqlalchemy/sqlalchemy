@@ -1,9 +1,10 @@
 from testbase import PersistTest, AssertMixin
 import unittest
+import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
-import testbase
 from sqlalchemy.ext.sessioncontext import SessionContext
+from testbase import Table, Column
 
 from tables import *
 import tables

@@ -5,6 +5,7 @@ import tables
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy import exceptions
+from testbase import Table, Column
 
 class Foo(object):
     pass

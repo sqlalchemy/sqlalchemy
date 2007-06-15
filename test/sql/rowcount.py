@@ -1,5 +1,7 @@
 from sqlalchemy import *
+from testbase import Table, Column
 import testbase
+
 
 class FoundRowsTest(testbase.AssertMixin):
     """tests rowcount functionality"""

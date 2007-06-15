@@ -1,15 +1,14 @@
-"""tests that various From objects properly export their columns, as well as useable primary keys
-and foreign keys.  Full relational algebra depends on every selectable unit behaving
-nicely with others.."""
+"""tests that various From objects properly export their columns, as well as
+useable primary keys and foreign keys.  Full relational algebra depends on
+every selectable unit behaving nicely with others.."""
 
 import testbase
 import unittest, sys, datetime
+from sqlalchemy import *
+from testbase import Table, Column
 
 
 db = testbase.db
-
-from sqlalchemy import *
-
 metadata = BoundMetaData(db)
 table = Table('table1', metadata, 
     Column('col1', Integer, primary_key=True),

@@ -5,6 +5,7 @@ import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.orderinglist import *
+from testbase import Table, Column
 
 db = testbase.db
 metadata = None

@@ -3,6 +3,7 @@
 from sqlalchemy import *
 import thread, time, random
 from sqlalchemy.orm import mapperlib
+from testbase import Table, Column
 
 meta = BoundMetaData('sqlite:///foo.db')
 

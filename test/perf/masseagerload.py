@@ -1,6 +1,7 @@
 from testbase import PersistTest, AssertMixin
 import unittest, sys, os
 from sqlalchemy import *
+from testbase import Table, Column
 import StringIO
 import testbase
 import gc

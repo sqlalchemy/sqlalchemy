@@ -1,7 +1,8 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
-
+from testbase import Table, Column
 import testbase
+
 
 class AttrSettable(object):
     def __init__(self, **kwargs):

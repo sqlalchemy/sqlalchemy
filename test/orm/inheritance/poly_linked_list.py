@@ -1,6 +1,8 @@
 import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
+from testbase import Table, Column
+
 
 class PolymorphicCircularTest(testbase.ORMTest):
     keep_mappers = True

@@ -4,6 +4,7 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 import StringIO
 import testbase
+from testbase import Table, Column
 
 from tables import *
 import tables

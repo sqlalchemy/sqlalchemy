@@ -1,6 +1,6 @@
 import testbase
-
 from sqlalchemy import *
+from testbase import Table, Column
 
 # TODO: either create a mock dialect with named paramstyle and a short identifier length,
 # or find a way to just use sqlite dialect and make those changes

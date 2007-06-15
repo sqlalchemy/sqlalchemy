@@ -2,6 +2,7 @@ from testbase import PersistTest, AssertMixin
 import testbase
 from sqlalchemy import *
 from sqlalchemy.databases import mysql
+from testbase import Table, Column
 import sys, StringIO
 
 db = testbase.db

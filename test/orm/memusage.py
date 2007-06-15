@@ -4,6 +4,7 @@ from sqlalchemy.orm import mapperlib, session, unitofwork, attributes
 Mapper = mapperlib.Mapper
 import gc
 import testbase
+from testbase import Table, Column
 import tables
 
 class A(object):pass

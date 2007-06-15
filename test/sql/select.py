@@ -2,6 +2,7 @@ from testbase import PersistTest
 import testbase
 from sqlalchemy import *
 from sqlalchemy.databases import sqlite, postgres, mysql, oracle, firebird, mssql
+from testbase import Table, Column
 import unittest, re, operator
 
 

@@ -4,6 +4,7 @@ from sqlalchemy import *
 import sqlalchemy.pool as pool
 import thread
 from sqlalchemy import exceptions
+from testbase import Table, Column
 
 import logging
 logging.basicConfig()

@@ -1,5 +1,6 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
+from testbase import Table, Column
 
 from sqlalchemy.orm.sync import ONETOMANY, MANYTOONE
 import testbase

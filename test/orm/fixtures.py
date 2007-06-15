@@ -1,4 +1,5 @@
 from sqlalchemy import *
+from testbase import Table, Column
 
 class Base(object):
     def __init__(self, **kwargs):

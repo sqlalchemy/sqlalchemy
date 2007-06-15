@@ -4,7 +4,7 @@ import unittest, sys, datetime
 import tables
 db = testbase.db
 from sqlalchemy import *
-
+from testbase import Table, Column
 
 class ExecuteTest(testbase.PersistTest):
     def setUpAll(self):
@@ -13,7 +13,6 @@ class ExecuteTest(testbase.PersistTest):
         users = Table('users', metadata,
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20)),
-            mysql_engine='InnoDB'
         )
         metadata.create_all()
     

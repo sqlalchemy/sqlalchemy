@@ -3,6 +3,7 @@ import testbase
 import unittest, sys, os
 from sqlalchemy import *
 from sqlalchemy.orm import *
+from testbase import Table, Column
 import datetime
 
 class EagerTest(AssertMixin):

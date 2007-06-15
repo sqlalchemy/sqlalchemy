@@ -1,6 +1,7 @@
 import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
+from testbase import Table, Column
 import string
 
 class Place(object):

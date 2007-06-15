@@ -8,6 +8,8 @@ import tables
 from sqlalchemy import *
 from sqlalchemy.engine import ResultProxy, RowProxy
 from sqlalchemy import exceptions
+from testbase import Table, Column
+
 
 class QueryTest(PersistTest):
     

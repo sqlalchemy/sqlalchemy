@@ -4,6 +4,7 @@
 
 from sqlalchemy import *
 import sqlalchemy.pool as pool
+from testbase import Table, Column
 import psycopg2 as psycopg
 import thread,time
 psycopg = pool.manage(psycopg,pool_size=2,max_overflow=1, timeout=5, echo=True)

@@ -4,6 +4,7 @@ import tables
 
 from sqlalchemy import *
 from sqlalchemy.orm import *
+from testbase import Table, Column
 
 from sqlalchemy.ext.selectresults import SelectResultsExt, SelectResults
 

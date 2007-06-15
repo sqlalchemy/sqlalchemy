@@ -1,10 +1,11 @@
+"""tests basic polymorphic mapper loading/saving, minimal relations"""
+
 import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
-
+from testbase import Table, Column
 import sets
 
-# tests basic polymorphic mapper loading/saving, minimal relations
 
 class Person(object):
     def __init__(self, **kwargs):

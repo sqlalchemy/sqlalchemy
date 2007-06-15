@@ -1,4 +1,5 @@
 from sqlalchemy import *
+from testbase import Table, Column
 from timeit import Timer
 import sys
 

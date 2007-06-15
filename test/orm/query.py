@@ -1,6 +1,7 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
 import testbase
+from testbase import Table, Column
 from fixtures import *
 
 class Base(object):

@@ -2,6 +2,7 @@ from testbase import PersistTest, AssertMixin
 from sqlalchemy import *
 from sqlalchemy.orm import *
 import testbase
+from testbase import Table, Column
 import pickleable
 from sqlalchemy.orm.mapper import global_extensions
 from sqlalchemy.orm import util as ormutil
@@ -462,7 +463,7 @@ class PassiveDeletesTest(UnitOfWorkTest):
         mytable = Table('mytable', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30)),
-            mysql_engine='InnoDB'
+            test_need_fk=True,
             )
 
         myothertable = Table('myothertable', metadata,
@@ -470,7 +471,7 @@ class PassiveDeletesTest(UnitOfWorkTest):
             Column('parent_id', Integer),
             Column('data', String(30)),
             ForeignKeyConstraint(['parent_id'],['mytable.id'], ondelete="CASCADE"),
-            mysql_engine='InnoDB'
+            test_need_fk=True,
             )
 
         metadata.create_all()

@@ -1,5 +1,6 @@
 import testbase
 from sqlalchemy import *
+from testbase import Table, Column
 import sys
 
 class ConstraintTest(testbase.AssertMixin):

@@ -1,10 +1,11 @@
 # coding: utf-8
-import testbase
+"""verrrrry basic unicode column name testing"""
 
+import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import mapper, relation, create_session, eagerload
+from testbase import Table, Column
 
-"""verrrrry basic unicode column name testing"""
 
 class UnicodeSchemaTest(testbase.PersistTest):
     def setUpAll(self):

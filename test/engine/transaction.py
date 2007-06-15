@@ -5,7 +5,7 @@ import tables
 db = testbase.db
 from sqlalchemy import *
 from sqlalchemy.orm import *
-
+from testbase import Table, Column
 
 class TransactionTest(testbase.PersistTest):
     def setUpAll(self):
@@ -14,7 +14,7 @@ class TransactionTest(testbase.PersistTest):
         users = Table('query_users', metadata,
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20)),
-            mysql_engine='InnoDB'
+            test_needs_acid=True,
         )
         users.create(testbase.db)
     
@@ -132,6 +132,7 @@ class AutoRollbackTest(testbase.PersistTest):
         users = Table('deadlock_users', metadata,
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20)),
+            test_needs_acid=True,
         )
         users.create(conn1)
         conn1.execute("select * from deadlock_users")
@@ -150,7 +151,7 @@ class TLTransactionTest(testbase.PersistTest):
         users = Table('query_users', metadata,
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20)),
-            mysql_engine='InnoDB'
+            test_needs_acid=True,
         )
         users.create(tlengine)
     def tearDown(self):
@@ -356,7 +357,7 @@ class ForUpdateTest(testbase.PersistTest):
         counters = Table('forupdate_counters', metadata,
             Column('counter_id', INT, primary_key = True),
             Column('counter_value', INT),
-            mysql_engine='InnoDB'
+            test_needs_acid=True,
         )
         counters.create(testbase.db)
     def tearDown(self):

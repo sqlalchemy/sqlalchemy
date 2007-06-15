@@ -3,8 +3,9 @@ import testbase
 import unittest, sys, os
 from sqlalchemy import *
 from sqlalchemy.orm import *
-import datetime
 from sqlalchemy.ext.sessioncontext import SessionContext
+from testbase import Table, Column
+import datetime
 
 class EagerTest(AssertMixin):
     def setUpAll(self):

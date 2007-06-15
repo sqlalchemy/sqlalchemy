@@ -1,6 +1,8 @@
 from testbase import PersistTest
 import testbase
 from sqlalchemy import *
+from testbase import Table, Column
+
 
 class QuoteTest(PersistTest):
     def setUpAll(self):

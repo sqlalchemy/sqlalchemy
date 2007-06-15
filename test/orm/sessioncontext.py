@@ -6,12 +6,12 @@ from sqlalchemy import *
 from sqlalchemy.orm import *
 
 import testbase
+from testbase import Table, Column
 
 metadata = MetaData()
 users = Table('users', metadata,
     Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key = True),
     Column('user_name', String(40)),
-    mysql_engine='innodb'
 )
 
 class SessionContextTest(AssertMixin):

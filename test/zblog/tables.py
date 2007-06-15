@@ -1,4 +1,5 @@
 from sqlalchemy import *
+from testbase import Table, Column
 
 metadata = MetaData()
 """application table metadata objects are described here."""

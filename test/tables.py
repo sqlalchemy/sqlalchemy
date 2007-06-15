@@ -2,7 +2,7 @@
 from sqlalchemy import *
 import os
 import testbase
-
+from testbase import Table, Column
 
 ECHO = testbase.echo
 db = testbase.db
@@ -11,14 +11,14 @@ metadata = BoundMetaData(db)
 users = Table('users', metadata,
     Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key = True),
     Column('user_name', String(40)),
-    mysql_engine='innodb'
+    test_needs_acid=True,
+    test_needs_fk=True,
 )
 
 addresses = Table('email_addresses', metadata,
     Column('address_id', Integer, Sequence('address_id_seq', optional=True), primary_key = True),
     Column('user_id', Integer, ForeignKey(users.c.user_id)),
     Column('email_address', String(40)),
-    
 )
 
 orders = Table('orders', metadata,
@@ -26,20 +26,17 @@ orders = Table('orders', metadata,
     Column('user_id', Integer, ForeignKey(users.c.user_id)),
     Column('description', String(50)),
     Column('isopen', Integer),
-    
 )
 
 orderitems = Table('items', metadata,
     Column('item_id', INT, Sequence('items_id_seq', optional=True), primary_key = True),
     Column('order_id', INT, ForeignKey("orders")),
     Column('item_name', VARCHAR(50)),
-    
 )
 
 keywords = Table('keywords', metadata,
     Column('keyword_id', Integer, Sequence('keyword_id_seq', optional=True), primary_key = True),
     Column('name', VARCHAR(50)),
-    
 )
 
 userkeywords = Table('userkeywords', metadata, 

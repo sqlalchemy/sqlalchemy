@@ -2,6 +2,7 @@ import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.sessioncontext import SessionContext
+from testbase import Table, Column
 
 class Jack(object):
     def __repr__(self):

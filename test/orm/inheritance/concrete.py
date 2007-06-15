@@ -1,6 +1,7 @@
 from sqlalchemy import *
 from sqlalchemy.orm import *
 import testbase
+from testbase import Table, Column
 
 class ConcreteTest1(testbase.ORMTest):
     def define_tables(self, metadata):

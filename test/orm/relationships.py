@@ -1,12 +1,10 @@
 import testbase
 import unittest, sys, datetime
-
-db = testbase.db
-#db. 
-
 from sqlalchemy import *
 from sqlalchemy.orm import *
+from testbase import Table, Column
 
+db = testbase.db
 
 class RelationTest(testbase.PersistTest):
     """this is essentially an extension of the "dependency.py" topological sort test.  

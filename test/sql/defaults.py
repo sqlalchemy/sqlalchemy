@@ -5,6 +5,7 @@ import sqlalchemy.schema as schema
 import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import mapper, create_session
+from testbase import Table, Column
 import sqlalchemy
 
 db = testbase.db

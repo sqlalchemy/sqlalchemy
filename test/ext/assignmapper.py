@@ -6,6 +6,7 @@ from sqlalchemy.orm import create_session, clear_mappers, relation, class_mapper
 
 from sqlalchemy.ext.assignmapper import assign_mapper
 from sqlalchemy.ext.sessioncontext import SessionContext
+from testbase import Table, Column
 
 class OverrideAttributesTest(PersistTest):
     def setUpAll(self):
