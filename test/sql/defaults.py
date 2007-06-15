@@ -255,7 +255,7 @@ class SequenceTest(PersistTest):
    
    
     @testbase.supported('postgres', 'oracle')
-    def teststandalone(self):
+    def test_implicit_sequence_exec(self):
         s = Sequence("my_sequence", metadata=testbase.db)
         s.create()
         try:
@@ -263,7 +263,25 @@ class SequenceTest(PersistTest):
             self.assert_(x == 1)
         finally:
             s.drop()
+
+    @testbase.supported('postgres', 'oracle')
+    def test_explicit_sequence_exec(self):
+        s = Sequence("my_sequence")
+        s.create(testbase.db)
+        try:
+            x = s.execute(testbase.db)
+            self.assert_(x == 1)
+        finally:
+            s.drop(testbase.db)
     
+    @testbase.supported('postgres', 'oracle')
+    def test_checkfirst(self):
+        s = Sequence("my_sequence")
+        s.create(testbase.db, checkfirst=False)
+        s.create(testbase.db, checkfirst=True)
+        s.drop(testbase.db, checkfirst=False)
+        s.drop(testbase.db, checkfirst=True)
+        
     @testbase.supported('postgres', 'oracle')
     def teststandalone2(self):
         x = cartitems.c.cart_id.sequence.execute()

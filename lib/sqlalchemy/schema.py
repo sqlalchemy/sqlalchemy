@@ -60,9 +60,11 @@ class SchemaItem(object):
 
         return self._derived_metadata().engine
 
-    def get_engine(self):
+    def get_engine(self, connectable=None):
         """Return the engine or raise an error if no engine."""
 
+        if connectable is not None:
+            return connectable
         e = self._get_engine()
         if e is not None:
             return e
@@ -762,8 +764,8 @@ class DefaultGenerator(SchemaItem):
         else:
             self.column.default = self
 
-    def execute(self, **kwargs):
-        return self.get_engine().execute_default(self, **kwargs)
+    def execute(self, connectable=None, **kwargs):
+        return self.get_engine(connectable=connectable).execute_default(self, **kwargs)
 
     def __repr__(self):
         return "DefaultGenerator()"
@@ -825,12 +827,12 @@ class Sequence(DefaultGenerator):
         super(Sequence, self)._set_parent(column)
         column.sequence = self
 
-    def create(self):
-       self.get_engine().create(self)
+    def create(self, connectable=None, checkfirst=True):
+       self.get_engine(connectable=connectable).create(self, checkfirst=checkfirst)
        return self
 
-    def drop(self):
-       self.get_engine().drop(self)
+    def drop(self, connectable=None, checkfirst=True):
+       self.get_engine(connectable=connectable).drop(self, checkfirst=checkfirst)
 
     def accept_visitor(self, visitor):
         """Call the visit_seauence method on the given visitor."""
