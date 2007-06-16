@@ -6,7 +6,7 @@ import string,datetime, re, sys, os
 import sqlalchemy.engine.url as url
 
 import sqlalchemy.types
-from sqlalchemy.databases import mssql, oracle
+from sqlalchemy.databases import mssql, oracle, mysql
 
 db = testbase.db
 
@@ -68,6 +68,23 @@ class AdaptTest(PersistTest):
         dialect_type = col.type.dialect_impl(dialect)
         assert isinstance(dialect_type.impl, oracle.OracleText), repr(dialect_type.impl)
     
+    def testoracletimestamp(self):
+        dialect = oracle.OracleDialect()
+        t1 = oracle.OracleTimestamp
+        t2 = oracle.OracleTimestamp()
+        t3 = types.TIMESTAMP
+        assert isinstance(dialect.type_descriptor(t1), oracle.OracleTimestamp)
+        assert isinstance(dialect.type_descriptor(t2), oracle.OracleTimestamp)
+        assert isinstance(dialect.type_descriptor(t3), oracle.OracleTimestamp)
+
+    def testmysqlbinary(self):
+        dialect = mysql.MySQLDialect()
+        t1 = mysql.MSVarBinary
+        t2 = mysql.MSVarBinary()
+        assert isinstance(dialect.type_descriptor(t1), mysql.MSVarBinary)
+        assert isinstance(dialect.type_descriptor(t2), mysql.MSVarBinary)
+        
+        
 class OverrideTest(PersistTest):
     """tests user-defined types, including a full type as well as a TypeDecorator"""
 

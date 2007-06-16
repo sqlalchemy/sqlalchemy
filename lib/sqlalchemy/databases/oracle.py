@@ -38,12 +38,16 @@ class OracleDateTime(sqltypes.DateTime):
 # Oracle does not support TIME columns
 
 # only if cx_oracle contains TIMESTAMP
-class OracleTimestamp(sqltypes.DateTime):
+class OracleTimestamp(sqltypes.TIMESTAMP):
     def get_col_spec(self):
         return "TIMESTAMP"
 
     def get_dbapi_type(self, dialect):
         return dialect.TIMESTAMP
+
+class OracleString(sqltypes.String):
+    def get_col_spec(self):
+        return "VARCHAR(%(length)s)" % {'length' : self.length}
 
 class OracleText(sqltypes.TEXT):
     def get_dbapi_type(self, dbapi):
@@ -57,10 +61,6 @@ class OracleText(sqltypes.TEXT):
             return None
         else:
             return value.read()
-
-class OracleString(sqltypes.String):
-    def get_col_spec(self):
-        return "VARCHAR(%(length)s)" % {'length' : self.length}
 
 class OracleRaw(sqltypes.Binary):
     def get_col_spec(self):
