@@ -23,7 +23,6 @@ from sqlalchemy import exceptions, logging
 from sqlalchemy import queue as Queue
 
 try:
-    import dummy_threading
     import thread, threading
 except:
     import dummy_thread as thread
@@ -471,7 +470,7 @@ class QueuePool(Pool):
         self._overflow = 0 - pool_size
         self._max_overflow = max_overflow
         self._timeout = timeout
-        self._overflow_lock = max_overflow > 0 and threading.Lock() or dummy_threading.Lock()
+        self._overflow_lock = max_overflow > 0 and threading.Lock() or None
 
     def recreate(self):
         self.log("Pool recreating")
@@ -481,22 +480,27 @@ class QueuePool(Pool):
         try:
             self._pool.put(conn, False)
         except Queue.Full:
-            self._overflow_lock.acquire()
-            self._overflow -= 1
-            self._overflow_lock.release()
+            if not self._overflow_lock:
+                self._overflow -= 1
+            else:
+                self._overflow_lock.acquire()
+                self._overflow -= 1
+                self._overflow_lock.release()
 
     def do_get(self):
         try:
             return self._pool.get(self._max_overflow > -1 and self._overflow >= self._max_overflow, self._timeout)
         except Queue.Empty:
-            self._overflow_lock.acquire()
+            if self._overflow_lock:
+                self._overflow_lock.acquire()
             try:
                 if self._max_overflow > -1 and self._overflow >= self._max_overflow:
                     raise exceptions.TimeoutError("QueuePool limit of size %d overflow %d reached, connection timed out" % (self.size(), self.overflow()))
                 con = self.create_connection()
                 self._overflow += 1
             finally:
-                self._overflow_lock.release()
+                if self._overflow_lock:
+                    self._overflow_lock.release()
             return con
 
     def dispose(self):
