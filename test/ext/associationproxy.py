@@ -218,6 +218,9 @@ class CustomDictTest(DictTest):
         self.assert_(len(p1._children) == 3)
         self.assert_(len(p1.children) == 3)
 
+        p1.children['d'] = 'new d'
+        assert p1.children['d'] == 'new d'
+
         p1._children = {}
         self.assert_(len(p1.children) == 0)
     
