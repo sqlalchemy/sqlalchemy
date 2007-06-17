@@ -335,7 +335,6 @@ class DateTest(AssertMixin):
         #x = db.text("select * from query_users_with_date where user_datetime=:date", bindparams=[bindparam('date', )]).execute(date=datetime.datetime(2005, 11, 10, 11, 52, 35)).fetchall()
         #print repr(x)
 
-    @testbase.unsupported('sqlite')
     def testdate2(self):
         t = Table('testdate', testbase.metadata, Column('id', Integer, primary_key=True),
                 Column('adate', Date), Column('adatetime', DateTime))

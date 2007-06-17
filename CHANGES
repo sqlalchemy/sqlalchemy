@@ -22,6 +22,10 @@
       up ORM decision making [ticket:593]
 - mysql
     - added 'fields' to reserved words [ticket:590]
+- sqlite
+    - sqlite better handles datetime/date/time objects mixed and matched
+      with various Date/Time/DateTime columns
+
     
 0.3.8
 - engines
