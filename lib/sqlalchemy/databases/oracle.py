@@ -11,6 +11,7 @@ from sqlalchemy import util, sql, engine, schema, ansisql, exceptions, logging
 from sqlalchemy.engine import default, base
 import sqlalchemy.types as sqltypes
 
+import datetime
 
 
 class OracleNumeric(sqltypes.Numeric):
@@ -27,6 +28,17 @@ class OracleInteger(sqltypes.Integer):
 class OracleSmallInteger(sqltypes.Smallinteger):
     def get_col_spec(self):
         return "SMALLINT"
+
+class OracleDate(sqltypes.Date):
+    def get_col_spec(self):
+        return "DATE"
+    def convert_bind_param(self, value, dialect):
+        return value
+    def convert_result_value(self, value, dialect):
+        if not isinstance(value, datetime.datetime):
+            return value
+        else:
+            return value.date()
 
 class OracleDateTime(sqltypes.DateTime):
     def get_col_spec(self):
@@ -111,7 +123,7 @@ colspecs = {
     sqltypes.Numeric : OracleNumeric,
     sqltypes.Float : OracleNumeric,
     sqltypes.DateTime : OracleDateTime,
-    sqltypes.Date : OracleDateTime,
+    sqltypes.Date : OracleDate,
     sqltypes.String : OracleString,
     sqltypes.Binary : OracleBinary,
     sqltypes.Boolean : OracleBoolean,
@@ -122,7 +134,7 @@ colspecs = {
 
 ischema_names = {
     'VARCHAR2' : OracleString,
-    'DATE' : OracleDateTime,
+    'DATE' : OracleDate,
     'DATETIME' : OracleDateTime,
     'NUMBER' : OracleNumeric,
     'BLOB' : OracleBinary,
