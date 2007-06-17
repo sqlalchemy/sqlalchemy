@@ -271,13 +271,14 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
                 self.cursor.execute("SET IDENTITY_INSERT %s OFF" % self.compiled.statement.table.fullname)
                 self.IINSERT = False
             elif self.HASIDENT:
-                if self.dialect.use_scope_identity:
-                    self.cursor.execute("SELECT scope_identity() AS lastrowid")
-                else:
-                    self.cursor.execute("SELECT @@identity AS lastrowid")
-                row = self.cursor.fetchone()
-                self._last_inserted_ids = [int(row[0])]
-                # print "LAST ROW ID", self._last_inserted_ids
+                if not len(self._last_inserted_ids) or self._last_inserted_ids[0] is None:
+                    if self.dialect.use_scope_identity:
+                        self.cursor.execute("SELECT scope_identity() AS lastrowid")
+                    else:
+                        self.cursor.execute("SELECT @@identity AS lastrowid")
+                    row = self.cursor.fetchone()
+                    self._last_inserted_ids = [int(row[0])] + self._last_inserted_ids[1:]
+                    # print "LAST ROW ID", self._last_inserted_ids
             self.HASIDENT = False
         super(MSSQLExecutionContext, self).post_exec()
 

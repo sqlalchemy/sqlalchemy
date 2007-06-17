@@ -139,8 +139,8 @@ def descriptor():
 class SQLiteExecutionContext(default.DefaultExecutionContext):
     def post_exec(self):
         if self.compiled.isinsert:
-            self._last_inserted_ids = [self.cursor.lastrowid] + self._last_inserted_ids[1:]
-        super(SQLiteExecutionContext, self).post_exec()
+            if not len(self._last_inserted_ids) or self._last_inserted_ids[0] is None:
+                self._last_inserted_ids = [self.cursor.lastrowid] + self._last_inserted_ids[1:]
 
     def is_select(self):
         return re.match(r'SELECT|PRAGMA', self.statement.lstrip(), re.I) is not None

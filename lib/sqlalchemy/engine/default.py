@@ -285,7 +285,6 @@ class DefaultExecutionContext(base.ExecutionContext):
             self._lastrow_has_defaults = False
             for param in plist:
                 last_inserted_ids = []
-                need_lastrowid=False
                 # check the "default" status of each column in the table
                 for c in self.compiled.statement.table.c:
                     # check if it will be populated by a SQL clause - we'll need that
@@ -313,6 +312,8 @@ class DefaultExecutionContext(base.ExecutionContext):
                     # our last_inserted_ids list.
                     elif c.primary_key:
                         last_inserted_ids.append(param.get_processed(c.key))
+                # TODO: we arent accounting for executemany() situations
+                # here (hard to do since lastrowid doesnt support it either)
                 self._last_inserted_ids = last_inserted_ids
                 self._last_inserted_params = param
         elif self.compiled.isupdate:
