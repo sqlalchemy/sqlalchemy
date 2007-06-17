@@ -337,6 +337,25 @@ class DateTest(AssertMixin):
         finally:
             t.drop()
 
+class IntervalTest(AssertMixin):
+    def setUpAll(self):
+        global interval_table, metadata
+        metadata = BoundMetaData(testbase.db)
+        interval_table = Table("intervaltable", metadata, 
+            Column("id", Integer, primary_key=True),
+            Column("interval", Interval),
+            )
+        metadata.create_all()
+        
+    def tearDownAll(self):
+        metadata.drop_all()
+        
+    def test_roundtrip(self):
+        delta = datetime.datetime(2006, 10, 5) - datetime.datetime(2005, 8, 17)
+        interval_table.insert().execute(interval=delta)
+        assert interval_table.select().execute().fetchone()['interval'] == delta
+        
+        
 class TimezoneTest(AssertMixin):
     """test timezone-aware datetimes.  psycopg will return a datetime with a tzinfo attached to it,
     if postgres returns it.  python then will not let you compare a datetime with a tzinfo to a datetime

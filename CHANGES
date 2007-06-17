@@ -23,6 +23,7 @@
       would not return selectable.c.col, if the selectable is a join
       of a table and another join involving the same table.  messed
       up ORM decision making [ticket:593]
+    - added Interval type to types.py [ticket:595]
 - mysql
     - added 'fields' to reserved words [ticket:590]
 - oracle
