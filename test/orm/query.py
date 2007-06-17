@@ -158,6 +158,13 @@ class FilterTest(QueryTest):
     def test_onefilter(self):
         assert [User(id=8), User(id=9)] == create_session().query(User).filter(users.c.name.endswith('ed')).all()
 
+    def test_typecheck(self):
+        try:
+            create_session().query(User).filter(User.name==5)
+            assert False
+        except exceptions.ArgumentError, e:
+            assert str(e) == "filter() argument must be of type sqlalchemy.sql.ClauseElement"
+        
 class ParentTest(QueryTest):
     def test_o2m(self):
         sess = create_session()

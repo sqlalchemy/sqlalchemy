@@ -243,6 +243,10 @@ class Query(object):
         
         the criterion is any sql.ClauseElement applicable to the WHERE clause of a select.
         """
+        
+        if not isinstance(criterion, sql.ClauseElement):
+            raise exceptions.ArgumentError("filter() argument must be of type sqlalchemy.sql.ClauseElement")
+            
         q = self._clone()
         if q._criterion is not None:
             q._criterion = q._criterion & criterion
@@ -256,7 +260,7 @@ class Query(object):
         import properties
         
         if len(args) > 1:
-            raise exceptions.InvalidRequestError("filter_by() takes either zero positional arguments, or one scalar or list argument indicating a property search path.")
+            raise exceptions.ArgumentError("filter_by() takes either zero positional arguments, or one scalar or list argument indicating a property search path.")
         if len(args) == 1:
             path = args[0]
             (join, joinpoint, alias) = self._join_to(path, outerjoin=False, start=self.mapper, create_aliases=True)
