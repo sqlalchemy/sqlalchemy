@@ -14,6 +14,9 @@
       to polymorphic mappers that are using a straight "outerjoin"
       clause
 - sql
+    - result.last_inserted_ids() should return a list that is identically
+      sized to the primary key constraint of the table.  values that were 
+      "passively" created and not available via cursor.lastrowid will be None.
     - long-identifier detection fixed to use > rather than >= for 
       max ident length [ticket:589]
     - fixed bug where selectable.corresponding_column(selectable.c.col)
@@ -28,9 +31,8 @@
 - sqlite
     - sqlite better handles datetime/date/time objects mixed and matched
       with various Date/Time/DateTime columns
+    - string PK column inserts dont get overwritten with OID [ticket:603] 
 
-    
->>>>>>> .r2741
 0.3.8
 - engines
     - added detach() to Connection, allows underlying DBAPI connection

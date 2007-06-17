@@ -945,8 +945,9 @@ def descriptor():
 class MySQLExecutionContext(default.DefaultExecutionContext):
     def post_exec(self):
         if self.compiled.isinsert:
-            self._last_inserted_ids = [self.cursor.lastrowid]
-
+            if not len(self._last_inserted_ids) or self._last_inserted_ids[0] is None:
+                self._last_inserted_ids = [self.cursor.lastrowid] + self._last_inserted_ids[1:]
+                
 class MySQLDialect(ansisql.ANSIDialect):
     def __init__(self, **kwargs):
         ansisql.ANSIDialect.__init__(self, default_paramstyle='format', **kwargs)

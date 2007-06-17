@@ -44,6 +44,85 @@ class QueryTest(PersistTest):
         self.users.update(self.users.c.user_id == 7).execute(user_name = 'fred')
         print repr(self.users.select().execute().fetchall())
 
+    def test_lastrow_accessor(self):
+        """test the last_inserted_ids() and lastrow_has_id() functions"""
+
+        def insert_values(table, values):
+            """insert a row into a table, return the full list of values INSERTed including defaults
+            that fired off on the DB side.  
+            
+            detects rows that had defaults and post-fetches.
+            """
+            
+            result = table.insert().execute(**values)
+            ret = values.copy()
+
+            for col, id in zip(table.primary_key, result.last_inserted_ids()):
+                ret[col.key] = id
+
+            if result.lastrow_has_defaults():
+                criterion = and_(*[col==id for col, id in zip(table.primary_key, result.last_inserted_ids())])
+                row = table.select(criterion).execute().fetchone()
+                ret.update(row)
+            return ret
+
+        for supported, table, values, assertvalues in [
+            (
+                {'unsupported':['sqlite']},
+                Table("t1", metadata, 
+                    Column('id', Integer, primary_key=True),
+                    Column('foo', String(30), primary_key=True)),
+                {'foo':'hi'},
+                {'id':1, 'foo':'hi'}
+            ),
+            (
+                {'unsupported':['sqlite']},
+                Table("t2", metadata, 
+                    Column('id', Integer, primary_key=True),
+                    Column('foo', String(30), primary_key=True),
+                    Column('bar', String(30), PassiveDefault('hi'))
+                ),
+                {'foo':'hi'},
+                {'id':1, 'foo':'hi', 'bar':'hi'}
+            ),
+            (
+                {'unsupported':[]},
+                Table("t3", metadata, 
+                    Column("id", String(40), primary_key=True),
+                    Column('foo', String(30), primary_key=True),
+                    Column("bar", String(30))
+                    ),
+                    {'id':'hi', 'foo':'thisisfoo', 'bar':"thisisbar"},
+                    {'id':'hi', 'foo':'thisisfoo', 'bar':"thisisbar"}
+            ),
+            (
+                {'unsupported':[]},
+                Table("t4", metadata, 
+                    Column('id', Integer, primary_key=True),
+                    Column('foo', String(30), primary_key=True),
+                    Column('bar', String(30), PassiveDefault('hi'))
+                ),
+                {'foo':'hi', 'id':1},
+                {'id':1, 'foo':'hi', 'bar':'hi'}
+            ),
+            (
+                {'unsupported':[]},
+                Table("t5", metadata, 
+                    Column('id', String(10), primary_key=True),
+                    Column('bar', String(30), PassiveDefault('hi'))
+                ),
+                {'id':'id1'},
+                {'id':'id1', 'bar':'hi'},
+            ),
+        ]:
+            if testbase.db.name in supported['unsupported']:
+                continue
+            try:
+                table.create()
+                assert insert_values(table, values) == assertvalues, repr(values) + " " + repr(assertvalues)
+            finally:
+                table.drop()
+
     def testrowiteration(self):
         self.users.insert().execute(user_id = 7, user_name = 'jack')
         self.users.insert().execute(user_id = 8, user_name = 'ed')

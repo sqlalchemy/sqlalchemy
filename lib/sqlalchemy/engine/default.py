@@ -283,7 +283,6 @@ class DefaultExecutionContext(base.ExecutionContext):
             self._lastrow_has_defaults = False
             for param in plist:
                 last_inserted_ids = []
-                need_lastrowid=False
                 # check the "default" status of each column in the table
                 for c in self.compiled.statement.table.c:
                     # check if it will be populated by a SQL clause - we'll need that
@@ -291,7 +290,7 @@ class DefaultExecutionContext(base.ExecutionContext):
                     if c in self.compiled.inline_params:
                         self._lastrow_has_defaults = True
                         if c.primary_key:
-                            need_lastrowid = True
+                            last_inserted_ids.append(None)
                     # check if its not present at all.  see if theres a default
                     # and fire it off, and add to bind parameters.  if
                     # its a pk, add the value to our last_inserted_ids list,
@@ -306,15 +305,14 @@ class DefaultExecutionContext(base.ExecutionContext):
                             if c.primary_key:
                                 last_inserted_ids.append(param.get_processed(c.key))
                         elif c.primary_key:
-                            need_lastrowid = True
+                            last_inserted_ids.append(None)
                     # its an explicitly passed pk value - add it to
                     # our last_inserted_ids list.
                     elif c.primary_key:
                         last_inserted_ids.append(param.get_processed(c.key))
-                if need_lastrowid:
-                    self._last_inserted_ids = None
-                else:
-                    self._last_inserted_ids = last_inserted_ids
+                # TODO: we arent accounting for executemany() situations
+                # here (hard to do since lastrowid doesnt support it either)
+                self._last_inserted_ids = last_inserted_ids
                 self._last_inserted_params = param
         elif self.compiled.isupdate:
             if isinstance(self.compiled_parameters, list):
