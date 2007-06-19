@@ -1,4 +1,7 @@
 0.4.0
+- general
+    - finally figured out how to get setuptools version in, available
+      as sqlalchemy.__version__ [ticket:428]
 - orm
     - major interface pare-down for Query:  all selectXXX methods
       are deprecated.  generative methods are now the standard
