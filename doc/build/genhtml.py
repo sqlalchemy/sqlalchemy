@@ -4,6 +4,7 @@ import cPickle as pickle
 
 sys.path = ['../../lib', './lib/'] + sys.path
 
+import sqlalchemy
 import gen_docstrings, read_markdown, toc
 from mako.lookup import TemplateLookup
 from mako import exceptions, runtime
@@ -29,7 +30,7 @@ files = [
 parser = optparse.OptionParser(usage = "usage: %prog [options] [tests...]")
 parser.add_option("--file", action="store", dest="file", help="only generate file <file>")
 parser.add_option("--docstrings", action="store_true", dest="docstrings", help="only generate docstrings")
-parser.add_option("--version", action="store", dest="version", default="0.3.8", help="version string")
+parser.add_option("--version", action="store", dest="version", default=sqlalchemy.__version__, help="version string")
 
 (options, args) = parser.parse_args()
 if options.file:

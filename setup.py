@@ -3,7 +3,7 @@ use_setuptools()
 from setuptools import setup, find_packages
 
 setup(name = "SQLAlchemy",
-    version = "0.3.8",
+    version = "0.3.9",
     description = "Database Abstraction Library",
     author = "Mike Bayer",
     author_email = "mike_mp@zzzcomputing.com",

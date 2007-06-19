@@ -1,3 +1,7 @@
+0.3.9
+- general
+    - finally figured out how to get setuptools version in, available
+      as sqlalchemy.__version__ [ticket:428]
 - ext
     - iteration over dict association proxies is now dict-like, not
       InstrumentedList-like (e.g. over keys instead of values)
