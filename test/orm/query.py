@@ -212,6 +212,10 @@ class JoinTest(QueryTest):
         # load a user who has an order that contains item id 3 and address id 1 (order 3, owned by jack)
         result = create_session().query(User).join(['orders', 'items']).filter_by(id=3).join(['orders','address']).filter_by(id=1).all()
         assert [User(id=7, name='jack')] == result
+
+    def test_overlapping_paths_outerjoin(self):
+        result = create_session().query(User).outerjoin(['orders', 'items']).filter_by(id=3).outerjoin(['orders','address']).filter_by(id=1).all()
+        assert [User(id=7, name='jack')] == result
     
     def test_overlap_with_aliases(self):
         oalias = orders.alias('oalias')

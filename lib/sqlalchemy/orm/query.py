@@ -472,7 +472,7 @@ class Query(object):
         by direct traversal of each keyname (i.e. like join_via()).
         """
         q = self._clone()
-        (clause, mapper) = self._join_to(prop, outerjoin=True)
+        (clause, mapper) = self._join_to(prop, outerjoin=True, start=self.mapper)
         q._from_obj = [clause]
         q._joinpoint = mapper
         return q
