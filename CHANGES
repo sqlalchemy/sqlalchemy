@@ -8,6 +8,8 @@
     - association proxies no longer bind tightly to source collections
       [ticket:597], and are constructed with a thunk instead
 - orm
+    - forwards-compatibility with 0.4: added one(), first(), and 
+      all() to Query
     - added synchronization to the mapper() construction step, to avoid
       thread collections when pre-existing mappers are compiling in a 
       different thread [ticket:613]
@@ -42,7 +44,9 @@
     - sqlite better handles datetime/date/time objects mixed and matched
       with various Date/Time/DateTime columns
     - string PK column inserts dont get overwritten with OID [ticket:603] 
-
+- extensions
+    - added selectone_by() to assignmapper
+    
 0.3.8
 - engines
     - added detach() to Connection, allows underlying DBAPI connection

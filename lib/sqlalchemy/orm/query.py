@@ -828,15 +828,56 @@ class Query(object):
 
         return list(self)
 
+    def one(self):
+        """Return the first result of this ``Query``, raising an exception if more than one row exists.
+
+        This results in an execution of the underlying query.
+        
+        this method is for forwards-compatibility with 0.4.
+        """
+
+        if self._col is None or self._func is None: 
+            ret = list(self[0:2])
+
+            if len(ret) == 1:
+                return ret[0]
+            elif len(ret) == 0:
+                raise exceptions.InvalidRequestError('No rows returned for one()')
+            else:
+                raise exceptions.InvalidRequestError('Multiple rows returned for one()')
+        else:
+            return self._col_aggregate(self._col, self._func)
+
+    def first(self):
+        """Return the first result of this ``Query``.
+
+        This results in an execution of the underlying query.
+
+        this method is for forwards-compatibility with 0.4.
+        """
+
+        if self._col is None or self._func is None: 
+            ret = list(self[0:1])
+            if len(ret) > 0:
+                return ret[0]
+            else:
+                return None
+        else:
+            return self._col_aggregate(self._col, self._func)
+
+    def all(self):
+        return self.list()
+
     def scalar(self):
         """Return the first result of this ``Query``.
 
         This results in an execution of the underlying query.
+        
+        this method will be deprecated in 0.4; first() is added for 
+        forwards-compatibility.
         """
-        if self._col is None or self._func is None: 
-            return self[0]
-        else:
-            return self._col_aggregate(self._col, self._func)
+        
+        return self.first()
     
     def __iter__(self):
         return iter(self.select_whereclause())
