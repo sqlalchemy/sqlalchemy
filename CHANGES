@@ -1,7 +1,4 @@
 0.4.0
-- general
-    - finally figured out how to get setuptools version in, available
-      as sqlalchemy.__version__ [ticket:428]
 - orm
     - major interface pare-down for Query:  all selectXXX methods
       are deprecated.  generative methods are now the standard
@@ -19,6 +16,13 @@
       function calls significantly reduced for large loads.
       test/perf/masseagerload.py reports 0.4 as having the fewest number
       of function calls across all SA versions (0.1, 0.2, and 0.3)
+    - primary key "collapse" behavior; the mapper will analyze all columns
+      in its given selectable for primary key "equivalence", that is, columns
+      which are equivalent via foreign key relationship or via an explicit
+      inherit_condition.  primarily for joined-table inheritance scenarios
+      where different named PK columns in inheriting tables should "collapse"
+      into a single-valued (or fewer-valued) primary key.  fixes things 
+      like [ticket:611].
     - secondary inheritance loading: polymorphic mappers can be
       constructed *without* a select_table argument. inheriting mappers
       whose tables were not represented in the initial load will issue a
@@ -31,31 +35,35 @@
     - added undefer_group() MapperOption, sets a set of "deferred"
       columns joined by a "group" to load as "undeferred".
 - sql
-  - result.last_inserted_ids() should return a list that is identically
-    sized to the primary key constraint of the table.  values that were 
-    "passively" created and not available via cursor.lastrowid will be None.
   - result sets from CRUD operations close their underlying cursor immediately.
     will also autoclose the connection if defined for the operation; this 
     allows more efficient usage of connections for successive CRUD operations
     with less chance of "dangling connections".
-  - long-identifier detection fixed to use > rather than >= for 
-    max ident length [ticket:589]
-  - fixed bug where selectable.corresponding_column(selectable.c.col)
-     would not return selectable.c.col, if the selectable is a join
-     of a table and another join involving the same table.  messed
-     up ORM decision making [ticket:593]
   - added "explcit" create/drop/execute support for sequences 
     (i.e. you can pass a "connectable" to each of those methods
     on Sequence)
-  - result.last_inserted_ids() should return a list that is identically
-    sized to the primary key constraint of the table.  values that were 
-    "passively" created and not available via cursor.lastrowid will be None.
-  - long-identifier detection fixed to use > rather than >= for 
-    max ident length [ticket:589]
-  - fixed bug where selectable.corresponding_column(selectable.c.col)
-    would not return selectable.c.col, if the selectable is a join
-    of a table and another join involving the same table.  messed
-    up ORM decision making [ticket:593]
+- extensions
+  - proxyengine is temporarily removed, pending an actually working
+    replacement.
+  - SelectResults has been replaced by Query.  SelectResults / 
+    SelectResultsExt still exist but just return a slightly modified
+    Query object for backwards-compatibility.  join_to() method 
+    from SelectResults isn't present anymore, need to use join(). 
+    
+0.3.9
+- general
+    - finally figured out how to get setuptools version in, available
+      as sqlalchemy.__version__ [ticket:428]
+- sql
+    - result.last_inserted_ids() should return a list that is identically
+      sized to the primary key constraint of the table.  values that were 
+      "passively" created and not available via cursor.lastrowid will be None.
+    - long-identifier detection fixed to use > rather than >= for 
+      max ident length [ticket:589]
+    - fixed bug where selectable.corresponding_column(selectable.c.col)
+      would not return selectable.c.col, if the selectable is a join
+      of a table and another join involving the same table.  messed
+      up ORM decision making [ticket:593]
 - mysql
   - added 'fields' to reserved words [ticket:590]
       
@@ -66,13 +74,6 @@
     - sqlite better handles datetime/date/time objects mixed and matched
       with various Date/Time/DateTime columns
     - string PK column inserts dont get overwritten with OID [ticket:603] 
-- extensions
-  - proxyengine is temporarily removed, pending an actually working
-    replacement.
-  - SelectResults has been replaced by Query.  SelectResults / 
-    SelectResultsExt still exist but just return a slightly modified
-    Query object for backwards-compatibility.  join_to() method 
-    from SelectResults isn't present anymore, need to use join(). 
 
 0.3.8
 - engines
