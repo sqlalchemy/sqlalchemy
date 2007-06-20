@@ -5,13 +5,13 @@
       way to do things, i.e. filter(), filter_by(), all(), one(),
       etc.  Deprecated methods are docstring'ed with their 
       new replacements.
-    - query.list() replaced with query.all()
     - removed ancient query.select_by_attributename() capability.
     - added "aliased joins" positional argument to the front of 
       filter_by(). this allows auto-creation of joins that are aliased
       locally to the individual filter_by() call.  This allows the 
       auto-construction of joins which cross the same paths but
-      are querying divergent criteria.
+      are querying divergent criteria.  ClauseElements at the front
+      of filter_by() are removed (use filter()).
     - along with recent speedups to ResultProxy, total number of
       function calls significantly reduced for large loads.
       test/perf/masseagerload.py reports 0.4 as having the fewest number
@@ -54,6 +54,28 @@
 - general
     - finally figured out how to get setuptools version in, available
       as sqlalchemy.__version__ [ticket:428]
+- ext
+    - iteration over dict association proxies is now dict-like, not
+      InstrumentedList-like (e.g. over keys instead of values)
+    - association proxies no longer bind tightly to source collections
+      [ticket:597], and are constructed with a thunk instead
+- orm
+    - forwards-compatibility with 0.4: added one(), first(), and 
+      all() to Query
+    - added synchronization to the mapper() construction step, to avoid
+      thread collections when pre-existing mappers are compiling in a 
+      different thread [ticket:613]
+    - fixed very stupid bug when deleting items with many-to-many
+      uselist=False relations
+    - remember all that stuff about polymorphic_union ?  for 
+      joined table inheritance ?  Funny thing...
+      You sort of don't need it for joined table inheritance, you 
+      can just string all the tables together via outerjoin().
+      The UNION still applies if concrete tables are involved, 
+      though (since nothing to join them on).
+    - small fix to eager loading to better work with eager loads
+      to polymorphic mappers that are using a straight "outerjoin"
+      clause
 - sql
     - result.last_inserted_ids() should return a list that is identically
       sized to the primary key constraint of the table.  values that were 
@@ -64,9 +86,9 @@
       would not return selectable.c.col, if the selectable is a join
       of a table and another join involving the same table.  messed
       up ORM decision making [ticket:593]
+    - added Interval type to types.py [ticket:595]
 - mysql
-  - added 'fields' to reserved words [ticket:590]
-      
+    - added 'fields' to reserved words [ticket:590]
 - oracle
     - datetime fixes: got subsecond TIMESTAMP to work [ticket:604],
       added OracleDate which supports types.Date with only year/month/day
@@ -74,6 +96,8 @@
     - sqlite better handles datetime/date/time objects mixed and matched
       with various Date/Time/DateTime columns
     - string PK column inserts dont get overwritten with OID [ticket:603] 
+- extensions
+    - added selectone_by() to assignmapper
 
 0.3.8
 - engines

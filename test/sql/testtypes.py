@@ -5,7 +5,7 @@ from sqlalchemy import *
 import string,datetime, re, sys, os
 import sqlalchemy.engine.url as url
 import sqlalchemy.types
-from sqlalchemy.databases import mssql, oracle
+from sqlalchemy.databases import mssql, oracle, mysql
 from testbase import Table, Column
 
 
@@ -69,6 +69,23 @@ class AdaptTest(PersistTest):
         dialect_type = col.type.dialect_impl(dialect)
         assert isinstance(dialect_type.impl, oracle.OracleText), repr(dialect_type.impl)
     
+    def testoracletimestamp(self):
+        dialect = oracle.OracleDialect()
+        t1 = oracle.OracleTimestamp
+        t2 = oracle.OracleTimestamp()
+        t3 = types.TIMESTAMP
+        assert isinstance(dialect.type_descriptor(t1), oracle.OracleTimestamp)
+        assert isinstance(dialect.type_descriptor(t2), oracle.OracleTimestamp)
+        assert isinstance(dialect.type_descriptor(t3), oracle.OracleTimestamp)
+
+    def testmysqlbinary(self):
+        dialect = mysql.MySQLDialect()
+        t1 = mysql.MSVarBinary
+        t2 = mysql.MSVarBinary()
+        assert isinstance(dialect.type_descriptor(t1), mysql.MSVarBinary)
+        assert isinstance(dialect.type_descriptor(t2), mysql.MSVarBinary)
+        
+        
 class OverrideTest(PersistTest):
     """tests user-defined types, including a full type as well as a TypeDecorator"""
 
@@ -241,33 +258,18 @@ class DateTest(AssertMixin):
         global users_with_date, insert_data
 
         if db.engine.name == 'oracle':
-            # still trying to get oracle sub-second resolution to work
-            oracle_subsecond = False
-            if oracle_subsecond:
-                import sqlalchemy.databases.oracle as oracle
-                insert_data =  [
-                        [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.date(2005,11,10), datetime.datetime(2005, 11, 10, 0, 0, 0, 29384)],
-                        [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.date(2005,10,10), datetime.datetime(2006, 5, 10, 15, 32, 47, 6754)],
-                        [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35, 54839), datetime.date(1970,4,1), datetime.datetime(2004, 9, 18, 4, 0, 52, 1043)],
-                        [10, 'colber', None, None, None]
-                ]
+            import sqlalchemy.databases.oracle as oracle
+            insert_data =  [
+                    [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.date(2005,11,10), datetime.datetime(2005, 11, 10, 0, 0, 0, 29384)],
+                    [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.date(2005,10,10), datetime.datetime(2006, 5, 10, 15, 32, 47, 6754)],
+                    [9, 'foo', datetime.datetime(2006, 11, 10, 11, 52, 35), datetime.date(1970,4,1), datetime.datetime(2004, 9, 18, 4, 0, 52, 1043)],
+                    [10, 'colber', None, None, None]
+             ]
 
-                fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
+            fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
 
-                collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime),
-               Column('user_date', Date), Column('user_time', oracle.OracleTimestamp)]
-            else:
-                insert_data =  [
-                        [7, 'jack', datetime.datetime(2005, 11, 10, 0, 0), datetime.datetime(2005, 11, 10, 0, 0, 0)],
-                        [8, 'roy', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.datetime(2006, 5, 10, 15, 32, 47)],
-                        [9, 'foo', datetime.datetime(2005, 11, 10, 11, 52, 35), datetime.datetime(2004, 9, 18, 4, 0, 52)],
-                        [10, 'colber', None, None]
-                ]
-
-                fnames = ['user_id', 'user_name', 'user_datetime', 'user_date', 'user_time']
-
-                collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime),
-               Column('user_date', DateTime)]
+            collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime),
+               Column('user_date', Date), Column('user_time', TIMESTAMP)]
         elif db.engine.name == 'mysql' or db.engine.name == 'mssql':
             # these dont really support the TIME type at all
             insert_data =  [
@@ -320,9 +322,8 @@ class DateTest(AssertMixin):
         #x = db.text("select * from query_users_with_date where user_datetime=:date", bindparams=[bindparam('date', )]).execute(date=datetime.datetime(2005, 11, 10, 11, 52, 35)).fetchall()
         #print repr(x)
 
-    @testbase.unsupported('sqlite')
     def testdate2(self):
-        t = Table('testdate', testbase.metadata, Column('id', Integer, primary_key=True),
+        t = Table('testdate', testbase.metadata, Column('id', Integer, Sequence('datetest_id_seq', optional=True), primary_key=True),
                 Column('adate', Date), Column('adatetime', DateTime))
         t.create()
         try:
@@ -338,6 +339,25 @@ class DateTest(AssertMixin):
         finally:
             t.drop()
 
+class IntervalTest(AssertMixin):
+    def setUpAll(self):
+        global interval_table, metadata
+        metadata = BoundMetaData(testbase.db)
+        interval_table = Table("intervaltable", metadata, 
+            Column("id", Integer, primary_key=True),
+            Column("interval", Interval),
+            )
+        metadata.create_all()
+        
+    def tearDownAll(self):
+        metadata.drop_all()
+        
+    def test_roundtrip(self):
+        delta = datetime.datetime(2006, 10, 5) - datetime.datetime(2005, 8, 17)
+        interval_table.insert().execute(interval=delta)
+        assert interval_table.select().execute().fetchone()['interval'] == delta
+        
+        
 class TimezoneTest(AssertMixin):
     """test timezone-aware datetimes.  psycopg will return a datetime with a tzinfo attached to it,
     if postgres returns it.  python then will not let you compare a datetime with a tzinfo to a datetime

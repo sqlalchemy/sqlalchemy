@@ -21,7 +21,7 @@ from sqlalchemy.orm.session import Session as create_session
 from sqlalchemy.orm.session import object_session, attribute_manager
 
 __all__ = ['relation', 'column_property', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer', 'undefer_group', 'extension',
-        'mapper', 'clear_mappers', 'compile_mappers', 'clear_mapper', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query',
+        'mapper', 'clear_mappers', 'compile_mappers', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query',
         'polymorphic_union', 'create_session', 'synonym', 'contains_alias', 'contains_eager', 'EXT_PASS', 'object_session'
         ]
 
@@ -118,24 +118,15 @@ def clear_mappers():
     classes as their primary mapper.
     """
 
-    for mapper in mapper_registry.values():
-        mapper.dispose()
-    mapper_registry.clear()
-    sautil.ArgSingleton.instances.clear()
-
-def clear_mapper(m):
-    """Remove the given mapper from the storage of mappers.
-
-    When a new mapper is created for the previous mapper's class, it
-    will be used as that classes' new primary mapper.
-    """
-
-    del mapper_registry[m.class_key]
-    attribute_manager.reset_class_managed(m.class_)
-    if hasattr(m.class_, 'c'):
-        del m.class_.c
-    m.class_key.dispose()
-
+    mapperlib._COMPILE_MUTEX.acquire()
+    try:
+        for mapper in mapper_registry.values():
+            mapper.dispose()
+        mapper_registry.clear()
+        sautil.ArgSingleton.instances.clear()
+    finally:
+        mapperlib._COMPILE_MUTEX.release()
+        
 def extension(ext):
     """Return a ``MapperOption`` that will insert the given
     ``MapperExtension`` to the beginning of the list of extensions

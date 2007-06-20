@@ -777,8 +777,13 @@ class Mapper(object):
                 pass
             init._oldinit = oldinit
             self.class_.__init__ = init
-        
-        mapper_registry[self.class_key] = self
+
+        _COMPILE_MUTEX.acquire()
+        try:
+            mapper_registry[self.class_key] = self
+        finally:
+            _COMPILE_MUTEX.release()
+
         if self.entity_name is None:
             self.class_.c = self.c
 

@@ -32,11 +32,14 @@ class SLSmallInteger(sqltypes.Smallinteger):
 class DateTimeMixin(object):
     def convert_bind_param(self, value, dialect):
         if value is not None:
-            return str(value)
+            if getattr(value, 'microsecond', None) is not None:
+                return value.strftime(self.__format__ + "." + str(value.microsecond))
+            else:
+                return value.strftime(self.__format__)
         else:
             return None
 
-    def _cvt(self, value, dialect, fmt):
+    def _cvt(self, value, dialect):
         if value is None:
             return None
         try:
@@ -44,30 +47,36 @@ class DateTimeMixin(object):
             microsecond = int(microsecond)
         except ValueError:
             (value, microsecond) = (value, 0)
-        return time.strptime(value, fmt)[0:6] + (microsecond,)
+        return time.strptime(value, self.__format__)[0:6] + (microsecond,)
 
 class SLDateTime(DateTimeMixin,sqltypes.DateTime):
+    __format__ = "%Y-%m-%d %H:%M:%S"
+    
     def get_col_spec(self):
         return "TIMESTAMP"
 
     def convert_result_value(self, value, dialect):
-        tup = self._cvt(value, dialect, "%Y-%m-%d %H:%M:%S")
+        tup = self._cvt(value, dialect)
         return tup and datetime.datetime(*tup)
 
 class SLDate(DateTimeMixin, sqltypes.Date):
+    __format__ = "%Y-%m-%d"
+
     def get_col_spec(self):
         return "DATE"
 
     def convert_result_value(self, value, dialect):
-        tup = self._cvt(value, dialect, "%Y-%m-%d")
+        tup = self._cvt(value, dialect)
         return tup and datetime.date(*tup[0:3])
 
 class SLTime(DateTimeMixin, sqltypes.Time):
+    __format__ = "%H:%M:%S"
+
     def get_col_spec(self):
         return "TIME"
 
     def convert_result_value(self, value, dialect):
-        tup = self._cvt(value, dialect, "%H:%M:%S")
+        tup = self._cvt(value, dialect)
         return tup and datetime.time(*tup[3:7])
 
 class SLText(sqltypes.TEXT):

@@ -201,12 +201,19 @@ class MapperTest(MapperSuperTest):
         
     def testrefresh2(self):
         """test a hang condition that was occuring on expire/refresh"""
+        
         s = create_session()
-        mapper(Address, addresses)
+        m1 = mapper(Address, addresses)
 
-        mapper(User, users, properties = dict(addresses=relation(Address,private=True,lazy=False)) )
-
+        m2 = mapper(User, users, properties = dict(addresses=relation(Address,private=True,lazy=False)) )
+        assert m1._Mapper__is_compiled is False
+        assert m2._Mapper__is_compiled is False
+        
+#        compile_mappers()
+        print "NEW USER"
         u=User()
+        print "NEW USER DONE"
+        assert m2._Mapper__is_compiled is True
         u.user_name='Justin'
         a = Address()
         a.address_id=17  # to work around the hardcoded IDs in this test suite....

@@ -1,7 +1,9 @@
-# tests the COMPILE_MUTEX in mapper compilation
+"""test that mapper compilation is threadsafe, including
+when additional mappers are created while the existing 
+collection is being compiled."""
 
 from sqlalchemy import *
-import thread, time, random
+import thread, time
 from sqlalchemy.orm import mapperlib
 from testbase import Table, Column
 
@@ -16,6 +18,10 @@ t2 = Table('t2', meta,
     Column('c1', Integer, primary_key=True),
     Column('c2', String(30)),
     Column('t1c1', None, ForeignKey('t1.c1'))
+)
+t3 = Table('t3', meta,
+    Column('c1', Integer, primary_key=True),
+    Column('c2', String(30)),
 )
 meta.create_all()
 
@@ -33,39 +39,37 @@ class FakeLock(object):
 # should produce thread collisions    
 #mapperlib._COMPILE_MUTEX = FakeLock()
 
-existing_compile_all = mapperlib.Mapper._compile_all
-state = [False]
-# decorate mapper's _compile_all() method; the mutex in mapper.compile()
-# should insure that this method is only called once by a single thread only
-def monkeypatch_compile_all(self):
-    if state[0]:
-        raise "thread collision"
-    state[0] = True
-    try:
-        print "compile", thread.get_ident()
-        time.sleep(1 + random.random())
-        existing_compile_all(self)
-    finally:
-        state[0] = False
-mapperlib.Mapper._compile_all = monkeypatch_compile_all
-
 def run1():
-    print "T1", thread.get_ident()
-    class_mapper(T1)
+    for i in range(50):
+        print "T1", thread.get_ident()
+        class_mapper(T1)
+        time.sleep(.05)
 
 def run2():
-    print "T2", thread.get_ident()
-    class_mapper(T2)
+    for i in range(50):
+        print "T2", thread.get_ident()
+        class_mapper(T2)
+        time.sleep(.057)
 
-for i in range(0,1):
-    clear_mappers()
-    mapper(T1, t1, properties={'t2':relation(T2, backref="t1")})
-    mapper(T2, t2)
-    #compile_mappers()
-    print "START"
-    for j in range(0, 5):
-        thread.start_new_thread(run1, ())
-        thread.start_new_thread(run2, ())
-    print "WAIT"
-    time.sleep(5)
+def run3():
+    for i in range(50):
+        def foo():
+            print "FOO", thread.get_ident()
+            class Foo(object):pass
+            mapper(Foo, t3)
+            class_mapper(Foo).compile()
+        foo()
+        time.sleep(.05)
+    
+mapper(T1, t1, properties={'t2':relation(T2, backref="t1")})
+mapper(T2, t2)
+print "START"
+for j in range(0, 5):
+    thread.start_new_thread(run1, ())
+    thread.start_new_thread(run2, ())
+    thread.start_new_thread(run3, ())
+    thread.start_new_thread(run3, ())
+    thread.start_new_thread(run3, ())
+print "WAIT"
+time.sleep(5)
     

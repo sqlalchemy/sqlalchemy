@@ -189,7 +189,7 @@ class AssociationProxy(object):
             return _AssociationList(lazy_collection, creator, getter, setter)
         elif self.collection_class is dict:
             kv_setter = lambda o, k, v: setattr(o, value_attr, v)
-            return _AssociationDict(lazy_collection, creator, getter, setter)
+            return _AssociationDict(lazy_collection, creator, getter, kv_setter)
         elif self.collection_class is util.Set:
             return _AssociationSet(lazy_collection, creator, getter, setter)
         else:

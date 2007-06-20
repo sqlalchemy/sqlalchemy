@@ -338,7 +338,7 @@ class ManyToManyDP(DependencyProcessor):
                 childlist = self.get_object_dependencies(obj, uowcommit, passive=self.passive_deletes)
                 if childlist is not None:
                     for child in childlist.deleted_items() + childlist.unchanged_items():
-                        if reverse_dep and (reverse_dep, "manytomany", child, obj) in uowcommit.attributes:
+                        if child is None or (reverse_dep and (reverse_dep, "manytomany", child, obj) in uowcommit.attributes):
                             continue
                         associationrow = {}
                         self._synchronize(obj, child, associationrow, False, uowcommit)
@@ -349,14 +349,14 @@ class ManyToManyDP(DependencyProcessor):
                 childlist = self.get_object_dependencies(obj, uowcommit)
                 if childlist is None: continue
                 for child in childlist.added_items():
-                    if reverse_dep and (reverse_dep, "manytomany", child, obj) in uowcommit.attributes:
+                    if child is None or (reverse_dep and (reverse_dep, "manytomany", child, obj) in uowcommit.attributes):
                         continue
                     associationrow = {}
                     self._synchronize(obj, child, associationrow, False, uowcommit)
                     uowcommit.attributes[(self, "manytomany", obj, child)] = True
                     secondary_insert.append(associationrow)
                 for child in childlist.deleted_items():
-                    if reverse_dep and (reverse_dep, "manytomany", child, obj) in uowcommit.attributes:
+                    if child is None or (reverse_dep and (reverse_dep, "manytomany", child, obj) in uowcommit.attributes):
                         continue
                     associationrow = {}
                     self._synchronize(obj, child, associationrow, False, uowcommit)
