@@ -2775,7 +2775,7 @@ class Select(_SelectBaseMixin, FromClause):
         self.is_scalar = scalar
         if scalar:
             # allow corresponding_column to return None
-            self.orig_set = []
+            self.orig_set = util.Set()
             
         # indicates if this select statement, as a subquery, should automatically correlate
         # its FROM clause to that of an enclosing select, update, or delete statement.
