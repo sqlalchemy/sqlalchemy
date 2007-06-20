@@ -117,12 +117,16 @@ def clear_mappers():
     classes as their primary mapper.
     """
 
-    for mapper in mapper_registry.values():
-        attribute_manager.reset_class_managed(mapper.class_)
-        if hasattr(mapper.class_, 'c'):
-            del mapper.class_.c
-    mapper_registry.clear()
-    sautil.ArgSingleton.instances.clear()
+    mapperlib._COMPILE_MUTEX.acquire()
+    try:
+        for mapper in mapper_registry.values():
+            attribute_manager.reset_class_managed(mapper.class_)
+            if hasattr(mapper.class_, 'c'):
+                del mapper.class_.c
+        mapper_registry.clear()
+        sautil.ArgSingleton.instances.clear()
+    finally:
+        mapperlib._COMPILE_MUTEX.release()
 
 def clear_mapper(m):
     """Remove the given mapper from the storage of mappers.
@@ -130,13 +134,17 @@ def clear_mapper(m):
     When a new mapper is created for the previous mapper's class, it
     will be used as that classes' new primary mapper.
     """
-
-    del mapper_registry[m.class_key]
-    attribute_manager.reset_class_managed(m.class_)
-    if hasattr(m.class_, 'c'):
-        del m.class_.c
-    m.class_key.dispose()
-
+    
+    mapperlib._COMPILE_MUTEX.acquire()
+    try:
+        del mapper_registry[m.class_key]
+        attribute_manager.reset_class_managed(m.class_)
+        if hasattr(m.class_, 'c'):
+            del m.class_.c
+        m.class_key.dispose()
+    finally:
+        mapperlib._COMPILE_MUTEX.release()
+        
 def extension(ext):
     """Return a ``MapperOption`` that will insert the given
     ``MapperExtension`` to the beginning of the list of extensions

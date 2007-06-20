@@ -8,6 +8,9 @@
     - association proxies no longer bind tightly to source collections
       [ticket:597], and are constructed with a thunk instead
 - orm
+    - added synchronization to the mapper() construction step, to avoid
+      thread collections when pre-existing mappers are compiling in a 
+      different thread [ticket:613]
     - fixed very stupid bug when deleting items with many-to-many
       uselist=False relations
     - remember all that stuff about polymorphic_union ?  for 
