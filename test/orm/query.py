@@ -163,7 +163,7 @@ class FilterTest(QueryTest):
             create_session().query(User).filter(User.name==5)
             assert False
         except exceptions.ArgumentError, e:
-            assert str(e) == "filter() argument must be of type sqlalchemy.sql.ClauseElement"
+            assert str(e) == "filter() argument must be of type sqlalchemy.sql.ClauseElement or string"
         
 class ParentTest(QueryTest):
     def test_o2m(self):

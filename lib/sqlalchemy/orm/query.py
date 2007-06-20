@@ -244,8 +244,11 @@ class Query(object):
         the criterion is any sql.ClauseElement applicable to the WHERE clause of a select.
         """
         
-        if not isinstance(criterion, sql.ClauseElement):
-            raise exceptions.ArgumentError("filter() argument must be of type sqlalchemy.sql.ClauseElement")
+        if isinstance(criterion, basestring):
+            criterion = sql.text(criterion)
+            
+        if criterion is not None and not isinstance(criterion, sql.ClauseElement):
+            raise exceptions.ArgumentError("filter() argument must be of type sqlalchemy.sql.ClauseElement or string")
             
         q = self._clone()
         if q._criterion is not None:
