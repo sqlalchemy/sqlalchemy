@@ -8,6 +8,8 @@
     - association proxies no longer bind tightly to source collections
       [ticket:597], and are constructed with a thunk instead
 - orm
+    - fixed very stupid bug when deleting items with many-to-many
+      uselist=False relations
     - remember all that stuff about polymorphic_union ?  for 
       joined table inheritance ?  Funny thing...
       You sort of don't need it for joined table inheritance, you 

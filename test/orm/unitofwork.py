@@ -1277,6 +1277,21 @@ class ManyToManyTest(UnitOfWorkTest):
         ctx.current.flush()
         assert itemkeywords.count().scalar() == 0
 
+    def testscalar(self):
+        """test that dependency.py doesnt try to delete an m2m relation referencing None."""
+        
+        mapper(Keyword, keywords)
+
+        mapper(Item, orderitems, properties = dict(
+                keyword = relation(Keyword, secondary=itemkeywords, uselist=False),
+            ))
+        
+        i = Item()
+        ctx.current.flush()
+        ctx.current.delete(i)
+        ctx.current.flush()
+        
+        
 
     def testmanytomanyupdate(self):
         """tests some history operations on a many to many"""
