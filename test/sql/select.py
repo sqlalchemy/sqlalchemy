@@ -244,6 +244,15 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             checkparams = {'myothertable_othername': 'asdf', 'myothertable_othername_1':'foo', 'myothertable_otherid': 9, 'mytable_myid': 12}
         )
 
+    def testdistinct(self):
+        self.runtest(
+            select([table1.c.myid.distinct()]), "SELECT DISTINCT mytable.myid FROM mytable"
+        )
+
+        self.runtest(
+            select([distinct(table1.c.myid)]), "SELECT DISTINCT mytable.myid FROM mytable"
+        )
+        
     def testoperators(self):
         self.runtest(
             table1.select((table1.c.myid != 12) & ~(table1.c.name=='john')), 

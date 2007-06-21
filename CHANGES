@@ -25,6 +25,8 @@
       to polymorphic mappers that are using a straight "outerjoin"
       clause
 - sql
+    - added standalone distinct() function in addition to column.distinct()
+      [ticket:558]
     - result.last_inserted_ids() should return a list that is identically
       sized to the primary key constraint of the table.  values that were 
       "passively" created and not available via cursor.lastrowid will be None.
