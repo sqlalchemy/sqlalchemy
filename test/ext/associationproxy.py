@@ -133,6 +133,13 @@ class _CollectionOperations(PersistTest):
         self.assert_(len(p1._children) == 3)
         self.assert_(len(p1.children) == 3)
 
+        p1.children[1] = 'changed-in-place'
+        self.assert_(p1.children[1] == 'changed-in-place')
+        inplace_id = p1._children[1].id
+        p1 = self.roundtrip(p1)
+        self.assert_(p1.children[1] == 'changed-in-place')
+        assert p1._children[1].id == inplace_id
+
         p1._children = []
         self.assert_(len(p1.children) == 0)
 
@@ -220,8 +227,12 @@ class CustomDictTest(DictTest):
         self.assert_(len(p1._children) == 3)
         self.assert_(len(p1.children) == 3)
 
-        p1.children['d'] = 'new d'
-        assert p1.children['d'] == 'new d'
+        p1.children['e'] = 'changed-in-place' 
+        self.assert_(p1.children['e'] == 'changed-in-place')
+        inplace_id = p1._children['e'].id
+        p1 = self.roundtrip(p1)
+        self.assert_(p1.children['e'] == 'changed-in-place')
+        self.assert_(p1._children['e'].id == inplace_id)
 
         p1._children = {}
         self.assert_(len(p1.children) == 0)
