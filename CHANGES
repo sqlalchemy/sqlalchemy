@@ -42,6 +42,10 @@
 - oracle
     - datetime fixes: got subsecond TIMESTAMP to work [ticket:604],
       added OracleDate which supports types.Date with only year/month/day
+    - added dialect flag "auto_convert_lobs", defaults to True; will cause any 
+      LOB objects detected in a result set to be forced into OracleBinary
+      so that the LOB is read() automatically, if no typemap was present
+      (i.e., if a textual execute() was issued).
 - sqlite
     - sqlite better handles datetime/date/time objects mixed and matched
       with various Date/Time/DateTime columns
