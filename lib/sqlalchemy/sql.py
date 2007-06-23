@@ -2938,7 +2938,7 @@ class Select(_SelectBaseMixin, FromClause):
         self._append_condition('having', having)
 
     def _append_condition(self, attribute, condition):
-        if type(condition) == str:
+        if isinstance(condition, basestring):
             condition = _TextClause(condition)
         self.__wherecorrelator.traverse(condition)
         self._process_froms(condition, False)
@@ -2957,7 +2957,7 @@ class Select(_SelectBaseMixin, FromClause):
         self.__correlated[from_obj] = from_obj
 
     def append_from(self, fromclause):
-        if type(fromclause) == str:
+        if isinstance(fromclause, basestring):
             fromclause = FromClause(fromclause)
         self.__correlator.traverse(fromclause)
         self._process_froms(fromclause, True)

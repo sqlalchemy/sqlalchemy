@@ -400,12 +400,21 @@ WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid =
             "select * from foo where lala = bar"
         )
 
+        # test bytestring
         self.runtest(select(
             ["foobar(a)", "pk_foo_bar(syslaal)"],
             "a = 12",
             from_obj = ["foobar left outer join lala on foobar.foo = lala.foo"]
         ), 
         "SELECT foobar(a), pk_foo_bar(syslaal) FROM foobar left outer join lala on foobar.foo = lala.foo WHERE a = 12")
+
+        # test unicode
+        self.runtest(select(
+            [u"foobar(a)", u"pk_foo_bar(syslaal)"],
+            u"a = 12",
+            from_obj = [u"foobar left outer join lala on foobar.foo = lala.foo"]
+        ), 
+        u"SELECT foobar(a), pk_foo_bar(syslaal) FROM foobar left outer join lala on foobar.foo = lala.foo WHERE a = 12")
 
         # test building a select query programmatically with text
         s = select()

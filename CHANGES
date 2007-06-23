@@ -25,6 +25,8 @@
       to polymorphic mappers that are using a straight "outerjoin"
       clause
 - sql
+    - fixed "where"/"from" criterion of select() to accept a unicode string
+      in addition to regular string - both convert to text()
     - added standalone distinct() function in addition to column.distinct()
       [ticket:558]
     - result.last_inserted_ids() should return a list that is identically
