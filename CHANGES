@@ -91,6 +91,10 @@
       to polymorphic mappers that are using a straight "outerjoin"
       clause
 - sql
+    - fixed "where"/"from" criterion of select() to accept a unicode string
+      in addition to regular string - both convert to text()
+    - added standalone distinct() function in addition to column.distinct()
+      [ticket:558]
     - result.last_inserted_ids() should return a list that is identically
       sized to the primary key constraint of the table.  values that were 
       "passively" created and not available via cursor.lastrowid will be None.
@@ -106,13 +110,17 @@
 - oracle
     - datetime fixes: got subsecond TIMESTAMP to work [ticket:604],
       added OracleDate which supports types.Date with only year/month/day
+    - added dialect flag "auto_convert_lobs", defaults to True; will cause any 
+      LOB objects detected in a result set to be forced into OracleBinary
+      so that the LOB is read() automatically, if no typemap was present
+      (i.e., if a textual execute() was issued).
 - sqlite
     - sqlite better handles datetime/date/time objects mixed and matched
       with various Date/Time/DateTime columns
     - string PK column inserts dont get overwritten with OID [ticket:603] 
 - extensions
     - added selectone_by() to assignmapper
-
+    
 0.3.8
 - engines
   - added detach() to Connection, allows underlying DBAPI connection

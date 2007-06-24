@@ -181,6 +181,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             s,
             "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE EXISTS (SELECT 1 FROM myothertable WHERE myothertable.otherid = mytable.myid)"
         )
+
     
     def testorderbysubquery(self):
         self.runtest(
@@ -256,6 +257,15 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             checkparams = {'myothertable_othername': 'asdf', 'myothertable_othername_1':'foo', 'myothertable_otherid': 9, 'mytable_myid': 12}
         )
 
+    def testdistinct(self):
+        self.runtest(
+            select([table1.c.myid.distinct()]), "SELECT DISTINCT mytable.myid FROM mytable"
+        )
+
+        self.runtest(
+            select([distinct(table1.c.myid)]), "SELECT DISTINCT mytable.myid FROM mytable"
+        )
+        
     def testoperators(self):
         self.runtest(
             table1.select((table1.c.myid != 12) & ~(table1.c.name=='john')), 
@@ -408,12 +418,21 @@ WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid =
             "select * from foo where lala = bar"
         )
 
+        # test bytestring
         self.runtest(select(
             ["foobar(a)", "pk_foo_bar(syslaal)"],
             "a = 12",
             from_obj = ["foobar left outer join lala on foobar.foo = lala.foo"]
         ), 
         "SELECT foobar(a), pk_foo_bar(syslaal) FROM foobar left outer join lala on foobar.foo = lala.foo WHERE a = 12")
+
+        # test unicode
+        self.runtest(select(
+            [u"foobar(a)", u"pk_foo_bar(syslaal)"],
+            u"a = 12",
+            from_obj = [u"foobar left outer join lala on foobar.foo = lala.foo"]
+        ), 
+        u"SELECT foobar(a), pk_foo_bar(syslaal) FROM foobar left outer join lala on foobar.foo = lala.foo WHERE a = 12")
 
         # test building a select query programmatically with text
         s = select()

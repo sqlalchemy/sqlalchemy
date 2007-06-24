@@ -163,20 +163,33 @@ class OracleExecutionContext(default.DefaultExecutionContext):
 
     def get_result_proxy(self):
         if self.cursor.description is not None:
-            for column in self.cursor.description:
-                type_code = column[1]
-                if type_code in self.dialect.ORACLE_BINARY_TYPES:
+            if self.dialect.auto_convert_lobs and self.typemap is None:
+                typemap = {}
+                binary = False
+                for column in self.cursor.description:
+                    type_code = column[1]
+                    if type_code in self.dialect.ORACLE_BINARY_TYPES:
+                        binary = True
+                        typemap[column[0].lower()] = OracleBinary()
+                self.typemap = typemap
+                if binary:
                     return base.BufferedColumnResultProxy(self)
+            else:
+                for column in self.cursor.description:
+                    type_code = column[1]
+                    if type_code in self.dialect.ORACLE_BINARY_TYPES:
+                        return base.BufferedColumnResultProxy(self)
         
         return base.ResultProxy(self)
 
 class OracleDialect(ansisql.ANSIDialect):
-    def __init__(self, use_ansi=True, auto_setinputsizes=True, threaded=True, **kwargs):
+    def __init__(self, use_ansi=True, auto_setinputsizes=True, auto_convert_lobs=True, threaded=True, **kwargs):
         ansisql.ANSIDialect.__init__(self, default_paramstyle='named', **kwargs)
         self.use_ansi = use_ansi
         self.threaded = threaded
         self.supports_timestamp = self.dbapi is None or hasattr(self.dbapi, 'TIMESTAMP' )
         self.auto_setinputsizes = auto_setinputsizes
+        self.auto_convert_lobs = auto_convert_lobs
         if self.dbapi is not None:
             self.ORACLE_BINARY_TYPES = [getattr(self.dbapi, k) for k in ["BFILE", "CLOB", "NCLOB", "BLOB", "LONG_BINARY", "LONG_STRING"] if hasattr(self.dbapi, k)]
         else:

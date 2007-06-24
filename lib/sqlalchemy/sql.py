@@ -33,7 +33,7 @@ __all__ = ['AbstractDialect', 'Alias', 'ClauseElement', 'ClauseParameters',
            'CompoundSelect', 'Delete', 'FromClause', 'Insert', 'Join', 
            'Select', 'Selectable', 'TableClause', 'Update', 'alias', 'and_', 'asc',
            'between_', 'bindparam', 'case', 'cast', 'column', 'delete',
-           'desc', 'except_', 'except_all', 'exists', 'extract', 'func', 'modifier',
+           'desc', 'distinct', 'except_', 'except_all', 'exists', 'extract', 'func', 'modifier',
            'insert', 'intersect', 'intersect_all', 'join', 'literal',
            'literal_column', 'not_', 'null', 'or_', 'outerjoin', 'select',
            'subquery', 'table', 'text', 'union', 'union_all', 'update',]
@@ -373,6 +373,11 @@ def not_(clause):
     """
 
     return clause._negate()
+
+def distinct(expr):
+    """return a ``DISTINCT`` clause."""
+    
+    return _UnaryExpression(expr, operator="DISTINCT")
 
 def between(ctest, cleft, cright):
     """Return a ``BETWEEN`` predicate clause.
@@ -748,8 +753,11 @@ class _FunctionGenerator(object):
         return _Function(self.__names[-1], packagenames=self.__names[0:-1], *c, **o)
 
 func = _FunctionGenerator()
+
+# TODO: use UnaryExpression for this instead ?
 modifier = _FunctionGenerator(group=False)
 
+    
 def _compound_select(keyword, *selects, **kwargs):
     return CompoundSelect(keyword, *selects, **kwargs)
 
