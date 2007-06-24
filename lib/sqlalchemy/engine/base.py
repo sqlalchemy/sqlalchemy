@@ -12,29 +12,6 @@ from sqlalchemy import exceptions, sql, schema, util, types, logging
 import StringIO, sys, re
 
 
-class ConnectionProvider(object):
-    """Define an interface that returns raw Connection objects (or compatible)."""
-
-    def get_connection(self):
-        """Return a Connection or compatible object from a DBAPI which also contains a close() method.
-
-        It is not defined what context this connection belongs to.  It
-        may be newly connected, returned from a pool, part of some
-        other kind of context such as thread-local, or can be a fixed
-        member of this object.
-        """
-
-        raise NotImplementedError()
-
-    def dispose(self):
-        """Release all resources corresponding to this ConnectionProvider.
-
-        This includes any underlying connection pools.
-        """
-
-        raise NotImplementedError()
-
-
 class Dialect(sql.AbstractDialect):
     """Define the behavior of a specific database/DBAPI.
 
@@ -677,7 +654,7 @@ class Connection(Connectable):
         except Exception, e:
             if self.dialect.is_disconnect(e):
                 self.__connection.invalidate(e=e)
-                self.engine.connection_provider.dispose()
+                self.engine.dispose()
             self._autorollback()
             if self.__close_with_result:
                 self.close()
@@ -689,7 +666,7 @@ class Connection(Connectable):
         except Exception, e:
             if self.dialect.is_disconnect(e):
                 self.__connection.invalidate(e=e)
-                self.engine.connection_provider.dispose()
+                self.engine.dispose()
             self._autorollback()
             if self.__close_with_result:
                 self.close()
@@ -759,12 +736,13 @@ class Transaction(object):
 
 class Engine(Connectable):
     """
-    Connects a ConnectionProvider, a Dialect and a CompilerFactory together to
+    Connects a Pool, a Dialect and a CompilerFactory together to
     provide a default implementation of SchemaEngine.
     """
 
-    def __init__(self, connection_provider, dialect, echo=None):
-        self.connection_provider = connection_provider
+    def __init__(self, pool, dialect, url, echo=None):
+        self.pool = pool
+        self.url = url
         self._dialect=dialect
         self.echo = echo
         self.logger = logging.instance_logger(self)
@@ -773,10 +751,10 @@ class Engine(Connectable):
     engine = property(lambda s:s)
     dialect = property(lambda s:s._dialect, doc="the [sqlalchemy.engine#Dialect] in use by this engine.")
     echo = logging.echo_property()
-    url = property(lambda s:s.connection_provider.url, doc="The [sqlalchemy.engine.url#URL] object representing this ``Engine`` object's datasource.")
     
     def dispose(self):
-        self.connection_provider.dispose()
+        self.pool.dispose()
+        self.pool = self.pool.recreate()
 
     def create(self, entity, connection=None, **kwargs):
         """Create a table or index within this engine's database connection given a schema.Table object."""
@@ -899,7 +877,7 @@ class Engine(Connectable):
     def raw_connection(self):
         """Return a DBAPI connection."""
 
-        return self.connection_provider.get_connection()
+        return self.pool.connect()
 
     def log(self, msg):
         """Log a message using this SQLEngine's logger stream."""

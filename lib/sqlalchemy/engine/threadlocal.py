@@ -112,7 +112,7 @@ class TLEngine(base.Engine):
     """
 
     def __init__(self, *args, **kwargs):
-        """The TLEngine relies upon the ConnectionProvider having
+        """The TLEngine relies upon the Pool having
         "threadlocal" behavior, so that once a connection is checked out
         for the current thread, you get that same connection
         repeatedly.
@@ -124,7 +124,7 @@ class TLEngine(base.Engine):
     def raw_connection(self):
         """Return a DBAPI connection."""
 
-        return self.connection_provider.get_connection()
+        return self.pool.connect()
 
     def connect(self, **kwargs):
         """Return a Connection that is not thread-locally scoped.
@@ -133,7 +133,7 @@ class TLEngine(base.Engine):
         ComposedSQLEngine.
         """
 
-        return base.Connection(self, self.connection_provider.unique_connection())
+        return base.Connection(self, self.pool.unique_connection())
 
     def _session(self):
         if not hasattr(self.context, 'session'):
@@ -156,6 +156,3 @@ class TLEngine(base.Engine):
     def rollback(self):
         self.session.rollback()
 
-class TLocalConnectionProvider(default.PoolConnectionProvider):
-    def unique_connection(self):
-        return self._pool.unique_connection()

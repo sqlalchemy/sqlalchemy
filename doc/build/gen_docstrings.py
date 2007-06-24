@@ -3,7 +3,6 @@ import docstring
 import re
 
 from sqlalchemy import schema, types, ansisql, engine, sql, pool, orm, exceptions, databases
-import sqlalchemy.ext.proxy as proxy
 import sqlalchemy.ext.sessioncontext as sessioncontext
 import sqlalchemy.mods.threadlocal as threadlocal
 import sqlalchemy.ext.selectresults as selectresults
@@ -38,7 +37,6 @@ def make_all_docs():
         make_doc(obj=sessioncontext),
         make_doc(obj=threadlocal),
         make_doc(obj=selectresults),
-        make_doc(obj=proxy),
         make_doc(obj=orderinglist, classes=[orderinglist.OrderingList]),
         make_doc(obj=associationproxy, classes=[associationproxy.AssociationProxy]),
     ] + [make_doc(getattr(__import__('sqlalchemy.databases.%s' % m).databases, m)) for m in databases.__all__]

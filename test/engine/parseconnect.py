@@ -65,7 +65,7 @@ class CreateEngineTest(PersistTest):
     def testrecycle(self):
         dbapi = MockDBAPI(foober=12, lala=18, hoho={'this':'dict'}, fooz='somevalue')
         e = create_engine('postgres://', pool_recycle=472, module=dbapi)
-        assert e.connection_provider._pool._recycle == 472
+        assert e.pool._recycle == 472
         
     def testbadargs(self):
         # good arg, use MockDBAPI to prevent oracle import errors
@@ -139,8 +139,8 @@ class CreateEngineTest(PersistTest):
     def testpoolargs(self):
         """test that connection pool args make it thru"""
         e = create_engine('postgres://', creator=None, pool_recycle=-1, echo_pool=None, auto_close_cursors=False, disallow_open_cursors=True, module=MockDBAPI())
-        assert e.connection_provider._pool.auto_close_cursors is False
-        assert e.connection_provider._pool.disallow_open_cursors is True
+        assert e.pool.auto_close_cursors is False
+        assert e.pool.disallow_open_cursors is True
 
         # these args work for QueuePool
         e = create_engine('postgres://', max_overflow=8, pool_timeout=60, poolclass=pool.QueuePool, module=MockDBAPI())
