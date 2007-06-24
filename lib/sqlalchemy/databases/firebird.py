@@ -324,11 +324,11 @@ class FBCompiler(ansisql.ANSICompiler):
         """
 
         result = ""
-        if select.limit:
-            result += " FIRST %d "  % select.limit
-        if select.offset:
-            result +=" SKIP %d "  %  select.offset
-        if select.distinct:
+        if select._limit:
+            result += " FIRST %d "  % select._limit
+        if select._offset:
+            result +=" SKIP %d "  %  select._offset
+        if select._distinct:
             result += " DISTINCT "
         return result
 

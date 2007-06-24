@@ -1546,7 +1546,7 @@ class Mapper(object):
         return obj
 
     def _deferred_inheritance_condition(self, needs_tables):
-        cond = self.inherit_condition.copy_container()
+        cond = self.inherit_condition
 
         param_names = []
         def visit_binary(binary):
@@ -1560,7 +1560,7 @@ class Mapper(object):
             elif rightcol not in needs_tables:
                 binary.right = sql.bindparam(rightcol.name, None, type=binary.right.type, unique=True)
                 param_names.append(rightcol)
-        mapperutil.BinaryVisitor(visit_binary).traverse(cond)
+        cond = mapperutil.BinaryVisitor(visit_binary).traverse(cond, clone=True)
         return cond, param_names
 
     def translate_row(self, tomapper, row):

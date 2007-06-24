@@ -331,15 +331,15 @@ class Query(object):
                 else:
                     if prop.secondary:
                         if create_aliases:
-                            join = prop.get_join(mapper, primary=True, secondary=False).copy_container()
+                            join = prop.get_join(mapper, primary=True, secondary=False)
                             secondary_alias = prop.secondary.alias()
                             if alias is not None:
-                                sql_util.ClauseAdapter(alias).traverse(join)
+                                join = sql_util.ClauseAdapter(alias).traverse(join, clone=True)
                             sql_util.ClauseAdapter(secondary_alias).traverse(join)
                             clause = clause.join(secondary_alias, join)
                             alias = prop.select_table.alias()
-                            join = prop.get_join(mapper, primary=False).copy_container()
-                            sql_util.ClauseAdapter(secondary_alias).traverse(join)
+                            join = prop.get_join(mapper, primary=False)
+                            join = sql_util.ClauseAdapter(secondary_alias).traverse(join, clone=True)
                             sql_util.ClauseAdapter(alias).traverse(join)
                             clause = clause.join(alias, join)
                         else:
@@ -347,11 +347,11 @@ class Query(object):
                             clause = clause.join(prop.select_table, prop.get_join(mapper, primary=False))
                     else:
                         if create_aliases:
-                            join = prop.get_join(mapper).copy_container()
+                            join = prop.get_join(mapper)
                             if alias is not None:
-                                sql_util.ClauseAdapter(alias).traverse(join)
+                                join = sql_util.ClauseAdapter(alias).traverse(join, clone=True)
                             alias = prop.select_table.alias()
-                            sql_util.ClauseAdapter(alias).traverse(join)
+                            join = sql_util.ClauseAdapter(alias).traverse(join, clone=True)
                             clause = clause.join(alias, join)
                         else:
                             clause = clause.join(prop.select_table, prop.get_join(mapper))
@@ -401,7 +401,7 @@ class Query(object):
         For performance, only use subselect if `order_by` attribute is set.
         """
 
-        ops = {'distinct':self._distinct, 'order_by':self._order_by, 'from_obj':self._from_obj}
+        ops = {'distinct':self._distinct, 'order_by':self._order_by or None, 'from_obj':self._from_obj}
 
         if self._order_by is not False:
             s1 = sql.select([col], self._criterion, **ops).alias('u')
@@ -781,12 +781,8 @@ class Query(object):
         # from there
         context = QueryContext(self)
         order_by = context.order_by
-        group_by = context.group_by
         from_obj = context.from_obj
         lockmode = context.lockmode
-        distinct = context.distinct
-        limit = context.limit
-        offset = context.offset
         if order_by is False:
             order_by = self.mapper.order_by
         if order_by is False:
@@ -821,20 +817,20 @@ class Query(object):
             else:
                 cf = []
 
-            s2 = sql.select(self.table.primary_key + list(cf), whereclause, use_labels=True, from_obj=from_obj, **context.select_args())
+            s2 = sql.select(self.primary_key_columns + list(cf), whereclause, use_labels=True, from_obj=from_obj, correlate=False, **context.select_args())
             if order_by:
-                s2.order_by(*util.to_list(order_by))
+                s2 = s2.order_by(*util.to_list(order_by))
             s3 = s2.alias('tbl_row_count')
-            crit = s3.primary_key==self.table.primary_key
+            crit = s3.primary_key==self.primary_key_columns
             statement = sql.select([], crit, use_labels=True, for_update=for_update)
             # now for the order by, convert the columns to their corresponding columns
             # in the "rowcount" query, and tack that new order by onto the "rowcount" query
             if order_by:
-                statement.order_by(*sql_util.ClauseAdapter(s3).copy_and_process(order_by))
+                statement.append_order_by(*sql_util.ClauseAdapter(s3).copy_and_process(order_by))
         else:
             statement = sql.select([], whereclause, from_obj=from_obj, use_labels=True, for_update=for_update, **context.select_args())
             if order_by:
-                statement.order_by(*util.to_list(order_by))
+                statement.append_order_by(*util.to_list(order_by))
                 
             # for a DISTINCT query, you need the columns explicitly specified in order
             # to use it in "order_by".  ensure they are in the column criterion (particularly oid).
@@ -1101,7 +1097,7 @@ class QueryContext(OperationContext):
         ``QueryContext`` that can be applied to a ``sql.Select``
         statement.
         """
-        return {'limit':self.limit, 'offset':self.offset, 'distinct':self.distinct, 'group_by':self.group_by}
+        return {'limit':self.limit, 'offset':self.offset, 'distinct':self.distinct, 'group_by':self.group_by or None}
 
     def accept_option(self, opt):
         """Accept a ``MapperOption`` which will process (modify) the

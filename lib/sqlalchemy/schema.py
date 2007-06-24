@@ -28,6 +28,8 @@ __all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index', '
 class SchemaItem(object):
     """Base class for items that define a database schema."""
 
+    __metaclass__ = sql._FigureVisitName
+
     def _init_items(self, *args):
         """Initialize the list of child items for this SchemaItem."""
 
@@ -128,7 +130,7 @@ def _get_table_key(name, schema):
     else:
         return schema + "." + name
 
-class _TableSingleton(type):
+class _TableSingleton(sql._FigureVisitName):
     """A metaclass used by the ``Table`` object to provide singleton behavior."""
 
     def __call__(self, name, metadata, *args, **kwargs):
@@ -721,11 +723,6 @@ class ForeignKey(SchemaItem):
 
     column = property(lambda s: s._init_column())
 
-    def accept_visitor(self, visitor):
-        """Call the `visit_foreign_key` method on the given visitor."""
-
-        visitor.visit_foreign_key(self)
-
     def _get_parent(self):
         return self.parent
 
@@ -777,9 +774,6 @@ class PassiveDefault(DefaultGenerator):
         super(PassiveDefault, self).__init__(**kwargs)
         self.arg = arg
 
-    def accept_visitor(self, visitor):
-        return visitor.visit_passive_default(self)
-
     def __repr__(self):
         return "PassiveDefault(%s)" % repr(self.arg)
 
@@ -794,13 +788,12 @@ class ColumnDefault(DefaultGenerator):
         super(ColumnDefault, self).__init__(**kwargs)
         self.arg = arg
 
-    def accept_visitor(self, visitor):
-        """Call the visit_column_default method on the given visitor."""
-
+    def _visit_name(self):
         if self.for_update:
-            return visitor.visit_column_onupdate(self)
+            return "column_onupdate"
         else:
-            return visitor.visit_column_default(self)
+            return "column_default"
+    __visit_name__ = property(_visit_name)
 
     def __repr__(self):
         return "ColumnDefault(%s)" % repr(self.arg)
@@ -834,10 +827,6 @@ class Sequence(DefaultGenerator):
     def drop(self, connectable=None, checkfirst=True):
        self.get_engine(connectable=connectable).drop(self, checkfirst=checkfirst)
 
-    def accept_visitor(self, visitor):
-        """Call the visit_seauence method on the given visitor."""
-
-        return visitor.visit_sequence(self)
 
 class Constraint(SchemaItem):
     """Represent a table-level ``Constraint`` such as a composite primary key, foreign key, or unique constraint.
@@ -876,11 +865,12 @@ class CheckConstraint(Constraint):
         super(CheckConstraint, self).__init__(name)
         self.sqltext = sqltext
 
-    def accept_visitor(self, visitor):
+    def _visit_name(self):
         if isinstance(self.parent, Table):
-            visitor.visit_check_constraint(self)
+            return "check_constraint"
         else:
-            visitor.visit_column_check_constraint(self)
+            return "column_check_constraint"
+    __visit_name__ = property(_visit_name)
 
     def _set_parent(self, parent):
         self.parent = parent
@@ -909,9 +899,6 @@ class ForeignKeyConstraint(Constraint):
         for (c, r) in zip(self.__colnames, self.__refcolnames):
             self.append_element(c,r)
 
-    def accept_visitor(self, visitor):
-        visitor.visit_foreign_key_constraint(self)
-
     def append_element(self, col, refcol):
         fk = ForeignKey(refcol, constraint=self, name=self.name, onupdate=self.onupdate, ondelete=self.ondelete, use_alter=self.use_alter)
         fk._set_parent(self.table.c[col])
@@ -934,9 +921,6 @@ class PrimaryKeyConstraint(Constraint):
         table.primary_key = self
         for c in self.__colnames:
             self.append_column(table.c[c])
-
-    def accept_visitor(self, visitor):
-        visitor.visit_primary_key_constraint(self)
 
     def add(self, col):
         self.append_column(col)
@@ -968,9 +952,6 @@ class UniqueConstraint(Constraint):
 
     def append_column(self, col):
         self.columns.add(col)
-
-    def accept_visitor(self, visitor):
-        visitor.visit_unique_constraint(self)
 
     def copy(self):
         return UniqueConstraint(name=self.name, *self.__colnames)
@@ -1048,9 +1029,6 @@ class Index(SchemaItem):
         else:
             self.get_engine().drop(self)
 
-    def accept_visitor(self, visitor):
-        visitor.visit_index(self)
-
     def __str__(self):
         return repr(self)
 
@@ -1063,6 +1041,8 @@ class Index(SchemaItem):
 class MetaData(SchemaItem):
     """Represent a collection of Tables and their associated schema constructs."""
 
+    __visit_name__ = 'metadata'
+    
     def __init__(self, url=None, engine=None, **kwargs):
         """create a new MetaData object.
         
@@ -1174,9 +1154,6 @@ class MetaData(SchemaItem):
             connectable = self.get_engine()
         connectable.drop(self, checkfirst=checkfirst, tables=tables)
 
-    def accept_visitor(self, visitor):
-        visitor.visit_metadata(self)
-
     def _derived_metadata(self):
         return self
 
@@ -1185,6 +1162,8 @@ class BoundMetaData(MetaData):
     """``MetaData`` for which the first argument is a required Engine, url string, or URL instance.
     
     """
+
+    __visit_name__ = 'metadata'
 
     def __init__(self, engine_or_url, **kwargs):
         from sqlalchemy.engine.url import URL
@@ -1199,6 +1178,8 @@ class DynamicMetaData(MetaData):
 multiple ``Engine`` implementations on a dynamically alterable,
 thread-local basis.
     """
+
+    __visit_name__ = 'metadata'
 
     def __init__(self, threadlocal=True, **kwargs):
         if threadlocal:
@@ -1245,61 +1226,3 @@ class SchemaVisitor(sql.ClauseVisitor):
     """Define the visiting for ``SchemaItem`` objects."""
 
     __traverse_options__ = {'schema_visitor':True}
-
-    def visit_schema(self, schema):
-        """Visit a generic ``SchemaItem``."""
-        pass
-
-    def visit_table(self, table):
-        """Visit a ``Table``."""
-        pass
-
-    def visit_column(self, column):
-        """Visit a ``Column``."""
-        pass
-
-    def visit_foreign_key(self, join):
-        """Visit a ``ForeignKey``."""
-        pass
-
-    def visit_index(self, index):
-        """Visit an ``Index``."""
-        pass
-
-    def visit_passive_default(self, default):
-        """Visit a passive default."""
-        pass
-
-    def visit_column_default(self, default):
-        """Visit a ``ColumnDefault``."""
-        pass
-
-    def visit_column_onupdate(self, onupdate):
-        """Visit a ``ColumnDefault`` with the `for_update` flag set."""
-        pass
-
-    def visit_sequence(self, sequence):
-        """Visit a ``Sequence``."""
-        pass
-
-    def visit_primary_key_constraint(self, constraint):
-        """Visit a ``PrimaryKeyConstraint``."""
-        pass
-
-    def visit_foreign_key_constraint(self, constraint):
-        """Visit a ``ForeignKeyConstraint``."""
-        pass
-
-    def visit_unique_constraint(self, constraint):
-        """Visit a ``UniqueConstraint``."""
-        pass
-
-    def visit_check_constraint(self, constraint):
-        """Visit a ``CheckConstraint``."""
-        pass
-
-    def visit_column_check_constraint(self, constraint):
-        """Visit a ``CheckConstraint`` on a ``Column``."""
-        pass
-
-

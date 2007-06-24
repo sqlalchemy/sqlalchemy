@@ -125,7 +125,7 @@ class AbstractClauseProcessor(sql.NoColumnVisitor):
         process the new list.
         """
 
-        list_ = [o.copy_container() for o in list_]
+        list_ = list(list_)
         self.process_list(list_)
         return list_
 
@@ -137,7 +137,7 @@ class AbstractClauseProcessor(sql.NoColumnVisitor):
             if elem is not None:
                 list_[i] = elem
             else:
-                self.traverse(list_[i])
+                list_[i] = self.traverse(list_[i], clone=True)
     
     def visit_grouping(self, grouping):
         elem = self.convert_element(grouping.elem)
@@ -162,8 +162,25 @@ class AbstractClauseProcessor(sql.NoColumnVisitor):
         elem = self.convert_element(binary.right)
         if elem is not None:
             binary.right = elem
+    
+    def visit_select(self, select):
+        fr = util.OrderedSet()
+        for elem in select._froms:
+            n = self.convert_element(elem)
+            if n is None:
+                fr.add(elem)
+            else:
+                fr.add(n)
+        select._recorrelate_froms(fr)
 
-    # TODO: visit_select().  
+        col = []
+        for elem in select._raw_columns:
+            n = self.convert_element(elem)
+            if n is None:
+                col.append(elem)
+            else:
+                col.append(n)
+        select._raw_columns = col
     
 class ClauseAdapter(AbstractClauseProcessor):
     """Given a clause (like as in a WHERE criterion), locate columns
@@ -200,6 +217,9 @@ class ClauseAdapter(AbstractClauseProcessor):
         self.equivalents = equivalents
 
     def convert_element(self, col):
+        if isinstance(col, sql.FromClause):
+            if self.selectable.is_derived_from(col):
+                return self.selectable
         if not isinstance(col, sql.ColumnElement):
             return None
         if self.include is not None:

@@ -433,11 +433,6 @@ class OracleCompiler(ansisql.ANSICompiler):
     the use_ansi flag is False.
     """
 
-    def __init__(self, *args, **kwargs):
-        super(OracleCompiler, self).__init__(*args, **kwargs)
-        # we have to modify SELECT objects a little bit, so store state here
-        self._select_state = {}
-        
     def default_from(self):
         """Called when a ``SELECT`` statement has no froms, and no ``FROM`` clause is to be appended.
 
@@ -472,7 +467,7 @@ class OracleCompiler(ansisql.ANSICompiler):
 
             self._outertable = None
 
-        self.wheres[join].accept_visitor(self)
+        self.traverse_single(self.wheres[join])
 
     def visit_insert_sequence(self, column, sequence, parameters):
         """This is the `sequence` equivalent to ``ANSICompiler``'s
@@ -508,74 +503,35 @@ class OracleCompiler(ansisql.ANSICompiler):
 
     def _TODO_visit_compound_select(self, select):
         """Need to determine how to get ``LIMIT``/``OFFSET`` into a ``UNION`` for Oracle."""
-
-        if getattr(select, '_oracle_visit', False):
-            # cancel out the compiled order_by on the select
-            if hasattr(select, "order_by_clause"):
-                self.strings[select.order_by_clause] = ""
-            ansisql.ANSICompiler.visit_compound_select(self, select)
-            return
-
-        if select.limit is not None or select.offset is not None:
-            select._oracle_visit = True
-            # to use ROW_NUMBER(), an ORDER BY is required.
-            orderby = self.strings[select.order_by_clause]
-            if not orderby:
-                orderby = select.oid_column
-                self.traverse(orderby)
-                orderby = self.strings[orderby]
-            class SelectVisitor(sql.NoColumnVisitor):
-                def visit_select(self, select):
-                    select.append_column(sql.literal_column("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn"))
-            SelectVisitor().traverse(select)
-            limitselect = sql.select([c for c in select.c if c.key!='ora_rn'])
-            if select.offset is not None:
-                limitselect.append_whereclause("ora_rn>%d" % select.offset)
-                if select.limit is not None:
-                    limitselect.append_whereclause("ora_rn<=%d" % (select.limit + select.offset))
-            else:
-                limitselect.append_whereclause("ora_rn<=%d" % select.limit)
-            self.traverse(limitselect)
-            self.strings[select] = self.strings[limitselect]
-            self.froms[select] = self.froms[limitselect]
-        else:
-            ansisql.ANSICompiler.visit_compound_select(self, select)
+        pass
 
     def visit_select(self, select):
         """Look for ``LIMIT`` and OFFSET in a select statement, and if
         so tries to wrap it in a subquery with ``row_number()`` criterion.
         """
 
-        # TODO: put a real copy-container on Select and copy, or somehow make this
-        # not modify the Select statement
-        if self._select_state.get((select, 'visit'), False):
-            # cancel out the compiled order_by on the select
-            if hasattr(select, "order_by_clause"):
-                self.strings[select.order_by_clause] = ""
-            ansisql.ANSICompiler.visit_select(self, select)
-            return
-
-        if select.limit is not None or select.offset is not None:
-            self._select_state[(select, 'visit')] = True
+        if not getattr(select, '_oracle_visit', None) and (select._limit is not None or select._offset is not None):
             # to use ROW_NUMBER(), an ORDER BY is required.
-            orderby = self.strings[select.order_by_clause]
+            orderby = self.strings[select._order_by_clause]
             if not orderby:
                 orderby = select.oid_column
                 self.traverse(orderby)
                 orderby = self.strings[orderby]
-            if not hasattr(select, '_oracle_visit'):
-                select.append_column(sql.literal_column("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn"))
-                select._oracle_visit = True
+                
+            oldselect = select
+            select = select.column(sql.literal_column("ROW_NUMBER() OVER (ORDER BY %s)" % orderby).label("ora_rn")).order_by(None)
+            select._oracle_visit = True
+                
             limitselect = sql.select([c for c in select.c if c.key!='ora_rn'])
-            if select.offset is not None:
-                limitselect.append_whereclause("ora_rn>%d" % select.offset)
-                if select.limit is not None:
-                    limitselect.append_whereclause("ora_rn<=%d" % (select.limit + select.offset))
+            if select._offset is not None:
+                limitselect.append_whereclause("ora_rn>%d" % select._offset)
+                if select._limit is not None:
+                    limitselect.append_whereclause("ora_rn<=%d" % (select._limit + select._offset))
             else:
-                limitselect.append_whereclause("ora_rn<=%d" % select.limit)
+                limitselect.append_whereclause("ora_rn<=%d" % select._limit)
             self.traverse(limitselect)
-            self.strings[select] = self.strings[limitselect]
-            self.froms[select] = self.froms[limitselect]
+            self.strings[oldselect] = self.strings[limitselect]
+            self.froms[oldselect] = self.froms[limitselect]
         else:
             ansisql.ANSICompiler.visit_select(self, select)
 

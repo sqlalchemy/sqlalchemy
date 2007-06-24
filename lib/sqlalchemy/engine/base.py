@@ -364,8 +364,90 @@ class ExecutionContext(object):
 
         raise NotImplementedError()
 
+class Compiled(sql.ClauseVisitor):
+    """Represent a compiled SQL expression.
 
-class Connectable(sql.Executor):
+    The ``__str__`` method of the ``Compiled`` object should produce
+    the actual text of the statement.  ``Compiled`` objects are
+    specific to their underlying database dialect, and also may
+    or may not be specific to the columns referenced within a
+    particular set of bind parameters.  In no case should the
+    ``Compiled`` object be dependent on the actual values of those
+    bind parameters, even though it may reference those values as
+    defaults.
+    """
+
+    def __init__(self, dialect, statement, parameters, engine=None):
+        """Construct a new ``Compiled`` object.
+
+        statement
+          ``ClauseElement`` to be compiled.
+
+        parameters
+          Optional dictionary indicating a set of bind parameters
+          specified with this ``Compiled`` object.  These parameters
+          are the *default* values corresponding to the
+          ``ClauseElement``'s ``_BindParamClauses`` when the
+          ``Compiled`` is executed.  In the case of an ``INSERT`` or
+          ``UPDATE`` statement, these parameters will also result in
+          the creation of new ``_BindParamClause`` objects for each
+          key and will also affect the generated column list in an
+          ``INSERT`` statement and the ``SET`` clauses of an
+          ``UPDATE`` statement.  The keys of the parameter dictionary
+          can either be the string names of columns or
+          ``_ColumnClause`` objects.
+
+        engine
+          Optional Engine to compile this statement against.
+        """
+        self.dialect = dialect
+        self.statement = statement
+        self.parameters = parameters
+        self.engine = engine
+        self.can_execute = statement.supports_execution()
+
+    def compile(self):
+        self.traverse(self.statement)
+        self.after_compile()
+
+    def __str__(self):
+        """Return the string text of the generated SQL statement."""
+
+        raise NotImplementedError()
+
+    def get_params(self, **params):
+        """Deprecated.  use construct_params().  (supports unicode names)
+        """
+
+        return self.construct_params(params)
+
+    def construct_params(self, params):
+        """Return the bind params for this compiled object.
+
+        Will start with the default parameters specified when this
+        ``Compiled`` object was first constructed, and will override
+        those values with those sent via `**params`, which are
+        key/value pairs.  Each key should match one of the
+        ``_BindParamClause`` objects compiled into this object; either
+        the `key` or `shortname` property of the ``_BindParamClause``.
+        """
+        raise NotImplementedError()
+
+    def execute(self, *multiparams, **params):
+        """Execute this compiled object."""
+
+        e = self.engine
+        if e is None:
+            raise exceptions.InvalidRequestError("This Compiled object is not bound to any engine.")
+        return e.execute_compiled(self, *multiparams, **params)
+
+    def scalar(self, *multiparams, **params):
+        """Execute this compiled object and return the result's scalar value."""
+
+        return self.execute(*multiparams, **params).scalar()
+
+
+class Connectable(object):
     """Interface for an object that can provide an Engine and a Connection object which correponds to that Engine."""
 
     def contextual_connect(self):
@@ -522,7 +604,7 @@ class Connection(Connectable):
             raise exceptions.InvalidRequestError("Unexecuteable object type: " + str(type(object)))
 
     def execute_default(self, default, **kwargs):
-        return default.accept_visitor(self.__engine.dialect.defaultrunner(self))
+        return self.__engine.dialect.defaultrunner(self).traverse_single(default)
 
     def execute_text(self, statement, *multiparams, **params):
         if len(multiparams) == 0:
@@ -729,7 +811,7 @@ class Engine(Connectable):
         else:
             conn = connection
         try:
-            element.accept_visitor(visitorcallable(conn, **kwargs))
+            visitorcallable(conn, **kwargs).traverse(element)
         finally:
             if connection is None:
                 conn.close()
@@ -1248,13 +1330,13 @@ class DefaultRunner(schema.SchemaVisitor):
         
     def get_column_default(self, column):
         if column.default is not None:
-            return column.default.accept_visitor(self)
+            return self.traverse_single(column.default)
         else:
             return None
 
     def get_column_onupdate(self, column):
         if column.onupdate is not None:
-            return column.onupdate.accept_visitor(self)
+            return self.traverse_single(column.onupdate)
         else:
             return None
 

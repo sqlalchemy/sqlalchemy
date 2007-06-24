@@ -373,19 +373,19 @@ class InfoCompiler(ansisql.ANSICompiler):
         return " from systables where tabname = 'systables' "
     
     def visit_select_precolumns( self , select ):
-        s = select.distinct and "DISTINCT " or ""
+        s = select._distinct and "DISTINCT " or ""
         # only has limit
-        if select.limit:
-            off = select.offset or 0
-            s += " FIRST %s " % ( select.limit + off )
+        if select._limit:
+            off = select._offset or 0
+            s += " FIRST %s " % ( select._limit + off )
         else:
             s += ""
         return s
     
     def visit_select(self, select):
-        if select.offset:
-            self.offset = select.offset
-            self.limit  = select.limit or 0
+        if select._offset:
+            self.offset = select._offset
+            self.limit  = select._limit or 0
         # the column in order by clause must in select too
         
         def __label( c ):

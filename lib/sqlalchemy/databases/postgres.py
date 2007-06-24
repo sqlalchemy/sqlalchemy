@@ -423,16 +423,16 @@ class PGCompiler(ansisql.ANSICompiler):
         return text
 
     def visit_select_precolumns(self, select):
-        if select.distinct:
-            if type(select.distinct) == bool:
+        if select._distinct:
+            if type(select._distinct) == bool:
                 return "DISTINCT "
-            if type(select.distinct) == list:
+            if type(select._distinct) == list:
                 dist_set = "DISTINCT ON ("
-                for col in select.distinct:
+                for col in select._distinct:
                     dist_set += self.strings[col] + ", "
                     dist_set = dist_set[:-2] + ") "
                 return dist_set
-            return "DISTINCT ON (" + str(select.distinct) + ") "
+            return "DISTINCT ON (" + str(select._distinct) + ") "
         else:
             return ""
 

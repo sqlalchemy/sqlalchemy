@@ -328,6 +328,10 @@ class MapperTest(MapperSuperTest):
             'concat': column_property(f),
             'count': column_property(select([func.count(addresses.c.address_id)], users.c.user_id==addresses.c.user_id, scalar=True).label('count'))
         })
+
+        mapper(Address, addresses, properties={
+            'user':relation(User, lazy=False)
+        })    
         
         sess = create_session()
         l = sess.query(User).select()
@@ -336,24 +340,19 @@ class MapperTest(MapperSuperTest):
         assert l[0].concat == l[0].user_id * 2 == 14
         assert l[1].concat == l[1].user_id * 2 == 16
         
-        ### eager loads, not really working across all DBs, no column aliasing in place so
-        # results still wont be good for larger situations
-        clear_mappers()
-        mapper(Address, addresses, properties={
-            'user':relation(User, lazy=False)
-        })    
-        
-        mapper(User, users, properties={
-            'concat': column_property(f),
-        })
-
-        for x in range(0, 2):
-            sess.clear()
-            l = sess.query(Address).select()
-            for a in l:
-                print "User", a.user.user_id, a.user.user_name, a.user.concat
-            assert l[0].user.concat == l[0].user.user_id * 2 == 14
-            assert l[1].user.concat == l[1].user.user_id * 2 == 16
+        for option in (None, eagerload('user')):
+            for x in range(0, 2):
+                sess.clear()
+                l = sess.query(Address)
+                if option:
+                    l = l.options(option)
+                l = l.all()
+                for a in l:
+                    print "User", a.user.user_id, a.user.user_name, a.user.concat, a.user.count
+                assert l[0].user.concat == l[0].user.user_id * 2 == 14
+                assert l[1].user.concat == l[1].user.user_id * 2 == 16
+                assert l[0].user.count == 1
+                assert l[1].user.count == 3
             
         
     @testbase.unsupported('firebird') 
@@ -1114,6 +1113,7 @@ class EagerTest(MapperSuperTest):
         """test eager loading of a mapper which is against a select"""
         
         s = select([orders], orders.c.isopen==1).alias('openorders')
+        print "SELECT:", id(s), str(s)
         mapper(Order, s, properties={
             'user':relation(User, lazy=False)
         })

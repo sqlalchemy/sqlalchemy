@@ -25,7 +25,7 @@
 
 * Support for auto-fetching of ``@@IDENTITY/@@SCOPE_IDENTITY()`` on ``INSERT``
 
-* ``select.limit`` implemented as ``SELECT TOP n``
+* ``select._limit`` implemented as ``SELECT TOP n``
 
 
 Known issues / TODO:
@@ -756,10 +756,10 @@ class MSSQLCompiler(ansisql.ANSICompiler):
 
     def visit_select_precolumns(self, select):
         """ MS-SQL puts TOP, it's version of LIMIT here """
-        s = select.distinct and "DISTINCT " or ""
-        if select.limit:
-            s += "TOP %s " % (select.limit,)
-        if select.offset:
+        s = select._distinct and "DISTINCT " or ""
+        if select._limit:
+            s += "TOP %s " % (select._limit,)
+        if select._offset:
             raise exceptions.InvalidRequestError('MSSQL does not support LIMIT with an offset')
         return s
 
@@ -803,13 +803,11 @@ class MSSQLCompiler(ansisql.ANSICompiler):
             binary.left, binary.right = binary.right, binary.left
         super(MSSQLCompiler, self).visit_binary(binary)
 
-    def visit_select(self, select):        
-        # label function calls, so they return a name in cursor.description        
-        for i,c in enumerate(select._raw_columns):
-            if isinstance(c, sql._Function):
-                select._raw_columns[i] = c.label(c.name + "_" + hex(random.randint(0, 65535))[2:])        
-
-        super(MSSQLCompiler, self).visit_select(select)
+    def label_select_column(self, select, column):
+        if isinstance(column, sql._Function):
+            return co.label(co.name + "_" + hex(random.randint(0, 65535))[2:])        
+        else:
+            return super(MSSQLCompiler, self).label_select_column(select, column)
 
     function_rewrites =  {'current_date': 'getdate',
                           'length':     'len',
@@ -823,10 +821,10 @@ class MSSQLCompiler(ansisql.ANSICompiler):
         return ''
 
     def order_by_clause(self, select):
-        order_by = self.get_str(select.order_by_clause)
+        order_by = self.get_str(select._order_by_clause)
 
         # MSSQL only allows ORDER BY in subqueries if there is a LIMIT
-        if order_by and (not select.is_subquery or select.limit):
+        if order_by and (not self.is_subquery(select) or select._limit):
             return " ORDER BY " + order_by
         else:
             return ""

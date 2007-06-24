@@ -1200,13 +1200,13 @@ class MySQLCompiler(ansisql.ANSICompiler):
 
     def limit_clause(self, select):
         text = ""
-        if select.limit is not None:
-            text +=  " \n LIMIT " + str(select.limit)
-        if select.offset is not None:
-            if select.limit is None:
-                # striaght from the MySQL docs, I kid you not
+        if select._limit is not None:
+            text +=  " \n LIMIT " + str(select._limit)
+        if select._offset is not None:
+            if select._limit is None:
+                # straight from the MySQL docs, I kid you not
                 text += " \n LIMIT 18446744073709551615"
-            text += " OFFSET " + str(select.offset)
+            text += " OFFSET " + str(select._offset)
         return text
 
 class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):

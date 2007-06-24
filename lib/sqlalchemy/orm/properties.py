@@ -399,15 +399,13 @@ class PropertyLoader(StrategizedProperty):
         # if the target mapper loads polymorphically, adapt the clauses to the target's selectable
         if self.loads_polymorphic:
             if self.secondaryjoin:
-                self.polymorphic_secondaryjoin = self.secondaryjoin.copy_container()
-                sql_util.ClauseAdapter(self.mapper.select_table).traverse(self.polymorphic_secondaryjoin)
-                self.polymorphic_primaryjoin = self.primaryjoin.copy_container()
+                self.polymorphic_secondaryjoin = sql_util.ClauseAdapter(self.mapper.select_table).traverse(self.secondaryjoin, clone=True)
+                self.polymorphic_primaryjoin = self.primaryjoin
             else:
-                self.polymorphic_primaryjoin = self.primaryjoin.copy_container()
                 if self.direction is sync.ONETOMANY:
-                    sql_util.ClauseAdapter(self.mapper.select_table, include=self.foreign_keys, equivalents=target_equivalents).traverse(self.polymorphic_primaryjoin)
+                    self.polymorphic_primaryjoin = sql_util.ClauseAdapter(self.mapper.select_table, include=self.foreign_keys, equivalents=target_equivalents).traverse(self.primaryjoin, clone=True)
                 elif self.direction is sync.MANYTOONE:
-                    sql_util.ClauseAdapter(self.mapper.select_table, exclude=self.foreign_keys, equivalents=target_equivalents).traverse(self.polymorphic_primaryjoin)
+                    self.polymorphic_primaryjoin = sql_util.ClauseAdapter(self.mapper.select_table, exclude=self.foreign_keys, equivalents=target_equivalents).traverse(self.primaryjoin, clone=True)
                 self.polymorphic_secondaryjoin = None
             # load "polymorphic" versions of the columns present in "remote_side" - this is
             # important for lazy-clause generation which goes off the polymorphic target selectable
@@ -422,8 +420,8 @@ class PropertyLoader(StrategizedProperty):
                 else:
                     raise exceptions.AssertionError(str(self) + ": Could not find corresponding column for " + str(c) + " in selectable "  + str(self.mapper.select_table))
         else:
-            self.polymorphic_primaryjoin = self.primaryjoin.copy_container()
-            self.polymorphic_secondaryjoin = self.secondaryjoin and self.secondaryjoin.copy_container() or None
+            self.polymorphic_primaryjoin = self.primaryjoin
+            self.polymorphic_secondaryjoin = self.secondaryjoin
 
     def _post_init(self):
         if logging.is_info_enabled(self.logger):
@@ -466,17 +464,13 @@ class PropertyLoader(StrategizedProperty):
             return self._parent_join_cache[(parent, primary, secondary)]
         except KeyError:
             parent_equivalents = parent._get_equivalent_columns()
-            primaryjoin = self.polymorphic_primaryjoin.copy_container()
-            if self.secondaryjoin is not None:
-                secondaryjoin = self.polymorphic_secondaryjoin.copy_container()
-            else:
-                secondaryjoin = None
+            secondaryjoin = self.polymorphic_secondaryjoin
             if self.direction is sync.ONETOMANY:
-                sql_util.ClauseAdapter(parent.select_table, exclude=self.foreign_keys, equivalents=parent_equivalents).traverse(primaryjoin)
+                primaryjoin = sql_util.ClauseAdapter(parent.select_table, exclude=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin, clone=True)
             elif self.direction is sync.MANYTOONE:
-                sql_util.ClauseAdapter(parent.select_table, include=self.foreign_keys, equivalents=parent_equivalents).traverse(primaryjoin)
+                primaryjoin = sql_util.ClauseAdapter(parent.select_table, include=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin, clone=True)
             elif self.secondaryjoin:
-                sql_util.ClauseAdapter(parent.select_table, exclude=self.foreign_keys, equivalents=parent_equivalents).traverse(primaryjoin)
+                primaryjoin = sql_util.ClauseAdapter(parent.select_table, exclude=self.foreign_keys, equivalents=parent_equivalents).traverse(self.polymorphic_primaryjoin, clone=True)
 
             if secondaryjoin is not None:
                 if secondary and not primary:

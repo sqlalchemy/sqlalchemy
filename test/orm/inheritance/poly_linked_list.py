@@ -29,14 +29,15 @@ class PolymorphicCircularTest(testbase.ORMTest):
             Column('data', String(30))
             )
             
-        join = polymorphic_union(
-            {
-            'table3' : table1.join(table3),
-            'table2' : table1.join(table2),
-            'table1' : table1.select(table1.c.type.in_('table1', 'table1b')),
-            }, None, 'pjoin')
-
-        # still with us so far ?
+        #join = polymorphic_union(
+        #    {
+        #    'table3' : table1.join(table3),
+        #    'table2' : table1.join(table2),
+        #    'table1' : table1.select(table1.c.type.in_('table1', 'table1b')),
+        #    }, None, 'pjoin')
+        
+        join = table1.outerjoin(table2).outerjoin(table3).alias('pjoin')
+        #join = None
         
         class Table1(object):
             def __init__(self, name, data=None):
@@ -62,10 +63,10 @@ class PolymorphicCircularTest(testbase.ORMTest):
                 return "%s(%d, %s)" % (self.__class__.__name__, self.id, repr(str(self.data)))
                 
         try:
-            # this is how the mapping used to work.  insure that this raises an error now
+            # this is how the mapping used to work.  ensure that this raises an error now
             table1_mapper = mapper(Table1, table1,
                                    select_table=join,
-                                   polymorphic_on=join.c.type,
+                                   polymorphic_on=table1.c.type,
                                    polymorphic_identity='table1',
                                    properties={
                                     'next': relation(Table1, 
@@ -86,8 +87,8 @@ class PolymorphicCircularTest(testbase.ORMTest):
         # exception now.  since eager loading would never work for that relation anyway, its better that the user
         # gets an exception instead of it silently not eager loading.
         table1_mapper = mapper(Table1, table1,
-                               select_table=join,
-                               polymorphic_on=join.c.type,
+                               #select_table=join,
+                               polymorphic_on=table1.c.type,
                                polymorphic_identity='table1',
                                properties={
                                'next': relation(Table1, 
@@ -104,7 +105,10 @@ class PolymorphicCircularTest(testbase.ORMTest):
                                polymorphic_identity='table2')
 
         table3_mapper = mapper(Table3, table3, inherits=table1_mapper, polymorphic_identity='table3')
-
+        
+        table1_mapper.compile()
+        assert table1_mapper.primary_key == [table1.c.id], table1_mapper.primary_key
+        
     def testone(self):
         self.do_testlist([Table1, Table2, Table1, Table2])
 

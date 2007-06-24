@@ -66,13 +66,13 @@ class ANSIDialect(default.DefaultDialect):
         """
         return ANSIIdentifierPreparer(self)
 
-class ANSICompiler(sql.Compiled):
+class ANSICompiler(engine.Compiled):
     """Default implementation of Compiled.
 
     Compiles ClauseElements into ANSI-compliant SQL strings.
     """
 
-    __traverse_options__ = {'column_collections':False}
+    __traverse_options__ = {'column_collections':False, 'entry':True}
 
     def __init__(self, dialect, statement, parameters=None, **kwargs):
         """Construct a new ``ANSICompiler`` object.
@@ -92,7 +92,7 @@ class ANSICompiler(sql.Compiled):
           correspond to the keys present in the parameters.
         """
         
-        sql.Compiled.__init__(self, dialect, statement, parameters, **kwargs)
+        super(ANSICompiler, self).__init__(dialect, statement, parameters, **kwargs)
 
         # if we are insert/update.  set to true when we visit an INSERT or UPDATE
         self.isinsert = self.isupdate = False
@@ -158,7 +158,14 @@ class ANSICompiler(sql.Compiled):
 
         # an ANSIIdentifierPreparer that formats the quoting of identifiers
         self.preparer = dialect.identifier_preparer
-
+        
+        # a dictionary containing attributes about all select()
+        # elements located within the clause, regarding which are subqueries, which are
+        # selected from, and which elements should be correlated to an enclosing select.
+        # used mostly to determine the list of FROM elements for each select statement, as well
+        # as some dialect-specific rules regarding subqueries.
+        self.correlate_state = {}
+        
         # for UPDATE and INSERT statements, a set of columns whos values are being set
         # from a SQL expression (i.e., not one of the bind parameter values).  if present,
         # default-value logic in the Dialect knows not to fire off column defaults
@@ -193,7 +200,10 @@ class ANSICompiler(sql.Compiled):
 
     def get_str(self, obj):
         return self.strings[obj]
-
+    
+    def is_subquery(self, select):
+        return self.correlate_state[select].get('is_subquery', False)
+        
     def get_whereclause(self, obj):
         return self.wheres.get(obj, None)
 
@@ -343,7 +353,7 @@ class ANSICompiler(sql.Compiled):
 
     def visit_compound_select(self, cs):
         text = string.join([self.get_str(c) for c in cs.selects], " " + cs.keyword + " ")
-        group_by = self.get_str(cs.group_by_clause)
+        group_by = self.get_str(cs._group_by_clause)
         if group_by:
             text += " GROUP BY " + group_by
         text += self.order_by_clause(cs)            
@@ -424,40 +434,68 @@ class ANSICompiler(sql.Compiled):
         self.froms[alias] = self.get_from_text(alias.original) + " AS " + self.preparer.format_alias(alias)
         self.strings[alias] = self.get_str(alias.original)
 
+    def enter_select(self, select):
+        select.calculate_correlations(self.correlate_state)
+        self.select_stack.append(select)
+    
+    def enter_update(self, update):
+        update.calculate_correlations(self.correlate_state)
+
+    def enter_delete(self, delete):
+        delete.calculate_correlations(self.correlate_state)
+    
+    def label_select_column(self, select, column):
+        """convert a column from a select's "columns" clause.
+        
+        given a select() and a column element from its inner_columns collection, return a
+        Label object if this column should be labeled in the columns clause.  Otherwise,
+        return None and the column will be used as-is.
+        
+        The calling method will traverse the returned label to acquire its string
+        representation.
+        """
+        
+        # SQLite doesnt like selecting from a subquery where the column
+        # names look like table.colname. so if column is in a "selected from"
+        # subquery, label it synoymously with its column name
+        if \
+            self.correlate_state[select].get('is_selected_from', False) and \
+            isinstance(column, sql._ColumnClause) and \
+            not column.is_literal and \
+            column.table is not None and \
+            not isinstance(column.table, sql.Select):
+            return column.label(column.name)
+        else:
+            return None
+            
     def visit_select(self, select):
         # the actual list of columns to print in the SELECT column list.
         inner_columns = util.OrderedDict()
-
-        self.select_stack.append(select)
-        for c in select._raw_columns:
-            if hasattr(c, '_selectable'):
-                s = c._selectable()
+        
+        froms = select.get_display_froms(self.correlate_state)
+        for f in froms:
+            if f not in self.strings:
+                self.traverse(f)
+                
+        for co in select.inner_columns:
+            if select.use_labels:
+                labelname = co._label
+                if labelname is not None:
+                    l = co.label(labelname)
+                    self.traverse(l)
+                    inner_columns[labelname] = l
+                else:
+                    self.traverse(co)
+                    inner_columns[self.get_str(co)] = co
             else:
-                self.traverse(c)
-                inner_columns[self.get_str(c)] = c
-                continue
-            for co in s.columns:
-                if select.use_labels:
-                    labelname = co._label
-                    if labelname is not None:
-                        l = co.label(labelname)
-                        self.traverse(l)
-                        inner_columns[labelname] = l
-                    else:
-                        self.traverse(co)
-                        inner_columns[self.get_str(co)] = co
-                # TODO: figure this out, a ColumnClause with a select as a parent
-                # is different from any other kind of parent
-                elif select.is_selected_from and isinstance(co, sql._ColumnClause) and not co.is_literal and co.table is not None and not isinstance(co.table, sql.Select):
-                    # SQLite doesnt like selecting from a subquery where the column
-                    # names look like table.colname, so add a label synonomous with
-                    # the column name
-                    l = co.label(co.name)
+                l = self.label_select_column(select, co)
+                if l is not None:
                     self.traverse(l)
                     inner_columns[self.get_str(l.obj)] = l
                 else:
                     self.traverse(co)
                     inner_columns[self.get_str(co)] = co
+                    
         self.select_stack.pop(-1)
 
         collist = string.join([self.get_str(v) for v in inner_columns.values()], ', ')
@@ -466,29 +504,10 @@ class ANSICompiler(sql.Compiled):
         text += self.visit_select_precolumns(select)
         text += collist
 
-        whereclause = select.whereclause
+        whereclause = select._whereclause
 
-        froms = []
-        for f in select.froms:
-
-            if self.parameters is not None:
-                # TODO: whack this feature in 0.4
-                # look at our own parameters, see if they
-                # are all present in the form of BindParamClauses.  if
-                # not, then append to the above whereclause column conditions
-                # matching those keys
-                for c in f.columns:
-                    if sql.is_column(c) and self.parameters.has_key(c.key) and not self.binds.has_key(c.key):
-                        value = self.parameters[c.key]
-                    else:
-                        continue
-                    clause = c==value
-                    if whereclause is not None:
-                        whereclause = self.traverse(sql.and_(clause, whereclause), stop_on=util.Set([whereclause]))
-                    else:
-                        whereclause = clause
-                        self.traverse(whereclause)
-
+        from_strings = []
+        for f in froms:
             # special thingy used by oracle to redefine a join
             w = self.get_whereclause(f)
             if w is not None:
@@ -500,11 +519,11 @@ class ANSICompiler(sql.Compiled):
 
             t = self.get_from_text(f)
             if t is not None:
-                froms.append(t)
+                from_strings.append(t)
 
         if len(froms):
             text += " \nFROM "
-            text += string.join(froms, ', ')
+            text += string.join(from_strings, ', ')
         else:
             text += self.default_from()
 
@@ -513,12 +532,12 @@ class ANSICompiler(sql.Compiled):
             if t:
                 text += " \nWHERE " + t
 
-        group_by = self.get_str(select.group_by_clause)
+        group_by = self.get_str(select._group_by_clause)
         if group_by:
             text += " GROUP BY " + group_by
 
-        if select.having is not None:
-            t = self.get_str(select.having)
+        if select._having is not None:
+            t = self.get_str(select._having)
             if t:
                 text += " \nHAVING " + t
 
@@ -532,7 +551,7 @@ class ANSICompiler(sql.Compiled):
     def visit_select_precolumns(self, select):
         """Called when building a ``SELECT`` statement, position is just before column list."""
 
-        return select.distinct and "DISTINCT " or ""
+        return select._distinct and "DISTINCT " or ""
 
     def visit_select_postclauses(self, select):
         """Called when building a ``SELECT`` statement, position is after all other ``SELECT`` clauses.
@@ -540,10 +559,10 @@ class ANSICompiler(sql.Compiled):
         Most DB syntaxes put ``LIMIT``/``OFFSET`` here.
         """
 
-        return (select.limit or select.offset) and self.limit_clause(select) or ""
+        return (select._limit or select._offset) and self.limit_clause(select) or ""
 
     def order_by_clause(self, select):
-        order_by = self.get_str(select.order_by_clause)
+        order_by = self.get_str(select._order_by_clause)
         if order_by:
             return " ORDER BY " + order_by
         else:
@@ -557,12 +576,12 @@ class ANSICompiler(sql.Compiled):
 
     def limit_clause(self, select):
         text = ""
-        if select.limit is not None:
-            text +=  " \n LIMIT " + str(select.limit)
-        if select.offset is not None:
-            if select.limit is None:
+        if select._limit is not None:
+            text +=  " \n LIMIT " + str(select._limit)
+        if select._offset is not None:
+            if select._limit is None:
                 text += " \n LIMIT -1"
-            text += " OFFSET " + str(select.offset)
+            text += " OFFSET " + str(select._offset)
         return text
 
     def visit_table(self, table):
@@ -696,8 +715,8 @@ class ANSICompiler(sql.Compiled):
 
         text = "UPDATE " + self.preparer.format_table(update_stmt.table) + " SET " + string.join(["%s=%s" % (self.preparer.format_column(c[0]), create_param(*c)) for c in colparams], ', ')
 
-        if update_stmt.whereclause:
-            text += " WHERE " + self.get_str(update_stmt.whereclause)
+        if update_stmt._whereclause:
+            text += " WHERE " + self.get_str(update_stmt._whereclause)
 
         self.strings[update_stmt] = text
 
@@ -755,13 +774,14 @@ class ANSICompiler(sql.Compiled):
                 if sql._is_literal(value):
                     value = sql.bindparam(c.key, value, type=c.type, unique=True)
                 values.append((c, value))
+
         return values
 
     def visit_delete(self, delete_stmt):
         text = "DELETE FROM " + self.preparer.format_table(delete_stmt.table)
 
-        if delete_stmt.whereclause:
-            text += " WHERE " + self.get_str(delete_stmt.whereclause)
+        if delete_stmt._whereclause:
+            text += " WHERE " + self.get_str(delete_stmt._whereclause)
 
         self.strings[delete_stmt] = text
 
@@ -795,7 +815,7 @@ class ANSISchemaGenerator(ANSISchemaBase):
     def visit_metadata(self, metadata):
         collection = [t for t in metadata.table_iterator(reverse=False, tables=self.tables) if (not self.checkfirst or not self.dialect.has_table(self.connection, t.name, schema=t.schema))]
         for table in collection:
-            table.accept_visitor(self)
+            self.traverse_single(table)
         if self.dialect.supports_alter():
             for alterable in self.find_alterables(collection):
                 self.add_foreignkey(alterable)
@@ -803,7 +823,7 @@ class ANSISchemaGenerator(ANSISchemaBase):
     def visit_table(self, table):
         for column in table.columns:
             if column.default is not None:
-                column.default.accept_visitor(self)
+                self.traverse_single(column.default)
             #if column.onupdate is not None:
             #    column.onupdate.accept_visitor(visitor)
 
@@ -820,20 +840,20 @@ class ANSISchemaGenerator(ANSISchemaBase):
             if column.primary_key:
                 first_pk = True
             for constraint in column.constraints:
-                constraint.accept_visitor(self)
+                self.traverse_single(constraint)
 
         # On some DB order is significant: visit PK first, then the
         # other constraints (engine.ReflectionTest.testbasic failed on FB2)
         if len(table.primary_key):
-            table.primary_key.accept_visitor(self)
+            self.traverse_single(table.primary_key)
         for constraint in [c for c in table.constraints if c is not table.primary_key]:
-            constraint.accept_visitor(self)
+            self.traverse_single(constraint)
 
         self.append("\n)%s\n\n" % self.post_create_table(table))
         self.execute()
         if hasattr(table, 'indexes'):
             for index in table.indexes:
-                index.accept_visitor(self)
+                self.traverse_single(index)
 
     def post_create_table(self, table):
         return ''
@@ -929,7 +949,7 @@ class ANSISchemaDropper(ANSISchemaBase):
             for alterable in self.find_alterables(collection):
                 self.drop_foreignkey(alterable)
         for table in collection:
-            table.accept_visitor(self)
+            self.traverse_single(table)
 
     def visit_index(self, index):
         self.append("\nDROP INDEX " + index.name)
@@ -942,7 +962,7 @@ class ANSISchemaDropper(ANSISchemaBase):
     def visit_table(self, table):
         for column in table.columns:
             if column.default is not None:
-                column.default.accept_visitor(self)
+                self.traverse_single(column.default)
 
         self.append("\nDROP TABLE " + self.preparer.format_table(table))
         self.execute()

@@ -12,6 +12,8 @@
       auto-construction of joins which cross the same paths but
       are querying divergent criteria.  ClauseElements at the front
       of filter_by() are removed (use filter()).
+    - improved support for custom column_property() attributes which
+      feature correlated subqueries...work better with eager loading now.
     - along with recent speedups to ResultProxy, total number of
       function calls significantly reduced for large loads.
       test/perf/masseagerload.py reports 0.4 as having the fewest number
@@ -35,6 +37,18 @@
     - added undefer_group() MapperOption, sets a set of "deferred"
       columns joined by a "group" to load as "undeferred".
 - sql
+  - significant architectural overhaul to SQL elements (ClauseElement).  
+    all elements share  a common "mutability" framework which allows a 
+    consistent approach to in-place modifications of elements as well as 
+    generative behavior.  improves stability of the ORM which makes 
+    heavy usage of mutations to SQL expressions.  
+  - select() and union()'s now have "generative" behavior.  methods like
+    order_by() and group_by() return a *new* instance - the original instance
+    is left unchanged.  non-generative methods remain as well.  
+  - the internals of select/union vastly simplified - all decision making
+    regarding "is subquery" and "correlation" pushed to SQL generation phase.
+    select() elements are now *never* mutated by their enclosing containers
+    or by any dialect's compilation process [ticket:52] [ticket:569]
   - result sets from CRUD operations close their underlying cursor immediately.
     will also autoclose the connection if defined for the operation; this 
     allows more efficient usage of connections for successive CRUD operations

@@ -327,12 +327,12 @@ class SQLiteCompiler(ansisql.ANSICompiler):
 
     def limit_clause(self, select):
         text = ""
-        if select.limit is not None:
-            text +=  " \n LIMIT " + str(select.limit)
-        if select.offset is not None:
-            if select.limit is None:
+        if select._limit is not None:
+            text +=  " \n LIMIT " + str(select._limit)
+        if select._offset is not None:
+            if select._limit is None:
                 text += " \n LIMIT -1"
-            text += " OFFSET " + str(select.offset)
+            text += " OFFSET " + str(select._offset)
         else:
             text += " OFFSET 0"
         return text

@@ -143,6 +143,11 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         self.runtest(select([table1, exists([1], from_obj=[table2]).label('foo')]), "SELECT mytable.myid, mytable.name, mytable.description, EXISTS (SELECT 1 FROM myothertable) AS foo FROM mytable", params={})
         
     def testwheresubquery(self):
+        s = select([addresses.c.street], addresses.c.user_id==users.c.user_id, correlate=True).alias('s')
+        self.runtest(
+            select([users, s.c.street], from_obj=[s]),
+            """SELECT users.user_id, users.user_name, users.password, s.street FROM users, (SELECT addresses.street AS street FROM addresses WHERE addresses.user_id = users.user_id) AS s""")
+
         # TODO: this tests that you dont get a "SELECT column" without a FROM but its not working yet.
         #self.runtest(
         #    table1.select(table1.c.myid == select([table1.c.myid], table1.c.name=='jack')), ""
@@ -223,6 +228,12 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
                          order_by = ['dist', places.c.nm]
                          )
         self.runtest(q, "SELECT places.id, places.nm, main_zip.zipcode, latlondist((SELECT zips.latitude FROM zips WHERE zips.zipcode = main_zip.zipcode), (SELECT zips.longitude FROM zips WHERE zips.zipcode = main_zip.zipcode)) AS dist FROM places, zips AS main_zip ORDER BY dist, places.nm")
+
+        a1 = table2.alias('t2alias')
+        s1 = select([a1.c.otherid], table1.c.myid==a1.c.otherid, scalar=True)
+        j1 = table1.join(table2, table1.c.myid==table2.c.otherid)
+        s2 = select([table1, s1], from_obj=[j1])
+        self.runtest(s2, "SELECT mytable.myid, mytable.name, mytable.description, (SELECT t2alias.otherid FROM myothertable AS t2alias WHERE mytable.myid = t2alias.otherid) FROM mytable JOIN myothertable ON mytable.myid = myothertable.otherid")
     
     def testlabelcomparison(self):
         x = func.lala(table1.c.myid).label('foo')
@@ -410,7 +421,7 @@ WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid =
         s.append_column("column2")
         s.append_whereclause("column1=12")
         s.append_whereclause("column2=19")
-        s.order_by("column1")
+        s = s.order_by("column1")
         s.append_from("table1")
         self.runtest(s, "SELECT column1, column2 FROM table1 WHERE column1=12 AND column2=19 ORDER BY column1")
 
@@ -850,16 +861,6 @@ UNION SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE 
         )
         
     
-    def testlateargs(self):
-        """tests that a SELECT clause will have extra "WHERE" clauses added to it at compile time if extra arguments
-        are sent"""
-        
-        self.runtest(table1.select(), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.name = :mytable_name AND mytable.myid = :mytable_myid", params={'myid':'3', 'name':'jack'})
-
-        self.runtest(table1.select(table1.c.name=='jack'), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = :mytable_myid AND mytable.name = :mytable_name", params={'myid':'3'})
-
-        self.runtest(table1.select(table1.c.name=='jack'), "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = :mytable_myid AND mytable.name = :mytable_name", params={'myid':'3', 'name':'fred'})
-        
     def testcast(self):
         tbl = table('casttest',
                     column('id', Integer),
@@ -969,7 +970,18 @@ class CRUDTest(SQLTest):
         
     def testdelete(self):
         self.runtest(delete(table1, table1.c.myid == 7), "DELETE FROM mytable WHERE mytable.myid = :mytable_myid")
-        
+    
+    def testcorrelateddelete(self):
+        # test a non-correlated WHERE clause
+        s = select([table2.c.othername], table2.c.otherid == 7)
+        u = delete(table1, table1.c.name==s)
+        self.runtest(u, "DELETE FROM mytable WHERE mytable.name = (SELECT myothertable.othername FROM myothertable WHERE myothertable.otherid = :myothertable_otherid)")
+
+        # test one that is actually correlated...
+        s = select([table2.c.othername], table2.c.otherid == table1.c.myid)
+        u = table1.delete(table1.c.name==s)
+        self.runtest(u, "DELETE FROM mytable WHERE mytable.name = (SELECT myothertable.othername FROM myothertable WHERE myothertable.otherid = mytable.myid)")
+            
 class SchemaTest(SQLTest):
     def testselect(self):
         # these tests will fail with the MS-SQL compiler since it will alias schema-qualified tables

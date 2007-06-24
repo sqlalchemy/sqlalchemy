@@ -7,6 +7,8 @@ def suite():
         'sql.testtypes',
         'sql.constraints',
 
+        'sql.generative',
+        
         # SQL syntax
         'sql.select',
         'sql.selectable',

@@ -55,9 +55,9 @@ else:
                 self[key] = value = self.creator(key)
                 return value
 
-def to_list(x):
+def to_list(x, default=None):
     if x is None:
-        return None
+        return default
     if not isinstance(x, list) and not isinstance(x, tuple):
         return [x]
     else:
