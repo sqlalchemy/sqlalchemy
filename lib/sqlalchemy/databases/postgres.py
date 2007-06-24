@@ -414,12 +414,12 @@ class PGCompiler(ansisql.ANSICompiler):
 
     def limit_clause(self, select):
         text = ""
-        if select.limit is not None:
-            text +=  " \n LIMIT " + str(select.limit)
-        if select.offset is not None:
-            if select.limit is None:
+        if select._limit is not None:
+            text +=  " \n LIMIT " + str(select._limit)
+        if select._offset is not None:
+            if select._limit is None:
                 text += " \n LIMIT ALL"
-            text += " OFFSET " + str(select.offset)
+            text += " OFFSET " + str(select._offset)
         return text
 
     def visit_select_precolumns(self, select):
