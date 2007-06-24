@@ -175,6 +175,7 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
             s,
             "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE EXISTS (SELECT 1 FROM myothertable WHERE myothertable.otherid = mytable.myid)"
         )
+
     
     def testorderbysubquery(self):
         self.runtest(
@@ -222,6 +223,12 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
                          order_by = ['dist', places.c.nm]
                          )
         self.runtest(q, "SELECT places.id, places.nm, main_zip.zipcode, latlondist((SELECT zips.latitude FROM zips WHERE zips.zipcode = main_zip.zipcode), (SELECT zips.longitude FROM zips WHERE zips.zipcode = main_zip.zipcode)) AS dist FROM places, zips AS main_zip ORDER BY dist, places.nm")
+    
+        a1 = table2.alias('t2alias')
+        s1 = select([a1.c.otherid], table1.c.myid==a1.c.otherid, scalar=True)
+        j1 = table1.join(table2, table1.c.myid==table2.c.otherid)
+        s2 = select([table1, s1], from_obj=[j1])
+        self.runtest(s2, "SELECT mytable.myid, mytable.name, mytable.description, (SELECT t2alias.otherid FROM myothertable AS t2alias WHERE mytable.myid = t2alias.otherid) FROM mytable JOIN myothertable ON mytable.myid = myothertable.otherid")
     
     def testlabelcomparison(self):
         x = func.lala(table1.c.myid).label('foo')
