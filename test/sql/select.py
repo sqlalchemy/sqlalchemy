@@ -940,6 +940,10 @@ UNION SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE 
             "SELECT op.field FROM op WHERE NOT op.field = :op_field")
         self.runtest(table.select(not_(table.c.field) == 5),
             "SELECT op.field FROM op WHERE (NOT op.field) = :literal")
+        self.runtest(table.select((table.c.field == table.c.field).between(False, True)),
+            "SELECT op.field FROM op WHERE (op.field = op.field) BETWEEN :literal AND :literal_1")
+        self.runtest(table.select(between((table.c.field == table.c.field), False, True)),
+            "SELECT op.field FROM op WHERE (op.field = op.field) BETWEEN :literal AND :literal_1")
 
 class CRUDTest(SQLTest):
     def testinsert(self):

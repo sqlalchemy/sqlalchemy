@@ -33,7 +33,7 @@ __all__ = ['AbstractDialect', 'Alias', 'ClauseElement', 'ClauseParameters',
            'ClauseVisitor', 'ColumnCollection', 'ColumnElement',
            'Compiled', 'CompoundSelect', 'Executor', 'FromClause', 'Join',
            'Select', 'Selectable', 'TableClause', 'alias', 'and_', 'asc',
-           'between_', 'bindparam', 'case', 'cast', 'column', 'delete',
+           'between_', 'between', 'bindparam', 'case', 'cast', 'column', 'delete',
            'desc', 'distinct', 'except_', 'except_all', 'exists', 'extract', 'func', 'modifier',
            'insert', 'intersect', 'intersect_all', 'join', 'literal',
            'literal_column', 'not_', 'null', 'or_', 'outerjoin', 'select',
@@ -62,13 +62,13 @@ PRECEDENCE = {
     '<':5,
     '>=':5,
     '<=':5,
+    'BETWEEN':5,
     'NOT':4,
     'AND':3,
     'OR':2,
     ',':-1,
     'AS':-1,
     'EXISTS':0,
-    'BETWEEN':0,
     '_smallest': -1000,
     '_largest': 1000
 }
@@ -404,7 +404,7 @@ def between(ctest, cleft, cright):
     provides similar functionality.
     """
 
-    return _BinaryExpression(ctest, and_(_literals_as_binds(cleft, type=ctest.type), _literals_as_binds(cright, type=ctest.type)), 'BETWEEN')
+    return _BinaryExpression(ctest, ClauseList(_literals_as_binds(cleft, type=ctest.type), _literals_as_binds(cright, type=ctest.type), operator='AND', group=False), 'BETWEEN')
 
 def between_(*args, **kwargs):
     """synonym for [sqlalchemy.sql#between()] (deprecated)."""
@@ -1352,7 +1352,7 @@ class _CompareMixin(object):
 
     def between(self, cleft, cright):
         """produce a BETWEEN clause, i.e. ``<column> BETWEEN <cleft> AND <cright>``"""
-        return _BinaryExpression(self, and_(self._check_literal(cleft), self._check_literal(cright)), 'BETWEEN')
+        return _BinaryExpression(self, ClauseList(self._check_literal(cleft), self._check_literal(cright), operator='AND', group=False), 'BETWEEN')
 
     def op(self, operator):
         """produce a generic operator function.
@@ -1953,12 +1953,6 @@ class ClauseList(ClauseElement):
         clauses = [clause.copy_container() for clause in self.clauses]
         return ClauseList(operator=self.operator, *clauses)
 
-    def self_group(self, against=None):
-        if self.group:
-            return _Grouping(self)
-        else:
-            return self
-
     def append(self, clause):
         # TODO: not sure if i like the 'group_contents' flag.  need to define the difference between
         # a ClauseList of ClauseLists, and a "flattened" ClauseList of ClauseLists.  flatten() method ?
@@ -1980,7 +1974,7 @@ class ClauseList(ClauseElement):
         return f
 
     def self_group(self, against=None):
-        if self.operator != against and PRECEDENCE.get(self.operator, PRECEDENCE['_smallest']) <= PRECEDENCE.get(against, PRECEDENCE['_largest']):
+        if self.group and self.operator != against and PRECEDENCE.get(self.operator, PRECEDENCE['_smallest']) <= PRECEDENCE.get(against, PRECEDENCE['_largest']):
             return _Grouping(self)
         else:
             return self
