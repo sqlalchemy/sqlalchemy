@@ -52,10 +52,11 @@ class TraversalTest(testbase.AssertMixin):
                     if i1 != i2:
                         return True
                 return False
-                
-            def get_children(self, clone=False, **kwargs):
-                if clone:
-                    self.items = [i._clone() for i in self.items]
+            
+            def copy_internals(self):    
+                self.items = [i._clone() for i in self.items]
+
+            def get_children(self, **kwargs):
                 return self.items
             
             def accept_visitor(self, visitor):
