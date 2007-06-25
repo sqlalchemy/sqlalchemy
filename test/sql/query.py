@@ -480,7 +480,7 @@ class QueryTest(PersistTest):
             tr.commit()
             con.execute("""drop trigger paj""")
             meta.drop_all()
-
+    
     @testbase.supported('mssql')
     def test_insertid_schema(self):
         meta = BoundMetaData(testbase.db)
@@ -493,6 +493,55 @@ class QueryTest(PersistTest):
         finally:
             tbl.drop()
             con.execute('drop schema paj')
+    
+    def test_in_filtering(self):
+        """test the 'shortname' field on BindParamClause."""
+        self.users.insert().execute(user_id = 7, user_name = 'jack')
+        self.users.insert().execute(user_id = 8, user_name = 'fred')
+        self.users.insert().execute(user_id = 9, user_name = None)
+        
+        s = self.users.select(self.users.c.user_name.in_())
+        r = s.execute().fetchall()
+        # No username is in empty set
+        assert len(r) == 0
+        
+        s = self.users.select(not_(self.users.c.user_name.in_()))
+        r = s.execute().fetchall()
+        # All usernames with a value are outside an empty set
+        assert len(r) == 2
+        
+        s = self.users.select(self.users.c.user_name.in_('jack','fred'))
+        r = s.execute().fetchall()
+        assert len(r) == 2
+        
+        s = self.users.select(not_(self.users.c.user_name.in_('jack','fred')))
+        r = s.execute().fetchall()
+        # Null values are not outside any set
+        assert len(r) == 0
+        
+        u = bindparam('search_key')
+        
+        s = self.users.select(u.in_())
+        r = s.execute(search_key='john').fetchall()
+        assert len(r) == 0
+        r = s.execute(search_key=None).fetchall()
+        assert len(r) == 0
+        
+        s = self.users.select(not_(u.in_()))
+        r = s.execute(search_key='john').fetchall()
+        assert len(r) == 3
+        r = s.execute(search_key=None).fetchall()
+        assert len(r) == 0
+        
+        s = self.users.select(self.users.c.user_name.in_() == True)
+        r = s.execute().fetchall()
+        assert len(r) == 0
+        s = self.users.select(self.users.c.user_name.in_() == False)
+        r = s.execute().fetchall()
+        assert len(r) == 2
+        s = self.users.select(self.users.c.user_name.in_() == None)
+        r = s.execute().fetchall()
+        assert len(r) == 1
         
 
 class CompoundTest(PersistTest):

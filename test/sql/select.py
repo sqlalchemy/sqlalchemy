@@ -263,11 +263,11 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
     def testoperators(self):
         self.runtest(
             table1.select((table1.c.myid != 12) & ~(table1.c.name=='john')), 
-            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != :mytable_myid AND NOT (mytable.name = :mytable_name)"
+            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != :mytable_myid AND NOT mytable.name = :mytable_name"
         )
         
         self.runtest(
-            literal("a") + literal("b") * literal("c"), ":literal + (:literal_1 * :literal_2)"
+            literal("a") + literal("b") * literal("c"), ":literal + :literal_1 * :literal_2"
         )
 
         # exercise arithmetic operators
@@ -527,12 +527,12 @@ FROM mytable, myothertable WHERE foo.id = foofoo(lala) AND datetime(foo) = Today
          self.runtest(
              select([value_tbl.c.id], (value_tbl.c.val2 -
      value_tbl.c.val1)/value_tbl.c.val1 > 2.0),
-             "SELECT values.id FROM values WHERE ((values.val2 - values.val1) / values.val1) > :literal"
+             "SELECT values.id FROM values WHERE (values.val2 - values.val1) / values.val1 > :literal"
          )
 
          self.runtest(
              select([value_tbl.c.id], value_tbl.c.val1 / (value_tbl.c.val2 - value_tbl.c.val1) /value_tbl.c.val1 > 2.0),
-             "SELECT values.id FROM values WHERE ((values.val1 / (values.val2 - values.val1)) / values.val1) > :literal"
+             "SELECT values.id FROM values WHERE values.val1 / (values.val2 - values.val1) / values.val1 > :literal"
          )
          
     def testfunction(self):
@@ -809,7 +809,7 @@ myothertable.othername != :myothertable_othername OR EXISTS (select yay from foo
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:mytable_myid, :literal)")
 
         self.runtest(select([table1], table1.c.myid.in_(literal('a') + 'a')),
-        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = (:literal + :literal_1)")
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid = :literal + :literal_1")
 
         self.runtest(select([table1], table1.c.myid.in_(literal('a') +'a', 'b')),
         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid IN (:literal + :literal_1, :mytable_myid)")
@@ -868,6 +868,10 @@ UNION SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE 
             "SELECT mytable.myid, mytable.name, mytable.description, myothertable.otherid, myothertable.othername FROM mytable JOIN myothertable ON mytable.myid = myothertable.otherid WHERE myothertable.otherid IN (SELECT myothertable.otherid FROM myothertable ORDER BY myothertable.othername  LIMIT 10) ORDER BY mytable.myid"
         )
         
+        # test empty in clause
+        self.runtest(select([table1], table1.c.myid.in_()),
+        "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE (CASE WHEN (mytable.myid IS NULL) THEN NULL ELSE 0 END = 1)")
+        
     
     def testlateargs(self):
         """tests that a SELECT clause will have extra "WHERE" clauses added to it at compile time if extra arguments
@@ -916,6 +920,26 @@ UNION SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE 
         self.runtest(table.select(table.c.date.between(datetime.date(2006,6,1), datetime.date(2006,6,5))), "SELECT dt.date FROM dt WHERE dt.date BETWEEN :dt_date AND :dt_date_1", checkparams={'dt_date':datetime.date(2006,6,1), 'dt_date_1':datetime.date(2006,6,5)})
 
         self.runtest(table.select(sql.between(table.c.date, datetime.date(2006,6,1), datetime.date(2006,6,5))), "SELECT dt.date FROM dt WHERE dt.date BETWEEN :literal AND :literal_1", checkparams={'literal':datetime.date(2006,6,1), 'literal_1':datetime.date(2006,6,5)})
+    
+    def test_operator_precedence(self):
+        table = Table('op', metadata,
+            Column('field', Integer))
+        self.runtest(table.select((table.c.field == 5) == None),
+            "SELECT op.field FROM op WHERE (op.field = :op_field) IS NULL")
+        self.runtest(table.select((table.c.field + 5) == table.c.field),
+            "SELECT op.field FROM op WHERE op.field + :op_field = op.field")
+        self.runtest(table.select((table.c.field + 5) * 6),
+            "SELECT op.field FROM op WHERE (op.field + :op_field) * :literal")
+        self.runtest(table.select((table.c.field * 5) + 6),
+            "SELECT op.field FROM op WHERE op.field * :op_field + :literal")
+        self.runtest(table.select(5 + table.c.field.in_(5,6)),
+            "SELECT op.field FROM op WHERE :literal + (op.field IN (:op_field, :op_field_1))")
+        self.runtest(table.select((5 + table.c.field).in_(5,6)),
+            "SELECT op.field FROM op WHERE :op_field + op.field IN (:literal, :literal_1)")
+        self.runtest(table.select(not_(table.c.field == 5)),
+            "SELECT op.field FROM op WHERE NOT op.field = :op_field")
+        self.runtest(table.select(not_(table.c.field) == 5),
+            "SELECT op.field FROM op WHERE (NOT op.field) = :literal")
 
 class CRUDTest(SQLTest):
     def testinsert(self):
@@ -964,7 +988,7 @@ class CRUDTest(SQLTest):
             values = {
             table1.c.name : table1.c.name + "lala",
             table1.c.myid : func.do_stuff(table1.c.myid, literal('hoho'))
-            }), "UPDATE mytable SET myid=do_stuff(mytable.myid, :literal_2), name=mytable.name + :mytable_name WHERE mytable.myid = hoho(:hoho) AND mytable.name = ((:literal + mytable.name) + :literal_1)")
+            }), "UPDATE mytable SET myid=do_stuff(mytable.myid, :literal_2), name=mytable.name + :mytable_name WHERE mytable.myid = hoho(:hoho) AND mytable.name = :literal + mytable.name + :literal_1")
         
     def testcorrelatedupdate(self):
         # test against a straight text subquery
