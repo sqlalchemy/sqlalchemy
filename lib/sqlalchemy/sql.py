@@ -39,22 +39,37 @@ __all__ = ['AbstractDialect', 'Alias', 'ClauseElement', 'ClauseParameters',
            'subquery', 'table', 'text', 'union', 'union_all', 'update',]
 
 # precedence ordering for common operators.  if an operator is not present in this list,
-# its precedence is assumed to be '0' which will cause it to be parenthesized when grouped against other operators
+# it will be parenthesized when grouped against other operators
 PRECEDENCE = {
     'FROM':15,
-    'AS':15,
-    'NOT':10,
+    '*':7,
+    '/':7,
+	'%':7,
+    '+':6,
+    '-':6,
+    'ILIKE':5,
+    'NOT ILIKE':5,
+    'LIKE':5,
+    'NOT LIKE':5,
+    'IN':5,
+    'NOT IN':5,
+    'IS':5,
+    'IS NOT':5,
+    '=':5,
+    '!=':5,
+    '>':5,
+    '<':5,
+    '>=':5,
+    '<=':5,
+    'NOT':4,
     'AND':3,
-    'OR':3,
-    '=':7,
-    '!=':7,
-    '>':7,
-    '<':7,
-    '+':5,
-    '-':5,
-    '*':5,
-    '/':5,
-    ',':0
+    'OR':2,
+    ',':-1,
+    'AS':-1,
+    'EXISTS':0,
+    'BETWEEN':0,
+    '_smallest': -1000,
+    '_largest': 1000
 }
 
 def desc(column):
@@ -1154,7 +1169,7 @@ class _CompareMixin(object):
     def in_(self, *other):
         """produce an ``IN`` clause."""
         if len(other) == 0:
-            return self.__eq__(None)
+            return _Grouping(case([(self.__eq__(None), text('NULL'))], else_=text('0')).__eq__(text('1')))
         elif len(other) == 1:
             o = other[0]
             if _is_literal(o) or isinstance( o, _CompareMixin):
@@ -1837,7 +1852,7 @@ class ClauseList(ClauseElement):
         return f
 
     def self_group(self, against=None):
-        if PRECEDENCE.get(self.operator, 0) <= PRECEDENCE.get(against, 0):
+        if self.operator != against and PRECEDENCE.get(self.operator, PRECEDENCE['_smallest']) <= PRECEDENCE.get(against, PRECEDENCE['_largest']):
             return _Grouping(self)
         else:
             return self
@@ -1991,6 +2006,12 @@ class _UnaryExpression(ColumnElement):
             return _UnaryExpression(self.element, operator=self.negate, negate=self.operator, modifier=self.modifier, type=self.type)
         else:
             return super(_UnaryExpression, self)._negate()
+    
+    def self_group(self, against):
+        if self.operator and PRECEDENCE.get(self.operator, PRECEDENCE['_smallest']) <= PRECEDENCE.get(against, PRECEDENCE['_largest']):
+            return _Grouping(self)
+        else:
+            return self
 
 
 class _BinaryExpression(ColumnElement):
@@ -2022,7 +2043,8 @@ class _BinaryExpression(ColumnElement):
         )
         
     def self_group(self, against=None):
-        if PRECEDENCE.get(self.operator, 0) <= PRECEDENCE.get(against, 0):
+        # use small/large defaults for comparison so that unknown operators are always parenthesized
+        if self.operator != against and (PRECEDENCE.get(self.operator, PRECEDENCE['_smallest']) <= PRECEDENCE.get(against, PRECEDENCE['_largest'])):
             return _Grouping(self)
         else:
             return self

@@ -91,6 +91,12 @@
       to polymorphic mappers that are using a straight "outerjoin"
       clause
 - sql
+    - fixed precedence of operators so that parenthesis are correctly applied
+      [ticket:620]
+    - calling <column>.in_() (i.e. with no arguments) will return 
+      "CASE WHEN (<column> IS NULL) THEN NULL ELSE 0 END = 1)", so that 
+      NULL or False is returned in all cases, rather than throwing an error
+      [ticket:545]
     - fixed "where"/"from" criterion of select() to accept a unicode string
       in addition to regular string - both convert to text()
     - added standalone distinct() function in addition to column.distinct()
