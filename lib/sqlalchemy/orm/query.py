@@ -717,7 +717,7 @@ class Query(object):
     def count(self, whereclause=None, params=None, **kwargs):
         """Apply this query's criterion to a SELECT COUNT statement.
 
-        the whereclause, params and **kwargs arguments are deprecated.  use filter()
+        the whereclause, params and \**kwargs arguments are deprecated.  use filter()
         and other generative methods to establish modifiers.
         """
 
@@ -878,7 +878,7 @@ class Query(object):
         return self.filter(self._legacy_join_by(args, kwargs, start=self._joinpoint))
 
     def count_by(self, *args, **params):
-        """DEPRECATED.  use query.filter_by(**params).count()"""
+        """DEPRECATED.  use query.filter_by(\**params).count()"""
 
         return self.count(self.join_by(*args, **params))
 
@@ -911,7 +911,7 @@ class Query(object):
 
 
     def get_by(self, *args, **params):
-        """DEPRECATED.  use query.filter(*args).filter_by(**params).first()"""
+        """DEPRECATED.  use query.filter_by(\**params).first()"""
 
         ret = self._extension.get_by(self, *args, **params)
         if ret is not mapper.EXT_PASS:
@@ -920,7 +920,7 @@ class Query(object):
         return self._legacy_filter_by(*args, **params).first()
 
     def select_by(self, *args, **params):
-        """DEPRECATED. use use query.filter(*args).filter_by(**params).all()."""
+        """DEPRECATED. use use query.filter_by(\**params).all()."""
 
         ret = self._extension.select_by(self, *args, **params)
         if ret is not mapper.EXT_PASS:
@@ -1060,12 +1060,12 @@ class Query(object):
         return [keys, p]
 
     def selectfirst_by(self, *args, **params):
-        """DEPRECATED. Use query.filter(*args).filter_by(**kwargs).first()"""
+        """DEPRECATED. Use query.filter_by(\**kwargs).first()"""
 
         return self._legacy_filter_by(*args, **params).first()
 
     def selectone_by(self, *args, **params):
-        """DEPRECATED. Use query.filter(*args).filter_by(**kwargs).one()"""
+        """DEPRECATED. Use query.filter_by(\**kwargs).one()"""
 
         return self._legacy_filter_by(*args, **params).one()
 

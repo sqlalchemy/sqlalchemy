@@ -242,7 +242,6 @@ class LazyLoader(AbstractRelationLoader):
         if self.use_get:
             self.logger.info(str(self.parent_property) + " will use query.get() to optimize instance loads")
 
-
     def init_class_attribute(self):
         self._register_attribute(self.parent.class_, callable_=lambda i: self.setup_loader(i))
 
@@ -318,7 +317,6 @@ class LazyLoader(AbstractRelationLoader):
                 return q.first()
 
         return lazyload
-
 
     def create_row_processor(self, selectcontext, mapper, row):
         if not self.is_default or len(selectcontext.options):
@@ -543,12 +541,6 @@ class EagerLoader(AbstractRelationLoader):
             EagerRowAdapter.map = map
             return EagerRowAdapter
 
-        def _decorate_row(self, row):
-            # adapts a row at row iteration time to transparently
-            # convert plain columns into the aliased columns that were actually
-            # added to the column clause of the SELECT.
-            return self._row_decorator(row)
-
     def init_class_attribute(self):
         self.parent_property._get_strategy(LazyLoader).init_class_attribute()
         
@@ -650,7 +642,6 @@ class EagerLoader(AbstractRelationLoader):
                 self.logger.debug("could not locate identity key from row '%s'; missing column '%s'" % (repr(decorated_row), str(k)))
             return None
 
-
     def create_row_processor(self, selectcontext, mapper, row):
         row_decorator = self._create_row_decorator(selectcontext, row)
         if row_decorator is not None:
@@ -723,8 +714,12 @@ class EagerLazyOption(StrategizedOption):
 
 EagerLazyOption.logger = logging.class_logger(EagerLazyOption)
 
-
-
+# TODO: enable FetchMode option.  currently 
+# this class does nothing.  will require Query
+# to swich between using its "polymorphic" selectable
+# and its regular selectable in order to make decisions
+# (therefore might require that FetchModeOperation is performed
+# only as the first operation on a Query.)
 class FetchModeOption(PropertyOption):
     def __init__(self, key, type):
         super(FetchModeOption, self).__init__(key)
@@ -755,4 +750,3 @@ class RowDecorateOption(PropertyOption):
 
 RowDecorateOption.logger = logging.class_logger(RowDecorateOption)
         
-

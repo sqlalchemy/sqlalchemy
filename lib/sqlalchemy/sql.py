@@ -950,8 +950,12 @@ class ClauseElement(object):
     __metaclass__ = _FigureVisitName
     
     def _clone(self):
-        # shallow copy.  mutator operations always create
-        # clones of container objects.
+        """create a shallow copy of this ClauseElement.
+        
+        This method may be used by a generative API.
+        Its also used as part of the "deep" copy afforded
+        by a traversal that combines the copy_internals()
+        method."""
         c = self.__class__.__new__(self.__class__)
         c.__dict__ = self.__dict__.copy()
         return c

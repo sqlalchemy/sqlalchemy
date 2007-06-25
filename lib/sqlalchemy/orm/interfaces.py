@@ -207,22 +207,29 @@ class MapperProperty(object):
     """
 
     def setup(self, querycontext, **kwargs):
-        """Called when a statement is being constructed."""
+        """Called by Query for the purposes of constructing a SQL statement.
+        
+        Each MapperProperty associated with the target mapper processes the
+        statement referenced by the query context, adding columns and/or
+        criterion as appropriate.
+        """
 
         pass
 
     def create_row_processor(self, selectcontext, mapper, row):
-        """return a tuple of a row processing and an instance post-processing function.
+        """return a 2-tuple consiting of a row processing function and an instance post-processing function.
         
         Input arguments are the query.SelectionContext and the *first*
         applicable row of a result set obtained within query.Query.instances(), called
-        the first time mapper.populate_instance() is invoked for a particular
-        result, and only once per result.
+        only the first time a particular mapper.populate_instance() is invoked for the 
+        overal result.
+
+        The settings contained within the SelectionContext as well as the columns present
+        in the row (which will be the same columns present in all rows) are used to determine
+        the behavior of the returned callables.  The callables will then be used to process
+        all rows and to post-process all instances, respectively.
         
-        By looking at the columns present within the row, MapperProperty
-        returns two callables which will be used to process all rows and instances.
-        
-        callables are of the following form:
+        callables are of the following form::
         
             def execute(instance, row, **flags):
                 # process incoming instance and given row.
@@ -239,15 +246,22 @@ class MapperProperty(object):
                 
             return (execute, post_execute)
             
-        either tuple value can also be None in which case no function is called.
+        either tuple value can also be ``None`` in which case no function is called.
         
         """
+        
         raise NotImplementedError()
         
     def cascade_iterator(self, type, object, recursive=None, halt_on=None):
+        """return an iterator of objects which are child objects of the given object,
+        as attached to the attribute corresponding to this MapperProperty."""
+        
         return []
 
     def cascade_callable(self, type, object, callable_, recursive=None, halt_on=None):
+        """run the given callable across all objects which are child objects of 
+        the given object, as attached to the attribute corresponding to this MapperProperty."""
+        
         return []
 
     def get_criterion(self, query, key, value):
@@ -267,9 +281,6 @@ class MapperProperty(object):
     def set_parent(self, parent):
         self.parent = parent
 
-    def get_sub_mapper(self):
-        raise NotImplementedError()
-
     def init(self, key, parent):
         """Called after all mappers are compiled to assemble
         relationships between mappers, establish instrumented class
@@ -280,7 +291,11 @@ class MapperProperty(object):
         self.do_init()
 
     def do_init(self):
-        """Template method for subclasses."""
+        """Perform subclass-specific initialization steps.
+        
+        This is a *template* method called by the 
+        ``MapperProperty`` object's init() method."""
+        
         pass
 
     def register_dependencies(self, *args, **kwargs):
@@ -324,9 +339,9 @@ class StrategizedProperty(MapperProperty):
     """A MapperProperty which uses selectable strategies to affect
     loading behavior.
 
-    There is a single default strategy selected, and alternate
-    strategies can be selected at selection time through the usage of
-    ``StrategizedOption`` objects.
+    There is a single default strategy selected by default.  Alternate
+    strategies can be selected at Query time through the usage of
+    ``StrategizedOption`` objects via the Query.options() method.
     """
 
     def _get_context_strategy(self, context):
@@ -404,9 +419,6 @@ class SynonymProperty(MapperProperty):
 
     def setup(self, querycontext, **kwargs):
         pass
-
-    def get_sub_mapper(self):
-        return self.parent.props[self.name].get_sub_mapper()
 
     def create_row_processor(self, selectcontext, mapper, row):
         return (None, None)
@@ -527,4 +539,5 @@ class LoaderStrategy(object):
         StrategizedProperty delegates its create_row_processor method
         directly to this method.
         """
+
         raise NotImplementedError()
