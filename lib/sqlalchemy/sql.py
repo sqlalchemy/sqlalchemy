@@ -2427,6 +2427,8 @@ class _Grouping(ColumnElement):
         return self.elem._hide_froms()
     def _get_from_objects(self):
         return self.elem._get_from_objects()
+    def __getattr__(self, attr):
+        return getattr(self.elem, attr)
         
 class _Label(ColumnElement):
     """represent a label, as typically applied to any column-level element
@@ -2712,7 +2714,8 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
         self.is_scalar = False
         self.is_subquery = False
 
-        self.selects = selects
+        # unions group from left to right, so don't group first select
+        self.selects = [n and select.self_group(self) or select for n,select in enumerate(selects)]
 
         # some DBs do not like ORDER BY in the inner queries of a UNION, etc.
         for s in selects:
@@ -2945,6 +2948,8 @@ class Select(_SelectBaseMixin, FromClause):
             self.__hide_froms.add(f)
 
     def self_group(self, against=None):
+        if isinstance(against, CompoundSelect):
+            return self
         return _Grouping(self)
     
     def append_whereclause(self, whereclause):

@@ -25,6 +25,10 @@
       to polymorphic mappers that are using a straight "outerjoin"
       clause
 - sql
+    - fixed grouping of compound selects to give correct results. will break
+      on sqlite in some cases, but those cases were producing incorrect
+      results anyway, sqlite doesn't support grouped compound selects
+      [ticket:623]
     - fixed precedence of operators so that parenthesis are correctly applied
       [ticket:620]
     - calling <column>.in_() (i.e. with no arguments) will return 

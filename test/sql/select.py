@@ -663,6 +663,33 @@ FROM myothertable ORDER BY myid \
 WHERE mytable.name = :mytable_name GROUP BY mytable.myid, mytable.name UNION SELECT mytable.myid, mytable.name, mytable.description \
 FROM mytable WHERE mytable.name = :mytable_name_1"
             )
+    
+    def test_compound_select_grouping(self):
+            self.runtest(
+                union_all(
+                    select([table1.c.myid]),
+                    union(
+                        select([table2.c.otherid]),
+                        select([table3.c.userid]),
+                    )
+                )
+                ,
+                "SELECT mytable.myid FROM mytable UNION ALL (SELECT myothertable.otherid FROM myothertable UNION \
+SELECT thirdtable.userid FROM thirdtable)"
+            )
+            # This doesn't need grouping, so don't group to not give sqlite unnecessarily hard time
+            self.runtest(
+                union(
+                    except_(
+                        select([table2.c.otherid]),
+                        select([table3.c.userid]),
+                    ),
+                    select([table1.c.myid])
+                )
+                ,
+                "SELECT myothertable.otherid FROM myothertable EXCEPT SELECT thirdtable.userid FROM thirdtable \
+UNION SELECT mytable.myid FROM mytable"
+            )
             
     def testouterjoin(self):
         # test an outer join.  the oracle module should take the ON clause of the join and
