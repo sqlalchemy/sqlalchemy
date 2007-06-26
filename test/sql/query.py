@@ -585,6 +585,29 @@ class CompoundTest(PersistTest):
         assert e.execute().fetchall() == [('aaa', 'aaa'), ('aaa', 'ccc'), ('bbb', 'aaa'), ('bbb', 'bbb'), ('ccc', 'bbb'), ('ccc', 'ccc')]
         assert e.alias('bar').select().execute().fetchall() == [('aaa', 'aaa'), ('aaa', 'ccc'), ('bbb', 'aaa'), ('bbb', 'bbb'), ('ccc', 'bbb'), ('ccc', 'ccc')]
 
+    @testbase.unsupported('sqlite', 'mysql', 'oracle')
+    def test_except_style3(self):
+        # aaa, bbb, ccc - (aaa, bbb, ccc - (ccc)) = ccc
+        e = except_(
+            select([t1.c.col3]), # aaa, bbb, ccc
+            except_(
+                select([t2.c.col3]), # aaa, bbb, ccc
+                select([t3.c.col3], t3.c.col3 == 'ccc'), #ccc
+            )
+        )
+        self.assertEquals(e.execute().fetchall(), [('ccc',)])
+
+    @testbase.unsupported('sqlite', 'mysql', 'oracle')
+    def test_union_union_all(self):
+        e = union_all(
+            select([t1.c.col3]),
+            union(
+                select([t1.c.col3]),
+                select([t1.c.col3]),
+            )
+        )
+        self.assertEquals(e.execute().fetchall(), [('aaa',),('bbb',),('ccc',),('aaa',),('bbb',),('ccc',)])
+
     @testbase.unsupported('mysql')
     def test_composite(self):
         u = intersect(

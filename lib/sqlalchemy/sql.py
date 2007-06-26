@@ -2314,7 +2314,10 @@ class _Grouping(ColumnElement):
         
     def _get_from_objects(self, **modifiers):
         return self.elem._get_from_objects(**modifiers)
-        
+
+    def __getattr__(self, attr):
+        return getattr(self.elem, attr)
+
 class _Label(ColumnElement):
     """represent a label, as typically applied to any column-level element
     using the ``AS`` sql keyword.
@@ -2633,10 +2636,14 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
         self.selects = []
 
         # some DBs do not like ORDER BY in the inner queries of a UNION, etc.
-        for s in selects:
+        for n, s in enumerate(selects):
             if len(s._order_by_clause):
                 s = s.order_by(None)
-            self.selects.append(s)
+            # unions group from left to right, so don't group first select
+            if n:
+                self.selects.append(s.self_group(self))
+            else:
+                self.selects.append(s)
 
         self._col_map = {}
 
@@ -2956,6 +2963,8 @@ class Select(_SelectBaseMixin, FromClause):
             return column._make_proxy(self)
 
     def self_group(self, against=None):
+        if isinstance(against, CompoundSelect):
+            return self
         return _Grouping(self)
 
     def _locate_oid_column(self):
