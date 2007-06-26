@@ -46,6 +46,7 @@
       up ORM decision making [ticket:593]
     - added Interval type to types.py [ticket:595]
 - mysql
+    - fixed escaping of the modulo operator [ticket:624]
     - added 'fields' to reserved words [ticket:590]
 - oracle
     - datetime fixes: got subsecond TIMESTAMP to work [ticket:604],
@@ -54,6 +55,8 @@
       LOB objects detected in a result set to be forced into OracleBinary
       so that the LOB is read() automatically, if no typemap was present
       (i.e., if a textual execute() was issued).
+- postgres
+    - fixed escaping of the modulo operator [ticket:624]
 - sqlite
     - sqlite better handles datetime/date/time objects mixed and matched
       with various Date/Time/DateTime columns

@@ -532,6 +532,8 @@ class PGCompiler(ansisql.ANSICompiler):
     def binary_operator_string(self, binary):
         if isinstance(binary.type, sqltypes.String) and binary.operator == '+':
             return '||'
+        elif binary.operator == '%':
+            return '%%'
         else:
             return ansisql.ANSICompiler.binary_operator_string(self, binary)
 
