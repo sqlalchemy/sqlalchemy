@@ -983,7 +983,7 @@ class ResultProxy(object):
                     rec = props[label]
 
             if not "rec" in locals():
-                raise exceptions.NoSuchColumnError("Could not locate column in row for column '%s'" % (repr(key)))
+                raise exceptions.NoSuchColumnError("Could not locate column in row for column '%s'" % (str(key)))
 
             return rec
         return util.PopulateDict(lookup_key)
