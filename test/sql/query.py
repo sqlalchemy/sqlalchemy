@@ -598,6 +598,30 @@ class CompoundTest(PersistTest):
         assert u.execute().fetchall() == [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
         assert u.alias('foo').select().execute().fetchall() == [('aaa', 'bbb'), ('bbb', 'ccc'), ('ccc', 'aaa')]
 
+class OperatorTest(PersistTest):
+    def setUpAll(self):
+        global metadata, flds
+        metadata = BoundMetaData(testbase.db)
+        flds = Table('flds', metadata, 
+            Column('idcol', Integer, Sequence('t1pkseq'), primary_key=True),
+            Column('intcol', Integer),
+            Column('strcol', String(50)),
+            )
+        metadata.create_all()
+        
+        flds.insert().execute([
+            dict(intcol=5, strcol='foo'),
+            dict(intcol=13, strcol='bar')
+        ])
+
+    def tearDownAll(self):
+        metadata.drop_all()
+        
+    def test_modulo(self):
+        self.assertEquals(
+            select([flds.c.intcol % 3], order_by=flds.c.idcol).execute().fetchall(),
+            [(2,),(1,)]
+        )
         
 if __name__ == "__main__":
     testbase.main()        

@@ -1208,6 +1208,12 @@ class MySQLCompiler(ansisql.ANSICompiler):
                 text += " \n LIMIT 18446744073709551615"
             text += " OFFSET " + str(select._offset)
         return text
+        
+    def binary_operator_string(self, binary):
+        if binary.operator == '%':
+            return '%%'
+        else:
+            return ansisql.ANSICompiler.binary_operator_string(self, binary)   
 
 class MySQLSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, override_pk=False, first_pk=False):
