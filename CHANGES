@@ -1,5 +1,6 @@
 0.3.9
 - general
+    - better error message for NoSuchColumnError [ticket:607]
     - finally figured out how to get setuptools version in, available
       as sqlalchemy.__version__ [ticket:428]
 - ext

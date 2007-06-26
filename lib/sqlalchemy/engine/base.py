@@ -928,7 +928,7 @@ class ResultProxy(object):
                     rec = self.__props[label]
                         
             if not "rec" in locals():
-                raise exceptions.NoSuchColumnError("Could not locate column in row for column '%s'" % (repr(key)))
+                raise exceptions.NoSuchColumnError("Could not locate column in row for column '%s'" % (str(key)))
 
             self.__key_cache[key] = rec
             return rec
