@@ -99,7 +99,7 @@ class TreeLoader(MapperExtension):
         if instance.parent_id is None:
             result.append(instance)
         else:
-            if isnew or populate_existing:
+            if isnew or context.populate_existing:
                 parentnode = selectcontext.identity_map[mapper.identity_key(instance.parent_id)]
                 parentnode.children.append_without_event(instance)
         # fire off lazy loader before the instance is part of the session
