@@ -25,6 +25,9 @@
     - small fix to eager loading to better work with eager loads
       to polymorphic mappers that are using a straight "outerjoin"
       clause
+    - fix to the "column_prefix" flag so that the mapper does not 
+      trip over synonyms (and others) that are named after the column's actual
+      "key" (since, column_prefix means "dont use the key").
 - sql
     - fixed grouping of compound selects to give correct results. will break
       on sqlite in some cases, but those cases were producing incorrect

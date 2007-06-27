@@ -555,7 +555,7 @@ class Mapper(object):
                 self.columns[column.key] = self.select_table.corresponding_column(column, keys_ok=True, raiseerr=True)
 
             column_key = (self.column_prefix or '') + column.key
-            prop = self.__props.get(column.key, None)
+            prop = self.__props.get(column_key, None)
             if prop is None:
                 prop = ColumnProperty(column)
                 self.__props[column_key] = prop

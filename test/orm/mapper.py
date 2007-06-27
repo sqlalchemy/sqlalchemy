@@ -76,12 +76,16 @@ class MapperTest(MapperSuperTest):
             assert str(e) == "Invalid cascade option 'fake'"
         
     def testcolumnprefix(self):
-        mapper(User, users, column_prefix='_')
+        mapper(User, users, column_prefix='_', properties={
+            'user_name':synonym('_user_name')
+        })
         s = create_session()
         u = s.get(User, 7)
         assert u._user_name=='jack'
     	assert u._user_id ==7
         assert not hasattr(u, 'user_name')
+        u2 = s.query(User).filter_by(user_name='jack').one()
+        assert u is u2
           
     def testrefresh(self):
         mapper(User, users, properties={'addresses':relation(mapper(Address, addresses))})
