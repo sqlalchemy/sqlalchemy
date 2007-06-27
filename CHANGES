@@ -51,6 +51,7 @@
       up ORM decision making [ticket:593]
     - added Interval type to types.py [ticket:595]
 - mysql
+    - fixed catching of some errors that imply a dropped connection [ticket:625]
     - fixed escaping of the modulo operator [ticket:624]
     - added 'fields' to reserved words [ticket:590]
 - oracle
