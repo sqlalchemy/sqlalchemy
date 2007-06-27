@@ -475,6 +475,22 @@ class PropertyOption(MapperOption):
 
 PropertyOption.logger = logging.class_logger(PropertyOption)
 
+
+class AttributeExtension(object):
+    """An abstract class which specifies `append`, `delete`, and `set`
+    event handlers to be attached to an object property.
+    """
+
+    def append(self, obj, child, initiator):
+        pass
+
+    def remove(self, obj, child, initiator):
+        pass
+
+    def set(self, obj, child, oldchild, initiator):
+        pass
+
+
 class StrategizedOption(PropertyOption):
     """A MapperOption that affects which LoaderStrategy will be used
     for an operation by a StrategizedProperty.

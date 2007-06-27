@@ -1,5 +1,27 @@
 0.4.0
 - orm
+    - new collection_class api and implementation [ticket:213]
+      collections are now instrumented via decorations rather than 
+      proxying.  you can now have collections that manage their own
+      membership, and your class instance will be directly exposed on the
+      relation property.  the changes are transparent for most users.
+    - InstrumentedList (as it was) is removed, and relation properties no
+      longer have 'clear()', '.data', or any other added methods beyond those
+      provided by the collection type.  you are free, of course, to add them
+      to a custom class.
+    - __setitem__-like assignments now fire remove events for the existing
+      value, if any.
+    - dict-likes used as collection classes no longer need to change __iter__
+      semantics- itervalues() is used by default instead.  this is a backwards
+      incompatible change.
+    - subclassing dict for a mapped collection is no longer needed in most cases.
+      orm.collections provides canned implementations that key objects by a
+      specified column or a custom function of your choice.
+    - collection assignment now requires a compatible type- assigning None
+      to clear a collection or assinging a list to a dict collection will now
+      raise an argument error.
+    - AttributeExtension moved to interfaces, and .delete is now .remove
+      The event method signature has also been swapped around.
     - major interface pare-down for Query:  all selectXXX methods
       are deprecated.  generative methods are now the standard
       way to do things, i.e. filter(), filter_by(), all(), one(),

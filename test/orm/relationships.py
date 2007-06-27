@@ -2,6 +2,8 @@ import testbase
 import unittest, sys, datetime
 from sqlalchemy import *
 from sqlalchemy.orm import *
+from sqlalchemy.orm import collections
+from sqlalchemy.orm.collections import collection
 from testbase import Table, Column
 
 db = testbase.db
@@ -745,7 +747,7 @@ class CustomCollectionsTest(testbase.ORMTest):
         })
         mapper(Bar, someothertable)
         f = Foo()
-        assert isinstance(f.bars.data, MyList)
+        assert isinstance(f.bars, MyList)
     def testlazyload(self):
         """test that a 'set' can be used as a collection and can lazyload."""
         class Foo(object):
@@ -769,6 +771,7 @@ class CustomCollectionsTest(testbase.ORMTest):
         
     def testdict(self):
         """test that a 'dict' can be used as a collection and can lazyload."""
+
         class Foo(object):
             pass
         class Bar(object):
@@ -776,8 +779,11 @@ class CustomCollectionsTest(testbase.ORMTest):
         class AppenderDict(dict):
             def append(self, item):
                 self[id(item)] = item
+            def remove(self, item):
+                if id(item) in self:
+                    del self[id(item)]
             def __iter__(self):
-                return iter(self.values())
+                return dict.__iter__(self)
                 
         mapper(Foo, sometable, properties={
             'bars':relation(Bar, collection_class=AppenderDict)
@@ -793,6 +799,44 @@ class CustomCollectionsTest(testbase.ORMTest):
         f = sess.query(Foo).get(f.col1)
         assert len(list(f.bars)) == 2
         f.bars.clear()
+
+    def testdictwrapper(self):
+        """test that the supplied 'dict' wrapper can be used as a collection and can lazyload."""
+
+        class Foo(object):
+            pass
+        class Bar(object):
+            def __init__(self, data): self.data = data
+                
+        mapper(Foo, sometable, properties={
+            'bars':relation(Bar,
+                collection_class=collections.column_mapped_collection(someothertable.c.data))
+        })
+        mapper(Bar, someothertable)
+
+        f = Foo()
+        col = collections.collection_adapter(f.bars)
+        col.append_with_event(Bar('a'))
+        col.append_with_event(Bar('b'))
+        sess = create_session()
+        sess.save(f)
+        sess.flush()
+        sess.clear()
+        f = sess.query(Foo).get(f.col1)
+        assert len(list(f.bars)) == 2
+
+        existing = set([id(b) for b in f.bars.values()])
+
+        col = collections.collection_adapter(f.bars)
+        col.append_with_event(Bar('b'))
+        f.bars['a'] = Bar('a')
+        sess.flush()
+        sess.clear()
+        f = sess.query(Foo).get(f.col1)
+        assert len(list(f.bars)) == 2
+
+        replaced = set([id(b) for b in f.bars.values()])
+        self.assert_(existing != replaced)
 
     def testlist(self):
         class Parent(object):
@@ -811,13 +855,13 @@ class CustomCollectionsTest(testbase.ORMTest):
         o = Child()
         control.append(o)
         p.children.append(o)
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         o = [Child(), Child(), Child(), Child()]
         control.extend(o)
         p.children.extend(o)
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         assert control[0] == p.children[0]
@@ -826,92 +870,92 @@ class CustomCollectionsTest(testbase.ORMTest):
 
         del control[1]
         del p.children[1]
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         o = [Child()]
         control[1:3] = o
         p.children[1:3] = o
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         o = [Child(), Child(), Child(), Child()]
         control[1:3] = o
         p.children[1:3] = o
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         o = [Child(), Child(), Child(), Child()]
         control[-1:-2] = o
         p.children[-1:-2] = o
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         o = [Child(), Child(), Child(), Child()]
         control[4:] = o
         p.children[4:] = o
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
         
         o = Child()
         control.insert(0, o)
         p.children.insert(0, o)
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         o = Child()
         control.insert(3, o)
         p.children.insert(3, o)
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         o = Child()
         control.insert(999, o)
         p.children.insert(999, o)
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         del control[0:1]
         del p.children[0:1]
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         del control[1:1]
         del p.children[1:1]
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         del control[1:3]
         del p.children[1:3]
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         del control[7:]
         del p.children[7:]
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         assert control.pop() == p.children.pop()
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         assert control.pop(0) == p.children.pop(0)
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         assert control.pop(2) == p.children.pop(2)
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         o = Child()
         control.insert(2, o)
         p.children.insert(2, o)
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
         control.remove(o)
         p.children.remove(o)
-        assert control == p.children.data
+        assert control == p.children
         assert control == list(p.children)
 
     def testobj(self):
@@ -922,9 +966,12 @@ class CustomCollectionsTest(testbase.ORMTest):
 
         class MyCollection(object):
             def __init__(self): self.data = []
+            @collection.appender
             def append(self, value): self.data.append(value)
+            @collection.remover
+            def remove(self, value): self.data.remove(value)
+            @collection.iterator
             def __iter__(self): return iter(self.data)
-            def clear(self): self.data.clear()
 
         mapper(Parent, sometable, properties={
             'children':relation(Child, collection_class=MyCollection)

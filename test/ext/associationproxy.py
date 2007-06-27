@@ -4,16 +4,19 @@ import unittest
 import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
+from sqlalchemy.orm.collections import collection
 from sqlalchemy.ext.associationproxy import *
 from testbase import Table, Column
 
 db = testbase.db
 
 class DictCollection(dict):
+    @collection.appender
     def append(self, obj):
         self[obj.foo] = obj
-    def __iter__(self):
-        return self.itervalues()
+    @collection.remover
+    def remove(self, obj):
+        del self[obj.foo]
 
 class SetCollection(set):
     pass
@@ -24,12 +27,14 @@ class ListCollection(list):
 class ObjectCollection(object):
     def __init__(self):
         self.values = list()
+    @collection.appender
     def append(self, obj):
         self.values.append(obj)
+    @collection.remover
+    def remove(self, obj):
+        self.values.remove(obj)
     def __iter__(self):
         return iter(self.values)
-    def clear(self):
-        self.values.clear()
 
 class _CollectionOperations(PersistTest):
     def setUp(self):
@@ -237,6 +242,17 @@ class CustomDictTest(DictTest):
         p1._children = {}
         self.assert_(len(p1.children) == 0)
     
+        try:
+            p1._children = []
+            self.assert_(False)
+        except exceptions.ArgumentError:
+            self.assert_(True)
+
+        try:
+            p1._children = None
+            self.assert_(False)
+        except exceptions.ArgumentError:
+            self.assert_(True)
 
 class SetTest(_CollectionOperations):
     def __init__(self, *args, **kw):
@@ -252,7 +268,7 @@ class SetTest(_CollectionOperations):
         self.assert_(not p1.children)
 
         ch1 = Child('regular')
-        p1._children.append(ch1)
+        p1._children.add(ch1)
 
         self.assert_(ch1 in p1._children)
         self.assert_(len(p1._children) == 1)
@@ -335,8 +351,21 @@ class SetTest(_CollectionOperations):
         p1 = self.roundtrip(p1)
         self.assert_(p1.children == set(['c']))
 
-        p1._children = []
+        p1._children = set()
         self.assert_(len(p1.children) == 0)
+
+        try:
+            p1._children = []
+            self.assert_(False)
+        except exceptions.ArgumentError:
+            self.assert_(True)
+
+        try:
+            p1._children = None
+            self.assert_(False)
+        except exceptions.ArgumentError:
+            self.assert_(True)
+
 
     def test_set_comparisons(self):
         Parent, Child = self.Parent, self.Child
@@ -619,7 +648,7 @@ class LazyLoadTest(PersistTest):
         # Is there a better way to ensure that the association_proxy
         # didn't convert a lazy load to an eager load?  This does work though.
         self.assert_('_children' not in p.__dict__)
-        self.assert_(len(p._children.data) == 3)
+        self.assert_(len(p._children) == 3)
         self.assert_('_children' in p.__dict__)
 
     def test_eager_list(self):
@@ -635,7 +664,7 @@ class LazyLoadTest(PersistTest):
         p = self.roundtrip(p)
 
         self.assert_('_children' in p.__dict__)
-        self.assert_(len(p._children.data) == 3)
+        self.assert_(len(p._children) == 3)
 
     def test_lazy_scalar(self):
         Parent, Child = self.Parent, self.Child

@@ -7,9 +7,8 @@
 """sqlalchemy.orm.interfaces.LoaderStrategy implementations, and related MapperOptions."""
 
 from sqlalchemy import sql, schema, util, exceptions, sql_util, logging
-from sqlalchemy.orm import mapper
+from sqlalchemy.orm import mapper, attributes
 from sqlalchemy.orm.interfaces import *
-from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil
 import random
@@ -50,7 +49,7 @@ class ColumnLoader(LoaderStrategy):
             if hosted_mapper.polymorphic_fetch == 'deferred':
                 def execute(instance, row, isnew, **flags):
                     if isnew:
-                        sessionlib.attribute_manager.init_instance_attribute(instance, self.key, False, callable_=self._get_deferred_loader(instance, mapper, needs_tables))
+                        sessionlib.attribute_manager.init_instance_attribute(instance, self.key, callable_=self._get_deferred_loader(instance, mapper, needs_tables))
                 self.logger.debug("Returning deferred column fetcher for %s %s" % (mapper, self.key))
                 return (execute, None)
             else:  
@@ -78,8 +77,8 @@ class ColumnLoader(LoaderStrategy):
             try:
                 row = result.fetchone()
                 for prop in group:
-                    InstrumentedAttribute.get_instrument(instance, prop.key).set_committed_value(instance, row[prop.columns[0]])
-                return InstrumentedAttribute.ATTR_WAS_SET
+                    sessionlib.attribute_manager.get_attribute(instance, prop.key).set_committed_value(instance, row[prop.columns[0]])
+                return attributes.ATTR_WAS_SET
             finally:
                 result.close()
 
@@ -102,7 +101,7 @@ class DeferredColumnLoader(LoaderStrategy):
                 if isnew:
                     if self._should_log_debug:
                         self.logger.debug("set deferred callable on %s" % mapperutil.attribute_str(instance, self.key))
-                    sessionlib.attribute_manager.init_instance_attribute(instance, self.key, False, callable_=self.setup_loader(instance))
+                    sessionlib.attribute_manager.init_instance_attribute(instance, self.key, callable_=self.setup_loader(instance))
             return (execute, None)
         else:
             def execute(instance, row, isnew, **flags):
@@ -166,8 +165,8 @@ class DeferredColumnLoader(LoaderStrategy):
                 try:
                     row = result.fetchone()
                     for prop in group:
-                        InstrumentedAttribute.get_instrument(instance, prop.key).set_committed_value(instance, row[prop.columns[0]])
-                    return InstrumentedAttribute.ATTR_WAS_SET
+                        sessionlib.attribute_manager.get_attribute(instance, prop.key).set_committed_value(instance, row[prop.columns[0]])
+                    return attributes.ATTR_WAS_SET
                 finally:
                     result.close()
             else:
@@ -205,7 +204,7 @@ class AbstractRelationLoader(LoaderStrategy):
         self._should_log_debug = logging.is_debug_enabled(self.logger)
         
     def _init_instance_attribute(self, instance, callable_=None):
-        return sessionlib.attribute_manager.init_instance_attribute(instance, self.key, self.uselist, cascade=self.cascade,  trackparent=True, callable_=callable_)
+        return sessionlib.attribute_manager.init_instance_attribute(instance, self.key, callable_=callable_)
         
     def _register_attribute(self, class_, callable_=None):
         self.logger.info("register managed %s attribute %s on class %s" % ((self.uselist and "list-holding" or "scalar"), self.key, self.parent.class_.__name__))
@@ -658,9 +657,10 @@ class EagerLoader(AbstractRelationLoader):
                         if self._should_log_debug:
                             self.logger.debug("eagerload scalar instance on %s" % mapperutil.attribute_str(instance, self.key))
                         if isnew:
-                            # set a scalar object instance directly on the parent object, 
-                            # bypassing InstrumentedAttribute event handlers.
-                            instance.__dict__[self.key] = self.mapper._instance(selectcontext, decorated_row, None)
+                            # set a scalar object instance directly on the
+                            # parent object, bypassing InstrumentedAttribute
+                            # event handlers.
+                            sessionlib.attribute_manager.get_attribute(instance, self.key).set_raw_value(instance, self.mapper._instance(selectcontext, decorated_row, None))
                         else:
                             # call _instance on the row, even though the object has been created,
                             # so that we further descend into properties
@@ -670,11 +670,8 @@ class EagerLoader(AbstractRelationLoader):
                             if self._should_log_debug:
                                 self.logger.debug("initialize UniqueAppender on %s" % mapperutil.attribute_str(instance, self.key))
 
-                            # call the InstrumentedAttribute's initialize() method to create a new, blank list
-                            l = InstrumentedAttribute.get_instrument(instance, self.key).initialize(instance)
-
-                            # create an appender object which will add set-like semantics to the list
-                            appender = util.UniqueAppender(l.data)
+                            collection = sessionlib.attribute_manager.init_collection(instance, self.key)
+                            appender = util.UniqueAppender(collection, 'append_without_event')
 
                             # store it in the "scratch" area, which is local to this load operation.
                             selectcontext.attributes[(instance, self.key)] = appender

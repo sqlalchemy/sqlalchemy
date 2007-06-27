@@ -135,19 +135,25 @@ def coerce_kw_type(kw, key, type_, flexi_bool=True):
         else:
             kw[key] = type_(kw[key])
 
-def duck_type_collection(col, default=None):
+def duck_type_collection(specimen, default=None):
     """Given an instance or class, guess if it is or is acting as one of
     the basic collection types: list, set and dict.  If the __emulates__
     property is present, return that preferentially.
     """
     
-    if hasattr(col, '__emulates__'):
-        return getattr(col, '__emulates__')
-    elif hasattr(col, 'append'):
+    if hasattr(specimen, '__emulates__'):
+        return specimen.__emulates__
+
+    isa = isinstance(specimen, type) and issubclass or isinstance
+    if isa(specimen, list): return list
+    if isa(specimen, Set): return Set
+    if isa(specimen, dict): return dict
+
+    if hasattr(specimen, 'append'):
         return list
-    elif hasattr(col, 'add'):
+    elif hasattr(specimen, 'add'):
         return Set
-    elif hasattr(col, 'set'):
+    elif hasattr(specimen, 'set'):
         return dict
     else:
         return default
@@ -445,10 +451,12 @@ class UniqueAppender(object):
     """appends items to a collection such that only unique items
     are added."""
     
-    def __init__(self, data):
+    def __init__(self, data, via=None):
         self.data = data
         self._unique = Set()
-        if hasattr(data, 'append'):
+        if via:
+            self._data_appender = getattr(data, via)
+        elif hasattr(data, 'append'):
             self._data_appender = data.append
         elif hasattr(data, 'add'):
             # TODO: we think its a set here.  bypass unneeded uniquing logic ?

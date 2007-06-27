@@ -1,6 +1,7 @@
 from testbase import PersistTest
 import sqlalchemy.util as util
 import sqlalchemy.orm.attributes as attributes
+from sqlalchemy.orm.collections import collection
 from sqlalchemy import exceptions
 import unittest, sys, os
 import pickle
@@ -110,13 +111,12 @@ class AttributesTest(PersistTest):
         s = Student()
         c = Course()
         s.courses.append(c)
-        print c.students
-        print [s]
         self.assert_(c.students == [s])
         s.courses.remove(c)
         self.assert_(c.students == [])
         
         (s1, s2, s3) = (Student(), Student(), Student())
+             
         c.students = [s1, s2, s3]
         self.assert_(s2.courses == [c])
         self.assert_(s1.courses == [c])
@@ -126,9 +126,7 @@ class AttributesTest(PersistTest):
         print c
         print c.students
         s1.courses.remove(c)
-        self.assert_(c.students == [s2,s3])
-        
-        
+        self.assert_(c.students == [s2,s3])        
         class Post(object):pass
         class Blog(object):pass
         
@@ -334,44 +332,47 @@ class AttributesTest(PersistTest):
         manager = attributes.AttributeManager()
         class Foo(object):pass
         manager.register_attribute(Foo, "collection", uselist=True, typecallable=set)
-        assert isinstance(Foo().collection.data, set)
+        assert isinstance(Foo().collection, set)
         
-        manager.register_attribute(Foo, "collection", uselist=True, typecallable=dict)
         try:
-            Foo().collection
+            manager.register_attribute(Foo, "collection", uselist=True, typecallable=dict)
             assert False
         except exceptions.ArgumentError, e:
-            assert str(e) == "Dictionary collection class 'dict' must implement an append() method"
-
+            assert str(e) == "Type InstrumentedDict must elect an appender method to be a collection class"
+        
         class MyDict(dict):
+            @collection.appender
             def append(self, item):
                 self[item.foo] = item
+            @collection.remover
+            def remove(self, item):
+                del self[item.foo]
         manager.register_attribute(Foo, "collection", uselist=True, typecallable=MyDict)
-        assert isinstance(Foo().collection.data, MyDict)
+        assert isinstance(Foo().collection, MyDict)
         
         class MyColl(object):pass
-        manager.register_attribute(Foo, "collection", uselist=True, typecallable=MyColl)
         try:
-            Foo().collection
+            manager.register_attribute(Foo, "collection", uselist=True, typecallable=MyColl)
             assert False
         except exceptions.ArgumentError, e:
-            assert str(e) == "Collection class 'MyColl' is not of type 'list', 'set', or 'dict' and has no append() or add() method"
+            assert str(e) == "Type MyColl must elect an appender method to be a collection class"
         
         class MyColl(object):
+            @collection.iterator
             def __iter__(self):
                 return iter([])
+            @collection.appender
             def append(self, item):
+                pass
+            @collection.remover
+            def remove(self, item):
                 pass
         manager.register_attribute(Foo, "collection", uselist=True, typecallable=MyColl)
         try:
             Foo().collection
-            assert False
+            assert True
         except exceptions.ArgumentError, e:
-            assert str(e) == "Collection class 'MyColl' is not of type 'list', 'set', or 'dict' and has no clear() method"
-
-        def foo(self):pass
-        MyColl.clear = foo
-        assert isinstance(Foo().collection.data, MyColl)
+            assert False
             
 if __name__ == "__main__":
     testbase.main()

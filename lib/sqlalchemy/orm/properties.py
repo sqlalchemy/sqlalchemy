@@ -129,12 +129,13 @@ class PropertyLoader(StrategizedProperty):
         if childlist is None:
             return
         if self.uselist:
-            # sets a blank list according to the correct list class
-            dest_list = getattr(self.parent.class_, self.key).initialize(dest)
+            # sets a blank collection according to the correct list class
+            dest_list = sessionlib.attribute_manager.init_collection(dest, self.key)
             for current in list(childlist):
                 obj = session.merge(current, entity_name=self.mapper.entity_name, _recursive=_recursive)
                 if obj is not None:
-                    dest_list.append(obj)
+                    #dest_list.append_without_event(obj)
+                    dest_list.append_with_event(obj)
         else:
             current = list(childlist)[0]
             if current is not None:

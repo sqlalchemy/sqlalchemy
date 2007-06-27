@@ -6,10 +6,10 @@ transparent proxied access to the endpoint of an association object.
 See the example ``examples/association/proxied_association.py``.
 """
 
-from sqlalchemy.orm.attributes import InstrumentedList
 import sqlalchemy.exceptions as exceptions
 import sqlalchemy.orm as orm
 import sqlalchemy.util as util
+from sqlalchemy.orm import collections
 import weakref
 
 def association_proxy(targetcollection, attr, **kw):
@@ -168,15 +168,7 @@ class AssociationProxy(object):
 
     def _new(self, lazy_collection):
         creator = self.creator and self.creator or self.target_class
-
-        # Prefer class typing here to spot dicts with the required append()
-        # method.
-        collection = lazy_collection()
-        if isinstance(collection.data, dict):
-            self.collection_class = dict
-        else:
-            self.collection_class = util.duck_type_collection(collection.data)
-        del collection
+        self.collection_class = util.duck_type_collection(lazy_collection())
 
         if self.proxy_factory:
             return self.proxy_factory(lazy_collection, creator, self.value_attr)
@@ -545,9 +537,7 @@ class _AssociationSet(object):
 
     def add(self, value):
         if value not in self:
-            # must shove this through InstrumentedList.append() which will
-            # eventually call the collection_class .add()
-            self.col.append(self._create(value))
+            self.col.add(self._create(value))
 
     # for discard and remove, choosing a more expensive check strategy rather
     # than call self.creator()
@@ -567,12 +557,7 @@ class _AssociationSet(object):
     def pop(self):
         if not self.col:
             raise KeyError('pop from an empty set')
-        # grumble, pop() is borked on InstrumentedList (#548)
-        if isinstance(self.col, InstrumentedList):
-            member = list(self.col)[0]
-            self.col.remove(member)
-        else:
-            member = self.col.pop()
+        member = self.col.pop()
         return self._get(member)
 
     def update(self, other):

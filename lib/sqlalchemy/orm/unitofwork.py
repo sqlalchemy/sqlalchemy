@@ -20,14 +20,14 @@ changes at once.
 """
 
 from sqlalchemy import util, logging, topological
-from sqlalchemy.orm import attributes
+from sqlalchemy.orm import attributes, interfaces
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.mapper import object_mapper, class_mapper
 from sqlalchemy.exceptions import *
 import StringIO
 import weakref
 
-class UOWEventHandler(attributes.AttributeExtension):
+class UOWEventHandler(interfaces.AttributeExtension):
     """An event handler added to all class attributes which handles
     session operations.
     """
@@ -37,7 +37,7 @@ class UOWEventHandler(attributes.AttributeExtension):
         self.class_ = class_
         self.cascade = cascade
 
-    def append(self, event, obj, item):
+    def append(self, obj, item, initiator):
         # process "save_update" cascade rules for when an instance is appended to the list of another instance
         sess = object_session(obj)
         if sess is not None:
@@ -47,12 +47,12 @@ class UOWEventHandler(attributes.AttributeExtension):
                 ename = prop.mapper.entity_name
                 sess.save_or_update(item, entity_name=ename)
 
-    def delete(self, event, obj, item):
+    def remove(self, obj, item, initiator):
         # currently no cascade rules for removing an item from a list
         # (i.e. it stays in the Session)
         pass
 
-    def set(self, event, obj, newvalue, oldvalue):
+    def set(self, obj, newvalue, oldvalue, initiator):
         # process "save_update" cascade rules for when an instance is attached to another instance
         sess = object_session(obj)
         if sess is not None:
@@ -62,27 +62,21 @@ class UOWEventHandler(attributes.AttributeExtension):
                 ename = prop.mapper.entity_name
                 sess.save_or_update(newvalue, entity_name=ename)
 
-class UOWProperty(attributes.InstrumentedAttribute):
-    """Override ``InstrumentedAttribute`` to provide an extra
-    ``AttributeExtension`` to all managed attributes as well as the
-    `property` property.
-    """
-
-    def __init__(self, manager, class_, key, uselist, callable_, typecallable, cascade=None, extension=None, **kwargs):
-        extension = util.to_list(extension or [])
-        extension.insert(0, UOWEventHandler(key, class_, cascade=cascade))
-        super(UOWProperty, self).__init__(manager, key, uselist, callable_, typecallable, extension=extension,**kwargs)
-        self.class_ = class_
-
-    property = property(lambda s:class_mapper(s.class_).props[s.key], doc="returns the MapperProperty object associated with this property")
 
 class UOWAttributeManager(attributes.AttributeManager):
     """Override ``AttributeManager`` to provide the ``UOWProperty``
     instance for all ``InstrumentedAttributes``.
     """
 
-    def create_prop(self, class_, key, uselist, callable_, typecallable, **kwargs):
-        return UOWProperty(self, class_, key, uselist, callable_, typecallable, **kwargs)
+    def create_prop(self, class_, key, uselist, callable_, typecallable,
+                    cascade=None, extension=None, **kwargs):
+        extension = util.to_list(extension or [])
+        extension.insert(0, UOWEventHandler(key, class_, cascade=cascade))
+
+        return super(UOWAttributeManager, self).create_prop(
+            class_, key, uselist, callable_, typecallable,
+            extension=extension, **kwargs)
+
 
 class UnitOfWork(object):
     """Main UOW object which stores lists of dirty/new/deleted objects.

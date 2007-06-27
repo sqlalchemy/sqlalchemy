@@ -611,7 +611,6 @@ class OneToManyTest(UnitOfWorkTest):
         a2.email_address = 'lala@test.org'
         u.addresses.append(a2)
         self.echo( repr(u.addresses))
-        self.echo( repr(u.addresses.added_items()))
         ctx.current.flush()
 
         usertable = users.select(users.c.user_id.in_(u.user_id)).execute().fetchall()
