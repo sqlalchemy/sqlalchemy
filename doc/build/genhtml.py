@@ -38,7 +38,9 @@ parser.add_option("--version", action="store", dest="version", default=sqlalchem
 
 (options, args) = parser.parse_args()
 if options.file:
-    files = [options.file]
+    to_gen = [options.file]
+else:
+    to_gen = files + post_files
 
 title='SQLAlchemy 0.4 Documentation'
 version = options.version
@@ -50,7 +52,7 @@ shutil.copy('./content/docstrings.html', './output/docstrings.html')
 shutil.copy('./content/documentation.html', './output/documentation.html')
 
 if not options.docstrings:
-    read_markdown.parse_markdown_files(root, files)
+    read_markdown.parse_markdown_files(root, [f for f in files if f in to_gen])
 
 if not options.file or options.docstrings:
     docstrings = gen_docstrings.make_all_docs()
@@ -59,7 +61,7 @@ if not options.file or options.docstrings:
     pickle.dump(docstrings, file('./output/compiled_docstrings.pickle', 'w'))
 
 if not options.docstrings:
-    read_markdown.parse_markdown_files(root, post_files)
+    read_markdown.parse_markdown_files(root, [f for f in post_files if f in to_gen])
 
 if not options.file or options.docstrings:
     pickle.dump(root, file('./output/table_of_contents.pickle', 'w'))
@@ -77,7 +79,7 @@ def genfile(name, outname):
     outfile.write(t.render(attributes={}))
 
 if not options.docstrings:
-    for filename in files + post_files:
+    for filename in to_gen:
         try:
             genfile(filename, os.path.join(os.getcwd(), '../', filename + ".html"))
         except:
