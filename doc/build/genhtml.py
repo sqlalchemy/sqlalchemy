@@ -34,9 +34,9 @@ parser.add_option("--version", action="store", dest="version", default=sqlalchem
 
 (options, args) = parser.parse_args()
 if options.file:
-    files = [file]
+    files = [options.file]
 
-title='SQLAlchemy 0.3 Documentation'
+title='SQLAlchemy 0.4 Documentation'
 version = options.version
 
 root = toc.TOCElement('', 'root', '', version=version, doctitle=title)
