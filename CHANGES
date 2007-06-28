@@ -18,7 +18,7 @@
       orm.collections provides canned implementations that key objects by a
       specified column or a custom function of your choice.
     - collection assignment now requires a compatible type- assigning None
-      to clear a collection or assinging a list to a dict collection will now
+      to clear a collection or assigning a list to a dict collection will now
       raise an argument error.
     - AttributeExtension moved to interfaces, and .delete is now .remove
       The event method signature has also been swapped around.

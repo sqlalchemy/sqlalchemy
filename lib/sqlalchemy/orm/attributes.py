@@ -225,7 +225,7 @@ class InstrumentedAttribute(object):
         for ext in self.extensions:
             ext.remove(obj, value, initiator or self)
 
-    def fire_replace_event(self, obj, value, initiator, previous):
+    def fire_replace_event(self, obj, value, previous, initiator):
         obj._state['modified'] = True
         if self.trackparent:
             if value is not None:
@@ -249,11 +249,13 @@ class InstrumentedScalarAttribute(InstrumentedAttribute):
         self.mutable_scalars = mutable_scalars
 
         if copy_function is None:
-            # scalar values are assumed to be immutable unless a copy function
-            # is passed
-            self.copy = lambda x:x
-        else:
-            self.copy = lambda x:copy_function(x)
+            copy_function = self.__copy
+        self.copy = copy_function
+
+    def __copy(self, item):
+        # scalar values are assumed to be immutable unless a copy function
+        # is passed
+        return item
 
     def __delete__(self, obj):
         old = self.get(obj)
@@ -291,7 +293,7 @@ class InstrumentedScalarAttribute(InstrumentedAttribute):
 
         old = self.get(obj)
         obj.__dict__[self.key] = value
-        self.fire_replace_event(obj, value, initiator, old)
+        self.fire_replace_event(obj, value, old, initiator)
 
 class InstrumentedCollectionAttribute(InstrumentedAttribute):
     """A collection-holding attribute that instruments changes in membership.
@@ -308,10 +310,8 @@ class InstrumentedCollectionAttribute(InstrumentedAttribute):
           compare_function=compare_function, **kwargs)
 
         if copy_function is None:
-            self.copy = lambda x:[y for y in
-                                  list(collections.collection_adapter(x))]
-        else:
-            self.copy = lambda x:copy_function(x)
+            copy_function = self.__copy
+        self.copy = copy_function
 
         if typecallable is None:
             typecallable = list
@@ -319,6 +319,9 @@ class InstrumentedCollectionAttribute(InstrumentedAttribute):
           collections._prepare_instrumentation(typecallable)
         self.collection_interface = \
           util.duck_type_collection(self.collection_factory())
+
+    def __copy(self, item):
+        return [y for y in list(collections.collection_adapter(item))]
 
     def __set__(self, obj, value):
         """Replace the current collection with a new one."""
