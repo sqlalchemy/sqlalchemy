@@ -352,7 +352,7 @@ One programming pattern that the `threadlocal` strategy supports is transparent 
          # do stuff
         trans.commit()
         
-    db.create_transaction()
+    db.begin()
     try:
         dosomethingimplicit()
         dosomethingelse()
