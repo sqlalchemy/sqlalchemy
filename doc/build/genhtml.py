@@ -24,8 +24,12 @@ files = [
     'types',
     'pooling',
     'plugins',
-    'docstrings'
+    'docstrings',
     ]
+
+post_files = [
+    'copyright'
+]
 
 parser = optparse.OptionParser(usage = "usage: %prog [options] [tests...]")
 parser.add_option("--file", action="store", dest="file", help="only generate file <file>")
@@ -54,8 +58,12 @@ if not options.file or options.docstrings:
 
     pickle.dump(docstrings, file('./output/compiled_docstrings.pickle', 'w'))
 
-    pickle.dump(root, file('./output/table_of_contents.pickle', 'w'))
+if not options.docstrings:
+    read_markdown.parse_markdown_files(root, post_files)
 
+if not options.file or options.docstrings:
+    pickle.dump(root, file('./output/table_of_contents.pickle', 'w'))
+    
 template_dirs = ['./templates', './output']
 output = os.path.dirname(os.getcwd())
 
@@ -69,7 +77,7 @@ def genfile(name, outname):
     outfile.write(t.render(attributes={}))
 
 if not options.docstrings:
-    for filename in files:
+    for filename in files + post_files:
         try:
             genfile(filename, os.path.join(os.getcwd(), '../', filename + ".html"))
         except:
