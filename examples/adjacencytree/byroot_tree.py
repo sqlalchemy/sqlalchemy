@@ -4,6 +4,7 @@ advantage of a custom MapperExtension to assemble incoming nodes into their corr
 
 from sqlalchemy import *
 from sqlalchemy.orm import *
+from sqlalchemy.orm.collections import MappedCollection, collection_adapter
 from sqlalchemy.util import OrderedDict
 
 engine = create_engine('sqlite:///:memory:', echo=True)
@@ -29,14 +30,13 @@ treedata = Table(
 )
 
 
-class NodeList(OrderedDict):
-    """subclasses OrderedDict to allow usage as a list-based property."""
-    
-    def append(self, node):
-        self[node.name] = node
-    def remove(self, node):
-        del self[node.name]
-        
+class NodeList(OrderedDict, MappedCollection):
+    """Mix OrderedDict and MappedCollection to create a dict-like collection class that keys off node names."""
+
+    def __init__(self, *args, **kw):
+        MappedCollection.__init__(self, keyfunc=lambda node: node.name)
+        OrderedDict.__init__(self, *args, **kw)
+
 class TreeNode(object):
     """a hierarchical Tree class, which adds the concept of a "root node".  The root is 
     the topmost node in a tree, or in other words a node whose parent ID is NULL.  
@@ -55,7 +55,7 @@ class TreeNode(object):
 
     def _set_root(self, root):
         self.root = root
-        for c in self.children:
+        for c in self.children.values():
             c._set_root(root)
 
     def append(self, node):
@@ -92,19 +92,21 @@ class TreeLoader(MapperExtension):
             connection.execute(mapper.mapped_table.update(TreeNode.c.id==instance.id, values=dict(root_node_id=instance.id)))
             instance.root_id = instance.id
 
-    def append_result(self, mapper, selectcontext, row, instance, identitykey, result, isnew):
+    def append_result(self, mapper, selectcontext, row, instance, result, **flags):
         """runs as results from a SELECT statement are processed, and newly created or already-existing
         instances that correspond to each row are appended to result lists.  This method will only
         append root nodes to the result list, and will attach child nodes to their appropriate parent
         node as they arrive from the select results.  This allows a SELECT statement which returns
         both root and child nodes in one query to return a list of "roots"."""
 
+        isnew = flags.get('isnew', False)
+
         if instance.parent_id is None:
             result.append(instance)
         else:
             if isnew or selectcontext.populate_existing:
                 parentnode = selectcontext.identity_map[mapper.identity_key(instance.parent_id)]
-                parentnode.children.append_without_event(instance)
+                collection_adapter(parentnode.children).append_without_event(instance)
         # fire off lazy loader before the instance is part of the session
         instance.children
         return False

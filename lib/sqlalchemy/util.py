@@ -260,7 +260,10 @@ class OrderedDict(dict):
 
     def __init__(self, d=None, **kwargs):
         self._list = []
-        self.update(d, **kwargs)
+        if d is None:
+            self.update(**kwargs)
+        else:
+            self.update(d, **kwargs)
 
     def keys(self):
         return list(self._list)
