@@ -121,7 +121,7 @@ class TraversalTest(testbase.AssertMixin):
         vis = Vis()
         s2 = vis.traverse(struct, clone=True)
         assert struct != s2
-        assert struct is not s2
+        assert not struct.is_other(s2)
         assert struct2 == s2
 
         class Vis2(ClauseVisitor):
@@ -137,6 +137,8 @@ class TraversalTest(testbase.AssertMixin):
         assert struct3 == s3
 
 class ClauseTest(testbase.AssertMixin):
+    """test copy-in-place behavior of various ClauseElements."""
+    
     def setUpAll(self):
         global t1, t2
         t1 = table("table1", 

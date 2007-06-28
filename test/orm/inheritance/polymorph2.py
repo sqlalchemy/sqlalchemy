@@ -904,7 +904,7 @@ class CustomPKTest(testbase.ORMTest):
         
         # query using get(), using only one value.  this requires the select_table mapper
         # has the same single-col primary key.
-        assert sess.query(T1).get(ot1.id).id is ot1.id
+        assert sess.query(T1).get(ot1.id).id == ot1.id
         
         ot1 = sess.query(T1).get(ot1.id)
         ot1.data = 'hi'
@@ -946,7 +946,7 @@ class CustomPKTest(testbase.ORMTest):
 
         # query using get(), using only one value.  this requires the select_table mapper
         # has the same single-col primary key.
-        assert sess.query(T1).get(ot1.id).id is ot1.id
+        assert sess.query(T1).get(ot1.id).id == ot1.id
 
         ot1 = sess.query(T1).get(ot1.id)
         ot1.data = 'hi'
