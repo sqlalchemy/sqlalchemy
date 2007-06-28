@@ -454,13 +454,18 @@ Note that when creating a relation with the `relation()` function, the target ca
 In the previous example, a single address was removed from the `addresses` attribute of a `User` object, resulting in the corresponding database row being updated to have a user_id of `None`.  But now, theres a mailing address with no user_id floating around in the database of no use to anyone.  How can we avoid this ?  This is acheived by using the `cascade` parameter of `relation`:
 
     {python}
+    session.clear()  # clear session
     clear_mappers()  # clear mappers from the previous example
+    
     mapper(Address, addresses_table)
     mapper(User, users_table, properties = {
             'addresses' : relation(Address, cascade="all, delete-orphan")
         }
       )
 
+    # reload the user
+    u = session.query(User).get(u.user_id)
+    
     del u.addresses[1]
     u.addresses.append(Address('27 New Place', 'Houston', 'TX', '34839'))
 
