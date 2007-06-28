@@ -9,7 +9,6 @@ See the example ``examples/association/proxied_association.py``.
 import sqlalchemy.exceptions as exceptions
 import sqlalchemy.orm as orm
 import sqlalchemy.util as util
-from sqlalchemy.orm import collections
 import weakref
 
 def association_proxy(targetcollection, attr, **kw):
