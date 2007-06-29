@@ -1,3 +1,5 @@
+"""basic tests of lazy loaded attributes"""
+
 from sqlalchemy import *
 from sqlalchemy.orm import *
 import testbase
@@ -170,13 +172,105 @@ class LazyTest(QueryTest):
         l = q.filter(s.c.u2_id==User.c.id).distinct().all()
         assert self.user_all_result == l
 
-    def test_onetoone(self):
+    def test_one_to_many_scalar(self):
         mapper(User, users, properties = dict(
             address = relation(mapper(Address, addresses), lazy=True, uselist=False)
         ))
         q = create_session().query(User)
         l = q.filter(users.c.id == 7).all()
         assert [User(id=7, address=Address(id=1))] == l
+
+    def test_double(self):
+        """tests lazy loading with two relations simulatneously, from the same table, using aliases.  """
+        openorders = alias(orders, 'openorders')
+        closedorders = alias(orders, 'closedorders')
+
+        mapper(Address, addresses)
+        
+        mapper(User, users, properties = dict(
+            addresses = relation(Address, lazy = True),
+            open_orders = relation(mapper(Order, openorders, entity_name='open'), primaryjoin = and_(openorders.c.isopen == 1, users.c.id==openorders.c.user_id), lazy=True),
+            closed_orders = relation(mapper(Order, closedorders,entity_name='closed'), primaryjoin = and_(closedorders.c.isopen == 0, users.c.id==closedorders.c.user_id), lazy=True)
+        ))
+        q = create_session().query(User)
+
+        assert [
+            User(
+                id=7,
+                addresses=[Address(id=1)],
+                open_orders = [Order(id=3)],
+                closed_orders = [Order(id=1), Order(id=5)]
+            ),
+            User(
+                id=8,
+                addresses=[Address(id=2), Address(id=3), Address(id=4)],
+                open_orders = [],
+                closed_orders = []
+            ),
+            User(
+                id=9,
+                addresses=[Address(id=5)],
+                open_orders = [Order(id=4)],
+                closed_orders = [Order(id=2)]
+            ),
+            User(id=10)
+        
+        ] == q.all()
+
+    def test_many_to_many(self):
+
+        mapper(Keyword, keywords)
+        mapper(Item, items, properties = dict(
+                keywords = relation(Keyword, secondary=item_keywords, lazy=True),
+        ))
+        
+        q = create_session().query(Item)
+        assert [
+            Item(id=1, keywords=[Keyword(name='red'), Keyword(name='big'), Keyword(name='round')]),
+            Item(id=2, keywords=[Keyword(name='red'), Keyword(name='small'), Keyword(name='square')]),
+            Item(id=3, keywords=[Keyword(name='green'), Keyword(name='big'), Keyword(name='round')]),
+            Item(id=4, keywords=[]),
+            Item(id=5, keywords=[]),
+        ] == q.all()
+
+        assert [
+            Item(id=1, keywords=[Keyword(name='red'), Keyword(name='big'), Keyword(name='round')]),
+            Item(id=2, keywords=[Keyword(name='red'), Keyword(name='small'), Keyword(name='square')]),
+        ] == q.join('keywords').filter(keywords.c.name == 'red').all()
+
+    def test_uses_get(self):
+        """test that a simple many-to-one lazyload optimizes to use query.get()."""
+
+        mapper(Address, addresses, properties = dict(
+            user = relation(mapper(User, users), lazy=True)
+        ))
+        
+        sess = create_session()
+        
+        # load address
+        a1 = sess.query(Address).filter_by(email_address="ed@wood.com").one()
+        
+        # load user that is attached to the address
+        u1 = sess.query(User).get(8)
+        
+        def go():
+            # lazy load of a1.user should get it from the session
+            assert a1.user is u1
+        self.assert_sql_count(testbase.db, go, 0)
+
+    def test_many_to_one(self):
+        mapper(Address, addresses, properties = dict(
+            user = relation(mapper(User, users), lazy=True)
+        ))
+        sess = create_session()
+        q = sess.query(Address)
+        a = q.filter(addresses.c.id==1).one()
+
+        assert a.user is not None
+        
+        u1 = sess.query(User).get(7)
+        
+        assert a.user is u1
 
 if __name__ == '__main__':
     testbase.main()
