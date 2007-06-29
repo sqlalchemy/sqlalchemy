@@ -163,51 +163,6 @@ class QueryTest(PersistTest):
             default_metadata.drop_all()
             default_metadata.clear()
  
-    @testbase.supported('postgres')
-    def testpassiveoverride(self):
-        """primarily for postgres, tests that when we get a primary key column back 
-        from reflecting a table which has a default value on it, we pre-execute
-        that PassiveDefault upon insert, even though PassiveDefault says 
-        "let the database execute this", because in postgres we must have all the primary
-        key values in memory before insert; otherwise we cant locate the just inserted row."""
-        try:
-            meta = BoundMetaData(testbase.db)
-            testbase.db.execute("""
-             CREATE TABLE speedy_users
-             (
-                 speedy_user_id   SERIAL     PRIMARY KEY,
-            
-                 user_name        VARCHAR    NOT NULL,
-                 user_password    VARCHAR    NOT NULL
-             );
-            """, None)
-            
-            t = Table("speedy_users", meta, autoload=True)
-            t.insert().execute(user_name='user', user_password='lala')
-            l = t.select().execute().fetchall()
-            self.assert_(l == [(1, 'user', 'lala')])
-        finally:
-            testbase.db.execute("drop table speedy_users", None)
-
-    @testbase.supported('postgres')
-    def testschema(self):
-        meta1 = BoundMetaData(testbase.db)
-        test_table = Table('my_table', meta1,
-                    Column('id', Integer, primary_key=True),
-                    Column('data', String(20), nullable=False),
-                    schema='alt_schema'
-                 )
-        test_table.create()
-        try:
-            # plain insert
-            test_table.insert().execute(data='test')
-
-            meta2 = BoundMetaData(testbase.db)
-            test_table = Table('my_table', meta2, autoload=True, schema='alt_schema')
-            test_table.insert().execute(data='test')
-
-        finally:
-            test_table.drop()
 
     def test_repeated_bindparams(self):
         """test that a BindParam can be used more than once.  
@@ -395,6 +350,7 @@ class QueryTest(PersistTest):
             
     @testbase.supported('postgres')
     def test_functions_with_cols(self):
+        # TODO: shouldnt this work on oracle too ?
         x = testbase.db.func.current_date().execute().scalar()
         y = testbase.db.func.current_date().select().execute().scalar()
         z = testbase.db.func.current_date().scalar()

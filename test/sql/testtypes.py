@@ -375,51 +375,6 @@ class IntervalTest(AssertMixin):
         interval_table.insert().execute(interval=delta)
         assert interval_table.select().execute().fetchone()['interval'] == delta
         
-        
-class TimezoneTest(AssertMixin):
-    """test timezone-aware datetimes.  psycopg will return a datetime with a tzinfo attached to it,
-    if postgres returns it.  python then will not let you compare a datetime with a tzinfo to a datetime
-    that doesnt have one.  this test illustrates two ways to have datetime types with and without timezone
-    info. """
-    @testbase.supported('postgres')
-    def setUpAll(self):
-        global tztable, notztable, metadata
-        metadata = BoundMetaData(testbase.db)
-        
-        # current_timestamp() in postgres is assumed to return TIMESTAMP WITH TIMEZONE
-        tztable = Table('tztable', metadata,
-            Column("id", Integer, primary_key=True),
-            Column("date", DateTime(timezone=True), onupdate=func.current_timestamp()),
-            Column("name", String(20)),
-        )
-        notztable = Table('notztable', metadata,
-            Column("id", Integer, primary_key=True),
-            Column("date", DateTime(timezone=False), onupdate=cast(func.current_timestamp(), DateTime(timezone=False))),
-            Column("name", String(20)),
-        )
-        metadata.create_all()
-    @testbase.supported('postgres')
-    def tearDownAll(self):
-        metadata.drop_all()
-    
-    @testbase.supported('postgres')
-    def testtz(self):
-        # get a date with a tzinfo
-        somedate = testbase.db.connect().scalar(func.current_timestamp().select())
-        tztable.insert().execute(id=1, name='row1', date=somedate)
-        c = tztable.update(tztable.c.id==1).execute(name='newname')
-        x = c.last_updated_params()
-        print x['date'] == somedate
-        
-    @testbase.supported('postgres')
-    def testnotz(self):
-        # get a date without a tzinfo
-        somedate = datetime.datetime(2005, 10,20, 11, 52, 00)
-        notztable.insert().execute(id=1, name='row1', date=somedate)
-        c = notztable.update(notztable.c.id==1).execute(name='newname')
-        x = c.last_updated_params()
-        print x['date'] == somedate
-        
 class BooleanTest(AssertMixin):
     def setUpAll(self):
         global bool_table

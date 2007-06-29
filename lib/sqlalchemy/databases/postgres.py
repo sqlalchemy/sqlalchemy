@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import datetime, string, types, re, random
+import datetime, string, types, re, random, warnings
 
 from sqlalchemy import util, sql, schema, ansisql, exceptions
 from sqlalchemy.engine import base, default
@@ -248,7 +248,7 @@ class PGDialect(ansisql.ANSIDialect):
             self.version = 1
         self.use_information_schema = use_information_schema
         self.paramstyle = 'pyformat'
-
+        
     def dbapi(cls):
         try:
             import psycopg2 as psycopg
@@ -395,6 +395,8 @@ class PGDialect(ansisql.ANSIDialect):
             if not rows:
                 raise exceptions.NoSuchTableError(table.name)
 
+            domains = self._load_domains(connection)
+            
             for name, format_type, default, notnull, attnum, table_oid in rows:
                 ## strip (30) from character varying(30)
                 attype = re.search('([^\(]+)', format_type).group(1)
@@ -433,8 +435,28 @@ class PGDialect(ansisql.ANSIDialect):
                 elif attype == 'timestamp without time zone':
                     kwargs['timezone'] = False
 
-                coltype = ischema_names[attype]
-                coltype = coltype(*args, **kwargs)
+                if attype in ischema_names:
+                    coltype = ischema_names[attype]
+                else:
+                    if attype in domains:
+                        domain = domains[attype]
+                        if domain['attype'] in ischema_names:
+                            # A table can't override whether the domain is nullable.
+                            nullable = domain['nullable']
+
+                            if domain['default'] and not default:
+                                # It can, however, override the default value, but can't set it to null.
+                                default = domain['default']
+                            coltype = ischema_names[domain['attype']]
+                    else:
+                        coltype=None
+
+                if coltype:
+                    coltype = coltype(*args, **kwargs)
+                else:
+                    warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (attype, name)))
+                    coltype = sqltypes.NULLTYPE
+
                 colargs= []
                 if default is not None:
                     match = re.search(r"""(nextval\(')([^']+)('.*$)""", default)
@@ -493,7 +515,49 @@ class PGDialect(ansisql.ANSIDialect):
                         refspec.append(".".join([referred_table, column]))
 
                 table.append_constraint(schema.ForeignKeyConstraint(constrained_columns, refspec, conname))
+                
+    def _load_domains(self, connection):
+        if hasattr(self, '_domains'):
+            return self._domains
+            
+        ## Load data types for domains:
+        SQL_DOMAINS = """
+            SELECT t.typname as "name",
+                   pg_catalog.format_type(t.typbasetype, t.typtypmod) as "attype",
+                   not t.typnotnull as "nullable",
+                   t.typdefault as "default",
+                   pg_catalog.pg_type_is_visible(t.oid) as "visible",
+                   n.nspname as "schema"
+            FROM pg_catalog.pg_type t
+                 LEFT JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+                 LEFT JOIN pg_catalog.pg_constraint r ON t.oid = r.contypid
+            WHERE t.typtype = 'd'
+        """
 
+        s = sql.text(SQL_DOMAINS, typemap={'attname':sqltypes.Unicode})
+        c = connection.execute(s)
+
+        domains = {}
+        for domain in c.fetchall():
+            ## strip (30) from character varying(30)
+            attype = re.search('([^\(]+)', domain['attype']).group(1)
+            if domain['visible']:
+                # 'visible' just means whether or not the domain is in a 
+                # schema that's on the search path -- or not overriden by
+                # a schema with higher presedence. If it's not visible,
+                # it will be prefixed with the schema-name when it's used.
+                name = domain['name']
+            else:
+                name = "%s.%s" % (domain['schema'], domain['name'])
+
+            domains[name] = {'attype':attype, 'nullable': domain['nullable'], 'default': domain['default']}
+
+        self._domains = domains
+        
+        return self._domains
+        
+        
+        
 class PGCompiler(ansisql.ANSICompiler):
     def visit_insert_column(self, column, parameters):
         # all column primary key inserts must be explicitly present
