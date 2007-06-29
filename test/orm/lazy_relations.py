@@ -225,18 +225,9 @@ class LazyTest(QueryTest):
         ))
         
         q = create_session().query(Item)
-        assert [
-            Item(id=1, keywords=[Keyword(name='red'), Keyword(name='big'), Keyword(name='round')]),
-            Item(id=2, keywords=[Keyword(name='red'), Keyword(name='small'), Keyword(name='square')]),
-            Item(id=3, keywords=[Keyword(name='green'), Keyword(name='big'), Keyword(name='round')]),
-            Item(id=4, keywords=[]),
-            Item(id=5, keywords=[]),
-        ] == q.all()
+        assert self.item_keyword_result == q.all()
 
-        assert [
-            Item(id=1, keywords=[Keyword(name='red'), Keyword(name='big'), Keyword(name='round')]),
-            Item(id=2, keywords=[Keyword(name='red'), Keyword(name='small'), Keyword(name='square')]),
-        ] == q.join('keywords').filter(keywords.c.name == 'red').all()
+        assert self.item_keyword_result[0:2] == q.join('keywords').filter(keywords.c.name == 'red').all()
 
     def test_uses_get(self):
         """test that a simple many-to-one lazyload optimizes to use query.get()."""

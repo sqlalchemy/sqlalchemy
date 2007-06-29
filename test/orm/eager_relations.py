@@ -21,21 +21,7 @@ class EagerTest(QueryTest):
         q = sess.query(User)
 
         assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(users.c.id == 7).all()
-
-        assert [
-            User(id=7, addresses=[
-                Address(id=1)
-            ]), 
-            User(id=8, addresses=[
-                Address(id=2, email_address='ed@wood.com'),
-                Address(id=3, email_address='ed@bettyboop.com'),
-                Address(id=4, email_address='ed@lala.com'),
-            ]), 
-            User(id=9, addresses=[
-                Address(id=5)
-            ]), 
-            User(id=10, addresses=[])
-        ] == q.all()
+        assert self.user_address_result == q.all()
 
     def test_no_orphan(self):
         """test that an eagerly loaded child object is not marked as an orphan"""
@@ -127,20 +113,11 @@ class EagerTest(QueryTest):
 
         q = create_session().query(Item)
         def go():
-            assert [
-                Item(id=1, keywords=[Keyword(name='red'), Keyword(name='big'), Keyword(name='round')]),
-                Item(id=2, keywords=[Keyword(name='red'), Keyword(name='small'), Keyword(name='square')]),
-                Item(id=3, keywords=[Keyword(name='green'), Keyword(name='big'), Keyword(name='round')]),
-                Item(id=4, keywords=[]),
-                Item(id=5, keywords=[]),
-            ] == q.all()
+            assert self.item_keyword_result == q.all()
         self.assert_sql_count(testbase.db, go, 1)
         
         def go():
-            assert [
-                Item(id=1, keywords=[Keyword(name='red'), Keyword(name='big'), Keyword(name='round')]),
-                Item(id=2, keywords=[Keyword(name='red'), Keyword(name='small'), Keyword(name='square')]),
-            ] == q.join('keywords').filter(keywords.c.name == 'red').all()
+            assert self.item_keyword_result[0:2] == q.join('keywords').filter(keywords.c.name == 'red').all()
         self.assert_sql_count(testbase.db, go, 1)
 
 
@@ -153,10 +130,7 @@ class EagerTest(QueryTest):
         q = create_session().query(Item)
 
         def go():
-            assert [
-                Item(id=1, keywords=[Keyword(name='red'), Keyword(name='big'), Keyword(name='round')]),
-                Item(id=2, keywords=[Keyword(name='red'), Keyword(name='small'), Keyword(name='square')]),
-            ] == q.options(eagerload('keywords')).join('keywords').filter(keywords.c.name == 'red').all()
+            assert self.item_keyword_result[0:2] == q.options(eagerload('keywords')).join('keywords').filter(keywords.c.name == 'red').all()
             
         self.assert_sql_count(testbase.db, go, 1)
 
@@ -171,20 +145,7 @@ class EagerTest(QueryTest):
         assert class_mapper(Address).props['user'].lazy is False
         
         sess = create_session()
-        assert [
-            User(id=7, addresses=[
-                Address(id=1)
-            ]), 
-            User(id=8, addresses=[
-                Address(id=2, email_address='ed@wood.com'),
-                Address(id=3, email_address='ed@bettyboop.com'),
-                Address(id=4, email_address='ed@lala.com'),
-            ]), 
-            User(id=9, addresses=[
-                Address(id=5)
-            ]), 
-            User(id=10, addresses=[])
-        ] == sess.query(User).all()
+        assert self.user_address_result == sess.query(User).all()
         
     def test_double(self):
         """tests lazy loading with two relations simulatneously, from the same table, using aliases.  """
@@ -265,20 +226,7 @@ class EagerTest(QueryTest):
 
         def go():
             l = q.filter(s.c.u2_id==User.c.id).distinct().all()
-            assert [
-                User(id=7, addresses=[
-                    Address(id=1)
-                ]), 
-                User(id=8, addresses=[
-                    Address(id=2, email_address='ed@wood.com'),
-                    Address(id=3, email_address='ed@bettyboop.com'),
-                    Address(id=4, email_address='ed@lala.com'),
-                ]), 
-                User(id=9, addresses=[
-                    Address(id=5)
-                ]), 
-                User(id=10, addresses=[])
-            ] == l
+            assert self.user_address_result == l
         self.assert_sql_count(testbase.db, go, 1)
         
     def test_limit_2(self):
@@ -291,11 +239,8 @@ class EagerTest(QueryTest):
         q = sess.query(Item)
         l = q.filter((Item.c.description=='item 2') | (Item.c.description=='item 5') | (Item.c.description=='item 3')).\
             order_by(Item.c.id).limit(2).all()
-        
-        assert [
-            Item(id=2, keywords=[Keyword(name='red'), Keyword(name='small'), Keyword(name='square')]),
-            Item(id=3, keywords=[Keyword(name='green'), Keyword(name='big'), Keyword(name='round')]),
-        ] == l    
+
+        assert self.item_keyword_result[1:3] == l
         
     def test_limit_3(self):
         """test that the ORDER BY is propigated from the inner select to the outer select, when using the 
@@ -379,18 +324,7 @@ class EagerTest(QueryTest):
         l = q.filter("users.id in (7, 8, 9)")
         
         def go():
-            assert [
-                User(id=7, orders=[
-                    Order(id=1, items=[Item(id=1), Item(id=2), Item(id=3)]),
-                    Order(id=3, items=[Item(id=3), Item(id=4), Item(id=5)]),
-                    Order(id=5, items=[Item(id=5)]),
-                ]),
-                User(id=8, orders=[]),
-                User(id=9, orders=[
-                    Order(id=2, items=[Item(id=1), Item(id=2), Item(id=3)]),
-                    Order(id=4, items=[Item(id=1), Item(id=5)]),
-                ]),
-            ] == l.all()
+            assert self.user_order_result[0:3] == l.all()
         self.assert_sql_count(testbase.db, go, 1)
 
     def test_double_with_aggregate(self):
@@ -405,6 +339,7 @@ class EagerTest(QueryTest):
                'max_order':relation(mapper(Order, max_orders, non_primary=True), lazy=False, uselist=False)
                })
         q = create_session().query(User)
+        
         def go():
             assert [
                 User(id=7, orders=[

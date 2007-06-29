@@ -78,9 +78,9 @@ class QueryTest(testbase.ORMTest):
                 Address(id=1)
             ]), 
             User(id=8, addresses=[
-                Address(id=2),
-                Address(id=3),
-                Address(id=4)
+                Address(id=2, email_address='ed@wood.com'),
+                Address(id=3, email_address='ed@bettyboop.com'),
+                Address(id=4, email_address='ed@lala.com'),
             ]), 
             User(id=9, addresses=[
                 Address(id=5)
@@ -111,7 +111,33 @@ class QueryTest(testbase.ORMTest):
             ]), 
             User(id=10, addresses=[])
         ]
-        
+
+    @property
+    def user_order_result(self):
+        return [
+            User(id=7, orders=[
+                Order(id=1, items=[Item(id=1), Item(id=2), Item(id=3)]),
+                Order(id=3, items=[Item(id=3), Item(id=4), Item(id=5)]),
+                Order(id=5, items=[Item(id=5)]),
+            ]),
+            User(id=8, orders=[]),
+            User(id=9, orders=[
+                Order(id=2, items=[Item(id=1), Item(id=2), Item(id=3)]),
+                Order(id=4, items=[Item(id=1), Item(id=5)]),
+            ]),
+            User(id=10)
+        ] 
+    
+    @property
+    def item_keyword_result(self):
+        return [
+            Item(id=1, keywords=[Keyword(name='red'), Keyword(name='big'), Keyword(name='round')]),
+            Item(id=2, keywords=[Keyword(name='red'), Keyword(name='small'), Keyword(name='square')]),
+            Item(id=3, keywords=[Keyword(name='green'), Keyword(name='big'), Keyword(name='round')]),
+            Item(id=4, keywords=[]),
+            Item(id=5, keywords=[]),
+        ]
+            
 class GetTest(QueryTest):
     def test_get(self):
         s = create_session()
