@@ -51,14 +51,47 @@ class AttributesTest(PersistTest):
         # shouldnt be pickling callables at the class level
         def somecallable(*args):
             return None
-        manager.register_attribute(MyTest, 'mt2', uselist = True, trackparent=True, callable_=somecallable)
-        x = MyTest()
-        x.mt2.append(MyTest2())
+        attr_name = 'mt2'
+        manager.register_attribute(MyTest, attr_name, uselist = True, trackparent=True, callable_=somecallable)
+
+        o = MyTest()
+        o.mt2.append(MyTest2())
+        o.user_id=7
+        pk_o = pickle.dumps(o)
+
+        o2 = pickle.loads(pk_o)
+
+        # so... pickle is creating a new 'mt2' string after a roundtrip here,
+        # so we'll brute-force set it to be id-equal to the original string 
+        o_mt2_str = [ k for k in o.__dict__ if k == 'mt2'][0]
+        o2_mt2_str = [ k for k in o2.__dict__ if k == 'mt2'][0]
+        self.assert_(o_mt2_str == o2_mt2_str)
+        self.assert_(o_mt2_str is not o2_mt2_str)
+        # take current mt2 from o2
+        former = o2.__dict__['mt2']
+        del o2.__dict__['mt2']
+        for k in o.__dict__:
+            if k == 'mt2':
+                # set it back with the id-equal key from o,
+                o2.__dict__[k] = former
+
+        pk_o2 = pickle.dumps(o2)
+
+        self.assert_(pk_o == pk_o2)
+
+        # the above is kind of distrurbing, so let's do it again a little
+        # differently.  the string-id in serialization thing is just an
+        # artifact of pickling that comes up in the first round-trip.
+        # a -> b differs in pickle memoization of 'mt2', but b -> c will
+        # serialize identically.
+
+        o3 = pickle.loads(pk_o2)
+        pk_o3 = pickle.dumps(o3)
+        o4 = pickle.loads(pk_o3)
+        pk_o4 = pickle.dumps(o4)
+
+        self.assert_(pk_o3 == pk_o4)
         
-        x.user_id=7
-        s = pickle.dumps(x)
-        x2 = pickle.loads(s)
-        assert s == pickle.dumps(x2)
 
     def testlist(self):
         class User(object):pass

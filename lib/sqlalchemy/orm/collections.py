@@ -548,14 +548,12 @@ class CollectionAdaptor(object):
             self.attr.fire_remove_event(self._owner(), item, initiator)
     
     def __getstate__(self):
-        # FIXME: temporarily reversing the key *only* for the purposes of
-        # the pickle unittest.  it needs a solution there, not here.
-        return { 'key': self.attr.key[::-1],
+        return { 'key': self.attr.key,
                  'owner': self.owner,
                  'data': self.data }
 
     def __setstate__(self, d):
-        self.attr = getattr(d['owner'].__class__, d['key'][::-1])
+        self.attr = getattr(d['owner'].__class__, d['key'])
         self._owner = weakref.ref(d['owner'])
         self._data = weakref.ref(d['data'])
 
