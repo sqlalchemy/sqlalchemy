@@ -57,6 +57,7 @@ class AttributesTest(PersistTest):
         o = MyTest()
         o.mt2.append(MyTest2())
         o.user_id=7
+        o.mt2[0].a = 'abcde'
         pk_o = pickle.dumps(o)
 
         o2 = pickle.loads(pk_o)
@@ -88,7 +89,15 @@ class AttributesTest(PersistTest):
         pk_o4 = pickle.dumps(o4)
 
         self.assert_(pk_o3 == pk_o4)
-        
+
+        # and lastly make sure we still have our data after all that.
+        # identical serialzation is great, *if* it's complete :)
+        self.assert_(o4.user_id == 7)
+        self.assert_(o4.user_name is None)
+        self.assert_(o4.email_address is None)
+        self.assert_(len(o4.mt2) == 1)
+        self.assert_(o4.mt2[0].a == 'abcde')
+        self.assert_(o4.mt2[0].b is None)
 
     def testlist(self):
         class User(object):pass
