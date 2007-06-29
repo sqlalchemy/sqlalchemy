@@ -67,13 +67,10 @@ class AttributesTest(PersistTest):
         o2_mt2_str = [ k for k in o2.__dict__ if k == 'mt2'][0]
         self.assert_(o_mt2_str == o2_mt2_str)
         self.assert_(o_mt2_str is not o2_mt2_str)
-        # take current mt2 from o2
+        # change the id of o2.__dict__['mt2']
         former = o2.__dict__['mt2']
         del o2.__dict__['mt2']
-        for k in o.__dict__:
-            if k == 'mt2':
-                # set it back with the id-equal key from o,
-                o2.__dict__[k] = former
+        o2.__dict__[o_mt2_str] = former
 
         pk_o2 = pickle.dumps(o2)
 
