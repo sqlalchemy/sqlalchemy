@@ -1,6 +1,7 @@
 from sqlalchemy import *
 from testbase import Table, Column
 
+_recursion_stack = util.Set()
 class Base(object):
     def __init__(self, **kwargs):
         for k in kwargs:
@@ -15,26 +16,33 @@ class Base(object):
         only look at attributes that are present on the source object.
         
         """
-        # use __dict__ to avoid instrumented properties
-        for attr in self.__dict__.keys():
-            if attr[0] == '_':
-                continue
-            value = getattr(self, attr)
-            if hasattr(value, '__iter__') and not isinstance(value, basestring):
-                if len(value) == 0:
-                    continue
-                for (us, them) in zip(value, getattr(other, attr)):
-                    if us != them:
-                        return False
-                else:
-                    continue
-            else:
-                if value is not None:
-                    if value != getattr(other, attr):
-                        return False
-        else:
+        
+        if self in _recursion_stack:
             return True
-
+        _recursion_stack.add(self)
+        try:
+            # use __dict__ to avoid instrumented properties
+            for attr in self.__dict__.keys():
+                if attr[0] == '_':
+                    continue
+                value = getattr(self, attr)
+                if hasattr(value, '__iter__') and not isinstance(value, basestring):
+                    if len(value) == 0:
+                        continue
+                    for (us, them) in zip(value, getattr(other, attr)):
+                        if us != them:
+                            return False
+                    else:
+                        continue
+                else:
+                    if value is not None:
+                        if value != getattr(other, attr):
+                            return False
+            else:
+                return True
+        finally:
+            _recursion_stack.remove(self)
+            
 class User(Base):pass
 class Order(Base):pass
 class Item(Base):pass
