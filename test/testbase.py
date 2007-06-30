@@ -308,21 +308,21 @@ class ORMTest(AssertMixin):
     keep_mappers = False
     keep_data = False
     def setUpAll(self):
-        global metadata
-        metadata = BoundMetaData(db)
-        self.define_tables(metadata)
-        metadata.create_all()
-    def define_tables(self, metadata):
+        global _otest_metadata
+        _otest_metadata = BoundMetaData(db)
+        self.define_tables(_otest_metadata)
+        _otest_metadata.create_all()
+    def define_tables(self, _otest_metadata):
         raise NotImplementedError()
     def get_metadata(self):
-        return metadata
+        return _otest_metadata
     def tearDownAll(self):
-        metadata.drop_all()
+        _otest_metadata.drop_all()
     def tearDown(self):
         if not self.keep_mappers:
             clear_mappers()
         if not self.keep_data:
-            for t in metadata.table_iterator(reverse=True):
+            for t in _otest_metadata.table_iterator(reverse=True):
                 t.delete().execute().close()
 
 class TestData(object):

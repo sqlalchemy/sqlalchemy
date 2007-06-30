@@ -1,6 +1,6 @@
 """tests general mapper operations with an emphasis on selecting/loading"""
 
-from testbase import PersistTest, AssertMixin
+from testbase import PersistTest, AssertMixin, ORMTest
 import testbase
 import unittest, sys, os
 from sqlalchemy import *
@@ -817,8 +817,124 @@ class DeferredTest(MapperSuperTest):
             print item.item_name
         self.assert_sql_count(db, go, 0)
         self.assert_(item.item_name == 'item 4')
-    
 
+class CompositeTypesTest(ORMTest):
+    def define_tables(self, metadata):
+        global graphs, edges
+        graphs = Table('graphs', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('version_id', Integer, primary_key=True),
+            Column('name', String(30)))
+            
+        edges = Table('edges', metadata, 
+            Column('id', Integer, primary_key=True),
+            Column('graph_id', Integer, ForeignKey('graphs.id'), nullable=False),
+            Column('x1', Integer),
+            Column('y1', Integer),
+            Column('x2', Integer),
+            Column('y2', Integer))
+        
+    def test_basic(self):
+        class Point(object):
+            def __init__(self, x, y):
+                self.x = x
+                self.y = y
+            def __colset__(self):
+                return [self.x, self.y]            
+            def __eq__(self, other):
+                return other.x == self.x and other.y == self.y
+            def __ne__(self, other):
+                return not self.__eq__(other)
+                    
+        class Graph(object):
+            pass
+        class Edge(object):
+            def __init__(self, start, end):
+                self.start = start
+                self.end = end
+            
+        mapper(Graph, graphs, properties={
+            'edges':relation(Edge)
+        })
+        mapper(Edge, edges, properties={
+            'start':composite(Point, edges.c.x1, edges.c.y1),
+            'end':composite(Point, edges.c.x2, edges.c.y2)
+        })
+        
+        sess = create_session()
+        g = Graph()
+        g.id = 1
+        g.version_id=1
+        g.edges.append(Edge(Point(3, 4), Point(5, 6)))
+        g.edges.append(Edge(Point(14, 5), Point(2, 7)))
+        sess.save(g)
+        sess.flush()
+        
+        sess.clear()
+        g2 = sess.query(Graph).get([g.id, g.version_id])
+        for e1, e2 in zip(g.edges, g2.edges):
+            assert e1.start == e2.start
+            assert e1.end == e2.end
+        
+        g2.edges[1].end = Point(18, 4)
+        sess.flush()
+        sess.clear()
+        e = sess.query(Edge).get(g2.edges[1].id)
+        assert e.end == Point(18, 4)
+
+        e.end.x = 19
+        e.end.y = 5
+        sess.flush()
+        sess.clear()
+        assert sess.query(Edge).get(g2.edges[1].id).end == Point(19, 5)
+
+        g.edges[1].end = Point(19, 5)
+        
+        sess.clear()
+        def go():
+            g2 = sess.query(Graph).options(eagerload('edges')).get([g.id, g.version_id])
+            for e1, e2 in zip(g.edges, g2.edges):
+                assert e1.start == e2.start
+                assert e1.end == e2.end
+        self.assert_sql_count(testbase.db, go, 1)
+        
+    def test_pk(self):
+        """test using a composite type as a primary key"""
+        
+        class Version(object):
+            def __init__(self, id, version):
+                self.id = id
+                self.version = version
+            def __colset__(self):
+                return [self.id, self.version]
+            def __eq__(self, other):
+                return other.id == self.id and other.version == self.version
+            def __ne__(self, other):
+                return not self.__eq__(other)
+                
+        class Graph(object):
+            def __init__(self, version):
+                self.version = version
+            
+        mapper(Graph, graphs, properties={
+            'version':composite(Version, graphs.c.id, graphs.c.version_id)
+        })
+        
+        sess = create_session()
+        g = Graph(Version(1, 1))
+        sess.save(g)
+        sess.flush()
+        
+        sess.clear()
+        g2 = sess.query(Graph).get([1, 1])
+        assert g.version == g2.version
+        sess.clear()
+        
+        g2 = sess.query(Graph).get(Version(1, 1))
+        assert g.version == g2.version
+        
+        
+        
 class NoLoadTest(MapperSuperTest):
     def testbasic(self):
         """tests a basic one-to-many lazy load"""

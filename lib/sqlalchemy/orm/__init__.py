@@ -13,14 +13,14 @@ from sqlalchemy import exceptions
 from sqlalchemy import util as sautil
 from sqlalchemy.orm.mapper import Mapper, object_mapper, class_mapper, mapper_registry
 from sqlalchemy.orm.interfaces import SynonymProperty, MapperExtension, EXT_PASS, ExtensionOption
-from sqlalchemy.orm.properties import PropertyLoader, ColumnProperty, BackRef
+from sqlalchemy.orm.properties import PropertyLoader, ColumnProperty, CompositeProperty, BackRef
 from sqlalchemy.orm import mapper as mapperlib
 from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.util import polymorphic_union
 from sqlalchemy.orm.session import Session as create_session
 from sqlalchemy.orm.session import object_session, attribute_manager
 
-__all__ = ['relation', 'column_property', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer', 'undefer_group', 'extension',
+__all__ = ['relation', 'column_property', 'composite', 'backref', 'eagerload', 'lazyload', 'noload', 'deferred', 'defer', 'undefer', 'undefer_group', 'extension',
         'mapper', 'clear_mappers', 'compile_mappers', 'class_mapper', 'object_mapper', 'MapperExtension', 'Query',
         'polymorphic_union', 'create_session', 'synonym', 'contains_alias', 'contains_eager', 'EXT_PASS', 'object_session'
         ]
@@ -37,30 +37,30 @@ def relation(*args, **kwargs):
 
 def column_property(*args, **kwargs):
     """Provide a column-level property for use with a Mapper.
-    
-    Normally, custom column-level properties that represent columns
-    directly or indirectly present within the mapped selectable 
-    can just be added to the ``properties`` dictionary directly,
-    in which case this function's usage is not necessary.
-      
-    In the case of a ``ColumnElement`` directly present within the
-    ``properties`` dictionary, the given column is converted to be the exact column 
-    located within the mapped selectable, in the case that the mapped selectable 
-    is not the exact parent selectable of the given column, but shares a common
-    base table relationship with that column.
-    
-    Use this function when the column expression being added does not 
-    correspond to any single column within the mapped selectable,
-    such as a labeled function or scalar-returning subquery, to force the element
-    to become a mapped property regardless of it not being present within the
-    mapped selectable.
-    
-    Note that persistence of instances is driven from the collection of columns
-    within the mapped selectable, so column properties attached to a Mapper which have
-    no direct correspondence to the mapped selectable will effectively be non-persisted
-    attributes.
+
+    Column-based properties can normally be applied to the mapper's
+    ``properties`` dictionary using the ``schema.Column`` element directly.
+    Use this function when the given column is not directly present within
+    the mapper's selectable; examples include SQL expressions, functions,
+    and scalar SELECT queries.
+
+    Columns that arent present in the mapper's selectable won't be persisted
+    by the mapper and are effectively "read-only" attributes.
     """
+    
     return ColumnProperty(*args, **kwargs)
+
+def composite(class_, *cols, **kwargs):
+    """Return a composite column-based property for use with a Mapper.
+    
+    This is very much like a column-based property except the given class
+    is used to construct values composed of one or more columns.  The class must 
+    implement a constructor with positional arguments matching the order of 
+    columns given, as well as a __colset__() method which returns its attributes 
+    in column order.
+    """
+    
+    return CompositeProperty(class_, *cols, **kwargs)
     
 def _relation_loader(mapper, secondary=None, primaryjoin=None, secondaryjoin=None, lazy=True, **kwargs):
     return PropertyLoader(mapper, secondary, primaryjoin, secondaryjoin, lazy=lazy, **kwargs)

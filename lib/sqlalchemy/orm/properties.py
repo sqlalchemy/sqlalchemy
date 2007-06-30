@@ -18,7 +18,7 @@ from sqlalchemy.orm import util as mapperutil
 import sets, random
 from sqlalchemy.orm.interfaces import *
 
-__all__ = ['ColumnProperty', 'PropertyLoader', 'BackRef']
+__all__ = ['ColumnProperty', 'CompositeProperty', 'PropertyLoader', 'BackRef']
 
 class ColumnProperty(StrategizedProperty):
     """Describes an object attribute that corresponds to a table column."""
@@ -33,17 +33,20 @@ class ColumnProperty(StrategizedProperty):
         self.columns = list(columns)
         self.group = kwargs.pop('group', None)
         self.deferred = kwargs.pop('deferred', False)
-
+        
     def create_strategy(self):
         if self.deferred:
             return strategies.DeferredColumnLoader(self)
         else:
             return strategies.ColumnLoader(self)
-
-    def getattr(self, object):
+    
+    def copy(self):
+        return ColumnProperty(deferred=self.deferred, group=self.group, *self.columns)
+        
+    def getattr(self, object, column):
         return getattr(object, self.key)
 
-    def setattr(self, object, value):
+    def setattr(self, object, value, column):
         setattr(object, self.key, value)
 
     def get_history(self, obj, passive=False):
@@ -55,9 +58,43 @@ class ColumnProperty(StrategizedProperty):
     def compare(self, value):
         return self.columns[0] == value
 
+    def get_col_value(self, column, value):
+        return value
+            
 ColumnProperty.logger = logging.class_logger(ColumnProperty)
 
 mapper.ColumnProperty = ColumnProperty
+
+class CompositeProperty(ColumnProperty):
+    """subclasses ColumnProperty to provide composite type support."""
+    
+    def __init__(self, class_, *columns, **kwargs):
+        super(CompositeProperty, self).__init__(*columns, **kwargs)
+        self.composite_class = class_
+
+    def copy(self):
+        return CompositeProperty(deferred=self.deferred, group=self.group, composite_class=self.composite_class, *self.columns)
+
+    def getattr(self, object, column):
+        obj = getattr(object, self.key)
+        return self.get_col_value(column, obj)
+
+    def setattr(self, object, value, column):
+        obj = getattr(object, self.key, None)
+        if obj is None:
+            obj = self.composite_class(*[None for c in self.columns])
+        for a, b in zip(self.columns, value.__colset__()):
+            if a is column:
+                setattr(obj, b, value)
+
+    def compare(self, value):
+        return sql.and_([a==b for a, b in zip(self.columns, value.__colset__())])
+
+    def get_col_value(self, column, value):
+        for a, b in zip(self.columns, value.__colset__()):
+            if a is column:
+                return b
+
         
 class PropertyLoader(StrategizedProperty):
     """Describes an object property that holds a single item or list

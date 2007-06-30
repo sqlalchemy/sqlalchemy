@@ -67,6 +67,13 @@ class Query(object):
         ret = self._extension.get(self, ident, **kwargs)
         if ret is not mapper.EXT_PASS:
             return ret
+
+        # convert composite types to individual args
+        # TODO: account for the order of columns in the 
+        # ColumnProperty it corresponds to
+        if hasattr(ident, '__colset__'):
+            ident = ident.__colset__()
+
         key = self.mapper.identity_key(ident)
         return self._get(key, ident, **kwargs)
 
@@ -684,6 +691,7 @@ class Query(object):
         else:
             ident = util.to_list(ident)
         params = {}
+        
         for i, primary_key in enumerate(self.primary_key_columns):
             params[primary_key._label] = ident[i]
         try:

@@ -1,63 +1,77 @@
 0.4.0
 - orm
+
     - new collection_class api and implementation [ticket:213]
       collections are now instrumented via decorations rather than 
       proxying.  you can now have collections that manage their own
       membership, and your class instance will be directly exposed on the
       relation property.  the changes are transparent for most users.
-    - InstrumentedList (as it was) is removed, and relation properties no
-      longer have 'clear()', '.data', or any other added methods beyond those
-      provided by the collection type.  you are free, of course, to add them
-      to a custom class.
-    - __setitem__-like assignments now fire remove events for the existing
-      value, if any.
-    - dict-likes used as collection classes no longer need to change __iter__
-      semantics- itervalues() is used by default instead.  this is a backwards
-      incompatible change.
-    - subclassing dict for a mapped collection is no longer needed in most cases.
-      orm.collections provides canned implementations that key objects by a
-      specified column or a custom function of your choice.
-    - collection assignment now requires a compatible type- assigning None
-      to clear a collection or assigning a list to a dict collection will now
-      raise an argument error.
-    - AttributeExtension moved to interfaces, and .delete is now .remove
-      The event method signature has also been swapped around.
+        - InstrumentedList (as it was) is removed, and relation properties
+          no longer have 'clear()', '.data', or any other added methods
+          beyond those provided by the collection type. you are free, of
+          course, to add them to a custom class.
+        - __setitem__-like assignments now fire remove events for the
+          existing value, if any.
+        - dict-likes used as collection classes no longer need to change
+          __iter__ semantics- itervalues() is used by default instead. this
+          is a backwards incompatible change.
+        - subclassing dict for a mapped collection is no longer needed in
+          most cases. orm.collections provides canned implementations that
+          key objects by a specified column or a custom function of your
+          choice.
+        - collection assignment now requires a compatible type- assigning
+          None to clear a collection or assigning a list to a dict
+          collection will now raise an argument error.
+        - AttributeExtension moved to interfaces, and .delete is now
+          .remove The event method signature has also been swapped around.
+
     - major interface pare-down for Query:  all selectXXX methods
       are deprecated.  generative methods are now the standard
       way to do things, i.e. filter(), filter_by(), all(), one(),
       etc.  Deprecated methods are docstring'ed with their 
       new replacements.
-    - removed ancient query.select_by_attributename() capability.
-    - added "aliased joins" positional argument to the front of 
-      filter_by(). this allows auto-creation of joins that are aliased
-      locally to the individual filter_by() call.  This allows the 
-      auto-construction of joins which cross the same paths but
-      are querying divergent criteria.  ClauseElements at the front
-      of filter_by() are removed (use filter()).
+        - removed ancient query.select_by_attributename() capability.
+        - added "aliased joins" positional argument to the front of
+          filter_by(). this allows auto-creation of joins that are aliased
+          locally to the individual filter_by() call. This allows the
+          auto-construction of joins which cross the same paths but are
+          querying divergent criteria. ClauseElements at the front of
+          filter_by() are removed (use filter()).
+
+    - added composite column properties. using the composite(cls, *columns)
+      function inside of the "properties" dict, instances of cls will be
+      created/mapped to a single attribute, comprised of the values
+      correponding to *columns [ticket:211]
+
     - improved support for custom column_property() attributes which
       feature correlated subqueries...work better with eager loading now.
+
     - along with recent speedups to ResultProxy, total number of
       function calls significantly reduced for large loads.
       test/perf/masseagerload.py reports 0.4 as having the fewest number
       of function calls across all SA versions (0.1, 0.2, and 0.3)
+
     - primary key "collapse" behavior; the mapper will analyze all columns
-      in its given selectable for primary key "equivalence", that is, columns
-      which are equivalent via foreign key relationship or via an explicit
-      inherit_condition.  primarily for joined-table inheritance scenarios
-      where different named PK columns in inheriting tables should "collapse"
-      into a single-valued (or fewer-valued) primary key.  fixes things 
-      like [ticket:611].
+      in its given selectable for primary key "equivalence", that is,
+      columns which are equivalent via foreign key relationship or via an
+      explicit inherit_condition. primarily for joined-table inheritance
+      scenarios where different named PK columns in inheriting tables
+      should "collapse" into a single-valued (or fewer-valued) primary key.
+      fixes things like [ticket:611].
+
     - secondary inheritance loading: polymorphic mappers can be
       constructed *without* a select_table argument. inheriting mappers
       whose tables were not represented in the initial load will issue a
       second SQL query immediately, once per instance (i.e. not very
       efficient for large lists), in order to load the remaining
       columns.
-    - secondary inheritance loading can also move its second query into
-      a column- level "deferred" load, via the "polymorphic_fetch"
-      argument, which can be set to 'select' or 'deferred'
+        - secondary inheritance loading can also move its second query into
+          a column- level "deferred" load, via the "polymorphic_fetch"
+          argument, which can be set to 'select' or 'deferred'
+
     - added undefer_group() MapperOption, sets a set of "deferred"
       columns joined by a "group" to load as "undeferred".
+
 - sql
   - significant architectural overhaul to SQL elements (ClauseElement).  
     all elements share  a common "mutability" framework which allows a 

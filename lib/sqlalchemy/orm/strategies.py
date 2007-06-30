@@ -19,6 +19,7 @@ class ColumnLoader(LoaderStrategy):
         super(ColumnLoader, self).init()
         self.columns = self.parent_property.columns
         self._should_log_debug = logging.is_debug_enabled(self.logger)
+        self.is_composite = hasattr(self.parent_property, 'composite_class')
         
     def setup_query(self, context, eagertable=None, parentclauses=None, **kwargs):
         for c in self.columns:
@@ -28,12 +29,43 @@ class ColumnLoader(LoaderStrategy):
                 context.statement.append_column(c)
         
     def init_class_attribute(self):
+        if self.is_composite:
+            self._init_composite_attribute()
+        else:
+            self._init_scalar_attribute()
+
+    def _init_composite_attribute(self):
+        self.logger.info("register managed composite attribute %s on class %s" % (self.key, self.parent.class_.__name__))
+        def copy(obj):
+            return self.parent_property.composite_class(*obj.__colset__())
+        def compare(a, b):
+            for col, aprop, bprop in zip(self.columns, a.__colset__(), b.__colset__()):
+                if not col.type.compare_values(aprop, bprop):
+                    return False
+            else:
+                return True
+        sessionlib.attribute_manager.register_attribute(self.parent.class_, self.key, uselist=False, copy_function=copy, compare_function=compare, mutable_scalars=True)
+
+    def _init_scalar_attribute(self):
         self.logger.info("register managed attribute %s on class %s" % (self.key, self.parent.class_.__name__))
         coltype = self.columns[0].type
         sessionlib.attribute_manager.register_attribute(self.parent.class_, self.key, uselist=False, copy_function=coltype.copy_value, compare_function=coltype.compare_values, mutable_scalars=self.columns[0].type.is_mutable())
-
+        
     def create_row_processor(self, selectcontext, mapper, row):
-        if self.columns[0] in row:
+        if self.is_composite:
+            for c in self.columns:
+                if c not in row:
+                    break
+            else:
+                def execute(instance, row, isnew, ispostselect=None, **flags):
+                    if isnew or ispostselect:
+                        if self._should_log_debug:
+                            self.logger.debug("populating %s with %s/%s..." % (mapperutil.attribute_str(instance, self.key), row.__class__.__name__, self.columns[0].key))
+                        instance.__dict__[self.key] = self.parent_property.composite_class(*[row[c] for c in self.columns])
+                self.logger.debug("Returning active composite column fetcher for %s %s" % (mapper, self.key))
+                return (execute, None)
+                
+        elif self.columns[0] in row:
             def execute(instance, row, isnew, ispostselect=None, **flags):
                 if isnew or ispostselect:
                     if self._should_log_debug:
@@ -41,20 +73,20 @@ class ColumnLoader(LoaderStrategy):
                     instance.__dict__[self.key] = row[self.columns[0]]
             self.logger.debug("Returning active column fetcher for %s %s" % (mapper, self.key))
             return (execute, None)
-        else:
-            (hosted_mapper, needs_tables) = selectcontext.attributes.get(('polymorphic_fetch', mapper), (None, None))
-            if hosted_mapper is None:
-                return (None, None)
-            
-            if hosted_mapper.polymorphic_fetch == 'deferred':
-                def execute(instance, row, isnew, **flags):
-                    if isnew:
-                        sessionlib.attribute_manager.init_instance_attribute(instance, self.key, callable_=self._get_deferred_loader(instance, mapper, needs_tables))
-                self.logger.debug("Returning deferred column fetcher for %s %s" % (mapper, self.key))
-                return (execute, None)
-            else:  
-                self.logger.debug("Returning no column fetcher for %s %s" % (mapper, self.key))
-                return (None, None)
+
+        (hosted_mapper, needs_tables) = selectcontext.attributes.get(('polymorphic_fetch', mapper), (None, None))
+        if hosted_mapper is None:
+            return (None, None)
+        
+        if hosted_mapper.polymorphic_fetch == 'deferred':
+            def execute(instance, row, isnew, **flags):
+                if isnew:
+                    sessionlib.attribute_manager.init_instance_attribute(instance, self.key, callable_=self._get_deferred_loader(instance, mapper, needs_tables))
+            self.logger.debug("Returning deferred column fetcher for %s %s" % (mapper, self.key))
+            return (execute, None)
+        else:  
+            self.logger.debug("Returning no column fetcher for %s %s" % (mapper, self.key))
+            return (None, None)
 
     def _get_deferred_loader(self, instance, mapper, needs_tables):
         def load():
@@ -113,13 +145,15 @@ class DeferredColumnLoader(LoaderStrategy):
 
     def init(self):
         super(DeferredColumnLoader, self).init()
+        if hasattr(self.parent_property, 'composite_class'):
+            raise NotImplementedError("Deferred loading for composite types not implemented yet")
         self.columns = self.parent_property.columns
         self.group = self.parent_property.group
         self._should_log_debug = logging.is_debug_enabled(self.logger)
 
     def init_class_attribute(self):
         self.logger.info("register managed attribute %s on class %s" % (self.key, self.parent.class_.__name__))
-        sessionlib.attribute_manager.register_attribute(self.parent.class_, self.key, uselist=False, callable_=lambda i:self.setup_loader(i), copy_function=lambda x: self.columns[0].type.copy_value(x), compare_function=lambda x,y:self.columns[0].type.compare_values(x,y), mutable_scalars=self.columns[0].type.is_mutable())
+        sessionlib.attribute_manager.register_attribute(self.parent.class_, self.key, uselist=False, callable_=self.setup_loader, copy_function=self.columns[0].type.copy_value, compare_function=self.columns[0].type.compare_values, mutable_scalars=self.columns[0].type.is_mutable())
 
     def setup_query(self, context, **kwargs):
         if self.group is not None and context.attributes.get(('undefer', self.group), False):

@@ -678,7 +678,7 @@ class Mapper(object):
                 self.__log("adding ColumnProperty %s" % (column_key))
             elif isinstance(prop, ColumnProperty):
                 if prop.parent is not self:
-                    prop = ColumnProperty(deferred=prop.deferred, group=prop.group, *prop.columns)
+                    prop = prop.copy()
                     prop.set_parent(self)
                     self.__props[column_key] = prop
                 prop.columns.append(column)
@@ -1050,12 +1050,12 @@ class Mapper(object):
         if prop is None:
             return NO_ATTRIBUTE
         #print "get column attribute '%s' from instance %s" % (column.key, mapperutil.instance_str(obj))
-        return prop.getattr(obj)
+        return prop.getattr(obj, column)
 
     def set_attr_by_column(self, obj, column, value):
         """Set the value of an instance attribute using a Column as the key."""
 
-        self.columntoproperty[column][0].setattr(obj, value)
+        self.columntoproperty[column][0].setattr(obj, value, column)
 
     def save_obj(self, objects, uowtransaction, postupdate=False, post_update_cols=None, single=False):
         """Issue ``INSERT`` and/or ``UPDATE`` statements for a list of objects.
@@ -1181,7 +1181,7 @@ class Mapper(object):
                             if history:
                                 a = history.added_items()
                                 if len(a):
-                                    params[col.key] = a[0]
+                                    params[col.key] = prop.get_col_value(col, a[0])
                                     hasdata = True
                         else:
                             # doing an INSERT, non primary key col ?
