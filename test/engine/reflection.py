@@ -1,6 +1,6 @@
 from testbase import PersistTest
 import testbase
-
+import pickle
 import sqlalchemy.ansisql as ansisql
 
 from sqlalchemy import *
@@ -105,7 +105,7 @@ class ReflectionTest(PersistTest):
         finally:
             addresses.drop()
             users.drop()
-            
+    
     def testoverridecolumns(self):
         """test that you can override columns which contain foreign keys to other reflected tables"""
         meta = BoundMetaData(testbase.db)
@@ -329,49 +329,78 @@ class ReflectionTest(PersistTest):
             meta.drop_all()
 
             
-    def testtometadata(self):
-        meta = MetaData('md1')
-        meta2 = MetaData('md2')
+    def test_to_metadata(self):
+        meta = MetaData()
         
         table = Table('mytable', meta,
             Column('myid', Integer, primary_key=True),
-            Column('name', String, nullable=False),
+            Column('name', String(40), nullable=False),
             Column('description', String(30), CheckConstraint("description='hi'")),
-            UniqueConstraint('name')
+            UniqueConstraint('name'),
+            mysql_engine='InnoDB'
         )
         
         table2 = Table('othertable', meta,
             Column('id', Integer, primary_key=True),
-            Column('myid', Integer, ForeignKey('mytable.myid'))
+            Column('myid', Integer, ForeignKey('mytable.myid')),
+            mysql_engine='InnoDB'
             )
+        
+        def test_to_metadata():
+            meta2 = MetaData()
+            table_c = table.tometadata(meta2)
+            table2_c = table2.tometadata(meta2)
+            return (table_c, table2_c)
             
-        
-        table_c = table.tometadata(meta2)
-        table2_c = table2.tometadata(meta2)
+        def test_pickle():
+            meta.connect(testbase.db)
+            meta2 = pickle.loads(pickle.dumps(meta))
+            assert meta2.engine is None
+            return (meta2.tables['mytable'], meta2.tables['othertable'])
 
-        assert table is not table_c
-        assert table_c.c.myid.primary_key
-        assert not table_c.c.name.nullable 
-        assert table_c.c.description.nullable 
-        assert table.primary_key is not table_c.primary_key
-        assert [x.name for x in table.primary_key] == [x.name for x in table_c.primary_key]
-        assert list(table2_c.c.myid.foreign_keys)[0].column is table_c.c.myid
-        assert list(table2_c.c.myid.foreign_keys)[0].column is not table.c.myid
-        for c in table_c.c.description.constraints:
-            if isinstance(c, CheckConstraint):
-                break
-        else:
-            assert False
-        assert c.sqltext=="description='hi'"
+        def test_pickle_via_reflect():
+            # this is the most common use case, pickling the results of a
+            # database reflection
+            meta2 = MetaData(engine=testbase.db)
+            t1 = Table('mytable', meta2, autoload=True)
+            t2 = Table('othertable', meta2, autoload=True)
+            meta3 = pickle.loads(pickle.dumps(meta2))
+            assert meta3.engine is None
+            assert meta3.tables['mytable'] is not t1
+            return (meta3.tables['mytable'], meta3.tables['othertable'])
+            
+        meta.create_all(testbase.db)    
+        try:
+            for test, has_constraints in ((test_to_metadata, True), (test_pickle, True), (test_pickle_via_reflect, False)):
+                table_c, table2_c = test()
+                assert table is not table_c
+                assert table_c.c.myid.primary_key
+                assert not table_c.c.name.nullable 
+                assert table_c.c.description.nullable 
+                assert table.primary_key is not table_c.primary_key
+                assert [x.name for x in table.primary_key] == [x.name for x in table_c.primary_key]
+                assert list(table2_c.c.myid.foreign_keys)[0].column is table_c.c.myid
+                assert list(table2_c.c.myid.foreign_keys)[0].column is not table.c.myid
+                
+                # constraints dont get reflected for any dialect right now
+                if has_constraints:
+                    for c in table_c.c.description.constraints:
+                        if isinstance(c, CheckConstraint):
+                            break
+                    else:
+                        assert False
+                    assert c.sqltext=="description='hi'"
         
-        for c in table_c.constraints:
-            if isinstance(c, UniqueConstraint):
-                break
-        else:
-            assert False
-        assert c.columns.contains_column(table_c.c.name)
-        assert not c.columns.contains_column(table.c.name)
-        
+                    for c in table_c.constraints:
+                        if isinstance(c, UniqueConstraint):
+                            break
+                    else:
+                        assert False
+                    assert c.columns.contains_column(table_c.c.name)
+                    assert not c.columns.contains_column(table.c.name)
+        finally:
+            meta.drop_all(testbase.db)
+            
     # mysql throws its own exception for no such table, resulting in 
     # a sqlalchemy.SQLError instead of sqlalchemy.NoSuchTableError.
     # this could probably be fixed at some point.
