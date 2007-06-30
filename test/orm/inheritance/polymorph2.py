@@ -730,7 +730,7 @@ class GenerativeTest(testbase.AssertMixin):
             # into the WHERE criterion, using a correlated select. ticket #577 tracks 
             # that Query's adaptation of the WHERE clause does not dig into the 
             # mapped selectable itself, which permanently breaks the mapped selectable.
-            r = session.query(Person).filter(Car.c.owner == select([Car.c.owner], Car.c.owner==employee_join.c.person_id))
+            r = session.query(Person).filter(exists([Car.c.owner], Car.c.owner==employee_join.c.person_id))
             assert str(list(r)) == "[Engineer E4, field X, status Status dead]"
         
 class MultiLevelTest(testbase.ORMTest):
