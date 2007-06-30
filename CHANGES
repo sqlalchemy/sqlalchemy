@@ -151,6 +151,9 @@
       (i.e., if a textual execute() was issued).
 - postgres
     - fixed escaping of the modulo operator [ticket:624]
+    - added support for reflection of domains [ticket:570]
+    - types which are missing during reflection resolve to Null type
+      instead of raising an error
 - sqlite
     - sqlite better handles datetime/date/time objects mixed and matched
       with various Date/Time/DateTime columns

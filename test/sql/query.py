@@ -149,26 +149,6 @@ class QueryTest(PersistTest):
         c = testbase.db.connect()
         assert c.execute(s, id=7).fetchall()[0]['user_id'] == 7
 
-    @testbase.supported('postgres')
-    def testschema(self):
-        meta1 = BoundMetaData(testbase.db)
-        test_table = Table('my_table', meta1,
-                    Column('id', Integer, primary_key=True),
-                    Column('data', String(20), nullable=False),
-                    schema='alt_schema'
-                 )
-        test_table.create()
-        try:
-            # plain insert
-            test_table.insert().execute(data='test')
-
-            meta2 = BoundMetaData(testbase.db)
-            test_table = Table('my_table', meta2, autoload=True, schema='alt_schema')
-            test_table.insert().execute(data='test')
-
-        finally:
-            test_table.drop()
-
     def test_repeated_bindparams(self):
         """test that a BindParam can be used more than once.  
         this should be run for dbs with both positional and named paramstyles."""
@@ -355,6 +335,7 @@ class QueryTest(PersistTest):
             
     @testbase.supported('postgres')
     def test_functions_with_cols(self):
+        # TODO: shouldnt this work on oracle too ?
         x = testbase.db.func.current_date().execute().scalar()
         y = testbase.db.func.current_date().select().execute().scalar()
         z = testbase.db.func.current_date().scalar()

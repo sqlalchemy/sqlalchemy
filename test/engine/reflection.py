@@ -110,23 +110,6 @@ class ReflectionTest(PersistTest):
             addresses.drop()
             users.drop()
             
-    @testbase.supported('postgres')
-    def testpgdates(self):
-        m1 = BoundMetaData(testbase.db)
-        t1 = Table('pgdate', m1, 
-            Column('date1', DateTime(timezone=True)),
-            Column('date2', DateTime(timezone=False))
-            )
-        m1.create_all()
-        try:
-            m2 = BoundMetaData(testbase.db)
-            t2 = Table('pgdate', m2, autoload=True)
-            assert t2.c.date1.type.timezone is True
-            assert t2.c.date2.type.timezone is False
-        finally:
-            m1.drop_all()
-            
-            
     def testoverridecolumns(self):
         """test that you can override columns which contain foreign keys to other reflected tables"""
         meta = BoundMetaData(testbase.db)
@@ -241,17 +224,6 @@ class ReflectionTest(PersistTest):
         finally:
             table.drop(checkfirst=True)
             
-    @testbase.supported('postgres')
-    def testredundantsequence(self):
-        """test that sequences get checked for, before create"""
-        meta1 = BoundMetaData(testbase.db)
-        t = Table('mytable', meta1, 
-            Column('col1', Integer, Sequence('fooseq')))
-        try:
-            testbase.db.execute("CREATE SEQUENCE fooseq")
-            t.create(checkfirst=True)
-        finally:
-            t.drop(checkfirst=True)
     
     def test_pks_not_uniques(self):
         """test that primary key reflection not tripped up by unique indexes"""
@@ -531,36 +503,6 @@ class SchemaTest(PersistTest):
         assert buf.index("CREATE TABLE someschema.table1") > -1
         assert buf.index("CREATE TABLE someschema.table2") > -1
     
-    @testbase.supported('postgres')
-    def testpg(self):
-        """note: this test requires that the 'alt_schema' schema be separate and accessible by the test user"""
-        
-        meta1 = BoundMetaData(testbase.db)
-        users = Table('users', meta1,
-            Column('user_id', Integer, primary_key = True),
-            Column('user_name', String(30), nullable = False),
-            schema="alt_schema"
-            )
-
-        addresses = Table('email_addresses', meta1,
-            Column('address_id', Integer, primary_key = True),
-            Column('remote_user_id', Integer, ForeignKey(users.c.user_id)),
-            Column('email_address', String(20)),
-            schema="alt_schema"
-        )
-        meta1.create_all()
-        try:
-            meta2 = BoundMetaData(testbase.db)
-            addresses = Table('email_addresses', meta2, autoload=True, schema="alt_schema")
-            users = Table('users', meta2, mustexist=True, schema="alt_schema")
-
-            print users
-            print addresses
-            j = join(users, addresses)
-            print str(j.onclause)
-            self.assert_((users.c.user_id==addresses.c.remote_user_id).compare(j.onclause))
-        finally:
-            meta1.drop_all()
         
 if __name__ == "__main__":
     testbase.main()        
