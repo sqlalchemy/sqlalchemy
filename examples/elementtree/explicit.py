@@ -90,7 +90,7 @@ class HierarchicalLoader(MapperExtension):
 
 # setup mappers.  Document will eagerly load a list of _Node objects.
 mapper(Document, documents, properties={
-    '_root':relation(_Node, lazy=False, backref='document', cascade="all, delete-orphan")
+    '_root':relation(_Node, lazy=False, cascade="all")
 })
 
 # the _Node objects change the way they load so that a list of _Nodes will organize
@@ -98,8 +98,9 @@ mapper(Document, documents, properties={
 # nodes being hierarchical as well; relation() always applies at least ROWID/primary key
 # ordering to rows which will suffice.
 mapper(_Node, elements, properties={
-    'children':relation(_Node, lazy=None),  # doesnt load; loading is handled by the relation to the Document
-    'attributes':relation(_Attribute, lazy=False) # eagerly load attributes
+    'children':relation(_Node, lazy=None, cascade="all"),  # doesnt load; loading is handled by the relation to the Document
+    'attributes':relation(_Attribute, lazy=False, cascade="all, delete-orphan"), # eagerly load attributes
+    'document':relation(Document, lazy=None) # allow backwards attachment of _Node to Document.
 }, extension=HierarchicalLoader())
 
 mapper(_Attribute, attributes)
@@ -169,4 +170,5 @@ document = session.query(Document).filter_by(filename="test.xml").first()
 
 # print
 document.element.write(sys.stdout)
+
 
