@@ -32,6 +32,8 @@
     - MetaData and all SchemaItems are safe to use with pickle.  slow
       table reflections can be dumped into a pickled file to be reused later.
       Just reconnect the engine to the metadata after unpickling. [ticket:619]
+    - added a mutex to QueuePool's "overflow" calculation to prevent a race 
+      condition that can bypass max_overflow
     - fixed grouping of compound selects to give correct results. will break
       on sqlite in some cases, but those cases were producing incorrect
       results anyway, sqlite doesn't support grouped compound selects
