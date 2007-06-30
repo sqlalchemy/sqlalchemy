@@ -11,6 +11,8 @@ except ImportError:
     import dummy_threading as threading
 
 import md5
+import sys
+import warnings
 
 import __builtin__
 
@@ -126,6 +128,13 @@ def duck_type_collection(col, default=None):
         return dict
     else:
         return default
+    
+def warn_exception(func):
+    """executes the given function, catches all exceptions and converts to a warning."""
+    try:
+        return func()
+    except:
+        warnings.warn(RuntimeWarning("%s('%s') ignored" % sys.exc_info()[0:2]))
     
 class SimpleProperty(object):
     """A *default* property accessor."""

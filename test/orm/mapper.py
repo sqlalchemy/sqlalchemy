@@ -178,19 +178,16 @@ class MapperTest(MapperSuperTest):
         except Exception, e:
             assert e is ex
 
-        class Bar(object):
-            def __init__(self):
-                object_session(self).expunge(self)
-                raise ex
-
-        mapper(Bar, orders)
-
+        def bad_expunge(foo):
+            raise Exception("this exception should be stated as a warning")
+            
+        sess.expunge = bad_expunge
         try:
-            Bar(_sa_session=sess)
+            Foo(_sa_session=sess)
             assert False
         except Exception, e:
             assert e is ex
-            
+        
     def testrefresh_lazy(self):
         """test that when a lazy loader is set as a trigger on an object's attribute (at the attribute level, not the class level), a refresh() operation doesnt fire the lazy loader or create any problems"""
         s = create_session()
