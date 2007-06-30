@@ -1,3 +1,5 @@
+"""tests general mapper operations with an emphasis on selecting/loading"""
+
 from testbase import PersistTest, AssertMixin
 import testbase
 import unittest, sys, os
@@ -7,8 +9,6 @@ import sqlalchemy.exceptions as exceptions
 from sqlalchemy.ext.sessioncontext import SessionContext, SessionContextExt
 from tables import *
 import tables
-
-"""tests general mapper operations with an emphasis on selecting/loading"""
 
 class MapperSuperTest(AssertMixin):
     def setUpAll(self):
@@ -853,7 +853,6 @@ class NoLoadTest(MapperSuperTest):
             {'user_id' : 7, 'addresses' : (Address, [{'address_id' : 1}])},
             )
 
-
 class MapperExtensionTest(MapperSuperTest):
     def testcreateinstance(self):
         class Ext(MapperExtension):
@@ -867,82 +866,6 @@ class MapperExtensionTest(MapperSuperTest):
         q = create_session().query(m)
         l = q.select();
         self.assert_result(l, User, *user_address_result)
-    
-class EagerTest(MapperSuperTest):
-        
-    def testwithrepeat(self):
-        """tests a one-to-many eager load where we also query on joined criterion, where the joined
-        criterion is using the same tables that are used within the eager load.  the mapper must insure that the 
-        criterion doesnt interfere with the eager load criterion."""
-        m = mapper(User, users, properties = dict(
-            addresses = relation(mapper(Address, addresses), primaryjoin = users.c.user_id==addresses.c.user_id, lazy = False)
-        ))
-        q = create_session().query(m)
-        l = q.select(and_(addresses.c.email_address == 'ed@lala.com', addresses.c.user_id==users.c.user_id))
-        self.assert_result(l, User,
-            {'user_id' : 8, 'addresses' : (Address, [{'address_id' : 2, 'email_address':'ed@wood.com'}, {'address_id':3, 'email_address':'ed@bettyboop.com'}, {'address_id':4, 'email_address':'ed@lala.com'}])},
-        )
-        
-    
-    def testonselect(self):
-        """test eager loading of a mapper which is against a select"""
-        
-        s = select([orders], orders.c.isopen==1).alias('openorders')
-        print "SELECT:", id(s), str(s)
-        mapper(Order, s, properties={
-            'user':relation(User, lazy=False)
-        })
-        mapper(User, users)
-        
-        q = create_session().query(Order)
-        self.assert_result(q.list(), Order,
-            {'order_id':3, 'user' : (User, {'user_id':7})},
-            {'order_id':4, 'user' : (User, {'user_id':9})},
-        )
-
-        q = q.select_from(s.outerjoin(orderitems)).filter(orderitems.c.item_name != 'item 2')
-        self.assert_result(q.list(), Order,
-            {'order_id':3, 'user' : (User, {'user_id':7})},
-        )
-        
-        
-    def testmulti(self):
-        """tests eager loading with two relations simultaneously"""
-        m = mapper(User, users, properties = dict(
-            addresses = relation(mapper(Address, addresses), primaryjoin = users.c.user_id==addresses.c.user_id, lazy = False),
-            orders = relation(mapper(Order, orders), lazy = False),
-        ))
-        q = create_session().query(m)
-        l = q.select()
-        self.assert_result(l, User,
-            {'user_id' : 7, 
-                'addresses' : (Address, [{'address_id' : 1}]),
-                'orders' : (Order, [{'order_id' : 1}, {'order_id' : 3},{'order_id' : 5},])
-            },
-            {'user_id' : 8, 
-                'addresses' : (Address, [{'address_id' : 2}, {'address_id' : 3}, {'address_id' : 4}]),
-                'orders' : (Order, [])
-            },
-            {'user_id' : 9, 
-                'addresses' : (Address, []),
-                'orders' : (Order, [{'order_id' : 2},{'order_id' : 4}])
-            }
-            )
-
-    def testnested(self):
-        """tests eager loading of a parent item with two types of child items,
-        where one of those child items eager loads its own child items."""
-        ordermapper = mapper(Order, orders, properties = dict(
-                items = relation(mapper(Item, orderitems), lazy = False)
-            ))
-
-        m = mapper(User, users, properties = dict(
-            addresses = relation(mapper(Address, addresses), lazy = False),
-            orders = relation(ordermapper, primaryjoin = users.c.user_id==orders.c.user_id, lazy = False),
-        ))
-        q = create_session().query(m)
-        l = q.select()
-        self.assert_result(l, User, *user_all_result)
     
         
 

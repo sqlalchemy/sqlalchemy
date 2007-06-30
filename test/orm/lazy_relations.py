@@ -145,12 +145,10 @@ class LazyTest(QueryTest):
 
         if testbase.db.engine.name == 'mssql':
             l = q.limit(2).all()
-            assert self.user_all_result[:2] == l
+            assert fixtures.user_all_result[:2] == l
         else:        
             l = q.limit(2).offset(1).all()
-            print l
-            print self.user_all_result[1:3]
-            assert self.user_all_result[1:3] == l
+            assert fixtures.user_all_result[1:3] == l
 
     def test_distinct(self):
         mapper(Item, items)
@@ -170,7 +168,7 @@ class LazyTest(QueryTest):
         s = union_all(u2.select(use_labels=True), u2.select(use_labels=True), u2.select(use_labels=True)).alias('u')
         print [key for key in s.c.keys()]
         l = q.filter(s.c.u2_id==User.c.id).distinct().all()
-        assert self.user_all_result == l
+        assert fixtures.user_all_result == l
 
     def test_one_to_many_scalar(self):
         mapper(User, users, properties = dict(
@@ -225,9 +223,9 @@ class LazyTest(QueryTest):
         ))
         
         q = create_session().query(Item)
-        assert self.item_keyword_result == q.all()
+        assert fixtures.item_keyword_result == q.all()
 
-        assert self.item_keyword_result[0:2] == q.join('keywords').filter(keywords.c.name == 'red').all()
+        assert fixtures.item_keyword_result[0:2] == q.join('keywords').filter(keywords.c.name == 'red').all()
 
     def test_uses_get(self):
         """test that a simple many-to-one lazyload optimizes to use query.get()."""

@@ -12,9 +12,7 @@ def suite():
         'orm.mapper',
         'orm.generative',
         'orm.lazytest1',
-        'orm.eagertest1',
-        'orm.eagertest2',
-        'orm.eagertest3',
+        'orm.assorted_eager',
         
         'orm.sessioncontext', 
         'orm.unitofwork',
