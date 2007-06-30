@@ -3,6 +3,8 @@ represented in distinct database rows.  This allows objects to be created with d
 fields that are all persisted in a normalized fashion."""
 
 from sqlalchemy import *
+from sqlalchemy.orm import *
+from sqlalchemy.orm.collections import mapped_collection
 import datetime
 
 e = BoundMetaData('sqlite://', echo=True)
@@ -37,14 +39,6 @@ entity_values = Table('entity_values', e,
 
 e.create_all()
 
-class EntityDict(dict):
-    """this is a dictionary that implements an append() and an __iter__ method.
-    such a dictionary can be used with SQLAlchemy list-based attributes."""
-    def append(self, entityvalue):
-        self[entityvalue.field.name] = entityvalue
-    def __iter__(self):
-        return iter(self.values())
-    
 class Entity(object):
     """represents an Entity.  The __getattr__ method is overridden to search the
     object's _entities dictionary for the appropriate value, and the __setattribute__
@@ -123,7 +117,7 @@ mapper(
 )
 
 mapper(Entity, entities, properties = {
-    '_entities' : relation(EntityValue, lazy=False, cascade='save-update', collection_class=EntityDict)
+    '_entities' : relation(EntityValue, lazy=False, cascade='all', collection_class=mapped_collection(lambda entityvalue: entityvalue.field.name))
 })
 
 # create two entities.  the objects can be used about as regularly as
@@ -174,3 +168,7 @@ session.clear()
 entities = session.query(Entity).select()
 for entity in entities:
     print entity.title, entity.name, entity.price, entity.data
+
+for entity in entities:
+    session.delete(entity)
+session.flush()

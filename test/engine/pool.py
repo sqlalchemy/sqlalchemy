@@ -1,7 +1,7 @@
 import testbase
 from testbase import PersistTest
 import unittest, sys, os, time
-import threading
+import threading, thread
 
 import sqlalchemy.pool as pool
 import sqlalchemy.exceptions as exceptions
@@ -129,6 +129,7 @@ class PoolTest(PersistTest):
             assert int(time.time() - now) == 2
 
     def _test_overflow(self, thread_count, max_overflow):
+        # i cant really get this to fail on OSX.  linux? windows ?
         p = pool.QueuePool(creator=lambda: mock_dbapi.connect('foo.db'),
                            pool_size=3, timeout=2,
                            max_overflow=max_overflow)
@@ -138,6 +139,7 @@ class PoolTest(PersistTest):
                 try:
                     con = p.connect()
                     peaks.append(p.overflow())
+                    time.sleep(.005)
                     con.close()
                     del con
                 except exceptions.TimeoutError:
@@ -153,10 +155,10 @@ class PoolTest(PersistTest):
         self.assert_(max(peaks) <= max_overflow)
 
     def test_no_overflow(self):
-        self._test_overflow(20, 0)
+        self._test_overflow(40, 0)
 
     def test_max_overflow(self):
-        self._test_overflow(20, 5)
+        self._test_overflow(40, 5)
         
     def test_mixed_close(self):
         p = pool.QueuePool(creator = lambda: mock_dbapi.connect('foo.db'), pool_size = 3, max_overflow = -1, use_threadlocal = True)
