@@ -129,8 +129,11 @@ class PoolTest(PersistTest):
             assert int(time.time() - now) == 2
 
     def _test_overflow(self, thread_count, max_overflow):
-        # i cant really get this to fail on OSX.  linux? windows ?
-        p = pool.QueuePool(creator=lambda: mock_dbapi.connect('foo.db'),
+        def creator():
+            time.sleep(.05)
+            return mock_dbapi.connect('foo.db')
+            
+        p = pool.QueuePool(creator=creator,
                            pool_size=3, timeout=2,
                            max_overflow=max_overflow)
         peaks = []
@@ -138,8 +141,8 @@ class PoolTest(PersistTest):
             for i in range(10):
                 try:
                     con = p.connect()
-                    peaks.append(p.overflow())
                     time.sleep(.005)
+                    peaks.append(p.overflow())
                     con.close()
                     del con
                 except exceptions.TimeoutError:

@@ -124,6 +124,8 @@ def clear_mappers():
             if hasattr(mapper.class_, 'c'):
                 del mapper.class_.c
         mapper_registry.clear()
+        # TODO: either dont use ArgSingleton, or
+        # find a way to clear only ClassKey instances from it
         sautil.ArgSingleton.instances.clear()
     finally:
         mapperlib._COMPILE_MUTEX.release()
