@@ -12,6 +12,7 @@ except ImportError:
 
 import md5
 import sys
+import warnings
 import __builtin__
 
 try:
@@ -157,6 +158,13 @@ def duck_type_collection(specimen, default=None):
         return dict
     else:
         return default
+
+def warn_exception(func, *args, **kwargs):
+    """executes the given function, catches all exceptions and converts to a warning."""
+    try:
+        return func(*args, **kwargs)
+    except:
+        warnings.warn(RuntimeWarning("%s('%s') ignored" % sys.exc_info()[0:2]))
     
 class SimpleProperty(object):
     """A *default* property accessor."""

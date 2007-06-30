@@ -145,15 +145,14 @@ class MapperTest(MapperSuperTest):
         except Exception, e:
             assert e is ex
 
-        class Bar(object):
-            def __init__(self):
-                object_session(self).expunge(self)
-                raise ex
+        clear_mappers()
+        mapper(Foo, users, extension=SessionContextExt(SessionContext()))
+        def bad_expunge(foo):
+            raise Exception("this exception should be stated as a warning")
 
-        mapper(Bar, orders, extension=SessionContextExt(SessionContext()))
-
+        sess.expunge = bad_expunge
         try:
-            Bar(_sa_session=sess)
+            Foo(_sa_session=sess)
             assert False
         except Exception, e:
             assert e is ex

@@ -760,12 +760,11 @@ class Mapper(object):
             if oldinit is not None:
                 try:
                     oldinit(instance, *args, **kwargs)
-                except Exception, e:
-                    try:
-                        self.extension.init_failed(self, self.class_, instance, args, kwargs)
-                    except:
-                        pass # raise original exception instead
-                    raise e
+                except:
+                    # call init_failed but suppress exceptions into warnings so that original __init__ 
+                    # exception is raised
+                    util.warn_exception(self.extension.init_failed, self, self.class_, instance, args, kwargs)
+                    raise
 
         # override oldinit, ensuring that its not already a Mapper-decorated init method
         if oldinit is None or not hasattr(oldinit, '_oldinit'):
