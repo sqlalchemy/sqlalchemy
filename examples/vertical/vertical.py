@@ -123,7 +123,7 @@ mapper(
 )
 
 mapper(Entity, entities, properties = {
-    '_entities' : relation(EntityValue, lazy=False, cascade='save-update', collection_class=EntityDict)
+    '_entities' : relation(EntityValue, lazy=False, cascade='all', collection_class=EntityDict)
 })
 
 # create two entities.  the objects can be used about as regularly as
@@ -174,3 +174,7 @@ session.clear()
 entities = session.query(Entity).select()
 for entity in entities:
     print entity.title, entity.name, entity.price, entity.data
+
+for entity in entities:
+    session.delete(entity)
+session.flush()
