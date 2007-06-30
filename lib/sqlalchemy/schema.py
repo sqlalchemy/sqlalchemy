@@ -1066,6 +1066,14 @@ class MetaData(SchemaItem):
         if engine or url:
             self.connect(engine or url, **kwargs)
 
+    def __getstate__(self):
+        return {'tables':self.tables, 'casesensitive':self._case_sensitive_setting}
+
+    def __setstate__(self, state):
+        self.tables = state['tables']
+        self._case_sensitive_setting = state['casesensitive']
+        self._engine = None
+        
     def is_bound(self):
         """return True if this MetaData is bound to an Engine."""
         return self._engine is not None

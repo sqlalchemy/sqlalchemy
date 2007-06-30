@@ -52,7 +52,12 @@ class TypeEngine(AbstractType):
             return self._impl_dict.setdefault(dialect, dialect.type_descriptor(self))
         except KeyError:
             return self._impl_dict.setdefault(dialect, dialect.type_descriptor(self))
-
+    
+    def __getstate__(self):
+        d = self.__dict__.copy()
+        d['_impl_dict'] = {}
+        return d
+        
     def get_col_spec(self):
         raise NotImplementedError()
 
