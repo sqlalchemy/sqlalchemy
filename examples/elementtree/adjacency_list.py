@@ -34,6 +34,7 @@ meta.engine = 'sqlite://'
 documents = Table('documents', meta,
     Column('document_id', Integer, primary_key=True),
     Column('filename', String(30), unique=True),
+    Column('element_id', Integer, ForeignKey('elements.element_id'))
 )
 
 # stores XML nodes in an adjacency list model.  This corresponds to 
@@ -41,7 +42,6 @@ documents = Table('documents', meta,
 elements = Table('elements', meta,
     Column('element_id', Integer, primary_key=True),
     Column('parent_id', Integer, ForeignKey('elements.element_id')),
-    Column('document_id', Integer, ForeignKey('documents.document_id')),
     Column('tag', Unicode(30), nullable=False),
     Column('text', Unicode),
     Column('tail', Unicode)
@@ -87,33 +87,15 @@ class _Attribute(object):
         self.name = name
         self.value = value
 
-# HierarchicalLoader class.  overrides mapper append() to produce a hierarchical
-# structure as rows are received, allowing us to query the full list of 
-# adjacency-list rows in one query
-class HierarchicalLoader(MapperExtension):
-    def append_result(self, mapper, selectcontext, row, instance, result, **flags):
-        if instance.parent_id is None:
-            result.append(instance)
-        else:
-            if flags['isnew'] or selectcontext.populate_existing:
-                parentnode = selectcontext.identity_map[mapper.identity_key(instance.parent_id)]
-                parentnode.children.append(instance)
-        return False
-
 # setup mappers.  Document will eagerly load a list of _Node objects.
 mapper(Document, documents, properties={
     '_root':relation(_Node, lazy=False, cascade="all")
 })
 
-# the _Node objects change the way they load so that a list of _Nodes will organize
-# themselves hierarchically using the HierarchicalLoader.  this depends on the ordering of
-# nodes being hierarchical as well; relation() always applies at least ROWID/primary key
-# ordering to rows which will suffice.
 mapper(_Node, elements, properties={
-    'children':relation(_Node, lazy=None, cascade="all"),  # doesnt load; loading is handled by the relation to the Document
+    'children':relation(_Node, cascade="all"),  
     'attributes':relation(_Attribute, lazy=False, cascade="all, delete-orphan"), # eagerly load attributes
-    'document':relation(Document, lazy=None) # allow backwards attachment of _Node to Document.
-}, extension=HierarchicalLoader())
+})
 
 mapper(_Attribute, attributes)
 
@@ -141,7 +123,7 @@ class ElementTreeMarshal(object):
                 traverse(child, parent=elem)
             return elem
 
-        document._element = ElementTree.ElementTree(traverse(document._root[0]))
+        document._element = ElementTree.ElementTree(traverse(document._root))
         return document._element
     
     def __set__(self, document, element):
@@ -150,12 +132,11 @@ class ElementTreeMarshal(object):
             n.tag = node.tag
             n.text = node.text
             n.tail = node.tail
-            n.document = document
             n.children = [traverse(n2) for n2 in node]
             n.attributes = [_Attribute(k, v) for k, v in node.attrib.iteritems()]
             return n
 
-        document._root.append(traverse(element.getroot()))
+        document._root = traverse(element.getroot())
         document._element = element
     
     def __delete__(self, document):
