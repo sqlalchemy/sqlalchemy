@@ -6,10 +6,11 @@ uses pickle to accomplish the same task.  Note that the usage of both
 styles of persistence are identical, as is the structure of the main Document class.
 """
 
+################################# PART I - Imports/Coniguration ###########################################
 from sqlalchemy import *
 from sqlalchemy.orm import *
 
-import sys, os
+import sys, os, StringIO, re
 
 import logging
 logging.basicConfig()
@@ -27,6 +28,8 @@ from elementtree.ElementTree import Element, SubElement
 meta = MetaData()
 meta.engine = 'sqlite://'
 
+################################# PART II - Table Metadata ###########################################
+    
 # stores a top level record of an XML document.  
 documents = Table('documents', meta,
     Column('document_id', Integer, primary_key=True),
@@ -53,12 +56,21 @@ attributes = Table('attributes', meta,
 
 meta.create_all()
 
+#################################### PART III - Model #############################################
+
 # our document class.  contains a string name,
 # and the ElementTree root element.  
 class Document(object):
     def __init__(self, name, element):
         self.filename = name
         self.element = element
+        
+    def __str__(self):
+        buf = StringIO.StringIO()
+        self.element.write(buf)
+        return buf.getvalue()
+
+#################################### PART IV - Persistence Mapping ###################################
 
 # Node class.  a non-public class which will represent 
 # the DB-persisted Element/SubElement object.  We cannot create mappers for
@@ -153,22 +165,70 @@ class ElementTreeMarshal(object):
 # override Document's "element" attribute with the marshaller.
 Document.element = ElementTreeMarshal()
 
-###### time to test ! #########
+########################################### PART V - Basic Persistence Example ############################
 
-# get ElementTree document
-filename = os.path.join(os.path.dirname(sys.argv[0]), "test.xml")
-doc = ElementTree.parse(filename)
-    
+line = "\n--------------------------------------------------------"
+
 # save to DB
 session = create_session()
-session.save(Document("test.xml", doc))
+
+# get ElementTree documents
+for file in ('test.xml', 'test2.xml', 'test3.xml'):
+    filename = os.path.join(os.path.dirname(sys.argv[0]), file)
+    doc = ElementTree.parse(filename)
+    session.save(Document(file, doc))
+
+print "\nSaving three documents...", line
 session.flush()
+print "Done."
 
 # clear session (to illustrate a full load), restore
 session.clear()
+
+print "\nFull text of document 'text.xml':", line
 document = session.query(Document).filter_by(filename="test.xml").first()
 
-# print
-document.element.write(sys.stdout)
+print document
 
+############################################ PART VI - Searching for Paths #######################################
+
+# manually search for a document which contains "/somefile/header/field1:hi"
+print "\nManual search for /somefile/header/field1=='hi':", line
+n1 = elements.alias('n1')
+n2 = elements.alias('n2')
+n3 = elements.alias('n3')
+j = documents.join(n1).join(n2, n1.c.element_id==n2.c.parent_id).join(n3, n2.c.element_id==n3.c.parent_id)
+d = session.query(Document).select_from(j).filter(n1.c.tag=='somefile').filter(n2.c.tag=='header').filter(and_(n3.c.tag=='field1', n3.c.text=='hi')).one()
+print d
+
+# generalize the above approach into an extremely impoverished xpath function:
+def find_document(path, compareto):
+    j = documents
+    prev_elements = None
+    query = session.query(Document)
+    for i, match in enumerate(re.finditer(r'/([\w_]+)(?:\[@([\w_]+)(?:=(.*))?\])?', path)):
+        (token, attrname, attrvalue) = match.group(1, 2, 3)
+        a = elements.alias("n%d" % i)
+        query = query.filter(a.c.tag==token)
+        if attrname:
+            attr_alias = attributes.alias('a%d' % i)
+            if attrvalue:
+                query = query.filter(and_(a.c.element_id==attr_alias.c.element_id, attr_alias.c.name==attrname, attr_alias.c.value==attrvalue))
+            else:
+                query = query.filter(and_(a.c.element_id==attr_alias.c.element_id, attr_alias.c.name==attrname))
+        if prev_elements is not None:
+            j = j.join(a, prev_elements.c.element_id==a.c.parent_id)
+        else:
+            j = j.join(a)
+        prev_elements = a
+    return query.options(lazyload('_root')).select_from(j).filter(prev_elements.c.text==compareto).all()
+
+for path, compareto in (
+        ('/somefile/header/field1', 'hi'),
+        ('/somefile/field1', 'hi'),
+        ('/somefile/header/field2', 'there'),
+        ('/somefile/header/field2[@attr=foo]', 'there')
+    ):
+    print "\nDocuments containing '%s=%s':" % (path, compareto), line
+    print [d.filename for d in find_document(path, compareto)]
 
