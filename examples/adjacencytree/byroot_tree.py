@@ -4,7 +4,7 @@ advantage of a custom MapperExtension to assemble incoming nodes into their corr
 
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy.orm.collections import MappedCollection, collection_adapter
+from sqlalchemy.orm.collections import mapped_collection
 from sqlalchemy.util import OrderedDict
 
 engine = create_engine('sqlite:///:memory:', echo=True)
@@ -30,13 +30,6 @@ treedata = Table(
 )
 
 
-class NodeList(OrderedDict, MappedCollection):
-    """Mix OrderedDict and MappedCollection to create a dict-like collection class that keys off node names."""
-
-    def __init__(self, *args, **kw):
-        MappedCollection.__init__(self, keyfunc=lambda node: node.name)
-        OrderedDict.__init__(self, *args, **kw)
-
 class TreeNode(object):
     """a hierarchical Tree class, which adds the concept of a "root node".  The root is 
     the topmost node in a tree, or in other words a node whose parent ID is NULL.  
@@ -45,13 +38,7 @@ class TreeNode(object):
     
     def __init__(self, name):
         self.name = name
-        self.children = NodeList()
         self.root = self
-        self.parent = None
-        self.id = None
-        self.data =None
-        self.parent_id = None
-        self.root_id=None
 
     def _set_root(self, root):
         self.root = root
@@ -61,7 +48,6 @@ class TreeNode(object):
     def append(self, node):
         if isinstance(node, str):
             node = TreeNode(node)
-        node.parent = self
         node._set_root(self.root)
         self.children.append(node)
 
@@ -106,9 +92,7 @@ class TreeLoader(MapperExtension):
         else:
             if isnew or selectcontext.populate_existing:
                 parentnode = selectcontext.identity_map[mapper.identity_key(instance.parent_id)]
-                collection_adapter(parentnode.children).append_without_event(instance)
-        # fire off lazy loader before the instance is part of the session
-        instance.children
+                parentnode.children.append(instance)
         return False
             
 class TreeData(object):
@@ -132,12 +116,19 @@ mapper(TreeNode, trees, properties=dict(
     name=trees.c.node_name,
     parent_id=trees.c.parent_node_id,
     root_id=trees.c.root_node_id,
-    root=relation(TreeNode, primaryjoin=trees.c.root_node_id==trees.c.node_id, remote_side=trees.c.node_id, lazy=None, uselist=False),
-    children=relation(TreeNode, primaryjoin=trees.c.parent_node_id==trees.c.node_id, lazy=None, uselist=True, cascade="delete,save-update", collection_class=NodeList),
-    data=relation(mapper(TreeData, treedata, properties=dict(id=treedata.c.data_id)), cascade="delete,delete-orphan,save-update", lazy=False)
+    root=relation(TreeNode, primaryjoin=trees.c.root_node_id==trees.c.node_id, remote_side=trees.c.node_id, lazy=None),
+    children=relation(TreeNode, 
+        primaryjoin=trees.c.parent_node_id==trees.c.node_id, 
+        lazy=None, 
+        cascade="all", 
+        collection_class=mapped_collection(lambda n:n.name),
+        backref=backref('parent', primaryjoin=trees.c.parent_node_id==trees.c.node_id, remote_side=trees.c.node_id)
+        ),
+    data=relation(TreeData, cascade="all, delete-orphan", lazy=False)
     
 ), extension = TreeLoader())
 
+mapper(TreeData, treedata, properties={'id':treedata.c.data_id})
 
 session = create_session()
 
@@ -174,6 +165,8 @@ node.append('node4')
 node.children['node4'].append('subnode3')
 node.children['node4'].append('subnode4')
 node.children['node4'].children['subnode3'].append('subsubnode1')
+
+session.delete(node.children['node1'])
 del node.children['node1']
 
 print "\n\n\n----------------------------"
