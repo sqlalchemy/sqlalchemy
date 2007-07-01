@@ -18,7 +18,7 @@ logging.basicConfig()
 #logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 # uncomment to show SQL statements and result sets
-#logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
+logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
 
 
 from elementtree import ElementTree
@@ -86,22 +86,11 @@ class _Attribute(object):
         self.name = name
         self.value = value
 
-# HierarchicalLoader class.  overrides mapper append() to produce a hierarchical
-# structure as rows are received, allowing us to query the full list of 
-# adjacency-list rows in one query
-class HierarchicalLoader(MapperExtension):
-    def append_result(self, mapper, selectcontext, row, instance, result, **flags):
-        if instance.parent_id is None:
-            result.append(instance)
-        else:
-            if flags['isnew'] or selectcontext.populate_existing:
-                parentnode = selectcontext.identity_map[mapper.identity_key(instance.parent_id)]
-                parentnode.children.append(instance)
-        return False
-
 # setup mappers.  Document will eagerly load a list of _Node objects.
+# they will be ordered in primary key/insert order, so that we can reconstruct
+# an ElementTree structure from the list.
 mapper(Document, documents, properties={
-    '_root':relation(_Node, lazy=False, cascade="all")
+    '_nodes':relation(_Node, lazy=False, cascade="all, delete-orphan")
 })
 
 # the _Node objects change the way they load so that a list of _Nodes will organize
@@ -109,16 +98,15 @@ mapper(Document, documents, properties={
 # nodes being hierarchical as well; relation() always applies at least ROWID/primary key
 # ordering to rows which will suffice.
 mapper(_Node, elements, properties={
-    'children':relation(_Node, lazy=None, cascade="all"),  # doesnt load; loading is handled by the relation to the Document
+    'children':relation(_Node, lazy=None),  # doesnt load; used only for the save relationship
     'attributes':relation(_Attribute, lazy=False, cascade="all, delete-orphan"), # eagerly load attributes
-    'document':relation(Document, lazy=None) # allow backwards attachment of _Node to Document.
-}, extension=HierarchicalLoader())
+})
 
 mapper(_Attribute, attributes)
 
 # define marshalling functions that convert from _Node/_Attribute to/from ElementTree objects.
 # this will set the ElementTree element as "document._element", and append the root _Node
-# object to the "_root" mapped collection.
+# object to the "_nodes" mapped collection.
 class ElementTreeMarshal(object):
     def __get__(self, document, owner):
         if document is None:
@@ -127,20 +115,23 @@ class ElementTreeMarshal(object):
         if hasattr(document, '_element'):
             return document._element
         
-        def traverse(node, parent=None):
-            if parent is not None:
+        nodes = {}
+        root = None
+        for node in document._nodes:
+            if node.parent_id is not None:
+                parent = nodes[node.parent_id]
                 elem = ElementTree.SubElement(parent, node.tag)
+                nodes[node.element_id] = elem
             else:
-                elem = ElementTree.Element(node.tag)
-            elem.text = node.text
-            elem.tail = node.tail
+                parent = None
+                elem = root = ElementTree.Element(node.tag)
+                nodes[node.element_id] = root
             for attr in node.attributes:
                 elem.attrib[attr.name] = attr.value
-            for child in node.children:
-                traverse(child, parent=elem)
-            return elem
-
-        document._element = ElementTree.ElementTree(traverse(document._root[0]))
+            elem.text = node.text
+            elem.tail = node.tail
+            
+        document._element = ElementTree.ElementTree(root)
         return document._element
     
     def __set__(self, document, element):
@@ -149,17 +140,17 @@ class ElementTreeMarshal(object):
             n.tag = node.tag
             n.text = node.text
             n.tail = node.tail
-            n.document = document
+            document._nodes.append(n)
             n.children = [traverse(n2) for n2 in node]
             n.attributes = [_Attribute(k, v) for k, v in node.attrib.iteritems()]
             return n
 
-        document._root.append(traverse(element.getroot()))
+        traverse(element.getroot())
         document._element = element
     
     def __delete__(self, document):
         del document._element
-        document._root = []
+        document._nodes = []
 
 # override Document's "element" attribute with the marshaller.
 Document.element = ElementTreeMarshal()
@@ -220,7 +211,7 @@ def find_document(path, compareto):
         else:
             j = j.join(a)
         prev_elements = a
-    return query.options(lazyload('_root')).select_from(j).filter(prev_elements.c.text==compareto).all()
+    return query.options(lazyload('_nodes')).select_from(j).filter(prev_elements.c.text==compareto).all()
 
 for path, compareto in (
         ('/somefile/header/field1', 'hi'),
