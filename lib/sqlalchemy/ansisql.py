@@ -435,14 +435,14 @@ class ANSICompiler(engine.Compiled):
         self.strings[alias] = self.get_str(alias.original)
 
     def enter_select(self, select):
-        select.calculate_correlations(self.correlate_state)
+        select._calculate_correlations(self.correlate_state)
         self.select_stack.append(select)
     
     def enter_update(self, update):
-        update.calculate_correlations(self.correlate_state)
+        update._calculate_correlations(self.correlate_state)
 
     def enter_delete(self, delete):
-        delete.calculate_correlations(self.correlate_state)
+        delete._calculate_correlations(self.correlate_state)
     
     def label_select_column(self, select, column):
         """convert a column from a select's "columns" clause.
@@ -472,7 +472,7 @@ class ANSICompiler(engine.Compiled):
         # the actual list of columns to print in the SELECT column list.
         inner_columns = util.OrderedDict()
         
-        froms = select.get_display_froms(self.correlate_state)
+        froms = select._get_display_froms(self.correlate_state)
         for f in froms:
             if f not in self.strings:
                 self.traverse(f)

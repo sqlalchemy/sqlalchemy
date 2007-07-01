@@ -915,7 +915,7 @@ class ClauseVisitor(object):
                         meth(obj)
             
             if clone:
-                obj.copy_internals()
+                obj._copy_internals()
             for c in obj.get_children(**self.__traverse_options__):
                 _trav(c)
 
@@ -969,7 +969,7 @@ class ClauseElement(object):
         
         This method may be used by a generative API.
         Its also used as part of the "deep" copy afforded
-        by a traversal that combines the copy_internals()
+        by a traversal that combines the _copy_internals()
         method."""
         c = self.__class__.__new__(self.__class__)
         c.__dict__ = self.__dict__.copy()
@@ -1000,7 +1000,7 @@ class ClauseElement(object):
 
         return self is other
 
-    def copy_internals(self):
+    def _copy_internals(self):
         """reassign internal elements to be clones of themselves.
         
         called during a copy-and-traverse operation on newly 
@@ -1779,7 +1779,7 @@ class _TextClause(ClauseElement):
 
     columns = property(lambda s:[])
 
-    def copy_internals(self):
+    def _copy_internals(self):
         self.bindparams = [b._clone() for b in self.bindparams]
 
     def get_children(self, **kwargs):
@@ -1833,7 +1833,7 @@ class ClauseList(ClauseElement):
         else:
             self.clauses.append(_literal_as_text(clause))
 
-    def copy_internals(self):
+    def _copy_internals(self):
         self.clauses = [clause._clone() for clause in self.clauses]
 
     def get_children(self, **kwargs):
@@ -1888,7 +1888,7 @@ class _CalculatedClause(ColumnElement):
             
     key = property(lambda self:self.name or "_calc_")
 
-    def copy_internals(self):
+    def _copy_internals(self):
         self.clause_expr = self.clause_expr._clone()
 
     def get_children(self, **kwargs):
@@ -1930,7 +1930,7 @@ class _Function(_CalculatedClause, FromClause):
 
     key = property(lambda self:self.name)
 
-    def copy_internals(self):
+    def _copy_internals(self):
         self._clone_from_clause()
 
     def get_children(self, **kwargs):
@@ -1948,7 +1948,7 @@ class _Cast(ColumnElement):
         self.clause = clause
         self.typeclause = _TypeClause(self.type)
 
-    def copy_internals(self):
+    def _copy_internals(self):
         self.clause = self.clause._clone()
         self.typeclause = self.typeclause._clone()
 
@@ -1980,7 +1980,7 @@ class _UnaryExpression(ColumnElement):
     def _get_from_objects(self, **modifiers):
         return self.element._get_from_objects(**modifiers)
 
-    def copy_internals(self):
+    def _copy_internals(self):
         self.element = self.element._clone()
 
     def get_children(self, **kwargs):
@@ -2021,7 +2021,7 @@ class _BinaryExpression(ColumnElement):
     def _get_from_objects(self, **modifiers):
         return self.left._get_from_objects(**modifiers) + self.right._get_from_objects(**modifiers)
 
-    def copy_internals(self):
+    def _copy_internals(self):
         self.left = self.left._clone()
         self.right = self.right._clone()
 
@@ -2106,7 +2106,7 @@ class Join(FromClause):
             self._foreign_keys.add(f)
         return column
 
-    def copy_internals(self):
+    def _copy_internals(self):
         self._clone_from_clause()
         self.left = self.left._clone()
         self.right = self.right._clone()
@@ -2273,7 +2273,7 @@ class Alias(FromClause):
         #return self.selectable._exportable_columns()
         return self.selectable.columns
 
-    def copy_internals(self):
+    def _copy_internals(self):
         self._clone_from_clause()
         self.selectable = self.selectable._clone()
         baseselectable = self.selectable
@@ -2303,7 +2303,7 @@ class _Grouping(ColumnElement):
     _label = property(lambda s: s.elem._label)
     orig_set = property(lambda s:s.elem.orig_set)
     
-    def copy_internals(self):
+    def _copy_internals(self):
         self.elem = self.elem._clone()
 
     def get_children(self, **kwargs):
@@ -2343,7 +2343,7 @@ class _Label(ColumnElement):
     def _compare_self(self):
         return self.obj
     
-    def copy_internals(self):
+    def _copy_internals(self):
         self.obj = self.obj._clone()
 
     def get_children(self, **kwargs):
@@ -2676,7 +2676,7 @@ class CompoundSelect(_SelectBaseMixin, FromClause):
         col.orig_set = colset
         return col
 
-    def copy_internals(self):
+    def _copy_internals(self):
         self._clone_from_clause()
         self._col_map = {}
         self.selects = [s._clone() for s in self.selects]
@@ -2734,7 +2734,7 @@ class Select(_SelectBaseMixin, FromClause):
 
         _SelectBaseMixin.__init__(self, **kwargs)
 
-    def get_display_froms(self, correlation_state=None):
+    def _get_display_froms(self, correlation_state=None):
         froms = util.Set()
         hide_froms = util.Set()
         
@@ -2767,6 +2767,8 @@ class Select(_SelectBaseMixin, FromClause):
         else:
             return froms
     
+    froms = property(_get_display_froms, doc="""Return a list of all FromClause elements which will be applied to the FROM clause of the resulting statement.""")
+    
     def locate_all_froms(self):
         froms = util.Set()
         for col in self._raw_columns:
@@ -2783,11 +2785,11 @@ class Select(_SelectBaseMixin, FromClause):
                 froms.add(f)
         return froms
         
-    def calculate_correlations(self, correlation_state):
+    def _calculate_correlations(self, correlation_state):
         if self not in correlation_state:
             correlation_state[self] = {}
 
-        display_froms = self.get_display_froms(correlation_state)
+        display_froms = self._get_display_froms(correlation_state)
         
         class CorrelatedVisitor(NoColumnVisitor):
             def __init__(self, is_where=False, is_column=False, is_from=False):
@@ -2853,7 +2855,7 @@ class Select(_SelectBaseMixin, FromClause):
             
     inner_columns = property(_get_inner_columns)
     
-    def copy_internals(self):
+    def _copy_internals(self):
         self._clone_from_clause()
         self._raw_columns = [c._clone() for c in self._raw_columns]
         self._recorrelate_froms([f._clone() for f in self._froms])
@@ -3017,7 +3019,7 @@ class _UpdateBase(ClauseElement):
     def supports_execution(self):
         return True
 
-    def calculate_correlations(self, correlate_state):
+    def _calculate_correlations(self, correlate_state):
         class SelectCorrelator(NoColumnVisitor):
             def visit_select(s, select):
                 if select._should_correlate:

@@ -14,9 +14,6 @@ class TraversalTest(testbase.AssertMixin):
             def __init__(self, expr):
                 self.expr = expr
 
-            def accept_visitor(self, visitor):
-                visitor.visit_a(self)
-
             def is_other(self, other):
                 return other is self
             
@@ -53,15 +50,12 @@ class TraversalTest(testbase.AssertMixin):
                         return True
                 return False
             
-            def copy_internals(self):    
+            def _copy_internals(self):    
                 self.items = [i._clone() for i in self.items]
 
             def get_children(self, **kwargs):
                 return self.items
             
-            def accept_visitor(self, visitor):
-                visitor.visit_b(self)
-                
             def __str__(self):
                 return "B(%s)" % repr([str(i) for i in self.items])
     
