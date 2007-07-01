@@ -244,34 +244,25 @@ class BinaryTest(AssertMixin):
         binary_table.insert().execute(primary_id=1, misc='binary_data_one.dat',    data=stream1, data_slice=stream1[0:100], pickled=testobj1)
         binary_table.insert().execute(primary_id=2, misc='binary_data_two.dat', data=stream2, data_slice=stream2[0:99], pickled=testobj2)
         binary_table.insert().execute(primary_id=3, misc='binary_data_two.dat', data=None, data_slice=stream2[0:99], pickled=None)
-        l = binary_table.select(order_by=binary_table.c.primary_id).execute().fetchall()
-        print type(stream1), type(l[0]['data']), type(l[0]['data_slice'])
-        print len(stream1), len(l[0]['data']), len(l[0]['data_slice'])
-        self.assert_(list(stream1) == list(l[0]['data']))
-        self.assert_(list(stream1[0:100]) == list(l[0]['data_slice']))
-        self.assert_(list(stream2) == list(l[1]['data']))
-        self.assert_(testobj1 == l[0]['pickled'])
-        self.assert_(testobj2 == l[1]['pickled'])
+        
+        for stmt in (
+            binary_table.select(order_by=binary_table.c.primary_id),
+            text("select * from binary_table order by binary_table.primary_id", typemap={'pickled':PickleType}, engine=testbase.db)
+        ):
+            l = stmt.execute().fetchall()
+            print type(stream1), type(l[0]['data']), type(l[0]['data_slice'])
+            print len(stream1), len(l[0]['data']), len(l[0]['data_slice'])
+            self.assert_(list(stream1) == list(l[0]['data']))
+            self.assert_(list(stream1[0:100]) == list(l[0]['data_slice']))
+            self.assert_(list(stream2) == list(l[1]['data']))
+            self.assert_(testobj1 == l[0]['pickled'])
+            self.assert_(testobj2 == l[1]['pickled'])
 
     def load_stream(self, name, len=12579):
         f = os.path.join(os.path.dirname(testbase.__file__), name)
         # put a number less than the typical MySQL default BLOB size
         return file(f).read(len)
     
-    @testbase.supported('oracle')
-    def test_oracle_autobinary(self):
-        stream1 =self.load_stream('binary_data_one.dat')
-        stream2 =self.load_stream('binary_data_two.dat')
-        binary_table.insert().execute(primary_id=1, misc='binary_data_one.dat',    data=stream1, data_slice=stream1[0:100])
-        binary_table.insert().execute(primary_id=2, misc='binary_data_two.dat', data=stream2, data_slice=stream2[0:99])
-        binary_table.insert().execute(primary_id=3, misc='binary_data_two.dat', data=None, data_slice=stream2[0:99], pickled=None)
-        result = testbase.db.connect().execute("select primary_id, misc, data, data_slice from binary_table")
-        l = result.fetchall()
-        l[0]['data']
-        self.assert_(list(stream1) == list(l[0]['data']))
-        self.assert_(list(stream1[0:100]) == list(l[0]['data_slice']))
-        self.assert_(list(stream2) == list(l[1]['data']))
-
     
 class DateTest(AssertMixin):
     def setUpAll(self):

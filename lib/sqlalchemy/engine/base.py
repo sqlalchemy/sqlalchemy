@@ -56,6 +56,18 @@ class Dialect(sql.AbstractDialect):
 
         raise NotImplementedError()
 
+    def dbapi_type_map(self):
+        """return a mapping of DBAPI type objects present in this Dialect's DBAPI
+        mapped to TypeEngine implementations used by the dialect. 
+        
+        This is used to apply types to result sets based on the DBAPI types
+        present in cursor.description; it only takes effect for result sets against
+        textual statements where no explicit typemap was present.  Constructed SQL statements
+        always have type information explicitly embedded.
+        """
+
+        raise NotImplementedError()
+
     def type_descriptor(self, typeobj):
         """Transform the given [sqlalchemy.types#TypeEngine] instance from generic to database-specific.
 
@@ -945,13 +957,16 @@ class ResultProxy(object):
         metadata = self.cursor.description
 
         if metadata is not None:
+            typemap = self.dialect.dbapi_type_map()
+
             for i, item in enumerate(metadata):
                 # sqlite possibly prepending table name to colnames so strip
                 colname = item[0].split('.')[-1]
                 if self.context.typemap is not None:
-                    type = self.context.typemap.get(colname.lower(), types.NULLTYPE)
+                    type = self.context.typemap.get(colname.lower(), typemap.get(item[1], types.NULLTYPE))
                 else:
-                    type = types.NULLTYPE
+                    type = typemap.get(item[1], types.NULLTYPE)
+
                 rec = (type, type.dialect_impl(self.dialect), i)
 
                 if rec[0] is None:

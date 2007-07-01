@@ -163,22 +163,10 @@ class OracleExecutionContext(default.DefaultExecutionContext):
 
     def get_result_proxy(self):
         if self.cursor.description is not None:
-            if self.dialect.auto_convert_lobs and self.typemap is None:
-                typemap = {}
-                binary = False
-                for column in self.cursor.description:
-                    type_code = column[1]
-                    if type_code in self.dialect.ORACLE_BINARY_TYPES:
-                        binary = True
-                        typemap[column[0].lower()] = OracleBinary()
-                self.typemap = typemap
-                if binary:
+            for column in self.cursor.description:
+                type_code = column[1]
+                if type_code in self.dialect.ORACLE_BINARY_TYPES:
                     return base.BufferedColumnResultProxy(self)
-            else:
-                for column in self.cursor.description:
-                    type_code = column[1]
-                    if type_code in self.dialect.ORACLE_BINARY_TYPES:
-                        return base.BufferedColumnResultProxy(self)
         
         return base.ResultProxy(self)
 
@@ -190,6 +178,7 @@ class OracleDialect(ansisql.ANSIDialect):
         self.supports_timestamp = self.dbapi is None or hasattr(self.dbapi, 'TIMESTAMP' )
         self.auto_setinputsizes = auto_setinputsizes
         self.auto_convert_lobs = auto_convert_lobs
+        
         if self.dbapi is not None:
             self.ORACLE_BINARY_TYPES = [getattr(self.dbapi, k) for k in ["BFILE", "CLOB", "NCLOB", "BLOB", "LONG_BINARY", "LONG_STRING"] if hasattr(self.dbapi, k)]
         else:
@@ -221,6 +210,12 @@ class OracleDialect(ansisql.ANSIDialect):
         opts.update(url.query)
         util.coerce_kw_type(opts, 'use_ansi', bool)
         return ([], opts)
+
+    def dbapi_type_map(self):
+        if self.auto_convert_lobs:
+            return super(OracleDialect, self).dbapi_type_map()
+        else:
+            return {}
 
     def type_descriptor(self, typeobj):
         return sqltypes.adapt_type(typeobj, colspecs)

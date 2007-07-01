@@ -22,7 +22,25 @@ class DefaultDialect(base.Dialect):
         self._ischema = None
         self.dbapi = dbapi
         self._figure_paramstyle(paramstyle=paramstyle, default=default_paramstyle)
-
+        self._generate_dbapi_type_map()
+        
+    def _generate_dbapi_type_map(self):
+        """locate all TypeEngine objects in the dialect's module and map them against the DBAPI
+        type they represent.
+        
+        TODO: dialects should export this mapping explicitly, instead of relying upon
+        module searching.
+        """
+        dialect_module = sys.modules[self.__class__.__module__]
+        map = {}
+        for obj in dialect_module.__dict__.values():
+            if isinstance(obj, types.TypeEngine):
+                map[obj().get_dbapi_type(self.dialect)] = obj
+        self._dbapi_type_map = map
+    
+    def dbapi_type_map(self):
+        return self._dbapi_type_map
+            
     def create_execution_context(self, **kwargs):
         return DefaultExecutionContext(self, **kwargs)
 

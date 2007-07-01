@@ -85,6 +85,10 @@
     regarding "is subquery" and "correlation" pushed to SQL generation phase.
     select() elements are now *never* mutated by their enclosing containers
     or by any dialect's compilation process [ticket:52] [ticket:569]
+  - result sets make a better attempt at matching the DBAPI types present
+    in cursor.description to the TypeEngine objects defined by the dialect,
+    which are then used for result-processing. Note this only takes effect 
+    for textual SQL; constructed SQL statements always have an explicit type map.  
   - result sets from CRUD operations close their underlying cursor immediately.
     will also autoclose the connection if defined for the operation; this 
     allows more efficient usage of connections for successive CRUD operations
