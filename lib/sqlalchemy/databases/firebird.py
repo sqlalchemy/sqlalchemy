@@ -5,15 +5,11 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-import sys, StringIO, string, types
+import sys, StringIO, string, types, warnings
 
-from sqlalchemy import util
+from sqlalchemy import util, sql, schema, ansisql, exceptions
 import sqlalchemy.engine.default as default
-import sqlalchemy.sql as sql
-import sqlalchemy.schema as schema
-import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
-import sqlalchemy.exceptions as exceptions
 
 
 _initialized_kb = False
@@ -258,7 +254,13 @@ class FBDialect(ansisql.ANSIDialect):
 
             kw = {}
             # get the data types and lengths
-            args.append(column_func[row['FTYPE']](row))
+            coltype = column_func.get(row['FTYPE'], None)
+            if coltype is None:
+                warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (str(row['FTYPE']), name)))
+                coltype = sqltypes.NULLTYPE
+            else:
+                coltype = coltype(row)
+            args.append(coltype)
 
             # is it a primary key?
             kw['primary_key'] = name in pkfields

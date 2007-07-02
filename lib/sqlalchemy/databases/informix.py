@@ -6,19 +6,13 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-import sys, StringIO, string , random
+import sys, StringIO, string , random, warnings
 import datetime
 from decimal import Decimal
 
-import sqlalchemy.util as util
-import sqlalchemy.sql as sql
-import sqlalchemy.engine as engine
+from sqlalchemy import util, sql, engine, schema, ansisql, exceptions, pool
 import sqlalchemy.engine.default as default
-import sqlalchemy.schema as schema
-import sqlalchemy.ansisql as ansisql
 import sqlalchemy.types as sqltypes
-import sqlalchemy.exceptions as exceptions
-import sqlalchemy.pool as pool
 
 
 # for offset
@@ -306,7 +300,11 @@ class InfoDialect(ansisql.ANSIDialect):
                     scale = 0
                 coltype = InfoNumeric(precision, scale)
             else:
-                coltype = ischema_names.get(coltype)
+                try:
+                    coltype = ischema_names[coltype]
+                except KeyError:
+                    warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (coltype, name)))
+                    coltype = sqltypes.NULLTYPE
             
             colargs = []
             if default is not None:

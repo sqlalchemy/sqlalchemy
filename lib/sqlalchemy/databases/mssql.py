@@ -42,16 +42,11 @@ Known issues / TODO:
   
 """
 
-import sys, StringIO, string, types, re, datetime, random
+import sys, StringIO, string, types, re, datetime, random, warnings
 
-import sqlalchemy.sql as sql
-import sqlalchemy.engine as engine
-import sqlalchemy.engine.default as default
-import sqlalchemy.schema as schema
-import sqlalchemy.ansisql as ansisql
+from sqlalchemy import sql, engine, schema, ansisql, exceptions
 import sqlalchemy.types as sqltypes
-import sqlalchemy.exceptions as exceptions
-
+from sqlalchemy.engine import default
     
 class MSNumeric(sqltypes.Numeric):
     def convert_result_value(self, value, dialect):
@@ -507,11 +502,15 @@ class MSSQLDialect(ansisql.ANSIDialect):
             for a in (charlen, numericprec, numericscale):
                 if a is not None:
                     args.append(a)
-            coltype = self.ischema_names[type]
+            coltype = self.ischema_names.get(type, None)
             if coltype == MSString and charlen == -1:
                 coltype = MSText()                
             else:
-                if coltype == MSNVarchar and charlen == -1:
+                if coltype is None:
+                    warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (type, name)))
+                    coltype = sqltypes.NULLTYPE
+                    
+                elif coltype == MSNVarchar and charlen == -1:
                     charlen = None
                 coltype = coltype(*args)
             colargs= []

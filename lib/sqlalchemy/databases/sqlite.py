@@ -253,7 +253,12 @@ class SQLiteDialect(ansisql.ANSIDialect):
                 args = ''
 
             #print "coltype: " + repr(coltype) + " args: " + repr(args)
-            coltype = pragma_names.get(coltype, SLString)
+            try:
+                coltype = pragma_names[coltype]
+            except KeyError:
+                warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (coltype, name)))
+                coltype = sqltypes.NULLTYPE
+                
             if args is not None:
                 args = re.findall(r'(\d+)', args)
                 #print "args! " +repr(args)

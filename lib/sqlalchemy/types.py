@@ -181,7 +181,7 @@ def adapt_type(typeobj, colspecs):
         return typeobj
     return typeobj.adapt(impltype)
 
-class NullTypeEngine(TypeEngine):
+class NullType(TypeEngine):
     def get_col_spec(self):
         raise NotImplementedError()
 
@@ -190,6 +190,7 @@ class NullTypeEngine(TypeEngine):
 
     def convert_result_value(self, value, dialect):
         return value
+NullTypeEngine = NullType
 
 class String(TypeEngine):
     def __init__(self, length=None, convert_unicode=False):
@@ -418,4 +419,4 @@ class NCHAR(Unicode):pass
 class BLOB(Binary): pass
 class BOOLEAN(Boolean): pass
 
-NULLTYPE = NullTypeEngine()
+NULLTYPE = NullType()

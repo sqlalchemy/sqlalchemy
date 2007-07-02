@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import sys, StringIO, string, types, re, datetime, inspect
+import sys, StringIO, string, types, re, datetime, inspect, warnings
 
 from sqlalchemy import sql,engine,schema,ansisql
 from sqlalchemy.engine import default
@@ -1117,7 +1117,11 @@ class MySQLDialect(ansisql.ANSIDialect):
             extra_2 = match.group(4)
 
             #print "coltype: " + repr(col_type) + " args: " + repr(args) + "extras:" + repr(extra_1) + ' ' + repr(extra_2)
-            coltype = ischema_names.get(col_type, MSString)
+            try:
+                coltype = ischema_names[col_type]
+            except KeyError:
+                warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (col_type, name)))
+                coltype = sqltypes.NULLTYPE
 
             kw = {}
             if extra_1 is not None:

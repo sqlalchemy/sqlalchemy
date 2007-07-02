@@ -359,7 +359,8 @@ class OracleDialect(ansisql.ANSIDialect):
                 try:
                     coltype = ischema_names[coltype]
                 except KeyError:
-                    raise exceptions.AssertionError("Can't get coltype for type '%s' on colname '%s'" % (coltype, colname))
+                    warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (coltype, colname)))
+                    coltype = sqltypes.NULLTYPE
 
             colargs = []
             if default is not None:
