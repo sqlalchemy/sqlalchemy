@@ -1,196 +1,6 @@
-"""Support for attributes that hold collections of objects.
+"""Support for attributes that hold collections of objects."""
 
-Mapping a one-to-many or many-to-many relationship results in a collection
-of values accessible through an attribute on the class, by default presented
-as a list:
-
-    mapper(Parent, properties={
-        children = relation(Child)
-    })
-
-    parent.children.append(Child())
-    print parent.children[0]
-
-These attributes are not limited to lists- any Python object that can implement
-a bag-like interface can be used in the place of a basic list.  Custom
-collection classes are specified with the collection_class option to relation(),
-and instances (at a minimum) must only be able to append, remove and iterate
-over objects in the collection.
-
-    mapper(Parent, properties={
-        children = relation(Child, collection_class=set)
-    })
-
-    child = Child()
-    parent.children.add(child)
-    assert child in parent.children
-
-The collection is watched by the orm, which notes all objects entering and
-leaving the collection much in the same way that it watches regular scalar
-attributes for changes, setting up backrefs, parents, etc.
-
-Both 'list' and 'set' can be used directly as a collection_class. Dictionaries
-can be used for mapping semantics too, but a little more work is needed to
-support the required "value-only" interface the orm needs to add instances
-to the collection.  The 'column_mapped_collection' is a dict subclass that
-uses a column from the member object as the key:
-
-    mapper(Item, properties={
-        notes = relation(Note,
-            collection_class=column_mapped_collection(kw_table.c.keyword))
-    })
-
-    item.notes['color'] = Note('color', 'blue')
-    print item.notes['color']
-    
-You can create your own collection classes too.  In the simple case,
-simply inherit from 'list' or 'set' and add the custom behavior.  All of the
-basic collection operations are instrumented for you via transparent function
-decoration, so a call to, say, 'MyList.pop()' will notify the orm that the
-returned object should be deleted.
-
-Automatic instrumentation isn't restricted to subclasses of built-in types.
-The collection package understands the abstract base types of the three
-primary collection types and can apply the appropriate instrumentation based
-on the duck-typing of your class:
-
-  class ListLike(object):
-      def __init__(self):
-          self.data = []
-      def append(self, item):
-          self.data.append(item)
-      def remove(self, item):
-          self.data.remove(item)
-      def extend(self, items):
-          self.data.extend(items)
-      def __iter__(self):
-          return iter(self.data)
-      def foo(self):
-          return 'foo'
-
-'append', 'remove', and 'extend' are known list-like methods, and will be
-instrumented automatically.  '__iter__' is not a mutator method and won't
-be touched, and 'foo' won't be either.
-
-Duck-typing (aka guesswork) of object-derived classes isn't rock-solid, of
-course, so you can be explicit about the interface you are implementing with
-the '__emulates__' class attribute:
-
-  class DictLike(object):
-      __emulates__ = dict
-
-      def __init__(self):
-          self.data = {}
-      def append(self, item):
-          self.data[item.keyword] = item
-      def remove(self, item):
-          del self[item.keyword]
-      def __setitem__(self, key, value):
-          self.data[key] = value
-      def __delitem__(self, key):
-          del self.data[key]
-      def values(self):
-          return self.data.itervalues()
-
-The class looks list-like because of 'append', but __emulates__ forces it to
-dict-like.  '__setitem__' and '__delitem__' are known to be dict-like and are
-instrumented.  This class won't quite work as-is yet- a little glue is needed
-to adapt it for use by SQLAlchemy- the basic interface of 'append', 'remove'
-and 'iterate' needs to be mapped onto the class.  A set of decorators is
-provided for this.
-
-  from collections import collection
-
-  class DictLike(object):
-      __emulates__ = dict
-
-      def __init__(self):
-          self.data = {}
-
-      @collection.appender
-      def append(self, item):
-          self.data[item.keyword] = item
-
-      @collection.remover
-      def remove(self, item):
-          del self[item.keyword]
-
-      def __setitem__(self, key, value):
-          self.data[key] = value
-      def __delitem__(self, key):
-          del self.data[key]
-
-      @collection.iterator
-      def values(self):
-          return self.data.itervalues()
-
-And that's all that's needed.  The SQLAlchemy orm will interact with your
-dict-like class through the methods you've tagged.  Both 'list' and 'set'
-have SQLAlchemy-compatible methods in their base interface and don't need
-to be annotated if you have the basic methods in your implementation.  If
-you don't, or you want to direct through a different method, you can
-decorate:
-
-  from collections import collection
-
-  class MyList(list):
-      @collection.appender
-      def hey_use_this_instead_for_append(self, item):
-          # do something special ...
-
-There is no requirement to be list-, set- or dict-like at all.  Collection
-classes can be any shape, so long as they have the append, remove and iterate
-interface marked for SQLAlchemy's use.
-
-You can add instrumentation to methods outside of the basic collection
-interface as well.  Decorators are supplied that can wrap your methods
-and fire off SQLAlchemy events based on the arguments passed to the method
-and/or the method's return value.
-
-  class MyCollection(object):
-      ... # need append, remove, and iterate, exercise to the reader
-
-      @collection.adds(2)
-      def insert(self, where, item):
-          ...
-
-      @collection.removes_return()
-      def prune(self, where):
-          ...
-
-Tight control over events is also possible by implementing the instrumentation
-internally in your methods.  The basic instrumentation package works under the
-general assumption that collection mutation events will not raise exceptions.
-If you want tight control over add and remove events with exception management,
-internal instrumentation may be the answer.  Within your method,
-'collection_adapter(self)' will retrieve an object that you can use for
-explicit control over triggering append and remove events.
-
-There are some caveats:
-
-A collection class will be modified behind the scenes- decorators will be
-applied around methods.  Built-ins can't (and shouldn't) be modified, so
-a request for, say, a 'list' will actually net an 'InstrumentedList' instance
-on the property- a trivial subclass that holds and isolates decorations rather
-than interfere with all 'list' instances in the process.
-
-The decorations are light-weight and no-op outside of their intended context,
-but they are unavoidable and will always be applied.  When using a library
-class as a collection, it can be good practice to use the "trivial subclass"
-trick to restrict the decorations to just your usage in mapping.  For example:
-
-    class MyAwesomeList(some.great.library.AwesomeList):
-        pass
-
-    # ... relation(..., collection_class=MyAwesomeList)
-
-In custom classes, keep in mind that you can fire duplicate events if you
-delegate one instrumented method to another.  When subclassing a built-in
-type, the instrumentation is implicit on mutator methods so you'll need to
-be mindful.
-"""
-
-from sqlalchemy import exceptions, schema, util
+from sqlalchemy import exceptions, schema, util as sautil
 from sqlalchemy.orm import mapper
 import copy, sys, warnings, weakref
 import new
@@ -199,10 +9,16 @@ try:
     from threading import Lock
 except:
     from dummy_threading import Lock
+try:
+    from operator import attrgetter
+except:
+    def attrgetter(attribute):
+        return lambda value: getattr(value, attribute)
 
 
-__all__ = ['collection', 'mapped_collection', 'column_mapped_collection',
-           'collection_adapter']
+__all__ = ['collection', 'collection_adapter',
+           'mapped_collection', 'column_mapped_collection',
+           'attribute_mapped_collection']
            
 def column_mapped_collection(mapping_spec):
     """A dictionary-based collection type with column-based keying.
@@ -212,12 +28,14 @@ def column_mapped_collection(mapping_spec):
 
     The key value must be immutable for the lifetime of the object.  You
     can not, for example, map on foreign key values if those key values will
-    change during the session, say from None to a database-assigned integer
+    change during the session, i.e. from None to a database-assigned integer
     after a session flush.
     """
 
     if isinstance(mapping_spec, schema.Column):
-        mapping_spec = mapping_spec,
+        def keyfunc(value):
+            m = mapper.object_mapper(value)
+            return m.get_attr_by_column(value, mapping_spec)
     else:
         cols = []
         for c in mapping_spec:
@@ -226,22 +44,35 @@ def column_mapped_collection(mapping_spec):
                     "mapping_spec tuple may only contain columns")
             cols.append(c)
         mapping_spec = tuple(cols)
-
-    def keyfunc(value):
-        m = mapper.object_mapper(value)
-        return tuple([m.get_attr_by_column(value, c) for c in mapping_spec])
+        def keyfunc(value):
+            m = mapper.object_mapper(value)
+            return tuple([m.get_attr_by_column(value, c) for c in mapping_spec])
     return lambda: MappedCollection(keyfunc)
+
+def attribute_mapped_collection(attr_name):
+    """A dictionary-based collection type with attribute-based keying.
+
+    Returns a MappedCollection factory with a keying based on the
+    'attr_name' atribute of entities in the collection.
+
+    The key value must be immutable for the lifetime of the object.  You
+    can not, for example, map on foreign key values if those key values will
+    change during the session, i.e. from None to a database-assigned integer
+    after a session flush.
+    """
+
+    return lambda: MappedCollection(attrgetter(attr_name))
 
 
 def mapped_collection(keyfunc):
     """A dictionary-based collection type with arbitrary keying.
 
     Returns a MappedCollection factory with a keying function generated
-    from keyfunc, a callable that takes an object and returns a key value.
+    from keyfunc, a callable that takes an entity and returns a key value.
 
     The key value must be immutable for the lifetime of the object.  You
     can not, for example, map on foreign key values if those key values will
-    change during the session, say from None to a database-assigned integer
+    change during the session, i.e. from None to a database-assigned integer
     after a session flush.
     """
 
@@ -481,6 +312,8 @@ class collection(object):
 # public instrumentation interface for 'internally instrumented'
 # implementations
 def collection_adapter(collection):
+    """Fetch the CollectionAdapter for a collection."""
+
     return getattr(collection, '_sa_adapter', None)
 
 class CollectionAdaptor(object):
@@ -586,7 +419,7 @@ def _prepare_instrumentation(factory):
     # Instrument the class if needed.
     if __instrumentation_mutex.acquire():
         try:
-            if not hasattr(cls, '_sa_appender'):
+            if getattr(cls, '_sa_instrumented', None) != id(cls):
                 _instrument_class(cls)
         finally:
             __instrumentation_mutex.release()
@@ -644,7 +477,7 @@ def _instrument_class(cls):
             "Can not instrument a built-in type. Use a "
             "subclass, even a trivial one.")
     
-    collection_type = util.duck_type_collection(cls)
+    collection_type = sautil.duck_type_collection(cls)
     if collection_type in __interfaces:
         roles = __interfaces[collection_type].copy()
         decorators = roles.pop('_decorators', {})
@@ -720,6 +553,7 @@ def _instrument_class(cls):
     for role, method in roles.items():
         setattr(cls, '_sa_%s' % role, getattr(cls, method))
 
+    setattr(cls, '_sa_instrumented', id(cls))
 
 def _instrument_membership_mutator(method, before, argument, after):
     """Route method args and/or return value through the collection adapter."""
@@ -1046,7 +880,7 @@ def _set_decorators():
 
     def intersection_update(fn):
         def intersection_update(self, other):
-            want, have = self.intersection(other), util.Set(self)
+            want, have = self.intersection(other), sautil.Set(self)
             remove, add = have - want, want - have
 
             for item in remove:
@@ -1059,7 +893,7 @@ def _set_decorators():
 
     def symmetric_difference_update(fn):
         def symmetric_difference_update(self, other):
-            want, have = self.symmetric_difference(other), util.Set(self)
+            want, have = self.symmetric_difference(other), sautil.Set(self)
             remove, add = have - want, want - have
 
             for item in remove:
@@ -1077,24 +911,30 @@ def _set_decorators():
 
 
 class InstrumentedList(list):
+    """An instrumented version of the built-in list."""
+
     __instrumentation__ = {
        'appender': 'append',
        'remover': 'remove',
        'iterator': '__iter__', }
 
-class InstrumentedSet(util.Set):
+class InstrumentedSet(sautil.Set): 
+    """An instrumented version of the built-in set (or Set)."""
+
     __instrumentation__ = {
        'appender': 'add',
        'remover': 'remove',
        'iterator': '__iter__', }
 
-class InstrumentedDict(dict):
+class InstrumentedDict(dict): 
+    """An instrumented version of the built-in dict."""
+
     __instrumentation__ = {
         'iterator': 'itervalues', }
 
 __canned_instrumentation = {
     list: InstrumentedList,
-    util.Set: InstrumentedSet,
+    sautil.Set: InstrumentedSet,
     dict: InstrumentedDict,
     }
 
@@ -1103,10 +943,10 @@ __interfaces = {
             'remover':  'remove',
             'iterator': '__iter__',
             '_decorators': _list_decorators(), },
-    util.Set: { 'appender': 'add',
-                'remover': 'remove',
-                'iterator': '__iter__',
-                '_decorators': _set_decorators(), },
+    sautil.Set: { 'appender': 'add',
+                  'remover': 'remove',
+                  'iterator': '__iter__',
+                  '_decorators': _set_decorators(), },
     # < 0.4 compatible naming (almost), deprecated- use decorators instead.
     dict: { 'appender': 'append',
             'remover': 'remove',
@@ -1147,6 +987,6 @@ class MappedCollection(dict):
                 "based on mutable properties or properties that only obtain "
                 "values after flush?" %
                 (value, self[key], key))
-        self.__delitem__(self, key, _sa_initiator)
+        self.__delitem__(key, _sa_initiator)
     remove = collection.internally_instrumented(remove)
     remove = collection.remover(remove)

@@ -15,6 +15,7 @@ from sqlalchemy.orm.mapper import Mapper, object_mapper, class_mapper, mapper_re
 from sqlalchemy.orm.interfaces import SynonymProperty, MapperExtension, EXT_PASS, ExtensionOption
 from sqlalchemy.orm.properties import PropertyLoader, ColumnProperty, CompositeProperty, BackRef
 from sqlalchemy.orm import mapper as mapperlib
+from sqlalchemy.orm import collections
 from sqlalchemy.orm.query import Query
 from sqlalchemy.orm.util import polymorphic_union
 from sqlalchemy.orm.session import Session as create_session

@@ -10,6 +10,7 @@ def suite():
         'orm.lazy_relations',
         'orm.eager_relations',
         'orm.mapper',
+        'orm.collection',
         'orm.generative',
         'orm.lazytest1',
         'orm.assorted_eager',
