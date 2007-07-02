@@ -4,8 +4,7 @@ advantage of a custom MapperExtension to assemble incoming nodes into their corr
 
 from sqlalchemy import *
 from sqlalchemy.orm import *
-from sqlalchemy.orm.collections import mapped_collection
-from sqlalchemy.util import OrderedDict
+from sqlalchemy.orm.collections import attribute_mapped_collection
 
 engine = create_engine('sqlite:///:memory:', echo=True)
 
@@ -121,7 +120,7 @@ mapper(TreeNode, trees, properties=dict(
         primaryjoin=trees.c.parent_node_id==trees.c.node_id, 
         lazy=None, 
         cascade="all", 
-        collection_class=mapped_collection(lambda n:n.name),
+        collection_class=attribute_mapped_collection('name'),
         backref=backref('parent', primaryjoin=trees.c.parent_node_id==trees.c.node_id, remote_side=trees.c.node_id)
         ),
     data=relation(TreeData, cascade="all, delete-orphan", lazy=False)
@@ -165,8 +164,6 @@ node.append('node4')
 node.children['node4'].append('subnode3')
 node.children['node4'].append('subnode4')
 node.children['node4'].children['subnode3'].append('subsubnode1')
-
-session.delete(node.children['node1'])
 del node.children['node1']
 
 print "\n\n\n----------------------------"
