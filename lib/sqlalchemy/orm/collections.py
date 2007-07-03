@@ -894,6 +894,13 @@ def _set_decorators():
         _tidy(pop)
         return pop
 
+    def clear(fn):
+        def clear(self):
+            for item in list(self):
+                self.remove(item)
+        _tidy(clear)
+        return clear
+
     def update(fn):
         def update(self, value):
             for item in value:
