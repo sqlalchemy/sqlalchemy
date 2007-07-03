@@ -266,12 +266,12 @@ class OrderedProperties(object):
 class OrderedDict(dict):
     """A Dictionary that returns keys/values/items in the order they were added."""
 
-    def __init__(self, d=None, **kwargs):
+    def __init__(self, ____sequence=None, **kwargs):
         self._list = []
-        if d is None:
+        if ____sequence is None:
             self.update(**kwargs)
         else:
-            self.update(d, **kwargs)
+            self.update(____sequence, **kwargs)
 
     def clear(self):
         self._list = []
