@@ -299,43 +299,7 @@ class OrderingListTest(PersistTest):
             self.assert_(srt.bullets[i].position == i)
             self.assert_(srt.bullets[i].text == text)
 
-    def test_replace1(self):
-        self._setup(ordering_list('position'))
-        
-        s1 = Slide('Slide #1')
-        s1.bullets = [ Bullet('1'), Bullet('2'), Bullet('3') ]
-
-        self.assert_(len(s1.bullets) == 3)
-        self.assert_(s1.bullets[2].position == 2)
-
-        session = create_session()
-        session.save(s1)
-        session.flush()
-
-        new_bullet = Bullet('new 2')
-        self.assert_(new_bullet.position is None)
-
-        # naive replacement, no database deletion should occur
-        # with current InstrumentedList __setitem__ semantics
-        s1.bullets[1] = new_bullet
-
-        self.assert_(new_bullet.position == 1)
-        self.assert_(len(s1.bullets) == 3)
-
-        id = s1.id
-
-        session.flush()
-        session.clear()
-
-        srt = session.query(Slide).get(id)
-    
-        self.assert_(srt.bullets)
-        self.assert_(len(srt.bullets) == 4)
-
-        self.assert_(srt.bullets[1].text == '2')
-        self.assert_(srt.bullets[2].text == 'new 2')
-    
-    def test_replace2(self):
+    def test_replace(self):
         self._setup(ordering_list('position'))
 
         s1 = Slide('Slide #1')
@@ -352,7 +316,7 @@ class OrderingListTest(PersistTest):
         self.assert_(new_bullet.position is None)
 
         # mark existing bullet as db-deleted before replacement.
-        session.delete(s1.bullets[1])
+        #session.delete(s1.bullets[1])
         s1.bullets[1] = new_bullet
 
         self.assert_(new_bullet.position == 1)

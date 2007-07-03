@@ -273,22 +273,18 @@ class OrderedDict(dict):
         else:
             self.update(d, **kwargs)
 
-    def keys(self):
-        return list(self._list)
-
     def clear(self):
         self._list = []
         dict.clear(self)
 
-    def update(self, d=None, **kwargs):
-        # d can be a dict or sequence of keys/values
-        if d:
-            if hasattr(d, 'iteritems'):
-                seq = d.iteritems()
+    def update(self, ____sequence=None, **kwargs):
+        if ____sequence is not None:
+            if hasattr(____sequence, 'keys'):
+                for key in ____sequence.keys():
+                    self.__setitem__(key, ____sequence[key])
             else:
-                seq = d
-            for key, value in seq:
-                self.__setitem__(key, value)
+                for key, value in ____sequence:
+                    self[key] = value
         if kwargs:
             self.update(kwargs)
 
@@ -299,32 +295,45 @@ class OrderedDict(dict):
         else:
             return self.__getitem__(key)
 
-    def values(self):
-        return [self[key] for key in self._list]
-
     def __iter__(self):
         return iter(self._list)
 
+    def values(self):
+        return [self[key] for key in self._list]
+
     def itervalues(self):
-        return iter([self[key] for key in self._list])
+        return iter(self.values())
+
+    def keys(self):
+        return list(self._list)
 
     def iterkeys(self):
-        return self.__iter__()
+        return iter(self.keys())
+
+    def items(self):
+        return [(key, self[key]) for key in self.keys()]
 
     def iteritems(self):
-        return iter([(key, self[key]) for key in self.keys()])
-
-    def __delitem__(self, key):
-        try:
-            del self._list[self._list.index(key)]
-        except ValueError:
-            raise KeyError(key)
-        dict.__delitem__(self, key)
+        return iter(self.items())
 
     def __setitem__(self, key, object):
         if not self.has_key(key):
             self._list.append(key)
         dict.__setitem__(self, key, object)
+
+    def __delitem__(self, key):
+        dict.__delitem__(self, key)
+        self._list.remove(key)
+
+    def pop(self, key):
+        value = dict.pop(self, key)
+        self._list.remove(key)
+        return value
+
+    def popitem(self):
+        item = dict.popitem(self)
+        self._list.remove(item[0])
+        return item
 
 class ThreadLocal(object):
     """An object in which attribute access occurs only within the context of the current thread."""

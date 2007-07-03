@@ -511,8 +511,10 @@ def _instrument_class(cls):
             op = method._sa_instrument_after
             assert op in ('fire_append_event', 'fire_remove_event')
             after = op
-        if before or after:
+        if before:
             methods[name] = before[0], before[1], after
+        elif after:
+            methods[name] = None, None, after
 
     # apply ABC auto-decoration to methods that need it
     for method, decorator in decorators.items():
@@ -775,7 +777,7 @@ def _dict_decorators():
         def __setitem__(self, key, value, _sa_initiator=None):
             if key in self:
                 __del(self, self[key], _sa_initiator)
-            __set(self, value)
+            __set(self, value, _sa_initiator)
             fn(self, key, value)
         _tidy(__setitem__)
         return __setitem__
@@ -817,9 +819,11 @@ def _dict_decorators():
 
     def setdefault(fn):
         def setdefault(self, key, default=None):
-            if key not in self and default is not None:
-                __set(self, default)
-            return fn(self, key, default)
+            if key not in self:
+                self.__setitem__(key, default)
+                return default
+            else:
+                return self.__getitem__(key)
         _tidy(setdefault)
         return setdefault
 
@@ -827,7 +831,8 @@ def _dict_decorators():
         def update(fn):
             def update(self, other):
                 for key in other.keys():
-                    self[key] = other[key]
+                    if not self.has_key(key) or self[key] is not other[key]:
+                        self[key] = other[key]
             _tidy(update)
             return update
     else:
@@ -836,12 +841,15 @@ def _dict_decorators():
                 if __other is not Unspecified:
                     if hasattr(__other, 'keys'):
                         for key in __other.keys():
-                            self[key] = __other[key]
+                            if key not in self or self[key] is not __other[key]:
+                                self[key] = __other[key]
                     else:
                         for key, value in __other:
-                            self[key] = value
+                            if key not in self or self[key] is not value:
+                                self[key] = value
                 for key in kw:
-                    self[key] = kw[key]
+                    if key not in self or self[key] is not kw[key]:
+                        self[key] = kw[key]
             _tidy(update)
             return update
 
@@ -988,7 +996,7 @@ __interfaces = {
                   'iterator': '__iter__',
                   '_decorators': _set_decorators(), },
     # < 0.4 compatible naming (almost), deprecated- use decorators instead.
-    dict: { 'appender': 'append',
+    dict: { 'appender': 'set',
             'remover': 'remove',
             'iterator': 'itervalues',
             '_decorators': _dict_decorators(), },
@@ -1003,7 +1011,7 @@ class MappedCollection(dict):
     """A basic dictionary-based collection class.
 
     Extends dict with the minimal bag semantics that collection classes require.
-    "append" and "remove" are implemented in terms of a keying function: any
+    "set" and "remove" are implemented in terms of a keying function: any
     callable that takes an object and returns an object for use as a dictionary
     key.
     """
@@ -1011,11 +1019,11 @@ class MappedCollection(dict):
     def __init__(self, keyfunc):
         self.keyfunc = keyfunc
 
-    def append(self, value, _sa_initiator=None):
+    def set(self, value, _sa_initiator=None):
         key = self.keyfunc(value)
         self.__setitem__(key, value, _sa_initiator)
-    append = collection.internally_instrumented(append)
-    append = collection.appender(append)
+    set = collection.internally_instrumented(set)
+    set = collection.appender(set)
     
     def remove(self, value, _sa_initiator=None):
         key = self.keyfunc(value)

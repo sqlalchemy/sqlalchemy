@@ -777,7 +777,7 @@ class CustomCollectionsTest(testbase.ORMTest):
         class Bar(object):
             pass
         class AppenderDict(dict):
-            def append(self, item):
+            def set(self, item):
                 self[id(item)] = item
             def remove(self, item):
                 if id(item) in self:
@@ -790,8 +790,8 @@ class CustomCollectionsTest(testbase.ORMTest):
         })
         mapper(Bar, someothertable)
         f = Foo()
-        f.bars.append(Bar())
-        f.bars.append(Bar())
+        f.bars.set(Bar())
+        f.bars.set(Bar())
         sess = create_session()
         sess.save(f)
         sess.flush()
