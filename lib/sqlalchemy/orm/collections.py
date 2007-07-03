@@ -665,26 +665,59 @@ def _list_decorators():
         _tidy(remove)
         return remove
 
+    def insert(fn):
+        def insert(self, index, value):
+            __set(self, value)
+            fn(self, index, value)
+        _tidy(insert)
+        return insert
+
     def __setitem__(fn):
         def __setitem__(self, index, value):
             if not isinstance(index, slice):
+                existing = self[index]
+                if existing is not None:
+                    __del(self, existing)
                 __set(self, value)
                 fn(self, index, value)
             else:
-                rng = range(slice.start or 0, slice.stop or 0, slice.step or 1)
-                if len(value) != len(rng):
-                    raise ValueError
-                for i in rng:
-                    __set(self, value[i])
-                    fn(self, i, value[i])
+                # slice assignment requires __delitem__, insert, __len__
+                if index.stop is None:
+                    stop = 0
+                elif index.stop < 0:
+                    stop = len(self) + index.stop
+                else:
+                    stop = index.stop
+                step = index.step or 1
+                rng = range(index.start or 0, stop, step)
+                if step == 1:
+                    for i in rng:
+                        del self[index.start]
+                    i = index.start
+                    for item in value:
+                        self.insert(i, item)
+                        i += 1
+                else:
+                    if len(value) != len(rng):
+                        raise ValueError
+                    for i, item in zip(rng, value):
+                        self.__setitem__(i, item)
         _tidy(__setitem__)
         return __setitem__
 
     def __delitem__(fn):
         def __delitem__(self, index):
-            item = self[index]
-            __del(self, item)
-            fn(self, index)
+            if not isinstance(index, slice):
+                item = self[index]
+                __del(self, item)
+                fn(self, index)
+            else:
+                # slice deletion requires __getslice__ and a slice-groking
+                # __getitem__ for stepped deletion
+                # note: not breaking this into atomic dels
+                for item in self[index]:
+                    __del(self, item)
+                fn(self, index)
         _tidy(__delitem__)
         return __delitem__
 
