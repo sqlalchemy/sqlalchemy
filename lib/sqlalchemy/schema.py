@@ -716,8 +716,9 @@ class ForeignKey(SchemaItem):
                     raise exceptions.ArgumentError("Could not create ForeignKey '%s' on table '%s': table '%s' has no column named '%s'" % (self._colspec, parenttable.name, table.name, str(e)))
             else:
                 self._column = self._colspec
+                
         # propigate TypeEngine to parent if it didnt have one
-        if self.parent.type is types.NULLTYPE:
+        if isinstance(self.parent.type, types.NullType):
             self.parent.type = self._column.type
         return self._column
 

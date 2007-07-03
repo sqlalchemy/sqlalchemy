@@ -126,6 +126,7 @@ colspecs = {
 
 pragma_names = {
     'INTEGER' : SLInteger,
+    'INT' : SLInteger,
     'SMALLINT' : SLSmallInteger,
     'VARCHAR' : SLString,
     'CHAR' : SLChar,
