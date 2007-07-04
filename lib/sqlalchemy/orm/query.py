@@ -494,8 +494,6 @@ class Query(object):
         for opt in util.flatten_iterator(args):
             q.with_options.append(opt)
             opt.process_query(q)
-        for opt in util.flatten_iterator(self.with_options):
-            opt.process_query(self)
         return q
 
     def with_lockmode(self, mode):

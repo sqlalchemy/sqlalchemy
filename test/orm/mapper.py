@@ -760,14 +760,27 @@ class MapperTest(MapperSuperTest):
         # eagerload orders, orders.items, orders.items.keywords
         q2 = sess.query(User).options(eagerload('orders'), eagerload('orders.items'), eagerload('orders.items.keywords'))
         u = q2.select()
+        def go():
+            print u[0].orders[1].items[0].keywords[1]
         print "-------MARK2----------"
         self.assert_sql_count(db, go, 0)
+
+        sess.clear()
+
+        # same thing, with separate options calls
+        q2 = sess.query(User).options(eagerload('orders')).options(eagerload('orders.items')).options(eagerload('orders.items.keywords'))
+        u = q2.select()
+        def go():
+            print u[0].orders[1].items[0].keywords[1]
+        print "-------MARK3----------"
+        self.assert_sql_count(db, go, 0)
+        print "-------MARK4----------"
 
         sess.clear()
         
         # eagerload "keywords" on items.  it will lazy load "orders", then lazy load
         # the "items" on the order, but on "items" it will eager load the "keywords"
-        print "-------MARK3----------"
+        print "-------MARK5----------"
         q3 = sess.query(User).options(eagerload('orders.items.keywords'))
         u = q3.select()
         self.assert_sql_count(db, go, 2)
