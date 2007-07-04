@@ -212,16 +212,60 @@ class CollectionsTest(testbase.PersistTest):
             direct.extend(values)
             control.extend(values)
             assert_eq()
-                    
+
+    def _test_list_bulk(self, typecallable, creator=entity_maker):
+        class Foo(object):
+            pass
+
+        canary = Canary()
+        manager.register_attribute(Foo, 'attr', True, extension=canary,
+                                   typecallable=typecallable)
+
+        obj = Foo()
+        direct = obj.attr
+
+        e1 = creator()
+        obj.attr.append(e1)
+
+        like_me = typecallable()
+        e2 = creator()
+        like_me.append(e2)
+
+        self.assert_(obj.attr is direct)
+        obj.attr = like_me
+        self.assert_(obj.attr is not direct)
+        self.assert_(obj.attr is not like_me)
+        self.assert_(set(obj.attr) == set([e2]))
+        self.assert_(e1 in canary.removed)
+        self.assert_(e2 in canary.added)
+ 
+        e3 = creator()
+        real_list = [e3]
+        obj.attr = real_list
+        self.assert_(obj.attr is not real_list)
+        self.assert_(set(obj.attr) == set([e3]))
+        self.assert_(e2 in canary.removed)
+        self.assert_(e3 in canary.added)
+       
+        e4 = creator()
+        try:
+            obj.attr = set([e4])
+            self.assert_(False)
+        except exceptions.ArgumentError:
+            self.assert_(e4 not in canary.data)
+            self.assert_(e3 in canary.data)
+
     def test_list(self):
         self._test_adapter(list)
         self._test_list(list)
+        self._test_list_bulk(list)
 
     def test_list_subclass(self):
         class MyList(list):
             pass
         self._test_adapter(MyList)
         self._test_list(MyList)
+        self._test_list_bulk(MyList)
         self.assert_(getattr(MyList, '_sa_instrumented') == id(MyList))
 
     def test_list_duck(self):
@@ -247,6 +291,7 @@ class CollectionsTest(testbase.PersistTest):
             
         self._test_adapter(ListLike)
         self._test_list(ListLike)
+        self._test_list_bulk(ListLike)
         self.assert_(getattr(ListLike, '_sa_instrumented') == id(ListLike))
 
     def test_list_emulates(self):
@@ -273,6 +318,7 @@ class CollectionsTest(testbase.PersistTest):
             
         self._test_adapter(ListIsh)
         self._test_list(ListIsh)
+        self._test_list_bulk(ListIsh)
         self.assert_(getattr(ListIsh, '_sa_instrumented') == id(ListIsh))
 
     def _test_set(self, typecallable, creator=entity_maker):
@@ -407,15 +453,59 @@ class CollectionsTest(testbase.PersistTest):
             control.symmetric_difference_update(values)
             assert_eq()
 
+    def _test_set_bulk(self, typecallable, creator=entity_maker):
+        class Foo(object):
+            pass
+
+        canary = Canary()
+        manager.register_attribute(Foo, 'attr', True, extension=canary,
+                                   typecallable=typecallable)
+
+        obj = Foo()
+        direct = obj.attr
+
+        e1 = creator()
+        obj.attr.add(e1)
+
+        like_me = typecallable()
+        e2 = creator()
+        like_me.add(e2)
+
+        self.assert_(obj.attr is direct)
+        obj.attr = like_me
+        self.assert_(obj.attr is not direct)
+        self.assert_(obj.attr is not like_me)
+        self.assert_(obj.attr == set([e2]))
+        self.assert_(e1 in canary.removed)
+        self.assert_(e2 in canary.added)
+ 
+        e3 = creator()
+        real_set = set([e3])
+        obj.attr = real_set
+        self.assert_(obj.attr is not real_set)
+        self.assert_(obj.attr == set([e3]))
+        self.assert_(e2 in canary.removed)
+        self.assert_(e3 in canary.added)
+       
+        e4 = creator()
+        try:
+            obj.attr = [e4]
+            self.assert_(False)
+        except exceptions.ArgumentError:
+            self.assert_(e4 not in canary.data)
+            self.assert_(e3 in canary.data)
+
     def test_set(self):
         self._test_adapter(set)
         self._test_set(set)
+        self._test_set_bulk(set)
 
     def test_set_subclass(self):
         class MySet(set):
             pass
         self._test_adapter(MySet)
-        self._test_set(MySet) 
+        self._test_set(MySet)
+        self._test_set_bulk(MySet)
         self.assert_(getattr(MySet, '_sa_instrumented') == id(MySet))
 
     def test_set_duck(self):
@@ -439,6 +529,7 @@ class CollectionsTest(testbase.PersistTest):
 
         self._test_adapter(SetLike)
         self._test_set(SetLike)
+        self._test_set_bulk(SetLike)
         self.assert_(getattr(SetLike, '_sa_instrumented') == id(SetLike))
 
     def test_set_emulates(self):
@@ -463,6 +554,7 @@ class CollectionsTest(testbase.PersistTest):
 
         self._test_adapter(SetIsh)
         self._test_set(SetIsh)
+        self._test_set_bulk(SetIsh)
         self.assert_(getattr(SetIsh, '_sa_instrumented') == id(SetIsh))
 
     def _test_dict(self, typecallable, creator=dictable_entity):
@@ -581,7 +673,50 @@ class CollectionsTest(testbase.PersistTest):
             direct.update(**kw)
             control.update(**kw)
             assert_eq()
-                        
+
+    def _test_dict_bulk(self, typecallable, creator=dictable_entity):
+        class Foo(object):
+            pass
+
+        canary = Canary()
+        manager.register_attribute(Foo, 'attr', True, extension=canary,
+                                   typecallable=typecallable)
+
+        obj = Foo()
+        direct = obj.attr
+
+        e1 = creator()
+        collections.collection_adapter(direct).append_with_event(e1)
+
+        like_me = typecallable()
+        e2 = creator()
+        like_me.set(e2)
+
+        self.assert_(obj.attr is direct)
+        obj.attr = like_me
+        self.assert_(obj.attr is not direct)
+        self.assert_(obj.attr is not like_me)
+        self.assert_(set(collections.collection_adapter(obj.attr)) == set([e2]))
+        self.assert_(e1 in canary.removed)
+        self.assert_(e2 in canary.added)
+
+        e3 = creator()
+        real_dict = dict(keyignored1=e3)
+        obj.attr = real_dict
+        self.assert_(obj.attr is not real_dict)
+        self.assert_('keyignored1' not in obj.attr)
+        self.assert_(set(collections.collection_adapter(obj.attr)) == set([e3]))
+        self.assert_(e2 in canary.removed)
+        self.assert_(e3 in canary.added)
+
+        e4 = creator()
+        try:
+            obj.attr = [e4]
+            self.assert_(False)
+        except exceptions.ArgumentError:
+            self.assert_(e4 not in canary.data)
+            self.assert_(e3 in canary.data)
+        
     def test_dict(self):
         try:
             self._test_adapter(dict, dictable_entity,
@@ -610,6 +745,7 @@ class CollectionsTest(testbase.PersistTest):
         self._test_adapter(MyDict, dictable_entity,
                            to_set=lambda c: set(c.values()))
         self._test_dict(MyDict)
+        self._test_dict_bulk(MyDict)
         self.assert_(getattr(MyDict, '_sa_instrumented') == id(MyDict))
 
     def test_dict_subclass2(self):
@@ -620,6 +756,7 @@ class CollectionsTest(testbase.PersistTest):
         self._test_adapter(MyEasyDict, dictable_entity,
                            to_set=lambda c: set(c.values()))
         self._test_dict(MyEasyDict)
+        self._test_dict_bulk(MyEasyDict)
         self.assert_(getattr(MyEasyDict, '_sa_instrumented') == id(MyEasyDict))
 
     def test_dict_subclass3(self):
@@ -631,8 +768,8 @@ class CollectionsTest(testbase.PersistTest):
         self._test_adapter(MyOrdered, dictable_entity,
                            to_set=lambda c: set(c.values()))
         self._test_dict(MyOrdered)
+        self._test_dict_bulk(MyOrdered)
         self.assert_(getattr(MyOrdered, '_sa_instrumented') == id(MyOrdered))
-        
 
     def test_dict_duck(self):
         class DictLike(object):
@@ -669,6 +806,7 @@ class CollectionsTest(testbase.PersistTest):
         self._test_adapter(DictLike, dictable_entity,
                            to_set=lambda c: set(c.itervalues()))
         self._test_dict(DictLike)
+        self._test_dict_bulk(DictLike)
         self.assert_(getattr(DictLike, '_sa_instrumented') == id(DictLike))
 
     def test_dict_emulates(self):
@@ -707,6 +845,7 @@ class CollectionsTest(testbase.PersistTest):
         self._test_adapter(DictIsh, dictable_entity,
                            to_set=lambda c: set(c.itervalues()))
         self._test_dict(DictIsh)
+        self._test_dict_bulk(DictIsh)
         self.assert_(getattr(DictIsh, '_sa_instrumented') == id(DictIsh))
 
     def _test_object(self, typecallable, creator=entity_maker):
@@ -809,6 +948,37 @@ class CollectionsTest(testbase.PersistTest):
         self.assert_(getattr(MyCollection2, '_sa_instrumented') ==
                      id(MyCollection2))
 
+    def test_lifecycle(self):
+        class Foo(object):
+            pass
+
+        canary = Canary()
+        creator = entity_maker
+        manager.register_attribute(Foo, 'attr', True, extension=canary)
+
+        obj = Foo()
+        col1 = obj.attr
+
+        e1 = creator()
+        obj.attr.append(e1)
+
+        e2 = creator()
+        bulk1 = [e2]
+        # empty & sever col1 from obj
+        obj.attr = bulk1
+        self.assert_(len(col1) == 0)
+        self.assert_(len(canary.data) == 1)
+        self.assert_(obj.attr is not col1)
+        self.assert_(obj.attr is not bulk1)
+        self.assert_(obj.attr == bulk1)
+
+        e3 = creator()
+        col1.append(e3)
+        self.assert_(e3 not in canary.data)
+        self.assert_(collections.collection_adapter(col1) is None)
+        
+        obj.attr[0] = e3
+        self.assert_(e3 in canary.data)
 
 class DictHelpersTest(testbase.ORMTest):
     def define_tables(self, metadata):
