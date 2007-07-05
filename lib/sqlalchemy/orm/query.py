@@ -208,7 +208,7 @@ class Query(object):
         mapper = self.mapper
         clause = None
         for key in keys:
-            prop = mapper.props[key]
+            prop = mapper.get_property(key, resolve_synonyms=True)
             if clause is None:
                 clause = prop.get_join(mapper)
             else:
@@ -403,7 +403,7 @@ class Query(object):
         """
         
         mapper = object_mapper(instance)
-        prop = mapper.props[property]
+        prop = mapper.get_property(property, resolve_synonyms=True)
         target = prop.mapper
         criterion = cls._with_lazy_criterion(instance, prop)
         return Query(target, **kwargs).filter(criterion)
@@ -427,13 +427,13 @@ class Query(object):
         from sqlalchemy.orm import properties
         mapper = object_mapper(instance)
         if property is None:
-            for prop in mapper.props.values():
+            for prop in mapper.iterate_properties:
                 if isinstance(prop, properties.PropertyLoader) and prop.mapper is self.mapper:
                     break
             else:
                 raise exceptions.InvalidRequestError("Could not locate a property which relates instances of class '%s' to instances of class '%s'" % (self.mapper.class_.__name__, instance.__class__.__name__))
         else:
-            prop = mapper.props[property]
+            prop = mapper.get_property(property, resolve_synonyms=True)
         return self.filter(Query._with_lazy_criterion(instance, prop))
 
     def add_entity(self, entity):
@@ -524,20 +524,13 @@ class Query(object):
 
     def _join_to(self, prop, outerjoin=False):
         if isinstance(prop, list):
-            mapper = self._joinpoint
-            keys = []
-            for key in prop:
-                p = mapper.props[key]
-                if p._is_self_referential():
-                    raise exceptions.InvalidRequestError("Self-referential query on '%s' property must be constructed manually using an Alias object for the related table." % (str(p)))
-                keys.append(key)
-                mapper = p.mapper
+            keys = prop
         else:
             [keys,p] = self._locate_prop(prop, start=self._joinpoint)
         clause = self._from_obj[-1]
         mapper = self._joinpoint
         for key in keys:
-            prop = mapper.props[key]
+            prop = mapper.get_property(key, resolve_synonyms=True)
             if prop._is_self_referential():
                 raise exceptions.InvalidRequestError("Self-referential query on '%s' property must be constructed manually using an Alias object for the related table." % str(prop))
             if outerjoin:
@@ -593,14 +586,12 @@ class Query(object):
                 return None
             seen.add(mapper_)
             if mapper_.props.has_key(key):
-                prop = mapper_.props[key]
-                if isinstance(prop, SynonymProperty):
-                    prop = mapper_.props[prop.name]
+                prop = mapper_.get_property(key, resolve_synonyms=True)
                 if isinstance(prop, properties.PropertyLoader):
                     keys.insert(0, prop.key)
                 return prop
             else:
-                for prop in mapper_.props.values():
+                for prop in mapper_.iterate_properties:
                     if not isinstance(prop, properties.PropertyLoader):
                         continue
                     x = search_for_prop(prop.mapper)
@@ -1103,7 +1094,7 @@ class Query(object):
         # give all the attached properties a chance to modify the query
         # TODO: doing this off the select_mapper.  if its the polymorphic mapper, then
         # it has no relations() on it.  should we compile those too into the query ?  (i.e. eagerloads)
-        for value in self.select_mapper.props.values():
+        for value in self.select_mapper.iterate_properties:
             value.setup(context)
         
         # additional entities/columns, add those to selection criterion
@@ -1111,7 +1102,7 @@ class Query(object):
             if isinstance(m, type):
                 m = mapper.class_mapper(m)
             if isinstance(m, mapper.Mapper):
-                for value in m.props.values():
+                for value in m.iterate_properties:
                     value.setup(context)
             elif isinstance(m, sql.ColumnElement):
                 statement.append_column(m)

@@ -304,9 +304,12 @@ class MapperTest(MapperSuperTest):
         """test the with_parent()) method and one-to-many relationships"""
         
         m = mapper(User, users, properties={
+            'user_name_syn':synonym('user_name'),
             'orders':relation(mapper(Order, orders, properties={
-                'items':relation(mapper(Item, orderitems))
-            }))
+                'items':relation(mapper(Item, orderitems)),
+                'items_syn':synonym('items')
+            })),
+            'orders_syn':synonym('orders')
         })
 
         sess = create_session()
@@ -334,6 +337,21 @@ class MapperTest(MapperSuperTest):
             assert False
         except exceptions.InvalidRequestError, e:
             assert str(e) == "Could not locate a property which relates instances of class 'Item' to instances of class 'User'"
+
+
+        for nameprop, orderprop in (
+            ('user_name', 'orders'),
+            ('user_name_syn', 'orders'),
+            ('user_name', 'orders_syn'),
+            ('user_name_syn', 'orders_syn'),
+        ):
+            sess = create_session()
+            q = sess.query(User)
+
+            u1 = q.filter_by(**{nameprop:'jack'}).one()
+
+            o = sess.query(Order).with_parent(u1, property=orderprop).list()
+            self.assert_result(o, Order, *user_all_result[0]['orders'][1])
             
     def testwithparentm2m(self):
         """test the with_parent() method and many-to-many relationships"""
@@ -347,21 +365,36 @@ class MapperTest(MapperSuperTest):
         self.assert_result(k, Keyword, *item_keyword_result[1]['keywords'][1])
 
         
-    def testautojoin(self):
+    def test_join(self):
         """test functions derived from Query's _join_to function."""
         
         m = mapper(User, users, properties={
             'orders':relation(mapper(Order, orders, properties={
-                'items':relation(mapper(Item, orderitems))
-            }))
+                'items':relation(mapper(Item, orderitems)),
+                'items_syn':synonym('items')
+            })),
+            
+            'orders_syn':synonym('orders'),
         })
 
         sess = create_session()
         q = sess.query(m)
 
-        l = q.filter(orderitems.c.item_name=='item 4').join(['orders', 'items']).list()
-        self.assert_result(l, User, user_result[0])
-        
+        for j in (
+            ['orders', 'items'],
+            ['orders', 'items_syn'],
+            ['orders_syn', 'items'],
+            ['orders_syn', 'items_syn'],
+        ):
+            for q in (
+                q.filter(orderitems.c.item_name=='item 4').join(j),
+                q.filter(orderitems.c.item_name=='item 4').join(j[-1]),
+                q.filter(orderitems.c.item_name=='item 4').filter(q.join_via(j)),
+                q.filter(orderitems.c.item_name=='item 4').filter(q.join_to(j[-1])),
+            ):
+                l = q.all()
+                self.assert_result(l, User, user_result[0])
+
         l = q.select_by(item_name='item 4')
         self.assert_result(l, User, user_result[0])
 
@@ -1268,9 +1301,6 @@ class EagerTest(MapperSuperTest):
         if db.engine.name != 'mssql':
             l = q.select(q.join_to('orders'), order_by=desc(orders.c.user_id), limit=2, offset=1)
             self.assert_result(l, User, *(user_all_result[2], user_all_result[0]))
-        
-        l = q.select(q.join_to('addresses'), order_by=desc(addresses.c.email_address), limit=1, offset=0)
-        self.assert_result(l, User, *(user_all_result[0],))
         
     def testonetoone(self):
         m = mapper(User, users, properties = dict(

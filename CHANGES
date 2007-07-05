@@ -14,6 +14,8 @@
     - added synchronization to the mapper() construction step, to avoid
       thread collections when pre-existing mappers are compiling in a 
       different thread [ticket:613]
+    - synonym() properties are fully supported by all Query joining/
+      with_parent operations [ticket:598]
     - fixed very stupid bug when deleting items with many-to-many
       uselist=False relations
     - remember all that stuff about polymorphic_union ?  for 

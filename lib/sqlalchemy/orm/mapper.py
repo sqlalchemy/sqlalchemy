@@ -8,7 +8,7 @@ from sqlalchemy import sql, schema, util, exceptions, logging
 from sqlalchemy import sql_util as sqlutil
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm import sync
-from sqlalchemy.orm.interfaces import MapperProperty, MapperOption, OperationContext
+from sqlalchemy.orm.interfaces import MapperProperty, MapperOption, OperationContext, SynonymProperty
 import weakref
 
 __all__ = ['Mapper', 'MapperExtension', 'class_mapper', 'object_mapper', 'EXT_PASS', 'mapper_registry', 'ExtensionOption']
@@ -302,7 +302,26 @@ class Mapper(object):
         return self.__props
 
     props = property(_get_props, doc="compiles this mapper if needed, and returns the "
-                     "dictionary of MapperProperty objects associated with this mapper.")
+                     "dictionary of MapperProperty objects associated with this mapper."
+                     "(Deprecated; use get_property() and iterate_properties)")
+
+    def get_property(self, key, resolve_synonyms=False, raiseerr=True):
+        """return MapperProperty with the given key.
+
+        forwards compatible with 0.4.
+        """
+
+        self.compile()
+        prop = self.__props.get(key, None)
+        if resolve_synonyms:
+            while isinstance(prop, SynonymProperty):
+                prop = self.__props.get(prop.name, None)
+        if prop is None and raiseerr:
+            raise exceptions.InvalidRequestError("Mapper '%s' has no property '%s'" % (str(self), key))
+        return prop
+
+    iterate_properties = property(lambda self: self._get_props().itervalues(), doc="returns an iterator of all MapperProperty objects."
+                                    "  Forwards compatible with 0.4")
 
     def compile(self):
         """Compile this mapper into its final internal format.
