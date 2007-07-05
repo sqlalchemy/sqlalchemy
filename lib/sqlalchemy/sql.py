@@ -1281,7 +1281,7 @@ class _CompareMixin(object):
         else:
             obj = self._check_literal(obj)
 
-        return _BinaryExpression(self._compare_self(), obj, operator, type=self._compare_type(obj), negate=negate)
+        return _BinaryExpression(self._compare_self(), obj, operator, type=sqltypes.Boolean, negate=negate)
 
     def _operate(self, operator, obj):
         if _is_literal(obj):

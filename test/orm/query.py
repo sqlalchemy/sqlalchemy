@@ -323,7 +323,7 @@ class InstancesTest(QueryTest):
         l = q.all()
         assert l == expected
 
-        s = select([users, func.count(addresses.c.id).label('count')], from_obj=[users.outerjoin(addresses)], group_by=[c for c in users.c], order_by=[users.c.id])
+        s = select([users, func.count(addresses.c.id).label('count')]).select_from(users.outerjoin(addresses)).group_by(*[c for c in users.c]).order_by(users.c.id)
         q = sess.query(User)
         l = q.instances(s.execute(), "count")
         assert l == expected
