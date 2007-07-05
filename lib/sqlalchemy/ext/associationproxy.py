@@ -108,7 +108,7 @@ class AssociationProxy(object):
         self.collection_class = None
 
     def _get_property(self):
-        return orm.class_mapper(self.owning_class).props[self.target_collection]
+        return orm.class_mapper(self.owning_class).get_property(self.target_collection)
 
     def _target_class(self):
         return self._get_property().mapper.class_

@@ -313,8 +313,6 @@ class testmanytomany(testbase.PersistTest):
 
          # Optimistically based on activemapper one_to_many test, try  to append
          # baz1 to foo1.bazrel - (AttributeError: 'foo' object has no attribute 'bazrel')
-         print class_mapper(foo).props
-         print class_mapper(baz).props
          foo1.bazrel.append(baz1)
          assert (foo1.bazrel == [baz1])
         

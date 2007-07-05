@@ -45,6 +45,19 @@ class OverrideAttributesTest(PersistTest):
         ctx.current.clear()
         
         assert SomeObject.get_by(id=s.id).options[0].id == sso.id
+
+        s2 = SomeObject(someid=12)
+        s3 = SomeOtherObject(someid=123, bogus=345)
+         
+        class ValidatedOtherObject(object):pass
+        assign_mapper(ctx, ValidatedOtherObject, table2, validate=True)
+
+        v1 = ValidatedOtherObject(someid=12)
+        try:
+            v2 = ValidatedOtherObject(someid=12, bogus=345)
+            assert False
+        except exceptions.ArgumentError:
+            pass
         
 if __name__ == '__main__':
     testbase.main()

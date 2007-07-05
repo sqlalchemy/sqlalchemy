@@ -27,11 +27,12 @@ def assign_mapper(ctx, class_, *args, **kwargs):
     validate = kwargs.pop('validate', False)
     if not isinstance(getattr(class_, '__init__'), types.MethodType):
         def __init__(self, **kwargs):
-             for key, value in kwargs.items():
-                 if validate:
-                     if not key in self.mapper.props:
-                         raise exceptions.ArgumentError("Invalid __init__ argument: '%s'" % key)
-                 setattr(self, key, value)
+            if validate:
+                keys = [p.key for p in self.mapper.iterate_properties]
+            for key, value in kwargs.items():
+                if validate and key not in keys:
+                    raise exceptions.ArgumentError("Invalid __init__ argument: '%s'" % key)
+                setattr(self, key, value)
         class_.__init__ = __init__
     extension = kwargs.pop('extension', None)
     if extension is not None:
