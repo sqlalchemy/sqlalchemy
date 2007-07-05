@@ -536,7 +536,7 @@ class BackRef(object):
 
         # try to set a LazyLoader on our mapper referencing the parent mapper
         mapper = prop.mapper.primary_mapper()
-        if not mapper.props.has_key(self.key):
+        if not mapper.get_property(self.key, raiseerr=False) is not None:
             pj = self.kwargs.pop('primaryjoin', None)
             sj = self.kwargs.pop('secondaryjoin', None)
             # the backref property is set on the primary mapper
@@ -547,26 +547,26 @@ class BackRef(object):
                                       backref=prop.key, is_backref=True,
                                       **self.kwargs)
             mapper._compile_property(self.key, relation);
-        elif not isinstance(mapper.props[self.key], PropertyLoader):
+        elif not isinstance(mapper.get_property(self.key), PropertyLoader):
             raise exceptions.ArgumentError(
                 "Can't create backref '%s' on mapper '%s'; an incompatible "
                 "property of that name already exists" % (self.key, str(mapper)))
         else:
             # else set one of us as the "backreference"
             parent = prop.parent.primary_mapper()
-            if parent.class_ is not mapper.props[self.key]._get_target_class():
+            if parent.class_ is not mapper.get_property(self.key)._get_target_class():
                 raise exceptions.ArgumentError(
                     "Backrefs do not match:  backref '%s' expects to connect to %s, "
                     "but found a backref already connected to %s" %
-                    (self.key, str(parent.class_), str(mapper.props[self.key].mapper.class_)))
-            if not mapper.props[self.key].is_backref:
+                    (self.key, str(parent.class_), str(mapper.get_property(self.key).mapper.class_)))
+            if not mapper.get_property(self.key).is_backref:
                 prop.is_backref=True
                 if not prop.viewonly:
                     prop._dependency_processor.is_backref=True
                     # reverse_property used by dependencies.ManyToManyDP to check
                     # association table operations
-                    prop.reverse_property = mapper.props[self.key]
-                    mapper.props[self.key].reverse_property = prop
+                    prop.reverse_property = mapper.get_property(self.key)
+                    mapper.get_property(self.key).reverse_property = prop
 
     def get_extension(self):
         """Return an attribute extension to use with this backreference."""

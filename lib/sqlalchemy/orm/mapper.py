@@ -9,7 +9,7 @@ from sqlalchemy import sql_util as sqlutil
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.util import ExtensionCarrier
 from sqlalchemy.orm import sync
-from sqlalchemy.orm.interfaces import MapperProperty, MapperOption, OperationContext, EXT_PASS, MapperExtension
+from sqlalchemy.orm.interfaces import MapperProperty, MapperOption, OperationContext, EXT_PASS, MapperExtension, SynonymProperty
 import weakref
 
 __all__ = ['Mapper', 'class_mapper', 'object_mapper', 'mapper_registry']
@@ -311,13 +311,22 @@ class Mapper(object):
             else:
                 return False
 
-    def _get_props(self):
+    def get_property(self, key, resolve_synonyms=False, raiseerr=True):
+        """return MapperProperty with the given key."""
         self.compile()
-        return self.__props
-
-    props = property(_get_props, doc="compiles this mapper if needed, and returns the "
-                     "dictionary of MapperProperty objects associated with this mapper.")
-
+        prop = self.__props.get(key, None)
+        if resolve_synonyms:
+            while isinstance(prop, SynonymProperty):
+                prop = self.__props.get(prop.name, None)
+        if prop is None and raiseerr:
+            raise exceptions.InvalidRequestError("Mapper '%s' has no property '%s'" % (str(self), key))
+        return prop
+    
+    def iterate_properties(self):
+        self.compile()
+        return self.__props.itervalues()
+    iterate_properties = property(iterate_properties, doc="returns an iterator of all MapperProperty objects.")
+    
     def dispose(self):
         attribute_manager.reset_class_managed(self.class_)
         if hasattr(self.class_, 'c'):

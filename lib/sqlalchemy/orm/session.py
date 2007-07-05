@@ -481,7 +481,7 @@ class Session(object):
                     merged = self.get(mapper.class_, key[1])
                     if merged is None:
                         raise exceptions.AssertionError("Instance %s has an instance key but is not persisted" % mapperutil.instance_str(object))
-            for prop in mapper.props.values():
+            for prop in mapper.iterate_properties:
                 prop.merge(self, object, merged, _recursive)
             if key is None:
                 self.save(merged, entity_name=mapper.entity_name)

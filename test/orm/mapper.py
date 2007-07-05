@@ -233,7 +233,7 @@ class MapperTest(MapperSuperTest):
         m = mapper(User, users, properties = {
             'addresses' : relation(mapper(Address, addresses))
         }).compile()
-        self.assert_(User.addresses.property is m.props['addresses'])
+        self.assert_(User.addresses.property is m.get_property('addresses'))
         
 
     def testrecursiveselectby(self):

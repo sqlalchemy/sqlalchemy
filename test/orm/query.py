@@ -186,6 +186,54 @@ class JoinTest(QueryTest):
         result = create_session().query(User).select_from(users.join(oalias)).filter(oalias.c.description.in_("order 1", "order 2", "order 3")).join(['orders', 'items']).filter_by(id=4).all()
         assert [User(id=7, name='jack')] == result
 
+
+class SynonymTest(QueryTest):
+    keep_mappers = True
+    keep_data = True
+
+    def setup_mappers(self):
+        mapper(User, users, properties={
+            'name_syn':synonym('name'),
+            'addresses':relation(Address),
+            'orders':relation(Order, backref='user'), # o2m, m2o
+            'orders_syn':synonym('orders')
+        })
+        mapper(Address, addresses)
+        mapper(Order, orders, properties={
+            'items':relation(Item, secondary=order_items),  #m2m
+            'address':relation(Address),  # m2o
+            'items_syn':synonym('items')
+        })
+        mapper(Item, items, properties={
+            'keywords':relation(Keyword, secondary=item_keywords) #m2m
+        })
+        mapper(Keyword, keywords)
+
+    def test_joins(self):
+        for j in (
+            ['orders', 'items'],
+            ['orders_syn', 'items'],
+            ['orders', 'items_syn'],
+            ['orders_syn', 'items_syn'],
+        ):
+            result = create_session().query(User).join(j).filter_by(id=3).all()
+            assert [User(id=7, name='jack'), User(id=9, name='fred')] == result
+
+    def test_with_parent(self):
+        for nameprop, orderprop in (
+            ('name', 'orders'),
+            ('name_syn', 'orders'),
+            ('name', 'orders_syn'),
+            ('name_syn', 'orders_syn'),
+        ):
+            sess = create_session()
+            q = sess.query(User)
+        
+            u1 = q.filter_by(**{nameprop:'jack'}).one()
+
+            o = sess.query(Order).with_parent(u1, property=orderprop).all()
+            assert [Order(description="order 1"), Order(description="order 3"), Order(description="order 5")] == o
+        
 class InstancesTest(QueryTest):
 
     def test_from_alias(self):

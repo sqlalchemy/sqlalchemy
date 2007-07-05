@@ -90,7 +90,7 @@ class ColumnLoader(LoaderStrategy):
 
     def _get_deferred_loader(self, instance, mapper, needs_tables):
         def load():
-            group = [p for p in mapper.props.values() if isinstance(p.strategy, ColumnLoader) and p.columns[0].table in needs_tables]
+            group = [p for p in mapper.iterate_properties if isinstance(p.strategy, ColumnLoader) and p.columns[0].table in needs_tables]
 
             if self._should_log_debug:
                 self.logger.debug("deferred load %s group %s" % (mapperutil.attribute_str(instance, self.key), group and ','.join([p.key for p in group]) or 'None'))
@@ -164,7 +164,7 @@ class DeferredColumnLoader(LoaderStrategy):
         if localparent is None:
             return None
             
-        prop = localparent.props[self.key]
+        prop = localparent.get_property(self.key)
         if prop is not self.parent_property:
             return prop._get_strategy(DeferredColumnLoader).setup_loader(instance)
 
@@ -173,7 +173,7 @@ class DeferredColumnLoader(LoaderStrategy):
                 return None
 
             if self.group is not None:
-                group = [p for p in localparent.props.values() if isinstance(p.strategy, DeferredColumnLoader) and p.group==self.group]
+                group = [p for p in localparent.iterate_properties if isinstance(p.strategy, DeferredColumnLoader) and p.group==self.group]
             else:
                 group = None
                 
@@ -282,7 +282,7 @@ class LazyLoader(AbstractRelationLoader):
         if not mapper.has_mapper(instance):
             return None
         else:
-            prop = mapper.object_mapper(instance).props[self.key]
+            prop = mapper.object_mapper(instance).get_property(self.key)
             if prop is not self.parent_property:
                 return prop._get_strategy(LazyLoader).setup_loader(instance)
         def lazyload():
@@ -635,7 +635,7 @@ class EagerLoader(AbstractRelationLoader):
         
         statement.append_from(statement._outerjoin)
 
-        for value in self.select_mapper.props.values():
+        for value in self.select_mapper.iterate_properties:
             value.setup(context, eagertable=clauses.eagertarget, parentclauses=clauses, parentmapper=self.select_mapper)
 
     def _create_row_decorator(self, selectcontext, row):

@@ -43,7 +43,7 @@ class UOWEventHandler(interfaces.AttributeExtension):
         if sess is not None:
             if self.cascade is not None and self.cascade.save_update and item not in sess:
                 mapper = object_mapper(obj)
-                prop = mapper.props[self.key]
+                prop = mapper.get_property(self.key)
                 ename = prop.mapper.entity_name
                 sess.save_or_update(item, entity_name=ename)
 
@@ -58,7 +58,7 @@ class UOWEventHandler(interfaces.AttributeExtension):
         if sess is not None:
             if newvalue is not None and self.cascade is not None and self.cascade.save_update and newvalue not in sess:
                 mapper = object_mapper(obj)
-                prop = mapper.props[self.key]
+                prop = mapper.get_property(self.key)
                 ename = prop.mapper.entity_name
                 sess.save_or_update(newvalue, entity_name=ename)
 

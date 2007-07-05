@@ -466,9 +466,7 @@ class PropertyOption(MapperOption):
         except AttributeError:
             mapper = context.mapper
             for token in self.key.split('.'):
-                prop = mapper.props[token]
-                if isinstance(prop, SynonymProperty):
-                    prop = mapper.props[prop.name]
+                prop = mapper.get_property(token, resolve_synonyms=True)
                 mapper = getattr(prop, 'mapper', None)
             self.__prop = prop
         return prop

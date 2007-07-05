@@ -317,6 +317,7 @@ class ORMTest(AssertMixin):
     def get_metadata(self):
         return _otest_metadata
     def tearDownAll(self):
+        clear_mappers()
         _otest_metadata.drop_all()
     def tearDown(self):
         if not self.keep_mappers:

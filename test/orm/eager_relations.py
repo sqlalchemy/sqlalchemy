@@ -141,8 +141,8 @@ class EagerTest(QueryTest):
         mapper(User, users, properties = dict(
             addresses = relation(Address, lazy=False, backref=backref('user', lazy=False))
         ))
-        assert class_mapper(User).props['addresses'].lazy is False
-        assert class_mapper(Address).props['user'].lazy is False
+        assert class_mapper(User).get_property('addresses').lazy is False
+        assert class_mapper(Address).get_property('user').lazy is False
         
         sess = create_session()
         assert fixtures.user_address_result == sess.query(User).all()

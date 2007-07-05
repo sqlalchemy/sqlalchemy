@@ -445,7 +445,7 @@ class ForeignPKTest(UnitOfWorkTest):
               },
             )
 
-        assert list(m2.props['sites'].foreign_keys) == [peoplesites.c.person]
+        assert list(m2.get_property('sites').foreign_keys) == [peoplesites.c.person]
         p = Person()
         p.person = 'im the key'
         p.firstname = 'asdf'

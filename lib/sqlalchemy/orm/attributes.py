@@ -235,7 +235,7 @@ class InstrumentedAttribute(object):
         for ext in self.extensions:
             ext.set(obj, value, previous, initiator or self)
 
-    property = property(lambda s: class_mapper(s.class_).props[s.key],
+    property = property(lambda s: class_mapper(s.class_).get_property(s.key),
                         doc="the MapperProperty object associated with this attribute")
 
 InstrumentedAttribute.logger = logging.class_logger(InstrumentedAttribute)

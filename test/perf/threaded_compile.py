@@ -3,6 +3,7 @@ when additional mappers are created while the existing
 collection is being compiled."""
 
 from sqlalchemy import *
+from sqlalchemy.orm import *
 import thread, time
 from sqlalchemy.orm import mapperlib
 from testbase import Table, Column

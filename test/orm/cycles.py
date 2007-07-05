@@ -543,8 +543,6 @@ class OneToManyManyToOneTest(AssertMixin):
          )
         )
 
-        print str(Person.mapper.props['balls'].primaryjoin)
-
         b = Ball('some data')
         p = Person('some data')
         p.balls.append(b)
@@ -646,8 +644,6 @@ class OneToManyManyToOneTest(AssertMixin):
          favorateBall = relation(Ball.mapper, primaryjoin=person.c.favorite_ball_id==ball.c.id, remote_side=person.c.favorite_ball_id),
          )
         )
-
-        print str(Person.mapper.props['balls'].primaryjoin)
 
         b = Ball('some data')
         p = Person('some data')
