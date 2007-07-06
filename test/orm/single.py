@@ -3,7 +3,7 @@ import testbase
 
 class SingleInheritanceTest(testbase.AssertMixin):
     def setUpAll(self):
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         global employees_table
         employees_table = Table('employees', metadata, 
             Column('employee_id', Integer, primary_key=True),

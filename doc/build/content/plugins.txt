@@ -474,7 +474,7 @@ To use `objectstore`:
     import sqlalchemy.mods.threadlocal
     from sqlalchemy import *
 
-    metadata = BoundMetaData('sqlite:///')
+    metadata = MetaData('sqlite:///')
     user_table = Table('users', metadata,
         Column('user_id', Integer, primary_key=True),
         Column('user_name', String(50), nullable=False)
@@ -501,7 +501,7 @@ To use `assign_mapper`:
     import sqlalchemy.mods.threadlocal
     from sqlalchemy import *
 
-    metadata = BoundMetaData('sqlite:///')
+    metadata = MetaData('sqlite:///')
     user_table = Table('users', metadata,
         Column('user_id', Integer, primary_key=True),
         Column('user_name', String(50), nullable=False)
@@ -602,7 +602,7 @@ Full SqlSoup documentation is on the [SQLAlchemy Wiki](http://www.sqlalchemy.org
 
 **Author:** Jason Pellerin
 
-The `ProxyEngine` is used to "wrap" an `Engine`, and via subclassing `ProxyEngine` one can instrument the functionality of an arbitrary `Engine` instance through the decorator pattern.  It also provides a `connect()` method which will send all `Engine` requests to different underlying engines.  Its functionality in that regard is largely superceded now by `DynamicMetaData` which is a better solution.
+The `ProxyEngine` is used to "wrap" an `Engine`, and via subclassing `ProxyEngine` one can instrument the functionality of an arbitrary `Engine` instance through the decorator pattern.  It also provides a `connect()` method which will send all `Engine` requests to different underlying engines.  Its functionality in that regard is largely superceded now by `MetaData` which is a better solution.
 
     {python}
     from sqlalchemy.ext.proxy import ProxyEngine

@@ -39,7 +39,7 @@ class UnicodeSchemaTest(testbase.PersistTest):
         t1.insert().execute({u'méil':2, u'éXXm':7})
         t2.insert().execute({'a':2, 'b':2})
 
-        meta = BoundMetaData(testbase.db)
+        meta = MetaData(testbase.db)
         tt1 = Table(t1.name, meta, autoload=True)
         tt2 = Table(t2.name, meta, autoload=True)
         tt1.insert().execute({u'méil':1, u'éXXm':5})

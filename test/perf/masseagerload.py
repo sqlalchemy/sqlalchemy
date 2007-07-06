@@ -16,7 +16,7 @@ DIVISOR = 50
 class LoadTest(AssertMixin):
     def setUpAll(self):
         global items, meta,subitems
-        meta = BoundMetaData(db)
+        meta = MetaData(db)
         items = Table('items', meta, 
             Column('item_id', Integer, primary_key=True),
             Column('value', String(100)))

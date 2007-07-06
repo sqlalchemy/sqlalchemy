@@ -6,7 +6,7 @@ class ConstraintTest(testbase.AssertMixin):
     
     def setUp(self):
         global metadata
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         
     def tearDown(self):
         metadata.drop_all()

@@ -82,15 +82,16 @@ Working with Database Objects {@name=schemasql}
 
 ### Defining Metadata, Binding to Engines {@name=metadata}
 
-Configuring SQLAlchemy for your database consists of creating objects called `Tables`, each of which represent an actual table in the database.  A collection of `Table` objects resides in a `MetaData` object which is essentially a table collection.  We will create a handy form of `MetaData` that automatically connects to our `Engine` (connecting a schema object to an Engine is called *binding*):
+Configuring SQLAlchemy for your database consists of creating objects called `Tables`, each of which represent an actual table in the database.  A collection of `Table` objects resides in a `MetaData` object which is essentially a table collection.  We will create a `MetaData` and connect it to our `Engine` (connecting a schema object to an Engine is called *binding*):
 
     {python}
-    >>> metadata = BoundMetaData(db)
+    >>> metadata = MetaData()
+    >>> metadata.connect(db)
 
-An equivalent operation is to create the `BoundMetaData` object directly with an Engine URL, which calls the `create_engine` call for us:
+An equivalent operation is to create the `MetaData` object directly with an Engine URL, which calls the `create_engine` call for us:
 
     {python}
-    >>> metadata = BoundMetaData('sqlite:///tutorial.db')
+    >>> metadata = MetaData('sqlite:///tutorial.db')
 
 Now, when we tell "metadata" about the tables in our database, we can issue CREATE statements for those tables, as well as execute SQL statements derived from them, without needing to open or close any connections; that will be all done automatically.
 
@@ -107,7 +108,7 @@ With `metadata` as our established home for tables, lets make a Table for it:
     ...     Column('password', String(10))
     ... )
 
-As you might have guessed, we have just defined a table named `users` which has three columns: `user_id` (which is a primary key column), `user_name` and `password`. Currently it is just an object that doesn't necessarily correspond to an existing table in our database.  To actually create the table, we use the `create()` method.  To make it interesting, we will have SQLAlchemy echo the SQL statements it sends to the database, by setting the `echo` flag on the `Engine` associated with our `BoundMetaData`:
+As you might have guessed, we have just defined a table named `users` which has three columns: `user_id` (which is a primary key column), `user_name` and `password`. Currently it is just an object that doesn't necessarily correspond to an existing table in our database.  To actually create the table, we use the `create()` method.  To make it interesting, we will have SQLAlchemy echo the SQL statements it sends to the database, by setting the `echo` flag on the `Engine` associated with our `MetaData`:
 
     {python}
     >>> metadata.engine.echo = True

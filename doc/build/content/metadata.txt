@@ -13,7 +13,7 @@ A collection of metadata entities is stored in an object aptly named `MetaData`.
     {python}
     from sqlalchemy import *
     
-    metadata = MetaData(name='my metadata')
+    metadata = MetaData()
 
 Then to construct a Table, use the `Table` class:
 
@@ -121,21 +121,26 @@ And `Table` provides an interface to the table's properties as well as that of i
 
 A MetaData object can be associated with one or more Engine instances.  This allows the MetaData and the elements within it to perform operations automatically, using the connection resources of that Engine.  This includes being able to "reflect" the columns of tables, as well as to perform create and drop operations without needing to pass an `Engine` or `Connection` around.  It also allows SQL constructs to be created which know how to execute themselves (called "implicit execution").
 
-To bind `MetaData` to a single `Engine`, use `BoundMetaData`:
+To bind `MetaData` to a single `Engine`, supply an Engine when creating the MetaData, or use the `.connect()` method:
 
     {python}
     engine = create_engine('sqlite://', **kwargs)
     
-    # create BoundMetaData from an Engine
-    meta = BoundMetaData(engine)
+    # create MetaData with an Engine
+    meta = MetaData(engine)
     
     # create the Engine and MetaData in one step
-    meta = BoundMetaData('postgres://db/', **kwargs)
+    meta = MetaData('postgres://db/', **kwargs)
+
+    # or bind later
+    meta = MetaData()
+    # ...
+    meta.connect(engine)
 
 Another form of `MetaData` exits which can connect to an engine within the current thread (or "on a per-thread basis"), allowing other threads to be connected to different engines simultaneously:
 
     {python}
-    meta = DynamicMetaData()
+    meta = ThreadLocalMetaData()
 
     # In thread 1, connect to an existing Engine    
     meta.connect(engine)
@@ -143,11 +148,11 @@ Another form of `MetaData` exits which can connect to an engine within the curre
     # Meanwhile in thread 2, create a new Engine and connect
     meta.connect('mysq://user@host/dsn')
 
-`DynamicMetaData` is intended for applications that need to use the same set of `Tables` for many different database connections in the same process, such as a CherryPy web application which handles multiple application instances in one process.
+`ThreadLocalMetaData` is intended for applications that need to use the same set of `Tables` for many different database connections in the same process, such as a CherryPy web application which handles multiple application instances in one process.
 
 #### Using the global Metadata object
 
-Some users prefer to create `Table` objects without specifying a `MetaData` object, having Tables scoped on an application-wide basis.  For them the `default_metadata` object and the `global_connect()` function is supplied.  `default_metadata` is simply an instance of `DynamicMetaData` that exists within the `sqlalchemy` namespace, and `global_connect()` is a synonym for `default_metadata.connect()`.  Defining a `Table` that has no `MetaData` argument will automatically use this default metadata as follows:
+Some users prefer to create `Table` objects without specifying a `MetaData` object, having Tables scoped on an application-wide basis.  For them the `default_metadata` object and the `global_connect()` function is supplied.  `default_metadata` is simply an instance of `ThreadLocalMetaData` that exists within the `sqlalchemy` namespace, and `global_connect()` is a synonym for `default_metadata.connect()`.  Defining a `Table` that has no `MetaData` argument will automatically use this default metadata as follows:
 
     {python}
     from sqlalchemy import *
@@ -169,7 +174,7 @@ Some users prefer to create `Table` objects without specifying a `MetaData` obje
     
 #### Reflecting Tables
 
-Once you have a `BoundMetaData` or a connected `DynamicMetaData`, you can create `Table` objects without specifying their columns, just their names, using `autoload=True`:
+Once you have a connected `MetaData` or `ThreadLocalMetaData`, you can create `Table` objects without specifying their columns, just their names, using `autoload=True`:
 
     {python}
     >>> messages = Table('messages', meta, autoload = True)
@@ -291,7 +296,7 @@ To force quoting for an identifier, set the "quote=True" flag on `Column` or `Ta
 Creating and dropping individual tables can be done via the `create()` and `drop()` methods of `Table`; these methods take an optional `connectable` parameter which references an `Engine` or a `Connection`.  If not supplied, the `Engine` bound to the `MetaData` will be used, else an error is raised:
 
     {python}
-    meta = BoundMetaData('sqlite:///:memory:')
+    meta = MetaData('sqlite:///:memory:')
     employees = Table('employees', meta, 
         Column('employee_id', Integer, primary_key=True),
         Column('employee_name', String(60), nullable=False, key='name'),
@@ -560,7 +565,7 @@ A `Table` object created against a specific `MetaData` object can be re-created 
 
     {python}
     # create two metadata
-    meta1 = BoundMetaData('sqlite:///querytest.db')
+    meta1 = MetaData('sqlite:///querytest.db')
     meta2 = MetaData()
                         
     # load 'users' from the sqlite engine

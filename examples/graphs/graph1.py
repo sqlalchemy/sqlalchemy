@@ -6,7 +6,7 @@ import logging
 logging.basicConfig()
 logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
-meta = BoundMetaData('sqlite://')
+meta = MetaData('sqlite://')
 
 nodes = Table('nodes', meta,
     Column("nodeid", Integer, primary_key=True)

@@ -252,7 +252,7 @@ Using "bound" metadata:
 
     {python title="Implicit Execution Using Engine-Bound SQL Construct"}
     engine = create_engine('sqlite:///:memory:')
-    meta = BoundMetaData(engine)
+    meta = MetaData(engine)
     table = Table('mytable', meta, Column('col1', Integer), Column('col2', String(20)))
     r = table.insert().execute(col1=5, col2='some record')
 

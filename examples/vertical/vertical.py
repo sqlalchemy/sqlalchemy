@@ -5,7 +5,7 @@ fields that are all persisted in a normalized fashion."""
 from sqlalchemy import *
 import datetime
 
-e = BoundMetaData('sqlite://', echo=True)
+e = MetaData('sqlite://', echo=True)
 
 # this table represents Entity objects.  each Entity gets a row in this table,
 # with a primary key and a title.

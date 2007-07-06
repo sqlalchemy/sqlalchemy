@@ -6,7 +6,7 @@ import testbase
 
 ECHO = testbase.echo
 db = testbase.db
-metadata = BoundMetaData(db)
+metadata = MetaData(db)
 
 users = Table('users', metadata,
     Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key = True),

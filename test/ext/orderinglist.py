@@ -52,7 +52,7 @@ class OrderingListTest(PersistTest):
 
         global metadata, slides_table, bullets_table, Slide, Bullet
 
-        metadata = BoundMetaData(db)
+        metadata = MetaData(db)
         slides_table = Table('test_Slides', metadata,
                              Column('id', Integer, primary_key=True),
                              Column('name', String))

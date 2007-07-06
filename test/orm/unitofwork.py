@@ -164,7 +164,7 @@ class UnicodeTest(UnitOfWorkTest):
     def setUpAll(self):
         UnitOfWorkTest.setUpAll(self)
         global metadata, uni_table, uni_table2
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         uni_table = Table('uni_test', metadata,
             Column('id',  Integer, Sequence("uni_test_id_seq", optional=True), primary_key=True),
             Column('txt', Unicode(50), unique=True))
@@ -215,7 +215,7 @@ class MutableTypesTest(UnitOfWorkTest):
     def setUpAll(self):
         UnitOfWorkTest.setUpAll(self)
         global metadata, table
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         table = Table('mutabletest', metadata,
             Column('id', Integer, Sequence('mutableidseq', optional=True), primary_key=True),
             Column('data', PickleType),
@@ -421,7 +421,7 @@ class ForeignPKTest(UnitOfWorkTest):
     def setUpAll(self):
         UnitOfWorkTest.setUpAll(self)
         global metadata, people, peoplesites
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         people = Table("people", metadata,
            Column('person', String(10), primary_key=True),
            Column('firstname', String(10)),
@@ -462,7 +462,7 @@ class PassiveDeletesTest(UnitOfWorkTest):
     def setUpAll(self):
         UnitOfWorkTest.setUpAll(self)
         global metadata, mytable,myothertable
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         mytable = Table('mytable', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30)),
@@ -1427,7 +1427,7 @@ class SaveTest2(UnitOfWorkTest):
         ctx.current.clear()
         clear_mappers()
         global meta, users, addresses
-        meta = BoundMetaData(db)
+        meta = MetaData(db)
         users = Table('users', meta,
             Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key = True),
             Column('user_name', String(20)),

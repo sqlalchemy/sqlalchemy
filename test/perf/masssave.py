@@ -14,7 +14,7 @@ NUM = 250000
 class SaveTest(AssertMixin):
     def setUpAll(self):
         global items, metadata
-        metadata = BoundMetaData(db)
+        metadata = MetaData(db)
         items = Table('items', metadata, 
             Column('item_id', Integer, primary_key=True),
             Column('value', String(100)))

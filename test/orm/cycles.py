@@ -26,7 +26,7 @@ class SelfReferentialTest(AssertMixin):
     """tests a self-referential mapper, with an additional list of child objects."""
     def setUpAll(self):
         global t1, t2, metadata
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         t1 = Table('t1', metadata, 
             Column('c1', Integer, Sequence('t1c1_id_seq', optional=True), primary_key=True),
             Column('parent_c1', Integer, ForeignKey('t1.c1')),
@@ -128,7 +128,7 @@ class SelfReferentialNoPKTest(AssertMixin):
     """test self-referential relationship that joins on a column other than the primary key column"""
     def setUpAll(self):
         global table, meta
-        meta = BoundMetaData(testbase.db)
+        meta = MetaData(testbase.db)
         table = Table('item', meta,
            Column('id', Integer, primary_key=True),
            Column('uuid', String(32), unique=True, nullable=False),
@@ -173,7 +173,7 @@ class SelfReferentialNoPKTest(AssertMixin):
 class InheritTestOne(AssertMixin):
     def setUpAll(self):
         global parent, child1, child2, meta
-        meta = BoundMetaData(testbase.db)
+        meta = MetaData(testbase.db)
         parent = Table("parent", meta,
             Column("id", Integer, primary_key=True),
             Column("parent_data", String(50)),
@@ -375,7 +375,7 @@ class BiDirectionalOneToManyTest(AssertMixin):
     """tests two mappers with a one-to-many relation to each other."""
     def setUpAll(self):
         global t1, t2, metadata
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         t1 = Table('t1', metadata, 
             Column('c1', Integer, Sequence('t1c1_id_seq', optional=True), primary_key=True),
             Column('c2', Integer, ForeignKey('t2.c1'))
@@ -416,7 +416,7 @@ class BiDirectionalOneToManyTest2(AssertMixin):
     """tests two mappers with a one-to-many relation to each other, with a second one-to-many on one of the mappers"""
     def setUpAll(self):
         global t1, t2, t3, metadata
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         t1 = Table('t1', metadata, 
             Column('c1', Integer, Sequence('t1c1_id_seq', optional=True), primary_key=True),
             Column('c2', Integer, ForeignKey('t2.c1')),
@@ -478,7 +478,7 @@ class OneToManyManyToOneTest(AssertMixin):
     raise an exception when dependencies are sorted."""
     def setUpAll(self):
         global metadata
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         global person    
         global ball
         ball = Table('ball', metadata,
@@ -770,7 +770,7 @@ class SelfReferentialPostUpdateTest(AssertMixin):
     """test using post_update on a single self-referential mapper"""
     def setUpAll(self):
         global metadata, node_table
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         node_table = Table('node', metadata,
             Column('id', Integer, Sequence('nodeid_id_seq', optional=True), primary_key=True),
             Column('path', String(50), nullable=False),
@@ -873,7 +873,7 @@ class SelfReferentialPostUpdateTest(AssertMixin):
 class SelfReferentialPostUpdateTest2(AssertMixin):
     def setUpAll(self):
         global metadata, a_table
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         a_table = Table("a", metadata,
                 Column("id", Integer(), primary_key=True),
                 Column("fui", String()),

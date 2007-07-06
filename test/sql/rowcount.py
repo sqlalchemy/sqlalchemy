@@ -4,7 +4,7 @@ import testbase
 class FoundRowsTest(testbase.AssertMixin):
     """tests rowcount functionality"""
     def setUpAll(self):
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
 
         global employees_table
 

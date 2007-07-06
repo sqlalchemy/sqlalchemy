@@ -8,7 +8,7 @@ class CompileTest(testbase.AssertMixin):
         
     def testone(self):
         global metadata, order, employee, product, tax, orderproduct
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
 
         order = Table('orders', metadata, 
             Column('id', Integer, primary_key=True),
@@ -69,7 +69,7 @@ class CompileTest(testbase.AssertMixin):
     def testtwo(self):
         """test that conflicting backrefs raises an exception"""
         global metadata, order, employee, product, tax, orderproduct
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
 
         order = Table('orders', metadata, 
             Column('id', Integer, primary_key=True),
@@ -118,7 +118,7 @@ class CompileTest(testbase.AssertMixin):
             assert str(e).index("Backrefs do not match") > -1
 
     def testthree(self):
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         node_table = Table("node", metadata, 
             Column('node_id', Integer, primary_key=True),
             Column('name_index', Integer, nullable=True),

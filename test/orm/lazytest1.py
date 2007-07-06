@@ -7,7 +7,7 @@ import datetime
 class LazyTest(AssertMixin):
     def setUpAll(self):
         global info_table, data_table, rel_table, metadata
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         info_table = Table('infos', metadata,
         	Column('pk', Integer, primary_key=True),
         	Column('info', String))

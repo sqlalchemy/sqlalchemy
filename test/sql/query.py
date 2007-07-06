@@ -13,7 +13,7 @@ class QueryTest(PersistTest):
     
     def setUpAll(self):
         global users, addresses, metadata
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         users = Table('query_users', metadata,
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20)),
@@ -301,7 +301,7 @@ class QueryTest(PersistTest):
     def test_update_functions(self):
         """test sending functions and SQL expressions to the VALUES and SET clauses of INSERT/UPDATE instances,
         and that column-level defaults get overridden"""
-        meta = BoundMetaData(testbase.db)
+        meta = MetaData(testbase.db)
         t = Table('t1', meta,
             Column('id', Integer, Sequence('t1idseq', optional=True), primary_key=True),
             Column('value', Integer)
@@ -383,7 +383,7 @@ class QueryTest(PersistTest):
     
     @testbase.unsupported('oracle', 'firebird') 
     def test_column_accessor_shadow(self):
-        meta = BoundMetaData(testbase.db)
+        meta = MetaData(testbase.db)
         shadowed = Table('test_shadowed', meta,
                          Column('shadow_id', INT, primary_key = True),
                          Column('shadow_name', VARCHAR(20)),
@@ -413,7 +413,7 @@ class QueryTest(PersistTest):
     
     @testbase.supported('mssql')
     def test_fetchid_trigger(self):
-        meta = BoundMetaData(testbase.db)
+        meta = MetaData(testbase.db)
         t1 = Table('t1', meta,
                 Column('id', Integer, Sequence('fred', 100, 1), primary_key=True),
                 Column('descr', String(200)))
@@ -439,7 +439,7 @@ class QueryTest(PersistTest):
     
     @testbase.supported('mssql')
     def test_insertid_schema(self):
-        meta = BoundMetaData(testbase.db)
+        meta = MetaData(testbase.db)
         con = testbase.db.connect()
         con.execute('create schema paj')
         tbl = Table('test', meta, Column('id', Integer, primary_key=True), schema='paj')
@@ -505,7 +505,7 @@ class CompoundTest(PersistTest):
     different databases."""
     def setUpAll(self):
         global metadata, t1, t2, t3
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         t1 = Table('t1', metadata, 
             Column('col1', Integer, Sequence('t1pkseq'), primary_key=True),
             Column('col2', String(30)),
@@ -619,7 +619,7 @@ class CompoundTest(PersistTest):
 class OperatorTest(PersistTest):
     def setUpAll(self):
         global metadata, flds
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         flds = Table('flds', metadata, 
             Column('idcol', Integer, Sequence('t1pkseq'), primary_key=True),
             Column('intcol', Integer),

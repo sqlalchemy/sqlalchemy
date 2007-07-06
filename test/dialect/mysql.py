@@ -325,12 +325,12 @@ class TypesTest(AssertMixin):
 
         columns = [Column('c%i' % (i + 1), t[0]) for i, t in enumerate(specs)]
 
-        m = BoundMetaData(db)
+        m = MetaData(db)
         t_table = Table('mysql_types', m, *columns)
         m.drop_all()
         m.create_all()
         
-        m2 = BoundMetaData(db)
+        m2 = MetaData(db)
         rt = Table('mysql_types', m2, autoload=True)
 
         #print

@@ -9,11 +9,11 @@ Executing a `ClauseElement` structure can be performed in two general ways.  You
 
 The examples below all include a dump of the generated SQL corresponding to the query object, as well as a dump of the statement's bind parameters.  In all cases, bind parameters are shown as named parameters using the colon format (i.e. ':name').  When the statement is compiled into a database-specific version, the named-parameter statement and its bind values are converted to the proper paramstyle for that database automatically.
 
-For this section, we will mostly use the implcit style of execution, meaning the `Table` objects are associated with an instance of `BoundMetaData`, and constructed `ClauseElement` objects support self-execution.  Assume the following configuration:
+For this section, we will mostly use the implcit style of execution, meaning the `Table` objects are associated with a bound instance of `MetaData`, and constructed `ClauseElement` objects support self-execution.  Assume the following configuration:
 
     {python}
     from sqlalchemy import *
-    metadata = BoundMetaData('sqlite:///mydb.db', echo=True)
+    metadata = MetaData('sqlite:///mydb.db', echo=True)
     
     # a table to store users
     users = Table('users', metadata,

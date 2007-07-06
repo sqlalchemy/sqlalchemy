@@ -9,7 +9,7 @@ class EagerTest(AssertMixin):
     def setUpAll(self):
         global companies_table, addresses_table, invoice_table, phones_table, items_table, ctx, metadata
 
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         ctx = SessionContext(create_session)
         
         companies_table = Table('companies', metadata,

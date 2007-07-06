@@ -33,7 +33,7 @@ class MapperCleanoutTest(testbase.AssertMixin):
         assert True
         
     def do_test(self):
-        metadata = BoundMetaData(engine)
+        metadata = MetaData(engine)
 
         table1 = Table("mytable", metadata, 
             Column('col1', Integer, primary_key=True),

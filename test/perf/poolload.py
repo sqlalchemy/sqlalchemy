@@ -10,7 +10,7 @@ psycopg = pool.manage(psycopg,pool_size=2,max_overflow=1, timeout=5, echo=True)
 print psycopg
 db = create_engine('postgres://scott:tiger@127.0.0.1/test',pool=psycopg,strategy='threadlocal')
 print db.connection_provider._pool
-metadata = BoundMetaData(db)
+metadata = MetaData(db)
 
 users_table = Table('users', metadata,
   Column('user_id', Integer, primary_key=True),

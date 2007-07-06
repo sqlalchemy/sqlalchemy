@@ -20,7 +20,7 @@ for best results, dont run with sqlite :memory: database, and keep an eye on top
 class LoadTest(AssertMixin):
     def setUpAll(self):
         global items, meta
-        meta = BoundMetaData(db)
+        meta = MetaData(db)
         items = Table('items', meta, 
             Column('item_id', Integer, primary_key=True),
             Column('value', String(100)))

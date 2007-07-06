@@ -360,7 +360,7 @@ class DateTest(AssertMixin):
 class IntervalTest(AssertMixin):
     def setUpAll(self):
         global interval_table, metadata
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         interval_table = Table("intervaltable", metadata, 
             Column("id", Integer, primary_key=True),
             Column("interval", Interval),
@@ -378,7 +378,7 @@ class IntervalTest(AssertMixin):
 class BooleanTest(AssertMixin):
     def setUpAll(self):
         global bool_table
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         bool_table = Table('booltest', metadata, 
             Column('id', Integer, primary_key=True),
             Column('value', Boolean))

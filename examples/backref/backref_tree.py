@@ -1,6 +1,6 @@
 from sqlalchemy import *
 
-metadata = BoundMetaData('sqlite:///', echo=True)
+metadata = MetaData('sqlite:///', echo=True)
 
 class Tree(object):
     def __init__(self, name='', father=None):

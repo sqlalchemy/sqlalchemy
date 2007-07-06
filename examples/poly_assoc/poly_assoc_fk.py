@@ -21,7 +21,7 @@ poly_assoc_generic.py.
 
 from sqlalchemy import *
 
-metadata = BoundMetaData('sqlite://', echo=False)
+metadata = MetaData('sqlite://', echo=False)
 
 #######
 # addresses table, class, 'addressable interface'.

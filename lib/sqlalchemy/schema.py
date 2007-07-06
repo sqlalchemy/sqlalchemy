@@ -17,13 +17,13 @@ objects as well as the visitor interface, so that the schema package
 *plugs in* to the SQL package.
 """
 
-from sqlalchemy import sql, types, exceptions,util, databases
+from sqlalchemy import sql, types, exceptions, util, databases
 import sqlalchemy
 import copy, re, string
 
 __all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index', 'ForeignKeyConstraint',
             'PrimaryKeyConstraint', 'CheckConstraint', 'UniqueConstraint', 'DefaultGenerator', 'Constraint',
-           'MetaData', 'BoundMetaData', 'DynamicMetaData', 'SchemaVisitor', 'PassiveDefault', 'ColumnDefault']
+           'MetaData', 'ThreadLocalMetaData', 'BoundMetaData', 'DynamicMetaData', 'SchemaVisitor', 'PassiveDefault', 'ColumnDefault']
 
 class SchemaItem(object):
     """Base class for items that define a database schema."""
@@ -127,7 +127,7 @@ class _TableSingleton(type):
             # backwards compatibility - get a BoundSchema associated with the engine
             engine = metadata
             if not hasattr(engine, '_legacy_metadata'):
-                engine._legacy_metadata = BoundMetaData(engine)
+                engine._legacy_metadata = MetaData(engine)
             metadata = engine._legacy_metadata
         elif metadata is not None and not isinstance(metadata, MetaData):
             # they left MetaData out, so assume its another SchemaItem, add it to *args
@@ -1067,32 +1067,59 @@ class Index(SchemaItem):
 class MetaData(SchemaItem):
     """Represent a collection of Tables and their associated schema constructs."""
 
-    def __init__(self, name=None, url=None, engine=None, **kwargs):
+    def __init__(self, engine_or_url=None, url=None, engine=None, **kwargs):
         """create a new MetaData object.
+
+            engine_or_url
+                an Engine, or a string or URL instance which will be passed
+                to create_engine(), along with \**kwargs - this MetaData will
+                be bound to the resulting engine.
         
-            name
-                optional name for this MetaData instance.
-            
             url
-                a string or URL instance which will be passed to create_engine(),
-                along with \**kwargs - this MetaData will be bound to the resulting
-                engine.
+                deprecated.  a string or URL instance which will be passed to
+                create_engine(), along with \**kwargs - this MetaData will be
+                bound to the resulting engine.
             
             engine
-                an Engine instance to which this MetaData will be bound.
+                deprecated. an Engine instance to which this MetaData will
+                be bound.
                 
             case_sensitive
-                popped from \**kwargs, indicates default case sensitive setting for
-                all contained objects.  defaults to True.
+                popped from \**kwargs, indicates default case sensitive
+                setting for all contained objects.  defaults to True.
             
-        """        
+            name
+                deprecated, optional name for this MetaData instance.
+            
+        """
+
+        # transition from <= 0.3.8 signature:
+        #   MetaData(name=None, url=None, engine=None)
+        # to 0.4 signature:
+        #   MetaData(engine_or_url=None)
+        name = kwargs.get('name', None)
+        if engine_or_url is None:
+            engine_or_url = url or engine
+        elif 'name' in kwargs:
+            engine_or_url = engine_or_url or engine or url
+        else:
+            import sqlalchemy.engine as engine
+            import sqlalchemy.engine.url as url
+            if (not isinstance(engine_or_url, url.URL) and
+                not isinstance(engine_or_url, engine.Connectable)):
+                try:
+                    url.make_url(engine_or_url)
+                except exceptions.ArgumentError:
+                    # nope, must have been a name as 1st positional
+                    name, engine_or_url = engine_or_url, (url or engine)
+        kwargs.pop('name', None)
 
         self.tables = {}
         self.name = name
         self._engine = None
         self._set_casing_strategy(name, kwargs)
-        if engine or url:
-            self.connect(engine or url, **kwargs)
+        if engine_or_url:
+            self.connect(engine_or_url, **kwargs)
 
     def __getstate__(self):
         return {'tables':self.tables, 'name':self.name, 'casesensitive':self._case_sensitive_setting}
@@ -1188,32 +1215,23 @@ class MetaData(SchemaItem):
             return None
         return self._engine
 
+
 class BoundMetaData(MetaData):
-    """``MetaData`` for which the first argument is a required Engine, url string, or URL instance.
-    
-    """
+    """Deprecated.  Use ``MetaData``."""
 
     def __init__(self, engine_or_url, name=None, **kwargs):
-        from sqlalchemy.engine.url import URL
-        if isinstance(engine_or_url, basestring) or isinstance(engine_or_url, URL):
-            super(BoundMetaData, self).__init__(name=name, url=engine_or_url, **kwargs)
-        else:
-            super(BoundMetaData, self).__init__(name=name, engine=engine_or_url, **kwargs)
-            
+        super(BoundMetaData, self).__init__(engine_or_url=engine_or_url,
+                                            name=name, **kwargs)
 
-class DynamicMetaData(MetaData):
-    """Build upon ``MetaData`` to provide the capability to bind to 
-multiple ``Engine`` implementations on a dynamically alterable,
-thread-local basis.
-    """
 
-    def __init__(self, name=None, threadlocal=True, **kwargs):
-        if threadlocal:
-            self.context = util.ThreadLocal()
-        else:
-            self.context = self
+class ThreadLocalMetaData(MetaData):
+    """A ``MetaData`` that binds to multiple ``Engine`` implementations on a thread-local basis."""
+
+    def __init__(self, name=None, **kwargs):
+        self.context = util.ThreadLocal()
         self.__engines = {}
-        super(DynamicMetaData, self).__init__(name=name, **kwargs)
+        super(ThreadLocalMetaData, self).__init__(engine_or_url=None,
+                                                  name=name, **kwargs)
 
     def connect(self, engine_or_url, **kwargs):
         from sqlalchemy.engine.url import URL
@@ -1233,7 +1251,7 @@ thread-local basis.
         return hasattr(self.context, '_engine') and self.context._engine is not None
 
     def dispose(self):
-        """Dispose all ``Engines`` to which this ``DynamicMetaData`` has been connected."""
+        """Dispose all ``Engines`` to which this ``ThreadLocalMetaData`` has been connected."""
 
         for e in self.__engines.values():
             e.dispose()
@@ -1244,6 +1262,16 @@ thread-local basis.
         else:
             return None
     engine=property(_get_engine)
+
+
+def DynamicMetaData(name=None, threadlocal=True, **kw): 
+    """Deprecated.  Use ``MetaData`` or ``ThreadLocalMetaData``.""" 
+
+    if threadlocal: 
+        return ThreadLocalMetaData(**kw) 
+    else: 
+        return MetaData(name=name, **kw) 
+
 
 class SchemaVisitor(sql.ClauseVisitor):
     """Define the visiting for ``SchemaItem`` objects."""
@@ -1306,4 +1334,4 @@ class SchemaVisitor(sql.ClauseVisitor):
         """Visit a ``CheckConstraint`` on a ``Column``."""
         pass
 
-default_metadata = DynamicMetaData('default')
+default_metadata = ThreadLocalMetaData(name='default')

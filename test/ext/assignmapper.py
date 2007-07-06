@@ -9,7 +9,7 @@ from sqlalchemy.ext.sessioncontext import SessionContext
 class OverrideAttributesTest(PersistTest):
     def setUpAll(self):
         global metadata, table, table2
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         table = Table('sometable', metadata, 
             Column('id', Integer, primary_key=True),
             Column('data', String(30)))

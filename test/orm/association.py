@@ -6,7 +6,7 @@ from sqlalchemy import *
 class AssociationTest(testbase.PersistTest):
     def setUpAll(self):
         global items, item_keywords, keywords, metadata, Item, Keyword, KeywordAssociation
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         items = Table('items', metadata, 
             Column('item_id', Integer, primary_key=True),
             Column('name', String(40)),
@@ -141,7 +141,7 @@ class AssociationTest(testbase.PersistTest):
 class AssociationTest2(testbase.PersistTest):
     def setUpAll(self):
         global table_originals, table_people, table_isauthor, metadata, Originals, People, IsAuthor
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         table_originals = Table('Originals', metadata,
             Column('ID',        Integer,        primary_key=True),
             Column('Title',     String(200),    nullable=False),

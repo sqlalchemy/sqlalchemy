@@ -10,10 +10,10 @@ logging.basicConfig()
 logging.getLogger('sqlalchemy.pool').setLevel(logging.INFO)
 
 threadids = set()
-#meta = BoundMetaData('postgres://scott:tiger@127.0.0.1/test')
+#meta = MetaData('postgres://scott:tiger@127.0.0.1/test')
 
-#meta = BoundMetaData('mysql://scott:tiger@localhost/test', poolclass=pool.SingletonThreadPool)
-meta = BoundMetaData('mysql://scott:tiger@localhost/test')
+#meta = MetaData('mysql://scott:tiger@localhost/test', poolclass=pool.SingletonThreadPool)
+meta = MetaData('mysql://scott:tiger@localhost/test')
 foo = Table('foo', meta, 
     Column('id', Integer, primary_key=True),
     Column('data', String(30)))

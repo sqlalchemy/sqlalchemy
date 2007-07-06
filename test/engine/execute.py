@@ -9,7 +9,7 @@ from sqlalchemy import *
 class ExecuteTest(testbase.PersistTest):
     def setUpAll(self):
         global users, metadata
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         users = Table('users', metadata,
             Column('user_id', INT, primary_key = True),
             Column('user_name', VARCHAR(20)),

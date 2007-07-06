@@ -25,7 +25,7 @@ class Port(object):
 class O2OTest(testbase.AssertMixin):
     def setUpAll(self):
         global jack, port, metadata, ctx
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         ctx = SessionContext(create_session)
         jack = Table('jack', metadata, 
             Column('id', Integer, primary_key=True),

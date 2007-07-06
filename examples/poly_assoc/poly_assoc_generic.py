@@ -8,7 +8,7 @@ function "association" which creates a new polymorphic association
 
 from sqlalchemy import *
 
-metadata = BoundMetaData('sqlite://', echo=False)
+metadata = MetaData('sqlite://', echo=False)
 
 def association(cls, table):
     """create an association 'interface'."""

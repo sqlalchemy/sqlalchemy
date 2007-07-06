@@ -12,7 +12,7 @@ class EntityTest(AssertMixin):
     to have multiple primary mappers """
     def setUpAll(self):
         global user1, user2, address1, address2, metadata, ctx
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         ctx = SessionContext(create_session)
         
         user1 = Table('user1', metadata, 

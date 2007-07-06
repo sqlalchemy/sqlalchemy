@@ -12,7 +12,7 @@ class GenerativeQueryTest(PersistTest):
     def setUpAll(self):
         self.install_threadlocal()
         global foo, metadata
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         foo = Table('foo', metadata,
                     Column('id', Integer, Sequence('foo_id_seq'), primary_key=True),
                     Column('bar', Integer),
@@ -111,7 +111,7 @@ class GenerativeTest2(PersistTest):
     def setUpAll(self):
         self.install_threadlocal()
         global metadata, table1, table2
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         table1 = Table('Table1', metadata,
             Column('id', Integer, primary_key=True),
             )
@@ -205,7 +205,7 @@ class CaseSensitiveTest(PersistTest):
     def setUpAll(self):
         self.install_threadlocal()
         global metadata, table1, table2
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         table1 = Table('Table1', metadata,
             Column('ID', Integer, primary_key=True),
             )

@@ -5,7 +5,7 @@ import sqlalchemy
 from sqlalchemy import sql, engine, pool
 import sqlalchemy.engine.base as base
 import optparse
-from sqlalchemy.schema import BoundMetaData
+from sqlalchemy.schema import MetaData
 from sqlalchemy.orm import clear_mappers
 
 db = None
@@ -157,7 +157,7 @@ firebird=firebird://sysdba:s@localhost/tmp/test.fdb
     if options.log_debug is not None:
         for elem in options.log_debug:
             logging.getLogger(elem).setLevel(logging.DEBUG)
-    metadata = sqlalchemy.BoundMetaData(db)
+    metadata = sqlalchemy.MetaData(db)
     
 def unsupported(*dbs):
     """a decorator that marks a test as unsupported by one or more database implementations"""
@@ -264,7 +264,7 @@ class ORMTest(AssertMixin):
     keep_data = False
     def setUpAll(self):
         global metadata
-        metadata = BoundMetaData(db)
+        metadata = MetaData(db)
         self.define_tables(metadata)
         metadata.create_all()
     def define_tables(self, metadata):

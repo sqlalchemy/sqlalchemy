@@ -8,7 +8,7 @@ class QuoteTest(PersistTest):
         # such as:  spaces, quote characters, punctuation characters, set up tests for those as
         # well.
         global table1, table2, table3
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         table1 = Table('WorstCase1', metadata,
             Column('lowercase', Integer, primary_key=True),
             Column('UPPERCASE', Integer),
@@ -46,7 +46,7 @@ class QuoteTest(PersistTest):
         assert(res2==[(1,2,3),(2,2,3),(4,3,2)])
         
     def testreflect(self):
-        meta2 = BoundMetaData(testbase.db)
+        meta2 = MetaData(testbase.db)
         t2 = Table('WorstCase2', meta2, autoload=True, quote=True)
         assert t2.c.has_key('MixedCase')
 
@@ -119,7 +119,7 @@ class QuoteTest(PersistTest):
             Column('MixedCase', Integer))
         
         # first test case sensitive tables migrating via tometadata
-        meta = BoundMetaData(testbase.db, case_sensitive=False)
+        meta = MetaData(testbase.db, case_sensitive=False)
         lc_table1 = table1.tometadata(meta)
         lc_table2 = table2.tometadata(meta)
         assert lc_table1.case_sensitive is False
