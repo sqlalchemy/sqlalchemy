@@ -121,64 +121,21 @@ And `Table` provides an interface to the table's properties as well as that of i
 
 A MetaData object can be associated with one or more Engine instances.  This allows the MetaData and the elements within it to perform operations automatically, using the connection resources of that Engine.  This includes being able to "reflect" the columns of tables, as well as to perform create and drop operations without needing to pass an `Engine` or `Connection` around.  It also allows SQL constructs to be created which know how to execute themselves (called "implicit execution").
 
-To bind `MetaData` to a single `Engine`, supply an Engine when creating the MetaData, or use the `.connect()` method:
+To bind `MetaData` to a single `Engine`, use the `connect()` method:
 
     {python}
     engine = create_engine('sqlite://', **kwargs)
     
-    # create MetaData with an Engine
-    meta = MetaData(engine)
-    
-    # create the Engine and MetaData in one step
-    meta = MetaData('postgres://db/', **kwargs)
-
-    # or bind the MetaData to an Engine later
+    # create MetaData 
     meta = MetaData()
-    invoices = Table('invoices', meta, 
-        Column('invoice_id', Integer, primary_key=True),
-        Column('ref_num', Integer, primary_key=True),
-        Column('description', String(60), nullable=False)
-    )
+
+    # bind to an engine
     meta.connect(engine)
 
-Another form of `MetaData` exists which can connect to an engine within the current thread (or "on a per-thread basis"), allowing other threads to be connected to different engines simultaneously:
 
-    {python}
-    meta = ThreadLocalMetaData()
-
-    # In thread 1, connect to an existing Engine    
-    meta.connect(engine)
-    
-    # Meanwhile in thread 2, create a new Engine and connect
-    meta.connect('mysq://user@host/dsn')
-
-`ThreadLocalMetaData` is intended for applications that need to use the same set of `Tables` for many different database connections in the same process, such as a CherryPy web application which handles multiple application instances in one process.
-
-#### Using the global Metadata object
-
-Some users prefer to create `Table` objects without specifying a `MetaData` object, having Tables scoped on an application-wide basis.  For them the `default_metadata` object and the `global_connect()` function is supplied.  `default_metadata` is simply an instance of `ThreadLocalMetaData` that exists within the `sqlalchemy` namespace, and `global_connect()` is a synonym for `default_metadata.connect()`.  Defining a `Table` that has no `MetaData` argument will automatically use this default metadata as follows:
-
-    {python}
-    from sqlalchemy import *
-
-    # a Table with just a name and its Columns
-    mytable = Table('mytable', 
-        Column('col1', Integer, primary_key=True),
-        Column('col2', String(40))
-        )
-
-    # connect all the "anonymous" tables to a postgres uri in the current thread    
-    global_connect('postgres://foo:bar@lala/test')
-
-    # create all tables in the default metadata
-    default_metadata.create_all()
-
-    # the table is bound
-    mytable.insert().execute(col1=5, col2='some value')
-    
 #### Reflecting Tables
 
-Once you have a connected `MetaData` or `ThreadLocalMetaData`, you can create `Table` objects without specifying their columns, just their names, using `autoload=True`:
+Once you have a `MetaData` bound to an engine, you can create `Table` objects without specifying their columns, just their names, using `autoload=True`:
 
     {python}
     >>> messages = Table('messages', meta, autoload = True)
@@ -300,7 +257,9 @@ To force quoting for an identifier, set the "quote=True" flag on `Column` or `Ta
 Creating and dropping individual tables can be done via the `create()` and `drop()` methods of `Table`; these methods take an optional `connectable` parameter which references an `Engine` or a `Connection`.  If not supplied, the `Engine` bound to the `MetaData` will be used, else an error is raised:
 
     {python}
-    meta = MetaData('sqlite:///:memory:')
+    meta = MetaData()
+    meta.connect('sqlite:///:memory:')
+
     employees = Table('employees', meta, 
         Column('employee_id', Integer, primary_key=True),
         Column('employee_name', String(60), nullable=False, key='name'),

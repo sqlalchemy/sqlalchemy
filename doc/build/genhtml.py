@@ -34,7 +34,7 @@ parser.add_option("--version", action="store", dest="version", default=sqlalchem
 
 (options, args) = parser.parse_args()
 if options.file:
-    files = [file]
+    files = [options.file]
 
 title='SQLAlchemy 0.3 Documentation'
 version = options.version
