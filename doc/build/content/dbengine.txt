@@ -28,7 +28,7 @@ The engine can be used directly to issue SQL to the database.  The most generic 
     connection = engine.connect()
     result = connection.execute("select username from users")
     for row in result:
-        print "username": row['username']
+        print "username:", row['username']
     connection.close()
     
 The connection is an instance of [sqlalchemy.engine.Connection](rel:docstrings_sqlalchemy.engine_Connection), which is a **proxy** object for an actual DBAPI connection.  The returned result is an instance of [sqlalchemy.engine.ResultProxy](rel:docstrings_sqlalchemy.engine_ResultProxy), which acts very much like a DBAPI cursor.
@@ -298,7 +298,7 @@ Another way to implicitly execute, is to use constructed SQL (described in [sql]
     table = Table('mytable', meta, Column('col1', Integer), Column('col2', String(20)))
     r = table.insert().execute(col1=5, col2='some record')
 
-Notice in the above two examples, no `connect()` method is ever called nor do we ever see a `Connection` anywhere; the `Connection` is created for you automatically via the `execute()` method, and a handle to the execution's cursor remains open in the returned result set.  When the result set is closed via the `close()` method, or if the result set object falls out of scope and is garbage collected, the underlying cursor is closed, the `Connection` is discarded and the underlying DBAPI connection is returned to the connection pool.
+Notice in the above two examples, engine's `connect()` method is never called; instead, the `MetaData` object is **bound** to the `Engine` via its own `connect()` method.  Once that occurs, the `Connection` is created for you automatically anytime you call the `execute()` method on a constructed SQL object which derives from the `MetaData`.  The returned result set references a handle to the execution's open cursor, as well as the checked-out connection.  When the result set is closed via the `close()` method, or if the result set object falls out of scope and is garbage collected, the underlying cursor is closed, the `Connection` is discarded and the underlying DBAPI connection is returned to the connection pool.
 
 #### Using the Threadlocal Execution Strategy {@name=strategies}
 
