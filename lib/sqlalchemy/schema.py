@@ -1268,7 +1268,7 @@ def DynamicMetaData(name=None, threadlocal=True, **kw):
     """Deprecated.  Use ``MetaData`` or ``ThreadLocalMetaData``.""" 
 
     if threadlocal: 
-        return ThreadLocalMetaData(**kw) 
+        return ThreadLocalMetaData(name=name, **kw) 
     else: 
         return MetaData(name=name, **kw) 
 

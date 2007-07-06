@@ -132,12 +132,16 @@ To bind `MetaData` to a single `Engine`, supply an Engine when creating the Meta
     # create the Engine and MetaData in one step
     meta = MetaData('postgres://db/', **kwargs)
 
-    # or bind later
+    # or bind the MetaData to an Engine later
     meta = MetaData()
-    # ...
+    invoices = Table('invoices', meta, 
+        Column('invoice_id', Integer, primary_key=True),
+        Column('ref_num', Integer, primary_key=True),
+        Column('description', String(60), nullable=False)
+    )
     meta.connect(engine)
 
-Another form of `MetaData` exits which can connect to an engine within the current thread (or "on a per-thread basis"), allowing other threads to be connected to different engines simultaneously:
+Another form of `MetaData` exists which can connect to an engine within the current thread (or "on a per-thread basis"), allowing other threads to be connected to different engines simultaneously:
 
     {python}
     meta = ThreadLocalMetaData()
