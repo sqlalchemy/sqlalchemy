@@ -63,7 +63,7 @@ class VersioningTest(UnitOfWorkTest):
         UnitOfWorkTest.setUpAll(self)
         ctx.current.clear()
         global version_table
-        version_table = Table('version_test', BoundMetaData(db),
+        version_table = Table('version_test', MetaData(db),
         Column('id', Integer, Sequence('version_test_seq'), primary_key=True ),
         Column('version_id', Integer, nullable=False),
         Column('value', String(40), nullable=False)
@@ -166,7 +166,7 @@ class UnicodeTest(UnitOfWorkTest):
     def setUpAll(self):
         UnitOfWorkTest.setUpAll(self)
         global metadata, uni_table, uni_table2
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         uni_table = Table('uni_test', metadata,
             Column('id',  Integer, Sequence("uni_test_id_seq", optional=True), primary_key=True),
             Column('txt', Unicode(50), unique=True))
@@ -217,7 +217,7 @@ class MutableTypesTest(UnitOfWorkTest):
     def setUpAll(self):
         UnitOfWorkTest.setUpAll(self)
         global metadata, table
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         table = Table('mutabletest', metadata,
             Column('id', Integer, Sequence('mutableidseq', optional=True), primary_key=True),
             Column('data', PickleType),
@@ -329,7 +329,7 @@ class PKTest(UnitOfWorkTest):
     def setUpAll(self):
         UnitOfWorkTest.setUpAll(self)
         global table, table2, table3
-        metadata = BoundMetaData(db)
+        metadata = MetaData(db)
         table = Table(
             'multipk', metadata, 
             Column('multi_id', Integer, Sequence("multi_id_seq", optional=True), primary_key=True),
@@ -418,7 +418,7 @@ class ForeignPKTest(UnitOfWorkTest):
     def setUpAll(self):
         UnitOfWorkTest.setUpAll(self)
         global metadata, people, peoplesites
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         people = Table("people", metadata,
            Column('person', String(10), primary_key=True),
            Column('firstname', String(10)),
@@ -459,7 +459,7 @@ class PassiveDeletesTest(UnitOfWorkTest):
     def setUpAll(self):
         UnitOfWorkTest.setUpAll(self)
         global metadata, mytable,myothertable
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         mytable = Table('mytable', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30)),
@@ -527,7 +527,7 @@ class DefaultTest(UnitOfWorkTest):
             self.hohoval = 9
             self.althohoval = 15
         global default_table
-        metadata = BoundMetaData(db)
+        metadata = MetaData(db)
         default_table = Table('default_test', metadata,
         Column('id', Integer, Sequence("dt_seq", optional=True), primary_key=True),
         Column('hoho', hohotype, PassiveDefault(str(self.hohoval))),
@@ -1423,7 +1423,7 @@ class SaveTest2(UnitOfWorkTest):
         ctx.current.clear()
         clear_mappers()
         global meta, users, addresses
-        meta = BoundMetaData(db)
+        meta = MetaData(db)
         users = Table('users', meta,
             Column('user_id', Integer, Sequence('user_id_seq', optional=True), primary_key = True),
             Column('user_name', String(20)),

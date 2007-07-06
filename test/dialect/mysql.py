@@ -105,7 +105,7 @@ class TypesTest(AssertMixin):
              'SMALLINT(4) UNSIGNED ZEROFILL'),
            ]
 
-        table_args = ['test_mysql_numeric', BoundMetaData(db)]
+        table_args = ['test_mysql_numeric', MetaData(db)]
         for index, spec in enumerate(columns):
             type_, args, kw, res = spec
             table_args.append(Column('c%s' % index, type_(*args, **kw)))
@@ -189,7 +189,7 @@ class TypesTest(AssertMixin):
              '''ENUM('foo','bar') UNICODE''')
            ]
 
-        table_args = ['test_mysql_charset', BoundMetaData(db)]
+        table_args = ['test_mysql_charset', MetaData(db)]
         for index, spec in enumerate(columns):
             type_, args, kw, res = spec
             table_args.append(Column('c%s' % index, type_(*args, **kw)))
@@ -213,7 +213,7 @@ class TypesTest(AssertMixin):
     def test_enum(self):
         "Exercise the ENUM type"
 
-        enum_table = Table('mysql_enum', BoundMetaData(db),
+        enum_table = Table('mysql_enum', MetaData(db),
             Column('e1', mysql.MSEnum('"a"', "'b'")),
             Column('e2', mysql.MSEnum('"a"', "'b'"), nullable=False),
             Column('e3', mysql.MSEnum('"a"', "'b'", strict=True)),
@@ -326,12 +326,12 @@ class TypesTest(AssertMixin):
 
         columns = [Column('c%i' % (i + 1), t[0]) for i, t in enumerate(specs)]
 
-        m = BoundMetaData(db)
+        m = MetaData(db)
         t_table = Table('mysql_types', m, *columns)
         m.drop_all()
         m.create_all()
         
-        m2 = BoundMetaData(db)
+        m2 = MetaData(db)
         rt = Table('mysql_types', m2, autoload=True)
 
         #print

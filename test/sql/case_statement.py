@@ -7,7 +7,7 @@ from testbase import Table, Column
 class CaseTest(testbase.PersistTest):
 
     def setUpAll(self):
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         global info_table
         info_table = Table('infos', metadata,
         	Column('pk', Integer, primary_key=True),

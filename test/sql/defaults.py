@@ -14,7 +14,7 @@ class DefaultTest(PersistTest):
 
     def setUpAll(self):
         global t, f, f2, ts, currenttime, metadata
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         x = {'x':50}
         def mydefault():
             x['x'] += 1
@@ -136,7 +136,7 @@ class DefaultTest(PersistTest):
         key values in memory before insert; otherwise we cant locate the just inserted row."""
 
         try:
-            meta = BoundMetaData(testbase.db)
+            meta = MetaData(testbase.db)
             testbase.db.execute("""
              CREATE TABLE speedy_users
              (
@@ -157,7 +157,7 @@ class DefaultTest(PersistTest):
 class AutoIncrementTest(PersistTest):
     @testbase.supported('postgres', 'mysql')
     def testnonautoincrement(self):
-        meta = BoundMetaData(testbase.db)
+        meta = MetaData(testbase.db)
         nonai_table = Table("aitest", meta, 
             Column('id', Integer, autoincrement=False, primary_key=True),
             Column('data', String(20)))
@@ -177,7 +177,7 @@ class AutoIncrementTest(PersistTest):
             nonai_table.drop()    
 
     def testwithautoincrement(self):
-        meta = BoundMetaData(testbase.db)
+        meta = MetaData(testbase.db)
         table = Table("aitest", meta, 
             Column('id', Integer, primary_key=True),
             Column('data', String(20)))
@@ -192,7 +192,7 @@ class AutoIncrementTest(PersistTest):
         
         # TODO: what does this test do that all the various ORM tests dont ?
         
-        meta = BoundMetaData(testbase.db)
+        meta = MetaData(testbase.db)
         table = Table("aitest", meta, 
             Column('id', Integer, primary_key=True),
             Column('data', String(20)))
@@ -200,7 +200,7 @@ class AutoIncrementTest(PersistTest):
 
         try:
             # simulate working on a table that doesn't already exist
-            meta2 = BoundMetaData(testbase.db)
+            meta2 = MetaData(testbase.db)
             table2 = Table("aitest", meta2,
                 Column('id', Integer, primary_key=True),
                 Column('data', String(20)))
@@ -222,7 +222,7 @@ class SequenceTest(PersistTest):
     @testbase.supported('postgres', 'oracle')
     def setUpAll(self):
         global cartitems, sometable, metadata
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         cartitems = Table("cartitems", metadata, 
             Column("cart_id", Integer, Sequence('cart_id_seq'), primary_key=True),
             Column("description", String(40)),

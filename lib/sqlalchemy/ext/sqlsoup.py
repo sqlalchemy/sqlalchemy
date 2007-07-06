@@ -22,7 +22,7 @@ engine::
 
 or, you can re-use an existing metadata::
 
-    >>> db = SqlSoup(BoundMetaData(e))
+    >>> db = SqlSoup(MetaData(e))
 
 You can optionally specify a schema within the database for your
 SqlSoup::
@@ -491,7 +491,7 @@ class SqlSoup:
             if args or kwargs:
                 raise ArgumentError('Extra arguments not allowed when metadata is given')
         else:
-            metadata = BoundMetaData(*args, **kwargs)
+            metadata = MetaData(*args, **kwargs)
         self._metadata = metadata
         self._cache = {}
         self.schema = None

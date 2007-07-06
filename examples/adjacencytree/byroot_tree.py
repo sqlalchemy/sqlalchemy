@@ -8,7 +8,7 @@ from sqlalchemy.orm.collections import attribute_mapped_collection
 
 engine = create_engine('sqlite:///:memory:', echo=True)
 
-metadata = BoundMetaData(engine)
+metadata = MetaData(engine)
 
 """create the treenodes table.  This is ia basic adjacency list model table.
 One additional column, "root_node_id", references a "root node" row and is used

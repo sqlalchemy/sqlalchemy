@@ -28,35 +28,35 @@ class DomainReflectionTest(AssertMixin):
 
     @testbase.supported('postgres')
     def test_table_is_reflected(self):
-        metadata = BoundMetaData(db)
+        metadata = MetaData(db)
         table = Table('testtable', metadata, autoload=True)
         self.assertEquals(set(table.columns.keys()), set(['question', 'answer']), "Columns of reflected table didn't equal expected columns")
         self.assertEquals(table.c.answer.type.__class__, postgres.PGInteger)
         
     @testbase.supported('postgres')
     def test_domain_is_reflected(self):
-        metadata = BoundMetaData(db)
+        metadata = MetaData(db)
         table = Table('testtable', metadata, autoload=True)
         self.assertEquals(str(table.columns.answer.default.arg), '42', "Reflected default value didn't equal expected value")
         self.assertFalse(table.columns.answer.nullable, "Expected reflected column to not be nullable.")
 
     @testbase.supported('postgres')
     def test_table_is_reflected_alt_schema(self):
-        metadata = BoundMetaData(db)
+        metadata = MetaData(db)
         table = Table('testtable', metadata, autoload=True, schema='alt_schema')
         self.assertEquals(set(table.columns.keys()), set(['question', 'answer', 'anything']), "Columns of reflected table didn't equal expected columns")
         self.assertEquals(table.c.anything.type.__class__, postgres.PGInteger)
 
     @testbase.supported('postgres')
     def test_schema_domain_is_reflected(self):
-        metadata = BoundMetaData(db)
+        metadata = MetaData(db)
         table = Table('testtable', metadata, autoload=True, schema='alt_schema')
         self.assertEquals(str(table.columns.answer.default.arg), '0', "Reflected default value didn't equal expected value")
         self.assertTrue(table.columns.answer.nullable, "Expected reflected column to be nullable.")
 
     @testbase.supported('postgres')
     def test_crosschema_domain_is_reflected(self):
-        metadata = BoundMetaData(db)
+        metadata = MetaData(db)
         table = Table('crosschema', metadata, autoload=True)
         self.assertEquals(str(table.columns.answer.default.arg), '0', "Reflected default value didn't equal expected value")
         self.assertTrue(table.columns.answer.nullable, "Expected reflected column to be nullable.")
@@ -64,14 +64,14 @@ class DomainReflectionTest(AssertMixin):
 class MiscTest(AssertMixin):
     @testbase.supported('postgres')
     def test_date_reflection(self):
-        m1 = BoundMetaData(testbase.db)
+        m1 = MetaData(testbase.db)
         t1 = Table('pgdate', m1, 
             Column('date1', DateTime(timezone=True)),
             Column('date2', DateTime(timezone=False))
             )
         m1.create_all()
         try:
-            m2 = BoundMetaData(testbase.db)
+            m2 = MetaData(testbase.db)
             t2 = Table('pgdate', m2, autoload=True)
             assert t2.c.date1.type.timezone is True
             assert t2.c.date2.type.timezone is False
@@ -80,7 +80,7 @@ class MiscTest(AssertMixin):
 
     @testbase.supported('postgres')
     def test_checksfor_sequence(self):
-        meta1 = BoundMetaData(testbase.db)
+        meta1 = MetaData(testbase.db)
         t = Table('mytable', meta1, 
             Column('col1', Integer, Sequence('fooseq')))
         try:
@@ -93,7 +93,7 @@ class MiscTest(AssertMixin):
     def test_schema_reflection(self):
         """note: this test requires that the 'alt_schema' schema be separate and accessible by the test user"""
 
-        meta1 = BoundMetaData(testbase.db)
+        meta1 = MetaData(testbase.db)
         users = Table('users', meta1,
             Column('user_id', Integer, primary_key = True),
             Column('user_name', String(30), nullable = False),
@@ -108,7 +108,7 @@ class MiscTest(AssertMixin):
         )
         meta1.create_all()
         try:
-            meta2 = BoundMetaData(testbase.db)
+            meta2 = MetaData(testbase.db)
             addresses = Table('email_addresses', meta2, autoload=True, schema="alt_schema")
             users = Table('users', meta2, mustexist=True, schema="alt_schema")
 
@@ -127,7 +127,7 @@ class MiscTest(AssertMixin):
         that PassiveDefault upon insert."""
         
         try:
-            meta = BoundMetaData(testbase.db)
+            meta = MetaData(testbase.db)
             testbase.db.execute("""
              CREATE TABLE speedy_users
              (
@@ -154,7 +154,7 @@ class TimezoneTest(AssertMixin):
     @testbase.supported('postgres')
     def setUpAll(self):
         global tztable, notztable, metadata
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
 
         # current_timestamp() in postgres is assumed to return TIMESTAMP WITH TIMEZONE
         tztable = Table('tztable', metadata,

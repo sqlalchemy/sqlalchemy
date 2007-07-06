@@ -9,7 +9,7 @@ from testbase import Table, Column
 
 
 db = testbase.db
-metadata = BoundMetaData(db)
+metadata = MetaData(db)
 table = Table('table1', metadata, 
     Column('col1', Integer, primary_key=True),
     Column('col2', String(20)),

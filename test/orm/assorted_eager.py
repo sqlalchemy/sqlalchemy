@@ -11,7 +11,7 @@ import random, datetime
 class EagerTest(AssertMixin):
     def setUpAll(self):
         global dbmeta, owners, categories, tests, options, Owner, Category, Test, Option, false
-        dbmeta = BoundMetaData(testbase.db)
+        dbmeta = MetaData(testbase.db)
         
         # determine a literal value for "false" based on the dialect
         false = Boolean().dialect_impl(testbase.db.dialect).convert_bind_param(False, testbase.db.dialect)
@@ -153,7 +153,7 @@ class EagerTest(AssertMixin):
 class EagerTest2(AssertMixin):
     def setUpAll(self):
         global metadata, middle, left, right
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         middle = Table('middle', metadata,
             Column('id', Integer, primary_key = True),
             Column('data', String(50)),

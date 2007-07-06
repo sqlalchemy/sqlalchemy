@@ -23,7 +23,7 @@ import copy, re, string
 
 __all__ = ['SchemaItem', 'Table', 'Column', 'ForeignKey', 'Sequence', 'Index', 'ForeignKeyConstraint',
             'PrimaryKeyConstraint', 'CheckConstraint', 'UniqueConstraint', 'DefaultGenerator', 'Constraint',
-           'MetaData', 'BoundMetaData', 'DynamicMetaData', 'SchemaVisitor', 'PassiveDefault', 'ColumnDefault']
+           'MetaData', 'ThreadLocalMetaData', 'SchemaVisitor', 'PassiveDefault', 'ColumnDefault']
 
 class SchemaItem(object):
     """Base class for items that define a database schema."""
@@ -1044,7 +1044,7 @@ class MetaData(SchemaItem):
 
     __visit_name__ = 'metadata'
     
-    def __init__(self, url=None, engine=None, **kwargs):
+    def __init__(self, engine_or_url=None, **kwargs):
         """create a new MetaData object.
         
             url
@@ -1060,12 +1060,15 @@ class MetaData(SchemaItem):
                 all contained objects.  defaults to True.
             
         """        
-
+        
+        if engine_or_url is None:
+            # limited backwards compatability
+            engine_or_url = kwargs.get('url', None) or kwargs.get('engine', None)
         self.tables = {}
         self._engine = None
         self._set_casing_strategy(kwargs)
-        if engine or url:
-            self.connect(engine or url, **kwargs)
+        if engine_or_url:
+            self.connect(engine_or_url, **kwargs)
 
     def __getstate__(self):
         return {'tables':self.tables, 'casesensitive':self._case_sensitive_setting}
@@ -1167,22 +1170,7 @@ class MetaData(SchemaItem):
         return self
 
 
-class BoundMetaData(MetaData):
-    """``MetaData`` for which the first argument is a required Engine, url string, or URL instance.
-    
-    """
-
-    __visit_name__ = 'metadata'
-
-    def __init__(self, engine_or_url, **kwargs):
-        from sqlalchemy.engine.url import URL
-        if isinstance(engine_or_url, basestring) or isinstance(engine_or_url, URL):
-            super(BoundMetaData, self).__init__(url=engine_or_url, **kwargs)
-        else:
-            super(BoundMetaData, self).__init__(engine=engine_or_url, **kwargs)
-            
-
-class DynamicMetaData(MetaData):
+class ThreadLocalMetaData(MetaData):
     """Build upon ``MetaData`` to provide the capability to bind to 
 multiple ``Engine`` implementations on a dynamically alterable,
 thread-local basis.
@@ -1190,13 +1178,10 @@ thread-local basis.
 
     __visit_name__ = 'metadata'
 
-    def __init__(self, threadlocal=True, **kwargs):
-        if threadlocal:
-            self.context = util.ThreadLocal()
-        else:
-            self.context = self
+    def __init__(self, **kwargs):
+        self.context = util.ThreadLocal()
         self.__engines = {}
-        super(DynamicMetaData, self).__init__(**kwargs)
+        super(ThreadLocalMetaData, self).__init__(**kwargs)
 
     def connect(self, engine_or_url, **kwargs):
         from sqlalchemy.engine.url import URL
@@ -1218,7 +1203,7 @@ thread-local basis.
         return hasattr(self.context, '_engine') and self.context._engine is not None
 
     def dispose(self):
-        """Dispose all ``Engines`` to which this ``DynamicMetaData`` has been connected."""
+        """Dispose all ``Engines`` to which this ``ThreadLocalMetaData`` has been connected."""
 
         for e in self.__engines.values():
             e.dispose()
@@ -1230,6 +1215,7 @@ thread-local basis.
             return None
 
     engine = property(_get_engine, connect)
+
 
 class SchemaVisitor(sql.ClauseVisitor):
     """Define the visiting for ``SchemaItem`` objects."""

@@ -73,6 +73,8 @@
       columns joined by a "group" to load as "undeferred".
 
 - sql
+  - DynamicMetaData has been renamed to ThreadLocalMetaData
+  - BoundMetaData has been removed- regular MetaData is equivalent
   - significant architectural overhaul to SQL elements (ClauseElement).  
     all elements share  a common "mutability" framework which allows a 
     consistent approach to in-place modifications of elements as well as 

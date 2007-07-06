@@ -6,7 +6,7 @@ from cStringIO import StringIO
 from pickle import Pickler, Unpickler
 import threading
 
-meta = BoundMetaData('sqlite://', echo=True)
+meta = MetaData('sqlite://', echo=True)
 
 class MyExt(MapperExtension):
     def populate_instance(self, mapper, selectcontext, row, instance, identitykey, isnew):

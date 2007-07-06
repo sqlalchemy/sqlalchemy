@@ -11,7 +11,7 @@ logging.basicConfig(format='%(message)s')
 #logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 engine = create_engine('sqlite://')
-metadata = BoundMetaData(engine)
+metadata = MetaData(engine)
 
 orders = Table('orders', metadata, 
     Column('order_id', Integer, primary_key=True),

@@ -40,7 +40,7 @@ class _CollectionOperations(PersistTest):
     def setUp(self):
         collection_class = self.collection_class
 
-        metadata = BoundMetaData(db)
+        metadata = MetaData(db)
     
         parents_table = Table('Parent', metadata,
                               Column('id', Integer, primary_key=True),
@@ -476,7 +476,7 @@ class CustomObjectTest(_CollectionOperations):
 
 class ScalarTest(PersistTest):
     def test_scalar_proxy(self):
-        metadata = BoundMetaData(db)
+        metadata = MetaData(db)
     
         parents_table = Table('Parent', metadata,
                               Column('id', Integer, primary_key=True),
@@ -592,7 +592,7 @@ class ScalarTest(PersistTest):
 
 class LazyLoadTest(PersistTest):
     def setUp(self):
-        metadata = BoundMetaData(db)
+        metadata = MetaData(db)
     
         parents_table = Table('Parent', metadata,
                               Column('id', Integer, primary_key=True),

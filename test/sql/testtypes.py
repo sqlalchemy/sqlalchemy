@@ -107,7 +107,7 @@ class OverrideTest(PersistTest):
 
     def setUpAll(self):
         global users
-        users = Table('type_users', BoundMetaData(db), 
+        users = Table('type_users', MetaData(db), 
             Column('user_id', Integer, primary_key = True),
             # totall custom type
             Column('goofy', MyType, nullable = False),
@@ -142,7 +142,7 @@ class ColumnsTest(AssertMixin):
             expectedResults['float_column'] = 'float_column FLOAT(25)'
     
         print db.engine.__module__
-        testTable = Table('testColumns', BoundMetaData(db),
+        testTable = Table('testColumns', MetaData(db),
             Column('int_column', Integer),
             Column('smallint_column', Smallinteger),
             Column('varchar_column', String(20)),
@@ -157,7 +157,7 @@ class UnicodeTest(AssertMixin):
     """tests the Unicode type.  also tests the TypeDecorator with instances in the types package."""
     def setUpAll(self):
         global unicode_table
-        metadata = BoundMetaData(db)
+        metadata = MetaData(db)
         unicode_table = Table('unicode_table', metadata, 
             Column('id', Integer, Sequence('uni_id_seq', optional=True), primary_key=True),
             Column('unicode_varchar', Unicode(250)),
@@ -217,7 +217,7 @@ class UnicodeTest(AssertMixin):
 class BinaryTest(AssertMixin):
     def setUpAll(self):
         global binary_table
-        binary_table = Table('binary_table', BoundMetaData(db), 
+        binary_table = Table('binary_table', MetaData(db), 
         Column('primary_id', Integer, Sequence('binary_id_seq', optional=True), primary_key=True),
         Column('data', Binary),
         Column('data_slice', Binary(100)),
@@ -307,7 +307,7 @@ class DateTest(AssertMixin):
             collist = [Column('user_id', INT, primary_key = True), Column('user_name', VARCHAR(20)), Column('user_datetime', DateTime(timezone=False)),
                            Column('user_date', Date), Column('user_time', Time)]
  
-        users_with_date = Table('query_users_with_date', BoundMetaData(db), *collist)
+        users_with_date = Table('query_users_with_date', MetaData(db), *collist)
         users_with_date.create()
         insert_dicts = [dict(zip(fnames, d)) for d in insert_data]
 
@@ -353,7 +353,7 @@ class DateTest(AssertMixin):
 class IntervalTest(AssertMixin):
     def setUpAll(self):
         global interval_table, metadata
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         interval_table = Table("intervaltable", metadata, 
             Column("id", Integer, primary_key=True),
             Column("interval", Interval),
@@ -371,7 +371,7 @@ class IntervalTest(AssertMixin):
 class BooleanTest(AssertMixin):
     def setUpAll(self):
         global bool_table
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         bool_table = Table('booltest', metadata, 
             Column('id', Integer, primary_key=True),
             Column('value', Boolean))

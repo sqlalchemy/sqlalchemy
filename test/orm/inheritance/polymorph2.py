@@ -617,7 +617,7 @@ class GenerativeTest(testbase.AssertMixin):
         #   +--------------------------------------- has a ------+
 
         global metadata, status, people, engineers, managers, cars
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         # table definitions
         status = Table('status', metadata, 
            Column('status_id', Integer, primary_key=True),

@@ -107,7 +107,7 @@ class RelationTest2(testbase.PersistTest):
     is 'joined to itself'."""
     def setUpAll(self):
         global metadata, company_tbl, employee_tbl
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         
         company_tbl = Table('company', metadata,
              Column('company_id', Integer, primary_key=True),
@@ -222,7 +222,7 @@ class RelationTest3(testbase.PersistTest):
     def setUpAll(self):
         global jobs, pageversions, pages, metadata, Job, Page, PageVersion, PageComment
         import datetime
-        metadata = BoundMetaData(testbase.db)  
+        metadata = MetaData(testbase.db)  
         jobs = Table("jobs", metadata,
                         Column("jobno", Unicode(15), primary_key=True),
                         Column("created", DateTime, nullable=False, default=datetime.datetime.now),

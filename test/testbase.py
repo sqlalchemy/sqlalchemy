@@ -7,7 +7,7 @@ import sys
 import os, unittest, StringIO, re, ConfigParser, optparse
 sys.path.insert(0, os.path.join(os.getcwd(), 'lib'))
 import sqlalchemy
-from sqlalchemy import sql, schema, engine, pool, BoundMetaData
+from sqlalchemy import sql, schema, engine, pool, MetaData
 from sqlalchemy.orm import clear_mappers
 
 db = None
@@ -167,7 +167,7 @@ firebird=firebird://sysdba:s@localhost/tmp/test.fdb
     if options.log_debug is not None:
         for elem in options.log_debug:
             logging.getLogger(elem).setLevel(logging.DEBUG)
-    metadata = sqlalchemy.BoundMetaData(db)
+    metadata = sqlalchemy.MetaData(db)
     
 def unsupported(*dbs):
     """a decorator that marks a test as unsupported by one or more database implementations"""
@@ -309,7 +309,7 @@ class ORMTest(AssertMixin):
     keep_data = False
     def setUpAll(self):
         global _otest_metadata
-        _otest_metadata = BoundMetaData(db)
+        _otest_metadata = MetaData(db)
         self.define_tables(_otest_metadata)
         _otest_metadata.create_all()
     def define_tables(self, _otest_metadata):

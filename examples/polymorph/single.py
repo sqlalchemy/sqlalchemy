@@ -1,6 +1,6 @@
 from sqlalchemy import *
 
-metadata = BoundMetaData('sqlite://', echo='debug')
+metadata = MetaData('sqlite://', echo='debug')
 
 # a table to store companies
 companies = Table('companies', metadata, 

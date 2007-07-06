@@ -1,9 +1,11 @@
+import testbase
 from sqlalchemy import *
+from sqlalchemy.orm import *
 from testbase import Table, Column
 from timeit import Timer
 import sys
 
-meta = DynamicMetaData("time_trial")
+meta = MetaData()
 
 orders = Table('orders', meta,
     Column('id', Integer, Sequence('order_id_seq'), primary_key = True),

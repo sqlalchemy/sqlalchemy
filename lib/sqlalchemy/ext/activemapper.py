@@ -1,4 +1,4 @@
-from sqlalchemy             import join, DynamicMetaData, util, Integer
+from sqlalchemy             import join, ThreadLocalMetaData, util, Integer
 from sqlalchemy             import and_, or_
 from sqlalchemy             import Table, Column, ForeignKey
 from sqlalchemy.orm         import class_mapper, relation, mapper, create_session
@@ -14,7 +14,7 @@ import sys
 #
 # the "proxy" to the database engine... this can be swapped out at runtime
 #
-metadata = DynamicMetaData("activemapper")
+metadata = ThreadLocalMetaData()
 
 try:
     objectstore = sqlalchemy.objectstore

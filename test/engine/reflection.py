@@ -38,7 +38,7 @@ class ReflectionTest(PersistTest):
             deftype2, deftype3 = Integer, Integer
             defval2, defval3 = "15", "16"
         
-        meta = BoundMetaData(testbase.db)
+        meta = MetaData(testbase.db)
         
         users = Table('engine_users', meta,
             Column('user_id', INT, primary_key = True),
@@ -112,7 +112,7 @@ class ReflectionTest(PersistTest):
     
     def testoverridecolumns(self):
         """test that you can override columns which contain foreign keys to other reflected tables"""
-        meta = BoundMetaData(testbase.db)
+        meta = MetaData(testbase.db)
         users = Table('users', meta, 
             Column('id', Integer, primary_key=True),
             Column('name', String(30)))
@@ -123,7 +123,7 @@ class ReflectionTest(PersistTest):
             
         meta.create_all()            
         try:
-            meta2 = BoundMetaData(testbase.db)
+            meta2 = MetaData(testbase.db)
             a2 = Table('addresses', meta2, 
                 Column('user_id', Integer, ForeignKey('users.id')),
                 autoload=True)
@@ -133,7 +133,7 @@ class ReflectionTest(PersistTest):
             assert list(a2.c.user_id.foreign_keys)[0].parent is a2.c.user_id
             assert u2.join(a2).onclause == u2.c.id==a2.c.user_id
 
-            meta3 = BoundMetaData(testbase.db)
+            meta3 = MetaData(testbase.db)
             u3 = Table('users', meta3, autoload=True)
             a3 = Table('addresses', meta3, 
                 Column('user_id', Integer, ForeignKey('users.id')),
@@ -147,7 +147,7 @@ class ReflectionTest(PersistTest):
     def testoverridecolumns2(self):
         """test that you can override columns which contain foreign keys to other reflected tables,
         where the foreign key column is also a primary key column"""
-        meta = BoundMetaData(testbase.db)
+        meta = MetaData(testbase.db)
         users = Table('users', meta, 
             Column('id', Integer, primary_key=True),
             Column('name', String(30)))
@@ -158,7 +158,7 @@ class ReflectionTest(PersistTest):
 
         meta.create_all()            
         try:
-            meta2 = BoundMetaData(testbase.db)
+            meta2 = MetaData(testbase.db)
             a2 = Table('addresses', meta2, 
                 Column('id', Integer, ForeignKey('users.id'), primary_key=True, ),
                 autoload=True)
@@ -177,7 +177,7 @@ class ReflectionTest(PersistTest):
             #sess.save(add1)
             #sess.flush()
             
-            meta3 = BoundMetaData(testbase.db)
+            meta3 = MetaData(testbase.db)
             u3 = Table('users', meta3, autoload=True)
             a3 = Table('addresses', meta3, 
                 Column('id', Integer, ForeignKey('users.id'), primary_key=True),
@@ -192,7 +192,7 @@ class ReflectionTest(PersistTest):
             
     @testbase.supported('mysql')
     def testmysqltypes(self):
-        meta1 = BoundMetaData(testbase.db)
+        meta1 = MetaData(testbase.db)
         table = Table(
             'mysql_types', meta1,
             Column('id', Integer, primary_key=True),
@@ -208,7 +208,7 @@ class ReflectionTest(PersistTest):
         try:
             table.drop(checkfirst=True)
             table.create()
-            meta2 = BoundMetaData(testbase.db)
+            meta2 = MetaData(testbase.db)
             t2 = Table('mysql_types', meta2, autoload=True)
             assert isinstance(t2.c.num1.type, mysql.MSInteger)
             assert t2.c.num1.type.unsigned
@@ -285,7 +285,7 @@ class ReflectionTest(PersistTest):
         )
         """)
         try:
-            meta = BoundMetaData(testbase.db)
+            meta = MetaData(testbase.db)
             table1 = Table("django_admin_log", meta, autoload=True)
             table2 = Table("django_content_type", meta, autoload=True)
             j = table1.join(table2)
@@ -300,7 +300,7 @@ class ReflectionTest(PersistTest):
         if (testbase.db.engine.name == 'mysql' and
             testbase.db.dialect.get_version_info(testbase.db) < (4, 1, 1)):
             return
-        meta = BoundMetaData(testbase.db)
+        meta = MetaData(testbase.db)
         table = Table(
             'multi', meta, 
             Column('multi_id', Integer, primary_key=True),
@@ -417,10 +417,10 @@ class ReflectionTest(PersistTest):
     def test_nonexistent(self):
         self.assertRaises(NoSuchTableError, Table,
                           'fake_table',
-                          BoundMetaData(testbase.db), autoload=True)
+                          MetaData(testbase.db), autoload=True)
         
     def testoverride(self):
-        meta = BoundMetaData(testbase.db)
+        meta = MetaData(testbase.db)
         table = Table(
             'override_test', meta, 
             Column('col1', Integer, primary_key=True),
@@ -430,7 +430,7 @@ class ReflectionTest(PersistTest):
         table.create()
         # clear out table registry
 
-        meta2 = BoundMetaData(testbase.db)
+        meta2 = MetaData(testbase.db)
         try:
             table = Table(
                 'override_test', meta2,

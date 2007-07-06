@@ -187,7 +187,7 @@ class M2OCascadeTest(testbase.AssertMixin):
     def setUpAll(self):
         global ctx, data, metadata, User, Pref, Extra
         ctx = SessionContext(create_session)
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         extra = Table("extra", metadata, 
             Column("extra_id", Integer, Sequence("extra_id_seq", optional=True), primary_key=True),
             Column("prefs_id", Integer, ForeignKey("prefs.prefs_id"))
@@ -265,7 +265,7 @@ class M2OCascadeTest(testbase.AssertMixin):
 class M2MCascadeTest(testbase.AssertMixin):
     def setUpAll(self):
         global metadata, a, b, atob
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         a = Table('a', metadata, 
             Column('id', Integer, primary_key=True),
             Column('data', String(30))
@@ -462,7 +462,7 @@ class DoubleParentOrphanTest(testbase.AssertMixin):
     
     def setUpAll(self):
         global metadata, address_table, businesses, homes
-        metadata = BoundMetaData(testbase.db)
+        metadata = MetaData(testbase.db)
         address_table = Table('addresses', metadata,
             Column('address_id', Integer, primary_key=True),
             Column('street', String(30)),

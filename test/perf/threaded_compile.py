@@ -8,7 +8,7 @@ import thread, time
 from sqlalchemy.orm import mapperlib
 from testbase import Table, Column
 
-meta = BoundMetaData('sqlite:///foo.db')
+meta = MetaData('sqlite:///foo.db')
 
 t1 = Table('t1', meta, 
     Column('c1', Integer, primary_key=True),
