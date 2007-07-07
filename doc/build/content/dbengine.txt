@@ -13,7 +13,7 @@ The general structure is this:
                                      \---|  Dialect  |---/                   |__________|
                                          +-----------+                       (__________)
 
-Where above, a [sqlalchemy.engine.Engine](rel:docstrings_sqlalchemy.engine_Engine) references both a  [sqlalchemy.engine.Dialect](rel:docstrings_sqlalchemy.engine_Dialect) and [sqlalchemy.pool](rel:docstrings_sqlalchemy.pool_Pool), which together interpret the DBAPI's module functions as well as the behavior of the database.
+Where above, a [sqlalchemy.engine.Engine](rel:docstrings_sqlalchemy.engine_Engine) references both a  [sqlalchemy.engine.Dialect](rel:docstrings_sqlalchemy.engine_Dialect) and [sqlalchemy.pool.Pool](rel:docstrings_sqlalchemy.pool_Pool), which together interpret the DBAPI's module functions as well as the behavior of the database.
 
 Creating an engine is just a matter of issuing a single call, `create_engine()`:
 
@@ -40,7 +40,7 @@ To execute some SQL more quickly, you can skip the `Connection` part and just sa
     {python}
     result = engine.execute("select username from users")
     for row in result:
-        print "username": row['username']
+        print "username:", row['username']
     result.close()
 
 Where above, the `execute()` method on the `Engine` does the `connect()` part for you, and returns the `ResultProxy` directly.  The actual `Connection` is *inside* the `ResultProxy`, waiting for you to finish reading the result.  In this case, when you `close()` the `ResultProxy`, the underlying `Connection` is closed, which returns the DBAPI connection to the pool. 
@@ -69,7 +69,7 @@ The SQLAlchemy Wiki contains a page of database notes, describing whatever quirk
 
 SQLAlchemy indicates the source of an Engine strictly via [RFC-1738](http://rfc.net/rfc1738.html) style URLs, combined with optional keyword arguments to specify options for the Engine.  The form of the URL is:
 
-    $ driver://username:password@host:port/database
+    driver://username:password@host:port/database
 
 Available drivernames are `sqlite`, `mysql`, `postgres`, `oracle`, `mssql`, and `firebird`.  For sqlite, the database name is the filename to connect to, or the special name ":memory:" which indicates an in-memory database.  The URL is typically sent as a string to the `create_engine()` function:
 
@@ -265,8 +265,8 @@ Notice in the above two examples, engine's `connect()` method is never called; i
 
 In the above examples, each time we call `execute()`, either on the `Engine` or on a constructed SQL statement, and therefore use implicit execution, a distinct `Connection` is created behind the scenes, which references a distinct DBAPI connection.  Each `ResultProxy` returned therefore references its own connection which was returned from the connection pool; when the result is closed, the underlying DBAPI connection is returned to the pool.  The example below illustrates this:
 
-    {python title="Plain Strategy"}
-    db = create_engine('mysql://localhost/test', strategy='plain')
+    {python}
+    db = create_engine('mysql://localhost/test')
 
     # execute one statement and receive results.  r1 now references a DBAPI connection resource.
     r1 = db.execute("select * from table1")
@@ -311,9 +311,9 @@ The usage of "threadlocal" modifies the underlying behavior of our example above
 
 Where above, we again have two result sets in scope at the same time, but because they are present in the same thread, there is only **one DBAPI connection in use**.
 
-While the above distinction may not seem like much, it has several potentially desireable effects.  One is that you can in some cases reduce the number of concurrent connections checked out from the connection pool, in the case that a `ResultProxy` is still opened and a second statement is issued.  A second advantage is that by limiting the number of checked out connections in a thread to just one, you eliminate the issue deadlocks within a single thread, such as when connection A locks a table, and connection B attempts to read from the table in the same thread, which would normally deadlock; the `threadlocal` strategy eliminates this possibility.
+While the above distinction may not seem like much, it has several potentially desireable effects.  One is that you can in some cases reduce the number of concurrent connections checked out from the connection pool, in the case that a `ResultProxy` is still opened and a second statement is issued.  A second advantage is that by limiting the number of checked out connections in a thread to just one, you eliminate the issue of deadlocks within a single thread, such as when connection A locks a table, and connection B attempts to read from the same table in the same thread, it will "deadlock" on waiting for connection A to release its lock; the `threadlocal` strategy eliminates this possibility.
 
-A third advantage to the `threadlocal` strategy is that it allows `Transaction` to be used in combination with implicit execution.  Recall from the section on transactions, that the `Transaction` is returned by the `begin()` method on a `Connection`; all statements which wish to participate in this transcation must be `execute()`ed by the same `Connection`, thereby forcing the usage of explicit execution.  However, the `TLEngine` provides a `Transaction` that is local to the current thread;  using it, one can issue many statements implicitly within a thread and they will all automatically partake in the current transaction, as in the example below:
+A third advantage to the `threadlocal` strategy is that it allows the `Transaction` object to be used in combination with implicit execution.  Recall from the section on transactions, that the `Transaction` is returned by the `begin()` method on a `Connection`; all statements which wish to participate in this transaction must be executed by the same `Connection`, thereby forcing the usage of explicit execution.  However, the `TLEngine` provides a `Transaction` that is local to the current thread;  using it, one can issue many statements implicitly within a thread and they will all automatically partake in the current transaction, as in the example below:
 
     {python title="threadlocal connection sharing"}
     # get a TLEngine
@@ -327,9 +327,9 @@ A third advantage to the `threadlocal` strategy is that it allows `Transaction` 
     except:
         engine.rollback()
 
-Notice that no `Connection` needed to be used; the `begin()` method on `TLEngine` (which note is not available on the regular `Engine`) created a `Transaction` as well as a `Connection` which were both held in the scope of the current thread.
+Notice that no `Connection` needed to be used; the `begin()` method on `TLEngine` (which note is not available on the regular `Engine`) created a `Transaction` as well as a `Connection`, and held onto both in a context corresponding to the current thread.  Each `execute()` call made use of the same connection, allowing them all to participate in the same transaction.
 
-Complex application flows can take advantage of the "threadlocal" strategy in order to allow many disparate parts of an application to take place in the same transaction automatically:
+Complex application flows can take advantage of the "threadlocal" strategy in order to allow many disparate parts of an application to take place in the same transaction automatically.  The example below demonstrates several forms of "implicit execution" as well as some specialized explicit ones:
 
     {python title="threadlocal connection sharing"}
     engine = create_engine('mysql://localhost/test', strategy='threadlocal')
@@ -360,9 +360,9 @@ Complex application flows can take advantage of the "threadlocal" strategy in or
     except:
         engine.rollback()
 
-In the above example, the program calls three functions `dosomethingimplicit()`, `dosomethingelse()` and `dosomethingtransactional()`.  All three functions use either implicit execution, or a special function `contextual_connect()` which we will describe in a moment.  These two styles of execution both indicate that all executions will participate in the thread-local transaction.  Recall that `Transaction` supports "nesting" behavior, whereby transactions opened in the context of an existing transaction automatically "nest" into the enclosing transaction.  Therefore, in the above example, while there are several calls that return "new" `Transaction` or `Connection` objects, in reality only one "real" connection is ever used, and there is only one "real" transaction in use.  So only the bottommost `begin()`/`commit()` pair determine the actual transaction scope.
+In the above example, the program calls three functions `dosomethingimplicit()`, `dosomethingelse()` and `dosomethingtransactional()`.  All three functions use either implicit execution, or a special function `contextual_connect()` which we will describe in a moment.  These two styles of execution both indicate that all executions will use the same connection object.  Additionally, the method `dosomethingtransactional()` begins and commits its own `Transaction`.  But only one transaction is used, too; it's controlled completely by the `engine.begin()`/`engine.commit()` calls at the bottom.  Recall that `Transaction` supports "nesting" behavior, whereby transactions begun on a `Connection` which already has a tranasaction open, will "nest" into the enclosing transaction.  Since the transaction opened in `dosomethingtransactional()` occurs using the same connection which already has a transaction begun, it "nests" into that transaction and therefore has no effect on the actual transaction scope (unless it calls `rollback()`).
 
-Notice above that some of the methods used a method called `engine.contextual_connect()`.  This method is available on both `Engine` as well as `TLEngine`, and returns the `Connection` that applies to the current **connection context**.  When using the `TLEngine`, this is just another term for the "thread local connection" that is being used for all implicit executions.  When using just the regular `Engine` (i.e. the "default" strategy), `contextual_connect()` is synonymous with `connect()`.
+Some of the functions in the above example make use of a method called `engine.contextual_connect()`.  This method is available on both `Engine` as well as `TLEngine`, and returns the `Connection` that applies to the current **connection context**.  When using the `TLEngine`, this is just another term for the "thread local connection" that is being used for all implicit executions.  When using just the regular `Engine` (i.e. the "default" strategy), `contextual_connect()` is synonymous with `connect()`.  Below we illustrate that two connections opened via `contextual_connect()` at the same time, both reference the same underlying DBAPI connection:
 
     {python title="Contextual Connection"}
     # threadlocal strategy
