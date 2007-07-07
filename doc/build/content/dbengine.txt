@@ -284,7 +284,7 @@ In both "connectionless" examples, the `Connection` is created behind the scenes
 
 #### Using the Threadlocal Execution Strategy {@name=strategies}
 
-In the above examples, each time we call `execute()` in a connectionless fashion, a `Connection` object is created behind the scenes, which references a distinct DBAPI connection.  Each `ResultProxy` returned therefore references its own connection which was returned from the connection pool; when the result is closed, the underlying DBAPI connection is returned to the pool.  The example below illustrates this:
+With connectionless execution, each returned `ResultProxy` object references its own distinct DBAPI connection object.  This means that multiple executions will result in multiple DBAPI connections being used at the same time; the example below illustrates this:
 
     {python}
     db = create_engine('mysql://localhost/test')
@@ -306,7 +306,7 @@ In the above examples, each time we call `execute()` in a connectionless fashion
 
 Where above, we have two result sets in scope at the same time, therefore we have two distinct DBAPI connections, both separately checked out from the connection pool, in scope at the same time.
 
-An option exists to `create_engine()` called `strategy="threadlocal"`, which changes this behavior.  When this option is used, the `Engine` which is returned by `create_engine()` is a special subclass of engine called `TLEngine`.  This engine, when it creates the `Connection` used by an implicit execution, checks a **threadlocal variable** for an existing DBAPI connection that was already checked out from the pool, within the current thread.  If one exists, it uses that one. 
+An option exists to `create_engine()` called `strategy="threadlocal"`, which changes this behavior.  When this option is used, the `Engine` which is returned by `create_engine()` is a special subclass of engine called `TLEngine`.  This engine, when it creates the `Connection` used by a connectionless execution, checks a **threadlocal variable** for an existing DBAPI connection that was already checked out from the pool, within the current thread.  If one exists, it uses that one. 
 
 The usage of "threadlocal" modifies the underlying behavior of our example above, as follows:
 
@@ -395,7 +395,7 @@ Some of the functions in the above example make use of a method called `engine.c
     >>> conn1.connection is conn2.connection
     True
 
-The `contextual_connect()` function implies that the regular `connect()` function behaves differently.  This is the case with `TLEngine`, where the `connect()` method will always return a **distinct** connection from the connection pool, regardless of any thread local connection or transaction in progress.  Using this method in combination with `TLEngine` allows one to "circumvent" the current thread local context, as in this example where a single statement issues data to the database externally to the current transaction:
+The basic idea of `contextual_connect()` is that its the "connection used by connectionless execution".  It's different from the `connect()` method in that `connect()` is always used when handling an explicit `Connection`, which will always reference distinct DBAPI connection.  Using `connect()` in combination with `TLEngine` allows one to "circumvent" the current thread local context, as in this example where a single statement issues data to the database externally to the current transaction:
 
     {python}
     engine.begin()
