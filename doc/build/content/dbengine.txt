@@ -45,13 +45,13 @@ To execute some SQL more quickly, you can skip the `Connection` part and just sa
 
 Where above, the `execute()` method on the `Engine` does the `connect()` part for you, and returns the `ResultProxy` directly.  The actual `Connection` is *inside* the `ResultProxy`, waiting for you to finish reading the result.  In this case, when you `close()` the `ResultProxy`, the underlying `Connection` is closed, which returns the DBAPI connection to the pool. 
 
-To summarize the above two examples, when you use a `Connection` object, its known as **explicit execution**.  When you don't see the `Connection` object, its called **implicit execution**.  These two terms are fairly important.
+To summarize the above two examples, when you use a `Connection` object, its known as **explicit execution**.  When you don't see the `Connection` object, its called **implicit execution**.  These two concepts are important.
 
 The `Engine` and `Connection` can do a lot more than what we illustrated above; SQL strings are only its most rudimental function.  Later chapters will describe how "constructed SQL" expressions can be used with engines; in many cases, you don't have to deal with the `Engine` at all after it's created.  The Object Relational Mapper (ORM), an optional feature of SQLAlchemy, also uses the `Engine` in order to get at connections; that's also a case where you can often create the engine once, and then forget about it.
 
 ### Supported Databases {@name=supported}
 
-Recall that the `Dialect` is used to describe how to talk to a specific kind of database.  Dialects are included with SQLAlchemy for SQLite, Postgres, MySQL, MS-SQL, Firebird, Informix, and Oracle.  For each engine, the appropriate DBAPI drivers must be installed separately.  A distinct Python module exists in the `sqlalchemy.databases` package for each type of database which implements the appropriate classes used to construct a `Dialect` and its dependencies.
+Recall that the `Dialect` is used to describe how to talk to a specific kind of database.  Dialects are included with SQLAlchemy for SQLite, Postgres, MySQL, MS-SQL, Firebird, Informix, and Oracle; these can each be seen as a Python module present in the `sqlalchemy.databases` package.  Each dialect requires the appropriate DBAPI drivers to be installed separately.
 
 Downloads for each DBAPI at the time of this writing are as follows:
 
@@ -65,7 +65,7 @@ Downloads for each DBAPI at the time of this writing are as follows:
 
 The SQLAlchemy Wiki contains a page of database notes, describing whatever quirks and behaviors have been observed.  Its a good place to check for issues with specific databases.  [Database Notes](http://www.sqlalchemy.org/trac/wiki/DatabaseNotes)
 
-### Establishing a Database Engine {@name=establishing}
+### create_engine() URL Arguments {@name=establishing}
 
 SQLAlchemy indicates the source of an Engine strictly via [RFC-1738](http://rfc.net/rfc1738.html) style URLs, combined with optional keyword arguments to specify options for the Engine.  The form of the URL is:
 
@@ -81,6 +81,7 @@ Available drivernames are `sqlite`, `mysql`, `postgres`, `oracle`, `mssql`, and 
     sqlite_db = create_engine('sqlite:////absolute/path/to/database.txt')
     sqlite_db = create_engine('sqlite:///relative/path/to/database.txt')
     sqlite_db = create_engine('sqlite://')  # in-memory database
+    sqlite_db = create_engine('sqlite://:memory:')  # the same
     
     # mysql
     mysql_db = create_engine('mysql://localhost/foo')
@@ -127,64 +128,24 @@ A list of all standard options, as well as several that are used by particular d
 * **connect_args** - a dictionary of options which will be passed directly to the DBAPI's `connect()` method as additional keyword arguments.
 * **convert_unicode=False** - if set to True, all String/character based types will convert Unicode values to raw byte values going into the database, and all raw byte values to Python Unicode coming out in result sets.  This is an engine-wide method to provide unicode conversion across the board.  For unicode conversion on a column-by-column level, use the `Unicode` column type instead, described in [types](rel:types).
 * **creator** - a callable which returns a DBAPI connection.  This creation function will be passed to the underlying connection pool and will be used to create all new database connections.  Usage of this function causes connection parameters specified in the URL argument to be bypassed.
-* **echo=False** - if True, the Engine will log all statements as well as a repr() of their parameter lists to the engines logger, which defaults to sys.stdout.  The `echo` attribute of `Engine` can be modified at any time to turn logging on and off.  If set to the string `"debug"`, result rows will be printed to the standard output as well.  This flag ultimately controls a Python logger; see [dbengine_logging](rel:dbengine_logging) for information on how to configure logging directly.
+* **echo=False** - if True, the Engine will log all statements as well as a repr() of their parameter lists to the engines logger, which defaults to sys.stdout.  The `echo` attribute of `Engine` can be modified at any time to turn logging on and off.  If set to the string `"debug"`, result rows will be printed to the standard output as well.  This flag ultimately controls a Python logger; see [dbengine_logging](rel:dbengine_logging) at the end of this chapter for information on how to configure logging directly.
 * **echo_pool=False** - if True, the connection pool will log all checkouts/checkins to the logging stream, which defaults to sys.stdout.  This flag ultimately controls a Python logger; see [dbengine_logging](rel:dbengine_logging) for information on how to configure logging directly.
 * **encoding='utf-8'** - the encoding to use for all Unicode translations, both by engine-wide unicode conversion as well as the `Unicode` type object.
-* **module=None** - used by database implementations which support multiple DBAPI modules, this is a reference to a DBAPI2 module to be used instead of the engine's default module.  For Postgres, the default is psycopg2, or psycopg1 if 2 cannot be found.  For Oracle, its cx_Oracle.
+* **module=None** - used by database implementations which support multiple DBAPI modules, this is a reference to a DBAPI2 module to be used instead of the engine's default module.  For Postgres, the default is psycopg2.  For Oracle, its cx_Oracle.
 * **pool=None** - an already-constructed instance of `sqlalchemy.pool.Pool`, such as a `QueuePool` instance.  If non-None, this pool will be used directly as the underlying connection pool for the engine, bypassing whatever connection parameters are present in the URL argument.  For information on constructing connection pools manually, see [pooling](rel:pooling).
 * **poolclass=None** - a `sqlalchemy.pool.Pool` subclass, which will be used to create a connection pool instance using the connection parameters given in the URL.  Note this differs from `pool` in that you don't actually instantiate the pool in this case, you just indicate what type of pool to be used.
 * **max_overflow=10** - the number of connections to allow in connection pool "overflow", that is connections that can be opened above and beyond the pool_size setting, which defaults to five.  this is only used with `QueuePool`.
 * **pool_size=5** - the number of connections to keep open inside the connection pool.  This used with `QueuePool` as well as `SingletonThreadPool`.
-* **pool_recycle=-1** - this setting causes the pool to recycle connections after the given number of seconds has passed.  It defaults to -1, or no timeout.  For example, setting to 3600 means connections will be recycled after one hour.  Note that MySQL in particular will disconnect automatically if no activity is detected on a connection for eight hours (although this is configurable with the MySQLDB connection itself and the  server configuration as well).
+* **pool_recycle=-1** - this setting causes the pool to recycle connections after the given number of seconds has passed.  It defaults to -1, or no timeout.  For example, setting to 3600 means connections will be recycled after one hour.  Note that MySQL in particular will **disconnect automatically** if no activity is detected on a connection for eight hours (although this is configurable with the MySQLDB connection itself and the  server configuration as well).
 * **pool_timeout=30** - number of seconds to wait before giving up on getting a connection from the pool.  This is only used with `QueuePool`.
 * **strategy='plain'** - the Strategy argument is used to select alternate implementations of the underlying Engine object, which coordinates operations between dialects, compilers, connections, and so on.  Currently, the only alternate strategy besides the default value of "plain" is the "threadlocal" strategy, which selects the usage of the `TLEngine` class that provides a modified connection scope for implicit executions.  Implicit execution as well as further detail on this setting are described in [dbengine_implicit](rel:dbengine_implicit).
 * **threaded=True** - used by cx_Oracle; sets the `threaded` parameter of the connection indicating thread-safe usage.  cx_Oracle docs indicate setting this flag to `False` will speed performance by 10-15%.  While this defaults to `False` in cx_Oracle, SQLAlchemy defaults it to `True`, preferring stability over early optimization.
 * **use_ansi=True** - used only by Oracle;  when False, the Oracle driver attempts to support a particular "quirk" of Oracle versions 8 and previous, that the LEFT OUTER JOIN SQL syntax is not supported, and the "Oracle join" syntax of using `&lt;column1&gt;(+)=&lt;column2&gt;` must be used in order to achieve a LEFT OUTER JOIN.
 * **use_oids=False** - used only by Postgres, will enable the column name "oid" as the object ID column, which is also used for the default sort order of tables.  Postgres as of 8.1 has object IDs disabled by default.
 
-### Configuring Logging {@name=logging}
-
-As of the 0.3 series of SQLAlchemy, Python's standard [logging](http://www.python.org/doc/lib/module-logging.html) module is used to implement informational and debug log output.  This allows SQLAlchemy's logging to integrate in a standard way with other applications and libraries.  The `echo` and `echo_pool` flags that are present on `create_engine()`, as well as the `echo_uow` flag used on `Session`, all interact with regular loggers.
-
-This section assumes familiarity with the above linked logging module.  All logging performed by SQLAlchemy exists underneath the `sqlalchemy` namespace, as used by `logging.getLogger('sqlalchemy')`.  When logging has been configured (i.e. such as via `logging.basicConfig()`), the general namespace of SA loggers that can be turned on is as follows:
-
-* `sqlalchemy.engine` - controls SQL echoing.  set to `logging.INFO` for SQL query output, `logging.DEBUG` for query + result set output.
-* `sqlalchemy.pool` - controls connection pool logging.  set to `logging.INFO` or lower to log connection pool checkouts/checkins.
-* `sqlalchemy.orm` - controls logging of various ORM functions.  set to `logging.INFO` for configurational logging as well as unit of work dumps, `logging.DEBUG` for extensive logging during query and flush() operations.  Subcategories of `sqlalchemy.orm` include:
-    * `sqlalchemy.orm.attributes` - logs certain instrumented attribute operations, such as triggered callables
-    * `sqlalchemy.orm.mapper` - logs Mapper configuration and operations
-    * `sqlalchemy.orm.unitofwork` - logs flush() operations, including dependency sort graphs and other operations
-    * `sqlalchemy.orm.strategies` - logs relation loader operations (i.e. lazy and eager loads)
-    * `sqlalchemy.orm.sync` - logs synchronization of attributes from parent to child instances during a flush()
-
-For example, to log SQL queries as well as unit of work debugging:
-
-    {python}
-    import logging
-    
-    logging.basicConfig()
-    logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
-    logging.getLogger('sqlalchemy.orm.unitofwork').setLevel(logging.DEBUG)
-    
-By default, the log level is set to `logging.ERROR` within the entire `sqlalchemy` namespace so that no log operations occur, even within an application that has logging enabled otherwise.
-
-The `echo` flags present as keyword arguments to `create_engine()` and others as well as the `echo` property on `Engine`, when set to `True`, will first attempt to ensure that logging is enabled.  Unfortunately, the `logging` module provides no way of determining if output has already been configured (note we are referring to if a logging configuration has been set up, not just that the logging level is set).  For this reason, any `echo=True` flags will result in a call to `logging.basicConfig()` using sys.stdout as the destination.  It also sets up a default format using the level name, timestamp, and logger name.  Note that this configuration has the affect of being configured **in addition** to any existing logger configurations.  Therefore, **when using Python logging, ensure all echo flags are set to False at all times**, to avoid getting duplicate log lines.  
-
 ### More On Connections {@name=connections}
 
-Recall from the beginning of this section that the Engine provides a `connect()` method which returns a `Connection` object.  `Connection` is a *proxy* object which maintains a reference to a DBAPI connection instance.  This object provides methods by which literal SQL text as well as SQL clause constructs can be compiled and executed.  
-
-    {python}
-    engine = create_engine('sqlite:///:memory:')
-    connection = engine.connect()
-    result = connection.execute("select * from mytable where col1=:col1", col1=5)
-    for row in result:
-        print row['col1'], row['col2']
-    connection.close()
-
-The `close` method on `Connection` does not actually remove the underlying connection to the database, but rather indicates that the underlying resources can be returned to the connection pool.  When using the `connect()` method, the DBAPI connection referenced by the `Connection` object is not referenced anywhere else. 
-
-In both execution styles above, the `Connection` object will also automatically return its resources to the connection pool when the object is garbage collected, i.e. its `__del__()` method is called.  When using the standard C implementation of Python, this method is usually called immediately as soon as the object is dereferenced.  With other Python implementations such as Jython, this is not so guaranteed.  
+Recall from the beginning of this section that the Engine provides a `connect()` method which returns a `Connection` object.  `Connection` is a *proxy* object which maintains a reference to a DBAPI connection instance.  The `close()` method on `Connection` does not actually close the DBAPI connection, but instead returns it to the connection pool referenced by the `Engine`.  `Connection` will also automatically return its resources to the connection pool when the object is garbage collected, i.e. its `__del__()` method is called.  When using the standard C implementation of Python, this method is usually called immediately as soon as the object is dereferenced.  With other Python implementations such as Jython, this is not so guaranteed.  
     
 The `execute()` methods on both `Engine` and `Connection` can also receive SQL clause constructs as well:
 
@@ -197,7 +158,7 @@ The `execute()` methods on both `Engine` and `Connection` can also receive SQL c
 
 The above SQL construct is known as a `select()`.  The full range of SQL constructs available are described in [sql](rel:sql).
 
-Both `Connection` and `Engine` fulfill an interface known as `Connectable` which specifies common functionality between the two objects, such as getting a `Connection` and executing queries.  Therefore, most SQLAlchemy functions which take an `Engine` as a parameter with which to execute SQL will also accept a `Connection`.  In SQLAlchemy 0.3, this argument frequently named `connectable` or `engine`.  In the 0.4 series of SQLAlchemy, its consistently named `bind`.
+Both `Connection` and `Engine` fulfill an interface known as `Connectable` which specifies common functionality between the two objects, namely being able to call `connect()` to return a `Connection` object (`Connection` just returns itself), and being able to call `execute()` to get a result set.   Following this, most SQLAlchemy functions and objects which accept an `Engine` as a parameter or attribute with which to execute SQL will also accept a `Connection`.  In SQLAlchemy 0.3, this argument is frequently named `connectable` or `engine`.  In the 0.4 series of SQLAlchemy, its consistently named `bind`.
 
     {python title="Specify Engine or Connection"}
     engine = create_engine('sqlite:///:memory:')
@@ -216,7 +177,7 @@ Both `Connection` and `Engine` fulfill an interface known as `Connectable` which
 Connection facts:
 
  * the Connection object is **not threadsafe**.  While a Connection can be shared among threads using properly synchronized access, this is also not recommended as many DBAPIs have issues with, if not outright disallow, sharing of connection state between threads.
- * The Connection object represents a single dbapi connection checked out from the connection pool.  In this state, the connection pool has no affect upon the connection, including its expiration or timeout state.  For the connection pool to properly manage connections, **connections should be returned to the connection pool (i.e. Connection.close()) whenever the connection is not in use**.  If your application has a need for management of multiple connections or is otherwise long running (this includes all web applications, threaded or not), don't hold a single connection open at the module level.
+ * The Connection object represents a single dbapi connection checked out from the connection pool.  In this state, the connection pool has no affect upon the connection, including its expiration or timeout state.  For the connection pool to properly manage connections, **connections should be returned to the connection pool (i.e. `connection.close()`) whenever the connection is not in use**.  If your application has a need for management of multiple connections or is otherwise long running (this includes all web applications, threaded or not), don't hold a single connection open at the module level.
  
 ### Using Transactions with Connection {@name=transactions}
 
@@ -424,3 +385,30 @@ The `contextual_connect()` function implies that the regular `connect()` functio
 
 In the above example, a thread-local transaction is begun, but is later rolled back.  The statement `insert into users values (?, ?)` is implicitly executed, therefore uses the thread-local transaction.  So its data is rolled back when the transaction is rolled back.  However, the `users.update()` statement is executed using a distinct `Connection` returned by the `engine.connect()` method, so it therefore is not part of the threadlocal transaction; it autocommits immediately.
 
+### Configuring Logging {@name=logging}
+
+As of the 0.3 series of SQLAlchemy, Python's standard [logging](http://www.python.org/doc/lib/module-logging.html) module is used to implement informational and debug log output.  This allows SQLAlchemy's logging to integrate in a standard way with other applications and libraries.  The `echo` and `echo_pool` flags that are present on `create_engine()`, as well as the `echo_uow` flag used on `Session`, all interact with regular loggers.
+
+This section assumes familiarity with the above linked logging module.  All logging performed by SQLAlchemy exists underneath the `sqlalchemy` namespace, as used by `logging.getLogger('sqlalchemy')`.  When logging has been configured (i.e. such as via `logging.basicConfig()`), the general namespace of SA loggers that can be turned on is as follows:
+
+* `sqlalchemy.engine` - controls SQL echoing.  set to `logging.INFO` for SQL query output, `logging.DEBUG` for query + result set output.
+* `sqlalchemy.pool` - controls connection pool logging.  set to `logging.INFO` or lower to log connection pool checkouts/checkins.
+* `sqlalchemy.orm` - controls logging of various ORM functions.  set to `logging.INFO` for configurational logging as well as unit of work dumps, `logging.DEBUG` for extensive logging during query and flush() operations.  Subcategories of `sqlalchemy.orm` include:
+    * `sqlalchemy.orm.attributes` - logs certain instrumented attribute operations, such as triggered callables
+    * `sqlalchemy.orm.mapper` - logs Mapper configuration and operations
+    * `sqlalchemy.orm.unitofwork` - logs flush() operations, including dependency sort graphs and other operations
+    * `sqlalchemy.orm.strategies` - logs relation loader operations (i.e. lazy and eager loads)
+    * `sqlalchemy.orm.sync` - logs synchronization of attributes from parent to child instances during a flush()
+
+For example, to log SQL queries as well as unit of work debugging:
+
+    {python}
+    import logging
+    
+    logging.basicConfig()
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+    logging.getLogger('sqlalchemy.orm.unitofwork').setLevel(logging.DEBUG)
+    
+By default, the log level is set to `logging.ERROR` within the entire `sqlalchemy` namespace so that no log operations occur, even within an application that has logging enabled otherwise.
+
+The `echo` flags present as keyword arguments to `create_engine()` and others as well as the `echo` property on `Engine`, when set to `True`, will first attempt to ensure that logging is enabled.  Unfortunately, the `logging` module provides no way of determining if output has already been configured (note we are referring to if a logging configuration has been set up, not just that the logging level is set).  For this reason, any `echo=True` flags will result in a call to `logging.basicConfig()` using sys.stdout as the destination.  It also sets up a default format using the level name, timestamp, and logger name.  Note that this configuration has the affect of being configured **in addition** to any existing logger configurations.  Therefore, **when using Python logging, ensure all echo flags are set to False at all times**, to avoid getting duplicate log lines.  

@@ -6,16 +6,16 @@ Database Meta Data {@name=metadata}
 
 ### Describing Databases with MetaData {@name=tables}    
 
-The core of SQLAlchemy's query and object mapping operations is database metadata, which are Python objects that describe tables and other schema-level objects.  Metadata objects can be created by explicitly naming the various components and their properties, using the Table, Column, ForeignKey, Index, and Sequence objects imported from `sqlalchemy.schema`.  There is also support for *reflection*, which means you only specify the *name* of the entities and they are recreated from the database automatically.
+The core of SQLAlchemy's query and object mapping operations are supported by **database metadata**, which is comprised of Python objects that describe tables and other schema-level objects.  These objects can be created by explicitly naming the various components and their properties, using the Table, Column, ForeignKey, Index, and Sequence objects imported from `sqlalchemy.schema`.  There is also support for **reflection** of some entities, which means you only specify the *name* of the entities and they are recreated from the database automatically.
 
-A collection of metadata entities is stored in an object aptly named `MetaData`.  This object takes an optional `name` parameter:
+A collection of metadata entities is stored in an object aptly named `MetaData`:
 
     {python}
     from sqlalchemy import *
     
     metadata = MetaData()
 
-Then to construct a Table, use the `Table` class:
+To represent a Table, use the `Table` class:
 
     {python}
     users = Table('users', metadata, 
@@ -119,9 +119,9 @@ And `Table` provides an interface to the table's properties as well as that of i
 
 #### Binding MetaData to an Engine {@name=binding}
 
-A MetaData object can be associated with one or more Engine instances.  This allows the MetaData and the elements within it to perform operations automatically, using the connection resources of that Engine.  This includes being able to "reflect" the columns of tables, as well as to perform create and drop operations without needing to pass an `Engine` or `Connection` around.  It also allows SQL constructs to be created which know how to execute themselves (called "implicit execution").
+A `MetaData` object can be associated with an `Engine` (or an individual `Connection`); this process is called **binding**.  This allows the `MetaData` and the elements which it contains to perform operations against the database directly, using the connection resources to which it's bound.   Common operations which are made more convenient through binding include being able to generate SQL constructs which know how to execute themselves, creating `Table` objects which query the database for their column and constraint information, and issuing CREATE or DROP statements.
 
-To bind `MetaData` to a single `Engine`, use the `connect()` method:
+To bind `MetaData` to an `Engine`, use the `connect()` method:
 
     {python}
     engine = create_engine('sqlite://', **kwargs)
@@ -132,42 +132,50 @@ To bind `MetaData` to a single `Engine`, use the `connect()` method:
     # bind to an engine
     meta.connect(engine)
 
+Once this is done, the `MetaData` and its contained `Table` objects can access the database directly:
+
+    {python}
+    meta.create_all()  # issue CREATE statements for all tables
+    
+    # describe a table called 'users', query the database for its columns
+    users_table = Table('users', meta, autoload=True)
+    
+    # generate a SELECT statement and execute
+    result = users_table.select().execute()
+
+Note that the feature of binding engines is **completely optional**.  All of the operations which take advantage of "bound" `MetaData` also can be given an `Engine` or `Connection` explicitly with which to perform the operation.   The equivalent "non-bound" of the above would be:
+
+    {python}
+    meta.create_all(engine)  # issue CREATE statements for all tables
+    
+    # describe a table called 'users',  query the database for its columns
+    users_table = Table('users', meta, autoload=True, autoload_with=engine)
+    
+    # generate a SELECT statement and execute
+    result = engine.execute(users_table.select())
 
 #### Reflecting Tables
 
-Once you have a `MetaData` bound to an engine, you can create `Table` objects without specifying their columns, just their names, using `autoload=True`:
+A `Table` object can be created without specifying any of its contained attributes, using the argument `autoload=True` in conjunction with the table's name and possibly its schema (if not the databases "default" schema).  This will issue the appropriate queries to the database in order to locate all properties of the table required for SQLAlchemy to use it effectively, including its column names and datatypes, foreign and primary key constraints, and in some cases its default-value generating attributes.   To use `autoload=True`, the table's `MetaData` object need be bound to an `Engine` or `Connection`, or alternatively the `autoload_with=<some connectable>` argument can be passed.  Below we illustrate autoloading a table and then iterating through the names of its columns:
 
     {python}
-    >>> messages = Table('messages', meta, autoload = True)
+    >>> messages = Table('messages', meta, autoload=True)
     >>> [c.name for c in messages.columns]
     ['message_id', 'message_name', 'date']
 
-At the moment the Table is constructed, it will query the database for the columns and constraints of the `messages` table.
-
-Note that if a reflected table has a foreign key referencing another table, then the metadata for the related table will be loaded as well, even if it has not been defined by the application:              
+Note that if a reflected table has a foreign key referencing another table, the related `Table` object  will be automatically created within the `MetaData` object if it does not exist already.  Below, suppose table `shopping_cart_items` references a table `shopping_carts`.  After reflecting, the `shopping carts` table is present:
         
     {python}
-    >>> shopping_cart_items = Table('shopping_cart_items', meta, autoload = True)
-    >>> print shopping_cart_items.c.cart_id.table.name
-    shopping_carts
-        
-To get direct access to 'shopping_carts', simply instantiate it via the Table constructor.  You'll get the same instance of the shopping cart Table as the one that is attached to shopping_cart_items:
-
-    {python}
-    >>> shopping_carts = Table('shopping_carts', meta)
-    >>> shopping_carts is shopping_cart_items.c.cart_id.table
+    >>> shopping_cart_items = Table('shopping_cart_items', meta, autoload=True)
+    >>> 'shopping_carts' in meta.tables:
     True
         
-This works because when the Table constructor is called for a particular name and `MetaData` object, if the table has already been created then the instance returned will be the same as the original.  This is a <b>singleton</b> constructor:
+To get direct access to 'shopping_carts', simply instantiate it via the `Table` constructor.  `Table` uses a special contructor that will return the already created `Table` instance if its already present:
 
     {python}
-    >>> news_articles = Table('news', meta, 
-    ... Column('article_id', Integer, primary_key = True),
-    ... Column('url', String(250), nullable = False)
-    ... )
-    >>> othertable = Table('news', meta)
-    >>> othertable is news_articles
-    True
+    shopping_carts = Table('shopping_carts', meta)
+
+Of course, its a good idea to use `autoload=True` with the above table regardless.  This is so that if it hadn't been loaded already, the operation will load the table.  The autoload operation only occurs for the table if it hasn't already been loaded; once loaded, new calls to `Table` will not re-issue any reflection queries.
 
 ##### Overriding Reflected Columns {@name=overriding}
 
