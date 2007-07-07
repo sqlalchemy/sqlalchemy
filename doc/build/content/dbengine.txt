@@ -45,7 +45,7 @@ To execute some SQL more quickly, you can skip the `Connection` part and just sa
 
 Where above, the `execute()` method on the `Engine` does the `connect()` part for you, and returns the `ResultProxy` directly.  The actual `Connection` is *inside* the `ResultProxy`, waiting for you to finish reading the result.  In this case, when you `close()` the `ResultProxy`, the underlying `Connection` is closed, which returns the DBAPI connection to the pool. 
 
-To summarize the above two examples, when you use a `Connection` object, its known as **explicit execution**.  When you don't see the `Connection` object, its called **implicit execution**.  These two concepts are important.
+To summarize the above two examples, when you use a `Connection` object, its known as **explicit execution**.  When you don't see the `Connection` object, but you still use the `execute()` method on the `Engine`, its called **explicit, connectionless execution**.   A third variant of execution also exists called **implicit execution**; this will be described later.
 
 The `Engine` and `Connection` can do a lot more than what we illustrated above; SQL strings are only its most rudimental function.  Later chapters will describe how "constructed SQL" expressions can be used with engines; in many cases, you don't have to deal with the `Engine` at all after it's created.  The Object Relational Mapper (ORM), an optional feature of SQLAlchemy, also uses the `Engine` in order to get at connections; that's also a case where you can often create the engine once, and then forget about it.
 
@@ -138,7 +138,7 @@ A list of all standard options, as well as several that are used by particular d
 * **pool_size=5** - the number of connections to keep open inside the connection pool.  This used with `QueuePool` as well as `SingletonThreadPool`.
 * **pool_recycle=-1** - this setting causes the pool to recycle connections after the given number of seconds has passed.  It defaults to -1, or no timeout.  For example, setting to 3600 means connections will be recycled after one hour.  Note that MySQL in particular will **disconnect automatically** if no activity is detected on a connection for eight hours (although this is configurable with the MySQLDB connection itself and the  server configuration as well).
 * **pool_timeout=30** - number of seconds to wait before giving up on getting a connection from the pool.  This is only used with `QueuePool`.
-* **strategy='plain'** - the Strategy argument is used to select alternate implementations of the underlying Engine object, which coordinates operations between dialects, compilers, connections, and so on.  Currently, the only alternate strategy besides the default value of "plain" is the "threadlocal" strategy, which selects the usage of the `TLEngine` class that provides a modified connection scope for implicit executions.  Implicit execution as well as further detail on this setting are described in [dbengine_implicit](rel:dbengine_implicit).
+* **strategy='plain'** - the Strategy argument is used to select alternate implementations of the underlying Engine object, which coordinates operations between dialects, compilers, connections, and so on.  Currently, the only alternate strategy besides the default value of "plain" is the "threadlocal" strategy, which selects the usage of the `TLEngine` class that provides a modified connection scope for connectionless executions.  Connectionless execution as well as further detail on this setting are described in [dbengine_implicit](rel:dbengine_implicit).
 * **threaded=True** - used by cx_Oracle; sets the `threaded` parameter of the connection indicating thread-safe usage.  cx_Oracle docs indicate setting this flag to `False` will speed performance by 10-15%.  While this defaults to `False` in cx_Oracle, SQLAlchemy defaults it to `True`, preferring stability over early optimization.
 * **use_ansi=True** - used only by Oracle;  when False, the Oracle driver attempts to support a particular "quirk" of Oracle versions 8 and previous, that the LEFT OUTER JOIN SQL syntax is not supported, and the "Oracle join" syntax of using `&lt;column1&gt;(+)=&lt;column2&gt;` must be used in order to achieve a LEFT OUTER JOIN.
 * **use_oids=False** - used only by Postgres, will enable the column name "oid" as the object ID column, which is also used for the default sort order of tables.  Postgres as of 8.1 has object IDs disabled by default.
@@ -238,32 +238,53 @@ The above transaction example illustrates how to use `Transaction` so that sever
     conn = engine.connect()
     conn.execute("INSERT INTO users VALUES (1, 'john')")  # autocommits
 
-### Implicit Execution {@name=implicit}
+### Connectionless Execution, Implicit Execution {@name=implicit}
 
-Recall from the first section the distinction between **explicit** and **implicit** execution.  When we say "implicit", we mean that we are executing SQL *without* a visible `Connection` object being used.  In this case, the `ResultProxy` returned by the `execute()` call references the `Connection` used to issue the SQL statement.  Implicit execution can be invoked by calling the `execute()` method on the `Engine`, as below:
+Recall from the first section we mentioned executing with and without a `Connection`.  `Connectionless` execution refers to calling the `execute()` method on an object which is not a `Connection`, which could be on the the `Engine` itself, or could be a constructed SQL object.  When we say "implicit", we mean that we are calling the `execute()` method on an object which is neither a `Connection` nor an `Engine` object; this can only be used with constructed SQL objects which have their own `execute()` method, and can be "bound" to an `Engine`.  A description of "constructed SQL objects" may be found in [sql](rel:sql).  
 
-    {python title="Implicit Execution Using Engine"}
-    engine = create_engine('sqlite:///:memory:')
-    result = engine.execute("select * from mytable where col1=:col1", col1=5)
+A summary of all three methods follows below.  First, assume the usage of the following `MetaData` and `Table` objects; while we haven't yet introduced these concepts, for now you only need to know that we are representing a database table, and are creating an "executeable" SQL construct which issues a statement to the database.  These objects are described in [metadata](rel:metadata).
+
+    {python}
+    meta = MetaData()
+    users_table = Table('users', meta, 
+        Column('id', Integer, primary_key=True), 
+        Column('name', String(50))
+    )
+    
+Explicit execution delivers the SQL text or constructed SQL expression to the `execute()` method of `Connection`:
+
+    {python}
+    engine = create_engine('sqlite:///file.db')
+    connection = engine.connect()
+    result = connection.execute(users_table.select())
     for row in result:
-        print row['col1'], row['col2']
+        # ....
+    connection.close()
+
+Explicit, connectionless execution delivers the expression to the `execute()` method of `Engine`:
+
+    {python}
+    engine = create_engine('sqlite:///file.db')
+    result = engine.execute(users_table.select())
+    for row in result:
+        # ....
     result.close()
 
-Another way to implicitly execute, is to use constructed SQL (described in [sql](rel:sql)) which references "bound" `MetaData` (`MetaData` is an object that stores information about the tables in your database, and is described in the next section, [metadata](rel:metadata)):
+Implicit execution is also connectionless, and calls the `execute()` method on the expression itself, utilizing the fact that either an `Engine` or `Connection` has been *bound* to the expression object (binding is discussed further in the next section, [metadata](rel:metadata)):
 
-    {python title="Implicit Execution Using Engine-Bound SQL Construct"}
-    engine = create_engine('sqlite:///:memory:')
-    meta = MetaData()
+    {python}
+    engine = create_engine('sqlite:///file.db')
     meta.connect(engine)
-
-    table = Table('mytable', meta, Column('col1', Integer), Column('col2', String(20)))
-    r = table.insert().execute(col1=5, col2='some record')
-
-Notice in the above two examples, engine's `connect()` method is never called; instead, the `MetaData` object is **bound** to the `Engine` via its own `connect()` method.  Once that occurs, the `Connection` is created for you automatically anytime you call the `execute()` method on a constructed SQL object which derives from the `MetaData`.  The returned result set references a handle to the execution's open cursor, as well as the checked-out connection.  When the result set is closed via the `close()` method, or if the result set object falls out of scope and is garbage collected, the underlying cursor is closed, the `Connection` is discarded and the underlying DBAPI connection is returned to the connection pool.
+    result = users_table.select().execute()
+    for row in result:
+        # ....
+    result.close()
+    
+In both "connectionless" examples, the `Connection` is created behind the scenes; the `ResultProxy` returned by the `execute()` call references the `Connection` used to issue the SQL statement.   When we issue `close()` on the `ResultProxy`, or if the result set object falls out of scope and is garbage collected, the underlying `Connection` is closed for us, resulting in the DBAPI connection being returned to the pool.
 
 #### Using the Threadlocal Execution Strategy {@name=strategies}
 
-In the above examples, each time we call `execute()`, either on the `Engine` or on a constructed SQL statement, and therefore use implicit execution, a distinct `Connection` is created behind the scenes, which references a distinct DBAPI connection.  Each `ResultProxy` returned therefore references its own connection which was returned from the connection pool; when the result is closed, the underlying DBAPI connection is returned to the pool.  The example below illustrates this:
+In the above examples, each time we call `execute()` in a connectionless fashion, a `Connection` object is created behind the scenes, which references a distinct DBAPI connection.  Each `ResultProxy` returned therefore references its own connection which was returned from the connection pool; when the result is closed, the underlying DBAPI connection is returned to the pool.  The example below illustrates this:
 
     {python}
     db = create_engine('mysql://localhost/test')
@@ -313,7 +334,7 @@ Where above, we again have two result sets in scope at the same time, but becaus
 
 While the above distinction may not seem like much, it has several potentially desireable effects.  One is that you can in some cases reduce the number of concurrent connections checked out from the connection pool, in the case that a `ResultProxy` is still opened and a second statement is issued.  A second advantage is that by limiting the number of checked out connections in a thread to just one, you eliminate the issue of deadlocks within a single thread, such as when connection A locks a table, and connection B attempts to read from the same table in the same thread, it will "deadlock" on waiting for connection A to release its lock; the `threadlocal` strategy eliminates this possibility.
 
-A third advantage to the `threadlocal` strategy is that it allows the `Transaction` object to be used in combination with implicit execution.  Recall from the section on transactions, that the `Transaction` is returned by the `begin()` method on a `Connection`; all statements which wish to participate in this transaction must be executed by the same `Connection`, thereby forcing the usage of explicit execution.  However, the `TLEngine` provides a `Transaction` that is local to the current thread;  using it, one can issue many statements implicitly within a thread and they will all automatically partake in the current transaction, as in the example below:
+A third advantage to the `threadlocal` strategy is that it allows the `Transaction` object to be used in combination with connectionless execution.  Recall from the section on transactions, that the `Transaction` is returned by the `begin()` method on a `Connection`; all statements which wish to participate in this transaction must be executed by the same `Connection`, thereby forcing the usage of an explicit connection.  However, the `TLEngine` provides a `Transaction` that is local to the current thread;  using it, one can issue many "connectionless" statements within a thread and they will all automatically partake in the current transaction, as in the example below:
 
     {python title="threadlocal connection sharing"}
     # get a TLEngine
@@ -329,7 +350,7 @@ A third advantage to the `threadlocal` strategy is that it allows the `Transacti
 
 Notice that no `Connection` needed to be used; the `begin()` method on `TLEngine` (which note is not available on the regular `Engine`) created a `Transaction` as well as a `Connection`, and held onto both in a context corresponding to the current thread.  Each `execute()` call made use of the same connection, allowing them all to participate in the same transaction.
 
-Complex application flows can take advantage of the "threadlocal" strategy in order to allow many disparate parts of an application to take place in the same transaction automatically.  The example below demonstrates several forms of "implicit execution" as well as some specialized explicit ones:
+Complex application flows can take advantage of the "threadlocal" strategy in order to allow many disparate parts of an application to take place in the same transaction automatically.  The example below demonstrates several forms of "connectionless execution" as well as some specialized explicit ones:
 
     {python title="threadlocal connection sharing"}
     engine = create_engine('mysql://localhost/test', strategy='threadlocal')
@@ -360,9 +381,9 @@ Complex application flows can take advantage of the "threadlocal" strategy in or
     except:
         engine.rollback()
 
-In the above example, the program calls three functions `dosomethingimplicit()`, `dosomethingelse()` and `dosomethingtransactional()`.  All three functions use either implicit execution, or a special function `contextual_connect()` which we will describe in a moment.  These two styles of execution both indicate that all executions will use the same connection object.  Additionally, the method `dosomethingtransactional()` begins and commits its own `Transaction`.  But only one transaction is used, too; it's controlled completely by the `engine.begin()`/`engine.commit()` calls at the bottom.  Recall that `Transaction` supports "nesting" behavior, whereby transactions begun on a `Connection` which already has a tranasaction open, will "nest" into the enclosing transaction.  Since the transaction opened in `dosomethingtransactional()` occurs using the same connection which already has a transaction begun, it "nests" into that transaction and therefore has no effect on the actual transaction scope (unless it calls `rollback()`).
+In the above example, the program calls three functions `dosomethingimplicit()`, `dosomethingelse()` and `dosomethingtransactional()`.  All three functions use either connectionless execution, or a special function `contextual_connect()` which we will describe in a moment.  These two styles of execution both indicate that all executions will use the same connection object.  Additionally, the method `dosomethingtransactional()` begins and commits its own `Transaction`.  But only one transaction is used, too; it's controlled completely by the `engine.begin()`/`engine.commit()` calls at the bottom.  Recall that `Transaction` supports "nesting" behavior, whereby transactions begun on a `Connection` which already has a tranasaction open, will "nest" into the enclosing transaction.  Since the transaction opened in `dosomethingtransactional()` occurs using the same connection which already has a transaction begun, it "nests" into that transaction and therefore has no effect on the actual transaction scope (unless it calls `rollback()`).
 
-Some of the functions in the above example make use of a method called `engine.contextual_connect()`.  This method is available on both `Engine` as well as `TLEngine`, and returns the `Connection` that applies to the current **connection context**.  When using the `TLEngine`, this is just another term for the "thread local connection" that is being used for all implicit executions.  When using just the regular `Engine` (i.e. the "default" strategy), `contextual_connect()` is synonymous with `connect()`.  Below we illustrate that two connections opened via `contextual_connect()` at the same time, both reference the same underlying DBAPI connection:
+Some of the functions in the above example make use of a method called `engine.contextual_connect()`.  This method is available on both `Engine` as well as `TLEngine`, and returns the `Connection` that applies to the current **connection context**.  When using the `TLEngine`, this is just another term for the "thread local connection" that is being used for all connectionless executions.  When using just the regular `Engine` (i.e. the "default" strategy), `contextual_connect()` is synonymous with `connect()`.  Below we illustrate that two connections opened via `contextual_connect()` at the same time, both reference the same underlying DBAPI connection:
 
     {python title="Contextual Connection"}
     # threadlocal strategy
@@ -383,7 +404,7 @@ The `contextual_connect()` function implies that the regular `connect()` functio
     connection.execute(users.update(users.c.user_id==5).execute(name='ed'))
     engine.rollback()
 
-In the above example, a thread-local transaction is begun, but is later rolled back.  The statement `insert into users values (?, ?)` is implicitly executed, therefore uses the thread-local transaction.  So its data is rolled back when the transaction is rolled back.  However, the `users.update()` statement is executed using a distinct `Connection` returned by the `engine.connect()` method, so it therefore is not part of the threadlocal transaction; it autocommits immediately.
+In the above example, a thread-local transaction is begun, but is later rolled back.  The statement `insert into users values (?, ?)` is executed without using a connection, therefore uses the thread-local transaction.  So its data is rolled back when the transaction is rolled back.  However, the `users.update()` statement is executed using a distinct `Connection` returned by the `engine.connect()` method, so it therefore is not part of the threadlocal transaction; it autocommits immediately.
 
 ### Configuring Logging {@name=logging}
 
