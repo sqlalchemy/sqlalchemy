@@ -31,6 +31,8 @@
       trip over synonyms (and others) that are named after the column's actual
       "key" (since, column_prefix means "dont use the key").
 - sql
+    - ForeignKey to a table in a schema thats not the default schema
+      requires the schema to be explicit; i.e. ForeignKey('alt_schema.users.id')
     - MetaData can now be constructed with an engine or url as the first
       argument, just like BoundMetaData
     - BoundMetaData is now deprecated, and MetaData is a direct substitute.
@@ -82,6 +84,8 @@
     - added support for reflection of domains [ticket:570]
     - types which are missing during reflection resolve to Null type
       instead of raising an error
+    - the fix in "schema" above fixes reflection of foreign keys from an
+      alt-schema table to a public schema table
 - sqlite
     - sqlite better handles datetime/date/time objects mixed and matched
       with various Date/Time/DateTime columns

@@ -121,6 +121,50 @@ class MiscTest(AssertMixin):
             meta1.drop_all()
 
     @testbase.supported('postgres')
+    def test_schema_reflection_2(self):
+        meta1 = MetaData(testbase.db)
+        subject = Table("subject", meta1,
+                        Column("id", Integer, primary_key=True),
+                        )
+
+        referer = Table("referer", meta1,
+                        Column("id", Integer, primary_key=True),
+                        Column("ref", Integer, ForeignKey('subject.id')),
+                        schema="alt_schema")
+        meta1.create_all()
+        try:
+            meta2 = MetaData(testbase.db)
+            subject = Table("subject", meta2, autoload=True)
+            referer = Table("referer", meta2, schema="alt_schema", autoload=True)
+            print str(subject.join(referer).onclause)
+            self.assert_((subject.c.id==referer.c.ref).compare(subject.join(referer).onclause))
+        finally:
+            meta1.drop_all()
+            
+    @testbase.supported('postgres')
+    def test_schema_reflection_3(self):
+        meta1 = MetaData(testbase.db)
+        subject = Table("subject", meta1,
+                        Column("id", Integer, primary_key=True),
+                        schema='alt_schema_2'
+                        )
+
+        referer = Table("referer", meta1,
+                        Column("id", Integer, primary_key=True),
+                        Column("ref", Integer, ForeignKey('alt_schema_2.subject.id')),
+                        schema="alt_schema")
+
+        meta1.create_all()
+        try:
+            meta2 = MetaData(testbase.db)
+            subject = Table("subject", meta2, autoload=True, schema="alt_schema_2")
+            referer = Table("referer", meta2, schema="alt_schema", autoload=True)
+            print str(subject.join(referer).onclause)
+            self.assert_((subject.c.id==referer.c.ref).compare(subject.join(referer).onclause))
+        finally:
+            meta1.drop_all()
+        
+    @testbase.supported('postgres')
     def test_preexecute_passivedefault(self):
         """test that when we get a primary key column back 
         from reflecting a table which has a default value on it, we pre-execute

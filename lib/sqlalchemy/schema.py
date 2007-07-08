@@ -701,7 +701,7 @@ class ForeignKey(SchemaItem):
                     raise exceptions.ArgumentError("Invalid foreign key column specification: " + self._colspec)
                 if m.group(3) is None:
                     (tname, colname) = m.group(1, 2)
-                    schema = parenttable.schema
+                    schema = None
                 else:
                     (schema,tname,colname) = m.group(1,2,3)
                 table = Table(tname, parenttable.metadata, mustexist=True, schema=schema)
