@@ -599,7 +599,7 @@ class MSSQLDialect_pymssql(MSSQLDialect):
         self.use_scope_identity = True
 
     def supports_sane_rowcount(self):
-        return True
+        return False
 
     def max_identifier_length(self):
         return 30
@@ -686,7 +686,10 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
 
     def make_connect_string(self, keys):
         connectors = ["Driver={SQL Server}"]
-        connectors.append("Server=%s" % keys.get("host"))
+        if 'port' in keys:
+            connectors.append('Server=%s,%d' % (keys.get('host'), keys.get('port')))
+        else:
+            connectors.append('Server=%s' % keys.get('host'))
         connectors.append("Database=%s" % keys.get("database"))
         user = keys.get("user")
         if user:

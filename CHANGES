@@ -90,6 +90,10 @@
     - sqlite better handles datetime/date/time objects mixed and matched
       with various Date/Time/DateTime columns
     - string PK column inserts dont get overwritten with OID [ticket:603] 
+
+- mssql
+    - fix port option handling for pyodbc [ticket:634]
+
 - extensions
     - added selectone_by() to assignmapper
     
