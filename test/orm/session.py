@@ -38,6 +38,21 @@ class SessionTest(AssertMixin):
         s.user_name = 'some other user'
         s.flush()
 
+    def test_expunge_cascade(self):
+        tables.data()
+        mapper(Address, addresses)
+        mapper(User, users, properties={
+            'addresses':relation(Address, backref=backref("user", cascade="all"), cascade="all")
+        })
+        session = create_session()
+        u = session.query(User).filter_by(user_id=7).one()
+
+        # get everything to load in both directions
+        print [a.user for a in u.addresses]
+
+        # then see if expunge fails
+        session.expunge(u)
+        
     def test_transaction(self):
         class User(object):pass
         mapper(User, users)

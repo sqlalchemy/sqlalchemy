@@ -380,10 +380,11 @@ class Session(object):
         Cascading will be applied according to the *expunge* cascade
         rule.
         """
-
+        self._validate_persistent(object)
         for c in [object] + list(_object_mapper(object).cascade_iterator('expunge', object)):
-            self.uow._remove_deleted(c)
-            self._unattach(c)
+            if c in self:
+                self.uow._remove_deleted(c)
+                self._unattach(c)
 
     def save(self, object, entity_name=None):
         """Add a transient (unsaved) instance to this ``Session``.
@@ -615,16 +616,9 @@ class Session(object):
             obj._sa_session_id = self.hash_key
 
     def _unattach(self, obj):
-        self._validate_attached(obj)
-        del obj._sa_session_id
-
-    def _validate_attached(self, obj):
-        """Validate that the given object is either pending or
-        persistent within this Session.
-        """
-
         if not self._is_attached(obj):
             raise exceptions.InvalidRequestError("Instance '%s' not attached to this Session" % repr(obj))
+        del obj._sa_session_id
 
     def _validate_persistent(self, obj):
         """Validate that the given object is persistent within this
