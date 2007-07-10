@@ -40,6 +40,9 @@ RESERVED_WORDS = util.Set(['all', 'analyse', 'analyze', 'and', 'any', 'array',
 LEGAL_CHARACTERS = util.Set(string.ascii_lowercase + string.ascii_uppercase + string.digits + '_$')
 ILLEGAL_INITIAL_CHARACTERS = util.Set(string.digits + '$')
 
+BIND_PARAMS = re.compile(r'(?<![:\w\x5c]):(\w+)(?!:)', re.UNICODE)
+BIND_PARAMS_ESC = re.compile(r'\x5c(:\w+)(?!:)', re.UNICODE)
+
 class ANSIDialect(default.DefaultDialect):
     def __init__(self, cache_identifiers=True, **kwargs):
         super(ANSIDialect,self).__init__(**kwargs)
@@ -177,23 +180,29 @@ class ANSICompiler(engine.Compiled):
         # this re will search for params like :param
         # it has a negative lookbehind for an extra ':' so that it doesnt match
         # postgres '::text' tokens
-        match = re.compile(r'(?<!:):([\w_]+)', re.UNICODE)
+        text = self.strings[self.statement]
+        if ':' not in text:
+            return
+        
         if self.paramstyle=='pyformat':
-            self.strings[self.statement] = match.sub(lambda m:'%(' + m.group(1) +')s', self.strings[self.statement])
+            text = BIND_PARAMS.sub(lambda m:'%(' + m.group(1) +')s', text)
         elif self.positional:
-            params = match.finditer(self.strings[self.statement])
+            params = BIND_PARAMS.finditer(text)
             for p in params:
                 self.positiontup.append(p.group(1))
             if self.paramstyle=='qmark':
-                self.strings[self.statement] = match.sub('?', self.strings[self.statement])
+                text = BIND_PARAMS.sub('?', text)
             elif self.paramstyle=='format':
-                self.strings[self.statement] = match.sub('%s', self.strings[self.statement])
+                text = BIND_PARAMS.sub('%s', text)
             elif self.paramstyle=='numeric':
                 i = [0]
                 def getnum(x):
                     i[0] += 1
                     return str(i[0])
-                self.strings[self.statement] = match.sub(getnum, self.strings[self.statement])
+                text = BIND_PARAMS.sub(getnum, text)
+        # un-escape any \:params
+        text = BIND_PARAMS_ESC.sub(lambda m: m.group(1), text)
+        self.strings[self.statement] = text
 
     def get_from_text(self, obj):
         return self.froms.get(obj, None)

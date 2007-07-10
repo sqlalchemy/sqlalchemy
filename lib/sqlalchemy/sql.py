@@ -71,6 +71,7 @@ PRECEDENCE = {
     '_smallest': -1000,
     '_largest': 1000
 }
+BIND_PARAMS = re.compile(r'(?<![:\w\x5c]):(\w+)(?!:)', re.UNICODE)
 
 def desc(column):
     """Return a descending ``ORDER BY`` clause element.
@@ -1765,7 +1766,7 @@ class _TextClause(ClauseElement):
         
         # scan the string and search for bind parameter names, add them
         # to the list of bindparams
-        self.text = re.compile(r'(?<!:):([\w_]+)', re.S).sub(repl, text)
+        self.text = BIND_PARAMS.sub(repl, text)
         if bindparams is not None:
             for b in bindparams:
                 self.bindparams[b.key] = b

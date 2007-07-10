@@ -479,7 +479,14 @@ WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid =
                 checkparams={'bar':4, 'whee': 7},
                 params={'bar':4, 'whee': 7, 'hoho':10},
         )
-        
+
+        self.runtest(
+            text("select * from foo where clock='05:06:07'"), 
+                "select * from foo where clock='05:06:07'", 
+                checkparams={},
+                params={},
+        )
+
         dialect = postgres.dialect()
         self.runtest(
             text("select * from foo where lala=:bar and hoho=:whee"), 
@@ -487,6 +494,13 @@ WHERE mytable.myid = myothertable.otherid) AS t2view WHERE t2view.mytable_myid =
                 checkparams={'bar':4, 'whee': 7},
                 params={'bar':4, 'whee': 7, 'hoho':10},
                 dialect=dialect
+        )
+        self.runtest(
+            text("select * from foo where clock='05:06:07' and mork='\:mindy'"),
+            "select * from foo where clock='05:06:07' and mork=':mindy'",
+            checkparams={},
+            params={},
+            dialect=dialect
         )
 
         dialect = sqlite.dialect()
