@@ -108,7 +108,7 @@ class UnitOfWork(object):
     echo = logging.echo_property()
 
     def _remove_deleted(self, obj):
-        if hasattr(obj, "_instance_key"):
+        if hasattr(obj, "_instance_key") and obj._instance_key in self.identity_map:
             del self.identity_map[obj._instance_key]
         try:
             self.deleted.remove(obj)
