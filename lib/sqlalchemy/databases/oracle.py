@@ -228,7 +228,7 @@ class OracleDialect(ansisql.ANSIDialect):
         return 30
         
     def oid_column_name(self, column):
-        if not isinstance(column.table, sql.TableClause) and not isinstance(column.table, sql.Select):
+        if not isinstance(column.table, (sql.TableClause, sql.Select)):
             return None
         else:
             return "rowid"

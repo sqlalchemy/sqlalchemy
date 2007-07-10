@@ -1096,7 +1096,7 @@ class ClauseElement(object):
         ``SET`` and ``VALUES`` clause of those statements.
         """
 
-        if (isinstance(parameters, list) or isinstance(parameters, tuple)):
+        if isinstance(parameters, (list, tuple)):
             parameters = parameters[0]
 
         if compiler is None:
@@ -3046,7 +3046,7 @@ class _UpdateBase(ClauseElement):
         if parameters is None:
             return None
 
-        if isinstance(parameters, list) or isinstance(parameters, tuple):
+        if isinstance(parameters, (list, tuple)):
             pp = {}
             i = 0
             for c in self.table.c:

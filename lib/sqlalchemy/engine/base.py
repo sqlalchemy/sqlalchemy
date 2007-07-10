@@ -598,7 +598,7 @@ class Connection(Connectable):
     def execute_text(self, statement, *multiparams, **params):
         if len(multiparams) == 0:
             parameters = params or None
-        elif len(multiparams) == 1 and (isinstance(multiparams[0], list) or isinstance(multiparams[0], tuple) or isinstance(multiparams[0], dict)):
+        elif len(multiparams) == 1 and isinstance(multiparams[0], (list, tuple, dict)):
             parameters = multiparams[0]
         else:
             parameters = list(multiparams)
@@ -612,7 +612,7 @@ class Connection(Connectable):
         elif len(multiparams) == 1:
             if multiparams[0] == None:
                 return [{}]
-            elif isinstance (multiparams[0], list) or isinstance (multiparams[0], tuple):
+            elif isinstance (multiparams[0], (list, tuple)):
                 return multiparams[0]
             else:
                 return [multiparams[0]]
@@ -649,7 +649,7 @@ class Connection(Connectable):
     def _execute_raw(self, context):
         self.__engine.logger.info(context.statement)
         self.__engine.logger.info(repr(context.parameters))
-        if context.parameters is not None and isinstance(context.parameters, list) and len(context.parameters) > 0 and (isinstance(context.parameters[0], list) or isinstance(context.parameters[0], tuple) or isinstance(context.parameters[0], dict)):
+        if context.parameters is not None and isinstance(context.parameters, list) and len(context.parameters) > 0 and isinstance(context.parameters[0], (list, tuple, dict)):
             self._executemany(context)
         else:
             self._execute(context)

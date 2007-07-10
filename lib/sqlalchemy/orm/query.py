@@ -640,7 +640,7 @@ class Query(object):
                                 appender.append(None)
                         process.append((proc, appender))
                     x(m)
-                elif isinstance(m, sql.ColumnElement) or isinstance(m, basestring):
+                elif isinstance(m, (sql.ColumnElement, basestring)):
                     def y(m):
                         res = []
                         def proc(context, row):

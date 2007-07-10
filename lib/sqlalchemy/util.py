@@ -59,7 +59,7 @@ else:
 def to_list(x, default=None):
     if x is None:
         return default
-    if not isinstance(x, list) and not isinstance(x, tuple):
+    if not isinstance(x, (list, tuple)):
         return [x]
     else:
         return x

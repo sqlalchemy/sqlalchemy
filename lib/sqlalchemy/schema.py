@@ -1094,7 +1094,7 @@ class MetaData(SchemaItem):
         """
         
         from sqlalchemy.engine.url import URL
-        if isinstance(engine_or_url, basestring) or isinstance(engine_or_url, URL):
+        if isinstance(engine_or_url, (basestring, URL)):
             self._engine = sqlalchemy.create_engine(engine_or_url, **kwargs)
         else:
             self._engine = engine_or_url
@@ -1185,7 +1185,7 @@ thread-local basis.
 
     def connect(self, engine_or_url, **kwargs):
         from sqlalchemy.engine.url import URL
-        if isinstance(engine_or_url, basestring) or isinstance(engine_or_url, URL):
+        if isinstance(engine_or_url, (basestring, URL)):
             try:
                 self.context._engine = self.__engines[engine_or_url]
             except KeyError:

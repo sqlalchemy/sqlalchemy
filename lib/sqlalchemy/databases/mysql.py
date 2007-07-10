@@ -1189,7 +1189,7 @@ class MySQLDialect(ansisql.ANSIDialect):
 class MySQLCompiler(ansisql.ANSICompiler):
     def visit_cast(self, cast):
         """hey ho MySQL supports almost no types at all for CAST"""
-        if (isinstance(cast.type, sqltypes.Date) or isinstance(cast.type, sqltypes.Time) or isinstance(cast.type, sqltypes.DateTime)):
+        if isinstance(cast.type, (sqltypes.Date, sqltypes.Time, sqltypes.DateTime)):
             return super(MySQLCompiler, self).visit_cast(cast)
         else:
             # so just skip the CAST altogether for now.
