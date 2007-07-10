@@ -85,6 +85,8 @@ class SelectableTest(testbase.AssertMixin):
         print ["%d %s" % (id(c),c.key) for c in u.c]
         c = u.corresponding_column(s1.c.table1_col2)
         print "%d %s" % (id(c), c.key)
+        print id(u.corresponding_column(s1.c.table1_col2).table)
+        print id(u.c.col2.table)
         assert u.corresponding_column(s1.c.table1_col2) is u.c.col2
         assert u.corresponding_column(s2.c.table2_col2) is u.c.col2
 

@@ -1543,16 +1543,6 @@ class ColumnElement(Selectable, _CompareMixin):
         else:
             return False
     
-    def _distance(self, othercolumn):
-        c = othercolumn
-        count = 0
-        while c is not self:
-            c = c._source_column
-            if c is None:
-                return -1
-            count += 1
-        return count
-        
     def _make_proxy(self, selectable, name=None):
         """Create a new ``ColumnElement`` representing this
         ``ColumnElement`` as it appears in the select list of a
@@ -1768,7 +1758,10 @@ class FromClause(Selectable):
             cp = self._proxy_column(co)
             for ci in cp.orig_set:
                 cx = self._orig_cols.get(ci)
-                if cx is None or ci._distance(cp) < ci._distance(cx):
+                # TODO: the '=' thing here relates to the order of columns as they are placed in the
+                # "columns" collection of a CompositeSelect, illustrated in test/sql/selectable.SelectableTest.testunion
+                # make this relationship less brittle
+                if cx is None or cp._distance <= cx._distance:
                     self._orig_cols[ci] = cp
         if self.oid_column is not None:
             for ci in self.oid_column.orig_set:
@@ -2088,7 +2081,7 @@ class _Cast(ColumnElement):
         self.type = sqltypes.to_instance(totype)
         self.clause = clause
         self.typeclause = _TypeClause(self.type)
-        self._source_column = None
+        self._distance = 0
         
     def get_children(self, **kwargs):
         return self.clause, self.typeclause
@@ -2101,7 +2094,7 @@ class _Cast(ColumnElement):
     def _make_proxy(self, selectable, name=None):
         if name is not None:
             co = _ColumnClause(name, selectable, type=self.type)
-            co._source_column = self
+            co._distance = self._distance + 1
             co.orig_set = self.orig_set
             selectable.columns[name]= co
             return co
@@ -2524,7 +2517,7 @@ class _ColumnClause(ColumnElement):
         self.table = selectable
         self.type = sqltypes.to_instance(type)
         self._is_oid = _is_oid
-        self._source_column = None
+        self._distance = 0
         self.__label = None
         self.case_sensitive = case_sensitive
         self.is_literal = is_literal
@@ -2584,7 +2577,7 @@ class _ColumnClause(ColumnElement):
         is_literal = self.is_literal and (name is None or name == self.name)
         c = _ColumnClause(name or self.name, selectable=selectable, _is_oid=self._is_oid, type=self.type, is_literal=is_literal)
         c.orig_set = self.orig_set
-        c._source_column = self
+        c._distance = self._distance + 1
         if not self._is_oid:
             selectable.columns[c.name] = c
         return c

@@ -604,7 +604,7 @@ class Column(SchemaItem, sql._ColumnClause):
         c = Column(name or self.name, self.type, self.default, key = name or self.key, primary_key = self.primary_key, nullable = self.nullable, _is_oid = self._is_oid, quote=self.quote, *fk)
         c.table = selectable
         c.orig_set = self.orig_set
-        c._source_column = self
+        c._distance = self._distance + 1
         c.__originating_column = self.__originating_column
         if not c._is_oid:
             selectable.columns.add(c)
