@@ -497,7 +497,7 @@ class MapperTest(MapperSuperTest):
             class_mapper(User)
         except exceptions.ArgumentError, e:
             assert str(e) == "Column '%s' is not represented in mapper's table.  Use the `column_property()` function to force this column to be mapped as a read-only attribute." % str(f)
-            clear_mappers()
+        clear_mappers()
         
         mapper(User, users, properties={
             'concat': column_property(f),

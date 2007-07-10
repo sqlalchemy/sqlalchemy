@@ -1542,7 +1542,17 @@ class ColumnElement(Selectable, _CompareMixin):
                 return True
         else:
             return False
-
+    
+    def _distance(self, othercolumn):
+        c = othercolumn
+        count = 0
+        while c is not self:
+            c = c._source_column
+            if c is None:
+                return -1
+            count += 1
+        return count
+        
     def _make_proxy(self, selectable, name=None):
         """Create a new ``ColumnElement`` representing this
         ``ColumnElement`` as it appears in the select list of a
@@ -1695,7 +1705,7 @@ class FromClause(Selectable):
         """
         if column in self.c:
             return column
-            
+        
         if require_embedded and column not in util.Set(self._get_all_embedded_columns()):
             if not raiseerr:
                 return None
@@ -1757,9 +1767,9 @@ class FromClause(Selectable):
         for co in self._adjusted_exportable_columns():
             cp = self._proxy_column(co)
             for ci in cp.orig_set:
-                # note that some ambiguity is raised here, whereby a selectable might have more than 
-                # one column that maps to an "original" column.  examples include unions and joins
-                self._orig_cols[ci] = cp
+                cx = self._orig_cols.get(ci)
+                if cx is None or ci._distance(cp) < ci._distance(cx):
+                    self._orig_cols[ci] = cp
         if self.oid_column is not None:
             for ci in self.oid_column.orig_set:
                 self._orig_cols[ci] = self.oid_column
@@ -2078,7 +2088,8 @@ class _Cast(ColumnElement):
         self.type = sqltypes.to_instance(totype)
         self.clause = clause
         self.typeclause = _TypeClause(self.type)
-
+        self._source_column = None
+        
     def get_children(self, **kwargs):
         return self.clause, self.typeclause
     def accept_visitor(self, visitor):
@@ -2090,6 +2101,7 @@ class _Cast(ColumnElement):
     def _make_proxy(self, selectable, name=None):
         if name is not None:
             co = _ColumnClause(name, selectable, type=self.type)
+            co._source_column = self
             co.orig_set = self.orig_set
             selectable.columns[name]= co
             return co
@@ -2512,6 +2524,7 @@ class _ColumnClause(ColumnElement):
         self.table = selectable
         self.type = sqltypes.to_instance(type)
         self._is_oid = _is_oid
+        self._source_column = None
         self.__label = None
         self.case_sensitive = case_sensitive
         self.is_literal = is_literal
@@ -2571,6 +2584,7 @@ class _ColumnClause(ColumnElement):
         is_literal = self.is_literal and (name is None or name == self.name)
         c = _ColumnClause(name or self.name, selectable=selectable, _is_oid=self._is_oid, type=self.type, is_literal=is_literal)
         c.orig_set = self.orig_set
+        c._source_column = self
         if not self._is_oid:
             selectable.columns[c.name] = c
         return c

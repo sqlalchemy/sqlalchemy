@@ -27,17 +27,42 @@ table2 = Table('table2', db,
 )
 
 class SelectableTest(testbase.AssertMixin):
+    def testdistance(self):
+        s = select([table.c.col1.label('c2'), table.c.col1, table.c.col1.label('c1')])
+
+        # didnt do this yet...col.label().make_proxy() has same "distance" as col.make_proxy() so far
+        #assert s.corresponding_column(table.c.col1) is s.c.col1
+        assert s.corresponding_column(s.c.col1) is s.c.col1
+        assert s.corresponding_column(s.c.c1) is s.c.c1
+        
     def testjoinagainstself(self):
         jj = select([table.c.col1.label('bar_col1')])
         jjj = join(table, jj, table.c.col1==jj.c.bar_col1)
+        
+        # test column directly agaisnt itself
         assert jjj.corresponding_column(jjj.c.table1_col1) is jjj.c.table1_col1
+
+        assert jjj.corresponding_column(jj.c.bar_col1) is jjj.c.bar_col1
+        
+        # test alias of the join, targets the column with the least 
+        # "distance" between the requested column and the returned column
+        # (i.e. there is less indirection between j2.c.table1_col1 and table.c.col1, than
+        # there is from j2.c.bar_col1 to table.c.col1)
+        j2 = jjj.alias('foo')
+        assert j2.corresponding_column(table.c.col1) is j2.c.table1_col1
+        
 
     def testjoinagainstjoin(self):
         j  = outerjoin(table, table2, table.c.col1==table2.c.col2)
         jj = select([ table.c.col1.label('bar_col1')],from_obj=[j]).alias('foo')
         jjj = join(table, jj, table.c.col1==jj.c.bar_col1)
         assert jjj.corresponding_column(jjj.c.table1_col1) is jjj.c.table1_col1
+
+        j2 = jjj.alias('foo')
+        print j2.corresponding_column(jjj.c.table1_col1)
+        assert j2.corresponding_column(jjj.c.table1_col1) is j2.c.table1_col1
         
+        assert jjj.corresponding_column(jj.c.bar_col1) is jj.c.bar_col1
         
     def testtablealias(self):
         a = table.alias('a')
@@ -110,8 +135,8 @@ class SelectableTest(testbase.AssertMixin):
         j = join(a, table2)
         
         criterion = a.c.col1 == table2.c.col2
-        print
-        print str(j)
+        print criterion
+        print j.onclause
         self.assert_(criterion.compare(j.onclause))
 
     def testselectlabels(self):

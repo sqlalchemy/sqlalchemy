@@ -89,8 +89,8 @@ class TranslatingDict(dict):
 
     def __translate_col(self, col):
         ourcol = self.selectable.corresponding_column(col, keys_ok=False, raiseerr=False)
-        #if col is not ourcol:
-        #    print "TD TRANSLATING ", col, "TO", ourcol
+#        if col is not ourcol and ourcol is not None:
+#            print "TD TRANSLATING ", col, "TO", ourcol
         if ourcol is None:
             return col
         else:

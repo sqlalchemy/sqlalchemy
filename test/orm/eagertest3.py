@@ -415,7 +415,101 @@ class EagerTest5(testbase.ORMTest):
         # object is not in the session; therefore the lazy load cant trigger here,
         # eager load had to succeed
         assert len([c for c in d2.comments]) == 1
+
+class EagerTest6(testbase.ORMTest):
+    def define_tables(self, metadata):
+        global project_t, task_t, task_status_t, task_type_t, message_t, message_type_t
         
-    
+        project_t = Table('prj', metadata,
+                          Column('id',            Integer,      primary_key=True),
+                          Column('created',       DateTime ,    ),
+                          Column('title',         Unicode(100)),
+                          )
+
+        task_t = Table('task', metadata,
+                          Column('id',            Integer,      primary_key=True),
+                          Column('status_id',     Integer,      ForeignKey('task_status.id'), nullable=False),
+                          Column('title',         Unicode(100)),
+                          Column('task_type_id',  Integer ,     ForeignKey('task_type.id'), nullable=False),
+                          Column('prj_id',        Integer ,     ForeignKey('prj.id'), nullable=False),
+                          )
+
+        task_status_t = Table('task_status', metadata,
+                                Column('id',                Integer,      primary_key=True),
+                                )
+
+        task_type_t = Table('task_type', metadata,
+                            Column('id',   Integer,    primary_key=True),
+                            )
+
+        message_t  = Table('msg', metadata,
+                            Column('id', Integer,  primary_key=True),
+                            Column('posted',    DateTime, index=True,),
+                            Column('type_id',   Integer, ForeignKey('msg_type.id')),
+                            Column('task_id',   Integer, ForeignKey('task.id')),
+                            )
+
+        message_type_t = Table('msg_type', metadata,
+                                Column('id',                Integer,      primary_key=True),
+                                Column('name',              Unicode(20)),
+                                Column('display_name',      Unicode(20)),
+                                )
+
+    def setUp(self):
+        testbase.db.execute("INSERT INTO prj (title) values('project 1');")
+        testbase.db.execute("INSERT INTO task_status (id) values(1);")
+        testbase.db.execute("INSERT INTO task_type(id) values(1);")
+        testbase.db.execute("INSERT INTO task (title, task_type_id, status_id, prj_id) values('task 1',1,1,1);")
+            
+    def test_nested_joins(self):
+        # this is testing some subtle column resolution stuff,
+        # concerning corresponding_column() being extremely accurate
+        # as well as how mapper sets up its column properties
+        
+        class Task(object):pass
+        class Task_Type(object):pass
+        class Message(object):pass
+        class Message_Type(object):pass
+
+        tsk_cnt_join = outerjoin(project_t, task_t, task_t.c.prj_id==project_t.c.id)
+
+        ss = select([project_t.c.id.label('prj_id'), func.count(task_t.c.id).label('tasks_number')], 
+                    from_obj=[tsk_cnt_join], group_by=[project_t.c.id]).alias('prj_tsk_cnt_s')
+        j = join(project_t, ss, project_t.c.id == ss.c.prj_id)
+
+        mapper(Task_Type, task_type_t)
+
+        mapper( Task, task_t,
+                              properties=dict(type=relation(Task_Type, lazy=False),
+                                             ))
+
+        mapper(Message_Type, message_type_t)
+
+        mapper(Message, message_t, 
+                         properties=dict(type=relation(Message_Type, lazy=False, uselist=False),
+                                         ))
+
+        tsk_cnt_join = outerjoin(project_t, task_t, task_t.c.prj_id==project_t.c.id)
+        ss = select([project_t.c.id.label('prj_id'), func.count(task_t.c.id).label('tasks_number')], 
+                    from_obj=[tsk_cnt_join], group_by=[project_t.c.id]).alias('prj_tsk_cnt_s')
+        j = join(project_t, ss, project_t.c.id == ss.c.prj_id)
+
+        j  = outerjoin( task_t, message_t, task_t.c.id==message_t.c.task_id)
+        jj = select([ task_t.c.id.label('task_id'),
+                      func.count(message_t.c.id).label('props_cnt')],
+                      from_obj=[j], group_by=[task_t.c.id]).alias('prop_c_s')
+        jjj = join(task_t, jj, task_t.c.id == jj.c.task_id)
+
+        class cls(object):pass
+
+        props =dict(type=relation(Task_Type, lazy=False))
+        print [c.key for c in jjj.c]
+        cls.mapper = mapper( cls, jjj, properties=props)
+
+        session = create_session()
+
+        for t in session.query(cls.mapper).limit(10).offset(0).list():
+            print t.id, t.title, t.props_cnt        
+
 if __name__ == "__main__":    
     testbase.main()
