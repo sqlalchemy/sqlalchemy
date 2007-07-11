@@ -222,9 +222,6 @@ class String(TypeEngine):
     def get_dbapi_type(self, dbapi):
         return dbapi.STRING
 
-    def compare_values(self, x, y):
-        return x == y
-
 class Unicode(String):
     def __init__(self, length=None, **kwargs):
         kwargs['convert_unicode'] = True
