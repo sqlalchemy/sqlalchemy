@@ -32,9 +32,6 @@ Known issues / TODO:
 
 * No support for more than one ``IDENTITY`` column per table
 
-* No support for table reflection of ``IDENTITY`` columns with
-  (seed,increment) values other than (1,1)
-
 * No support for ``GUID`` type columns (yet)
 
 * pymssql has problems with binary and unicode data that this module
@@ -524,10 +521,8 @@ class MSSQLDialect(ansisql.ANSIDialect):
             raise exceptions.NoSuchTableError(table.name)
 
         # We also run an sp_columns to check for identity columns:
-        # FIXME: note that this only fetches the existence of an identity column, not it's properties like (seed, increment)
-        #        also, add a check to make sure we specify the schema name of the table
-        # cursor = table.engine.execute("sp_columns " + table.name, {})
         cursor = connection.execute("sp_columns " + table.name)
+        ic = None
         while True:
             row = cursor.fetchone()
             if row is None:
@@ -537,6 +532,20 @@ class MSSQLDialect(ansisql.ANSIDialect):
                 ic = table.c[col_name]
                 # setup a psuedo-sequence to represent the identity attribute - we interpret this at table.create() time as the identity attribute
                 ic.sequence = schema.Sequence(ic.name + '_identity')
+                # MSSQL: only one identity per table allowed
+                cursor.close()
+                break
+        if not ic is None:
+            try:
+                cursor = connection.execute("select ident_seed(?), ident_incr(?)", table.fullname, table.fullname)
+                row = cursor.fetchone()
+                cursor.close()
+                if not row is None:
+                    ic.sequence.start=int(row[0])
+                    ic.sequence.increment=int(row[1])
+            except:
+                # ignoring it, works just like before
+                pass
 
         # Add constraints
         RR = self.uppercase_table(ischema.ref_constraints)    #information_schema.referential_constraints
