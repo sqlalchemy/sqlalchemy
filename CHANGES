@@ -97,6 +97,7 @@
 - mssql
     - fix port option handling for pyodbc [ticket:634]
     - now able to reflect start and increment values for identity columns
+    - preliminary support for using scope_identity() with pyodbc
 
 - extensions
     - added selectone_by() to assignmapper
