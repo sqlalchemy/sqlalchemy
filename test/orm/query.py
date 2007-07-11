@@ -309,6 +309,10 @@ class InstancesTest(QueryTest):
         l = q.all()
         assert l == expected
 
+        q = sess.query(User).add_entity(Address)
+        l = q.join('addresses').filter_by(email_address='ed@bettyboop.com').all()
+        assert l == [(user8, address3)]
+
     def test_multi_columns(self):
         sess = create_session()
         (user7, user8, user9, user10) = sess.query(User).all()
