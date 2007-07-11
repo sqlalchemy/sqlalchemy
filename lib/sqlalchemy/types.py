@@ -27,7 +27,7 @@ class AbstractType(object):
         return value
 
     def compare_values(self, x, y):
-        return x is y
+        return x == y
 
     def is_mutable(self):
         return False
