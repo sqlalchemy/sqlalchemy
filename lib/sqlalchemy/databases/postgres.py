@@ -538,7 +538,7 @@ class PGCompiler(ansisql.ANSICompiler):
             return super(PGCompiler, self).for_update_clause(select)
 
     def binary_operator_string(self, binary):
-        if isinstance(binary.type, sqltypes.String) and binary.operator == '+':
+        if isinstance(binary.type, (sqltypes.String, PGArray)) and binary.operator == '+':
             return '||'
         elif binary.operator == '%':
             return '%%'

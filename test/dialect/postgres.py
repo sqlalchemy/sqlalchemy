@@ -277,6 +277,14 @@ class ArrayTest(AssertMixin):
         self.assertEquals(len(results), 1)
         self.assertEquals(results[0]['intarr'], [1,2,3])
         arrtable.delete().execute()
+    
+    @testbase.supported('postgres')
+    def test_array_concat(self):
+        arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])
+        results = select([arrtable.c.intarr + [4,5,6]]).execute().fetchall()
+        self.assertEquals(len(results), 1)
+        self.assertEquals(results[0][0], [1,2,3,4,5,6])
+        arrtable.delete().execute()
 
 if __name__ == "__main__":
     testbase.main()
