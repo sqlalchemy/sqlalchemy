@@ -38,21 +38,21 @@ class SessionTransaction(object):
     def _begin(self):
         return SessionTransaction(self.session, self)
 
-    def add(self, connectable):
-        if self.connections.has_key(connectable.engine):
+    def add(self, bind):
+        if self.connections.has_key(bind.engine):
             raise exceptions.InvalidRequestError("Session already has a Connection associated for the given Connection's Engine")
-        return self.get_or_add(connectable)
+        return self.get_or_add(bind)
 
-    def get_or_add(self, connectable):
+    def get_or_add(self, bind):
         # we reference the 'engine' attribute on the given object, which in the case of
         # Connection, ProxyEngine, Engine, whatever, should return the original
         # "Engine" object that is handling the connection.
-        if self.connections.has_key(connectable.engine):
-            return self.connections[connectable.engine][0]
-        e = connectable.engine
-        c = connectable.contextual_connect()
+        if self.connections.has_key(bind.engine):
+            return self.connections[bind.engine][0]
+        e = bind.engine
+        c = bind.contextual_connect()
         if not self.connections.has_key(e):
-            self.connections[e] = (c, c.begin(), c is not connectable)
+            self.connections[e] = (c, c.begin(), c is not bind)
         return self.connections[e][0]
 
     def commit(self):
@@ -99,13 +99,13 @@ class Session(object):
     of Sessions, see the ``sqlalchemy.ext.sessioncontext`` module.
     """
 
-    def __init__(self, bind_to=None, hash_key=None, import_session=None, echo_uow=False, weak_identity_map=False):
+    def __init__(self, bind=None, bind_to=None, hash_key=None, import_session=None, echo_uow=False, weak_identity_map=False):
         if import_session is not None:
             self.uow = unitofwork.UnitOfWork(identity_map=import_session.uow.identity_map, weak_identity_map=weak_identity_map)
         else:
             self.uow = unitofwork.UnitOfWork(weak_identity_map=weak_identity_map)
 
-        self.bind_to = bind_to
+        self.bind = bind or bind_to
         self.binds = {}
         self.echo_uow = echo_uow
         self.weak_identity_map = weak_identity_map
@@ -122,6 +122,8 @@ class Session(object):
     def _set_echo_uow(self, value):
         self.uow.echo = value
     echo_uow = property(_get_echo_uow,_set_echo_uow)
+    
+    bind_to = property(lambda self:self.bind)
 
     def create_transaction(self, **kwargs):
         """Return a new ``SessionTransaction`` corresponding to an
@@ -213,23 +215,23 @@ class Session(object):
 
         return _class_mapper(class_, entity_name = entity_name)
 
-    def bind_mapper(self, mapper, bindto):
+    def bind_mapper(self, mapper, bind):
         """Bind the given `mapper` to the given ``Engine`` or ``Connection``.
 
         All subsequent operations involving this ``Mapper`` will use the
-        given `bindto`.
+        given `bind`.
         """
 
-        self.binds[mapper] = bindto
+        self.binds[mapper] = bind
 
-    def bind_table(self, table, bindto):
+    def bind_table(self, table, bind):
         """Bind the given `table` to the given ``Engine`` or ``Connection``.
 
         All subsequent operations involving this ``Table`` will use the
-        given `bindto`.
+        given `bind`.
         """
 
-        self.binds[table] = bindto
+        self.binds[table] = bind
 
     def get_bind(self, mapper):
         """Return the ``Engine`` or ``Connection`` which is used to execute
@@ -259,17 +261,17 @@ class Session(object):
         """
 
         if mapper is None:
-            return self.bind_to
+            return self.bind
         elif self.binds.has_key(mapper):
             return self.binds[mapper]
         elif self.binds.has_key(mapper.mapped_table):
             return self.binds[mapper.mapped_table]
-        elif self.bind_to is not None:
-            return self.bind_to
+        elif self.bind is not None:
+            return self.bind
         else:
             e = mapper.mapped_table.engine
             if e is None:
-                raise exceptions.InvalidRequestError("Could not locate any Engine bound to mapper '%s'" % str(mapper))
+                raise exceptions.InvalidRequestError("Could not locate any Engine or Connection bound to mapper '%s'" % str(mapper))
             return e
 
     def query(self, mapper_or_class, entity_name=None, **kwargs):

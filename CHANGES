@@ -3,6 +3,11 @@
     - better error message for NoSuchColumnError [ticket:607]
     - finally figured out how to get setuptools version in, available
       as sqlalchemy.__version__ [ticket:428]
+    - the various "engine" arguments, such as "engine", "connectable",
+      "engine_or_url", "bind_to", etc. are all present, but deprecated.
+      they all get replaced by the single term "bind".  you also
+      set the "bind" of MetaData using 
+      metadata.bind = <engine or connection>
 - ext
     - iteration over dict association proxies is now dict-like, not
       InstrumentedList-like (e.g. over keys instead of values)

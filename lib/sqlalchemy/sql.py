@@ -218,12 +218,15 @@ def select(columns=None, whereclause = None, from_obj = [], **kwargs):
           and oracle supports "nowait" which translates to 
           ``FOR UPDATE NOWAIT``.
         
-        engine=None
-          an ``Engine`` instance to which the resulting ``Select`` 
+        bind=None
+          an ``Engine`` or ``Connection`` instance to which the resulting ``Select`` 
           object will be bound.  The ``Select`` object will otherwise
-          automatically bind to whatever ``Engine`` instances can be located
+          automatically bind to whatever ``Connectable`` instances can be located
           within its contained ``ClauseElement`` members.
-      
+        
+        engine=None
+          deprecated.  a synonym for "bind".
+          
         limit=None
           a numerical value which usually compiles to a ``LIMIT`` expression
           in the resulting select.  Databases that don't support ``LIMIT``
@@ -708,7 +711,7 @@ def bindparam(key, value=None, type=None, shortname=None, unique=False):
     else:
         return _BindParamClause(key, value, type=type, shortname=shortname, unique=unique)
 
-def text(text, engine=None, *args, **kwargs):
+def text(text, bind=None, engine=None, *args, **kwargs):
     """Create literal text to be inserted into a query.
 
     When constructing a query from a ``select()``, ``update()``,
@@ -723,8 +726,11 @@ def text(text, engine=None, *args, **kwargs):
         to specify bind parameters; they will be compiled to their
         engine-specific format.
 
+      bind
+        An optional connection or engine to be used for this text query.
+        
       engine
-        An optional engine to be used for this text query.
+        deprecated.  a synonym for 'bind'.
 
       bindparams
         A list of ``bindparam()`` instances which can be used to define
@@ -742,7 +748,7 @@ def text(text, engine=None, *args, **kwargs):
 
     """
 
-    return _TextClause(text, engine=engine, *args, **kwargs)
+    return _TextClause(text, engine=engine, bind=bind, *args, **kwargs)
 
 def null():
     """Return a ``_Null`` object, which compiles to ``NULL`` in a sql statement."""
@@ -1022,7 +1028,7 @@ class Compiled(ClauseVisitor):
     defaults.
     """
 
-    def __init__(self, dialect, statement, parameters, engine=None):
+    def __init__(self, dialect, statement, parameters, bind=None, engine=None):
         """Construct a new ``Compiled`` object.
 
         statement
@@ -1042,13 +1048,17 @@ class Compiled(ClauseVisitor):
           can either be the string names of columns or
           ``_ColumnClause`` objects.
 
+        bind
+          optional engine or connection which will be bound to the 
+          compiled object.
+          
         engine
-          Optional Engine to compile this statement against.
+          deprecated, a synonym for 'bind'
         """
         self.dialect = dialect
         self.statement = statement
         self.parameters = parameters
-        self.engine = engine
+        self.bind = bind or engine
         self.can_execute = statement.supports_execution()
 
     def compile(self):
@@ -1081,9 +1091,9 @@ class Compiled(ClauseVisitor):
     def execute(self, *multiparams, **params):
         """Execute this compiled object."""
 
-        e = self.engine
+        e = self.bind
         if e is None:
-            raise exceptions.InvalidRequestError("This Compiled object is not bound to any engine.")
+            raise exceptions.InvalidRequestError("This Compiled object is not bound to any Engine or Connection.")
         return e.execute_compiled(self, *multiparams, **params)
 
     def scalar(self, *multiparams, **params):
@@ -1171,22 +1181,21 @@ class ClauseElement(object):
         """
 
         try:
-            if self._engine is not None:
-                return self._engine
+            if self._bind is not None:
+                return self._bind
         except AttributeError:
             pass
         for f in self._get_from_objects():
             if f is self:
                 continue
-            engine = f.engine
+            engine = f.bind
             if engine is not None:
                 return engine
         else:
             return None
-
-    engine = property(lambda s: s._find_engine(),
-                      doc="""Attempts to locate a Engine within this ClauseElement
-                      structure, or returns None if none found.""")
+    
+    bind = property(lambda s:s._find_engine(), doc="""Returns the Engine or Connection to which this ClauseElement is bound, or None if none found.""")
+    engine = bind
 
     def execute(self, *multiparams, **params):
         """Compile and execute this ``ClauseElement``."""
@@ -1195,7 +1204,7 @@ class ClauseElement(object):
             compile_params = multiparams[0]
         else:
             compile_params = params
-        return self.compile(engine=self.engine, parameters=compile_params).execute(*multiparams, **params)
+        return self.compile(bind=self.bind, parameters=compile_params).execute(*multiparams, **params)
 
     def scalar(self, *multiparams, **params):
         """Compile and execute this ``ClauseElement``, returning the
@@ -1204,7 +1213,7 @@ class ClauseElement(object):
 
         return self.execute(*multiparams, **params).scalar()
 
-    def compile(self, engine=None, parameters=None, compiler=None, dialect=None):
+    def compile(self, bind=None, engine=None, parameters=None, compiler=None, dialect=None):
         """Compile this SQL expression.
 
         Uses the given ``Compiler``, or the given ``AbstractDialect``
@@ -1233,10 +1242,12 @@ class ClauseElement(object):
         if compiler is None:
             if dialect is not None:
                 compiler = dialect.compiler(self, parameters)
+            elif bind is not None:
+                compiler = bind.compiler(self, parameters)
             elif engine is not None:
                 compiler = engine.compiler(self, parameters)
-            elif self.engine is not None:
-                compiler = self.engine.compiler(self, parameters)
+            elif self.bind is not None:
+                compiler = self.bind.compiler(self, parameters)
 
         if compiler is None:
             import sqlalchemy.ansisql as ansisql
@@ -1877,8 +1888,8 @@ class _TextClause(ClauseElement):
     Public constructor is the ``text()`` function.
     """
 
-    def __init__(self, text = "", engine=None, bindparams=None, typemap=None):
-        self._engine = engine
+    def __init__(self, text = "", bind=None, engine=None, bindparams=None, typemap=None):
+        self._bind = bind or engine
         self.bindparams = {}
         self.typemap = typemap
         if typemap is not None:
@@ -2008,7 +2019,7 @@ class _CalculatedClause(ColumnElement):
     def __init__(self, name, *clauses, **kwargs):
         self.name = name
         self.type = sqltypes.to_instance(kwargs.get('type', None))
-        self._engine = kwargs.get('engine', None)
+        self._bind = kwargs.get('bind', kwargs.get('engine', None))
         self.group = kwargs.pop('group', True)
         self.clauses = ClauseList(operator=kwargs.get('operator', None), group_contents=kwargs.get('group_contents', True), *clauses)
         if self.group:
@@ -2020,7 +2031,7 @@ class _CalculatedClause(ColumnElement):
 
     def copy_container(self):
         clauses = [clause.copy_container() for clause in self.clauses]
-        return _CalculatedClause(type=self.type, engine=self._engine, *clauses)
+        return _CalculatedClause(type=self.type, bind=self._bind, *clauses)
 
     def get_children(self, **kwargs):
         return self.clause_expr,
@@ -2069,7 +2080,7 @@ class _Function(_CalculatedClause, FromClause):
 
     def copy_container(self):
         clauses = [clause.copy_container() for clause in self.clauses]
-        return _Function(self.name, type=self.type, packagenames=self.packagenames, engine=self._engine, *clauses)
+        return _Function(self.name, type=self.type, packagenames=self.packagenames, bind=self._bind, *clauses)
         
     def accept_visitor(self, visitor):
         visitor.visit_function(self)
@@ -2410,7 +2421,8 @@ class Alias(FromClause):
     def _group_parenthesized(self):
         return False
 
-    engine = property(lambda s: s.selectable.engine)
+    bind = property(lambda s: s.selectable.bind)
+    engine = bind
 
 class _Grouping(ColumnElement):
     def __init__(self, elem):
@@ -2784,7 +2796,7 @@ class Select(_SelectBaseMixin, FromClause):
     def __init__(self, columns=None, whereclause=None, from_obj=[],
                  order_by=None, group_by=None, having=None,
                  use_labels=False, distinct=False, for_update=False,
-                 engine=None, limit=None, offset=None, scalar=False,
+                 engine=None, bind=None, limit=None, offset=None, scalar=False,
                  correlate=True):
         """construct a Select object.
         
@@ -2797,7 +2809,7 @@ class Select(_SelectBaseMixin, FromClause):
         self.use_labels = use_labels
         self.whereclause = None
         self.having = None
-        self._engine = engine
+        self._bind = bind or engine
         self.limit = limit
         self.offset = offset
         self.for_update = for_update
@@ -3032,14 +3044,14 @@ class Select(_SelectBaseMixin, FromClause):
         object, or searched within the from clauses for one.
         """
 
-        if self._engine is not None:
-            return self._engine
+        if self._bind is not None:
+            return self._bind
         for f in self.__froms:
             if f is self:
                 continue
-            e = f.engine
+            e = f.bind
             if e is not None:
-                self._engine = e
+                self._bind = e
                 return e
         # look through the columns (largely synomous with looking
         # through the FROMs except in the case of _CalculatedClause/_Function)
@@ -3047,9 +3059,9 @@ class Select(_SelectBaseMixin, FromClause):
             for c in cc.columns:
                 if getattr(c, 'table', None) is self:
                     continue
-                e = c.engine
+                e = c.bind
                 if e is not None:
-                    self._engine = e
+                    self._bind = e
                     return e
         return None
 
@@ -3106,7 +3118,7 @@ class _UpdateBase(ClauseElement):
         return parameters
 
     def _find_engine(self):
-        return self.table.engine
+        return self.table.bind
 
 class _Insert(_UpdateBase):
     def __init__(self, table, values=None):
