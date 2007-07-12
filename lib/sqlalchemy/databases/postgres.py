@@ -517,8 +517,6 @@ class PGDialect(ansisql.ANSIDialect):
                 table.append_constraint(schema.ForeignKeyConstraint(constrained_columns, refspec, conname))
                 
     def _load_domains(self, connection):
-        if hasattr(self, '_domains'):
-            return self._domains
             
         ## Load data types for domains:
         SQL_DOMAINS = """
@@ -552,9 +550,8 @@ class PGDialect(ansisql.ANSIDialect):
 
             domains[name] = {'attype':attype, 'nullable': domain['nullable'], 'default': domain['default']}
 
-        self._domains = domains
+        return domains
         
-        return self._domains
         
         
         
