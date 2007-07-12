@@ -647,8 +647,9 @@ class Connection(Connectable):
         return self.__engine.dialect.create_execution_context(connection=self, **kwargs)
         
     def _execute_raw(self, context):
-        self.__engine.logger.info(context.statement)
-        self.__engine.logger.info(repr(context.parameters))
+        if logging.is_info_enabled(self.__engine.logger):
+            self.__engine.logger.info(context.statement)
+            self.__engine.logger.info(repr(context.parameters))
         if context.parameters is not None and isinstance(context.parameters, list) and len(context.parameters) > 0 and isinstance(context.parameters[0], (list, tuple, dict)):
             self._executemany(context)
         else:
