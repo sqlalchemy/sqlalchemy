@@ -190,6 +190,48 @@ class TimezoneTest(AssertMixin):
         x = c.last_updated_params()
         print x['date'] == somedate
 
+class ArrayTest(AssertMixin):
+    @testbase.supported('postgres')
+    def setUpAll(self):
+        global metadata, arrtable
+        metadata = MetaData(testbase.db)
+        
+        arrtable = Table('arrtable', metadata,
+            Column('id', Integer, primary_key=True),
+            Column('intarr', postgres.PGArray(Integer)),
+            Column('strarr', postgres.PGArray(String), nullable=False)
+        )
+        metadata.create_all()
+    @testbase.supported('postgres')
+    def tearDownAll(self):
+        metadata.drop_all()
     
+    @testbase.supported('postgres')
+    def test_reflect_array_column(self):
+        metadata2 = MetaData(testbase.db)
+        tbl = Table('arrtable', metadata2, autoload=True)
+        self.assertTrue(isinstance(tbl.c.intarr.type, postgres.PGArray))
+        self.assertTrue(isinstance(tbl.c.strarr.type, postgres.PGArray))
+        self.assertTrue(isinstance(tbl.c.intarr.type.item_type, Integer))
+        self.assertTrue(isinstance(tbl.c.strarr.type.item_type, String))
+        
+    @testbase.supported('postgres')
+    def test_insert_array(self):
+        arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])
+        results = arrtable.select().execute().fetchall()
+        self.assertEquals(len(results), 1)
+        self.assertEquals(results[0]['intarr'], [1,2,3])
+        self.assertEquals(results[0]['strarr'], ['abc','def'])
+        arrtable.delete().execute()
+
+    @testbase.supported('postgres')
+    def test_array_where(self):
+        arrtable.insert().execute(intarr=[1,2,3], strarr=['abc', 'def'])
+        arrtable.insert().execute(intarr=[4,5,6], strarr='ABC')
+        results = arrtable.select().where(arrtable.c.intarr == [1,2,3]).execute().fetchall()
+        self.assertEquals(len(results), 1)
+        self.assertEquals(results[0]['intarr'], [1,2,3])
+        arrtable.delete().execute()
+
 if __name__ == "__main__":
     testbase.main()

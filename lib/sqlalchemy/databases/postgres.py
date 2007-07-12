@@ -83,6 +83,39 @@ class PGBoolean(sqltypes.Boolean):
     def get_col_spec(self):
         return "BOOLEAN"
 
+class PGArray(sqltypes.TypeEngine):
+    def __init__(self, item_type):
+        if isinstance(item_type, type):
+            item_type = item_type()
+        self.item_type = item_type
+        
+    def dialect_impl(self, dialect):
+        impl = self.__class__.__new__(self.__class__)
+        impl.__dict__.update(self.__dict__)
+        impl.item_type = self.item_type.dialect_impl(dialect)
+        return impl
+    def convert_bind_param(self, value, dialect):
+        if value is None:
+            return value
+        def convert_item(item):
+            if isinstance(item, (list,tuple)):
+                return [convert_item(child) for child in item]
+            else:
+                return self.item_type.convert_bind_param(item, dialect)
+        return [convert_item(item) for item in value]
+    def convert_result_value(self, value, dialect):
+        if value is None:
+            return value
+        def convert_item(item):
+            if isinstance(item, list):
+                return [convert_item(child) for child in item]
+            else:
+                return self.item_type.convert_result_value(item, dialect)
+        # Could specialcase when item_type.convert_result_value is the default identity func
+        return [convert_item(item) for item in value]
+    def get_col_spec(self):
+        return self.item_type.get_col_spec() + '[]'
+
 colspecs = {
     sqltypes.Integer : PGInteger,
     sqltypes.Smallinteger : PGSmallInteger,
@@ -306,8 +339,9 @@ class PGDialect(ansisql.ANSIDialect):
             
             for name, format_type, default, notnull, attnum, table_oid in rows:
                 ## strip (30) from character varying(30)
-                attype = re.search('([^\(]+)', format_type).group(1)
+                attype = re.search('([^\([]+)', format_type).group(1)
                 nullable = not notnull
+                is_array = format_type.endswith('[]')
 
                 try:
                     charlen = re.search('\(([\d,]+)\)', format_type).group(1)
@@ -360,6 +394,8 @@ class PGDialect(ansisql.ANSIDialect):
 
                 if coltype:
                     coltype = coltype(*args, **kwargs)
+                    if is_array:
+                        coltype = PGArray(coltype)
                 else:
                     warnings.warn(RuntimeWarning("Did not recognize type '%s' of column '%s'" % (attype, name)))
                     coltype = sqltypes.NULLTYPE
