@@ -108,7 +108,7 @@ class EagerTest(QueryTest):
 
         mapper(Keyword, keywords)
         mapper(Item, items, properties = dict(
-                keywords = relation(Keyword, secondary=item_keywords, lazy=False),
+                keywords = relation(Keyword, secondary=item_keywords, lazy=False, order_by=keywords.c.id),
         ))
 
         q = create_session().query(Item)
@@ -314,7 +314,7 @@ class EagerTest(QueryTest):
         })
         mapper(Item, items) 
         mapper(Order, orders, properties = dict(
-                items = relation(Item, secondary=order_items, lazy=False)
+                items = relation(Item, secondary=order_items, lazy=False, order_by=items.c.id)
             ))
             
         q = create_session().query(User)
@@ -356,7 +356,7 @@ class EagerTest(QueryTest):
         self.assert_sql_count(testbase.db, go, 1)
 
     def test_wide(self):
-        mapper(Order, orders, properties={'items':relation(Item, secondary=order_items, lazy=False)})
+        mapper(Order, orders, properties={'items':relation(Item, secondary=order_items, lazy=False, order_by=items.c.id)})
         mapper(Item, items)
         mapper(User, users, properties = dict(
             addresses = relation(mapper(Address, addresses), lazy = False),
