@@ -11,20 +11,21 @@ class DomainReflectionTest(AssertMixin):
 
     @testbase.supported('postgres')
     def setUpAll(self):
-        self.con = db.connect()
-        self.con.execute('CREATE DOMAIN testdomain INTEGER NOT NULL DEFAULT 42')
-        self.con.execute('CREATE DOMAIN alt_schema.testdomain INTEGER DEFAULT 0')
-        self.con.execute('CREATE TABLE testtable (question integer, answer testdomain)')
-        self.con.execute('CREATE TABLE alt_schema.testtable(question integer, answer alt_schema.testdomain, anything integer)')
-        self.con.execute('CREATE TABLE crosschema (question integer, answer alt_schema.testdomain)')
+        con = db.connect()
+        con.execute('CREATE DOMAIN testdomain INTEGER NOT NULL DEFAULT 42')
+        con.execute('CREATE DOMAIN alt_schema.testdomain INTEGER DEFAULT 0')
+        con.execute('CREATE TABLE testtable (question integer, answer testdomain)')
+        con.execute('CREATE TABLE alt_schema.testtable(question integer, answer alt_schema.testdomain, anything integer)')
+        con.execute('CREATE TABLE crosschema (question integer, answer alt_schema.testdomain)')
 
     @testbase.supported('postgres')
     def tearDownAll(self):
-        self.con.execute('DROP TABLE testtable')
-        self.con.execute('DROP TABLE alt_schema.testtable')
-        self.con.execute('DROP TABLE crosschema')
-        self.con.execute('DROP DOMAIN testdomain')
-        self.con.execute('DROP DOMAIN alt_schema.testdomain')
+        con = db.connect()
+        con.execute('DROP TABLE testtable')
+        con.execute('DROP TABLE alt_schema.testtable')
+        con.execute('DROP TABLE crosschema')
+        con.execute('DROP DOMAIN testdomain')
+        con.execute('DROP DOMAIN alt_schema.testdomain')
 
     @testbase.supported('postgres')
     def test_table_is_reflected(self):
@@ -120,6 +121,50 @@ class MiscTest(AssertMixin):
         finally:
             meta1.drop_all()
 
+    @testbase.supported('postgres')
+    def test_schema_reflection_2(self):
+        meta1 = MetaData(testbase.db)
+        subject = Table("subject", meta1,
+                        Column("id", Integer, primary_key=True),
+                        )
+
+        referer = Table("referer", meta1,
+                        Column("id", Integer, primary_key=True),
+                        Column("ref", Integer, ForeignKey('subject.id')),
+                        schema="alt_schema")
+        meta1.create_all()
+        try:
+            meta2 = MetaData(testbase.db)
+            subject = Table("subject", meta2, autoload=True)
+            referer = Table("referer", meta2, schema="alt_schema", autoload=True)
+            print str(subject.join(referer).onclause)
+            self.assert_((subject.c.id==referer.c.ref).compare(subject.join(referer).onclause))
+        finally:
+            meta1.drop_all()
+            
+    @testbase.supported('postgres')
+    def test_schema_reflection_3(self):
+        meta1 = MetaData(testbase.db)
+        subject = Table("subject", meta1,
+                        Column("id", Integer, primary_key=True),
+                        schema='alt_schema_2'
+                        )
+
+        referer = Table("referer", meta1,
+                        Column("id", Integer, primary_key=True),
+                        Column("ref", Integer, ForeignKey('alt_schema_2.subject.id')),
+                        schema="alt_schema")
+
+        meta1.create_all()
+        try:
+            meta2 = MetaData(testbase.db)
+            subject = Table("subject", meta2, autoload=True, schema="alt_schema_2")
+            referer = Table("referer", meta2, schema="alt_schema", autoload=True)
+            print str(subject.join(referer).onclause)
+            self.assert_((subject.c.id==referer.c.ref).compare(subject.join(referer).onclause))
+        finally:
+            meta1.drop_all()
+        
     @testbase.supported('postgres')
     def test_preexecute_passivedefault(self):
         """test that when we get a primary key column back 

@@ -321,7 +321,7 @@ class MapperTest(MapperSuperTest):
             class_mapper(User)
         except exceptions.ArgumentError, e:
             assert str(e) == "Column '%s' is not represented in mapper's table.  Use the `column_property()` function to force this column to be mapped as a read-only attribute." % str(f)
-            clear_mappers()
+        clear_mappers()
         
         mapper(User, users, properties={
             'concat': column_property(f),
@@ -616,14 +616,27 @@ class MapperTest(MapperSuperTest):
         # eagerload orders, orders.items, orders.items.keywords
         q2 = sess.query(User).options(eagerload('orders'), eagerload('orders.items'), eagerload('orders.items.keywords'))
         u = q2.select()
+        def go():
+            print u[0].orders[1].items[0].keywords[1]
         print "-------MARK2----------"
         self.assert_sql_count(db, go, 0)
+
+        sess.clear()
+
+        # same thing, with separate options calls
+        q2 = sess.query(User).options(eagerload('orders')).options(eagerload('orders.items')).options(eagerload('orders.items.keywords'))
+        u = q2.select()
+        def go():
+            print u[0].orders[1].items[0].keywords[1]
+        print "-------MARK3----------"
+        self.assert_sql_count(db, go, 0)
+        print "-------MARK4----------"
 
         sess.clear()
         
         # eagerload "keywords" on items.  it will lazy load "orders", then lazy load
         # the "items" on the order, but on "items" it will eager load the "keywords"
-        print "-------MARK3----------"
+        print "-------MARK5----------"
         q3 = sess.query(User).options(eagerload('orders.items.keywords'))
         u = q3.select()
         self.assert_sql_count(db, go, 2)
@@ -982,7 +995,6 @@ class MapperExtensionTest(MapperSuperTest):
         l = q.select();
         self.assert_result(l, User, *user_address_result)
     
-        
 
 if __name__ == "__main__":    
     testbase.main()

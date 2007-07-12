@@ -604,6 +604,7 @@ class Column(SchemaItem, sql._ColumnClause):
         c.table = selectable
         c.orig_set = self.orig_set
         c.__originating_column = self.__originating_column
+        c._distance = self._distance + 1
         if not c._is_oid:
             selectable.columns.add(c)
             if self.primary_key:
@@ -699,7 +700,7 @@ class ForeignKey(SchemaItem):
                     raise exceptions.ArgumentError("Invalid foreign key column specification: " + self._colspec)
                 if m.group(3) is None:
                     (tname, colname) = m.group(1, 2)
-                    schema = parenttable.schema
+                    schema = None
                 else:
                     (schema,tname,colname) = m.group(1,2,3)
                 table = Table(tname, parenttable.metadata, mustexist=True, schema=schema)

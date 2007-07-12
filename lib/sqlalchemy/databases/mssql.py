@@ -32,9 +32,6 @@ Known issues / TODO:
 
 * No support for more than one ``IDENTITY`` column per table
 
-* No support for table reflection of ``IDENTITY`` columns with
-  (seed,increment) values other than (1,1)
-
 * No support for ``GUID`` type columns (yet)
 
 * pymssql has problems with binary and unicode data that this module
@@ -289,6 +286,17 @@ class MSSQLExecutionContext_pyodbc (MSSQLExecutionContext):
             
         super(MSSQLExecutionContext_pyodbc, self).pre_exec()
 
+        # where appropriate, issue "select scope_identity()" in the same statement
+        if self.compiled.isinsert and self.HASIDENT and (not self.IINSERT) and self.dialect.use_scope_identity:
+            self.statement += "; select scope_identity()"
+
+    def post_exec(self):
+        if self.compiled.isinsert and self.HASIDENT and (not self.IINSERT) and self.dialect.use_scope_identity:
+            # do nothing - id was fetched in dialect.do_execute()
+            self.HASIDENT = False
+        else:
+            super(MSSQLExecutionContext_pyodbc, self).post_exec()
+
 
 class MSSQLDialect(ansisql.ANSIDialect):
     colspecs = {
@@ -523,10 +531,8 @@ class MSSQLDialect(ansisql.ANSIDialect):
             raise exceptions.NoSuchTableError(table.name)
 
         # We also run an sp_columns to check for identity columns:
-        # FIXME: note that this only fetches the existence of an identity column, not it's properties like (seed, increment)
-        #        also, add a check to make sure we specify the schema name of the table
-        # cursor = table.engine.execute("sp_columns " + table.name, {})
         cursor = connection.execute("sp_columns " + table.name)
+        ic = None
         while True:
             row = cursor.fetchone()
             if row is None:
@@ -536,6 +542,20 @@ class MSSQLDialect(ansisql.ANSIDialect):
                 ic = table.c[col_name]
                 # setup a psuedo-sequence to represent the identity attribute - we interpret this at table.create() time as the identity attribute
                 ic.sequence = schema.Sequence(ic.name + '_identity')
+                # MSSQL: only one identity per table allowed
+                cursor.close()
+                break
+        if not ic is None:
+            try:
+                cursor = connection.execute("select ident_seed(?), ident_incr(?)", table.fullname, table.fullname)
+                row = cursor.fetchone()
+                cursor.close()
+                if not row is None:
+                    ic.sequence.start=int(row[0])
+                    ic.sequence.increment=int(row[1])
+            except:
+                # ignoring it, works just like before
+                pass
 
         # Add constraints
         RR = self.uppercase_table(ischema.ref_constraints)    #information_schema.referential_constraints
@@ -598,7 +618,7 @@ class MSSQLDialect_pymssql(MSSQLDialect):
         self.use_scope_identity = True
 
     def supports_sane_rowcount(self):
-        return True
+        return False
 
     def max_identifier_length(self):
         return 30
@@ -685,7 +705,10 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
 
     def make_connect_string(self, keys):
         connectors = ["Driver={SQL Server}"]
-        connectors.append("Server=%s" % keys.get("host"))
+        if 'port' in keys:
+            connectors.append('Server=%s,%d' % (keys.get('host'), keys.get('port')))
+        else:
+            connectors.append('Server=%s' % keys.get('host'))
         connectors.append("Database=%s" % keys.get("database"))
         user = keys.get("user")
         if user:
@@ -696,11 +719,24 @@ class MSSQLDialect_pyodbc(MSSQLDialect):
         return [[";".join (connectors)], {}]
 
     def is_disconnect(self, e):
-        return isinstance(e, self.dbapi.Error) and '[08S01]' in e.args[1]
+        return isinstance(e, self.dbapi.Error) and '[08S01]' in str(e)
 
     def create_execution_context(self, *args, **kwargs):
         return MSSQLExecutionContext_pyodbc(self, *args, **kwargs)
 
+    def do_execute(self, cursor, statement, parameters, context=None, **kwargs):
+        super(MSSQLDialect_pyodbc, self).do_execute(cursor, statement, parameters, context=context, **kwargs)
+        if context and context.HASIDENT and (not context.IINSERT) and context.dialect.use_scope_identity:
+            import pyodbc
+            # fetch the last inserted id from the manipulated statement (pre_exec).
+            try:
+                row = cursor.fetchone()
+            except pyodbc.Error, e:
+                # if nocount OFF fetchone throws an exception and we have to jump over
+                # the rowcount to the resultset
+                cursor.nextset()
+                row = cursor.fetchone()
+            context._last_inserted_ids = [int(row[0])]
 
 class MSSQLDialect_adodbapi(MSSQLDialect):
     def import_dbapi(cls):

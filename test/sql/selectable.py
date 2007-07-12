@@ -1,15 +1,16 @@
 """tests that various From objects properly export their columns, as well as
-useable primary keys and foreign keys.  Full relational algebra depends on
-every selectable unit behaving nicely with others.."""
-
+-useable primary keys and foreign keys.  Full relational algebra depends on
+-every selectable unit behaving nicely with others.."""
+ 
 import testbase
 import unittest, sys, datetime
 from sqlalchemy import *
 from testbase import Table, Column
 
-
 db = testbase.db
 metadata = MetaData(db)
+
+
 table = Table('table1', metadata, 
     Column('col1', Integer, primary_key=True),
     Column('col2', String(20)),
@@ -26,10 +27,30 @@ table2 = Table('table2', metadata,
 )
 
 class SelectableTest(testbase.AssertMixin):
+    def testdistance(self):
+        s = select([table.c.col1.label('c2'), table.c.col1, table.c.col1.label('c1')])
+
+        # didnt do this yet...col.label().make_proxy() has same "distance" as col.make_proxy() so far
+        #assert s.corresponding_column(table.c.col1) is s.c.col1
+        assert s.corresponding_column(s.c.col1) is s.c.col1
+        assert s.corresponding_column(s.c.c1) is s.c.c1
+        
     def testjoinagainstself(self):
         jj = select([table.c.col1.label('bar_col1')])
         jjj = join(table, jj, table.c.col1==jj.c.bar_col1)
+        
+        # test column directly agaisnt itself
         assert jjj.corresponding_column(jjj.c.table1_col1) is jjj.c.table1_col1
+
+        assert jjj.corresponding_column(jj.c.bar_col1) is jjj.c.bar_col1
+        
+        # test alias of the join, targets the column with the least 
+        # "distance" between the requested column and the returned column
+        # (i.e. there is less indirection between j2.c.table1_col1 and table.c.col1, than
+        # there is from j2.c.bar_col1 to table.c.col1)
+        j2 = jjj.alias('foo')
+        assert j2.corresponding_column(table.c.col1) is j2.c.table1_col1
+        
 
     def testjoinagainstjoin(self):
         j  = outerjoin(table, table2, table.c.col1==table2.c.col2)
@@ -37,6 +58,11 @@ class SelectableTest(testbase.AssertMixin):
         jjj = join(table, jj, table.c.col1==jj.c.bar_col1)
         assert jjj.corresponding_column(jjj.c.table1_col1) is jjj.c.table1_col1
         
+        j2 = jjj.alias('foo')
+        print j2.corresponding_column(jjj.c.table1_col1)
+        assert j2.corresponding_column(jjj.c.table1_col1) is j2.c.table1_col1
+        
+        assert jjj.corresponding_column(jj.c.bar_col1) is jj.c.bar_col1
         
     def testtablealias(self):
         a = table.alias('a')
@@ -59,6 +85,8 @@ class SelectableTest(testbase.AssertMixin):
         print ["%d %s" % (id(c),c.key) for c in u.c]
         c = u.corresponding_column(s1.c.table1_col2)
         print "%d %s" % (id(c), c.key)
+        print id(u.corresponding_column(s1.c.table1_col2).table)
+        print id(u.c.col2.table)
         assert u.corresponding_column(s1.c.table1_col2) is u.c.col2
         assert u.corresponding_column(s2.c.table2_col2) is u.c.col2
 
@@ -109,8 +137,8 @@ class SelectableTest(testbase.AssertMixin):
         j = join(a, table2)
         
         criterion = a.c.col1 == table2.c.col2
-        print
-        print str(j)
+        print criterion
+        print j.onclause
         self.assert_(criterion.compare(j.onclause))
 
     def testselectlabels(self):

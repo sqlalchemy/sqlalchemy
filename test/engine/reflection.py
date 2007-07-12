@@ -301,6 +301,7 @@ class ReflectionTest(PersistTest):
             testbase.db.dialect.get_version_info(testbase.db) < (4, 1, 1)):
             return
         meta = MetaData(testbase.db)
+
         table = Table(
             'multi', meta, 
             Column('multi_id', Integer, primary_key=True),
@@ -443,6 +444,23 @@ class ReflectionTest(PersistTest):
             self.assert_(isinstance(table.c.col4.type, String))
         finally:
             table.drop()
+
+    @testbase.supported('mssql')
+    def testidentity(self):
+        meta = MetaData(testbase.db)
+        table = Table(
+            'identity_test', meta, 
+            Column('col1', Integer, Sequence('fred', 2, 3), primary_key=True)
+        )
+        table.create()
+        
+        meta2 = MetaData(testbase.db)
+        try:
+            table2 = Table('identity_test', meta2, autoload=True)
+            print table2.c['col1'].sequence
+        finally:
+            table.drop()
+
 
 class CreateDropTest(PersistTest):
     def setUpAll(self):
