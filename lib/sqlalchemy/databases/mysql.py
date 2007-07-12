@@ -1090,7 +1090,7 @@ class MySQLDialect(ansisql.ANSIDialect):
 
         for row in _compat_fetch(rp, charset=decode_from):
             (name, type, nullable, primary_key, default) = \
-                   (row[0], str(row[1]), row[2] == 'YES', row[3] == 'PRI', row[4])
+                   (row[0], row[1], row[2] == 'YES', row[3] == 'PRI', row[4])
 
             match = re.match(r'(\w+)(\(.*?\))?\s*(\w+)?\s*(\w+)?', type)
             col_type = match.group(1)
@@ -1118,11 +1118,8 @@ class MySQLDialect(ansisql.ANSIDialect):
             colargs= []
             if default:
                 if col_type == 'timestamp' and default == 'CURRENT_TIMESTAMP':
-                    arg = sql.text(default)
-                else:
-                    # leave defaults in the connection charset
-                    arg = default.encode(decode_from)
-                colargs.append(schema.PassiveDefault(arg))
+                    default = sql.text(default)
+                colargs.append(schema.PassiveDefault(default))
             table.append_column(schema.Column(name, coltype, *colargs,
                                             **dict(primary_key=primary_key,
                                                    nullable=nullable,
@@ -1204,16 +1201,16 @@ class _MySQLPythonRowProxy(object):
         item = self.rowproxy[index]
         if isinstance(item, array):
             item = item.tostring()
-        if self.charset and isinstance(item, str):
-            return item.decode(self.charset)
+        if self.charset and isinstance(item, unicode):
+            return item.encode(self.charset)
         else:
             return item
     def __getattr__(self, attr):
         item = getattr(self.rowproxy, attr)
         if isinstance(item, array):
             item = item.tostring()
-        if self.charset and isinstance(item, str):
-            return item.decode(self.charset)
+        if self.charset and isinstance(item, unicode):
+            return item.encode(self.charset)
         else:
             return item
 
