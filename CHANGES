@@ -10,7 +10,13 @@
       [ticket:597], and are constructed with a thunk instead
 - orm
     - forwards-compatibility with 0.4: added one(), first(), and 
-      all() to Query
+      all() to Query.  almost all Query functionality from 0.4 is
+      present in 0.3.9 for forwards-compat purposes.
+    - reset_joinpoint() really really works this time, promise ! lets
+      you re-join from the root:
+      query.join(['a', 'b']).filter(<crit>).reset_joinpoint().\
+      join(['a', 'c']).filter(<some other crit>).all()
+      in 0.4 all join() calls start from the "root"
     - added synchronization to the mapper() construction step, to avoid
       thread collections when pre-existing mappers are compiling in a 
       different thread [ticket:613]

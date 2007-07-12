@@ -522,29 +522,43 @@ class Query(object):
         """
         return self.filter(self._join_by(args, kwargs, start=self._joinpoint))
 
-    def _join_to(self, prop, outerjoin=False):
+    def _join_to(self, prop, outerjoin=False, start=None):
+        if start is None:
+            start = self._joinpoint
+
         if isinstance(prop, list):
             keys = prop
         else:
-            [keys,p] = self._locate_prop(prop, start=self._joinpoint)
+            [keys,p] = self._locate_prop(prop, start=start)
+
         clause = self._from_obj[-1]
-        mapper = self._joinpoint
+
+        currenttables = [clause]
+        class FindJoinedTables(sql.NoColumnVisitor):
+            def visit_join(self, join):
+                currenttables.append(join.left)
+                currenttables.append(join.right)
+        FindJoinedTables().traverse(clause)
+            
+        mapper = start
         for key in keys:
             prop = mapper.get_property(key, resolve_synonyms=True)
             if prop._is_self_referential():
                 raise exceptions.InvalidRequestError("Self-referential query on '%s' property must be constructed manually using an Alias object for the related table." % str(prop))
-            if outerjoin:
-                if prop.secondary:
-                    clause = clause.outerjoin(prop.secondary, prop.get_join(mapper, primary=True, secondary=False))
-                    clause = clause.outerjoin(prop.select_table, prop.get_join(mapper, primary=False))
+            # dont re-join to a table already in our from objects
+            if prop.select_table not in currenttables:
+                if outerjoin:
+                    if prop.secondary:
+                        clause = clause.outerjoin(prop.secondary, prop.get_join(mapper, primary=True, secondary=False))
+                        clause = clause.outerjoin(prop.select_table, prop.get_join(mapper, primary=False))
+                    else:
+                        clause = clause.outerjoin(prop.select_table, prop.get_join(mapper))
                 else:
-                    clause = clause.outerjoin(prop.select_table, prop.get_join(mapper))
-            else:
-                if prop.secondary:
-                    clause = clause.join(prop.secondary, prop.get_join(mapper, primary=True, secondary=False))
-                    clause = clause.join(prop.select_table, prop.get_join(mapper, primary=False))
-                else:
-                    clause = clause.join(prop.select_table, prop.get_join(mapper))
+                    if prop.secondary:
+                        clause = clause.join(prop.secondary, prop.get_join(mapper, primary=True, secondary=False))
+                        clause = clause.join(prop.select_table, prop.get_join(mapper, primary=False))
+                    else:
+                        clause = clause.join(prop.select_table, prop.get_join(mapper))
             mapper = prop.mapper
         return (clause, mapper)
 
@@ -734,7 +748,7 @@ class Query(object):
         to be released in 0.4."""
         
         q = self._clone()
-        q._joinpoint = q._mapper
+        q._joinpoint = q.mapper
         return q
 
     def select_from(self, from_obj):
