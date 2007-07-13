@@ -1092,6 +1092,9 @@ class MySQLDialect(ansisql.ANSIDialect):
             (name, type, nullable, primary_key, default) = \
                    (row[0], row[1], row[2] == 'YES', row[3] == 'PRI', row[4])
 
+            # leave column names as unicode
+            name = name.decode(decode_from)
+
             match = re.match(r'(\w+)(\(.*?\))?\s*(\w+)?\s*(\w+)?', type)
             col_type = match.group(1)
             args = match.group(2)
