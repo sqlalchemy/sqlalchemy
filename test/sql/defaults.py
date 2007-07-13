@@ -224,7 +224,7 @@ class SequenceTest(PersistTest):
    
     @testbase.supported('postgres', 'oracle')
     def teststandalone(self):
-        s = Sequence("my_sequence", metadata=testbase.db)
+        s = Sequence("my_sequence", metadata=MetaData(testbase.db))
         s.create()
         try:
             x = s.execute()
