@@ -1618,6 +1618,25 @@ class ColumnCollection(util.OrderedProperties):
         # "True" value (i.e. a BinaryClause...)
         return col in util.Set(self)
 
+class ColumnSet(util.OrderedSet):
+    def contains_column(self, col):
+        return col in self
+        
+    def extend(self, cols):
+        for col in cols:
+            self.add(col)
+
+    def __add__(self, other):
+        return list(self) + list(other)
+
+    def __eq__(self, other):
+        l = []
+        for c in other:
+            for local in self:
+                if c.shares_lineage(local):
+                    l.append(c==local)
+        return and_(*l)
+            
 class FromClause(Selectable):
     """Represent an element that can be used within the ``FROM``
     clause of a ``SELECT`` statement.
@@ -1762,7 +1781,7 @@ class FromClause(Selectable):
             # TODO: put a mutex here ?  this is a key place for threading probs
             return
         self._columns = ColumnCollection()
-        self._primary_key = ColumnCollection()
+        self._primary_key = ColumnSet()
         self._foreign_keys = util.Set()
         self._orig_cols = {}
         for co in self._adjusted_exportable_columns():
