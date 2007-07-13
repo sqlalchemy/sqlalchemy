@@ -1,6 +1,6 @@
+import testbase
 from sqlalchemy import *
 from sqlalchemy.orm import *
-import testbase
 from fixtures import *
 
 class Base(object):
@@ -90,7 +90,7 @@ class GetTest(QueryTest):
             Column('id', Unicode(40), primary_key=True),
             Column('data', Unicode(40)))
         table.create()
-        ustring = 'petit voix m\xe2\x80\x99a '.decode('utf-8')
+        ustring = 'petit voix m\xe2\x80\x99a'.decode('utf-8')
         table.insert().execute(id=ustring, data=ustring)
         class LocalFoo(Base):pass
         mapper(LocalFoo, table)
