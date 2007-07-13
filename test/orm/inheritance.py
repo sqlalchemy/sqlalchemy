@@ -427,7 +427,7 @@ class InheritTest7(testbase.ORMTest):
                 'roles' : relation(Role, secondary=user_roles, lazy=False, private=False) 
             }
         )
-        admin_mapper = mapper(Admin, admins, inherits=user_mapper)
+        admin_mapper = mapper(Admin, admins, inherits=user_mapper, properties={'aid':admins.c.id})
         sess = create_session()
         adminrole = Role('admin')
         sess.save(adminrole)
@@ -463,7 +463,7 @@ class InheritTest7(testbase.ORMTest):
             }
         )
 
-        admin_mapper = mapper(Admin, admins, inherits=user_mapper) 
+        admin_mapper = mapper(Admin, admins, inherits=user_mapper, properties={'aid':admins.c.id}) 
 
         # create roles
         adminrole = Role('admin')

@@ -25,6 +25,9 @@
     - added synchronization to the mapper() construction step, to avoid
       thread collections when pre-existing mappers are compiling in a 
       different thread [ticket:613]
+    - a warning is issued by Mapper when two primary key columns of the
+      same name are munged into a single attribute.  this happens frequently
+      when mapping to joins (or inheritance). 
     - synonym() properties are fully supported by all Query joining/
       with_parent operations [ticket:598]
     - fixed very stupid bug when deleting items with many-to-many

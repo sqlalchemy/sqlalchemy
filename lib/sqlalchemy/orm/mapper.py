@@ -9,7 +9,7 @@ from sqlalchemy import sql_util as sqlutil
 from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm import sync
 from sqlalchemy.orm.interfaces import MapperProperty, MapperOption, OperationContext, SynonymProperty
-import weakref
+import weakref, warnings
 
 __all__ = ['Mapper', 'MapperExtension', 'class_mapper', 'object_mapper', 'EXT_PASS', 'mapper_registry', 'ExtensionOption']
 
@@ -585,6 +585,8 @@ class Mapper(object):
                     prop = ColumnProperty(deferred=prop.deferred, group=prop.group, *prop.columns)
                     prop.set_parent(self)
                     self.__props[column_key] = prop
+                if column in self.primary_key and prop.columns[-1] in self.primary_key:
+                    warnings.warn(RuntimeWarning("On mapper %s, primary key column '%s' is being combined with distinct primary key column '%s' in attribute '%s'.  Use explicit properties to give each column its own mapped attribute name." % (str(self), str(column), str(prop.columns[-1]), column_key)))
                 prop.columns.append(column)
                 self.__log("appending to existing ColumnProperty %s" % (column_key))
             else:
