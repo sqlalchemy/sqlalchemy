@@ -481,6 +481,80 @@ class InheritTest7(testbase.ORMTest):
         a.password = 'sadmin'
         sess.flush()
         assert user_roles.count().scalar() == 1
+
+class InheritTest8(testbase.ORMTest):
+    """test the construction of mapper.primary_key when an inheriting relationship
+    joins on a column other than primary key column."""
+    keep_data = True
+    
+    def define_tables(self, metadata):
+        global person_table, employee_table, Person, Employee
+        
+        person_table = Table("persons", metadata,
+                Column("id", Integer, primary_key=True),
+                Column("name", String(80)),
+                )
+
+        employee_table = Table("employees", metadata,
+                Column("id", Integer, primary_key=True),
+                Column("salary", Integer),
+                Column("person_id", Integer, ForeignKey("persons.id")),
+                )
+
+        class Person(object):
+            def __init__(self, name):
+                self.name = name
+
+        class Employee(Person): pass
+    
+    def insert_data(self):
+        person_insert = person_table.insert()
+        person_insert.execute(id=1, name='alice')
+        person_insert.execute(id=2, name='bob')
+
+        employee_insert = employee_table.insert()
+        employee_insert.execute(id=2, salary=250, person_id=1) # alice
+        employee_insert.execute(id=3, salary=200, person_id=2) # bob
+        
+    def test_implicit(self):
+        person_mapper = mapper(Person, person_table)
+        mapper(Employee, employee_table, inherits=person_mapper)
+        print class_mapper(Employee).primary_key
+        assert list(class_mapper(Employee).primary_key) == [person_table.c.id, employee_table.c.id]
+        self._do_test(True)
+
+    def test_explicit_props(self):
+        person_mapper = mapper(Person, person_table)
+        mapper(Employee, employee_table, inherits=person_mapper, properties={'pid':person_table.c.id, 'eid':employee_table.c.id})
+        self._do_test(True)
+    
+    def test_explicit_composite_pk(self):
+        person_mapper = mapper(Person, person_table)
+        mapper(Employee, employee_table, inherits=person_mapper, primary_key=[person_table.c.id, employee_table.c.id])
+        self._do_test(True)
+
+    def test_explicit_pk(self):
+        person_mapper = mapper(Person, person_table)
+        mapper(Employee, employee_table, inherits=person_mapper, primary_key=[person_table.c.id])
+        self._do_test(False)
+        
+    def _do_test(self, composite):
+        session = create_session()
+        query = session.query(Employee)
+
+        if composite:
+            alice1 = query.get([1,2])
+            bob = query.get([2,3])
+            alice2 = query.get([1,2])
+        else:
+            alice1 = query.get(1)
+            bob = query.get(2)
+            alice2 = query.get(1)
+            
+            assert alice1.name == alice2.name == 'alice'
+            assert bob.name == 'bob'
+        
+
         
 if __name__ == "__main__":    
     testbase.main()

@@ -59,13 +59,15 @@ class SchemaItem(object):
         """Return the engine or None if no engine."""
 
         if raiseerr:
-            e = self._derived_metadata().bind
+            m = self._derived_metadata()
+            e = m and m.bind or None
             if e is None:
                 raise exceptions.InvalidRequestError("This SchemaItem is not connected to any Engine or Connection.")
             else:
                 return e
         else:
-            return self._derived_metadata().bind
+            m = self._derived_metadata()
+            return m and m.bind or None
 
     def get_engine(self):
         """Return the engine or raise an error if no engine.
@@ -280,7 +282,9 @@ class Table(SchemaItem, sql.TableClause):
         self.schema = kwargs.pop('schema', None)
         self.indexes = util.Set()
         self.constraints = util.Set()
+        self._columns = sql.ColumnCollection()
         self.primary_key = PrimaryKeyConstraint()
+        self._foreign_keys = util.OrderedSet()
         self.quote = kwargs.pop('quote', False)
         self.quote_schema = kwargs.pop('quote_schema', False)
         if self.schema is not None:
@@ -297,6 +301,11 @@ class Table(SchemaItem, sql.TableClause):
 
         # store extra kwargs, which should only contain db-specific options
         self.kwargs = kwargs
+
+    def _export_columns(self, columns=None):
+        # override FromClause's collection initialization logic; TableClause and Table
+        # implement it differently
+        pass
 
     def _get_case_sensitive_schema(self):
         try:
@@ -545,6 +554,14 @@ class Column(SchemaItem, sql._ColumnClause):
     def _get_engine(self):
         return self.table.bind
 
+    def references(self, column):
+        """return true if this column references the given column via foreign key"""
+        for fk in self.foreign_keys:
+            if fk.column is column:
+                return True
+        else:
+            return False
+            
     def append_foreign_key(self, fk):
         fk._set_parent(self)
 
@@ -763,7 +780,7 @@ class DefaultGenerator(SchemaItem):
 
     def __init__(self, for_update=False, metadata=None):
         self.for_update = for_update
-        self._metadata = metadata
+        self._metadata = util.assert_arg_type(metadata, (MetaData, type(None)), 'metadata')
 
     def _derived_metadata(self):
         try:
@@ -782,8 +799,10 @@ class DefaultGenerator(SchemaItem):
         else:
             self.column.default = self
 
-    def execute(self, **kwargs):
-        return self._get_engine(raiseerr=True).execute_default(self, **kwargs)
+    def execute(self, bind=None, **kwargs):
+        if bind is None:
+            bind = self._get_engine(raiseerr=True)
+        return bind.execute_default(self, **kwargs)
 
     def __repr__(self):
         return "DefaultGenerator()"
@@ -845,12 +864,15 @@ class Sequence(DefaultGenerator):
         super(Sequence, self)._set_parent(column)
         column.sequence = self
 
-    def create(self):
-       self._get_engine(raiseerr=True).create(self)
-       return self
+    def create(self, bind=None):
+        if bind is None:
+            bind = self._get_engine(raiseerr=True)
+        bind.create(self)
 
-    def drop(self):
-       self._get_engine(raiseerr=True).drop(self)
+    def drop(self, bind=None):
+        if bind is None:
+            bind = self._get_engine(raiseerr=True)
+        bind.drop(self)
 
     def accept_visitor(self, visitor):
         """Call the visit_seauence method on the given visitor."""

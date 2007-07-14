@@ -267,8 +267,11 @@ class ORMTest(AssertMixin):
         metadata = MetaData(db)
         self.define_tables(metadata)
         metadata.create_all()
+        self.insert_data()
     def define_tables(self, metadata):
         raise NotImplementedError()
+    def insert_data(self):
+        pass
     def get_metadata(self):
         return metadata
     def tearDownAll(self):

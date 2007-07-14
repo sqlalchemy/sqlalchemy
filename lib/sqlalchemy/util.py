@@ -10,6 +10,7 @@ except ImportError:
     import dummy_thread as thread
     import dummy_threading as threading
 
+from sqlalchemy import exceptions
 import md5
 import sys
 import warnings
@@ -128,7 +129,16 @@ def duck_type_collection(col, default=None):
         return dict
     else:
         return default
-    
+
+def assert_arg_type(arg, argtype, name):
+    if isinstance(arg, argtype):
+        return arg
+    else:
+        if isinstance(argtype, tuple):
+            raise exceptions.ArgumentError("Argument '%s' is expected to be one of type %s, got '%s'" % (name, ' or '.join(["'%s'" % str(a) for a in argtype]), str(type(arg))))
+        else:
+            raise exceptions.ArgumentError("Argument '%s' is expected to be of type '%s', got '%s'" % (name, str(argtype), str(type(arg))))
+        
 def warn_exception(func):
     """executes the given function, catches all exceptions and converts to a warning."""
     try:

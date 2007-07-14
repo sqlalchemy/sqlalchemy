@@ -1764,7 +1764,7 @@ class FromClause(Selectable):
         """)
     oid_column = property(_get_oid_column)
 
-    def _export_columns(self):
+    def _export_columns(self, columns=None):
         """Initialize column collections.
 
         The collections include the primary key, foreign keys, list of
@@ -1777,14 +1777,16 @@ class FromClause(Selectable):
         its parent ``Selectable`` is this ``FromClause``.
         """
 
-        if hasattr(self, '_columns'):
+        if hasattr(self, '_columns') and columns is None:
             # TODO: put a mutex here ?  this is a key place for threading probs
             return
         self._columns = ColumnCollection()
         self._primary_key = ColumnSet()
         self._foreign_keys = util.Set()
         self._orig_cols = {}
-        for co in self._adjusted_exportable_columns():
+        if columns is None:
+            columns = self._adjusted_exportable_columns()
+        for co in columns:
             cp = self._proxy_column(co)
             for ci in cp.orig_set:
                 cx = self._orig_cols.get(ci)
@@ -2250,15 +2252,38 @@ class Join(FromClause):
     encodedname = property(lambda s: s.name.encode('ascii', 'backslashreplace'))
 
     def _init_primary_key(self):
-        pkcol = util.OrderedSet()
-        for col in self._adjusted_exportable_columns():
-            if col.primary_key:
-                pkcol.add(col)
-        for col in list(pkcol):
-            for f in col.foreign_keys:
-                if f.column in pkcol:
-                    pkcol.remove(col)
-        self.primary_key.extend(pkcol)
+        pkcol = util.Set([c for c in self._adjusted_exportable_columns() if c.primary_key])
+    
+        equivs = {}
+        def add_equiv(a, b):
+            for x, y in ((a, b), (b, a)):
+                if x in equivs:
+                    equivs[x].add(y)
+                else:
+                    equivs[x] = util.Set([y])
+                    
+        class BinaryVisitor(ClauseVisitor):
+            def visit_binary(self, binary):
+                if binary.operator == '=':
+                    add_equiv(binary.left, binary.right)
+        BinaryVisitor().traverse(self.onclause)
+        
+        for col in pkcol:
+            for fk in col.foreign_keys:
+                if fk.column in pkcol:
+                    add_equiv(col, fk.column)
+                    
+        omit = util.Set()
+        for col in pkcol:
+            p = col
+            for c in equivs.get(col, util.Set()):
+                if p.references(c) or (c.primary_key and not p.primary_key):
+                    omit.add(p)
+                    p = c
+            
+        self.__primary_key = ColumnSet([c for c in self._adjusted_exportable_columns() if c.primary_key and c not in omit])
+
+    primary_key = property(lambda s:s.__primary_key)
         
     def _locate_oid_column(self):
         return self.left.oid_column
@@ -2333,7 +2358,11 @@ class Join(FromClause):
                 collist.append(c)
         self.__folded_equivalents = collist
         return self.__folded_equivalents
-        
+
+    folded_equivalents = property(_get_folded_equivalents, doc="Returns the column list of this Join with all equivalently-named, "
+                                                            "equated columns folded into one column, where 'equated' means they are "
+                                                            "equated to each other in the ON clause of this join.")    
+    
     def select(self, whereclause = None, fold_equivalents=False, **kwargs):
         """Create a ``Select`` from this ``Join``.
         
@@ -2353,7 +2382,7 @@ class Join(FromClause):
           
         """
         if fold_equivalents:
-            collist = self._get_folded_equivalents()
+            collist = self.folded_equivalents
         else:
             collist = [self.left, self.right]
             
@@ -2632,12 +2661,8 @@ class TableClause(FromClause):
         super(TableClause, self).__init__(name)
         self.name = self.fullname = name
         self.encodedname = self.name.encode('ascii', 'backslashreplace')
-        self._columns = ColumnCollection()
-        self._foreign_keys = util.OrderedSet()
-        self._primary_key = ColumnCollection()
-        for c in columns:
-            self.append_column(c)
         self._oid_column = _ColumnClause('oid', self, _is_oid=True)
+        self._export_columns(columns)
 
     def named_with_column(self):
         return True
@@ -2648,6 +2673,10 @@ class TableClause(FromClause):
 
     def _locate_oid_column(self):
         return self._oid_column
+
+    def _proxy_column(self, c):
+        self.append_column(c)
+        return c
 
     def _orig_columns(self):
         try:
@@ -2666,6 +2695,7 @@ class TableClause(FromClause):
             return [c for c in self.c]
         else:
             return []
+
     def accept_visitor(self, visitor):
         visitor.visit_table(self)
 

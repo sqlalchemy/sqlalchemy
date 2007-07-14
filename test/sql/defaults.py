@@ -231,6 +231,16 @@ class SequenceTest(PersistTest):
             self.assert_(x == 1)
         finally:
             s.drop()
+
+    @testbase.supported('postgres', 'oracle')
+    def teststandalone_explicit(self):
+        s = Sequence("my_sequence")
+        s.create(bind=testbase.db)
+        try:
+            x = s.execute(testbase.db)
+            self.assert_(x == 1)
+        finally:
+            s.drop(testbase.db)
     
     @testbase.supported('postgres', 'oracle')
     def teststandalone2(self):
