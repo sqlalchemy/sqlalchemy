@@ -855,6 +855,15 @@ class Transaction(object):
     def _do_commit(self):
         pass
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        if type is None and self._is_active:
+            self.commit()
+        else:
+            self.rollback()
+
 class RootTransaction(Transaction):
     def __init__(self, connection):
         super(RootTransaction, self).__init__(connection, None)

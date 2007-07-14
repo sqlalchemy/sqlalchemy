@@ -73,6 +73,7 @@
       columns joined by a "group" to load as "undeferred".
 
 - sql
+  - added context manager (with statement) support for transactions
   - added support for two phase commit, works with mysql and postgres so far.
   - added a subtransaction implementation that uses savepoints.
   - added support for savepoints.
