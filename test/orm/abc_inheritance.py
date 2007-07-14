@@ -126,14 +126,13 @@ def produce_test(parent, child, direction):
             sess.clear()
 
             # assert result via direct get() of parent object
-            # TODO: dual PK here is a temporary workaround until #185 is fixed again
-            result = sess.query(parent_class).get([parent_obj.id, parent_obj.id])
+            result = sess.query(parent_class).get(parent_obj.id)
             assert result.id == parent_obj.id
             assert result.collection[0].id == child_obj.id
             if direction == ONETOMANY:
                 assert result.collection[1].id == child2.id
             elif direction == MANYTOONE:
-                result2 = sess.query(parent_class).get([parent2.id, parent2.id])
+                result2 = sess.query(parent_class).get(parent2.id)
                 assert result2.id == parent2.id
                 assert result2.collection[0].id == child_obj.id
             

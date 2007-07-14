@@ -519,9 +519,12 @@ class InheritTest8(testbase.ORMTest):
     def test_implicit(self):
         person_mapper = mapper(Person, person_table)
         mapper(Employee, employee_table, inherits=person_mapper)
-        print class_mapper(Employee).primary_key
-        assert list(class_mapper(Employee).primary_key) == [person_table.c.id, employee_table.c.id]
-        self._do_test(True)
+        try:
+            print class_mapper(Employee).primary_key
+            assert list(class_mapper(Employee).primary_key) == [person_table.c.id, employee_table.c.id]
+            assert False
+        except RuntimeWarning, e:
+            assert str(e) == "On mapper Mapper|Employee|employees, primary key column 'employees.id' is being combined with distinct primary key column 'persons.id' in attribute 'id'.  Use explicit properties to give each column its own mapped attribute name."
 
     def test_explicit_props(self):
         person_mapper = mapper(Person, person_table)
@@ -531,7 +534,11 @@ class InheritTest8(testbase.ORMTest):
     def test_explicit_composite_pk(self):
         person_mapper = mapper(Person, person_table)
         mapper(Employee, employee_table, inherits=person_mapper, primary_key=[person_table.c.id, employee_table.c.id])
-        self._do_test(True)
+        try:
+            self._do_test(True)
+            assert False
+        except RuntimeWarning, e:
+            assert str(e) == "On mapper Mapper|Employee|employees, primary key column 'employees.id' is being combined with distinct primary key column 'persons.id' in attribute 'id'.  Use explicit properties to give each column its own mapped attribute name."
 
     def test_explicit_pk(self):
         person_mapper = mapper(Person, person_table)
