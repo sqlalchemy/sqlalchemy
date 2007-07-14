@@ -107,6 +107,8 @@
     - the fix in "schema" above fixes reflection of foreign keys from an
       alt-schema table to a public schema table
 - sqlite
+    - rearranged dialect initialization so it has time to warn about pysqlite1
+      being too old.
     - sqlite better handles datetime/date/time objects mixed and matched
       with various Date/Time/DateTime columns
     - string PK column inserts dont get overwritten with OID [ticket:603] 
