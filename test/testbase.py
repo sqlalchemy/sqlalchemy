@@ -10,6 +10,9 @@ import sqlalchemy
 from sqlalchemy import sql, schema, engine, pool, MetaData
 from sqlalchemy.orm import clear_mappers
 
+import warnings
+warnings.filterwarnings("error")
+
 db = None
 metadata = None
 db_uri = None
@@ -312,8 +315,11 @@ class ORMTest(AssertMixin):
         _otest_metadata = MetaData(db)
         self.define_tables(_otest_metadata)
         _otest_metadata.create_all()
+        self.insert_data()
     def define_tables(self, _otest_metadata):
         raise NotImplementedError()
+    def insert_data(self):
+        pass
     def get_metadata(self):
         return _otest_metadata
     def tearDownAll(self):

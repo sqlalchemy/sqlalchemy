@@ -10,7 +10,7 @@ from testbase import Table, Column
 class UnicodeSchemaTest(testbase.PersistTest):
     def setUpAll(self):
         global metadata, t1, t2
-        metadata = MetaData(engine=testbase.db)
+        metadata = MetaData(testbase.db)
         t1 = Table('unitable1', metadata,
             Column(u'méil', Integer, primary_key=True),
             Column(u'éXXm', Integer),

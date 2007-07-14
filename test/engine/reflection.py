@@ -237,7 +237,7 @@ class ReflectionTest(PersistTest):
             PRIMARY KEY(id)
         )""")
         try:
-            metadata = MetaData(engine=testbase.db)
+            metadata = MetaData(bind=testbase.db)
             book = Table('book', metadata, autoload=True)
             assert book.c.id  in book.primary_key
             assert book.c.series not in book.primary_key
@@ -258,7 +258,7 @@ class ReflectionTest(PersistTest):
             PRIMARY KEY(id, isbn)
         )""")
         try:
-            metadata = MetaData(engine=testbase.db)
+            metadata = MetaData(bind=testbase.db)
             book = Table('book', metadata, autoload=True)
             assert book.c.id  in book.primary_key
             assert book.c.isbn  in book.primary_key
@@ -363,17 +363,17 @@ class ReflectionTest(PersistTest):
         def test_pickle():
             meta.connect(testbase.db)
             meta2 = pickle.loads(pickle.dumps(meta))
-            assert meta2.engine is None
+            assert meta2.bind is None
             return (meta2.tables['mytable'], meta2.tables['othertable'])
 
         def test_pickle_via_reflect():
             # this is the most common use case, pickling the results of a
             # database reflection
-            meta2 = MetaData(engine=testbase.db)
+            meta2 = MetaData(bind=testbase.db)
             t1 = Table('mytable', meta2, autoload=True)
             t2 = Table('othertable', meta2, autoload=True)
             meta3 = pickle.loads(pickle.dumps(meta2))
-            assert meta3.engine is None
+            assert meta3.bind is None
             assert meta3.tables['mytable'] is not t1
             return (meta3.tables['mytable'], meta3.tables['othertable'])
             

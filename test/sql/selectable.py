@@ -1,6 +1,6 @@
 """tests that various From objects properly export their columns, as well as
--useable primary keys and foreign keys.  Full relational algebra depends on
--every selectable unit behaving nicely with others.."""
+useable primary keys and foreign keys.  Full relational algebra depends on
+every selectable unit behaving nicely with others.."""
  
 import testbase
 import unittest, sys, datetime
@@ -171,6 +171,61 @@ class SelectableTest(testbase.AssertMixin):
         print str(j.onclause)
         self.assert_(criterion.compare(j.onclause))
         
+
+class PrimaryKeyTest(testbase.AssertMixin):
+    def test_join_pk_collapse_implicit(self):
+        """test that redundant columns in a join get 'collapsed' into a minimal primary key, 
+        which is the root column along a chain of foreign key relationships."""
+        
+        meta = MetaData()
+        a = Table('a', meta, Column('id', Integer, primary_key=True))
+        b = Table('b', meta, Column('id', Integer, ForeignKey('a.id'), primary_key=True))
+        c = Table('c', meta, Column('id', Integer, ForeignKey('b.id'), primary_key=True))
+        d = Table('d', meta, Column('id', Integer, ForeignKey('c.id'), primary_key=True))
+
+        assert c.c.id.references(b.c.id)
+        assert not d.c.id.references(a.c.id)
+        
+        assert list(a.join(b).primary_key) == [a.c.id]
+        assert list(b.join(c).primary_key) == [b.c.id]
+        assert list(a.join(b).join(c).primary_key) == [a.c.id]
+        assert list(b.join(c).join(d).primary_key) == [b.c.id]
+        assert list(d.join(c).join(b).primary_key) == [b.c.id]
+        assert list(a.join(b).join(c).join(d).primary_key) == [a.c.id]
+
+    def test_join_pk_collapse_explicit(self):
+        """test that redundant columns in a join get 'collapsed' into a minimal primary key, 
+        which is the root column along a chain of explicit join conditions."""
+
+        meta = MetaData()
+        a = Table('a', meta, Column('id', Integer, primary_key=True), Column('x', Integer))
+        b = Table('b', meta, Column('id', Integer, ForeignKey('a.id'), primary_key=True), Column('x', Integer))
+        c = Table('c', meta, Column('id', Integer, ForeignKey('b.id'), primary_key=True), Column('x', Integer))
+        d = Table('d', meta, Column('id', Integer, ForeignKey('c.id'), primary_key=True), Column('x', Integer))
+
+        print list(a.join(b, a.c.x==b.c.id).primary_key)
+        assert list(a.join(b, a.c.x==b.c.id).primary_key) == [b.c.id]
+        assert list(b.join(c, b.c.x==c.c.id).primary_key) == [b.c.id]
+        assert list(a.join(b).join(c, c.c.id==b.c.x).primary_key) == [a.c.id]
+        assert list(b.join(c, c.c.x==b.c.id).join(d).primary_key) == [c.c.id]
+        assert list(b.join(c, c.c.id==b.c.x).join(d).primary_key) == [b.c.id]
+        assert list(d.join(b, d.c.id==b.c.id).join(c, b.c.id==c.c.x).primary_key) == [c.c.id]
+        assert list(a.join(b).join(c, c.c.id==b.c.x).join(d).primary_key) == [a.c.id]
+        
+        assert list(a.join(b, and_(a.c.id==b.c.id, a.c.x==b.c.id)).primary_key) == [a.c.id]
+    
+    def test_init_doesnt_blowitaway(self):
+        meta = MetaData()
+        a = Table('a', meta, Column('id', Integer, primary_key=True), Column('x', Integer))
+        b = Table('b', meta, Column('id', Integer, ForeignKey('a.id'), primary_key=True), Column('x', Integer))
+
+        j = a.join(b)
+        assert list(j.primary_key) == [a.c.id]
+        
+        j.foreign_keys
+        assert list(j.primary_key) == [a.c.id]
+
+
 if __name__ == "__main__":
     testbase.main()
-    
+

@@ -17,7 +17,7 @@ class LabelTypeTest(testbase.PersistTest):
 class LongLabelsTest(testbase.PersistTest):
     def setUpAll(self):
         global metadata, table1
-        metadata = MetaData(engine=testbase.db)
+        metadata = MetaData(testbase.db)
         table1 = Table("some_large_named_table", metadata,
             Column("this_is_the_primarykey_column", Integer, Sequence("this_is_some_large_seq"), primary_key=True),
             Column("this_is_the_data_column", String(30))

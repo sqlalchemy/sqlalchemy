@@ -406,7 +406,7 @@ class Compiled(sql.ClauseVisitor):
     defaults.
     """
 
-    def __init__(self, dialect, statement, parameters, engine=None):
+    def __init__(self, dialect, statement, parameters, bind=None):
         """Construct a new ``Compiled`` object.
 
         statement
@@ -426,13 +426,13 @@ class Compiled(sql.ClauseVisitor):
           can either be the string names of columns or
           ``_ColumnClause`` objects.
 
-        engine
-          Optional Engine to compile this statement against.
+        bind
+          Optional Engine or Connection to compile this statement against.
         """
         self.dialect = dialect
         self.statement = statement
         self.parameters = parameters
-        self.engine = engine
+        self.bind = bind
         self.can_execute = statement.supports_execution()
 
     def compile(self):
@@ -465,9 +465,9 @@ class Compiled(sql.ClauseVisitor):
     def execute(self, *multiparams, **params):
         """Execute this compiled object."""
 
-        e = self.engine
+        e = self.bind
         if e is None:
-            raise exceptions.InvalidRequestError("This Compiled object is not bound to any engine.")
+            raise exceptions.InvalidRequestError("This Compiled object is not bound to any Engine or Connection.")
         return e.execute_compiled(self, *multiparams, **params)
 
     def scalar(self, *multiparams, **params):
@@ -691,7 +691,7 @@ class Connection(Connectable):
         return self.execute(object, *multiparams, **params).scalar()
 
     def compiler(self, statement, parameters, **kwargs):
-        return self.dialect.compiler(statement, parameters, engine=self.engine, **kwargs)
+        return self.dialect.compiler(statement, parameters, bind=self.engine, **kwargs)
 
     def execute(self, object, *multiparams, **params):
         for c in type(object).__mro__:
@@ -945,14 +945,14 @@ class Engine(Connectable):
             connection.close()
 
     def _func(self):
-        return sql._FunctionGenerator(engine=self)
+        return sql._FunctionGenerator(bind=self)
 
     func = property(_func)
 
     def text(self, text, *args, **kwargs):
         """Return a sql.text() object for performing literal queries."""
 
-        return sql.text(text, engine=self, *args, **kwargs)
+        return sql.text(text, bind=self, *args, **kwargs)
 
     def _run_visitor(self, visitorcallable, element, connection=None, **kwargs):
         if connection is None:
@@ -1014,7 +1014,7 @@ class Engine(Connectable):
         return connection.execute_compiled(compiled, *multiparams, **params)
 
     def compiler(self, statement, parameters, **kwargs):
-        return self.dialect.compiler(statement, parameters, engine=self, **kwargs)
+        return self.dialect.compiler(statement, parameters, bind=self, **kwargs)
 
     def connect(self, **kwargs):
         """Return a newly allocated Connection object."""
@@ -1510,7 +1510,7 @@ class DefaultRunner(schema.SchemaVisitor):
         return None
 
     def exec_default_sql(self, default):
-        c = sql.select([default.arg]).compile(engine=self.connection)
+        c = sql.select([default.arg]).compile(bind=self.connection)
         return self.connection.execute_compiled(c).scalar()
 
     def visit_column_onupdate(self, onupdate):

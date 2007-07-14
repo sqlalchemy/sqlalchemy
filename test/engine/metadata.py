@@ -7,7 +7,7 @@ class MetaDataTest(testbase.PersistTest):
         metadata = MetaData()
         t1 = Table('table1', metadata, Column('col1', Integer, primary_key=True),
             Column('col2', String(20)))
-        metadata.engine = testbase.db
+        metadata.bind = testbase.db
         metadata.create_all()
         try:
             assert t1.count().scalar() == 0

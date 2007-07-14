@@ -118,17 +118,32 @@
     - better error message for NoSuchColumnError [ticket:607]
     - finally figured out how to get setuptools version in, available
       as sqlalchemy.__version__ [ticket:428]
+    - the various "engine" arguments, such as "engine", "connectable",
+      "engine_or_url", "bind_to", etc. are all present, but deprecated.
+      they all get replaced by the single term "bind".  you also
+      set the "bind" of MetaData using 
+      metadata.bind = <engine or connection>
 - ext
     - iteration over dict association proxies is now dict-like, not
       InstrumentedList-like (e.g. over keys instead of values)
     - association proxies no longer bind tightly to source collections
       [ticket:597], and are constructed with a thunk instead
+    - added selectone_by() to assignmapper
 - orm
     - forwards-compatibility with 0.4: added one(), first(), and 
-      all() to Query
+      all() to Query.  almost all Query functionality from 0.4 is
+      present in 0.3.9 for forwards-compat purposes.
+    - reset_joinpoint() really really works this time, promise ! lets
+      you re-join from the root:
+      query.join(['a', 'b']).filter(<crit>).reset_joinpoint().\
+      join(['a', 'c']).filter(<some other crit>).all()
+      in 0.4 all join() calls start from the "root"
     - added synchronization to the mapper() construction step, to avoid
       thread collections when pre-existing mappers are compiling in a 
       different thread [ticket:613]
+    - a warning is issued by Mapper when two primary key columns of the
+      same name are munged into a single attribute.  this happens frequently
+      when mapping to joins (or inheritance). 
     - synonym() properties are fully supported by all Query joining/
       with_parent operations [ticket:598]
     - fixed very stupid bug when deleting items with many-to-many
@@ -151,6 +166,14 @@
     - DynamicMetaData has been renamed to ThreadLocalMetaData.  the
       DynamicMetaData name is deprecated and is an alias for ThreadLocalMetaData
       or a regular MetaData if threadlocal=False
+    - composite primary key is represented as a non-keyed set to allow for 
+      composite keys consisting of cols with the same name; occurs within a
+      Join.  helps inheritance scenarios formulate correct PK.
+    - improved ability to get the "correct" and most minimal set of primary key 
+      columns from a join, equating foreign keys and otherwise equated columns.
+      this is also mostly to help inheritance scenarios formulate the best 
+      choice of primary key columns.  [ticket:185]
+    - added 'bind' argument to Sequence.create()/drop(), ColumnDefault.execute()
     - some enhancements to "column targeting", the ability to match a column
       to a "corresponding" column in another selectable.  this affects mostly
       ORM ability to map to complex joins
@@ -202,6 +225,8 @@
     - the fix in "schema" above fixes reflection of foreign keys from an
       alt-schema table to a public schema table
 - sqlite
+    - rearranged dialect initialization so it has time to warn about pysqlite1
+      being too old.
     - sqlite better handles datetime/date/time objects mixed and matched
       with various Date/Time/DateTime columns
     - string PK column inserts dont get overwritten with OID [ticket:603] 
@@ -210,9 +235,6 @@
     - fix port option handling for pyodbc [ticket:634]
     - now able to reflect start and increment values for identity columns
     - preliminary support for using scope_identity() with pyodbc
-
-- extensions
-    - added selectone_by() to assignmapper
     
 0.3.8
 - engines

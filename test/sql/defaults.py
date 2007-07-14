@@ -25,26 +25,26 @@ class DefaultTest(PersistTest):
  
         # select "count(1)" returns different results on different DBs
         # also correct for "current_date" compatible as column default, value differences
-        currenttime = func.current_date(type=Date, engine=db);
+        currenttime = func.current_date(type=Date, bind=db);
         if is_oracle:
             ts = db.func.trunc(func.sysdate(), literal_column("'DAY'")).scalar()
-            f = select([func.count(1) + 5], engine=db).scalar()
-            f2 = select([func.count(1) + 14], engine=db).scalar()
+            f = select([func.count(1) + 5], bind=db).scalar()
+            f2 = select([func.count(1) + 14], bind=db).scalar()
             # TODO: engine propigation across nested functions not working
-            currenttime = func.trunc(currenttime, literal_column("'DAY'"), engine=db)
+            currenttime = func.trunc(currenttime, literal_column("'DAY'"), bind=db)
             def1 = currenttime
             def2 = func.trunc(text("sysdate"), literal_column("'DAY'"))
             deftype = Date
         elif use_function_defaults:
-            f = select([func.count(1) + 5], engine=db).scalar()
-            f2 = select([func.count(1) + 14], engine=db).scalar()
+            f = select([func.count(1) + 5], bind=db).scalar()
+            f2 = select([func.count(1) + 14], bind=db).scalar()
             def1 = currenttime
             def2 = text("current_date")
             deftype = Date
             ts = db.func.current_date().scalar()
         else:
-            f = select([func.count(1) + 5], engine=db).scalar()
-            f2 = select([func.count(1) + 14], engine=db).scalar()
+            f = select([func.count(1) + 5], bind=db).scalar()
+            f2 = select([func.count(1) + 14], bind=db).scalar()
             def1 = def2 = "3"
             ts = 3
             deftype = Integer
@@ -257,7 +257,7 @@ class SequenceTest(PersistTest):
    
     @testbase.supported('postgres', 'oracle')
     def test_implicit_sequence_exec(self):
-        s = Sequence("my_sequence", metadata=testbase.db)
+        s = Sequence("my_sequence", metadata=MetaData(testbase.db))
         s.create()
         try:
             x = s.execute()
@@ -266,9 +266,9 @@ class SequenceTest(PersistTest):
             s.drop()
 
     @testbase.supported('postgres', 'oracle')
-    def test_explicit_sequence_exec(self):
+    def teststandalone_explicit(self):
         s = Sequence("my_sequence")
-        s.create(testbase.db)
+        s.create(bind=testbase.db)
         try:
             x = s.execute(testbase.db)
             self.assert_(x == 1)

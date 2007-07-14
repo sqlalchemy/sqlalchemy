@@ -54,7 +54,7 @@ class QueryTest(testbase.ORMTest):
     def define_tables(self, meta):
         # a slight dirty trick here. 
         meta.tables = metadata.tables
-        metadata.connect(meta.engine)
+        metadata.connect(meta.bind)
         
     def setup_mappers(self):
         mapper(User, users, properties={

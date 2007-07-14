@@ -150,6 +150,9 @@ class MapperTest(MapperSuperTest):
         def bad_expunge(foo):
             raise Exception("this exception should be stated as a warning")
 
+        import warnings
+        warnings.filterwarnings("always", r".*this exception should be stated as a warning")
+
         sess.expunge = bad_expunge
         try:
             Foo(_sa_session=sess)
@@ -660,7 +663,7 @@ class DeferredTest(MapperSuperTest):
             o2 = l[2]
             print o2.description
 
-        orderby = str(orders.default_order_by()[0].compile(engine=db))
+        orderby = str(orders.default_order_by()[0].compile(bind=db))
         self.assert_sql(db, go, [
             ("SELECT orders.order_id AS orders_order_id, orders.user_id AS orders_user_id, orders.isopen AS orders_isopen FROM orders ORDER BY %s" % orderby, {}),
             ("SELECT orders.description AS orders_description FROM orders WHERE orders.order_id = :orders_order_id", {'orders_order_id':3})

@@ -218,12 +218,12 @@ def select(columns=None, whereclause=None, from_obj=[], **kwargs):
           and oracle supports "nowait" which translates to 
           ``FOR UPDATE NOWAIT``.
         
-        engine=None
-          an ``Engine`` instance to which the resulting ``Select`` 
+        bind=None
+          an ``Engine`` or ``Connection`` instance to which the resulting ``Select`` 
           object will be bound.  The ``Select`` object will otherwise
-          automatically bind to whatever ``Engine`` instances can be located
+          automatically bind to whatever ``Connectable`` instances can be located
           within its contained ``ClauseElement`` members.
-      
+        
         limit=None
           a numerical value which usually compiles to a ``LIMIT`` expression
           in the resulting select.  Databases that don't support ``LIMIT``
@@ -708,7 +708,7 @@ def bindparam(key, value=None, type=None, shortname=None, unique=False):
     else:
         return _BindParamClause(key, value, type=type, shortname=shortname, unique=unique)
 
-def text(text, engine=None, *args, **kwargs):
+def text(text, bind=None, *args, **kwargs):
     """Create literal text to be inserted into a query.
 
     When constructing a query from a ``select()``, ``update()``,
@@ -723,9 +723,9 @@ def text(text, engine=None, *args, **kwargs):
         to specify bind parameters; they will be compiled to their
         engine-specific format.
 
-      engine
-        An optional engine to be used for this text query.
-
+      bind
+        An optional connection or engine to be used for this text query.
+        
       bindparams
         A list of ``bindparam()`` instances which can be used to define
         the types and/or initial values for the bind parameters within
@@ -742,7 +742,7 @@ def text(text, engine=None, *args, **kwargs):
 
     """
 
-    return _TextClause(text, engine=engine, *args, **kwargs)
+    return _TextClause(text, bind=bind, *args, **kwargs)
 
 def null():
     """Return a ``_Null`` object, which compiles to ``NULL`` in a sql statement."""
@@ -1040,22 +1040,20 @@ class ClauseElement(object):
         """
 
         try:
-            if self._engine is not None:
-                return self._engine
+            if self._bind is not None:
+                return self._bind
         except AttributeError:
             pass
         for f in self._get_from_objects():
             if f is self:
                 continue
-            engine = f.engine
+            engine = f.bind
             if engine is not None:
                 return engine
         else:
             return None
-
-    engine = property(lambda s: s._find_engine(),
-                      doc="""Attempts to locate a Engine within this ClauseElement
-                      structure, or returns None if none found.""")
+    
+    bind = property(lambda s:s._find_engine(), doc="""Returns the Engine or Connection to which this ClauseElement is bound, or None if none found.""")
 
     def execute(self, *multiparams, **params):
         """Compile and execute this ``ClauseElement``."""
@@ -1064,7 +1062,7 @@ class ClauseElement(object):
             compile_params = multiparams[0]
         else:
             compile_params = params
-        return self.compile(engine=self.engine, parameters=compile_params).execute(*multiparams, **params)
+        return self.compile(bind=self.bind, parameters=compile_params).execute(*multiparams, **params)
 
     def scalar(self, *multiparams, **params):
         """Compile and execute this ``ClauseElement``, returning the
@@ -1073,7 +1071,7 @@ class ClauseElement(object):
 
         return self.execute(*multiparams, **params).scalar()
 
-    def compile(self, engine=None, parameters=None, compiler=None, dialect=None):
+    def compile(self, bind=None, parameters=None, compiler=None, dialect=None):
         """Compile this SQL expression.
 
         Uses the given ``Compiler``, or the given ``AbstractDialect``
@@ -1102,10 +1100,10 @@ class ClauseElement(object):
         if compiler is None:
             if dialect is not None:
                 compiler = dialect.compiler(self, parameters)
-            elif engine is not None:
-                compiler = engine.compiler(self, parameters)
-            elif self.engine is not None:
-                compiler = self.engine.compiler(self, parameters)
+            elif bind is not None:
+                compiler = bind.compiler(self, parameters)
+            elif self.bind is not None:
+                compiler = self.bind.compiler(self, parameters)
 
         if compiler is None:
             import sqlalchemy.ansisql as ansisql
@@ -1473,6 +1471,25 @@ class ColumnCollection(util.OrderedProperties):
         # "True" value (i.e. a BinaryClause...)
         return col in util.Set(self)
 
+class ColumnSet(util.OrderedSet):
+    def contains_column(self, col):
+        return col in self
+        
+    def extend(self, cols):
+        for col in cols:
+            self.add(col)
+
+    def __add__(self, other):
+        return list(self) + list(other)
+
+    def __eq__(self, other):
+        l = []
+        for c in other:
+            for local in self:
+                if c.shares_lineage(local):
+                    l.append(c==local)
+        return and_(*l)
+            
 class FromClause(Selectable):
     """Represent an element that can be used within the ``FROM``
     clause of a ``SELECT`` statement.
@@ -1616,7 +1633,7 @@ class FromClause(Selectable):
         """)
     oid_column = property(_get_oid_column)
 
-    def _export_columns(self):
+    def _export_columns(self, columns=None):
         """Initialize column collections.
 
         The collections include the primary key, foreign keys, list of
@@ -1629,14 +1646,17 @@ class FromClause(Selectable):
         its parent ``Selectable`` is this ``FromClause``.
         """
 
-        if hasattr(self, '_columns'):
+        if hasattr(self, '_columns') and columns is None:
             # TODO: put a mutex here ?  this is a key place for threading probs
             return
         self._columns = ColumnCollection()
-        self._primary_key = ColumnCollection()
+        self._primary_key = ColumnSet()
         self._foreign_keys = util.Set()
         self._orig_cols = {}
-        for co in self._flatten_exportable_columns():
+
+        if columns is None:
+            columns = self._flatten_exportable_columns()
+        for co in columns:
             cp = self._proxy_column(co)
             for ci in cp.orig_set:
                 cx = self._orig_cols.get(ci)
@@ -1756,8 +1776,8 @@ class _TextClause(ClauseElement):
 
     __visit_name__ = 'textclause'
     
-    def __init__(self, text = "", engine=None, bindparams=None, typemap=None):
-        self._engine = engine
+    def __init__(self, text = "", bind=None, bindparams=None, typemap=None):
+        self._bind = bind
         self.bindparams = {}
         self.typemap = typemap
         if typemap is not None:
@@ -1883,7 +1903,7 @@ class _CalculatedClause(ColumnElement):
     def __init__(self, name, *clauses, **kwargs):
         self.name = name
         self.type = sqltypes.to_instance(kwargs.get('type', None))
-        self._engine = kwargs.get('engine', None)
+        self._bind = kwargs.get('bind', None)
         self.group = kwargs.pop('group', True)
         self.clauses = ClauseList(operator=kwargs.get('operator', None), group_contents=kwargs.get('group_contents', True), *clauses)
         if self.group:
@@ -1928,7 +1948,7 @@ class _Function(_CalculatedClause, FromClause):
         self.type = sqltypes.to_instance(kwargs.get('type', None))
         self.packagenames = kwargs.get('packagenames', None) or []
         kwargs['operator'] = ','
-        self._engine = kwargs.get('engine', None)
+        self._bind = kwargs.get('bind', None)
         _CalculatedClause.__init__(self, name, **kwargs)
         for c in clauses:
             self.append(c)
@@ -2091,15 +2111,38 @@ class Join(FromClause):
     encodedname = property(lambda s: s.name.encode('ascii', 'backslashreplace'))
 
     def _init_primary_key(self):
-        pkcol = util.OrderedSet()
-        for col in self._flatten_exportable_columns():
-            if col.primary_key:
-                pkcol.add(col)
-        for col in list(pkcol):
-            for f in col.foreign_keys:
-                if f.column in pkcol:
-                    pkcol.remove(col)
-        self.primary_key.extend(pkcol)
+        pkcol = util.Set([c for c in self._flatten_exportable_columns() if c.primary_key])
+    
+        equivs = {}
+        def add_equiv(a, b):
+            for x, y in ((a, b), (b, a)):
+                if x in equivs:
+                    equivs[x].add(y)
+                else:
+                    equivs[x] = util.Set([y])
+                    
+        class BinaryVisitor(ClauseVisitor):
+            def visit_binary(self, binary):
+                if binary.operator == '=':
+                    add_equiv(binary.left, binary.right)
+        BinaryVisitor().traverse(self.onclause)
+        
+        for col in pkcol:
+            for fk in col.foreign_keys:
+                if fk.column in pkcol:
+                    add_equiv(col, fk.column)
+                    
+        omit = util.Set()
+        for col in pkcol:
+            p = col
+            for c in equivs.get(col, util.Set()):
+                if p.references(c) or (c.primary_key and not p.primary_key):
+                    omit.add(p)
+                    p = c
+            
+        self.__primary_key = ColumnSet([c for c in self._flatten_exportable_columns() if c.primary_key and c not in omit])
+
+    primary_key = property(lambda s:s.__primary_key)
         
     def _locate_oid_column(self):
         return self.left.oid_column
@@ -2185,7 +2228,11 @@ class Join(FromClause):
                 collist.append(c)
         self.__folded_equivalents = collist
         return self.__folded_equivalents
-        
+
+    folded_equivalents = property(_get_folded_equivalents, doc="Returns the column list of this Join with all equivalently-named, "
+                                                            "equated columns folded into one column, where 'equated' means they are "
+                                                            "equated to each other in the ON clause of this join.")    
+    
     def select(self, whereclause = None, fold_equivalents=False, **kwargs):
         """Create a ``Select`` from this ``Join``.
         
@@ -2205,13 +2252,13 @@ class Join(FromClause):
           
         """
         if fold_equivalents:
-            collist = self._get_folded_equivalents()
+            collist = self.folded_equivalents
         else:
             collist = [self.left, self.right]
             
         return select(collist, whereclause, from_obj=[self], **kwargs)
 
-    engine = property(lambda s:s.left.engine or s.right.engine)
+    bind = property(lambda s:s.left.bind or s.right.bind)
 
     def alias(self, name=None):
         """Create a ``Select`` out of this ``Join`` clause and return an ``Alias`` of it.
@@ -2299,7 +2346,7 @@ class Alias(FromClause):
     def _group_parenthesized(self):
         return False
 
-    engine = property(lambda s: s.selectable.engine)
+    bind = property(lambda s: s.selectable.bind)
 
 class _Grouping(ColumnElement):
     def __init__(self, elem):
@@ -2492,12 +2539,8 @@ class TableClause(FromClause):
         super(TableClause, self).__init__(name)
         self.name = self.fullname = name
         self.encodedname = self.name.encode('ascii', 'backslashreplace')
-        self._columns = ColumnCollection()
-        self._foreign_keys = util.OrderedSet()
-        self._primary_key = ColumnCollection()
-        for c in columns:
-            self.append_column(c)
         self._oid_column = _ColumnClause('oid', self, _is_oid=True)
+        self._export_columns(columns)
 
     def _clone(self):
         # TableClause is immutable
@@ -2512,6 +2555,10 @@ class TableClause(FromClause):
 
     def _locate_oid_column(self):
         return self._oid_column
+
+    def _proxy_column(self, c):
+        self.append_column(c)
+        return c
 
     def _orig_columns(self):
         try:
@@ -2530,7 +2577,7 @@ class TableClause(FromClause):
             return [c for c in self.c]
         else:
             return []
-            
+
     def _exportable_columns(self):
         raise NotImplementedError()
 
@@ -2571,12 +2618,12 @@ class TableClause(FromClause):
 class _SelectBaseMixin(object):
     """Base class for ``Select`` and ``CompoundSelects``."""
 
-    def __init__(self, use_labels=False, for_update=False, limit=None, offset=None, order_by=None, group_by=None, connectable=None, scalar=False, engine=None):
+    def __init__(self, use_labels=False, for_update=False, limit=None, offset=None, order_by=None, group_by=None, bind=None, scalar=False):
         self.use_labels = use_labels
         self.for_update = for_update
         self._limit = limit
         self._offset = offset
-        self._engine = connectable or engine
+        self._bind = bind
         self.is_scalar = scalar
         if self.is_scalar:
             # allow corresponding_column to return None
@@ -3001,14 +3048,14 @@ class Select(_SelectBaseMixin, FromClause):
         object, or searched within the from clauses for one.
         """
 
-        if self._engine is not None:
-            return self._engine
+        if self._bind is not None:
+            return self._bind
         for f in self._froms:
             if f is self:
                 continue
-            e = f.engine
+            e = f.bind
             if e is not None:
-                self._engine = e
+                self._bind = e
                 return e
         # look through the columns (largely synomous with looking
         # through the FROMs except in the case of _CalculatedClause/_Function)
@@ -3016,9 +3063,9 @@ class Select(_SelectBaseMixin, FromClause):
             for c in cc.columns:
                 if getattr(c, 'table', None) is self:
                     continue
-                e = c.engine
+                e = c.bind
                 if e is not None:
-                    self._engine = e
+                    self._bind = e
                     return e
         return None
 
@@ -3078,7 +3125,7 @@ class _UpdateBase(ClauseElement):
         return parameters
 
     def _find_engine(self):
-        return self.table.engine
+        return self.table.bind
 
 class Insert(_UpdateBase):
     def __init__(self, table, values=None):

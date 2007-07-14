@@ -247,7 +247,7 @@ class BinaryTest(AssertMixin):
         
         for stmt in (
             binary_table.select(order_by=binary_table.c.primary_id),
-            text("select * from binary_table order by binary_table.primary_id", typemap={'pickled':PickleType}, engine=testbase.db)
+            text("select * from binary_table order by binary_table.primary_id", typemap={'pickled':PickleType}, bind=testbase.db)
         ):
             l = stmt.execute().fetchall()
             print type(stream1), type(l[0]['data']), type(l[0]['data_slice'])

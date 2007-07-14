@@ -10,7 +10,7 @@ from sqlalchemy.orm import util as mapperutil
 from sqlalchemy.orm.util import ExtensionCarrier
 from sqlalchemy.orm import sync
 from sqlalchemy.orm.interfaces import MapperProperty, MapperOption, OperationContext, EXT_PASS, MapperExtension, SynonymProperty
-import weakref
+import weakref, warnings
 
 __all__ = ['Mapper', 'class_mapper', 'object_mapper', 'mapper_registry']
 
@@ -543,9 +543,11 @@ class Mapper(object):
         # against the "mapped_table" of this mapper.
         equivalent_columns = self._get_equivalent_columns()
         
-        primary_key = sql.ColumnCollection()
+        primary_key = sql.ColumnSet()
 
         for col in (self.primary_key_argument or self.pks_by_table[self.mapped_table]):
+            #primary_key.add(col)
+            #continue
             c = self.mapped_table.corresponding_column(col, raiseerr=False)
             if c is None:
                 for cc in equivalent_columns[col]:
@@ -690,6 +692,8 @@ class Mapper(object):
                     prop = prop.copy()
                     prop.set_parent(self)
                     self.__props[column_key] = prop
+                if column in self.primary_key and prop.columns[-1] in self.primary_key:
+                    warnings.warn(RuntimeWarning("On mapper %s, primary key column '%s' is being combined with distinct primary key column '%s' in attribute '%s'.  Use explicit properties to give each column its own mapped attribute name." % (str(self), str(column), str(prop.columns[-1]), column_key)))
                 prop.columns.append(column)
                 self.__log("appending to existing ColumnProperty %s" % (column_key))
             else:
@@ -1360,7 +1364,7 @@ class Mapper(object):
                 statement = table.delete(clause)
                 c = connection.execute(statement, delete)
                 if c.supports_sane_rowcount() and c.rowcount != len(delete):
-                    raise exceptions.ConcurrentModificationError("Updated rowcount %d does not match number of objects updated %d" % (c.cursor.rowcount, len(delete)))
+                    raise exceptions.ConcurrentModificationError("Updated rowcount %d does not match number of objects updated %d" % (c.rowcount, len(delete)))
 
         for obj in deleted_objects:
             for mapper in object_mapper(obj).iterate_to_root():

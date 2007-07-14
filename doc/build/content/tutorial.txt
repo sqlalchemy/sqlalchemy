@@ -105,7 +105,7 @@ With `metadata` as our established home for tables, lets make a Table for it:
     >>> users_table = Table('users', metadata,
     ...     Column('user_id', Integer, primary_key=True),
     ...     Column('user_name', String(40)),
-    ...     Column('password', String(10))
+    ...     Column('password', String(15))
     ... )
 
 As you might have guessed, we have just defined a table named `users` which has three columns: `user_id` (which is a primary key column), `user_name` and `password`. Currently it is just an object that doesn't necessarily correspond to an existing table in our database.  To actually create the table, we use the `create()` method.  To make it interesting, we will have SQLAlchemy echo the SQL statements it sends to the database, by setting the `echo` flag on the `Engine` associated with our `MetaData`:
@@ -116,7 +116,7 @@ As you might have guessed, we have just defined a table named `users` which has 
     CREATE TABLE users (
         user_id INTEGER NOT NULL,
         user_name VARCHAR(40),
-        password VARCHAR(10),
+        password VARCHAR(15),
         PRIMARY KEY (user_id)
     )
     ...
