@@ -9,7 +9,7 @@ higher-level statement-construction, connection-management,
 execution and result contexts."""
 
 from sqlalchemy import exceptions, sql, schema, util, types, logging
-import StringIO, sys, re
+import StringIO, sys, re, random
 
 
 class Dialect(sql.AbstractDialect):
@@ -208,6 +208,46 @@ class Dialect(sql.AbstractDialect):
 
     def do_commit(self, connection):
         """Provide an implementation of *connection.commit()*, given a DBAPI connection."""
+
+        raise NotImplementedError()
+
+    def do_savepoint(self, connection, name):
+        """Create a savepoint with the given name on a SQLAlchemy connection."""
+
+        raise NotImplementedError()
+
+    def do_rollback_to_savepoint(self, connection, name):
+        """Rollback a SQL Alchemy connection to the named savepoint."""
+
+        raise NotImplementedError()
+
+    def do_release_savepoint(self, connection, name):
+        """Release the named savepoint on a SQL Alchemy connection."""
+
+        raise NotImplementedError()
+
+    def do_begin_twophase(self, connection, xid):
+        """Begin a two phase transaction on the given connection."""
+
+        raise NotImplementedError()
+
+    def do_prepare_twophase(self, connection, xid):
+        """Prepare a two phase transaction on the given connection."""
+
+        raise NotImplementedError()
+
+    def do_rollback_twophase(self, connection, xid, is_prepared=True, recover=False):
+        """Rollback a two phase transaction on the given connection."""
+
+        raise NotImplementedError()
+
+    def do_commit_twophase(self, connection, xid, is_prepared=True, recover=False):
+        """Commit a two phase transaction on the given connection."""
+
+        raise NotImplementedError()
+
+    def do_recover_twophase(self, connection):
+        """Recover list of uncommited prepared two phase transaction identifiers on the given connection."""
 
         raise NotImplementedError()
 
@@ -475,6 +515,7 @@ class Connection(Connectable):
         self.__connection = connection or engine.raw_connection()
         self.__transaction = None
         self.__close_with_result = close_with_result
+        self.__savepoint_seq = 0
 
     def _get_connection(self):
         try:
@@ -486,9 +527,6 @@ class Connection(Connectable):
     dialect = property(lambda s:s.__engine.dialect, doc="Dialect used by this Connection.")
     connection = property(_get_connection, doc="The underlying DBAPI connection managed by this Connection.")
     should_close_with_result = property(lambda s:s.__close_with_result, doc="Indicates if this Connection should be closed when a corresponding ResultProxy is closed; this is essentially an auto-release mode.")
-
-    def _create_transaction(self, parent):
-        return Transaction(self, parent)
 
     def connect(self):
         """connect() is implemented to return self so that an incoming Engine or Connection object can be treated similarly."""
@@ -522,12 +560,34 @@ class Connection(Connectable):
         
         self.__connection.detach()
         
-    def begin(self):
+    def begin(self, nested=False):
         if self.__transaction is None:
-            self.__transaction = self._create_transaction(None)
-            return self.__transaction
+            self.__transaction = RootTransaction(self)
+        elif nested:
+            self.__transaction = NestedTransaction(self, self.__transaction)
         else:
-            return self._create_transaction(self.__transaction)
+            return Transaction(self, self.__transaction)
+        return self.__transaction
+
+    def begin_nested(self):
+        return self.begin(nested=True)
+    
+    def begin_twophase(self, xid=None):
+        if self.__transaction is not None:
+            raise exceptions.InvalidRequestError("Cannot start a two phase transaction when a transaction is already started.")
+        if xid is None:
+            xid = "_sa_%032x" % random.randint(0,2**128)
+        self.__transaction = TwoPhaseTransaction(self, xid)
+        return self.__transaction
+        
+    def recover_twophase(self):
+        return self.__engine.dialect.do_recover_twophase(self)
+    
+    def rollback_prepared(self, xid, recover=False):
+        self.__engine.dialect.do_rollback_twophase(self, xid, recover=recover)
+    
+    def commit_prepared(self, xid, recover=False):
+        self.__engine.dialect.do_commit_twophase(self, xid, recover=recover)
 
     def in_transaction(self):
         return self.__transaction is not None
@@ -557,6 +617,54 @@ class Connection(Connectable):
                 self.__engine.dialect.do_commit(self.connection)
             except Exception, e:
                 raise exceptions.SQLError(None, None, e)
+        self.__transaction = None
+
+    def _savepoint_impl(self, name=None):
+        if name is None:
+            self.__savepoint_seq += 1
+            name = '__sa_savepoint_%s' % self.__savepoint_seq
+        if self.__connection.is_valid:
+            try:
+                self.__engine.dialect.do_savepoint(self, name)
+                return name
+            except Exception, e:
+                raise exceptions.SQLError(None, None, e)
+    
+    def _rollback_to_savepoint_impl(self, name, context):
+        if self.__connection.is_valid:
+            try:
+                self.__engine.dialect.do_rollback_to_savepoint(self, name)
+            except Exception, e:
+                raise exceptions.SQLError(None, None, e)
+        self.__transaction = context
+    
+    def _release_savepoint_impl(self, name, context):
+        if self.__connection.is_valid:
+            try:
+                self.__engine.dialect.do_release_savepoint(self, name)
+            except Exception, e:
+                raise exceptions.SQLError(None, None, e)
+        self.__transaction = context
+    
+    def _begin_twophase_impl(self, xid):
+        if self.__connection.is_valid:
+            self.__engine.dialect.do_begin_twophase(self, xid)
+    
+    def _prepare_twophase_impl(self, xid):
+        if self.__connection.is_valid:
+            assert isinstance(self.__transaction, TwoPhaseTransaction)
+            self.__engine.dialect.do_prepare_twophase(self, xid)
+    
+    def _rollback_twophase_impl(self, xid, is_prepared):
+        if self.__connection.is_valid:
+            assert isinstance(self.__transaction, TwoPhaseTransaction)
+            self.__engine.dialect.do_rollback_twophase(self, xid, is_prepared)
+        self.__transaction = None
+
+    def _commit_twophase_impl(self, xid, is_prepared):
+        if self.__connection.is_valid:
+            assert isinstance(self.__transaction, TwoPhaseTransaction)
+            self.__engine.dialect.do_commit_twophase(self, xid, is_prepared)
         self.__transaction = None
 
     def _autocommit(self, statement):
@@ -722,30 +830,71 @@ class Transaction(object):
     """
 
     def __init__(self, connection, parent):
-        self.__connection = connection
-        self.__parent = parent or self
-        self.__is_active = True
-        if self.__parent is self:
-            self.__connection._begin_impl()
+        self._connection = connection
+        self._parent = parent or self
+        self._is_active = True
 
-    connection = property(lambda s:s.__connection, doc="The Connection object referenced by this Transaction")
-    is_active = property(lambda s:s.__is_active)
+    connection = property(lambda s:s._connection, doc="The Connection object referenced by this Transaction")
+    is_active = property(lambda s:s._is_active)
 
     def rollback(self):
-        if not self.__parent.__is_active:
+        if not self._parent._is_active:
             return
-        if self.__parent is self:
-            self.__connection._rollback_impl()
-            self.__is_active = False
-        else:
-            self.__parent.rollback()
+        self._is_active = False
+        self._do_rollback()
+    
+    def _do_rollback(self):
+        self._parent.rollback()
 
     def commit(self):
-        if not self.__parent.__is_active:
+        if not self._parent._is_active:
             raise exceptions.InvalidRequestError("This transaction is inactive")
-        if self.__parent is self:
-            self.__connection._commit_impl()
-            self.__is_active = False
+        self._is_active = False
+        self._do_commit()
+    
+    def _do_commit(self):
+        pass
+
+class RootTransaction(Transaction):
+    def __init__(self, connection):
+        super(RootTransaction, self).__init__(connection, None)
+        self._connection._begin_impl()
+    
+    def _do_rollback(self):
+        self._connection._rollback_impl()
+
+    def _do_commit(self):
+        self._connection._commit_impl()
+
+class NestedTransaction(Transaction):
+    def __init__(self, connection, parent):
+        super(NestedTransaction, self).__init__(connection, parent)
+        self._savepoint = self._connection._savepoint_impl()
+    
+    def _do_rollback(self):
+        self._connection._rollback_to_savepoint_impl(self._savepoint, self._parent)
+
+    def _do_commit(self):
+        self._connection._release_savepoint_impl(self._savepoint, self._parent)
+
+class TwoPhaseTransaction(Transaction):
+    def __init__(self, connection, xid):
+        super(TwoPhaseTransaction, self).__init__(connection, None)
+        self._is_prepared = False
+        self.xid = xid
+        self._connection._begin_twophase_impl(self.xid)
+    
+    def prepare(self):
+        if not self._parent._is_active:
+            raise exceptions.InvalidRequestError("This transaction is inactive")
+        self._connection._prepare_twophase_impl(self.xid)
+        self._is_prepared = True
+    
+    def _do_rollback(self):
+        self._connection._rollback_twophase_impl(self.xid, self._is_prepared)
+    
+    def commit(self):
+        self._connection._commit_twophase_impl(self.xid, self._is_prepared)
 
 class Engine(Connectable):
     """

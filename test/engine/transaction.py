@@ -115,7 +115,153 @@ class TransactionTest(testbase.PersistTest):
         result = connection.execute("select * from query_users")
         assert len(result.fetchall()) == 0
         connection.close()
+    
+    @testbase.unsupported('sqlite')
+    def testnestedsubtransactionrollback(self):
+        connection = testbase.db.connect()
+        transaction = connection.begin()
+        connection.execute(users.insert(), user_id=1, user_name='user1')
+        trans2 = connection.begin_nested()
+        connection.execute(users.insert(), user_id=2, user_name='user2')
+        trans2.rollback()
+        connection.execute(users.insert(), user_id=3, user_name='user3')
+        transaction.commit()
         
+        self.assertEquals(
+            connection.execute(select([users.c.user_id]).order_by(users.c.user_id)).fetchall(),
+            [(1,),(3,)]
+        )
+        connection.close()
+
+    @testbase.unsupported('sqlite')
+    def testnestedsubtransactioncommit(self):
+        connection = testbase.db.connect()
+        transaction = connection.begin()
+        connection.execute(users.insert(), user_id=1, user_name='user1')
+        trans2 = connection.begin_nested()
+        connection.execute(users.insert(), user_id=2, user_name='user2')
+        trans2.commit()
+        connection.execute(users.insert(), user_id=3, user_name='user3')
+        transaction.commit()
+        
+        self.assertEquals(
+            connection.execute(select([users.c.user_id]).order_by(users.c.user_id)).fetchall(),
+            [(1,),(2,),(3,)]
+        )
+        connection.close()
+
+    @testbase.unsupported('sqlite')
+    def testrollbacktosubtransaction(self):
+        connection = testbase.db.connect()
+        transaction = connection.begin()
+        connection.execute(users.insert(), user_id=1, user_name='user1')
+        trans2 = connection.begin_nested()
+        connection.execute(users.insert(), user_id=2, user_name='user2')
+        trans3 = connection.begin()
+        connection.execute(users.insert(), user_id=3, user_name='user3')
+        trans3.rollback()
+        connection.execute(users.insert(), user_id=4, user_name='user4')
+        transaction.commit()
+        
+        self.assertEquals(
+            connection.execute(select([users.c.user_id]).order_by(users.c.user_id)).fetchall(),
+            [(1,),(4,)]
+        )
+        connection.close()
+    
+    @testbase.supported('postgres', 'mysql')
+    def testtwophasetransaction(self):
+        connection = testbase.db.connect()
+        
+        transaction = connection.begin_twophase()
+        connection.execute(users.insert(), user_id=1, user_name='user1')
+        transaction.prepare()
+        transaction.commit()
+        
+        transaction = connection.begin_twophase()
+        connection.execute(users.insert(), user_id=2, user_name='user2')
+        transaction.commit()
+        
+        transaction = connection.begin_twophase()
+        connection.execute(users.insert(), user_id=3, user_name='user3')
+        transaction.rollback()
+        
+        transaction = connection.begin_twophase()
+        connection.execute(users.insert(), user_id=4, user_name='user4')
+        transaction.prepare()
+        transaction.rollback()
+        
+        self.assertEquals(
+            connection.execute(select([users.c.user_id]).order_by(users.c.user_id)).fetchall(),
+            [(1,),(2,)]
+        )
+        connection.close()
+
+    @testbase.supported('postgres', 'mysql')
+    def testmixedtransaction(self):
+        connection = testbase.db.connect()
+        
+        transaction = connection.begin_twophase()
+        connection.execute(users.insert(), user_id=1, user_name='user1')
+        
+        transaction2 = connection.begin()
+        connection.execute(users.insert(), user_id=2, user_name='user2')
+        
+        transaction3 = connection.begin_nested()
+        connection.execute(users.insert(), user_id=3, user_name='user3')
+        
+        transaction4 = connection.begin()
+        connection.execute(users.insert(), user_id=4, user_name='user4')
+        transaction4.commit()
+        
+        transaction3.rollback()
+        
+        connection.execute(users.insert(), user_id=5, user_name='user5')
+        
+        transaction2.commit()
+        
+        transaction.prepare()
+        
+        transaction.commit()
+        
+        self.assertEquals(
+            connection.execute(select([users.c.user_id]).order_by(users.c.user_id)).fetchall(),
+            [(1,),(2,),(5,)]
+        )
+        connection.close()
+        
+    @testbase.supported('postgres')
+    def testtwophaserecover(self):
+        # MySQL recovery doesn't currently seem to work correctly
+        # Prepared transactions disappear when connections are closed and even
+        # when they aren't it doesn't seem possible to use the recovery id.
+        connection = testbase.db.connect()
+        
+        transaction = connection.begin_twophase()
+        connection.execute(users.insert(), user_id=1, user_name='user1')
+        transaction.prepare()
+        
+        connection.close()
+        connection2 = testbase.db.connect()
+        
+        self.assertEquals(
+            connection2.execute(select([users.c.user_id]).order_by(users.c.user_id)).fetchall(),
+            []
+        )
+        
+        recoverables = connection2.recover_twophase()
+        self.assertTrue(
+            transaction.xid in recoverables
+        )
+        
+        connection2.commit_prepared(transaction.xid, recover=True)
+
+        self.assertEquals(
+            connection2.execute(select([users.c.user_id]).order_by(users.c.user_id)).fetchall(),
+            [(1,)]
+        )
+        connection2.close()
+
 class AutoRollbackTest(testbase.PersistTest):
     def setUpAll(self):
         global metadata

@@ -3114,3 +3114,18 @@ class Delete(_UpdateBase):
             return self._whereclause,
         else:
             return ()
+
+class _IdentifiedClause(ClauseElement):
+    def __init__(self, ident):
+        self.ident = ident
+    def supports_execution(self):
+        return True
+
+class SavepointClause(_IdentifiedClause):
+    pass
+
+class RollbackToSavepointClause(_IdentifiedClause):
+    pass
+
+class ReleaseSavepointClause(_IdentifiedClause):
+    pass

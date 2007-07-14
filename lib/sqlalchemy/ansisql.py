@@ -793,7 +793,19 @@ class ANSICompiler(engine.Compiled):
             text += " WHERE " + self.get_str(delete_stmt._whereclause)
 
         self.strings[delete_stmt] = text
+        
+    def visit_savepoint(self, savepoint_stmt):
+        text = "SAVEPOINT %s" % self.preparer.format_savepoint(savepoint_stmt.ident)
+        self.strings[savepoint_stmt] = text
 
+    def visit_rollback_to_savepoint(self, savepoint_stmt):
+        text = "ROLLBACK TO SAVEPOINT %s" % self.preparer.format_savepoint(savepoint_stmt.ident)
+        self.strings[savepoint_stmt] = text
+    
+    def visit_release_savepoint(self, savepoint_stmt):
+        text = "RELEASE SAVEPOINT %s" % self.preparer.format_savepoint(savepoint_stmt.ident)
+        self.strings[savepoint_stmt] = text
+    
     def __str__(self):
         return self.get_str(self.statement)
 
@@ -1079,6 +1091,9 @@ class ANSIIdentifierPreparer(object):
 
     def format_alias(self, alias):
         return self.__generic_obj_format(alias, alias.name)
+
+    def format_savepoint(self, savepoint):
+        return self.__generic_obj_format(savepoint, savepoint)
 
     def format_table(self, table, use_schema=True, name=None):
         """Prepare a quoted table and schema name."""

@@ -70,11 +70,8 @@ class TLConnection(base.Connection):
         self.__opencount += 1
         return self
 
-    def _create_transaction(self, parent):
-        return TLTransaction(self, parent)
-
     def _begin(self):
-        return base.Connection.begin(self)
+        return TLTransaction(self)
 
     def in_transaction(self):
         return self.session.in_transaction()
@@ -91,7 +88,7 @@ class TLConnection(base.Connection):
         self.__opencount = 0
         base.Connection.close(self)
 
-class TLTransaction(base.Transaction):
+class TLTransaction(base.RootTransaction):
     def _commit_impl(self):
         base.Transaction.commit(self)
 

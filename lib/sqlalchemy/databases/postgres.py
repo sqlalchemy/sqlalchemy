@@ -237,6 +237,34 @@ class PGDialect(ansisql.ANSIDialect):
     def schemadropper(self, *args, **kwargs):
         return PGSchemaDropper(self, *args, **kwargs)
 
+    def do_begin_twophase(self, connection, xid):
+        self.do_begin(connection.connection)
+
+    def do_prepare_twophase(self, connection, xid):
+        connection.execute(sql.text("PREPARE TRANSACTION %(tid)s", bindparams=[sql.bindparam('tid', xid)]))
+
+    def do_rollback_twophase(self, connection, xid, is_prepared=True, recover=False):
+        if is_prepared:
+            if recover:
+                #FIXME: ugly hack to get out of transaction context when commiting recoverable transactions
+                # Must find out a way how to make the dbapi not open a transaction.
+                connection.execute(sql.text("ROLLBACK"))
+            connection.execute(sql.text("ROLLBACK PREPARED %(tid)s", bindparams=[sql.bindparam('tid', xid)]))
+        else:
+            self.do_rollback(connection.connection)
+
+    def do_commit_twophase(self, connection, xid, is_prepared=True, recover=False):
+        if is_prepared:
+            if recover:
+                connection.execute(sql.text("ROLLBACK"))
+            connection.execute(sql.text("COMMIT PREPARED %(tid)s", bindparams=[sql.bindparam('tid', xid)]))
+        else:
+            self.do_commit(connection.connection)
+
+    def do_recover_twophase(self, connection):
+        resultset = connection.execute(sql.text("SELECT gid FROM pg_prepared_xacts"))
+        return [row[0] for row in resultset]
+
     def defaultrunner(self, connection, **kwargs):
         return PGDefaultRunner(connection, **kwargs)
 

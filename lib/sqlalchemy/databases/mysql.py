@@ -949,7 +949,7 @@ class MySQLExecutionContext(default.DefaultExecutionContext):
                 self._last_inserted_ids = [self.cursor.lastrowid] + self._last_inserted_ids[1:]
             
     def is_select(self):
-        return re.match(r'SELECT|SHOW|DESCRIBE', self.statement.lstrip(), re.I) is not None
+        return re.match(r'SELECT|SHOW|DESCRIBE|XA RECOVER', self.statement.lstrip(), re.I) is not None
 
 class MySQLDialect(ansisql.ANSIDialect):
     def __init__(self, **kwargs):
@@ -1037,6 +1037,27 @@ class MySQLDialect(ansisql.ANSIDialect):
             connection.rollback()
         except:
             pass
+
+    def do_begin_twophase(self, connection, xid):
+        connection.execute(sql.text("XA BEGIN :xid", bindparams=[sql.bindparam('xid',xid)]))
+
+    def do_prepare_twophase(self, connection, xid):
+        connection.execute(sql.text("XA END :xid", bindparams=[sql.bindparam('xid',xid)]))
+        connection.execute(sql.text("XA PREPARE :xid", bindparams=[sql.bindparam('xid',xid)]))
+
+    def do_rollback_twophase(self, connection, xid, is_prepared=True, recover=False):
+        if not is_prepared:
+            connection.execute(sql.text("XA END :xid", bindparams=[sql.bindparam('xid',xid)]))
+        connection.execute(sql.text("XA ROLLBACK :xid", bindparams=[sql.bindparam('xid',xid)]))
+
+    def do_commit_twophase(self, connection, xid, is_prepared=True, recover=False):
+        if not is_prepared:
+            self.do_prepare_twophase(connection, xid)
+        connection.execute(sql.text("XA COMMIT :xid", bindparams=[sql.bindparam('xid',xid)]))
+    
+    def do_recover_twophase(self, connection):
+        resultset = connection.execute(sql.text("XA RECOVER"))
+        return [row['data'][0:row['gtrid_length']] for row in resultset]
 
     def is_disconnect(self, e):
         return isinstance(e, self.dbapi.OperationalError) and e.args[0] in (2006, 2013, 2014, 2045, 2055)

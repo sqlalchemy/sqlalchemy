@@ -95,6 +95,15 @@ class DefaultDialect(base.Dialect):
 
         #print "ENGINE COMMIT ON ", connection.connection
         connection.commit()
+        
+    def do_savepoint(self, connection, name):
+        connection.execute(sql.SavepointClause(name))
+
+    def do_rollback_to_savepoint(self, connection, name):
+        connection.execute(sql.RollbackToSavepointClause(name))
+
+    def do_release_savepoint(self, connection, name):
+        connection.execute(sql.ReleaseSavepointClause(name))
 
     def do_executemany(self, cursor, statement, parameters, **kwargs):
         cursor.executemany(statement, parameters)

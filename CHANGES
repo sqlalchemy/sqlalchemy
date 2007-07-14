@@ -73,6 +73,9 @@
       columns joined by a "group" to load as "undeferred".
 
 - sql
+  - added support for two phase commit, works with mysql and postgres so far.
+  - added a subtransaction implementation that uses savepoints.
+  - added support for savepoints.
   - DynamicMetaData has been renamed to ThreadLocalMetaData
   - BoundMetaData has been removed- regular MetaData is equivalent
   - significant architectural overhaul to SQL elements (ClauseElement).  
