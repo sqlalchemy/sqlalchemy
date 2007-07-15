@@ -89,7 +89,8 @@ class OracleText(sqltypes.TEXT):
         if value is None:
             return None
         else:
-            return value.read()
+            return super(OracleText, self).convert_result_value(value.read(), dialect)
+
 
 class OracleRaw(sqltypes.Binary):
     def get_col_spec(self):

@@ -67,7 +67,8 @@ class AdaptTest(PersistTest):
         col = Column('', MyDecoratedType)
         dialect_type = col.type.dialect_impl(dialect)
         assert isinstance(dialect_type.impl, oracle.OracleText), repr(dialect_type.impl)
-    
+
+
     def testoracletimestamp(self):
         dialect = oracle.OracleDialect()
         t1 = oracle.OracleTimestamp
@@ -207,6 +208,7 @@ class UnicodeTest(AssertMixin):
         finally:
             db.engine.dialect.convert_unicode = prev_unicode
 
+    @testbase.unsupported('oracle')
     def testlength(self):
         """checks the database correctly understands the length of a unicode string"""
         teststr = u'aaa\x1234'
@@ -362,7 +364,7 @@ class IntervalTest(AssertMixin):
         global interval_table, metadata
         metadata = MetaData(testbase.db)
         interval_table = Table("intervaltable", metadata, 
-            Column("id", Integer, primary_key=True),
+            Column("id", Integer, Sequence('interval_id_seq', optional=True), primary_key=True),
             Column("interval", Interval),
             )
         metadata.create_all()
