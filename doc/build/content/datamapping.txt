@@ -246,6 +246,14 @@ A scalar index returns a scalar result immediately:
     LIMIT 1 OFFSET 2
     {}
 
+Theres also a way to combine scalar results with objects, using `add_column()`.  This is often used for functions and aggregates.  When `add_column()` (or its cousin `add_entity()`, described later) is used, tuples are returned:
+
+    {python}
+    result = session.query(User).add_column(func.max(users_table.c.name)).group_by([c for c in users_table.c]).all()
+    for r in result:
+        print "user:", r[0]
+        print "max name:", r[1]
+
 Later in this chapter, we'll discuss how to configure relations between mapped classes.  Once that's done, we'll discuss how to use table joins in [datamapping_joins](rel:datamapping_joins).
 
 #### Loading by Primary Key {@name=primarykey}
@@ -566,32 +574,24 @@ Each time the `join()` is called on `Query`, the **joinpoint** of the query is m
 
     {python}
     l = session.query(User).join('addresses').
-            filter(addresses_table.c.street=='123 Green Street').
+            filter_by(street='123 Green Street').
             reset_joinpoint().filter_by(user_name='ed').all()
 
 With `reset_joinpoint()`, we can also issue new `join()`s which will start back from the root table.
 
-In all cases, we can get the `User` and the matching `Address` objects back at the same time, by telling the session we want both.  This returns the results as a tuple:
+In all cases, we can get the `User` and the matching `Address` objects back at the same time, by telling the session we want both.  This returns the results as a list of tuples:
 
     {python}
-    l = session.query(User, Address).join('addresses').
+    result = session.query(User, Address).join('addresses').
             filter(addresses_table.c.street=='123 Green Street').all()
-    for result in l:
-        print "User:", l[0]
-        print "Address:", l[1]
+    for r in result:
+        print "User:", r[0]
+        print "Address:", r[1]
 
 The above syntax is shorthand for using the `add_entity()` method:
 
     {python}
     session.query(User).add_entity(Address).join('addresses').all()
-    
-Theres also a way to combine scalar results with objects, using `add_column()`.  This is often used for functions and aggregates.  
-
-    {python}
-    r = session.query(User).add_column(func.max(users_table.c.name)).group_by([c for c in users_table.c]).all()
-    for r in result:
-        print "user:", r[0]
-        print "max name:", r[1]
     
 To join across multiple relationships, specify them in a list.  Below, we load a `ShoppingCart`, limiting its `cartitems` collection to the single item which has a `price` object whose `amount` column is 47.95:
 
@@ -731,11 +731,12 @@ Recall that eager loading has no impact on the results of the query.  What if ou
     addresses_6ca7.user_id AS addresses_6ca7_user_id, 
     addresses_6ca7.zip AS addresses_6ca7_zip, addresses_6ca7.state AS addresses_6ca7_state, 
     addresses_6ca7.street AS addresses_6ca7_street 
-    FROM addresses, users LEFT OUTER JOIN addresses AS addresses_6ca7 ON users.user_id = addresses_6ca7.user_id 
-    WHERE addresses.street = :addresses_street AND users.user_id = addresses.user_id ORDER BY users.oid, addresses_6ca7.oid
+    FROM users JOIN addresses on users.user_id = addresses.user_id 
+    LEFT OUTER JOIN addresses AS addresses_6ca7 ON users.user_id = addresses_6ca7.user_id 
+    WHERE addresses.street = :addresses_street ORDER BY users.oid, addresses_6ca7.oid
     {'addresses_street': '123 Green Street'}
                     
-The join implied by passing the "street" parameter is separate from the join produced by the eager join, which is "aliasized" to prevent conflicts.
+The join resulting from `join('addresses')` is separate from the join produced by the eager join, which is "aliasized" to prevent conflicts.
     
 #### Using Options to Change the Loading Strategy {@name=options}
 
@@ -766,7 +767,7 @@ The `options()` method on the `Query` object is allows modifications to the unde
 
 ### More Relationships {@name=morerelations}
 
-Previously, we've discussed how to set up a one-to-many relationship.  This section will go over the remaining major types of relationships that can be configured.  More detail on on relationships as well as more advanced patterns can be found in [adv_datamapping](rel:adv_datamapping).
+Previously, we've discussed how to set up a one-to-many relationship.  This section will go over the remaining major types of relationships that can be configured.  More detail on on relationships as well as more advanced patterns can be found in [advdatamapping](rel:advdatamapping).
 
 #### One to One/Many to One {@name=manytoone}
 
