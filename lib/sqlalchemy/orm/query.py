@@ -1018,11 +1018,9 @@ class Query(object):
                         process.append((proc, appender))
                     x(m)
                 elif isinstance(m, sql.ColumnElement) or isinstance(m, basestring):
-                    print "M IS", m
                     def y(m):
                         res = []
                         def proc(context, row):
-                            print "ROW VAL", m, "KEYS", row.keys()
                             res.append(row[m])
                         process.append((proc, res))
                     y(m)
