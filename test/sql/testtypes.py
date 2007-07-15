@@ -368,7 +368,10 @@ class IntervalTest(AssertMixin):
             Column("interval", Interval),
             )
         metadata.create_all()
-        
+    
+    def tearDown(self):
+        interval_table.delete().execute()
+            
     def tearDownAll(self):
         metadata.drop_all()
         
@@ -376,6 +379,10 @@ class IntervalTest(AssertMixin):
         delta = datetime.datetime(2006, 10, 5) - datetime.datetime(2005, 8, 17)
         interval_table.insert().execute(interval=delta)
         assert interval_table.select().execute().fetchone()['interval'] == delta
+
+    def test_null(self):
+        interval_table.insert().execute(id=1, inverval=None)
+        assert interval_table.select().execute().fetchone()['interval'] is None
         
 class BooleanTest(AssertMixin):
     def setUpAll(self):

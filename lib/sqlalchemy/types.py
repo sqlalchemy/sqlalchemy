@@ -357,31 +357,33 @@ class Interval(TypeDecorator):
         will be stored as DateTime = '2nd Jan 1970 00:00', see convert_bind_param
         and convert_result_value to actual conversion code
     """
-    impl = None
-    
-    def __init__(self,*args,**kwargs):
-        #avoid of getting instance of None type in __init__ of TypeDecorator
-        pass
+    #Empty useless type, because at the moment of creation of instance we don't
+    #know what type will be decorated - it depends on used dialect.
+    impl = TypeEngine
 
     def load_dialect_impl(self, dialect):
-        import sqlalchemy.databases.postgres as pg
         """Checks if engine has native implementation of timedelta python type,
         if so it returns right class to handle it, if there is no native support, 
         it fallback to engine's DateTime implementation class
         """
-        
+        if not hasattr(self,'__supported'):
+            import sqlalchemy.databases.postgres as pg
+            self.__supported = {pg.PGDialect:pg.PGInterval}
+            del pg
+            
         if self.__hasNativeImpl(dialect):
             #For now, only PostgreSQL has native timedelta types support
-            return pg.PGInterval()
+            return self.__supported[dialect.__class__]()
         else:
             #All others should fallback to DateTime
             return dialect.type_descriptor(DateTime)
         
     def __hasNativeImpl(self,dialect):
-        import sqlalchemy.databases.postgres as pg
-        return dialect.__class__ in [pg.PGDialect]
+        return dialect.__class__ in self.__supported
             
     def convert_bind_param(self, value, dialect):
+        if value is None:
+            return None
         if not self.__hasNativeImpl(dialect):
             tmpval = dt.datetime.utcfromtimestamp(0) + value
             return self.impl.convert_bind_param(tmpval,dialect)
@@ -389,15 +391,13 @@ class Interval(TypeDecorator):
             return self.impl.convert_bind_param(value,dialect)
 
     def convert_result_value(self, value, dialect):
+        if value is None:
+            return None
         retval = self.impl.convert_result_value(value,dialect)
         if not self.__hasNativeImpl(dialect):
             return retval - dt.datetime.utcfromtimestamp(0)
         else:
             return retval
-    
-    def is_mutable(self):
-        #neither datetime, nor PGInterval are mutable types
-        return False
 
 class FLOAT(Float):pass
 class TEXT(String):pass
