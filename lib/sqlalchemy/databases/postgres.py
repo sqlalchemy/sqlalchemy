@@ -70,7 +70,7 @@ class PG1DateTime(sqltypes.DateTime):
             return None
         second_parts = str(value.second).split(".")
         seconds = int(second_parts[0])
-        microseconds = int(second_parts[1])
+        microseconds = int(float(second_parts[1]))
         return datetime.datetime(value.year, value.month, value.day,
                                  value.hour, value.minute, seconds,
                                  microseconds)

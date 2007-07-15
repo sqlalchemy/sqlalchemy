@@ -336,6 +336,9 @@ class InstancesTest(QueryTest):
         q = sess.query(User, Address).join('addresses').filter_by(email_address='ed@bettyboop.com')
         assert q.all() == [(user8, address3)]
 
+        q = sess.query(User, Address).join('addresses').options(eagerload('addresses')).filter_by(email_address='ed@bettyboop.com')
+        assert q.all() == [(user8, address3)]
+
     def test_multi_columns(self):
         sess = create_session()
         (user7, user8, user9, user10) = sess.query(User).all()

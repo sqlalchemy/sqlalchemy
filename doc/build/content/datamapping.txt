@@ -6,7 +6,7 @@ Data Mapping {@name=datamapping}
 
 ### Basic Data Mapping {@name=datamapping}
 
-Data mapping describes the process of defining *Mapper* objects, which associate table metadata with user-defined classes.
+Data mapping describes the process of defining `Mapper` objects, which associate table metadata with user-defined classes.
 
 When a `Mapper` is created to associate a `Table` object with a class, all of the columns defined in the `Table` object are associated with the class via property accessors, which add overriding functionality to the normal process of setting and getting object attributes.  These property accessors keep track of changes to object attributes; these changes will be stored to the database when the application "flushes" the current state of objects.  This pattern is called a *Unit of Work* pattern.
 
@@ -67,13 +67,13 @@ The `session` represents a "workspace" which can load objects and persist change
     [{'user_name': 'fred jones', 'user_id': 1}]        
     COMMIT
     
-Things to note from the above include that the loaded `User` object has an attribute named `user_name` on it, which corresponds to the `user_name` column in the `users_table`; this attribute was configured at the class level when the `Mapper` which we created first compiled itself.  Our modify operation on this attribute caused the object to be marked as `dirty`, which was picked up automatically within the subsequent `flush()` process.  The `flush()` is the point at which all changes to objects within the `Session` are persisted to the database, and the `User` object is no longer marked as `dirty` until it is again modified.
+Things to note from the above include that the loaded `User` object has an attribute named `user_name` on it, which corresponds to the `user_name` column in  `users_table`; this attribute was configured at the class level by the `Mapper`, as part of it's post-initialization process (this process occurs normally when the mapper is first used).  Our modify operation on this attribute caused the object to be marked as "dirty", which was picked up automatically within the subsequent `flush()` process.  The `flush()` is the point at which all changes to objects within the `Session` are persisted to the database, and the `User` object is no longer marked as "dirty" until it is again modified.
 
 ### The Query Object {@name=query}
 
-The method `session.query(class_or_mapper)` returns a `Query` object [[api](rel:docstrings_sqlalchemy.orm.query_Query)] (note that the API described here is the 0.4 API; the 0.3 API is still present and described in the generated documentation).  `Query` implements methods which are used to produce and execute select statements tailored for loading object instances.  In all cases, objects, not fetchable result sets, are returned.  The objects may be in a list, or it may be a single object.  In some cases each returned object may actually be a tuple of multiple objects.
+The method `session.query(class_or_mapper)` returns a `Query` object [[api](rel:docstrings_sqlalchemy.orm.query_Query)].  `Query` implements methods which are used to produce and execute select statements tailored for loading object instances.  It returns object instances in all cases; usually as a list, but in some cases scalar objects, or lists of tuples which contain multiple kinds of objects and sometimes individual scalar values.
 
-A `Query` is always initially generated starting with the `Session` that we're working with, and is always created relative to a particular class, which is the primary class we wish to load.
+A `Query` is created from the `Session`, relative to a particular class we wish to load.
 
     {python}
     # get a query from a Session based on class:
@@ -85,7 +85,7 @@ Alternatively, an actual `Mapper` instance can be specified instead of a class:
     # locate the mapper corresponding to the User class
     usermapper = class_mapper(User)
 
-    # create query for the User
+    # create query against the User mapper
     query = session.query(usermapper)
 
 A query which joins across multiple tables may also be used to request multiple entities, such as:
@@ -113,11 +113,11 @@ Whereas `filter()` works with constructed SQL expressions, i.e. those described 
     SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
     users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
-    WHERE users.user_name = :users_user_name AND users.fullname = :users_fullname
+    WHERE users.user_name = :users_user_name 
     ORDER BY users.oid
-    {'users_user_name': 'john', 'users_fullname': 'John Smith'}
+    {'users_user_name': 'john'}
 
-Sometimes, constructing SQL via expressions can be cumbersome.  For quick SQL expression, the `filter()` method can also accomdate straight text:
+Sometimes, constructing SQL via expressions can be cumbersome.  For quick SQL expression, the `filter()` method can also accomodate straight text:
 
     {python}
     {sql}result = session.query(User).filter("user_id>224").all()
@@ -152,23 +152,28 @@ Multiple `filter()` and `filter_by()` expressions may be combined together.  The
     ORDER BY users.oid
     {'users_user_name': 'john', 'users_fullname': 'John Smith', 'users_user_id': 224}
 
-Note that all conjunctives are available explicitly, such as `and_()` and `or_()`, when using `filter()`:
+`filter_by()`'s keyword arguments can also take mapped object instances as comparison arguments.  We'll illustrate this later when we talk about object relationships.
+
+Note that all conjunctions are available explicitly, such as `and_()` and `or_()`, when using `filter()`:
 
     {python}
-    result = session.query(User).filter(and_(users_table.c.user_id>224, or_(users_table.c.name=='john', users_table.c.name=='ed')))
+    result = session.query(User).filter(
+        and_(users_table.c.user_id>224, or_(users_table.c.name=='john', users_table.c.name=='ed'))
+        ).all()
 
-Its also straightforward to use an entirely string-based statement, using `from_statement()`; just ensure that the columns clause of the statement contains the column names normally used by the mapper (here illusrtated using an asterisk):
+Its also straightforward to use an entirely string-based statement, using `from_statement()`; just ensure that the columns clause of the statement contains the column names normally used by the mapper (here illustrated using an asterisk):
 
     {python}
-    {sql}result = session.query(User).from_statement("select * from users").all()
-    select * from users
+    {sql}result = session.query(User).from_statement("SELECT * FROM users").all()
+    SELECT * FROM users
     {}
 
 `from_statement()` can also accomodate `select()` constructs:
 
     {python}
-    {sql}result = session.query(User).from_statement(select([users], users.c.name<'e', 
-            having=users.c.name==func.max(users.c.name), group_by=[c for c in users.c])).all()
+    result = session.query(User).from_statement(
+        select([users], users.c.name<'e', having=users.c.name==func.max(users.c.name), group_by=[c for c in users.c])
+    {sql}    ).all()
     SELECT users.user_id AS users_user_id, users.user_name AS users_user_name, 
     users.fullname AS users_fullname, users.password AS users_password 
     FROM users 
@@ -177,7 +182,7 @@ Its also straightforward to use an entirely string-based statement, using `from_
     ORDER BY users.oid
     {'users_user_name': 'e'}
     
-Any set of filtered criterion (or no criterion) can be distilled into a rowcount statement using `count()`:
+Any set of filtered criterion (or no criterion) can be distilled into a count of rows using `count()`:
 
     {python}
     {sql}num = session.query(Users).filter(users_table.c.user_id>224).count()
@@ -203,7 +208,7 @@ And ordering is applied, using `Column` objects and related SQL constructs, with
     FROM users ORDER BY users.user_name DESC
     {}
     
-The `first()` and `one()` methods will also limit rows.  In the case of `first()`, rows are limited to just one, and the result is returned as a scalar.  In the case of `one()`, rows are limited to *two*; however, only one is returned.  If two rows are matched, an exception is raised.
+The `first()` and `one()` methods will also limit rows, and both will return a single object, instead of a list.  In the case of `first()`, rows are limited to just one, and the result is returned as a scalar.  In the case of `one()`, rows are limited to *two*; however, only one is returned.  If two rows are matched, an exception is raised.
 
     {python}
     # load the first result
@@ -212,7 +217,7 @@ The `first()` and `one()` methods will also limit rows.  In the case of `first()
     # load exactly *one* result - if more than one result matches, an exception is raised
     user = session.query(User).filter_by(name='jack').one()
 
-The `Query`, when evaluated as in an iterative context, executes results immediately, using whatever state has been built up:  
+The `Query`, when evaluated as an iterator, executes results immediately, using whatever state has been built up:
 
     {python}
     {sql}result = list(session.query(User))
@@ -221,7 +226,7 @@ The `Query`, when evaluated as in an iterative context, executes results immedia
     FROM users ORDER BY users.oid
     {}
     
-Array indexes and slices work too:
+Array indexes and slices work too, adding the corresponding LIMIT and OFFSET clauses:
 
     {python}
     {sql}result = list(session.query(User)[1:3])
@@ -251,18 +256,18 @@ The `get()` method loads a single instance, given the primary key value of the d
     # load user with primary key 15
     user = query.get(15)
 
-The `get()` method, because it has the actual primary key value of the instance, can return an already-loaded instance from the `Session` without performing any SQL.  It is the only method on `Query` that does not issue SQL to the database in all cases.
+The `get()` method, because it has the actual primary key value of the instance, can return an already-loaded instance from the `Session` without performing any SQL.  It is the only result-returning method on `Query` that does not issue SQL to the database in all cases.
 
 To issue a composite primary key to `get()`, use a tuple.  The order of the arguments matches that of the primary key columns of the table:
 
     {python}
     myobj = query.get((27, 3, 'receipts'))
 
-Another special method on `Query` is `load()`.  This method has the same signature as `get()`, except it always **refreshes** the returned instance with the latest data from the database.  This is in fact a unique behavior, since as we will see in the [unitofwork](rel:unitofwork) chapter, the `Query` usually does not refresh the contents of instances which are already present in the session.
+Another special method on `Query` is `load()`.  This method has the same signature as `get()`, except it always **refreshes** the returned instance with the latest data from the database.  This is in fact a unique behavior, since as we will see in the [unitofwork](rel:unitofwork) chapter, most `Query` methods do not reload the contents of instances which are already present in the session.
 
 #### Column Objects Available via their Mapped Class {@name=columnsonclass}
 
-Some of the above examples above illustrate the usage of the mapper's Table object to provide the columns for a WHERE Clause.  These columns are also accessible off of the mapped class directly.  When a mapper is assigned to a class, it also attaches a special property accessor `c` to the class itself, which can be used just like the table metadata to access the columns of the table:
+Some of the above examples above illustrate the usage of the mapper's Table object to provide the columns for a WHERE Clause.  These columns are also accessible off of the mapped class directly.  When a mapper is assigned to a class, it also attaches a special property accessor `c` to the class itself, which can be used just like that of a `Table` object to access the columns of the table:
 
     {python}
     userlist = session.query(User).filter(User.c.user_id==12).first()
@@ -531,20 +536,8 @@ One way is just to build up the join criterion yourself.  This is easy to do usi
     ORDER BY users.oid
     {'addresses_street', '123 Green Street'}
 
-Above, we specified selection criterion that included columns from both the `users` and the `addresses` table.  Note that in this case, we had to specify not just the matching condition to the `street` column on `addresses`, but also the join condition between the `users` and `addresses` table.  Even though the `User` mapper has a relationship to the `Address` mapper where the join condition is known, **the select method does not assume how you want to construct joins**.  If we did not include the join clause, we would get:
-
-    {python}
-    # this is usually not what you want to do
-    {sql}l = session.query(User).filter(addresses.c.street=='123 Green Street').all()
-    SELECT users.user_id AS users_user_id, 
-    users.user_name AS users_user_name, users.password AS users_password
-    FROM users, addresses 
-    WHERE addresses.street=:addresses_street
-    ORDER BY users.oid
-    {'addresses_street', '123 Green Street'}
+Above, we specified selection criterion that included columns from both the `users` and the `addresses` table.  Note that in this case, we had to specify not just the matching condition to the `street` column on `addresses`, but also the join condition between the `users` and `addresses` table.  If we didn't do that, we'd get a *cartesian product* of both tables.  The `Query` object never "guesses" what kind of join you'd like to use, but makes it easy using the `join()` method which we'll get to in a moment.
     
-The above join will return all rows of the `users` table, even those that do not correspond to the `addresses` table, in a **cartesian product** with the matching rows from the `addresses` table.
-
 A way to specify joins very explicitly, using the SQL `join()` construct, is possible via the `select_from()` method on `Query`:
 
     {python}
@@ -557,7 +550,7 @@ A way to specify joins very explicitly, using the SQL `join()` construct, is pos
     ORDER BY users.oid
     {'addresses_street', '123 Green Street'}
 
-But the easiest way of all is automatically, using the `join()` method on `Query`.  Just give this method the path from A to B, using the name of a mapped relationship directly:
+But the easiest way to join is automatically, using the `join()` method on `Query`.  Just give this method the path from A to B, using the name of a mapped relationship directly:
 
     {python}
     {sql}l = session.query(User).join('addresses').
@@ -569,7 +562,7 @@ But the easiest way of all is automatically, using the `join()` method on `Query
     ORDER BY users.oid
     {'addresses_street', '123 Green Street'}
 
-In all cases, we can get both the `User` and the `Address` object back, by telling the session we want both.  This returns the results as a tuple:
+In all cases, we can get the `User` and the matching `Address` objects back at the same time, by telling the session we want both.  This returns the results as a tuple:
 
     {python}
     l = session.query(User, Address).join('addresses').
@@ -580,12 +573,13 @@ In all cases, we can get both the `User` and the `Address` object back, by telli
 
 The above syntax is shorthand for using the `add_entity()` method:
 
+    {python}
     session.query(User).add_entity(Address).join('addresses').all()
     
 To join across multiple relationships, specify them in a list.  Below, we load a `ShoppingCart`, limiting its `cartitems` collection to the single item which has a `price` object whose `amount` column is 47.95:
 
     {python}
-    session.query(ShoppingCart).join(['cartitems', 'price']).filter_by(amount=47.95).one()
+    cart = session.query(ShoppingCart).join(['cartitems', 'price']).filter_by(amount=47.95).one()
 
 `filter_by()` can also generate joins in some cases, such as when comparing to an object instance:
 
@@ -659,10 +653,6 @@ We've seen how the `relation` specifier affects the saving of an object and its 
 
 Eager Loading is another way for relationships to be loaded.  It describes the loading of parent and child objects across a relation using a single query.  The purpose of eager loading is strictly one of performance enhancement; eager loading has **no impact** on the results of a query, except that when traversing child objects within the results, lazy loaders will not need to issue separate queries to load those child objects.
 
-Eager Loading is enabled on a per-relationship basis, either as the default
-for a particular relationship, or for a single query using query options,
-described later.
-
 With just a single parameter `lazy=False` specified to the relation object, the parent and child SQL queries can be joined together.
 
     {python}
@@ -672,7 +662,7 @@ With just a single parameter `lazy=False` specified to the relation object, the 
         }
       )
     
-    {sql}users = session.query(User).select(User.c.user_name=='Jane')
+    {sql}users = session.query(User).filter(User.c.user_name=='Jane').all()
     SELECT users.user_name AS users_user_name, users.password AS users_password, 
     users.user_id AS users_user_id, addresses_4fb8.city AS addresses_4fb8_city, 
     addresses_4fb8.address_id AS addresses_4fb8_address_id, addresses_4fb8.user_id AS addresses_4fb8_user_id, 
@@ -689,10 +679,10 @@ With just a single parameter `lazy=False` specified to the relation object, the 
 
 Above, a pretty ambitious query is generated just by specifying that the User should be loaded with its child Addresses in one query.  When the mapper processes the results, it uses an *Identity Map* to keep track of objects that were already loaded, based on their primary key identity.  Through this method, the redundant rows produced by the join are organized into the distinct object instances they represent.
         
-Recall that eager loading has no impact on the results of the query.  What if our query included our own join criterion?  The eager loading query accomodates this using aliases, and is immune to the effects of additional joins being specified in the original query.  To use our select_by example above, joining against the "addresses" table to locate users with a certain street results in this behavior:
+Recall that eager loading has no impact on the results of the query.  What if our query included our own join criterion?  The eager loading query accomodates this using aliases, and is immune to the effects of additional joins being specified in the original query.  Joining against the "addresses" table to locate users with a certain street results in this behavior:
 
     {python}
-    {sql}users = session.query(User).select_by(street='123 Green Street')
+    {sql}users = session.query(User).join('addresses').filter_by(street='123 Green Street').all()
     
     SELECT users.user_name AS users_user_name, 
     users.password AS users_password, users.user_id AS users_user_id, 
@@ -709,7 +699,7 @@ The join implied by passing the "street" parameter is separate from the join pro
     
 #### Using Options to Change the Loading Strategy {@name=options}
 
-The `options()` method on the `Query` object is a generative method that allows modifications to the underlying querying methodology.  The most common use of this feature is to change the "eager/lazy" loading behavior of a particular mapper, via the functions `eagerload()`, `lazyload()` and `noload()`:
+The `options()` method on the `Query` object is allows modifications to the underlying querying methodology.  The most common use of this feature is to change the "eager/lazy" loading behavior of a particular mapper, via the functions `eagerload()`, `lazyload()` and `noload()`:
     
     {python}
     # user mapper with lazy addresses
@@ -723,7 +713,7 @@ The `options()` method on the `Query` object is a generative method that allows 
     
     # make an eager loading query
     eagerquery = query.options(eagerload('addresses'))
-    u = eagerquery.select()
+    u = eagerquery.all()
     
     # make another query that wont load the addresses at all
     plainquery = query.options(noload('addresses'))
@@ -734,9 +724,13 @@ The `options()` method on the `Query` object is a generative method that allows 
     # to specify a relation on a relation, separate the property names by a "."
     myquery = oldquery.options(eagerload('orders.items'))
 
-### One to One/Many to One {@name=onetoone}
+### More Relationships {@name=morerelations}
 
-The above examples focused on the "one-to-many" relationship.  To do other forms of relationship is easy, as the `relation` function can usually figure out what you want:
+Previously, we've discussed how to set up a one-to-many relationship.  This section will go over the remaining major types of relationships that can be configured.  More detail on on relationships as well as more advanced patterns can be found in [adv_datamapping](rel:adv_datamapping).
+
+#### One to One/Many to One {@name=manytoone}
+
+The above examples focused on the "one-to-many" relationship.  To do other forms of relationship is easy, as the `relation()` function can usually figure out what you want:
 
     {python}
     metadata = MetaData()
@@ -774,13 +768,13 @@ The above examples focused on the "one-to-many" relationship.  To do other forms
         
     mapper(UserPrefs, prefs_table)
     
-    mapper(User, users_table, properties = dict(
-        preferences = relation(UserPrefs, lazy=False, cascade="all, delete-orphan"),
-    ))
+    mapper(User, users_table, properties = {
+        'preferences':relation(UserPrefs, lazy=False, cascade="all, delete-orphan"),
+    })
     
     # select
-    session = create_session(bind_to=engine)
-    {sql}user = session.query(User).get_by(user_name='fred')
+    session = create_session(bind=engine)
+    {sql}user = session.query(User).filter_by(user_name='fred').one()
     SELECT users.preference_id AS users_preference_id, users.user_name AS users_user_name, 
     users.password AS users_password, users.user_id AS users_user_id, 
     user_prefs_4eb2.timezone AS user_prefs_4eb2_timezone, user_prefs_4eb2.stylename AS user_prefs_4eb2_stylename, 
@@ -802,9 +796,9 @@ The above examples focused on the "one-to-many" relationship.  To do other forms
     WHERE user_prefs.pref_id = :pref_id
     [{'stylename': 'bluesteel', 'pref_id': 1}]
 
-### Many to Many {@name=manytomany}
+#### Many to Many {@name=manytomany}
 
-The `relation` function handles a basic many-to-many relationship when you specify an association table using the `secondary` argument:
+The `relation()` function handles a basic many-to-many relationship when you specify an association table using the `secondary` argument:
 
     {python}
     metadata = MetaData()
@@ -840,12 +834,12 @@ The `relation` function handles a basic many-to-many relationship when you speci
         
     # define a mapper that does many-to-many on the 'itemkeywords' association 
     # table
-    mapper(Article, articles_table, properties = dict(
-        keywords = relation(Keyword, secondary=itemkeywords_table, lazy=False)
-        )
+    mapper(Article, articles_table, properties = {
+        'keywords':relation(Keyword, secondary=itemkeywords_table, lazy=False)
+        }
     )
     
-    session = create_session(bind_to=engine)
+    session = create_session(bind=engine)
     
     article = Article()
     article.headline = 'a headline'
@@ -864,8 +858,8 @@ The `relation` function handles a basic many-to-many relationship when you speci
     INSERT INTO article_keywords (article_id, keyword_id) VALUES (:article_id, :keyword_id)
     [{'keyword_id': 1, 'article_id': 1}, {'keyword_id': 2, 'article_id': 1}]
     
-    # select articles based on a keyword.  select_by will handle the extra joins.
-    {sql}articles = session.query(Article).select_by(keyword_name='politics')
+    # select articles based on a keyword.  
+    {sql}articles = session.query(Article).join('keywords').filter_by(keyword_name='politics').all()
     SELECT keywords_e2f2.keyword_id AS keywords_e2f2_keyword_id, keywords_e2f2.keyword_name AS keywords_e2f2_keyword_name, 
     articles.headline AS articles_headline, articles.body AS articles_body, articles.article_id AS articles_article_id 
     FROM keywords, article_keywords, articles 
@@ -895,7 +889,7 @@ The `relation` function handles a basic many-to-many relationship when you speci
     INSERT INTO article_keywords (article_id, keyword_id) VALUES (:article_id, :keyword_id)
     [{'keyword_id': 3, 'article_id': 1}, {'keyword_id': 4, 'article_id': 1}]
 
-### Association Object {@name=association}
+#### Association Object {@name=association}
 
 Many to Many can also be done with an association object, that adds additional information about how two items are related.  In this pattern, the "secondary" option to `relation()` is no longer used; instead, the association object becomes a mapped entity itself, mapped to the association table.  If the association table has no explicit primary key columns defined, you also have to tell the mapper what columns will compose its "primary key", which are typically the two (or more) columns involved in the association.  Also, the relation between the parent and association mapping is typically set up with a cascade of `all, delete-orphan`.  This is to ensure that when an association object is removed from its parent collection, it is deleted (otherwise, the unit of work tries to null out one of the foreign key columns, which raises an error condition since that column is also part of its "primary key").
 
@@ -962,9 +956,9 @@ Many to Many can also be done with an association object, that adds additional i
     # keyword mapper
     mapper(Keyword, keywords_table)
     
-    session = create_session(bind_to=engine)
+    session = create_session(bind=engine)
     # select by keyword
-    {sql}alist = session.query(Article).select_by(keyword_name='jacks_stories')
+    {sql}alist = session.query(Article).join(['keywords', 'keyword']).filter_by(keyword_name='jacks_stories').all()
     SELECT article_keyword_f9af.keyword_id AS article_keyword_f9af_key_b3e1, 
     article_keyword_f9af.attached_by AS article_keyword_f9af_att_95d4, 
     article_keyword_f9af.article_id AS article_keyword_f9af_art_fd49, 

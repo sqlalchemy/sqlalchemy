@@ -1035,7 +1035,7 @@ class Query(object):
             session._register_persistent(value)
 
         if mappers_or_columns:
-            return zip(*([result] + [o[1] for o in process]))
+            return list(util.OrderedSet(zip(*([result] + [o[1] for o in process]))))
         else:
             return result.data
 

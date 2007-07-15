@@ -141,7 +141,7 @@ def replace_pre_with_mako(tree):
         # syntax highlighter which uses the tokenize module
         text = re.sub(r'>>> ', r'">>>" ', text)
 
-        sqlre = re.compile(r'{sql}(.*?)((?:BEGIN|SELECT|INSERT|DELETE|UPDATE|CREATE|DROP|PRAGMA|DESCRIBE).*?)\n\s*(\n|$)', re.S)
+        sqlre = re.compile(r'{sql}(.*?\n)((?:BEGIN|SELECT|INSERT|DELETE|UPDATE|CREATE|DROP|PRAGMA|DESCRIBE).*?)\n\s*(\n|$)', re.S)
         if sqlre.search(text) is not None:
             use_sliders = False
         else:
@@ -149,7 +149,7 @@ def replace_pre_with_mako(tree):
         
         text = sqlre.sub(r"""${formatting.poplink()}\1\n<%call expr="formatting.codepopper()">\2</%call>\n\n""", text)
 
-        sqlre2 = re.compile(r'{opensql}(.*?)((?:BEGIN|SELECT|INSERT|DELETE|UPDATE|CREATE|DROP).*?)\n\s*(\n|$)', re.S)
+        sqlre2 = re.compile(r'{opensql}(.*?\n)((?:BEGIN|SELECT|INSERT|DELETE|UPDATE|CREATE|DROP).*?)\n\s*(\n|$)', re.S)
         text = sqlre2.sub(r"<%call expr='formatting.poppedcode()' >\1\n\2</%call>\n\n", text)
 
         tag = et.Element("MAKO:formatting.code")
