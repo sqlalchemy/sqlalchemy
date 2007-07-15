@@ -111,6 +111,19 @@ class SliceTest(QueryTest):
         
         assert create_session().query(User).filter(users.c.id==27).first() is None
         
+        # more slice tests are available in test/orm/generative.py
+        
+class TextTest(QueryTest):
+    def test_fulltext(self):
+        assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).from_statement("select * from users").all()
+
+    def test_fragment(self):
+        assert [User(id=8), User(id=9)] == create_session().query(User).filter("id in (8, 9)").all()
+
+        assert [User(id=9)] == create_session().query(User).filter("name='fred'").filter("id=9").all()
+
+        assert [User(id=9)] == create_session().query(User).filter("name='fred'").filter(users.c.id==9).all()
+        
 class FilterTest(QueryTest):
     def test_basic(self):
         assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).all()
