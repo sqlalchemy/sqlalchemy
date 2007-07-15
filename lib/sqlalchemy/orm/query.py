@@ -1056,8 +1056,11 @@ class Query(object):
         else:
             ident = util.to_list(ident)
         params = {}
-        for i, primary_key in enumerate(self.primary_key_columns):
-            params[primary_key._label] = ident[i]
+        try:
+            for i, primary_key in enumerate(self.primary_key_columns):
+                params[primary_key._label] = ident[i]
+        except IndexError:
+            raise exceptions.InvalidRequestError("Could not find enough values to formulate primary key for query.get(); primary key columns are %s" % ', '.join(["'%s'" % str(c) for c in self.primary_key_columns]))
         try:
             statement = self.compile(self._get_clause, lockmode=lockmode)
             return self._select_statement(statement, params=params, populate_existing=reload, version_check=(lockmode is not None))[0]

@@ -740,12 +740,12 @@ Alternatively, the `from_statement()` method may be used with either a textual s
 
 #### Combining Eager Loads with Statement/Result Set Queries
 
-When statement is used with `Query`, SQLAlchemy does not affect the SQL query itself, and therefore has no way of tacking on its own `LEFT OUTER JOIN` conditions that are normally used to eager load relationships.  If the query being constructed is created in such a way that it returns rows not just from a parent table (or tables) but also returns rows from child tables, the result-set mapping can be notified as to which additional properties are contained within the result set.  This is done using the `contains_eager()` query option, which specifies the name of the relationship to be eagerly loaded.
+When full statement/result loads are used with `Query`, SQLAlchemy does not affect the SQL query itself, and therefore has no way of tacking on its own `LEFT [OUTER] JOIN` conditions that are normally used to eager load relationships.  If the query being constructed is created in such a way that it returns rows not just from a parent table (or tables) but also returns rows from child tables, the result-set mapping can be notified as to which additional properties are contained within the result set.  This is done using the `contains_eager()` query option, which specifies the name of the relationship to be eagerly loaded.
 
     {python}
     # mapping is the users->addresses mapping
     mapper(User, users_table, properties={
-        'addresses':relation(Address, addresses_table, lazy=False)
+        'addresses':relation(Address, addresses_table)
     })
     
     # define a query on USERS with an outer join to ADDRESSES

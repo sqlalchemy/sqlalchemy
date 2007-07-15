@@ -222,7 +222,7 @@ But in addition to selecting all the columns off a single table, any set of colu
     {}
 
 ### WHERE Clause {@name=whereclause}
-    
+
 The WHERE condition is the named keyword argument `whereclause`, or the second positional argument to the `select()` constructor and the first positional argument to the `select()` method of `Table`.
 
 WHERE conditions are constructed using column objects, literal values, and functions defined in the `sqlalchemy.sql` module.  Column objects override the standard Python operators to provide clause compositional objects, which compile down to SQL operations:

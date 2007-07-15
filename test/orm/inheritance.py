@@ -553,6 +553,11 @@ class InheritTest8(testbase.ORMTest):
         query = session.query(Employee)
 
         if composite:
+            try:
+                query.get(1)
+                assert False
+            except exceptions.InvalidRequestError, e:
+                assert str(e) == "Could not find enough values to formulate primary key for query.get(); primary key columns are 'persons.id', 'employees.id'"
             alice1 = query.get([1,2])
             bob = query.get([2,3])
             alice2 = query.get([1,2])
