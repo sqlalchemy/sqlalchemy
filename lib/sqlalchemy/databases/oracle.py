@@ -43,6 +43,14 @@ class OracleDate(sqltypes.Date):
 class OracleDateTime(sqltypes.DateTime):
     def get_col_spec(self):
         return "DATE"
+        
+    def convert_result_value(self, value, dialect):
+        if value is None or isinstance(value,datetime.datetime):
+            return value
+        else:
+            # convert cx_oracle datetime object returned pre-python 2.4
+            return datetime.datetime(value.year,value.month,
+                value.day,value.hour, value.minute, value.second)
 
 # Note:
 # Oracle DATE == DATETIME
@@ -56,6 +64,15 @@ class OracleTimestamp(sqltypes.TIMESTAMP):
 
     def get_dbapi_type(self, dialect):
         return dialect.TIMESTAMP
+
+    def convert_result_value(self, value, dialect):
+        if value is None or isinstance(value,datetime.datetime):
+            return value
+        else:
+            # convert cx_oracle datetime object returned pre-python 2.4
+            return datetime.datetime(value.year,value.month,
+                value.day,value.hour, value.minute, value.second)
+
 
 class OracleString(sqltypes.String):
     def get_col_spec(self):
