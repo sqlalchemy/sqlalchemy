@@ -1592,6 +1592,13 @@ class ColumnCollection(util.OrderedProperties):
         The key attribute of the column will be used as the hash key
         for this dictionary.
         """
+
+        # Allow an aliased column to replace an unaliased column of the
+        # same name.
+        if self.has_key(column.name):
+            other = self[column.name]
+            if other.name == other.key:
+                del self[other.name]
         self[column.key] = column
     
     def remove(self, column):

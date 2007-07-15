@@ -562,6 +562,15 @@ But the easiest way to join is automatically, using the `join()` method on `Quer
     ORDER BY users.oid
     {'addresses_street', '123 Green Street'}
 
+Each time the `join()` is called on `Query`, the **joinpoint** of the query is moved to be that of the endpoint of the join.  As above, when we joined from `users_table` to `addresses_table`, all subsequent criterion used by `filter_by()` are against the `addresses` table.  If we wanted to filter back on the starting table again, we can use the `reset_joinpoint()` function:
+
+    {python}
+    l = session.query(User).join('addresses').
+            filter(addresses_table.c.street=='123 Green Street').
+            reset_joinpoint().filter_by(user_name='ed').all()
+
+With `reset_joinpoint()`, we can also issue new `join()`s which will start back from the root table.
+
 In all cases, we can get the `User` and the matching `Address` objects back at the same time, by telling the session we want both.  This returns the results as a tuple:
 
     {python}
@@ -615,6 +624,29 @@ You can also create joins in "reverse", that is, to find an object with a certai
     WHERE addresses.email_address =  :addresses_email_address AND 
     addresses.user_id = :users_user_id ORDER BY addresses.oid
     {'users_user_id': 1, 'addresses_email_address': 'foo@bar.com'}
+
+Sometimes it's necessary to create repeated joins that are independent of each other, even though they reference the same tables.  Using our one-to-many setup, an example is to locate users who have two partcular email addresses.  We can do this using table aliases:
+
+    {python}
+    ad1 = addresses_table.alias('ad1')
+    ad2 = addresses_table.alias('ad2')
+    {sql}result = session.query(User).filter(and_(
+        ad1.c.user_id==users.c.user_id,
+        ad1.c.email_address=='foo@bar.com',
+        ad2.c.user_id==users.c.user_id,
+        ad2.c.email_address=='lala@yahoo.com'
+        )).all()
+    SELECT users.user_id AS users_user_id, 
+    users.user_name AS users_user_name, users.password AS users_password
+    FROM users, addresses AS ad1, addresses AS ad2
+    WHERE users.user_id=ad1.user_id
+    AND ad1.email_address=:ad1_email_address
+    AND users.user_id=ad2.user_id
+    AND ad2.email_address=:ad2_email_address
+    ORDER BY users.oid
+    {'ad1_email_address': 'foo@bar.com', 'ad2_email_address': 'lala@yahoo.com'}
+
+Version 0.4 of SQLAlchemy will include better ability to issue queries like the above with less verbosity.
 
 ### Loading Relationships {@name=selectrelations}
 

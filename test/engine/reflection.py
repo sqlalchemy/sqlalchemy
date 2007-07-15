@@ -136,7 +136,24 @@ class ReflectionTest(PersistTest):
                 autoload=True)
             
             assert u3.join(a3).onclause == u3.c.id==a3.c.user_id
-            
+
+            meta4 = MetaData(testbase.db)
+            u4 = Table('users', meta4,
+                       Column('id', Integer, key='u_id', primary_key=True),
+                       autoload=True)
+            a4 = Table('addresses', meta4,
+                       Column('id', Integer, key='street', primary_key=True),
+                       Column('street', String(30), key='user_id'),
+                       Column('user_id', Integer, ForeignKey('users.u_id'),
+                              key='id'),
+                       autoload=True)
+
+            assert u4.join(a4).onclause.compare(u4.c.u_id==a4.c.id)
+            assert list(u4.primary_key) == [u4.c.u_id]
+            assert len(u4.columns) == 2
+            assert len(u4.constraints) == 1
+            assert len(a4.columns) == 3
+            assert len(a4.constraints) == 2
         finally:
             meta.drop_all()
 
