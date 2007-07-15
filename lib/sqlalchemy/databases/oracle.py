@@ -601,6 +601,13 @@ class OracleCompiler(ansisql.ANSICompiler):
         else:
             return super(OracleCompiler, self).for_update_clause(select)
 
+    def visit_binary(self, binary):
+        if binary.operator == '%': 
+            self.strings[binary] = ("MOD(%s,%s)"%(self.get_str(binary.left), self.get_str(binary.right)))
+        else:
+            return ansisql.ANSICompiler.visit_binary(self, binary)
+        
+
 class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, **kwargs):
         colspec = self.preparer.format_column(column)

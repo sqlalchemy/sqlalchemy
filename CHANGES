@@ -105,6 +105,7 @@
       LOB objects detected in a result set to be forced into OracleBinary
       so that the LOB is read() automatically, if no typemap was present
       (i.e., if a textual execute() was issued).
+    - mod operator '%' produces MOD [ticket:624]
 - postgres
     - fixed escaping of the modulo operator [ticket:624]
     - added support for reflection of domains [ticket:570]
