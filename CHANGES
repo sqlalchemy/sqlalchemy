@@ -65,6 +65,8 @@
     - columns can be overridden in a reflected table with a "key" 
       attribute different than the column's name, including for primary key
       columns [ticket:650]
+    - fixed "ambiguous column" result detection, when dupe col names exist
+      in a result [ticket:657]
     - some enhancements to "column targeting", the ability to match a column
       to a "corresponding" column in another selectable.  this affects mostly
       ORM ability to map to complex joins

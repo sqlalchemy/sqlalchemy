@@ -253,7 +253,16 @@ class QueryTest(PersistTest):
         r = text("select * from query_users where user_id=2", engine=testbase.db).execute().fetchone()
         self.assert_(r.user_id == r['user_id'] == r[self.users.c.user_id] == 2)
         self.assert_(r.user_name == r['user_name'] == r[self.users.c.user_name] == 'jack')
-        
+    
+    def test_ambiguous_column(self):
+        self.users.insert().execute(user_id=1, user_name='john')
+        r = users.outerjoin(addresses).select().execute().fetchone()
+        try:
+            print r['user_id']
+            assert False
+        except exceptions.InvalidRequestError, e:
+            assert str(e) == "Ambiguous column name 'user_id' in result set! try 'use_labels' option on select statement."
+            
     def test_keys(self):
         self.users.insert().execute(user_id=1, user_name='foo')
         r = self.users.select().execute().fetchone()

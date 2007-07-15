@@ -885,7 +885,7 @@ class ResultProxy(object):
                 if rec[0] is None:
                     raise DBAPIError("None for metadata " + colname)
                 if self.__props.setdefault(colname.lower(), rec) is not rec:
-                    self.__props[colname.lower()] = (ResultProxy.AmbiguousColumn(colname), 0)
+                    self.__props[colname.lower()] = (type, ResultProxy.AmbiguousColumn(colname), 0)
                 self.__keys.append(colname)
                 self.__props[i] = rec
 
