@@ -7,6 +7,7 @@
 from sqlalchemy import sql, util, exceptions, sql_util, logging, schema
 from sqlalchemy.orm import mapper, class_mapper, object_mapper
 from sqlalchemy.orm.interfaces import OperationContext, SynonymProperty
+import random
 
 __all__ = ['Query', 'QueryContext', 'SelectionContext']
 
@@ -53,7 +54,8 @@ class Query(object):
         self._func = None
         self._joinpoint = self.mapper
         self._from_obj = [self.table]
-
+        self._statement = None
+        
         for opt in util.flatten_iterator(self.with_options):
             opt.process_query(self)
         
@@ -82,6 +84,7 @@ class Query(object):
         q._from_obj = list(self._from_obj)
         q._joinpoint = self._joinpoint
         q._criterion = self._criterion
+        q._statement = self._statement
         q._col = self._col
         q._func = self._func
         return q
@@ -486,9 +489,6 @@ class Query(object):
         of this Query along with the additional entities.  The Query selects
         from all tables with no joining criterion by default.
         
-        When tuple-based results are returned, the 'uniquing' of returned entities
-        is disabled to maintain grouping.
-
             entity
                 a class or mapper which will be added to the results.
                 
@@ -511,15 +511,18 @@ class Query(object):
         table or selectable that is not the primary mapped selectable.  The Query selects
         from all tables with no joining criterion by default.
         
-        When tuple-based results are returned, the 'uniquing' of returned entities
-        is disabled to maintain grouping.
-
             column
                 a string column name or sql.ColumnElement to be added to the results.
                 
         """
         
         q = self._clone()
+        
+        # alias non-labeled column elements. 
+        # TODO: make the generation deterministic
+        if isinstance(column, sql.ColumnElement) and not hasattr(column, '_label'):
+            column = column.label("anon_" + hex(random.randint(0, 65535))[2:])
+            
         q._entities.append(column)
         return q
         
@@ -1015,9 +1018,11 @@ class Query(object):
                         process.append((proc, appender))
                     x(m)
                 elif isinstance(m, sql.ColumnElement) or isinstance(m, basestring):
+                    print "M IS", m
                     def y(m):
                         res = []
                         def proc(context, row):
+                            print "ROW VAL", m, "KEYS", row.keys()
                             res.append(row[m])
                         process.append((proc, res))
                     y(m)
@@ -1088,6 +1093,10 @@ class Query(object):
 
         the arguments to this function are deprecated and are removed in version 0.4.
         """
+
+        if self._statement:
+            self._statement.use_labels = True
+            return self._statement
 
         if self._criterion:
             whereclause = sql.and_(self._criterion, whereclause)

@@ -61,7 +61,7 @@ The session to which an object is attached can be acquired via the `object_sessi
 
 Session Facts:
 
- * the Session object is **not threadsafe**.  For thread-local management of Sessions, the recommended approch is to use the [plugins_sessioncontext](rel:plugins_sessioncontext) extension module.
+ * the Session object is **not threadsafe**.  For thread-local management of Sessions, the recommended approach is to use the [plugins_sessioncontext](rel:plugins_sessioncontext) extension module.
 
 We will now cover some of the key concepts used by Sessions and its underlying Unit of Work.
 
@@ -77,13 +77,13 @@ For example; below, two separate calls to load an instance with database identit
     mymapper = mapper(MyClass, mytable)
     
     session = create_session()
-    obj1 = session.query(MyClass).selectfirst(mytable.c.id==15)
-    obj2 = session.query(MyClass).selectfirst(mytable.c.id==15)
+    obj1 = session.query(MyClass).filter(mytable.c.id==15).first()
+    obj2 = session.query(MyClass).filter(mytable.c.id==15).first()
     
     >>> obj1 is obj2
     True
     
-The Identity Map is an instance of `dict` by default.  (This is new as of version 0.3.2).  As an option, you can specify the flag `weak_identity_map=True` to the `create_session` function so that it will use a `weakref.WeakValueDictionary`, so that when an in-memory object falls out of scope, it will be removed automatically, thereby providing some automatic management of memory.   However, this may not be instant if there are circular references upon the object.  To guarantee that an instance is removed from the identity map before removing references to it, use the `expunge()` method, described later, to remove it.  Additionally, note that an object that has changes marked on it (i.e. "dirty") can still fall out of scope when using `weak_identity_map`.
+The Identity Map is an instance of `dict` by default.  As an option, you can specify the flag `weak_identity_map=True` to the `create_session` function so that it will use a `weakref.WeakValueDictionary`, so that when an in-memory object falls out of scope, it will be removed automatically, thereby providing some automatic management of memory.   However, this may not be instant if there are circular references upon the object.  To guarantee that an instance is removed from the identity map before removing references to it, use the `expunge()` method, described later, to remove it.  Additionally, note that an object that has changes marked on it (i.e. "dirty") can still fall out of scope when using `weak_identity_map`.
 
 The Session supports an iterator interface in order to see all objects in the identity map:
 
@@ -138,11 +138,14 @@ As for objects inside of `new` and `deleted`, if you abandon all references to n
 
 #### query() {@name=query}
 
-The `query()` function takes a class or `Mapper` as an argument, along with an optional `entity_name` parameter, and returns a new `Query` object which will issue mapper queries within the context of this Session.  If a Mapper is passed, then the Query uses that mapper.  Otherwise, if a class is sent, it will locate the primary mapper for that class which is used to construct the Query.  
+The `query()` function takes one or more classes and/or mappers, along with an optional `entity_name` parameter, and returns a new `Query` object which will issue mapper queries within the context of this Session.  For each mapper is passed, the Query uses that mapper.  For each class, the Query will locate the primary mapper for the class using `class_mapper()`.
 
     {python}
     # query from a class
-    session.query(User).select_by(name='ed')
+    session.query(User).filter_by(name='ed').all()
+
+    # query with multiple classes, returns tuples
+    session.query(User, Address).join('addresses').filter_by(name='ed').all()
     
     # query from a mapper
     query = session.query(usermapper)
@@ -150,7 +153,7 @@ The `query()` function takes a class or `Mapper` as an argument, along with an o
     
     # query from a class mapped with entity name 'alt_users'
     q = session.query(User, entity_name='alt_users')
-    y = q.options(eagerload('orders')).select()
+    y = q.options(eagerload('orders')).all()
     
 `entity_name` is an optional keyword argument sent with a class object, in order to further qualify which primary mapper to be used; this only applies if there was a `Mapper` created with that particular class/entity name combination, else an exception is raised.  All of the methods on Session which take a class or mapper argument also take the `entity_name` argument, so that a given class can be properly matched to the desired primary mapper.
 
@@ -309,8 +312,6 @@ This method is a combination of the `save()` and `update()` methods, which will 
 
 #### merge() {@name=merge}
 
-Feature Status: [Alpha Implementation][alpha_implementation] 
-
 `merge()` is used to return the persistent version of an instance that is not attached to this Session.  When passed an instance, if an instance with its database identity already exists within this Session, it is returned.  If the instance does not exist in this Session, it is loaded from the database and then returned.  
 
 A future version of `merge()` will also update the Session's instance with the state of the given instance (hence the name "merge").
@@ -328,8 +329,6 @@ This method is useful for bringing in objects which may have been restored from 
 Note that `merge()` *does not* associate the given instance with the Session; it remains detached (or attached to whatever Session it was already attached to).
 
 ### Cascade rules {@name=cascade}
-
-Feature Status: [Alpha Implementation][alpha_implementation] 
 
 Mappers support the concept of configurable *cascade* behavior on `relation()`s.  This behavior controls how the Session should treat the instances that have a parent-child relationship with another instance that is operated upon by the Session.  Cascade is indicated as a comma-separated list of string keywords, with the possible values `all`, `delete`, `save-update`, `refresh-expire`, `merge`, `expunge`, and `delete-orphan`.
 

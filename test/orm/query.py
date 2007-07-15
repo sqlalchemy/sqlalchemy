@@ -274,17 +274,17 @@ class InstancesTest(QueryTest):
 
     def test_contains_eager(self):
 
-        selectquery = users.outerjoin(addresses).select(use_labels=True, order_by=[users.c.id, addresses.c.id])
+        selectquery = users.outerjoin(addresses).select(users.c.id<10, use_labels=True, order_by=[users.c.id, addresses.c.id])
         q = create_session().query(User)
 
         def go():
             l = q.options(contains_eager('addresses')).instances(selectquery.execute())
-            assert fixtures.user_address_result == l
+            assert fixtures.user_address_result[0:3] == l
         self.assert_sql_count(testbase.db, go, 1)
 
         def go():
             l = q.options(contains_eager('addresses')).from_statement(selectquery).all()
-            assert fixtures.user_address_result == l
+            assert fixtures.user_address_result[0:3] == l
         self.assert_sql_count(testbase.db, go, 1)
 
     def test_contains_eager_alias(self):
@@ -366,7 +366,7 @@ class InstancesTest(QueryTest):
 
         s = select([users, func.count(addresses.c.id).label('count')], from_obj=[users.outerjoin(addresses)], group_by=[c for c in users.c], order_by=users.c.id)
         q = sess.query(User)
-        l = q.instances(s.execute(), "count")
+        l = q.add_column("count").from_statement(s).all()
         assert l == expected
 
     @testbase.unsupported('mysql') # only because of "+" operator requiring "concat" in mysql (fix #475)
@@ -381,8 +381,14 @@ class InstancesTest(QueryTest):
 
         s = select([users, func.count(addresses.c.id).label('count'), ("Name:" + users.c.name).label('concat')], from_obj=[users.outerjoin(addresses)], group_by=[c for c in users.c], order_by=[users.c.id])
         q = create_session().query(User)
-        l = q.instances(s.execute(), "count", "concat")
+        l = q.add_column("count").add_column("concat").from_statement(s).all()
         assert l == expected
+        
+        q = create_session().query(User).add_column(func.count(addresses.c.id))\
+            .add_column(("Name:" + users.c.name)).select_from(users.outerjoin(addresses))\
+            .group_by([c for c in users.c]).order_by(users.c.id)
+            
+        assert q.all() == expected
 
 
 if __name__ == '__main__':

@@ -150,6 +150,7 @@ In this example, a class `MyClass` is defined, which is associated with a parent
     myparent.myclasses.append(MyClass('this is myclass'))
     myclass = myparent.myclasses['this is myclass']
 
+Note: SQLAlchemy 0.4 has an overhauled and much improved implementation for custom list classes, with some slight API changes.
 
 #### Custom Join Conditions {@name=customjoin}
 

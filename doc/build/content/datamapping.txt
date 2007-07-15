@@ -585,6 +585,14 @@ The above syntax is shorthand for using the `add_entity()` method:
     {python}
     session.query(User).add_entity(Address).join('addresses').all()
     
+Theres also a way to combine scalar results with objects, using `add_column()`.  This is often used for functions and aggregates.  
+
+    {python}
+    r = session.query(User).add_column(func.max(users_table.c.name)).group_by([c for c in users_table.c]).all()
+    for r in result:
+        print "user:", r[0]
+        print "max name:", r[1]
+    
 To join across multiple relationships, specify them in a list.  Below, we load a `ShoppingCart`, limiting its `cartitems` collection to the single item which has a `price` object whose `amount` column is 47.95:
 
     {python}
