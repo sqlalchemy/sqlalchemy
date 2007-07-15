@@ -266,6 +266,12 @@ class InstancesTest(QueryTest):
             assert fixtures.user_address_result == l
         self.assert_sql_count(testbase.db, go, 1)
 
+
+        def go():
+            l = q.options(contains_alias('ulist'), contains_eager('addresses')).from_statement(query).all()
+            assert fixtures.user_address_result == l
+        self.assert_sql_count(testbase.db, go, 1)
+
     def test_contains_eager(self):
 
         selectquery = users.outerjoin(addresses).select(use_labels=True, order_by=[users.c.id, addresses.c.id])
@@ -273,6 +279,11 @@ class InstancesTest(QueryTest):
 
         def go():
             l = q.options(contains_eager('addresses')).instances(selectquery.execute())
+            assert fixtures.user_address_result == l
+        self.assert_sql_count(testbase.db, go, 1)
+
+        def go():
+            l = q.options(contains_eager('addresses')).from_statement(selectquery).all()
             assert fixtures.user_address_result == l
         self.assert_sql_count(testbase.db, go, 1)
 

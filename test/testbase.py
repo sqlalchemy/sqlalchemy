@@ -8,9 +8,6 @@ import optparse
 from sqlalchemy.schema import MetaData
 from sqlalchemy.orm import clear_mappers
 
-import warnings
-warnings.filterwarnings("error")
-
 db = None
 metadata = None
 db_uri = None

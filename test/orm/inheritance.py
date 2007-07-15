@@ -506,6 +506,9 @@ class InheritTest8(testbase.ORMTest):
                 self.name = name
 
         class Employee(Person): pass
+
+        import warnings
+        warnings.filterwarnings("error", r".*On mapper.*distinct primary key")
     
     def insert_data(self):
         person_insert = person_table.insert()
