@@ -326,14 +326,11 @@ class ExecutionContext(object):
         """Return the list of the primary key values for the last insert statement executed.
 
         This does not apply to straight textual clauses; only to
-        ``sql.Insert`` objects compiled against a ``schema.Table`` object,
-        which are executed via `execute()`.  The order of
+        ``sql.Insert`` objects compiled against a ``schema.Table`` object.
+        The order of
         items in the list is the same as that of the Table's
         'primary_key' attribute.
 
-        In some cases, this method may invoke a query back to the
-        database to retrieve the data, based on the "lastrowid" value
-        in the cursor.
         """
 
         raise NotImplementedError()
@@ -865,6 +862,7 @@ class ResultProxy(object):
         
     rowcount = property(lambda s:s.context.get_rowcount())
     connection = property(lambda s:s.context.connection)
+    lastrowid = property(lambda s:s.cursor.lastrowid)
     
     def _init_metadata(self):
         if hasattr(self, '_ResultProxy__props'):

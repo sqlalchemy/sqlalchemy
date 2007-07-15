@@ -274,15 +274,21 @@ class Session(object):
                 raise exceptions.InvalidRequestError("Could not locate any Engine or Connection bound to mapper '%s'" % str(mapper))
             return e
 
-    def query(self, mapper_or_class, entity_name=None, **kwargs):
+    def query(self, mapper_or_class, *addtl_entities, **kwargs):
         """Return a new ``Query`` object corresponding to this ``Session`` and
         the mapper, or the classes' primary mapper.
         """
-
+        
+        entity_name = kwargs.pop('entity_name', None)
+        
         if isinstance(mapper_or_class, type):
-            return query.Query(_class_mapper(mapper_or_class, entity_name=entity_name), self, **kwargs)
+            q = query.Query(_class_mapper(mapper_or_class, entity_name=entity_name), self, **kwargs)
         else:
-            return query.Query(mapper_or_class, self, **kwargs)
+            q = query.Query(mapper_or_class, self, **kwargs)
+            
+        for ent in addtl_entities:
+            q = q.add_entity(ent)
+        return q
 
     def _sql(self):
         class SQLProxy(object):

@@ -86,13 +86,13 @@ Configuring SQLAlchemy for your database consists of creating objects called `Ta
 
     {python}
     >>> metadata = MetaData()
-    >>> metadata.connect(db)
+    >>> metadata.bind = db
 
-An equivalent operation is to create the `MetaData` object directly with an Engine URL, which calls the `create_engine` call for us:
+An equivalent operation is to create the `MetaData` object directly with the Engine:
 
     {python}
-    >>> metadata = MetaData('sqlite:///tutorial.db')
-
+    >>> metadata = MetaData(db)
+    
 Now, when we tell "metadata" about the tables in our database, we can issue CREATE statements for those tables, as well as execute SQL statements derived from them, without needing to open or close any connections; that will be all done automatically.
 
 Note that SQLALchemy fully supports the usage of explicit Connection objects for all SQL operations, which may be in conjunction with plain `MetaData` objects that are entirely unbound to any Engine, providing a more decoupled pattern that allows finer-grained control of connections than the "bound" approach this tutorial will present.  For the purposes of this tutorial, we will stick with "bound" objects, as it allows us to focus more on SA's general concepts, leaving explicit connection management as a more advanced topic.

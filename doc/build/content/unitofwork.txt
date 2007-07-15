@@ -45,13 +45,13 @@ A common option used with `create_session()` is to specify a specific `Engine` o
     
     # create a Session that will use this engine for all operations.
     # it will open and close Connections as needed.
-    session = create_session(bind_to=e)
+    session = create_session(bind=e)
     
     # open a Connection
     conn = e.connect()
     
     # create a Session that will use this specific Connection for all operations
-    session = create_session(bind_to=conn)
+    session = create_session(bind=conn)
     
 
 The session to which an object is attached can be acquired via the `object_session()` function, which returns the appropriate `Session` if the object is pending or persistent, or `None` if the object is transient or detached:
@@ -291,7 +291,7 @@ Both of these methods receive two arguments; in the case of `bind_mapper()`, it 
     sess.bind_mapper(mymapper, sqlite_connection)  # bind mymapper operations to a single SQLite connection
     sess.bind_table(email_addresses_table, engine2) # bind operations with the email_addresses_table to mysql
     
-Normally, when a `Session` is created via `create_session()` with no arguments, the Session has no awareness of individual `Engines`, and when mappers use the `Session` to retrieve connections, the underlying `MetaData` each `Table` is associated with is expected to be "bound" to an `Engine`, else no engine can be located and an exception is raised.  A second form of `create_session()` takes the argument `bind_to=engine_or_connection`, where all SQL operations performed by this `Session` use the single `Engine` or `Connection` (collectively known as a `Connectable`) passed to the constructor.  With `bind_mapper()` and `bind_table()`,  the operations of individual mapper and/or tables are bound to distinct engines or connections, thereby overriding not only the engine which may be "bound" to the underlying `MetaData`, but also the `Engine` or `Connection` which may have been passed to the `create_session()` function.  Configurations which interact with multiple explicit database connections at one time must use either or both of these methods in order to associate `Session` operations with the appropriate connection resource.  
+Normally, when a `Session` is created via `create_session()` with no arguments, the Session has no awareness of individual `Engines`, and when mappers use the `Session` to retrieve connections, the underlying `MetaData` each `Table` is associated with is expected to be "bound" to an `Engine`, else no engine can be located and an exception is raised.  A second form of `create_session()` takes the argument `bind=engine_or_connection`, where all SQL operations performed by this `Session` use the single `Engine` or `Connection` (collectively known as a `Connectable`) passed to the constructor.  With `bind_mapper()` and `bind_table()`,  the operations of individual mapper and/or tables are bound to distinct engines or connections, thereby overriding not only the engine which may be "bound" to the underlying `MetaData`, but also the `Engine` or `Connection` which may have been passed to the `create_session()` function.  Configurations which interact with multiple explicit database connections at one time must use either or both of these methods in order to associate `Session` operations with the appropriate connection resource.  
 
 Binding a `Mapper` to a resource takes precedence over a `Table` bind, meaning if mapper A is associated with table B, and the Session binds mapper A to connection X and table B to connection Y, an operation with mapper A will use connection X, not connection Y.
 
@@ -389,7 +389,8 @@ Note that while SessionTransaction is capable of tracking multiple transactions 
 SessionTransaction Facts:
 
  * SessionTransaction, like its parent Session object, is **not threadsafe**.
- 
+ * SessionTransaction will no longer be necessary in SQLAlchemy 0.4, where its functionality is to be merged with the Session itself.
+  
 #### Using SQL with SessionTransaction {@name=sql}
 
 The SessionTransaction can interact with direct SQL queries in two general ways.  Either specific `Connection` objects can be associated with the `SessionTransaction`, which are then useable both for direct SQL as well as within `flush()` operations performed by the `SessionTransaction`, or via accessing the `Connection` object automatically referenced within the `SessionTransaction`.
@@ -430,7 +431,7 @@ The transactions issued by `SessionTransaction` as well as internally by the `Se
 
     {python title="Transactions with Sessions"}
     connection = engine.connect()   # Connection
-    session = create_session(bind_to=connection) # Session bound to the Connection
+    session = create_session(bind=connection) # Session bound to the Connection
     trans = connection.begin()      # start transaction
     try:
         stuff = session.query(MyClass).select()     # Session operation uses connection
@@ -442,33 +443,3 @@ The transactions issued by `SessionTransaction` as well as internally by the `Se
         raise
     trans.commit()      # commit
 
-### Analyzing Object Flushes {@name=logging}    
-
-The session module can log an extensive display of its "flush plans", which is a graph of its internal representation of objects before they are written to the database.  To turn this logging on:
-
-    {python}
-    # make an Session with echo_uow
-    session = create_session(echo_uow=True)
-    
-The `flush()` operation will then dump to the standard output displays like the following:
-
-    {code}
-    Task dump:
-    
-     UOWTask(6034768, 'User/users/None')
-      |
-      |- Save User(6016624)
-      |       |-Process User(6016624).addresses
-      |
-      |- UOWTask(6034832, 'Address/email_addresses/None')
-      |   |- Save Address(6034384)
-      |   |- Save Address(6034256)
-      |   |----
-      | 
-      |----
-    
-The above graph can be read straight downwards to determine the order of operations.  It indicates "save User 6016624, process each element in the 'addresses' list on User 6016624, save Address 6034384, Address 6034256".
-
-Of course, one can also get a good idea of the order of operations just by logging the actual SQL statements executed.
-
-    

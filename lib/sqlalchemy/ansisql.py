@@ -840,8 +840,8 @@ class ANSISchemaGenerator(ANSISchemaBase):
 
     def get_column_default_string(self, column):
         if isinstance(column.default, schema.PassiveDefault):
-            if isinstance(column.default.arg, str):
-                return repr(column.default.arg)
+            if isinstance(column.default.arg, basestring):
+                return "'%s'" % column.default.arg
             else:
                 return str(self._compile(column.default.arg, None))
         else:

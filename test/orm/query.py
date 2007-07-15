@@ -114,9 +114,36 @@ class FilterTest(QueryTest):
     def test_basic(self):
         assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).all()
 
+    def test_limit(self):
+        assert [User(id=8), User(id=9)] == create_session().query(User).limit(2).offset(1).all()
+
+        assert [User(id=8), User(id=9)] == list(create_session().query(User)[1:3])
+
+        assert User(id=8) == create_session().query(User)[1]
+        
     def test_onefilter(self):
         assert [User(id=8), User(id=9)] == create_session().query(User).filter(users.c.name.endswith('ed')).all()
 
+class CountTest(QueryTest):
+    def test_basic(self):
+        assert 4 == create_session().query(User).count()
+
+        assert 2 == create_session().query(User).filter(users.c.name.endswith('ed')).count()
+
+class TextTest(QueryTest):
+    def test_fulltext(self):
+        assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).from_statement("select * from users").all()
+
+    def test_fragment(self):
+        assert [User(id=8), User(id=9)] == create_session().query(User).filter("id in (8, 9)").all()
+
+        assert [User(id=9)] == create_session().query(User).filter("name='fred'").filter("id=9").all()
+
+        assert [User(id=9)] == create_session().query(User).filter("name='fred'").filter(users.c.id==9).all()
+
+    def test_binds(self):
+        assert [User(id=8), User(id=9)] == create_session().query(User).filter("id in (:id1, :id2)").params(id1=8, id2=9).all()
+        
         
 class ParentTest(QueryTest):
     def test_o2m(self):
@@ -305,6 +332,9 @@ class InstancesTest(QueryTest):
         q = sess.query(User).add_entity(Address)
         l = q.join('addresses').filter_by(email_address='ed@bettyboop.com').all()
         assert l == [(user8, address3)]
+        
+        q = sess.query(User, Address).join('addresses').filter_by(email_address='ed@bettyboop.com')
+        assert q.all() == [(user8, address3)]
 
     def test_multi_columns(self):
         sess = create_session()

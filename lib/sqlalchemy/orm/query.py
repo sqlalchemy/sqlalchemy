@@ -11,7 +11,12 @@ from sqlalchemy.orm.interfaces import OperationContext, SynonymProperty
 __all__ = ['Query', 'QueryContext', 'SelectionContext']
 
 class Query(object):
-    """Encapsulates the object-fetching operations provided by Mappers."""
+    """Encapsulates the object-fetching operations provided by Mappers.
+    
+    Note that this particular version of Query contains the 0.3 API as well as most of the
+    0.4 API for forwards compatibility.  A large part of the API here is deprecated (but still present)
+    in the 0.4 series.
+    """
 
     def __init__(self, class_or_mapper, session=None, entity_name=None, lockmode=None, with_options=None, extension=None, **kwargs):
         if isinstance(class_or_mapper, type):
@@ -43,6 +48,7 @@ class Query(object):
         self._offset = kwargs.pop('offset', None)
         self._limit = kwargs.pop('limit', None)
         self._criterion = None
+        self._params = {}
         self._col = None
         self._func = None
         self._joinpoint = self.mapper
@@ -52,6 +58,8 @@ class Query(object):
             opt.process_query(self)
         
     def _clone(self):
+        # yes, a little embarassing here.
+        # go look at 0.4 for the simple version.
         q = Query.__new__(Query)
         q.mapper = self.mapper
         q.select_mapper = self.select_mapper
@@ -68,6 +76,7 @@ class Query(object):
             q.extension.append(ext)
         q._offset = self._offset
         q._limit = self._limit
+        q._params = self._params
         q._group_by = self._group_by
         q._get_clause = self._get_clause
         q._from_obj = list(self._from_obj)
@@ -129,6 +138,8 @@ class Query(object):
 
         The criterion is constructed in the same way as the
         ``select_by()`` method.
+
+        this method is deprecated in 0.4.
         """
 
         ret = self.extension.get_by(self, *args, **params)
@@ -167,6 +178,7 @@ class Query(object):
 
               result = usermapper.select_by(user_name = 'fred')
 
+          this method is deprecated in 0.4.
         """
 
         ret = self.extension.select_by(self, *args, **params)
@@ -181,6 +193,8 @@ class Query(object):
 
         The criterion is constructed in the same way as the
         ``select_by()`` method.
+
+        this method is deprecated in 0.4.
         """
 
         return self._join_by(args, params)
@@ -192,6 +206,8 @@ class Query(object):
         locate the property, and will return a ClauseElement
         representing a join from this Query's mapper to the endmost
         mapper.
+
+        this method is deprecated in 0.4.
         """
 
         [keys, p] = self._locate_prop(key)
@@ -203,6 +219,8 @@ class Query(object):
         from one mapper to the next, return a ClauseElement
         representing a join from this Query's mapper to the endmost
         mapper.
+
+        this method is deprecated in 0.4.
         """
 
         mapper = self.mapper
@@ -224,6 +242,8 @@ class Query(object):
 
         The criterion is constructed in the same way as the
         ``select_by()`` method.
+
+        this method is deprecated in 0.4.
         """
 
         return self.get_by(*args, **params)
@@ -234,6 +254,8 @@ class Query(object):
 
         The criterion is constructed in the same way as the
         ``select_by()`` method.
+
+        this method is deprecated in 0.4.
         """
 
         ret = self.select_whereclause(self.join_by(*args, **params), limit=2)
@@ -250,6 +272,8 @@ class Query(object):
 
         The criterion is constructed in the same way as the
         ``select_by()`` method.
+
+        this method is deprecated in 0.4.
         """
 
         return self.count(self.join_by(*args, **params))
@@ -261,6 +285,7 @@ class Query(object):
         the given criterion represents ``WHERE`` criterion only, 
         LIMIT 1 is applied to the fully generated statement.
 
+        this method is deprecated in 0.4.
         """
 
         if isinstance(arg, sql.FromClause) and arg.supports_execution():
@@ -281,6 +306,7 @@ class Query(object):
         ``WHERE`` criterion only, LIMIT 2 is applied to the fully
         generated statement.
 
+        this method is deprecated in 0.4.
         """
         
         if isinstance(arg, sql.FromClause) and arg.supports_execution():
@@ -308,6 +334,8 @@ class Query(object):
         In this case, the developer must ensure that an adequate set
         of columns exists in the rowset with which to build new object
         instances.
+        
+        this method is deprecated in 0.4.
         """
 
         ret = self.extension.select(self, arg=arg, **kwargs)
@@ -321,6 +349,8 @@ class Query(object):
     def select_whereclause(self, whereclause=None, params=None, **kwargs):
         """Given a ``WHERE`` criterion, create a ``SELECT`` statement,
         execute and return the resulting instances.
+
+        this method is deprecated in 0.4.
         """
         statement = self.compile(whereclause, **kwargs)
         return self._select_statement(statement, params=params)
@@ -328,6 +358,9 @@ class Query(object):
     def count(self, whereclause=None, params=None, **kwargs):
         """Given a ``WHERE`` criterion, create a ``SELECT COUNT``
         statement, execute and return the resulting count value.
+
+        the additional arguments to this method are is deprecated in 0.4.
+
         """
         if self._criterion:
             if whereclause is not None:
@@ -353,6 +386,8 @@ class Query(object):
     def select_statement(self, statement, **params):
         """Given a ``ClauseElement``-based statement, execute and
         return the resulting instances.
+
+        this method is deprecated in 0.4.
         """
 
         return self._select_statement(statement, params=params)
@@ -360,6 +395,8 @@ class Query(object):
     def select_text(self, text, **params):
         """Given a literal string-based statement, execute and return
         the resulting instances.
+
+        this method is deprecated in 0.4.  use from_statement() instead.
         """
 
         t = sql.text(text)
@@ -501,12 +538,27 @@ class Query(object):
         q = self._clone()
         q.lockmode = mode
         return q
+
+    def params(self, **kwargs):
+        """add values for bind parameters which may have been specified in filter()."""
+
+        q = self._clone()
+        q._params = q._params.copy()
+        q._params.update(kwargs)
+        return q
     
     def filter(self, criterion):
         """apply the given filtering criterion to the query and return the newly resulting ``Query``
         
         the criterion is any sql.ClauseElement applicable to the WHERE clause of a select.
         """
+
+        if isinstance(criterion, basestring):
+            criterion = sql.text(criterion)
+
+        if criterion is not None and not isinstance(criterion, sql.ClauseElement):
+            raise exceptions.ArgumentError("filter() argument must be of type sqlalchemy.sql.ClauseElement or string")
+
         q = self._clone()
         if q._criterion is not None:
             q._criterion = q._criterion & criterion
@@ -827,6 +879,8 @@ class Query(object):
         """Return the results represented by this ``Query`` as a list.
 
         This results in an execution of the underlying query.
+
+        this method is deprecated in 0.4.  use all() instead.
         """
 
         return list(self)
@@ -869,7 +923,22 @@ class Query(object):
             return self._col_aggregate(self._col, self._func)
 
     def all(self):
+        """Return the results represented by this ``Query`` as a list.
+
+        This results in an execution of the underlying query.
+        """
         return self.list()
+
+    def from_statement(self, statement):
+        """execute a full select() statement, or literal textual string as a SELECT statement.
+        
+        this method is for forwards compatibility with 0.4.
+        """
+        if isinstance(statement, basestring):
+            statement = sql.text(statement)
+        q = self._clone()
+        q._statement = statement
+        return q
 
     def scalar(self):
         """Return the first result of this ``Query``.
@@ -890,13 +959,13 @@ class Query(object):
         this Query's session/mapper, return the resulting list of
         instances.
 
-        After execution, close the ResultProxy and its underlying
-        resources.  This method is one step above the ``instances()``
-        method, which takes the executed statement's ResultProxy
-        directly.
+        this method is deprecated in 0.4.  Use from_statement() instead.
         """
 
-        result = self.session.execute(self.mapper, clauseelement, params=params)
+        p = self._params
+        if params is not None:
+            p.update(params)
+        result = self.session.execute(self.mapper, clauseelement, params=p)
         try:
             return self.instances(result, **kwargs)
         finally:
@@ -994,8 +1063,6 @@ class Query(object):
 
     def _select_statement(self, statement, params=None, **kwargs):
         statement.use_labels = True
-        if params is None:
-            params = {}
         return self.execute(statement, params=params, **kwargs)
 
     def _should_nest(self, querycontext):
@@ -1018,6 +1085,8 @@ class Query(object):
     def compile(self, whereclause = None, **kwargs):
         """Given a WHERE criterion, produce a ClauseElement-based
         statement suitable for usage in the execute() method.
+
+        the arguments to this function are deprecated and are removed in version 0.4.
         """
 
         if self._criterion:

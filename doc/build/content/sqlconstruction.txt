@@ -74,8 +74,7 @@ As mentioned above, `ClauseElement` structures can also be executed with a `Conn
     engine = create_engine('sqlite:///myfile.db')
     conn = engine.connect()
     
-    s = users.select()
-    {sql}result = conn.execute(s)
+    {sql}result = conn.execute(users.select())
     SELECT users.user_id, users.user_name, users.password FROM users
     {}
     
@@ -83,16 +82,21 @@ As mentioned above, `ClauseElement` structures can also be executed with a `Conn
 
 #### Binding ClauseElements to Engines {@name=binding}
 
-For queries that don't contain any tables, `ClauseElement`s that represent a fully executeable statement support an `engine` keyword parameter which can bind the object to an `Engine`, thereby allowing implicit execution:
+For queries that don't contain any "bound" tables, `ClauseElement`s that represent a fully executeable statement support an `bind` keyword parameter which can bind the object to an `Engine` or `Connection`, thereby allowing implicit execution:
 
     {python}
+    # select using a table
+    {sql}select([users], bind=myengine).execute()
+    SELECT users.user_id, users.user_name, users.password FROM users
+    {}
+
     # select a literal
-    {sql}select(["current_time"], engine=myengine).execute()
+    {sql}select(["current_time"], bind=myengine).execute()
     SELECT current_time
     {}
     
     # select a function
-    {sql}select([func.now()], engine=db).execute()
+    {sql}select([func.now()], bind=db).execute()
     SELECT now()
     {}
 
@@ -126,6 +130,11 @@ The object returned by `execute()` is a `sqlalchemy.engine.ResultProxy` object, 
     
     # or get the underlying DBAPI cursor object
     cursor = result.cursor
+    
+    # after an INSERT, return the last inserted primary key value
+    # returned as a list of primary key values for *one* row 
+    # (a list since primary keys can be composite)
+    id = result.last_inserted_ids()
     
     # close the result.  If the statement was implicitly executed 
     # (i.e. without an explicit Connection), this will
@@ -366,10 +375,10 @@ Functions also are callable as standalone values:
 
     {python}
     # call the "now()" function
-    time = func.now(engine=myengine).scalar()
+    time = func.now(bind=myengine).scalar()
 
     # call myfunc(1,2,3)
-    myvalue = func.myfunc(1, 2, 3, engine=db).execute()
+    myvalue = func.myfunc(1, 2, 3, bind=db).execute()
 
     # or call them off the engine
     db.func.now().scalar()
@@ -385,14 +394,14 @@ You can drop in a literal value anywhere there isnt a column to attach to via th
     {'literal_1': 'bar', 'literal': 'foo'}
 
     # literals have all the same comparison functions as columns
-    {sql}select([literal('foo') == literal('bar')], engine=myengine).scalar()
+    {sql}select([literal('foo') == literal('bar')], bind=myengine).scalar()
     SELECT :literal = :literal_1
     {'literal_1': 'bar', 'literal': 'foo'}
 
 Literals also take an optional `type` parameter to give literals a type.  This can sometimes be significant, for example when using the "+" operator with SQLite, the String type is detected and the operator is converted to "||":
 
     {python}
-    {sql}select([literal('foo', type=String) + 'bar'], engine=e).execute()
+    {sql}select([literal('foo', type=String) + 'bar'], bind=e).execute()
     SELECT ? || ?
     ['foo', 'bar']
 
@@ -712,7 +721,7 @@ Throughout all these examples, SQLAlchemy is busy creating bind parameters where
 
 #### Precompiling a Query {@name=precompiling}
 
-By throwing the `compile()` method onto the end of any query object, the query can be "compiled" by the SQLEngine into a `sqlalchemy.sql.Compiled` object just once, and the resulting compiled object reused, which eliminates repeated internal compilation of the SQL string:
+By throwing the `compile()` method onto the end of any query object, the query can be "compiled" by the Engine into a `sqlalchemy.sql.Compiled` object just once, and the resulting compiled object reused, which eliminates repeated internal compilation of the SQL string:
 
     {python}s = users.select(users.c.user_name==bindparam('username')).compile()
     s.execute(username='fred')
@@ -721,7 +730,7 @@ By throwing the `compile()` method onto the end of any query object, the query c
 
 ### Literal Text Blocks {@name=textual}
 
-The sql package tries to allow free textual placement in as many ways as possible.  In the examples below, note that the from_obj parameter is used only when no other information exists within the select object with which to determine table metadata.  Also note that in a query where there isnt even table metadata used, the SQLEngine to be used for the query has to be explicitly specified:
+The sql package tries to allow free textual placement in as many ways as possible.  In the examples below, note that the from_obj parameter is used only when no other information exists within the select object with which to determine table metadata.  Also note that in a query where there isnt even table metadata used, the Engine to be used for the query has to be explicitly specified:
 
     {python}
     # strings as column clauses
@@ -759,12 +768,12 @@ The sql package tries to allow free textual placement in as many ways as possibl
     {sql}select(
             ["*"], 
             from_obj=["(select user_id, user_name from users)"], 
-            engine=db).execute()
+            bind=db).execute()
     SELECT * FROM (select user_id, user_name from users)
     {}
     
     # a full query
-    {sql}text("select user_name from users", engine=db).execute()
+    {sql}text("select user_name from users", bind=db).execute()
     SELECT user_name FROM users
     {}
     
@@ -773,22 +782,22 @@ The sql package tries to allow free textual placement in as many ways as possibl
 
 Use the format `':paramname'` to define bind parameters inside of a text block.  They will be converted to the appropriate format upon compilation:
 
-    {python}t = engine.text("select foo from mytable where lala=:hoho")
+    {python}t = text("select foo from mytable where lala=:hoho", bind=engine)
     r = t.execute(hoho=7)
 
 Bind parameters can also be explicit, which allows typing information to be added.  Just specify them as a list with keys that match those inside the textual statement:
 
-    {python}t = engine.text("select foo from mytable where lala=:hoho", 
-                    bindparams=[bindparam('hoho', type=types.String)])
+    {python}t = text("select foo from mytable where lala=:hoho", 
+                    bindparams=[bindparam('hoho', type=types.String)], bind=engine)
         r = t.execute(hoho="im hoho")
 
 Result-row type processing can be added via the `typemap` argument, which is a dictionary of return columns mapped to types:
 
     {python}# specify DateTime type for the 'foo' column in the result set
     # sqlite, for example, uses result-row post-processing to construct dates
-    t = engine.text("select foo from mytable where lala=:hoho", 
+    t = text("select foo from mytable where lala=:hoho", 
             bindparams=[bindparam('hoho', type=types.String)],
-            typemap={'foo':types.DateTime}
+            typemap={'foo':types.DateTime}, bind=engine
             )
     r = t.execute(hoho="im hoho")
     
