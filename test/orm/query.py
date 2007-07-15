@@ -123,6 +123,9 @@ class TextTest(QueryTest):
         assert [User(id=9)] == create_session().query(User).filter("name='fred'").filter("id=9").all()
 
         assert [User(id=9)] == create_session().query(User).filter("name='fred'").filter(users.c.id==9).all()
+
+    def test_binds(self):
+        assert [User(id=8), User(id=9)] == create_session().query(User).filter("id in (:id1, :id2)").params(id1=8, id2=9).all()
         
 class FilterTest(QueryTest):
     def test_basic(self):
