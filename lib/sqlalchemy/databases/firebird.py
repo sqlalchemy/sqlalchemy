@@ -366,7 +366,7 @@ class FBSchemaDropper(ansisql.ANSISchemaDropper):
 
 class FBDefaultRunner(ansisql.ANSIDefaultRunner):
     def exec_default_sql(self, default):
-        c = sql.select([default.arg], from_obj=["rdb$database"]).compile(engine=self.connection)
+        c = sql.select([default.arg], from_obj=["rdb$database"]).compile(bind=self.connection)
         return self.connection.execute_compiled(c).scalar()
 
     def visit_sequence(self, seq):

@@ -15,11 +15,11 @@ class SessionContext(object):
 
       engine = create_engine(...)
       def session_factory():
-          return Session(bind_to=engine)
+          return Session(bind=engine)
       context = SessionContext(session_factory)
 
       s = context.current # get thread-local session
-      context.current = Session(bind_to=other_engine) # set current session
+      context.current = Session(bind=other_engine) # set current session
       del context.current # discard the thread-local session (a new one will
                           # be created on the next call to context.current)
     """
