@@ -535,7 +535,7 @@ class EagerLoader(AbstractRelationLoader):
                     select.append_correlation(self.eagertarget)
             aliased_column = sql_util.ClauseAdapter(self.eagertarget).chain(ModifySubquery()).traverse(aliased_column, clone=True)
             aliased_column = aliased_column.label(None)
-            self._row_decorator.map[column] = alias
+            self._row_decorator.map[column] = aliased_column
             self.extra_cols[column] = aliased_column
             return aliased_column
             

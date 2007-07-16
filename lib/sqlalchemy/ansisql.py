@@ -275,6 +275,7 @@ class ANSICompiler(engine.Compiled):
             self.typemap.setdefault(labelname.lower(), label.obj.type)
             if isinstance(label.obj, sql._ColumnClause):
                 self.column_labels[label.obj._label] = labelname
+            self.column_labels[label.name] = labelname
         self.strings[label] = self.strings[label.obj] + " AS "  + self.preparer.format_label(label, labelname)
         
     def visit_column(self, column):
