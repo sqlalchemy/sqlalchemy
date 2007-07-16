@@ -7,11 +7,14 @@
 from sqlalchemy import sql, util, exceptions, sql_util, logging, schema
 from sqlalchemy.orm import mapper, class_mapper, object_mapper
 from sqlalchemy.orm.interfaces import OperationContext
+import random
 
 __all__ = ['Query', 'QueryContext', 'SelectionContext']
 
 class Query(object):
-    """Encapsulates the object-fetching operations provided by Mappers."""
+    """Encapsulates the object-fetching operations provided by Mappers.
+    
+    """
 
     def __init__(self, class_or_mapper, session=None, entity_name=None):
         if isinstance(class_or_mapper, type):
@@ -182,9 +185,6 @@ class Query(object):
         of this Query along with the additional entities.  The Query selects
         from all tables with no joining criterion by default.
         
-        When tuple-based results are returned, the 'uniquing' of returned entities
-        is disabled to maintain grouping.
-
             entity
                 a class or mapper which will be added to the results.
                 
@@ -207,15 +207,18 @@ class Query(object):
         table or selectable that is not the primary mapped selectable.  The Query selects
         from all tables with no joining criterion by default.
         
-        When tuple-based results are returned, the 'uniquing' of returned entities
-        is disabled to maintain grouping.
-
             column
                 a string column name or sql.ColumnElement to be added to the results.
                 
         """
         
         q = self._clone()
+
+        # alias non-labeled column elements. 
+        # TODO: make the generation deterministic
+        if isinstance(column, sql.ColumnElement) and not hasattr(column, '_label'):
+            column = column.label("anon_" + hex(random.randint(0, 65535))[2:])
+
         q._entities = q._entities + [column]
         return q
         
@@ -236,7 +239,7 @@ class Query(object):
         q = self._clone()
         q._lockmode = mode
         return q
-    
+
     def params(self, **kwargs):
         """add values for bind parameters which may have been specified in filter()."""
         
@@ -450,11 +453,9 @@ class Query(object):
     def join(self, prop):
         """create a join of this ``Query`` object's criterion
         to a relationship and return the newly resulting ``Query``.
-        
-        'prop' may be a string property name in which it is located
-        in the same manner as keyword arguments in ``select_by``, or
-        it may be a list of strings in which case the property is located
-        by direct traversal of each keyname (i.e. like join_via()).
+
+        'prop' may be a string property name or a list of string
+        property names.
         """
         
         q = self._clone()
@@ -467,16 +468,28 @@ class Query(object):
         """create a left outer join of this ``Query`` object's criterion
         to a relationship and return the newly resulting ``Query``.
         
-        'prop' may be a string property name in which it is located
-        in the same manner as keyword arguments in ``select_by``, or
-        it may be a list of strings in which case the property is located
-        by direct traversal of each keyname (i.e. like join_via()).
+        'prop' may be a string property name or a list of string
+        property names.
         """
         q = self._clone()
         (clause, mapper) = self._join_to(prop, outerjoin=True, start=self.mapper)
         q._from_obj = [clause]
         q._joinpoint = mapper
         return q
+
+    def reset_joinpoint(self):
+        """return a new Query reset the 'joinpoint' of this Query reset 
+        back to the starting mapper.  Subsequent generative calls will
+        be constructed from the new joinpoint.
+
+        Note that each call to join() or outerjoin() also starts from
+        the root.
+        """
+
+        q = self._clone()
+        q._joinpoint = q.mapper
+        return q
+
 
     def select_from(self, from_obj):
         """Set the `from_obj` parameter of the query and return the newly 
@@ -664,7 +677,7 @@ class Query(object):
             session._register_persistent(instance)
 
         if mappers_or_columns:
-            return zip(*([result] + [o[1] for o in process]))
+            return list(util.OrderedSet(zip(*([result] + [o[1] for o in process]))))
         else:
             return result.data
 
@@ -684,7 +697,10 @@ class Query(object):
         params = {}
         
         for i, primary_key in enumerate(self.primary_key_columns):
-            params[primary_key._label] = ident[i]
+            try:
+                params[primary_key._label] = ident[i]
+            except IndexError:
+                raise exceptions.InvalidRequestError("Could not find enough values to formulate primary key for query.get(); primary key columns are %s" % ', '.join(["'%s'" % str(c) for c in self.primary_key_columns]))
         try:
             q = self
             if lockmode is not None:
@@ -694,7 +710,6 @@ class Query(object):
             return q.first()
         except IndexError:
             return None
-
 
     def _should_nest(self, querycontext):
         """Return True if the given statement options indicate that we

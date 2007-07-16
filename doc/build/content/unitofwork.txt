@@ -45,13 +45,13 @@ A common option used with `create_session()` is to specify a specific `Engine` o
     
     # create a Session that will use this engine for all operations.
     # it will open and close Connections as needed.
-    session = create_session(bind_to=e)
+    session = create_session(bind=e)
     
     # open a Connection
     conn = e.connect()
     
     # create a Session that will use this specific Connection for all operations
-    session = create_session(bind_to=conn)
+    session = create_session(bind=conn)
     
 
 The session to which an object is attached can be acquired via the `object_session()` function, which returns the appropriate `Session` if the object is pending or persistent, or `None` if the object is transient or detached:
@@ -61,7 +61,7 @@ The session to which an object is attached can be acquired via the `object_sessi
 
 Session Facts:
 
- * the Session object is **not threadsafe**.  For thread-local management of Sessions, the recommended approch is to use the [plugins_sessioncontext](rel:plugins_sessioncontext) extension module.
+ * the Session object is **not threadsafe**.  For thread-local management of Sessions, the recommended approach is to use the [plugins_sessioncontext](rel:plugins_sessioncontext) extension module.
 
 We will now cover some of the key concepts used by Sessions and its underlying Unit of Work.
 
@@ -77,13 +77,13 @@ For example; below, two separate calls to load an instance with database identit
     mymapper = mapper(MyClass, mytable)
     
     session = create_session()
-    obj1 = session.query(MyClass).selectfirst(mytable.c.id==15)
-    obj2 = session.query(MyClass).selectfirst(mytable.c.id==15)
+    obj1 = session.query(MyClass).filter(mytable.c.id==15).first()
+    obj2 = session.query(MyClass).filter(mytable.c.id==15).first()
     
     >>> obj1 is obj2
     True
     
-The Identity Map is an instance of `dict` by default.  (This is new as of version 0.3.2).  As an option, you can specify the flag `weak_identity_map=True` to the `create_session` function so that it will use a `weakref.WeakValueDictionary`, so that when an in-memory object falls out of scope, it will be removed automatically, thereby providing some automatic management of memory.   However, this may not be instant if there are circular references upon the object.  To guarantee that an instance is removed from the identity map before removing references to it, use the `expunge()` method, described later, to remove it.  Additionally, note that an object that has changes marked on it (i.e. "dirty") can still fall out of scope when using `weak_identity_map`.
+The Identity Map is an instance of `dict` by default.  As an option, you can specify the flag `weak_identity_map=True` to the `create_session` function so that it will use a `weakref.WeakValueDictionary`, so that when an in-memory object falls out of scope, it will be removed automatically, thereby providing some automatic management of memory.   However, this may not be instant if there are circular references upon the object.  To guarantee that an instance is removed from the identity map before removing references to it, use the `expunge()` method, described later, to remove it.  Additionally, note that an object that has changes marked on it (i.e. "dirty") can still fall out of scope when using `weak_identity_map`.
 
 The Session supports an iterator interface in order to see all objects in the identity map:
 
@@ -138,11 +138,14 @@ As for objects inside of `new` and `deleted`, if you abandon all references to n
 
 #### query() {@name=query}
 
-The `query()` function takes a class or `Mapper` as an argument, along with an optional `entity_name` parameter, and returns a new `Query` object which will issue mapper queries within the context of this Session.  If a Mapper is passed, then the Query uses that mapper.  Otherwise, if a class is sent, it will locate the primary mapper for that class which is used to construct the Query.  
+The `query()` function takes one or more classes and/or mappers, along with an optional `entity_name` parameter, and returns a new `Query` object which will issue mapper queries within the context of this Session.  For each mapper is passed, the Query uses that mapper.  For each class, the Query will locate the primary mapper for the class using `class_mapper()`.
 
     {python}
     # query from a class
-    session.query(User).select_by(name='ed')
+    session.query(User).filter_by(name='ed').all()
+
+    # query with multiple classes, returns tuples
+    session.query(User, Address).join('addresses').filter_by(name='ed').all()
     
     # query from a mapper
     query = session.query(usermapper)
@@ -150,7 +153,7 @@ The `query()` function takes a class or `Mapper` as an argument, along with an o
     
     # query from a class mapped with entity name 'alt_users'
     q = session.query(User, entity_name='alt_users')
-    y = q.options(eagerload('orders')).select()
+    y = q.options(eagerload('orders')).all()
     
 `entity_name` is an optional keyword argument sent with a class object, in order to further qualify which primary mapper to be used; this only applies if there was a `Mapper` created with that particular class/entity name combination, else an exception is raised.  All of the methods on Session which take a class or mapper argument also take the `entity_name` argument, so that a given class can be properly matched to the desired primary mapper.
 
@@ -291,7 +294,7 @@ Both of these methods receive two arguments; in the case of `bind_mapper()`, it 
     sess.bind_mapper(mymapper, sqlite_connection)  # bind mymapper operations to a single SQLite connection
     sess.bind_table(email_addresses_table, engine2) # bind operations with the email_addresses_table to mysql
     
-Normally, when a `Session` is created via `create_session()` with no arguments, the Session has no awareness of individual `Engines`, and when mappers use the `Session` to retrieve connections, the underlying `MetaData` each `Table` is associated with is expected to be "bound" to an `Engine`, else no engine can be located and an exception is raised.  A second form of `create_session()` takes the argument `bind_to=engine_or_connection`, where all SQL operations performed by this `Session` use the single `Engine` or `Connection` (collectively known as a `Connectable`) passed to the constructor.  With `bind_mapper()` and `bind_table()`,  the operations of individual mapper and/or tables are bound to distinct engines or connections, thereby overriding not only the engine which may be "bound" to the underlying `MetaData`, but also the `Engine` or `Connection` which may have been passed to the `create_session()` function.  Configurations which interact with multiple explicit database connections at one time must use either or both of these methods in order to associate `Session` operations with the appropriate connection resource.  
+Normally, when a `Session` is created via `create_session()` with no arguments, the Session has no awareness of individual `Engines`, and when mappers use the `Session` to retrieve connections, the underlying `MetaData` each `Table` is associated with is expected to be "bound" to an `Engine`, else no engine can be located and an exception is raised.  A second form of `create_session()` takes the argument `bind=engine_or_connection`, where all SQL operations performed by this `Session` use the single `Engine` or `Connection` (collectively known as a `Connectable`) passed to the constructor.  With `bind_mapper()` and `bind_table()`,  the operations of individual mapper and/or tables are bound to distinct engines or connections, thereby overriding not only the engine which may be "bound" to the underlying `MetaData`, but also the `Engine` or `Connection` which may have been passed to the `create_session()` function.  Configurations which interact with multiple explicit database connections at one time must use either or both of these methods in order to associate `Session` operations with the appropriate connection resource.  
 
 Binding a `Mapper` to a resource takes precedence over a `Table` bind, meaning if mapper A is associated with table B, and the Session binds mapper A to connection X and table B to connection Y, an operation with mapper A will use connection X, not connection Y.
 
@@ -308,8 +311,6 @@ The `save_or_update()` method is a convenience method which will call the `save(
 This method is a combination of the `save()` and `update()` methods, which will examine the given instance for a database identity (i.e. if it is transient or detached), and will call the implementation of `save()` or `update()` as appropriate.  Use `save_or_update()` to add unattached instances to a session when you're not sure if they were newly created or not.  Like `save()` and `update()`, `save_or_update()` cascades along the `save-update` cascade indicator, described in the `cascade` section below.
 
 #### merge() {@name=merge}
-
-Feature Status: [Alpha Implementation][alpha_implementation] 
 
 `merge()` is used to return the persistent version of an instance that is not attached to this Session.  When passed an instance, if an instance with its database identity already exists within this Session, it is returned.  If the instance does not exist in this Session, it is loaded from the database and then returned.  
 
@@ -328,8 +329,6 @@ This method is useful for bringing in objects which may have been restored from 
 Note that `merge()` *does not* associate the given instance with the Session; it remains detached (or attached to whatever Session it was already attached to).
 
 ### Cascade rules {@name=cascade}
-
-Feature Status: [Alpha Implementation][alpha_implementation] 
 
 Mappers support the concept of configurable *cascade* behavior on `relation()`s.  This behavior controls how the Session should treat the instances that have a parent-child relationship with another instance that is operated upon by the Session.  Cascade is indicated as a comma-separated list of string keywords, with the possible values `all`, `delete`, `save-update`, `refresh-expire`, `merge`, `expunge`, and `delete-orphan`.
 
@@ -389,7 +388,8 @@ Note that while SessionTransaction is capable of tracking multiple transactions 
 SessionTransaction Facts:
 
  * SessionTransaction, like its parent Session object, is **not threadsafe**.
- 
+ * SessionTransaction will no longer be necessary in SQLAlchemy 0.4, where its functionality is to be merged with the Session itself.
+  
 #### Using SQL with SessionTransaction {@name=sql}
 
 The SessionTransaction can interact with direct SQL queries in two general ways.  Either specific `Connection` objects can be associated with the `SessionTransaction`, which are then useable both for direct SQL as well as within `flush()` operations performed by the `SessionTransaction`, or via accessing the `Connection` object automatically referenced within the `SessionTransaction`.
@@ -430,7 +430,7 @@ The transactions issued by `SessionTransaction` as well as internally by the `Se
 
     {python title="Transactions with Sessions"}
     connection = engine.connect()   # Connection
-    session = create_session(bind_to=connection) # Session bound to the Connection
+    session = create_session(bind=connection) # Session bound to the Connection
     trans = connection.begin()      # start transaction
     try:
         stuff = session.query(MyClass).select()     # Session operation uses connection
@@ -442,33 +442,3 @@ The transactions issued by `SessionTransaction` as well as internally by the `Se
         raise
     trans.commit()      # commit
 
-### Analyzing Object Flushes {@name=logging}    
-
-The session module can log an extensive display of its "flush plans", which is a graph of its internal representation of objects before they are written to the database.  To turn this logging on:
-
-    {python}
-    # make an Session with echo_uow
-    session = create_session(echo_uow=True)
-    
-The `flush()` operation will then dump to the standard output displays like the following:
-
-    {code}
-    Task dump:
-    
-     UOWTask(6034768, 'User/users/None')
-      |
-      |- Save User(6016624)
-      |       |-Process User(6016624).addresses
-      |
-      |- UOWTask(6034832, 'Address/email_addresses/None')
-      |   |- Save Address(6034384)
-      |   |- Save Address(6034256)
-      |   |----
-      | 
-      |----
-    
-The above graph can be read straight downwards to determine the order of operations.  It indicates "save User 6016624, process each element in the 'addresses' list on User 6016624, save Address 6034384, Address 6034256".
-
-Of course, one can also get a good idea of the order of operations just by logging the actual SQL statements executed.
-
-    

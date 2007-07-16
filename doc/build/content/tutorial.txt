@@ -86,16 +86,16 @@ Configuring SQLAlchemy for your database consists of creating objects called `Ta
 
     {python}
     >>> metadata = MetaData()
-    >>> metadata.connect(db)
+    >>> metadata.bind = db
 
-An equivalent operation is to create the `MetaData` object directly with an Engine URL, which calls the `create_engine` call for us:
+An equivalent operation is to create the `MetaData` object directly with the Engine:
 
     {python}
-    >>> metadata = MetaData('sqlite:///tutorial.db')
-
+    >>> metadata = MetaData(db)
+    
 Now, when we tell "metadata" about the tables in our database, we can issue CREATE statements for those tables, as well as execute SQL statements derived from them, without needing to open or close any connections; that will be all done automatically.
 
-Note that SQLALchemy fully supports the usage of explicit Connection objects for all SQL operations, which may be in conjunction with plain `MetaData` objects that are entirely unbound to any Engine, providing a more decoupled pattern that allows finer-grained control of connections than the "bound" approach this tutorial will present.  For the purposes of this tutorial, we will stick with "bound" objects, as it allows us to focus more on SA's general concepts, leaving explicit connection management as a more advanced topic.
+Note that SQLALchemy allows us to use explicit connection objects for everything, if we wanted to, and there are reasons why you might want to do this.  But for the purposes of this tutorial, using `bind` removes the need for us to deal with explicit connections.
 
 ### Creating a Table {@name=table_creating}
 
@@ -206,7 +206,7 @@ Pretty much the full range of standard SQL operations are supported as construct
 
 ### Working with Rows
 
-You can see that when we print out the rows returned by an execution result, it prints the rows as tuples.  These rows in fact support both the list and dictionary interfaces.  The dictionary interface allows the addressing of columns by string column name, or even the original `Column` object:
+You can see that when we print out the rows returned by an execution result, it prints the rows as tuples.  These rows support both the list and dictionary interfaces.  The dictionary interface allows the addressing of columns by string column name, or even the original `Column` object:
 
     {python}
     >>> row.keys()
@@ -271,7 +271,7 @@ With two related tables, we can now construct a join amongst them using the `joi
     >>> print [row for row in r]
     [(1, u'Mary', u'secure', 2, u'mary@mary.com', 1), (2, u'Tom', None, 1, u'tom@tom.com', 2)]
     
-The `join` method is also a standalone function in the `sqlalchemy` namespace.  The join condition is figured out from the foreign keys of the Table objects given.  The condition (also called the "ON clause") can be specified explicitly, such as in this example where we locate all users that used their email address as their password:
+The `join` method is also a standalone function in the `sqlalchemy` namespace.  The join condition is figured out from the foreign keys of the Table objects given.  The condition (also called the "ON clause") can be specified explicitly, such as in this example which creates a join representing all users that used their email address as their password:
 
     {python}
     >>> print join(users_table, email_addresses_table, 
@@ -332,7 +332,7 @@ The Session has all kinds of methods on it to manage and inspect its collection 
 
     {python}
     >>> query = session.query(User)
-    >>> print query.select_by(user_name='Harry')
+    >>> print query.filter_by(user_name='Harry').all()
     SELECT users.user_name AS users_user_name, users.password AS users_password, users.user_id AS users_user_id 
     FROM users 
     WHERE users.user_name = ? ORDER BY users.oid
@@ -341,22 +341,22 @@ The Session has all kinds of methods on it to manage and inspect its collection 
     
 All querying for objects is performed via an instance of `Query`.  The various `select` methods on an instance of `Mapper` also use an underlying `Query` object to perform the operation.  A `Query` is always bound to a specific `Session`.
 
-Lets turn off the database echoing for a moment, and try out a few methods on `Query`.  Methods that end with the suffix `_by` primarily take keyword arguments which correspond to properties on the object.  Other methods take `ClauseElement` objects, which are constructed by using `Column` objects inside of Python expressions, in the same way as we did with our SQL select example in the previous section of this tutorial.  Using `ClauseElement` structures to query objects is more verbose but more flexible:
+Lets turn off the database echoing for a moment, and try out a few methods on `Query`.  The two methods used to narrow results are `filter()` and `filter_by()`, and the two most common methods used to load results are `all()` and `first()`.   The `get()` method is used for a quick lookup by primary key.  `filter_by()` works with keyword arguments, and `filter()` works with `ClauseElement` objects, which are constructed by using `Column` objects inside of Python expressions, in the same way as we did with our SQL select example in the previous section of this tutorial.  Using `ClauseElement` structures to query objects is more verbose but more flexible:
 
     {python}
     >>> metadata.engine.echo = False
-    >>> print query.select(User.c.user_id==3)
+    >>> print query.filter(User.c.user_id==3).all()
     [User(u'Fred',None)]
     >>> print query.get(2)
     User(u'Tom',None)
-    >>> print query.get_by(user_name='Mary')
+    >>> print query.filter_by(user_name='Mary').first()
     User(u'Mary',u'secure')
-    >>> print query.selectfirst(User.c.password==None)
+    >>> print query.filter(User.c.password==None).first()
     User(u'Tom',None)
     >>> print query.count()
     4
 
-Notice that our `User` class has a special attribute `c` attached to it.  This 'c' represents the columns on the User's mapper's Table object.  Saying `User.c.user_name` is synonymous with saying `users_table.c.user_name`, recalling that `User` is the Python class and `users` is our `Table` object.
+Notice that our `User` class has a special attribute `c` attached to it.  This 'c' represents the columns on the User's mapper's Table object.  Saying `User.c.user_name` is synonymous with saying `users_table.c.user_name`, recalling that `User` is the Python class and `users_table` is our `Table` object.
 
 ### Making Changes {@name=changes}
 
@@ -373,15 +373,15 @@ With a little experience in loading objects, lets see what its like to make chan
 Lets also make a few changes on some of the objects in the database.  We will load them with our `Query` object, and then change some things.
 
     {python}
-    >>> mary = query.get_by(user_name='Mary')
-    >>> harry = query.get_by(user_name='Harry')
+    >>> mary = query.filter_by(user_name='Mary').first()
+    >>> harry = query.filter_by(user_name='Harry').first()
     >>> mary.password = 'marysnewpassword'
     >>> harry.password = 'harrysnewpassword'
     
 At the moment, nothing has been saved to the database; all of our changes are in memory only.  What happens if some other part of the application also tries to load 'Mary' from the database and make some changes before we had a chance to save it ?  Assuming that the same `Session` is used, loading 'Mary' from the database a second time will issue a second query in order locate the primary key of 'Mary', but will *return the same object instance as the one already loaded*.  This behavior is due to an important property of the `Session` known as the **identity map**:
 
     {python}
-    >>> mary2 = query.get_by(user_name='Mary')
+    >>> mary2 = query.filter_by(user_name='Mary').first()
     >>> mary is mary2
     True
     
@@ -394,7 +394,7 @@ As far as the issue of the same object being modified in two different Sessions,
 With a new user "ed" and some changes made on "Mary" and "Harry", lets also mark "Fred" as deleted:
 
     {python}
-    >>> fred = query.get_by(user_name='Fred')
+    >>> fred = query.filter_by(user_name='Fred').first()
     >>> session.delete(fred)
     
 Then to send all of our changes to the database, we `flush()` the Session.  Lets turn echo back on to see this happen!:
@@ -456,7 +456,7 @@ Lets try out this new mapping configuration, and see what we get for the email a
 We can then treat the `addresses` attribute on each `User` object like a regular list:
 
     {python}
-    >>> mary = query.get_by(user_name='Mary') # doctest: +NORMALIZE_WHITESPACE
+    >>> mary = query.filter_by(user_name='Mary').first() # doctest: +NORMALIZE_WHITESPACE
     SELECT users.user_name AS users_user_name, users.password AS users_password, users.user_id AS users_user_id 
     FROM users 
     WHERE users.user_name = ? ORDER BY users.oid 
@@ -490,9 +490,9 @@ You may have noticed from the example above that when we say `session.flush()`, 
     {python}
     >>> transaction = session.create_transaction()
     >>> try: # doctest: +NORMALIZE_WHITESPACE
-    ...     (ed, harry, mary) = session.query(User).select(
-    ...         User.c.user_name.in_('Ed', 'Harry', 'Mary'), order_by=User.c.user_name
-    ...     )
+    ...     (ed, harry, mary) = session.query(User).filter(
+    ...         User.c.user_name.in_('Ed', 'Harry', 'Mary')
+    ...     ).order_by(User.c.user_name).all()
     ...     del mary.addresses[1]
     ...     harry.addresses.append(Address('harry2@gmail.com'))
     ...     session.flush()
@@ -527,6 +527,8 @@ You may have noticed from the example above that when we say `session.flush()`, 
     INSERT INTO email_addresses (email_address, user_id) VALUES (?, ?)
     ['fredsnewemail@fred.com', 6]
     COMMIT
+
+The `SessionTransaction` process above is due to be greatly simplified in version 0.4 of SQLAlchemy, where the `Session` will be able to wrap its whole lifespan in a transaction automatically.
 
 Main documentation:  [unitofwork](rel:unitofwork)
 

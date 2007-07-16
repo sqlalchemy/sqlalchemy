@@ -139,7 +139,7 @@
       join(['a', 'c']).filter(<some other crit>).all()
       in 0.4 all join() calls start from the "root"
     - added synchronization to the mapper() construction step, to avoid
-      thread collections when pre-existing mappers are compiling in a 
+      thread collisions when pre-existing mappers are compiling in a 
       different thread [ticket:613]
     - a warning is issued by Mapper when two primary key columns of the
       same name are munged into a single attribute.  this happens frequently
@@ -174,6 +174,9 @@
       this is also mostly to help inheritance scenarios formulate the best 
       choice of primary key columns.  [ticket:185]
     - added 'bind' argument to Sequence.create()/drop(), ColumnDefault.execute()
+    - columns can be overridden in a reflected table with a "key" 
+      attribute different than the column's name, including for primary key
+      columns [ticket:650]
     - fixed "ambiguous column" result detection, when dupe col names exist
       in a result [ticket:657]
     - some enhancements to "column targeting", the ability to match a column
@@ -212,6 +215,7 @@
     - fixed catching of some errors that imply a dropped connection [ticket:625]
     - fixed escaping of the modulo operator [ticket:624]
     - added 'fields' to reserved words [ticket:590]
+    - various reflection enhancement/fixes
 - oracle
     - datetime fixes: got subsecond TIMESTAMP to work [ticket:604],
       added OracleDate which supports types.Date with only year/month/day
@@ -219,6 +223,10 @@
       LOB objects detected in a result set to be forced into OracleBinary
       so that the LOB is read() automatically, if no typemap was present
       (i.e., if a textual execute() was issued).
+    - mod operator '%' produces MOD [ticket:624]
+    - converts cx_oracle datetime objects to Python datetime.datetime when
+      Python 2.3 used [ticket:542]
+    - fixed unicode conversion in Oracle TEXT type
 - postgres
     - fixed escaping of the modulo operator [ticket:624]
     - added support for reflection of domains [ticket:570]
@@ -232,7 +240,6 @@
     - sqlite better handles datetime/date/time objects mixed and matched
       with various Date/Time/DateTime columns
     - string PK column inserts dont get overwritten with OID [ticket:603] 
-
 - mssql
     - fix port option handling for pyodbc [ticket:634]
     - now able to reflect start and increment values for identity columns

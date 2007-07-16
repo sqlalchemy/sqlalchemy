@@ -10,9 +10,6 @@ import sqlalchemy
 from sqlalchemy import sql, schema, engine, pool, MetaData
 from sqlalchemy.orm import clear_mappers
 
-import warnings
-warnings.filterwarnings("error")
-
 db = None
 metadata = None
 db_uri = None

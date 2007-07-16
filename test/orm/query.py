@@ -131,6 +131,13 @@ class FilterTest(QueryTest):
     def test_basic(self):
         assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).all()
 
+    def test_limit(self):
+        assert [User(id=8), User(id=9)] == create_session().query(User).limit(2).offset(1).all()
+
+        assert [User(id=8), User(id=9)] == list(create_session().query(User)[1:3])
+
+        assert User(id=8) == create_session().query(User)[1]
+        
     def test_onefilter(self):
         assert [User(id=8), User(id=9)] == create_session().query(User).filter(users.c.name.endswith('ed')).all()
 
@@ -140,6 +147,27 @@ class FilterTest(QueryTest):
             assert False
         except exceptions.ArgumentError, e:
             assert str(e) == "filter() argument must be of type sqlalchemy.sql.ClauseElement or string"
+
+class CountTest(QueryTest):
+    def test_basic(self):
+        assert 4 == create_session().query(User).count()
+
+        assert 2 == create_session().query(User).filter(users.c.name.endswith('ed')).count()
+
+class TextTest(QueryTest):
+    def test_fulltext(self):
+        assert [User(id=7), User(id=8), User(id=9),User(id=10)] == create_session().query(User).from_statement("select * from users").all()
+
+    def test_fragment(self):
+        assert [User(id=8), User(id=9)] == create_session().query(User).filter("id in (8, 9)").all()
+
+        assert [User(id=9)] == create_session().query(User).filter("name='fred'").filter("id=9").all()
+
+        assert [User(id=9)] == create_session().query(User).filter("name='fred'").filter(users.c.id==9).all()
+
+    def test_binds(self):
+        assert [User(id=8), User(id=9)] == create_session().query(User).filter("id in (:id1, :id2)").params(id1=8, id2=9).all()
+        
         
 class ParentTest(QueryTest):
     def test_o2m(self):
@@ -184,6 +212,7 @@ class ParentTest(QueryTest):
         
     
 class JoinTest(QueryTest):
+
     def test_overlapping_paths(self):
         # load a user who has an order that contains item id 3 and address id 1 (order 3, owned by jack)
         result = create_session().query(User).join(['orders', 'items']).filter_by(id=3).join(['orders','address']).filter_by(id=1).all()
@@ -191,6 +220,14 @@ class JoinTest(QueryTest):
 
     def test_overlapping_paths_outerjoin(self):
         result = create_session().query(User).outerjoin(['orders', 'items']).filter_by(id=3).outerjoin(['orders','address']).filter_by(id=1).all()
+        assert [User(id=7, name='jack')] == result
+
+    def test_reset_joinpoint(self):
+        # load a user who has an order that contains item id 3 and address id 1 (order 3, owned by jack)
+        result = create_session().query(User).join(['orders', 'items']).filter_by(id=3).reset_joinpoint().join(['orders','address']).filter_by(id=1).all()
+        assert [User(id=7, name='jack')] == result
+
+        result = create_session().query(User).outerjoin(['orders', 'items']).filter_by(id=3).reset_joinpoint().outerjoin(['orders','address']).filter_by(id=1).all()
         assert [User(id=7, name='jack')] == result
     
     def test_overlap_with_aliases(self):
@@ -262,14 +299,25 @@ class InstancesTest(QueryTest):
             assert fixtures.user_address_result == l
         self.assert_sql_count(testbase.db, go, 1)
 
+
+        def go():
+            l = q.options(contains_alias('ulist'), contains_eager('addresses')).from_statement(query).all()
+            assert fixtures.user_address_result == l
+        self.assert_sql_count(testbase.db, go, 1)
+
     def test_contains_eager(self):
 
-        selectquery = users.outerjoin(addresses).select(use_labels=True, order_by=[users.c.id, addresses.c.id])
+        selectquery = users.outerjoin(addresses).select(users.c.id<10, use_labels=True, order_by=[users.c.id, addresses.c.id])
         q = create_session().query(User)
 
         def go():
             l = q.options(contains_eager('addresses')).instances(selectquery.execute())
-            assert fixtures.user_address_result == l
+            assert fixtures.user_address_result[0:3] == l
+        self.assert_sql_count(testbase.db, go, 1)
+
+        def go():
+            l = q.options(contains_eager('addresses')).from_statement(selectquery).all()
+            assert fixtures.user_address_result[0:3] == l
         self.assert_sql_count(testbase.db, go, 1)
 
     def test_contains_eager_alias(self):
@@ -328,6 +376,12 @@ class InstancesTest(QueryTest):
         q = sess.query(User).add_entity(Address)
         l = q.join('addresses').filter_by(email_address='ed@bettyboop.com').all()
         assert l == [(user8, address3)]
+        
+        q = sess.query(User, Address).join('addresses').filter_by(email_address='ed@bettyboop.com')
+        assert q.all() == [(user8, address3)]
+
+        q = sess.query(User, Address).join('addresses').options(eagerload('addresses')).filter_by(email_address='ed@bettyboop.com')
+        assert q.all() == [(user8, address3)]
 
     def test_multi_columns(self):
         sess = create_session()
@@ -345,7 +399,7 @@ class InstancesTest(QueryTest):
 
         s = select([users, func.count(addresses.c.id).label('count')]).select_from(users.outerjoin(addresses)).group_by(*[c for c in users.c]).order_by(users.c.id)
         q = sess.query(User)
-        l = q.instances(s.execute(), "count")
+        l = q.add_column("count").from_statement(s).all()
         assert l == expected
 
     @testbase.unsupported('mysql') # only because of "+" operator requiring "concat" in mysql (fix #475)
@@ -360,8 +414,14 @@ class InstancesTest(QueryTest):
 
         s = select([users, func.count(addresses.c.id).label('count'), ("Name:" + users.c.name).label('concat')], from_obj=[users.outerjoin(addresses)], group_by=[c for c in users.c], order_by=[users.c.id])
         q = create_session().query(User)
-        l = q.instances(s.execute(), "count", "concat")
+        l = q.add_column("count").add_column("concat").from_statement(s).all()
         assert l == expected
+        
+        q = create_session().query(User).add_column(func.count(addresses.c.id))\
+            .add_column(("Name:" + users.c.name)).select_from(users.outerjoin(addresses))\
+            .group_by([c for c in users.c]).order_by(users.c.id)
+            
+        assert q.all() == expected
 
 class FilterByTest(QueryTest):
     def test_aliased(self):

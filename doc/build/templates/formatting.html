@@ -80,7 +80,10 @@
         p = re.compile(r'<pre>(.*?)</pre>', re.S)
         def hlight(match):
             return "<pre>" + highlight.highlight(fix_indent(match.group(1)), html_escape = html_escape, syntaxtype = syntaxtype) + "</pre>"
-        content = p.sub(hlight, "<pre>" + capture(caller.body) + "</pre>")
+        try:
+            content = p.sub(hlight, "<pre>" + capture(caller.body) + "</pre>")
+        except:
+            raise "the content is " + str(capture(caller.body))
         
     %>
 

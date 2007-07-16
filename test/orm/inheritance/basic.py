@@ -263,6 +263,9 @@ class DistinctPKTest(testbase.ORMTest):
 
         class Employee(Person): pass
 
+        import warnings
+        warnings.filterwarnings("error", r".*On mapper.*distinct primary key")
+
     def insert_data(self):
         person_insert = person_table.insert()
         person_insert.execute(id=1, name='alice')

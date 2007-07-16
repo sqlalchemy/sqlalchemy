@@ -96,8 +96,8 @@ And `Table` provides an interface to the table's properties as well as that of i
     # access the table's MetaData:
     employees.metadata
     
-    # access the table's Engine, if its MetaData is bound:
-    employees.engine
+    # access the table's bound Engine or Connection, if its MetaData is bound:
+    employees.bind
     
     # access a column's name, type, nullable, primary key, foreign key
     employees.c.employee_id.name
@@ -117,9 +117,9 @@ And `Table` provides an interface to the table's properties as well as that of i
     # get the table related by a foreign key
     fcolumn = employees.c.employee_dept.foreign_key.column.table
 
-#### Binding MetaData to an Engine {@name=binding}
+#### Binding MetaData to an Engine or Connection {@name=binding}
 
-A `MetaData` object can be associated with an `Engine` (or an individual `Connection`); this process is called **binding**.  This allows the `MetaData` and the elements which it contains to perform operations against the database directly, using the connection resources to which it's bound.   Common operations which are made more convenient through binding include being able to generate SQL constructs which know how to execute themselves, creating `Table` objects which query the database for their column and constraint information, and issuing CREATE or DROP statements.
+A `MetaData` object can be associated with an `Engine` or an individual `Connection`; this process is called **binding**.  The term used to describe "an engine or a connection" is often referred to as a **connectable**.  Binding allows the `MetaData` and the elements which it contains to perform operations against the database directly, using the connection resources to which it's bound.   Common operations which are made more convenient through binding include being able to generate SQL constructs which know how to execute themselves, creating `Table` objects which query the database for their column and constraint information, and issuing CREATE or DROP statements.
 
 To bind `MetaData` to an `Engine`, use the `connect()` method:
 
@@ -130,7 +130,7 @@ To bind `MetaData` to an `Engine`, use the `connect()` method:
     meta = MetaData()
 
     # bind to an engine
-    meta.connect(engine)
+    meta.bind = engine
 
 Once this is done, the `MetaData` and its contained `Table` objects can access the database directly:
 
@@ -212,42 +212,6 @@ Within the `MetaData` collection, this table will be identified by the combinati
 
 Note that these clauses are not supported on SQLite, and require `InnoDB` tables when used with MySQL.  They may also not be supported on other databases.
 
-#### Enabling Table / Column Quoting {@name=quoting}
-
-Feature Status: [Alpha Implementation][alpha_implementation] 
-
-Many table, schema, or column names require quoting to be enabled.  Reasons for this include names that are the same as a database reserved word, or for identifiers that use MixedCase, where the database would normally "fold" the case convention into lower or uppercase (such as Postgres).  SQLAlchemy will attempt to automatically determine when quoting should be used.  It will determine a value for every identifier name called `case_sensitive`, which defaults to `False` if the identifer name uses no uppercase letters, or `True` otherwise.  This flag may be explicitly set on any schema item as well (schema items include `Table`, `Column`, `MetaData`, `Sequence`, etc.) to override this default setting, where objects will inherit the setting from an enclosing object if not explicitly overridden.
-
-When `case_sensitive` is `True`, the dialect will do what it has to in order for the database to recognize the casing.  For Postgres and Oracle, this means using quoted identifiers.
-
-Identifiers that match known SQL reserved words (such as "asc", "union", etc.) will also be quoted according to the dialect's quoting convention regardless of the `case_sensitive` setting.
-
-To force quoting for an identifier, set the "quote=True" flag on `Column` or `Table`, as well as the `quote_schema=True` flag for `Table`. 
-
-    {python}
-    table2 = Table('WorstCase2', metadata,
-        # desc is a reserved word, which will be quoted.
-        Column('desc', Integer, primary_key=True),
-
-        # if using a reserved word which SQLAlchemy doesn't know about,
-        # specify quote=True
-        Column('some_reserved_word', Integer, quote=True, primary_key=True),
-
-        # MixedCase uses a mixed case convention. 
-        # it will be automatically quoted since it is case sensitive
-        Column('MixedCase', Integer),
-
-        # Union is both a reserved word and mixed case
-        Column('Union', Integer),
-
-        # normal_column doesnt require quoting
-        Column('normal_column', String(30)))
-
-    # to use tables where case_sensitive is False by default regardless
-    # of idenfifier casings, set "case_sensitive" to false at any level
-    # (or true to force case sensitive for lowercase identifiers as well)
-    lowercase_metadata = MetaData(case_sensitive=False)
-
 #### Other Options {@name=options}
 
 `Tables` may support database-specific options, such as MySQL's `engine` option that can specify "MyISAM", "InnoDB", and other backends for the table:
@@ -262,11 +226,11 @@ To force quoting for an identifier, set the "quote=True" flag on `Column` or `Ta
     
 ### Creating and Dropping Database Tables {@name=creating}    
 
-Creating and dropping individual tables can be done via the `create()` and `drop()` methods of `Table`; these methods take an optional `connectable` parameter which references an `Engine` or a `Connection`.  If not supplied, the `Engine` bound to the `MetaData` will be used, else an error is raised:
+Creating and dropping individual tables can be done via the `create()` and `drop()` methods of `Table`; these methods take an optional `bind` parameter which references an `Engine` or a `Connection`.  If not supplied, the `Engine` bound to the `MetaData` will be used, else an error is raised:
 
     {python}
     meta = MetaData()
-    meta.connect('sqlite:///:memory:')
+    meta.bind = 'sqlite:///:memory:'
 
     employees = Table('employees', meta, 
         Column('employee_id', Integer, primary_key=True),
@@ -284,17 +248,17 @@ Creating and dropping individual tables can be done via the `create()` and `drop
 `drop()` method:
     
     {python}
-    {sql}employees.drop(connectable=e)
+    {sql}employees.drop(bind=e)
     DROP TABLE employees
     {}            
 
 The `create()` and `drop()` methods also support an optional keyword argument `checkfirst` which will issue the database's appropriate pragma statements to check if the table exists before creating or dropping:
 
     {python}
-    employees.create(connectable=e, checkfirst=True)
+    employees.create(bind=e, checkfirst=True)
     employees.drop(checkfirst=False)
     
-Entire groups of Tables can be created and dropped directly from the `MetaData` object with `create_all()` and `drop_all()`.  These methods always check for the existence of each table before creating or dropping.  Each method takes an optional `connectable` keyword argument which can reference an `Engine` or a `Connection`.  If no engine is specified, the underlying bound `Engine`,  if any, is used:
+Entire groups of Tables can be created and dropped directly from the `MetaData` object with `create_all()` and `drop_all()`.  These methods always check for the existence of each table before creating or dropping.  Each method takes an optional `bind` keyword argument which can reference an `Engine` or a `Connection`.  If no engine is specified, the underlying bound `Engine`,  if any, is used:
 
     {python}
     engine = create_engine('sqlite:///:memory:')
@@ -315,7 +279,7 @@ Entire groups of Tables can be created and dropped directly from the `MetaData` 
         Column('pref_value', String(100))
     )
     
-    {sql}metadata.create_all(connectable=engine)
+    {sql}metadata.create_all(bind=engine)
     PRAGMA table_info(users){}
     CREATE TABLE users(
             user_id INTEGER NOT NULL PRIMARY KEY, 
@@ -397,7 +361,7 @@ A PassiveDefault indicates an column default that is executed upon INSERT by the
 
     {python}
     t = Table('test', meta, 
-        Column('mycolumn', DateTime, PassiveDefault(text("sysdate")))
+        Column('mycolumn', DateTime, PassiveDefault("sysdate"))
     )
         
 A create call for the above table will produce:
@@ -415,7 +379,7 @@ PassiveDefault also sends a message to the `Engine` that data is available after
         Column('my_id', Integer, primary_key=True),
 
         # an on-insert database-side default
-        Column('data1', Integer, PassiveDefault(text("d1_func()"))),
+        Column('data1', Integer, PassiveDefault("d1_func()")),
     )
     # insert a row
     r = mytable.insert().execute(name='fred')
@@ -444,9 +408,9 @@ A table with a sequence looks like:
         Column("createdate", DateTime())
     )
 
-The Sequence is used with Postgres or Oracle to indicate the name of a database sequence that will be used to create default values for a column.  When a table with a Sequence on a column is created in the database by SQLAlchemy, the database sequence object is also created.   Similarly, the database sequence is dropped when the table is dropped.  Sequences are typically used with primary key columns.  When using Postgres, if an integer primary key column defines no explicit Sequence or other default method, SQLAlchemy will create the column with the SERIAL keyword, and will pre-execute a sequence named "tablename_columnname_seq" in order to retrieve new primary key values, if they were not otherwise explicitly stated.   Oracle, which has no "auto-increment" keyword, requires that a Sequence be created for a table if automatic primary key generation is desired.
+The Sequence is used with Postgres or Oracle to indicate the name of a database sequence that will be used to create default values for a column.  When a table with a Sequence on a column is created in the database by SQLAlchemy, the database sequence object is also created.   Similarly, the database sequence is dropped when the table is dropped.  Sequences are typically used with primary key columns.  When using Postgres, if an integer primary key column defines no explicit Sequence or other default method, SQLAlchemy will create the column with the SERIAL keyword, and will pre-execute a sequence named "tablename_columnname_seq" in order to retrieve new primary key values, if they were not otherwise explicitly stated.   Oracle, which has no "auto-increment" keyword, requires that a Sequence be specified for a table if automatic primary key generation is desired.
 
-A Sequence object can be defined on a Table that is then used for a non-sequence-supporting database.  In that case, the Sequence object is simply ignored.  Note that a Sequence object is **entirely optional for all databases except Oracle**, as other databases offer options for auto-creating primary key values, such as AUTOINCREMENT, SERIAL, etc.  SQLAlchemy will use these default methods for creating primary key values if no Sequence is present on the table metadata.
+A Sequence object can be defined on a Table that is then also used with a non-sequence-supporting database.  In that case, the Sequence object is simply ignored.  Note that a Sequence object is **entirely optional for all databases except Oracle**, as other databases offer options for auto-creating primary key values, such as AUTOINCREMENT, SERIAL, etc.  SQLAlchemy will use these default methods for creating primary key values if no Sequence is present on the table metadata.
 
 A sequence can also be specified with `optional=True` which indicates the Sequence should only be used on a database that requires an explicit sequence, and not those that supply some other method of providing integer values.  At the moment, it essentially means "use this sequence only with Oracle and not Postgres".
 
@@ -527,7 +491,7 @@ The `Index` objects will be created along with the CREATE statements for the tab
     # define an index
     i = Index('someindex', sometable.c.col5)
 
-    # create the index, will use the table's connectable, or specify the connectable keyword argument
+    # create the index, will use the table's bound connectable if the `bind` keyword argument not specified
     i.create()
 
 ### Adapting Tables to Alternate Metadata {@name=adapting}

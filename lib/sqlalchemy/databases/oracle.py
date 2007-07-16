@@ -43,6 +43,14 @@ class OracleDate(sqltypes.Date):
 class OracleDateTime(sqltypes.DateTime):
     def get_col_spec(self):
         return "DATE"
+        
+    def convert_result_value(self, value, dialect):
+        if value is None or isinstance(value,datetime.datetime):
+            return value
+        else:
+            # convert cx_oracle datetime object returned pre-python 2.4
+            return datetime.datetime(value.year,value.month,
+                value.day,value.hour, value.minute, value.second)
 
 # Note:
 # Oracle DATE == DATETIME
@@ -56,6 +64,15 @@ class OracleTimestamp(sqltypes.TIMESTAMP):
 
     def get_dbapi_type(self, dialect):
         return dialect.TIMESTAMP
+
+    def convert_result_value(self, value, dialect):
+        if value is None or isinstance(value,datetime.datetime):
+            return value
+        else:
+            # convert cx_oracle datetime object returned pre-python 2.4
+            return datetime.datetime(value.year,value.month,
+                value.day,value.hour, value.minute, value.second)
+
 
 class OracleString(sqltypes.String):
     def get_col_spec(self):
@@ -72,7 +89,8 @@ class OracleText(sqltypes.TEXT):
         if value is None:
             return None
         else:
-            return value.read()
+            return super(OracleText, self).convert_result_value(value.read(), dialect)
+
 
 class OracleRaw(sqltypes.Binary):
     def get_col_spec(self):
@@ -552,6 +570,13 @@ class OracleCompiler(ansisql.ANSICompiler):
             return " FOR UPDATE NOWAIT"
         else:
             return super(OracleCompiler, self).for_update_clause(select)
+
+    def visit_binary(self, binary):
+        if binary.operator == '%': 
+            self.strings[binary] = ("MOD(%s,%s)"%(self.get_str(binary.left), self.get_str(binary.right)))
+        else:
+            return ansisql.ANSICompiler.visit_binary(self, binary)
+        
 
 class OracleSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, **kwargs):
