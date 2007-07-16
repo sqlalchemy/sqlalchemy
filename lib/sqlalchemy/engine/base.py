@@ -688,7 +688,7 @@ class Connection(Connectable):
         return self.execute(object, *multiparams, **params).scalar()
 
     def compiler(self, statement, parameters, **kwargs):
-        return self.dialect.compiler(statement, parameters, bind=self.engine, **kwargs)
+        return self.dialect.compiler(statement, parameters, bind=self, **kwargs)
 
     def execute(self, object, *multiparams, **params):
         for c in type(object).__mro__:
