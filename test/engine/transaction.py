@@ -478,7 +478,7 @@ class TLTransactionTest(testbase.PersistTest):
         try:
             mapper(User, users)
 
-            sess = create_session(bind_to=tlengine)
+            sess = create_session(bind=tlengine)
             tlengine.begin()
             u = User()
             sess.save(u)

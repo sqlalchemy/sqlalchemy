@@ -71,14 +71,6 @@ class SchemaItem(object):
             m = self._derived_metadata()
             return m and m.bind or None
 
-    def get_engine(self):
-        """Return the engine or raise an error if no engine.
-        
-        Deprecated.  use the "bind" attribute.
-        """
-        
-        return self._get_engine(raiseerr=True)
-
     def _set_casing_strategy(self, kwargs, keyname='case_sensitive'):
         """Set the "case_sensitive" argument sent via keywords to the item's constructor.
 
@@ -180,7 +172,7 @@ class Table(SchemaItem, sql.TableClause):
 
     This subclasses ``sql.TableClause`` to provide a table that is
     associated with an instance of ``MetaData``, which in turn
-    may be associated with an instance of ``SQLEngine``.  
+    may be associated with an instance of ``Engine``.  
 
     Whereas ``TableClause`` represents a table as its used in an SQL
     expression, ``Table`` represents a table as it exists in a
@@ -356,36 +348,28 @@ class Table(SchemaItem, sql.TableClause):
             else:
                 return []
 
-    def exists(self, bind=None, connectable=None):
+    def exists(self, bind=None):
         """Return True if this table exists."""
 
-        if connectable is not None:
-            bind = connectable
-            
         if bind is None:
             bind = self._get_engine(raiseerr=True)
 
         def do(conn):
-            e = conn.engine
-            return e.dialect.has_table(conn, self.name, schema=self.schema)
+            return conn.dialect.has_table(conn, self.name, schema=self.schema)
         return bind.run_callable(do)
 
-    def create(self, bind=None, checkfirst=False, connectable=None):
+    def create(self, bind=None, checkfirst=False):
         """Issue a ``CREATE`` statement for this table.
 
         See also ``metadata.create_all()``."""
 
-        if connectable is not None:
-            bind = connectable
         self.metadata.create_all(bind=bind, checkfirst=checkfirst, tables=[self])
 
-    def drop(self, bind=None, checkfirst=False, connectable=None):
+    def drop(self, bind=None, checkfirst=False):
         """Issue a ``DROP`` statement for this table.
 
         See also ``metadata.drop_all()``."""
 
-        if connectable is not None:
-            bind = connectable
         self.metadata.drop_all(bind=bind, checkfirst=checkfirst, tables=[self])
 
     def tometadata(self, metadata, schema=None):
@@ -1051,16 +1035,16 @@ class Index(SchemaItem):
                                 % (self.name, column))
         self.columns.append(column)
 
-    def create(self, connectable=None):
-        if connectable is not None:
-            connectable.create(self)
+    def create(self, bind=None):
+        if bind is not None:
+            bind.create(self)
         else:
             self._get_engine(raiseerr=True).create(self)
         return self
 
-    def drop(self, connectable=None):
-        if connectable is not None:
-            connectable.drop(self)
+    def drop(self, bind=None):
+        if bind is not None:
+            bind.drop(self)
         else:
             self._get_engine(raiseerr=True).drop(self)
 
@@ -1148,7 +1132,7 @@ class MetaData(SchemaItem):
     def _get_parent(self):
         return None
 
-    def create_all(self, bind=None, tables=None, checkfirst=True, connectable=None):
+    def create_all(self, bind=None, tables=None, checkfirst=True):
         """Create all tables stored in this metadata.
 
         This will conditionally create tables depending on if they do
@@ -1158,21 +1142,16 @@ class MetaData(SchemaItem):
           A ``Connectable`` used to access the database; if None, uses
           the existing bind on this ``MetaData``, if any.
 
-        connectable
-          deprecated.  synonymous with "bind"
-
         tables
           Optional list of tables, which is a subset of the total
           tables in the ``MetaData`` (others are ignored).
         """
 
-        if connectable is not None:
-            bind = connectable
         if bind is None:
             bind = self._get_engine(raiseerr=True)
         bind.create(self, checkfirst=checkfirst, tables=tables)
 
-    def drop_all(self, bind=None, tables=None, checkfirst=True, connectable=None):
+    def drop_all(self, bind=None, tables=None, checkfirst=True):
         """Drop all tables stored in this metadata.
 
         This will conditionally drop tables depending on if they
@@ -1182,16 +1161,11 @@ class MetaData(SchemaItem):
           A ``Connectable`` used to access the database; if None, uses
           the existing bind on this ``MetaData``, if any.
           
-        connectable
-          deprecated.  synonymous with "bind"
-
         tables
           Optional list of tables, which is a subset of the total
           tables in the ``MetaData`` (others are ignored).
         """
 
-        if connectable is not None:
-            bind = connectable
         if bind is None:
             bind = self._get_engine(raiseerr=True)
         bind.drop(self, checkfirst=checkfirst, tables=tables)

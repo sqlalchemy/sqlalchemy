@@ -43,7 +43,7 @@ class RelationTest(testbase.PersistTest):
         )
     def setUp(self):
         global session
-        session = create_session(bind_to=testbase.db)
+        session = create_session(bind=testbase.db)
         conn = session.connect()
         conn.create(tbl_a)
         conn.create(tbl_b)

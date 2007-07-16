@@ -194,7 +194,7 @@ class EagerTest2(AssertMixin):
             'right': relation(Right, lazy=False, backref=backref('middle', lazy=False)),
             }
         )
-        session = create_session(bind_to=testbase.db)
+        session = create_session(bind=testbase.db)
         p = Middle('test1')
         p.left.append(Left('tag1'))
         p.right.append(Right('tag2'))

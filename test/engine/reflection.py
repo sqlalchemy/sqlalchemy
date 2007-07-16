@@ -518,28 +518,28 @@ class CreateDropTest(PersistTest):
     def testcheckfirst(self):
         try:
             assert not users.exists(testbase.db)
-            users.create(connectable=testbase.db)
+            users.create(bind=testbase.db)
             assert users.exists(testbase.db)
-            users.create(connectable=testbase.db, checkfirst=True)
-            users.drop(connectable=testbase.db)
-            users.drop(connectable=testbase.db, checkfirst=True)
-            assert not users.exists(connectable=testbase.db)
-            users.create(connectable=testbase.db, checkfirst=True)
-            users.drop(connectable=testbase.db)
+            users.create(bind=testbase.db, checkfirst=True)
+            users.drop(bind=testbase.db)
+            users.drop(bind=testbase.db, checkfirst=True)
+            assert not users.exists(bind=testbase.db)
+            users.create(bind=testbase.db, checkfirst=True)
+            users.drop(bind=testbase.db)
         finally:
-            metadata.drop_all(connectable=testbase.db)
+            metadata.drop_all(bind=testbase.db)
 
     def test_createdrop(self):
-        metadata.create_all(connectable=testbase.db)
+        metadata.create_all(bind=testbase.db)
         self.assertEqual( testbase.db.has_table('items'), True )
         self.assertEqual( testbase.db.has_table('email_addresses'), True )        
-        metadata.create_all(connectable=testbase.db)
+        metadata.create_all(bind=testbase.db)
         self.assertEqual( testbase.db.has_table('items'), True )        
 
-        metadata.drop_all(connectable=testbase.db)
+        metadata.drop_all(bind=testbase.db)
         self.assertEqual( testbase.db.has_table('items'), False )
         self.assertEqual( testbase.db.has_table('email_addresses'), False )                
-        metadata.drop_all(connectable=testbase.db)
+        metadata.drop_all(bind=testbase.db)
         self.assertEqual( testbase.db.has_table('items'), False )                
 
 class SchemaTest(PersistTest):

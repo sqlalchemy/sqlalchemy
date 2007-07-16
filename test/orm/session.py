@@ -26,7 +26,7 @@ class SessionTest(AssertMixin):
         c = testbase.db.connect()
         class User(object):pass
         mapper(User, users)
-        s = create_session(bind_to=c)
+        s = create_session(bind=c)
         s.save(User())
         s.flush()
         c.execute("select * from users")
@@ -89,7 +89,7 @@ class SessionTest(AssertMixin):
         try:
             class User(object):pass
             mapper(User, users)
-            s = create_session(bind_to=c)
+            s = create_session(bind=c)
             tran = s.create_transaction()
             s.save(User())
             s.flush()

@@ -99,13 +99,13 @@ class Session(object):
     of Sessions, see the ``sqlalchemy.ext.sessioncontext`` module.
     """
 
-    def __init__(self, bind=None, bind_to=None, hash_key=None, import_session=None, echo_uow=False, weak_identity_map=False):
+    def __init__(self, bind=None, hash_key=None, import_session=None, echo_uow=False, weak_identity_map=False):
         if import_session is not None:
             self.uow = unitofwork.UnitOfWork(identity_map=import_session.uow.identity_map, weak_identity_map=weak_identity_map)
         else:
             self.uow = unitofwork.UnitOfWork(weak_identity_map=weak_identity_map)
 
-        self.bind = bind or bind_to
+        self.bind = bind
         self.binds = {}
         self.echo_uow = echo_uow
         self.weak_identity_map = weak_identity_map
@@ -123,8 +123,6 @@ class Session(object):
         self.uow.echo = value
     echo_uow = property(_get_echo_uow,_set_echo_uow)
     
-    bind_to = property(lambda self:self.bind)
-
     def create_transaction(self, **kwargs):
         """Return a new ``SessionTransaction`` corresponding to an
         existing or new transaction.
