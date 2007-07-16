@@ -7,7 +7,6 @@
 from sqlalchemy import sql, util, exceptions, sql_util, logging, schema
 from sqlalchemy.orm import mapper, class_mapper, object_mapper
 from sqlalchemy.orm.interfaces import OperationContext
-import random
 
 __all__ = ['Query', 'QueryContext', 'SelectionContext']
 
@@ -217,7 +216,7 @@ class Query(object):
         # alias non-labeled column elements. 
         # TODO: make the generation deterministic
         if isinstance(column, sql.ColumnElement) and not hasattr(column, '_label'):
-            column = column.label("anon_" + hex(random.randint(0, 65535))[2:])
+            column = column.label(None)
 
         q._entities = q._entities + [column]
         return q

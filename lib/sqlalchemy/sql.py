@@ -26,7 +26,7 @@ are less guaranteed to stay the same in future releases.
 
 from sqlalchemy import util, exceptions, logging
 from sqlalchemy import types as sqltypes
-import string, re, random, sets
+import string, re, sets
 
 __all__ = ['AbstractDialect', 'Alias', 'ClauseElement', 'ClauseParameters',
            'ClauseVisitor', 'ColumnCollection', 'ColumnElement',
@@ -1736,7 +1736,7 @@ class _BindParamClause(ClauseElement, _CompareMixin):
           ``ClauseElement``.
         """
 
-        self.key = key
+        self.key = key or "{ANON %d param}" % id(self)
         self.value = value
         self.shortname = shortname or key
         self.unique = unique
@@ -2301,11 +2301,7 @@ class Alias(FromClause):
         if alias is None:
             if self.original.named_with_column():
                 alias = getattr(self.original, 'name', None)
-            if alias is None:
-                alias = 'anon'
-            elif len(alias) > 15:
-                alias = alias[0:15]
-            alias = alias + "_" + hex(random.randint(0, 65535))[2:]
+            alias = '{ANON %d %s}' % (id(self), alias or 'anon')
         self.name = alias
         self.encodedname = alias.encode('ascii', 'backslashreplace')
         self.case_sensitive = getattr(baseselectable, "case_sensitive", True)
@@ -2390,9 +2386,10 @@ class _Label(ColumnElement):
     """
     
     def __init__(self, name, obj, type=None):
-        self.name = name
         while isinstance(obj, _Label):
             obj = obj.obj
+        self.name = name or "{ANON %d %s}" % (id(self), getattr(obj, 'name', 'anon'))
+
         self.obj = obj.self_group(against='AS')
         self.case_sensitive = getattr(obj, "case_sensitive", True)
         self.type = sqltypes.to_instance(type or getattr(obj, 'type', None))
@@ -2421,8 +2418,6 @@ class _Label(ColumnElement):
             return self.obj._make_proxy(selectable, name=self.name)
         else:
             return column(self.name)._make_proxy(selectable=selectable)
-
-legal_characters = util.Set(string.ascii_letters + string.digits + '_')
 
 class _ColumnClause(ColumnElement):
     """Represents a generic column expression from any textual string.
@@ -2492,7 +2487,6 @@ class _ColumnClause(ColumnElement):
                     counter += 1
             else:
                 self.__label = self.name
-            self.__label = "".join([x for x in self.__label if x in legal_characters])
         return self.__label
 
     is_labeled = property(lambda self:self.name != list(self.orig_set)[0].name)

@@ -1118,7 +1118,7 @@ class ResultProxy(object):
 
             for i, item in enumerate(metadata):
                 # sqlite possibly prepending table name to colnames so strip
-                colname = item[0].split('.')[-1]
+                colname = self.dialect.decode_result_columnname(item[0].split('.')[-1])
                 if self.context.typemap is not None:
                     type = self.context.typemap.get(colname.lower(), typemap.get(item[1], types.NULLTYPE))
                 else:
@@ -1150,7 +1150,9 @@ class ResultProxy(object):
             elif isinstance(key, basestring) and key.lower() in props:
                 rec = props[key.lower()]
             elif isinstance(key, sql.ColumnElement):
+                print "LABEL ON COLUMN", repr(key.key), "IS", repr(key._label)
                 label = context.column_labels.get(key._label, key.name).lower()
+                print "SO YEAH, NOW WE GOT LABEL", repr(label), "AND PROPS IS", repr(props)
                 if label in props:
                     rec = props[label]
 

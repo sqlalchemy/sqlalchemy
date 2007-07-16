@@ -175,7 +175,7 @@ class ANSICompiler(engine.Compiled):
         # and also knows postfetching will be needed to get the values represented by these
         # parameters.
         self.inline_params = None
-
+        
     def after_compile(self):
         # this re will search for params like :param
         # it has a negative lookbehind for an extra ':' so that it doesnt match
@@ -244,7 +244,7 @@ class ANSICompiler(engine.Compiled):
         bindparams.update(params)
         d = sql.ClauseParameters(self.dialect, self.positiontup)
         for b in self.binds.values():
-            name = self.bind_names.get(b, b.key)
+            name = self.bind_names[b]
             d.set_parameter(b, b.value, name)
 
         for key, value in bindparams.iteritems():
@@ -252,7 +252,7 @@ class ANSICompiler(engine.Compiled):
                 b = self.binds[key]
             except KeyError:
                 continue
-            name = self.bind_names.get(b, b.key)
+            name = self.bind_names[b]
             d.set_parameter(b, value, name)
 
         return d
@@ -294,15 +294,15 @@ class ANSICompiler(engine.Compiled):
             if column.table.oid_column is column:
                 n = self.dialect.oid_column_name(column)
                 if n is not None:
-                    self.strings[column] = "%s.%s" % (self.preparer.format_table(column.table, use_schema=False), n)
+                    self.strings[column] = "%s.%s" % (self.preparer.format_table(column.table, use_schema=False, name=self._anonymize(column.table.name)), n)
                 elif len(column.table.primary_key) != 0:
                     pk = list(column.table.primary_key)[0]
                     pkname = (pk.is_literal and name or self._truncated_identifier("colident", pk.name))
-                    self.strings[column] = self.preparer.format_column_with_table(list(column.table.primary_key)[0], column_name=pkname)
+                    self.strings[column] = self.preparer.format_column_with_table(list(column.table.primary_key)[0], column_name=pkname, table_name=self._anonymize(column.table.name))
                 else:
                     self.strings[column] = None
             else:
-                self.strings[column] = self.preparer.format_column_with_table(column, column_name=name)
+                self.strings[column] = self.preparer.format_column_with_table(column, column_name=name, table_name=self._anonymize(column.table.name))
 
         if len(self.select_stack):
             # if we are within a visit to a Select, set up the "typemap"
@@ -397,7 +397,6 @@ class ANSICompiler(engine.Compiled):
         if bindparam.unique:
             count = 1
             key = bindparam.key
-
             # redefine the generated name of the bind param in the case
             # that we have multiple conflicting bind parameters.
             while self.binds.setdefault(key, bindparam) is not bindparam:
@@ -418,29 +417,44 @@ class ANSICompiler(engine.Compiled):
             return self.bind_names[bindparam]
             
         bind_name = bindparam.key
-        if len(bind_name) > self.dialect.max_identifier_length():
-            bind_name = self._truncated_identifier("bindparam", bind_name)
-            # add to bind_names for translation
-            self.bind_names[bindparam] = bind_name
+        bind_name = self._truncated_identifier("bindparam", bind_name)
+        # add to bind_names for translation
+        self.bind_names[bindparam] = bind_name
+            
         return bind_name
     
     def _truncated_identifier(self, ident_class, name):
         if (ident_class, name) in self.generated_ids:
             return self.generated_ids[(ident_class, name)]
-        if len(name) > self.dialect.max_identifier_length():
+            
+        anonname = self._anonymize(name)
+        if len(anonname) > self.dialect.max_identifier_length():
             counter = self.generated_ids.get(ident_class, 1)
             truncname = name[0:self.dialect.max_identifier_length() - 6] + "_" + hex(counter)[2:]
             self.generated_ids[ident_class] = counter + 1
         else:
-            truncname = name
+            truncname = anonname
         self.generated_ids[(ident_class, name)] = truncname
         return truncname
+    
+    def _anonymize(self, name):
+        def anon(match):
+            (ident, derived) = match.group(1,2)
+            if ('anonymous', ident) in self.generated_ids:
+                return self.generated_ids[('anonymous', ident)]
+            else:
+                anonymous_counter = self.generated_ids.get('anonymous', 1)
+                newname = derived + "_" + str(anonymous_counter)
+                self.generated_ids['anonymous'] = anonymous_counter + 1
+                self.generated_ids[('anonymous', ident)] = newname
+                return newname
+        return re.sub(r'{ANON (\d+) (.*)}', anon, name)
             
     def bindparam_string(self, name):
         return self.bindtemplate % name
 
     def visit_alias(self, alias):
-        self.froms[alias] = self.get_from_text(alias.original) + " AS " + self.preparer.format_alias(alias)
+        self.froms[alias] = self.get_from_text(alias.original) + " AS " + self.preparer.format_alias(alias, self._anonymize(alias.name))
         self.strings[alias] = self.get_str(alias.original)
 
     def enter_select(self, select):
@@ -1089,8 +1103,8 @@ class ANSIIdentifierPreparer(object):
     def format_label(self, label, name=None):
         return self.__generic_obj_format(label, name or label.name)
 
-    def format_alias(self, alias):
-        return self.__generic_obj_format(alias, alias.name)
+    def format_alias(self, alias, name=None):
+        return self.__generic_obj_format(alias, name or alias.name)
 
     def format_savepoint(self, savepoint):
         return self.__generic_obj_format(savepoint, savepoint)
@@ -1105,25 +1119,25 @@ class ANSIIdentifierPreparer(object):
             result = self.__generic_obj_format(table, table.schema) + "." + result
         return result
 
-    def format_column(self, column, use_table=False, name=None):
+    def format_column(self, column, use_table=False, name=None, table_name=None):
         """Prepare a quoted column name."""
         if name is None:
             name = column.name
         if not getattr(column, 'is_literal', False):
             if use_table:
-                return self.format_table(column.table, use_schema=False) + "." + self.__generic_obj_format(column, name)
+                return self.format_table(column.table, use_schema=False, name=table_name) + "." + self.__generic_obj_format(column, name)
             else:
                 return self.__generic_obj_format(column, name)
         else:
             # literal textual elements get stuck into ColumnClause alot, which shouldnt get quoted
             if use_table:
-                return self.format_table(column.table, use_schema=False) + "." + name
+                return self.format_table(column.table, use_schema=False, name=table_name) + "." + name
             else:
                 return name
 
-    def format_column_with_table(self, column, column_name=None):
+    def format_column_with_table(self, column, column_name=None, table_name=None):
         """Prepare a quoted column name with table name."""
         
-        return self.format_column(column, use_table=True, name=column_name)
+        return self.format_column(column, use_table=True, name=column_name, table_name=table_name)
 
 dialect = ANSIDialect

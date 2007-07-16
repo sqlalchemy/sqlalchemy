@@ -13,12 +13,12 @@ class UnicodeSchemaTest(testbase.PersistTest):
         metadata = MetaData(testbase.db)
         t1 = Table('unitable1', metadata,
             Column(u'méil', Integer, primary_key=True),
-            Column(u'éXXm', Integer),
+            Column(u'測試', Integer),
 
             )
         t2 = Table(u'unitéble2', metadata,
             Column(u'méil', Integer, primary_key=True, key="a"),
-            Column(u'éXXm', Integer, ForeignKey(u'unitable1.méil'), key="b"),
+            Column(u'測試', Integer, ForeignKey(u'unitable1.méil'), key="b"),
 
             )
         metadata.create_all()
@@ -31,21 +31,21 @@ class UnicodeSchemaTest(testbase.PersistTest):
         metadata.drop_all()
         
     def test_insert(self):
-        t1.insert().execute({u'méil':1, u'éXXm':5})
+        t1.insert().execute({u'méil':1, u'測試':5})
         t2.insert().execute({'a':1, 'b':1})
         
         assert t1.select().execute().fetchall() == [(1, 5)]
         assert t2.select().execute().fetchall() == [(1, 1)]
     
     def test_reflect(self):
-        t1.insert().execute({u'méil':2, u'éXXm':7})
+        t1.insert().execute({u'méil':2, u'測試':7})
         t2.insert().execute({'a':2, 'b':2})
 
         meta = MetaData(testbase.db)
         tt1 = Table(t1.name, meta, autoload=True)
         tt2 = Table(t2.name, meta, autoload=True)
-        tt1.insert().execute({u'méil':1, u'éXXm':5})
-        tt2.insert().execute({u'méil':1, u'éXXm':1})
+        tt1.insert().execute({u'méil':1, u'測試':5})
+        tt2.insert().execute({u'méil':1, u'測試':1})
 
         assert tt1.select(order_by=desc(u'méil')).execute().fetchall() == [(2, 7), (1, 5)]
         assert tt2.select(order_by=desc(u'méil')).execute().fetchall() == [(2, 2), (1, 1)]
@@ -59,7 +59,7 @@ class UnicodeSchemaTest(testbase.PersistTest):
         mapper(A, t1, properties={
             't2s':relation(B),
             'a':t1.c[u'méil'],
-            'b':t1.c[u'éXXm']
+            'b':t1.c[u'測試']
         })
         mapper(B, t2)
         sess = create_session()

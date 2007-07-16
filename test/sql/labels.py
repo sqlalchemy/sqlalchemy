@@ -16,7 +16,7 @@ class LabelTypeTest(testbase.PersistTest):
 
 class LongLabelsTest(testbase.PersistTest):
     def setUpAll(self):
-        global metadata, table1
+        global metadata, table1, maxlen
         metadata = MetaData(testbase.db)
         table1 = Table("some_large_named_table", metadata,
             Column("this_is_the_primarykey_column", Integer, Sequence("this_is_some_large_seq"), primary_key=True),
@@ -24,11 +24,16 @@ class LongLabelsTest(testbase.PersistTest):
             )
             
         metadata.create_all()
+        
+        maxlen = testbase.db.dialect.max_identifier_length
+        testbase.db.dialect.max_identifier_length = lambda: 29
+        
     def tearDown(self):
         table1.delete().execute()
         
     def tearDownAll(self):
         metadata.drop_all()
+        testbase.db.dialect.max_identifier_length = maxlen
         
     def test_result(self):
         table1.insert().execute(**{"this_is_the_primarykey_column":1, "this_is_the_data_column":"data1"})

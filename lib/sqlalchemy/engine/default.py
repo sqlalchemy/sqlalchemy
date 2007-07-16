@@ -38,6 +38,11 @@ class DefaultDialect(base.Dialect):
                 map[obj().get_dbapi_type(self.dialect)] = obj
         self._dbapi_type_map = map
     
+    def decode_result_columnname(self, name):
+        """decode a name found in cursor.description to a unicode object."""
+        
+        return name.decode(self.encoding)
+        
     def dbapi_type_map(self):
         return self._dbapi_type_map
             
