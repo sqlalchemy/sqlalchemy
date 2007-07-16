@@ -856,7 +856,7 @@ class MSSQLCompiler(ansisql.ANSICompiler):
         return ''
 
     def order_by_clause(self, select):
-        order_by = self.get_str(select._order_by_clause)
+        order_by = self.strings[select._order_by_clause]
 
         # MSSQL only allows ORDER BY in subqueries if there is a LIMIT
         if order_by and (not self.is_subquery(select) or select._limit):

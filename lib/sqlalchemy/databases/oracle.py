@@ -475,7 +475,7 @@ class OracleCompiler(ansisql.ANSICompiler):
         if self.dialect.use_ansi:
             return ansisql.ANSICompiler.visit_join(self, join)
 
-        self.froms[join] = self.get_from_text(join.left) + ", " + self.get_from_text(join.right)
+        self.froms[join] = self.froms[join.left] + ", " + self.froms[join.right]
         where = self.wheres.get(join.left, None)
         if where is not None:
             self.wheres[join] = sql.and_(where, join.onclause)
@@ -507,8 +507,8 @@ class OracleCompiler(ansisql.ANSICompiler):
     def visit_alias(self, alias):
         """Oracle doesn't like ``FROM table AS alias``.  Is the AS standard SQL??"""
 
-        self.froms[alias] = self.get_from_text(alias.original) + " " + alias.name
-        self.strings[alias] = self.get_str(alias.original)
+        self.froms[alias] = self.froms[alias.original] + " " + alias.name
+        self.strings[alias] = self.strings[alias.original]
 
     def visit_column(self, column):
         ansisql.ANSICompiler.visit_column(self, column)
@@ -573,7 +573,7 @@ class OracleCompiler(ansisql.ANSICompiler):
 
     def visit_binary(self, binary):
         if binary.operator == '%': 
-            self.strings[binary] = ("MOD(%s,%s)"%(self.get_str(binary.left), self.get_str(binary.right)))
+            self.strings[binary] = ("MOD(%s,%s)"%(self.strings[binary.left], self.strings[binary.right]))
         else:
             return ansisql.ANSICompiler.visit_binary(self, binary)
         

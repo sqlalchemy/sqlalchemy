@@ -328,7 +328,7 @@ class MutableTypesTest(UnitOfWorkTest):
 class PKTest(UnitOfWorkTest):
     def setUpAll(self):
         UnitOfWorkTest.setUpAll(self)
-        global table, table2, table3
+        global table, table2, table3, metadata
         metadata = MetaData(db)
         table = Table(
             'multipk', metadata, 

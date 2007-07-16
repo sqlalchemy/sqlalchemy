@@ -305,8 +305,8 @@ class FBCompiler(ansisql.ANSICompiler):
 
     def visit_alias(self, alias):
         # Override to not use the AS keyword which FB 1.5 does not like
-        self.froms[alias] = self.get_from_text(alias.original) + " " + self.preparer.format_alias(alias)
-        self.strings[alias] = self.get_str(alias.original)
+        self.froms[alias] = self.froms[alias.original] + " " + self.preparer.format_alias(alias)
+        self.strings[alias] = self.strings[alias.original]
 
     def visit_function(self, func):
         if len(func.clauses):

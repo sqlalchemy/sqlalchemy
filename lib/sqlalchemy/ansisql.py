@@ -140,12 +140,6 @@ class ANSICompiler(engine.Compiled):
         # for aliases
         self.generated_ids = {}
         
-        # True if this compiled represents an INSERT
-        self.isinsert = False
-
-        # True if this compiled represents an UPDATE
-        self.isupdate = False
-
         # default formatting style for bind parameters
         self.bindtemplate = ":%s"
 
@@ -204,12 +198,6 @@ class ANSICompiler(engine.Compiled):
         text = BIND_PARAMS_ESC.sub(lambda m: m.group(1), text)
         self.strings[self.statement] = text
 
-    def get_from_text(self, obj):
-        return self.froms.get(obj, None)
-
-    def get_str(self, obj):
-        return self.strings[obj]
-    
     def is_subquery(self, select):
         return self.correlate_state[select].get('is_subquery', False)
         
@@ -337,13 +325,13 @@ class ANSICompiler(engine.Compiled):
             sep = " "
         else:
             sep = " " + sep + " "
-        self.strings[list] = string.join([s for s in [self.get_str(c) for c in list.clauses] if s is not None], sep)
+        self.strings[list] = string.join([s for s in [self.strings[c] for c in list.clauses] if s is not None], sep)
 
     def apply_function_parens(self, func):
         return func.name.upper() not in ANSI_FUNCS or len(func.clauses) > 0
 
     def visit_calculatedclause(self, clause):
-        self.strings[clause] = self.get_str(clause.clause_expr)
+        self.strings[clause] = self.strings[clause.clause_expr]
 
     def visit_cast(self, cast):
         if len(self.select_stack):
@@ -358,12 +346,12 @@ class ANSICompiler(engine.Compiled):
             self.strings[func] = ".".join(func.packagenames + [func.name])
             self.froms[func] = self.strings[func]
         else:
-            self.strings[func] = ".".join(func.packagenames + [func.name]) + (not func.group and " " or "") + self.get_str(func.clause_expr)
+            self.strings[func] = ".".join(func.packagenames + [func.name]) + (not func.group and " " or "") + self.strings[func.clause_expr]
             self.froms[func] = self.strings[func]
 
     def visit_compound_select(self, cs):
-        text = string.join([self.get_str(c) for c in cs.selects], " " + cs.keyword + " ")
-        group_by = self.get_str(cs._group_by_clause)
+        text = string.join([self.strings[c] for c in cs.selects], " " + cs.keyword + " ")
+        group_by = self.strings[cs._group_by_clause]
         if group_by:
             text += " GROUP BY " + group_by
         text += self.order_by_clause(cs)            
@@ -372,7 +360,7 @@ class ANSICompiler(engine.Compiled):
         self.froms[cs] = "(" + text + ")"
 
     def visit_unary(self, unary):
-        s = self.get_str(unary.element)
+        s = self.strings[unary.element]
         if unary.operator:
             s = unary.operator + " " + s
         if unary.modifier:
@@ -380,10 +368,10 @@ class ANSICompiler(engine.Compiled):
         self.strings[unary] = s
         
     def visit_binary(self, binary):
-        result = self.get_str(binary.left)
+        result = self.strings[binary.left]
         if binary.operator is not None:
             result += " " + self.binary_operator_string(binary)
-        result += " " + self.get_str(binary.right)
+        result += " " + self.strings[binary.right]
         self.strings[binary] = result
 
     def binary_operator_string(self, binary):
@@ -455,8 +443,8 @@ class ANSICompiler(engine.Compiled):
         return self.bindtemplate % name
 
     def visit_alias(self, alias):
-        self.froms[alias] = self.get_from_text(alias.original) + " AS " + self.preparer.format_alias(alias, self._anonymize(alias.name))
-        self.strings[alias] = self.get_str(alias.original)
+        self.froms[alias] = self.froms[alias.original] + " AS " + self.preparer.format_alias(alias, self._anonymize(alias.name))
+        self.strings[alias] = self.strings[alias.original]
 
     def enter_select(self, select):
         select._calculate_correlations(self.correlate_state)
@@ -510,19 +498,19 @@ class ANSICompiler(engine.Compiled):
                     inner_columns[labelname] = l
                 else:
                     self.traverse(co)
-                    inner_columns[self.get_str(co)] = co
+                    inner_columns[self.strings[co]] = co
             else:
                 l = self.label_select_column(select, co)
                 if l is not None:
                     self.traverse(l)
-                    inner_columns[self.get_str(l.obj)] = l
+                    inner_columns[self.strings[l.obj]] = l
                 else:
                     self.traverse(co)
-                    inner_columns[self.get_str(co)] = co
+                    inner_columns[self.strings[co]] = co
                     
         self.select_stack.pop(-1)
 
-        collist = string.join([self.get_str(v) for v in inner_columns.values()], ', ')
+        collist = string.join([self.strings[v] for v in inner_columns.values()], ', ')
 
         text = "SELECT "
         text += self.visit_select_precolumns(select)
@@ -541,9 +529,7 @@ class ANSICompiler(engine.Compiled):
                 else:
                     whereclause = w
 
-            t = self.get_from_text(f)
-            if t is not None:
-                from_strings.append(t)
+            from_strings.append(self.froms[f])
 
         if len(froms):
             text += " \nFROM "
@@ -552,16 +538,16 @@ class ANSICompiler(engine.Compiled):
             text += self.default_from()
 
         if whereclause is not None:
-            t = self.get_str(whereclause)
+            t = self.strings[whereclause]
             if t:
                 text += " \nWHERE " + t
 
-        group_by = self.get_str(select._group_by_clause)
+        group_by = self.strings[select._group_by_clause]
         if group_by:
             text += " GROUP BY " + group_by
 
         if select._having is not None:
-            t = self.get_str(select._having)
+            t = self.strings[select._having]
             if t:
                 text += " \nHAVING " + t
 
@@ -586,7 +572,7 @@ class ANSICompiler(engine.Compiled):
         return (select._limit or select._offset) and self.limit_clause(select) or ""
 
     def order_by_clause(self, select):
-        order_by = self.get_str(select._order_by_clause)
+        order_by = self.strings[select._order_by_clause]
         if order_by:
             return " ORDER BY " + order_by
         else:
@@ -613,15 +599,15 @@ class ANSICompiler(engine.Compiled):
         self.strings[table] = ""
 
     def visit_join(self, join):
-        righttext = self.get_from_text(join.right)
+        righttext = self.froms[join.right]
         if join.right._group_parenthesized():
             righttext = "(" + righttext + ")"
         if join.isouter:
-            self.froms[join] = (self.get_from_text(join.left) + " LEFT OUTER JOIN " + righttext +
-            " ON " + self.get_str(join.onclause))
+            self.froms[join] = (self.froms[join.left] + " LEFT OUTER JOIN " + righttext +
+            " ON " + self.strings[join.onclause])
         else:
-            self.froms[join] = (self.get_from_text(join.left) + " JOIN " + righttext +
-            " ON " + self.get_str(join.onclause))
+            self.froms[join] = (self.froms[join.left] + " JOIN " + righttext +
+            " ON " + self.strings[join.onclause])
         self.strings[join] = self.froms[join]
 
     def visit_insert_column_default(self, column, default, parameters):
@@ -699,9 +685,9 @@ class ANSICompiler(engine.Compiled):
                 self.inline_params.add(col)
                 self.traverse(p)
                 if isinstance(p, sql.ClauseElement) and not isinstance(p, sql.ColumnElement):
-                    return "(" + self.get_str(p) + ")"
+                    return "(" + self.strings[p] + ")"
                 else:
-                    return self.get_str(p)
+                    return self.strings[p]
 
         text = ("INSERT INTO " + self.preparer.format_table(insert_stmt.table) + " (" + string.join([self.preparer.format_column(c[0]) for c in colparams], ', ') + ")" +
          " VALUES (" + string.join([create_param(*c) for c in colparams], ', ') + ")")
@@ -733,14 +719,14 @@ class ANSICompiler(engine.Compiled):
                 self.traverse(p)
                 self.inline_params.add(col)
                 if isinstance(p, sql.ClauseElement) and not isinstance(p, sql.ColumnElement):
-                    return "(" + self.get_str(p) + ")"
+                    return "(" + self.strings[p] + ")"
                 else:
-                    return self.get_str(p)
+                    return self.strings[p]
 
         text = "UPDATE " + self.preparer.format_table(update_stmt.table) + " SET " + string.join(["%s=%s" % (self.preparer.format_column(c[0]), create_param(*c)) for c in colparams], ', ')
 
         if update_stmt._whereclause:
-            text += " WHERE " + self.get_str(update_stmt._whereclause)
+            text += " WHERE " + self.strings[update_stmt._whereclause]
 
         self.strings[update_stmt] = text
 
@@ -805,7 +791,7 @@ class ANSICompiler(engine.Compiled):
         text = "DELETE FROM " + self.preparer.format_table(delete_stmt.table)
 
         if delete_stmt._whereclause:
-            text += " WHERE " + self.get_str(delete_stmt._whereclause)
+            text += " WHERE " + self.strings[delete_stmt._whereclause]
 
         self.strings[delete_stmt] = text
         
@@ -822,7 +808,7 @@ class ANSICompiler(engine.Compiled):
         self.strings[savepoint_stmt] = text
     
     def __str__(self):
-        return self.get_str(self.statement)
+        return self.strings[self.statement]
 
 class ANSISchemaBase(engine.SchemaIterator):
     def find_alterables(self, tables):

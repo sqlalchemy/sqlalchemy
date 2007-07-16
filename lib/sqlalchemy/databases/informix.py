@@ -426,9 +426,9 @@ class InfoCompiler(ansisql.ANSICompiler):
         except:
             li = [ c for c in list.clauses ]
         if list.parens:
-            self.strings[list] = "(" + string.join([s for s in [self.get_str(c) for c in li] if s is not None ], ', ') + ")"
+            self.strings[list] = "(" + string.join([s for s in [self.strings[c] for c in li] if s is not None ], ', ') + ")"
         else:
-            self.strings[list] = string.join([s for s in [self.get_str(c) for c in li] if s is not None], ', ')
+            self.strings[list] = string.join([s for s in [self.strings[c] for c in li] if s is not None], ', ')
 
 class InfoSchemaGenerator(ansisql.ANSISchemaGenerator):
     def get_column_specification(self, column, first_pk=False):
