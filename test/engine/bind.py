@@ -101,6 +101,26 @@ class BindTest(testbase.PersistTest):
                 table.drop()
                 assert not table.exists()
 
+    def test_implicit_execution(self):
+        metadata = MetaData()
+        table = Table('test_table', metadata,   
+            Column('foo', Integer))
+        conn = testbase.db.connect()
+        metadata.create_all(bind=conn)
+        try:
+            trans = conn.begin()
+            metadata.bind = conn
+            t = table.insert()
+            assert t.bind is conn
+            table.insert().execute(foo=5)
+            table.insert().execute(foo=6)
+            table.insert().execute(foo=7)
+            trans.rollback()
+            metadata.bind = None
+            assert testbase.db.execute("select count(1) from test_table").scalar() == 0
+        finally:
+            metadata.drop_all(bind=conn)
+            
 
     def test_clauseelement(self):
         metadata = MetaData()

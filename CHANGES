@@ -1,3 +1,8 @@
+0.3.10
+- sql
+    - got connection-bound metadata to work with implicit execution
+    - cleanup to connection-bound sessions, SessionTransaction
+    
 0.3.9
 - general
     - better error message for NoSuchColumnError [ticket:607]

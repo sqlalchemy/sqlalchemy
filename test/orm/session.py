@@ -83,6 +83,21 @@ class SessionTest(AssertMixin):
         transaction.rollback()
         assert len(sess.query(User).select()) == 0
 
+    def test_bound_connection(self):
+        class User(object):pass
+        mapper(User, users)
+        c = testbase.db.connect()
+        sess = create_session(bind=c)
+        transaction = sess.create_transaction()
+        trans2 = sess.create_transaction()
+        u = User()
+        sess.save(u)
+        sess.flush()
+        assert transaction.get_or_add(testbase.db) is trans2.get_or_add(testbase.db) #is transaction.get_or_add(c) is trans2.get_or_add(c) is c
+        trans2.commit()
+        transaction.rollback()
+        assert len(sess.query(User).select()) == 0
+        
     def test_close_two(self):
         c = testbase.db.connect()
         try:

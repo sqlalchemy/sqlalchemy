@@ -975,6 +975,7 @@ class NoLoadTest(MapperSuperTest):
         self.assert_result(l[0], User,
             {'user_id' : 7, 'addresses' : (Address, [])},
             )
+            
     def testoptions(self):
         m = mapper(User, users, properties = dict(
             addresses = relation(mapper(Address, addresses), lazy=None)
