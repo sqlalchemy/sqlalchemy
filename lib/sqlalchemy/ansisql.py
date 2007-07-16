@@ -449,7 +449,7 @@ class ANSICompiler(engine.Compiled):
                 self.generated_ids['anonymous'] = anonymous_counter + 1
                 self.generated_ids[('anonymous', ident)] = newname
                 return newname
-        return re.sub(r'{ANON (\d+) (.*)}', anon, name)
+        return re.sub(r'{ANON (-?\d+) (.*)}', anon, name)
             
     def bindparam_string(self, name):
         return self.bindtemplate % name
