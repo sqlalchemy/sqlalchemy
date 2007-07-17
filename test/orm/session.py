@@ -95,6 +95,7 @@ class SessionTest(AssertMixin):
         assert conn1.execute("select count(1) from users").scalar() == 1
         assert testbase.db.connect().execute("select count(1) from users").scalar() == 1
     
+    @testbase.unsupported('sqlite')
     def test_autoflush(self):
         class User(object):pass
         mapper(User, users)
@@ -113,6 +114,27 @@ class SessionTest(AssertMixin):
         assert conn1.execute("select count(1) from users").scalar() == 1
         assert testbase.db.connect().execute("select count(1) from users").scalar() == 1
 
+    @testbase.unsupported('sqlite')
+    def test_autoflush_unbound(self):
+        class User(object):pass
+        mapper(User, users)
+
+        try:
+            sess = create_session(autoflush=True)
+            u = User()
+            u.user_name='ed'
+            sess.save(u)
+            u2 = sess.query(User).filter_by(user_name='ed').one()
+            assert u2 is u
+            assert sess.execute("select count(1) from users", mapper=User).scalar() == 1
+            assert testbase.db.connect().execute("select count(1) from users").scalar() == 0
+            sess.commit()
+            assert sess.execute("select count(1) from users", mapper=User).scalar() == 1
+            assert testbase.db.connect().execute("select count(1) from users").scalar() == 1
+        except:
+            sess.rollback()
+            raise
+            
     def test_autoflush_2(self):
         class User(object):pass
         mapper(User, users)
@@ -164,7 +186,33 @@ class SessionTest(AssertMixin):
         except:
             conn.close()
             raise
-            
+    
+    @testbase.supported('postgres', 'mysql')
+    def test_twophase(self):
+        # TODO: mock up a failure condition here
+        # to ensure a rollback succeeds
+        class User(object):pass
+        class Address(object):pass
+        mapper(User, users)
+        mapper(Address, addresses)
+        
+        engine2 = create_engine(testbase.db.url)
+        sess = create_session(twophase=True)
+        sess.bind_mapper(User, testbase.db)
+        sess.bind_mapper(Address, engine2)
+        sess.begin()
+        u1 = User()
+        a1 = Address()
+        sess.save(u1)
+        sess.save(a1)
+        sess.commit()
+        sess.close()
+        engine2.dispose()
+        assert users.count().scalar() == 1
+        assert addresses.count().scalar() == 1
+        
+        
+        
     def test_joined_transaction(self):
         class User(object):pass
         mapper(User, users)

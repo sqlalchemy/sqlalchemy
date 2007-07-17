@@ -14,13 +14,11 @@ SQLAlchemy's unit of work includes these functions:
 * The ability to maintain and process a list of modified objects, and based on the relationships set up by the mappers for those objects as well as the foreign key relationships of the underlying tables, figure out the proper order of operations so that referential integrity is maintained, and also so that on-the-fly values such as newly created primary keys can be propigated to dependent objects that need them before they are saved.  The central algorithm for this is the *topological sort*.
 * The ability to define custom functionality that occurs within the unit-of-work flush phase, such as "before insert", "after insert", etc.  This is accomplished via MapperExtension.
 * an Identity Map, which is a dictionary storing the one and only instance of an object for a particular table/primary key combination.  This allows many parts of an application to get a handle to a particular object without any chance of modifications going to two different places.
-* The sole interface to the unit of work is provided via the `Session` object.  Transactional capability, which rides on top of the transactions provided by `Engine` objects, is provided by the `SessionTransaction` object.
-* Thread-locally scoped Session behavior is available as an option, which allows new objects to be automatically added to the Session corresponding to by the *default Session context*.  Without a default Session context, an application must explicitly create a Session manually as well as add new objects to it.  The default Session context, disabled by default, can also be plugged in with other user-defined schemes, which may also take into account the specific class being dealt with for a particular operation.
-* The Session object borrows conceptually from that of [Hibernate](http://www.hibernate.org), a leading ORM for Java that was a great influence on the creation of the [JSR-220](http://jcp.org/aboutJava/communityprocess/pfd/jsr220/index.html) specification.  SQLAlchemy, under no obligation to conform to EJB specifications, is in general very different from Hibernate, providing a different paradigm for producing queries, a SQL API that is useable independently of the ORM, and of course Pythonic configuration as opposed to XML; however, JSR-220/Hibernate makes some pretty good suggestions with regards to the mechanisms of persistence.
+* The sole interface to the unit of work is provided via the `Session` object.  Transactional capability is included.
 
 ### Object States {@name=states}
 
-When dealing with mapped instances with regards to Sessions, an instance may be *attached* or *unattached* to a particular Session.  An instance also may or may not correspond to an actual row in the database.  The product of these two binary conditions yields us four general states a particular instance can have within the perspective of the Session:
+When dealing with mapped instances with regards to Sessions, an instance may be *attached* or *unattached* to a particular Session.  An instance also may or may not correspond to an actual row in the database.  These conditions break up into four distinct states:
 
 * *Transient* - a transient instance exists within memory only and is not associated with any Session.  It also has no database identity and does not have a corresponding record in the database.  When a new instance of a class is constructed, and no default session context exists with which to automatically attach the new instance, it is a transient instance.  The instance can then be saved to a particular session in which case it becomes a *pending* instance.  If a default session context exists, new instances are added to that Session by default and therefore become *pending* instances immediately.
 
@@ -216,6 +214,8 @@ It also can be called with a list of objects; in this form, the flush operation 
     
 This second form of flush should be used carefully as it will not necessarily locate other dependent objects within the session, whose database representation may have foreign constraint relationships with the objects being operated upon.
 
+Theres also a way to have `flush()` called automatically before each query; this is called "autoflush" and is described below.
+
 ##### Notes on Flush {@name=whatis}        
 
 A common misconception about the `flush()` operation is that once performed, the newly persisted instances will automatically have related objects attached to them, based on the values of primary key identities that have been assigned to the instances before they were persisted.  An example would be, you create a new `Address` object, set `address.user_id` to 5, and then `flush()` the session.  The erroneous assumption would be that there is now a `User` object of identity "5" attached to the `Address` object, but in fact this is not the case.  If you were to `refresh()` the `Address`, invalidating its current state and re-loading, *then* it would have the appropriate `User` object present.
@@ -350,95 +350,144 @@ Note that cascading doesn't do anything that isn't possible by manually calling 
 
 The default value for `cascade` on `relation()`s is `save-update`, and the `private=True` keyword argument is a synonym for `cascade="all, delete-orphan"`.
 
-### SessionTransaction {@name=transaction}
+### Using Session Transactions {@name=transaction}
 
-SessionTransaction is a multi-engine transaction manager, which aggregates one or more Engine/Connection pairs and keeps track of a Transaction object for each one.  As the Session receives requests to execute SQL statements, it uses the Connection that is referenced by the SessionTransaction.  At commit time, the underyling Session is flushed, and each Transaction is the committed.
+The Session can manage transactions automatically, including across multiple engines.  When the Session is in a transaction, as it receives requests to execute SQL statements, it adds each indivdual Connection/Engine encountered to its transactional state.  At commit time, all unflushed data is flushed, and each individual transaction is committed.  If the underlying databases support two-phase semantics, this may be used by the Session as well if two-phase transactions are enabled.
 
-Example usage is as follows:
+The easiest way to use a Session with transactions is just to declare it as transactional.  The session will remain in a transaction at all times:
+
+    {python}
+    sess = create_session(transactional=True)
+    item1 = sess.query(Item).get(1)
+    item2 = sess.query(Item).get(2)
+    item1.foo = 'bar'
+    item2.bar = 'foo'
+    
+    # commit- will immediately go into a new transaction afterwards
+    sess.commit()
+    
+Alternatively, a transaction can be begun explicitly using `begin()`:
 
     {python}
     sess = create_session()
-    trans = sess.create_transaction()
+    sess.begin()
     try:
         item1 = sess.query(Item).get(1)
         item2 = sess.query(Item).get(2)
         item1.foo = 'bar'
         item2.bar = 'foo'
     except:
-        trans.rollback()
+        sess.rollback()
         raise
-    trans.commit()
+    sess.commit()
 
-The SessionTransaction object supports Python 2.5's with statement so that the example above can be written as:
+Session also supports Python 2.5's with statement so that the example above can be written as:
 
     {python}
     sess = create_session()
-    with sess.create_transaction():
+    with sess.begin():
         item1 = sess.query(Item).get(1)
         item2 = sess.query(Item).get(2)
         item1.foo = 'bar'
         item2.bar = 'foo'
 
-The `create_transaction()` method creates a new SessionTransaction object but does not declare any connection/transaction resources.  At the point of the first `get()` call, a connection resource is opened off the engine that corresponds to the Item classes' mapper and is stored within the `SessionTransaction` with an open `Transaction`.  When `trans.commit()` is called, the `flush()` method is called on the `Session` and the corresponding update statements are issued to the database within the scope of the transaction already opened; afterwards, the underying Transaction is committed, and connection resources are freed.
+For MySQL and Postgres (and soon Oracle), "nested" transactions can be accomplished which use SAVEPOINT behavior, via the `begin_nested()` method:
 
-`SessionTransaction`, like the `Transaction` off of `Connection` also supports "nested" behavior, and is safe to pass to other functions which then issue their own `begin()`/`commit()` pair; only the outermost `begin()`/`commit()` pair actually affects the transaction, and any call to `rollback()` within a particular call stack will issue a rollback.
+    {python}
+    sess = create_session()
+    sess.begin()
+    sess.save(u1)
+    sess.save(u2)
+    sess.flush()
 
-Note that while SessionTransaction is capable of tracking multiple transactions across multiple databases, it currently is in no way a fully functioning two-phase commit engine; generally, when dealing with multiple databases simultaneously, there is the distinct possibility that a transaction can succeed on the first database and fail on the second, which for some applications may be an invalid state.  If this is an issue, its best to either refrain from spanning transactions across databases, or to look into some of the available technologies in this area, such as [Zope](http://www.zope.org) which offers a two-phase commit engine; some users have already created their own SQLAlchemy/Zope hybrid implementations to deal with scenarios like these.
+    sess.begin_nested() # establish a savepoint
+    sess.save(u3)
+    sess.rollback()  # rolls back u3, keeps u1 and u2
 
-SessionTransaction Facts:
+    sess.commit() # commits u1 and u2
 
- * SessionTransaction, like its parent Session object, is **not threadsafe**.
- * SessionTransaction will no longer be necessary in SQLAlchemy 0.4, where its functionality is to be merged with the Session itself.
-  
-#### Using SQL with SessionTransaction {@name=sql}
+Finally, for MySQL, Postgres, and soon Oracle as well, the session can be instructed to use two-phase commit semantics using the flag `twophase=True`, which coordinates transactions across multiple databases:
 
-The SessionTransaction can interact with direct SQL queries in two general ways.  Either specific `Connection` objects can be associated with the `SessionTransaction`, which are then useable both for direct SQL as well as within `flush()` operations performed by the `SessionTransaction`, or via accessing the `Connection` object automatically referenced within the `SessionTransaction`.
+    {python}
+    engine1 = create_engine('postgres://db1')
+    engine2 = create_engine('postgres://db2')
+    
+    sess = create_session(twophase=True, transactional=True)
+    
+    # bind User operations to engine 1
+    sess.bind_mapper(User, engine1)
+    
+    # bind Account operations to engine 2
+    sess.bind_mapper(Account, engine2)
+    
+    # .... work with accounts and users
+    
+    # commit.  session will issue a flush to all DBs, and a prepare step to all DBs,
+    # before committing both transactions
+    sess.commit()
+    
+#### AutoFlush {@name=autoflush}
 
-To associate a specific `Connection` with the `SessionTransaction`, use the `add()` method:
+A transactional session can also conveniently issue `flush()` calls before each query.  This allows you to immediately have DB access to whatever has been saved to the session.  Creating the session with `autoflush=True` implies `transactional=True`:
 
-    {python title="Associate a Connection with the SessionTransaction"}
-    connection = engine.connect()
-    trans = session.create_transaction()
-    try:
-        trans.add(connection)
-        connection.execute(mytable.update(), {'col1':4, 'col2':17})
-        session.flush() # flush() operation will use the same connection
-    except:
-        trans.rollback()
-        raise
-    trans.commit()  
+    {python}
+    sess = create_session(autoflush=True)
+    u1 = User(name='jack')
+    sess.save(u1)
+    
+    # reload user1
+    u2 = sess.query(User).filter_by(name='jack').one()
+    assert u2 is u1
 
-The `add()` method will key the `Connection`'s underlying `Engine` to this `SessionTransaction`.  When mapper operations are performed against this `Engine`, the `Connection` explicitly added will be used.  This **overrides** any other `Connection` objects that the underlying Session was associated with, corresponding to the underlying `Engine` of that `Connection`.  However, if the `SessionTransaction` itself is already associated with a `Connection`, then an exception is thrown.
+    # commit session, flushes whatever is remaining
+    sess.commit()
+    
+#### Using SQL with Sessions and Transactions {@name=sql}
 
-The other way is just to use the `Connection` referenced by the `SessionTransaction`.  This is performed via the `connection()` method, and requires passing in a class or `Mapper` which indicates which underlying `Connection` should be returned (recall that different `Mappers` may use different underlying `Engines`).  If the `class_or_mapper` argument is `None`, then the `Session` must be globally bound to a specific `Engine` when it was constructed, else the method returns `None`.
+SQL constructs and string statements can be executed via the `Session`.  You'd want to do this normally when your `Session` is transactional and youd like your free-standing SQL statements to participate in the same transaction.
 
-    {python title="Get a Connection from the SessionTransaction"}
-    trans = session.create_transaction()
-    try:
-        connection = trans.connection(UserClass)   # get the Connection used by the UserClass' Mapper
-        connection.execute(mytable.update(), {'col1':4, 'col2':17})
-    except:
-        trans.rollback()
-        raise
+The two ways to do this are to use the connection/execution services of the Session, or to have your Session participate in a regular SQL transaction.
+
+First, a Session thats associated with an Engine or Connection can execute statements immediately (whether or not its transactional):
+
+    {python}
+    sess = create_session(bind=engine, transactional=True)
+    result = sess.execute("select * from table where id=:id", {'id':7})
+    result2 = sess.execute(select([mytable], mytable.c.id==7))
+
+To get at the current connection used by the session, which will be part of the current transaction if one is in progress, use `connection()`:
+
+    connection = sess.connection()
+    
+A second scenario is that of a Session which is not directly bound to a connectable.  This session executes statements relative to a particular `Mapper`, since the mappers are bound to tables which are in turn bound to connectables via their `MetaData` (either the session or the mapped tables need to be bound).  In this case, the Session can conceivably be associated with multiple databases through different mappers; so it wants you to send along a `mapper` argument, which can be any mapped class or mapper instance:
+
+    {python}
+    sess = create_session(transactional=True)
+    result = sess.execute("select * from table where id=:id", {'id':7}, mapper=MyMappedClass)
+    result2 = sess.execute(select([mytable], mytable.c.id==7), mapper=MyMappedClass)
+
+    connection = sess.connection(MyMappedClass)
+
+The third scenario is when you are using `Connection` and `Transaction` yourself, and want the `Session` to participate.  This is easy, as you just bind the `Session` to the connection:
+
+    {python}
+    conn = engine.connect()
+    trans = conn.begin()
+    sess = create_session(bind=conn)
+    # ... etc
     trans.commit()
-        
-The `connection()` method also exists on the `Session` object itself, and can be called regardless of whether or not a `SessionTransaction` is in progress.  If a `SessionTransaction` is in progress, it will return the connection referenced by the transaction.  If an `Engine` is being used with `threadlocal` strategy, the `Connection` returned will correspond to the connection resources that are bound to the current thread, if any (i.e. it is obtained by calling `contextual_connect()`).
+    
+It's safe to use a `Session` which is transactional or autoflushing, as well as to call `begin()`/`commit()` on the session too; the outermost Transaction object, the one we declared explicitly, controls the scope of the transaction.
 
-#### Using Engine-level Transactions with Sessions
+When using the `threadlocal` engine context, things are that much easier; the `Session` uses the same connection/transaction as everyone else in the current thread, whether or not you explicitly bind it:
 
-The transactions issued by `SessionTransaction` as well as internally by the `Session`'s `flush()` operation use the same `Transaction` object off of `Connection` that is publically available.  Recall that this object supports "nestable" behavior, meaning any number of actors can call `begin()` off a particular `Connection` object, and they will all be managed within the scope of a single transaction.  Therefore, the `flush()` operation can similarly take place within the scope of a regular `Transaction`:
-
-    {python title="Transactions with Sessions"}
-    connection = engine.connect()   # Connection
-    session = create_session(bind=connection) # Session bound to the Connection
-    trans = connection.begin()      # start transaction
-    try:
-        stuff = session.query(MyClass).select()     # Session operation uses connection
-        stuff[2].foo = 'bar'
-        connection.execute(mytable.insert(), dict(id=12, value="bar"))    # use connection explicitly
-        session.flush()     # Session flushes with "connection", using transaction "trans"
-    except:
-        trans.rollback()    # or rollback
-        raise
-    trans.commit()      # commit
-
+    {python}
+    engine = create_engine('foo://', threadlocal=True)
+    engine.begin()
+    
+    sess = create_session()  # session takes place in the transaction like everyone else
+    
+    # ... go nuts
+    
+    engine.commit() # commit
+    

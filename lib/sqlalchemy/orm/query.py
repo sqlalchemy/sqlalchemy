@@ -580,7 +580,7 @@ class Query(object):
         statement.use_labels = True
         if self.session.autoflush:
             self.session.flush()
-        result = self.session.execute(self.mapper, statement, params=self._params)
+        result = self.session.execute(statement, params=self._params, mapper=self.mapper)
         try:
             return iter(self.instances(result))
         finally:

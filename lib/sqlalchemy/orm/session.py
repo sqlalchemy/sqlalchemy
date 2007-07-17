@@ -76,6 +76,8 @@ class SessionTransaction(object):
                 raise exceptions.InvalidRequestError("Session already has a Connection associated for the given Connection's Engine")
         if self.nested:
             trans = c.begin_nested()
+        elif self.session.twophase:
+            trans = c.begin_twophase()
         else:
             trans = c.begin()
         self.__connections[c] = self.__connections[e] = (c, trans, c is not bind)
@@ -86,6 +88,11 @@ class SessionTransaction(object):
             return self.__parent
         if self.autoflush:
             self.session.flush()
+
+        if self.session.twophase:
+            for t in util.Set(self.__connections.values()):
+                t[1].prepare()
+
         for t in util.Set(self.__connections.values()):
             t[1].commit()
         self.close()
@@ -126,7 +133,7 @@ class Session(object):
     of Sessions, see the ``sqlalchemy.ext.sessioncontext`` module.
     """
 
-    def __init__(self, bind=None, autoflush=False, transactional=False, echo_uow=False, weak_identity_map=False):
+    def __init__(self, bind=None, autoflush=False, transactional=False, twophase=False, echo_uow=False, weak_identity_map=False):
         self.uow = unitofwork.UnitOfWork(weak_identity_map=weak_identity_map)
 
         self.bind = bind
@@ -137,6 +144,7 @@ class Session(object):
         self.hash_key = id(self)
         self.autoflush = autoflush
         self.transactional = transactional or autoflush
+        self.twophase = twophase
         if self.transactional:
             self.begin()
         _sessions[self.hash_key] = self
@@ -155,6 +163,8 @@ class Session(object):
             self.transaction = self.transaction._begin(**kwargs)
         else:
             self.transaction = SessionTransaction(self, **kwargs)
+        return self.transaction
+        
     create_transaction = begin
 
     def begin_nested(self):
@@ -176,20 +186,9 @@ class Session(object):
         if self.transaction is None and self.transactional:
             self.begin()
         
-    def connect(self, mapper=None, **kwargs):
-        """Return a unique connection corresponding to the given mapper.
-
-        This connection will not be part of any pre-existing
-        transactional context.
-        """
-
-        return self.get_bind(mapper).connect(**kwargs)
-
-    def connection(self, mapper, **kwargs):
-        """Return a ``Connection`` corresponding to the given mapper.
-
-        Used by the ``execute()`` method which performs select
-        operations for ``Mapper`` and ``Query``.
+    def connection(self, mapper=None, **kwargs):
+        """Return a ``Connection`` corresponding to this session's
+        transactional context, if any.
 
         If this ``Session`` is transactional, the connection will be in
         the context of this session's transaction.  Otherwise, the
@@ -200,6 +199,9 @@ class Session(object):
         The given `**kwargs` will be sent to the engine's
         ``contextual_connect()`` method, if no transaction is in
         progress.
+        
+        the "mapper" argument is a class or mapper to which a bound engine
+        will be located; use this when the Session itself is unbound.
         """
 
         if self.transaction is not None:
@@ -207,7 +209,7 @@ class Session(object):
         else:
             return self.get_bind(mapper).contextual_connect(**kwargs)
 
-    def execute(self, mapper, clause, params, **kwargs):
+    def execute(self, clause, params=None, mapper=None, **kwargs):
         """Using the given mapper to identify the appropriate ``Engine``
         or ``Connection`` to be used for statement execution, execute the
         given ``ClauseElement`` using the provided parameter dictionary.
@@ -218,12 +220,12 @@ class Session(object):
         then the ``ResultProxy`` 's ``close()`` method will release the
         resources of the underlying ``Connection``, otherwise its a no-op.
         """
-        return self.connection(mapper, close_with_result=True).execute(clause, params, **kwargs)
+        return self.connection(mapper, close_with_result=True).execute(clause, params or {}, **kwargs)
 
-    def scalar(self, mapper, clause, params, **kwargs):
+    def scalar(self, clause, params=None, mapper=None, **kwargs):
         """Like execute() but return a scalar result."""
 
-        return self.connection(mapper, close_with_result=True).scalar(clause, params, **kwargs)
+        return self.connection(mapper, close_with_result=True).scalar(clause, params or {}, **kwargs)
 
     def close(self):
         """Close this Session."""
@@ -251,12 +253,15 @@ class Session(object):
 
         return _class_mapper(class_, entity_name = entity_name)
 
-    def bind_mapper(self, mapper, bind):
-        """Bind the given `mapper` to the given ``Engine`` or ``Connection``.
+    def bind_mapper(self, mapper, bind, entity_name=None):
+        """Bind the given `mapper` or `class` to the given ``Engine`` or ``Connection``.
 
         All subsequent operations involving this ``Mapper`` will use the
         given `bind`.
         """
+        
+        if isinstance(mapper, type):
+            mapper = _class_mapper(mapper, entity_name=entity_name)
 
         self.binds[mapper] = bind
 
@@ -297,7 +302,10 @@ class Session(object):
         """
 
         if mapper is None:
-            return self.bind
+            if self.bind is not None:
+                return self.bind
+            else:
+                raise exceptions.InvalidRequestError("This session is unbound to any Engine or Connection; specify a mapper to get_bind()")
         elif self.binds.has_key(mapper):
             return self.binds[mapper]
         elif self.binds.has_key(mapper.mapped_table):
