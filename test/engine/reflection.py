@@ -557,6 +557,24 @@ class SchemaTest(PersistTest):
         print buf
         assert buf.index("CREATE TABLE someschema.table1") > -1
         assert buf.index("CREATE TABLE someschema.table2") > -1
+
+    @testbase.unsupported('sqlite')
+    def testcreate(self):
+        schema = testbase.db.url.database
+        metadata = MetaData(testbase.db)
+        table1 = Table('table1', metadata, 
+            Column('col1', Integer, primary_key=True),
+            schema=schema)
+        table2 = Table('table2', metadata, 
+            Column('col1', Integer, primary_key=True),
+            Column('col2', Integer, ForeignKey('%s.table1.col1' % schema)),
+            schema=schema)
+        metadata.create_all()
+        metadata.create_all(checkfirst=True)
+        metadata.clear()
+        table1 = Table('table1', metadata, autoload=True, schema=schema)
+        table2 = Table('table2', metadata, autoload=True, schema=schema)
+        metadata.drop_all()
     
         
 if __name__ == "__main__":
