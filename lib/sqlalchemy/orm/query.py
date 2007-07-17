@@ -7,6 +7,7 @@
 from sqlalchemy import sql, util, exceptions, sql_util, logging, schema
 from sqlalchemy.orm import mapper, class_mapper, object_mapper
 from sqlalchemy.orm.interfaces import OperationContext
+import operator
 
 __all__ = ['Query', 'QueryContext', 'SelectionContext']
 
@@ -120,7 +121,7 @@ class Query(object):
         mapper = object_mapper(instance)
         prop = mapper.get_property(property, resolve_synonyms=True)
         target = prop.mapper
-        criterion = prop.compare(instance, value_is_parent=True)
+        criterion = prop.compare(operator.eq, instance, value_is_parent=True)
         return Query(target, **kwargs).filter(criterion)
     query_from_parent = classmethod(query_from_parent)
         
@@ -149,7 +150,7 @@ class Query(object):
                 raise exceptions.InvalidRequestError("Could not locate a property which relates instances of class '%s' to instances of class '%s'" % (self.mapper.class_.__name__, instance.__class__.__name__))
         else:
             prop = mapper.get_property(property, resolve_synonyms=True)
-        return self.filter(prop.compare(instance, value_is_parent=True))
+        return self.filter(prop.compare(operator.eq, instance, value_is_parent=True))
 
     def add_entity(self, entity):
         """add a mapped entity to the list of result columns to be returned.
@@ -265,7 +266,7 @@ class Query(object):
 
         for key, value in kwargs.iteritems():
             prop = joinpoint.get_property(key, resolve_synonyms=True)
-            c = prop.compare(value)
+            c = prop.compare(operator.eq, value)
 
             if alias is not None:
                 sql_util.ClauseAdapter(alias).traverse(c)
@@ -1011,9 +1012,9 @@ class Query(object):
         for key, value in params.iteritems():
             (keys, prop) = self._locate_prop(key, start=start)
             if isinstance(prop, properties.PropertyLoader):
-                c = prop.compare(value) & self.join_via(keys[:-1])
+                c = prop.compare(operator.eq, value) & self.join_via(keys[:-1])
             else:
-                c = prop.compare(value) & self.join_via(keys)
+                c = prop.compare(operator.eq, value) & self.join_via(keys)
             if clause is None:
                 clause =  c
             else:

@@ -15,7 +15,7 @@ from sqlalchemy import sql, schema, util, exceptions, sql_util, logging
 from sqlalchemy.orm import mapper, sync, strategies, attributes, dependency
 from sqlalchemy.orm import session as sessionlib
 from sqlalchemy.orm import util as mapperutil
-import sets, random
+import operator
 from sqlalchemy.orm.interfaces import *
 
 __all__ = ['ColumnProperty', 'CompositeProperty', 'PropertyLoader', 'BackRef']
@@ -56,9 +56,6 @@ class ColumnProperty(StrategizedProperty):
     def merge(self, session, source, dest, _recursive):
         setattr(dest, self.key, getattr(source, self.key, None))
 
-    def compare(self, value, op='=='):
-        return self.comparator == value
-
     def get_col_value(self, column, value):
         return value
 
@@ -84,7 +81,7 @@ class CompositeProperty(ColumnProperty):
     def __init__(self, class_, *columns, **kwargs):
         super(CompositeProperty, self).__init__(*columns, **kwargs)
         self.composite_class = class_
-        self.comparator = None
+        self.comparator = CompositeProperty.Comparator(self)
         
     def copy(self):
         return CompositeProperty(deferred=self.deferred, group=self.group, composite_class=self.composite_class, *self.columns)
@@ -101,19 +98,21 @@ class CompositeProperty(ColumnProperty):
             if a is column:
                 setattr(obj, b, value)
 
-    def compare(self, value, op='=='):
-        # TODO: build into operator framework
-        if op == '==':
-            return sql.and_([a==b for a, b in zip(self.columns, value.__colset__())])
-        elif op == '!=':
-            return sql.or_([a!=b for a, b in zip(self.columns, value.__colset__())])
-
     def get_col_value(self, column, value):
         for a, b in zip(self.columns, value.__colset__()):
             if a is column:
                 return b
 
-        
+    class Comparator(PropComparator):
+        def __eq__(self, other):
+            if other is None:
+                return sql.and_(*[a==None for a in self.prop.columns])
+            else:
+                return sql.and_(*[a==b for a, b in zip(self.prop.columns, other.__colset__())])
+
+        def __ne__(self, other):
+            return sql.or_(*[a!=b for a, b in zip(self.prop.columns, other.__colset__())])
+
 class PropertyLoader(StrategizedProperty):
     """Describes an object property that holds a single item or list
     of items that correspond to a related database table.
@@ -137,7 +136,7 @@ class PropertyLoader(StrategizedProperty):
         self.remote_side = util.to_set(remote_side)
         self.enable_typechecks = enable_typechecks
         self._parent_join_cache = {}
-        self.comparator = None
+        self.comparator = PropertyLoader.Comparator(self)
 
         if cascade is not None:
             self.cascade = mapperutil.CascadeOptions(cascade)
@@ -162,22 +161,40 @@ class PropertyLoader(StrategizedProperty):
             self.backref = backref
         self.is_backref = is_backref
 
-    def compare(self, value, value_is_parent=False, op='=='):
-        if op == '==':
-            # optimized operation for ==, uses a lazy clause.
-            (criterion, lazybinds, rev) = strategies.LazyLoader._create_lazy_clause(self, reverse_direction=not value_is_parent)
-            bind_to_col = dict([(lazybinds[col].key, col) for col in lazybinds])
-
-            class Visitor(sql.ClauseVisitor):
-                def visit_bindparam(s, bindparam):
-                    mapper = value_is_parent and self.parent or self.mapper
-                    bindparam.value = mapper.get_attr_by_column(value, bind_to_col[bindparam.key])
-            Visitor().traverse(criterion)
-            return criterion
+    class Comparator(PropComparator):
+        def __eq__(self, other):
+            if other is None:
+                return ~sql.exists([1], self.prop.primaryjoin)
+            else:
+                return self.prop._optimized_compare(other)
+        
+        def __ne__(self, other):
+            j = self.prop.primaryjoin
+            if self.prop.secondaryjoin:
+                j = j & self.prop.secondaryjoin
+            return ~sql.exists([1], j & sql.and_(*[x==y for (x, y) in zip(self.prop.mapper.primary_key, self.prop.mapper.primary_key_from_instance(other))]))
+            
+    def compare(self, op, value, value_is_parent=False):
+        if op == operator.eq:
+            if value is None:
+                return ~sql.exists([1], self.prop.mapper.mapped_table, self.prop.primaryjoin)
+            else:
+                return self._optimized_compare(value, value_is_parent=value_is_parent)
         else:
-            # TODO: build expressions like these into operator framework
-            return sql.and_(*[x==y for (x, y) in zip(self.mapper.primary_key, self.mapper.primary_key_from_instance(value))])
+            return op(self.comparator, value)
+    
+    def _optimized_compare(self, value, value_is_parent=False):
+        # optimized operation for ==, uses a lazy clause.
+        (criterion, lazybinds, rev) = strategies.LazyLoader._create_lazy_clause(self, reverse_direction=not value_is_parent)
+        bind_to_col = dict([(lazybinds[col].key, col) for col in lazybinds])
 
+        class Visitor(sql.ClauseVisitor):
+            def visit_bindparam(s, bindparam):
+                mapper = value_is_parent and self.parent or self.mapper
+                bindparam.value = mapper.get_attr_by_column(value, bind_to_col[bindparam.key])
+        Visitor().traverse(criterion)
+        return criterion
+        
     private = property(lambda s:s.cascade.delete_orphan)
 
     def create_strategy(self):

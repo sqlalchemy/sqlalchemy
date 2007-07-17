@@ -60,7 +60,7 @@ class QueryTest(testbase.ORMTest):
         
     def setup_mappers(self):
         mapper(User, users, properties={
-            'addresses':relation(Address),
+            'addresses':relation(Address, backref='user'),
             'orders':relation(Order, backref='user'), # o2m, m2o
         })
         mapper(Address, addresses)
@@ -196,7 +196,34 @@ class FilterTest(QueryTest):
     def test_onefilter(self):
         assert [User(id=8), User(id=9)] == create_session().query(User).filter(User.name.endswith('ed')).all()
 
+    def test_contains(self):
+        """test comparing a collection to an object instance."""
+        
+        sess = create_session()
+        address = sess.query(Address).get(3)
+        assert [User(id=8)] == sess.query(User).filter(User.addresses==address).all()
 
+        assert [User(id=10)] == sess.query(User).filter(User.addresses==None).all()
+
+        assert [User(id=7), User(id=9), User(id=10)] == sess.query(User).filter(User.addresses!=address).all()
+        
+    def test_contains_m2m(self):
+        sess = create_session()
+        item = sess.query(Item).get(3)
+        assert [Order(id=1), Order(id=2), Order(id=3)] == sess.query(Order).filter(Order.items==item).all()
+
+        assert [Order(id=4), Order(id=5)] == sess.query(Order).filter(Order.items!=item).all()
+
+    def test_has(self):
+        """test scalar comparison to an object instance"""
+        
+        sess = create_session()
+        user = sess.query(User).get(8)
+        assert [Address(id=2), Address(id=3), Address(id=4)] == sess.query(Address).filter(Address.user==user).all()
+
+        assert [Address(id=1), Address(id=5)] == sess.query(Address).filter(Address.user!=user).all()
+
+        
 class CountTest(QueryTest):
     def test_basic(self):
         assert 4 == create_session().query(User).count()

@@ -38,6 +38,13 @@
           querying divergent criteria. ClauseElements at the front of
           filter_by() are removed (use filter()).
 
+    - added operator support to class-instrumented attributes. you can now
+      filter() (or whatever) using <classname>.<attributename>==<whatever>.
+      for column based properties, all column operators work (i.e. ==, <, >,
+      like(), in_(), etc.).  For relation() and composite column properties,
+      ==<instance>, !=<instance>, and ==<None> are implemented so far.
+      [ticket:643]
+      
     - added composite column properties. using the composite(cls, *columns)
       function inside of the "properties" dict, instances of cls will be
       created/mapped to a single attribute, comprised of the values

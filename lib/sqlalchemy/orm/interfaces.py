@@ -325,14 +325,17 @@ class MapperProperty(object):
 
         raise NotImplementedError()
 
-    def compare(self, value):
+    def compare(self, operator, value):
         """Return a compare operation for the columns represented by
         this ``MapperProperty`` to the given value, which may be a
-        column value or an instance.
+        column value or an instance.  'operator' is an operator from
+        the operators module, or from sql.Comparator.
+        
+        By default uses the PropComparator attached to this MapperProperty
+        under the attribute name "comparator".
         """
 
-        raise NotImplementedError()
-
+        return operator(self.comparator, value)
 
 class PropComparator(sql.Comparator):
     """defines comparison operations for MapperProperty objects"""

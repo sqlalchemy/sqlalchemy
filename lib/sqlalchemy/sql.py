@@ -870,8 +870,8 @@ class ClauseVisitor(object):
     """A class that knows how to traverse and visit
     ``ClauseElements``.
     
-    Each ``ClauseElement``'s accept_visitor() method will call a
-    corresponding visit_XXXX() method here. Traversal of a
+    Calls visit_XXX() methods dynamically generated for each particualr
+    ``ClauseElement`` subclass encountered.  Traversal of a
     hierarchy of ``ClauseElements`` is achieved via the
     ``traverse()`` method, which is passed the lead
     ``ClauseElement``.
@@ -884,6 +884,11 @@ class ClauseVisitor(object):
     elements returned, such as to not return column collections
     (column_collections=False) or to return Schema-level items
     (schema_visitor=True).
+    
+    ``ClauseVisitor`` also supports a simultaneous copy-and-traverse
+    operation, which will produce a copy of a given ``ClauseElement``
+    structure while at the same time allowing ``ClauseVisitor`` subclasses
+    to modify the new structure in-place.
     
     """
     __traverse_options__ = {}

@@ -85,10 +85,10 @@ class InstrumentedAttribute(sql.Comparator):
         return self.comparator.compare_self()
         
     def operate(self, op, other):
-        return self.comparator.operate(op, other)
+        return op(self.comparator, other)
 
     def reverse_operate(self, op, other):
-        return self.comparator.reverse_operate(op, other)
+        return op(other, self.comparator)
         
     def hasparent(self, item, optimistic=False):
         """Return the boolean value of a `hasparent` flag attached to the given item.

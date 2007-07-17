@@ -844,12 +844,15 @@ class CompositeTypesTest(ORMTest):
             
         edges = Table('edges', metadata, 
             Column('id', Integer, primary_key=True),
-            Column('graph_id', Integer, ForeignKey('graphs.id'), nullable=False),
+            Column('graph_id', Integer, nullable=False),
+            Column('graph_version_id', Integer, nullable=False),
             Column('x1', Integer),
             Column('y1', Integer),
             Column('x2', Integer),
-            Column('y2', Integer))
-        
+            Column('y2', Integer),
+            ForeignKeyConstraint(['graph_id', 'graph_version_id'], ['graphs.id', 'graphs.version_id'])
+            )
+
     def test_basic(self):
         class Point(object):
             def __init__(self, x, y):
@@ -913,6 +916,15 @@ class CompositeTypesTest(ORMTest):
                 assert e1.start == e2.start
                 assert e1.end == e2.end
         self.assert_sql_count(testbase.db, go, 1)
+        
+        # test comparison of CompositeProperties to their object instances
+        g = sess.query(Graph).get([1, 1])
+        assert sess.query(Edge).filter(Edge.start==Point(3, 4)).one() is g.edges[0]
+        
+        assert sess.query(Edge).filter(Edge.start!=Point(3, 4)).first() is g.edges[1]
+
+        assert sess.query(Edge).filter(Edge.start==None).all() == []
+        
         
     def test_pk(self):
         """test using a composite type as a primary key"""
