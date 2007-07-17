@@ -474,10 +474,25 @@ class ReflectionTest(PersistTest):
         meta2 = MetaData(testbase.db)
         try:
             table2 = Table('identity_test', meta2, autoload=True)
-            print table2.c['col1'].sequence
+            assert table2.c['col1'].sequence.start == 2
+            assert table2.c['col1'].sequence.increment == 3
         finally:
             table.drop()
 
+    def testreserved(self):
+        # check a table that uses an SQL reserved name doesn't cause an error
+        meta = MetaData(testbase.db)
+        table = Table(
+            'select', meta, 
+            Column('col1', Integer, primary_key=True)
+        )
+        table.create()
+        
+        meta2 = MetaData(testbase.db)
+        try:
+            table2 = Table('select', meta2, autoload=True)
+        finally:
+            table.drop()
 
 class CreateDropTest(PersistTest):
     def setUpAll(self):
