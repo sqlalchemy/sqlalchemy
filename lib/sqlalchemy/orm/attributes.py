@@ -422,7 +422,7 @@ class InstrumentedCollectionAttribute(InstrumentedAttribute):
 
     def _build_collection(self, obj):
         user_data = self.collection_factory()
-        collection = collections.CollectionAdaptor(self, obj, user_data)
+        collection = collections.CollectionAdapter(self, obj, user_data)
         return collection, user_data
 
     def _load_collection(self, obj, values, emit_events=True, collection=None):
@@ -442,7 +442,7 @@ class InstrumentedCollectionAttribute(InstrumentedAttribute):
         try:
             return getattr(user_data, '_sa_adapter')
         except AttributeError:
-            collections.CollectionAdaptor(self, obj, user_data)
+            collections.CollectionAdapter(self, obj, user_data)
             return getattr(user_data, '_sa_adapter')
 
 

@@ -1,4 +1,99 @@
-"""Support for attributes that hold collections of objects."""
+"""Support for collections of mapped entities.
+
+The collections package supplies the machinery used to inform the ORM of
+collection membership changes.  An instrumentation via decoration approach is
+used, allowing arbitrary types (including built-ins) to be used as entity
+collections without requiring inheritance from a base class.
+
+Instrumentation decoration relays membership change events to the
+``InstrumentedCollectionAttribute`` that is currently managing the collection.
+The decorators observe function call arguments and return values, tracking
+entities entering or leaving the collection.  Two decorator approaches are
+provided.  One is a bundle of generic decorators that map function arguments
+and return values to events::
+
+  from sqlalchemy.orm.collections import collection
+  class MyClass(object):
+      # ...
+      
+      @collection.adds(1)
+      def store(self, item):
+          self.data.append(item)
+      
+      @collection.removes_return()
+      def pop(self):
+          return self.data.pop()
+
+
+The second approach is a bundle of targeted decorators that wrap appropriate
+append and remove notifiers around the mutation methods present in the
+standard Python ``list``, ``set`` and ``dict`` interfaces.  These could be
+specified in terms of generic decorator recipes, but are instead hand-tooled for
+increased efficiency.   The targeted decorators occasionally implement
+adapter-like behavior, such as mapping bulk-set methods (``extend``, ``update``,
+``__setslice``, etc.) into the series of atomic mutation events that the ORM
+requires.
+
+The targeted decorators are used internally for automatic instrumentation of
+entity collection classes.  Every collection class goes through a
+transformation process roughly like so:
+
+1. If the class is a built-in, substitute a trivial sub-class
+2. Is this class already instrumented?
+3. Add in generic decorators
+4. Sniff out the collection interface through duck-typing
+5. Add targeted decoration to any undecorated interface method
+
+This process modifies the class at runtime, decorating methods and adding some
+bookkeeping properties.  This isn't possible (or desirable) for built-in
+classes like ``list``, so trivial sub-classes are substituted to hold
+decoration::
+
+  class InstrumentedList(list):
+      pass
+
+Collection classes can be specified in ``relation(collection_class=)`` as
+types or a function that returns an instance.  Collection classes are
+inspected and instrumented during the mapper compilation phase.  The
+collection_class callable will be executed once to produce a specimen
+instance, and the type of that specimen will be instrumented.  Functions that
+return built-in types like ``lists`` will be adapted to produce instrumented
+instances.
+
+When extending a known type like ``list``, additional decorations are not
+generally not needed.  Odds are, the extension method will delegate to a
+method that's already instrumented.  For example::
+
+  class QueueIsh(list):
+     def push(self, item):
+         self.append(item)
+     def shift(self):
+         return self.pop(0)
+
+There's no need to decorate these methods.  ``append`` and ``pop`` are already
+instrumented as part of the ``list`` interface.  Decorating them would fire
+duplicate events, which should be avoided.
+
+The targeted decoration tries not to rely on other methods in the underlying
+collection class, but some are unavoidable.  Many depend on 'read' methods
+being present to properly instrument a 'write', for example, ``__setitem__``
+needs ``__getitem__``.  "Bulk" methods like ``update`` and ``extend`` may also
+reimplemented in terms of atomic appends and removes, so the ``extend``
+decoration will actually perform many ``append`` operations and not call the
+underlying method at all.
+
+Tight control over bulk operation and the firing of events is also possible by
+implementing the instrumentation internally in your methods.  The basic
+instrumentation package works under the general assumption that collection
+mutation will not raise unusual exceptions.  If you want to closely
+orchestrate append and remove events with exception management, internal
+instrumentation may be the answer.  Within your method,
+``collection_adapter(self)`` will retrieve an object that you can use for
+explicit control over triggering append and remove events.
+
+The owning object and InstrumentedCollectionAttribute are also reachable
+through the adapter, allowing for some very sophisticated behavior.
+"""
 
 from sqlalchemy import exceptions, schema, util as sautil
 from sqlalchemy.orm import mapper
@@ -53,7 +148,7 @@ def attribute_mapped_collection(attr_name):
     """A dictionary-based collection type with attribute-based keying.
 
     Returns a MappedCollection factory with a keying based on the
-    'attr_name' atribute of entities in the collection.
+    'attr_name' attribute of entities in the collection.
 
     The key value must be immutable for the lifetime of the object.  You
     can not, for example, map on foreign key values if those key values will
@@ -79,19 +174,19 @@ def mapped_collection(keyfunc):
     return lambda: MappedCollection(keyfunc)
 
 class collection(object):
-    """Decorators for custom collection classes.
+    """Decorators for entity collection classes.
 
     The decorators fall into two groups: annotations and interception recipes.
 
     The annotating decorators (appender, remover, iterator,
-    internally_instrumented) indicate the method's purpose and take no
-    arguments.  They are not written with parens:
+    internally_instrumented, on_link) indicate the method's purpose and take no
+    arguments.  They are not written with parens::
 
         @collection.appender
         def append(self, append): ...
 
     The recipe decorators all require parens, even those that take no
-    arguments:
+    arguments::
 
         @collection.adds('entity'):
         def insert(self, position, entity): ...
@@ -112,7 +207,7 @@ class collection(object):
 
         The appender method is called with one positional argument: the value
         to append. The method will be automatically decorated with 'adds(1)'
-        if not already decorated.
+        if not already decorated::
 
             @collection.appender
             def add(self, append): ...
@@ -156,7 +251,7 @@ class collection(object):
 
         The remover method is called with one positional argument: the value
         to remove. The method will be automatically decorated with
-        'removes_return()' if not already decorated.
+        'removes_return()' if not already decorated::
 
             @collection.remover
             def zap(self, entity): ...
@@ -182,7 +277,7 @@ class collection(object):
         """Tag the method as the collection remover.
 
         The iterator method is called with no arguments.  It is expected to
-        return an iterator over all collection members.
+        return an iterator over all collection members::
 
             @collection.iterator
             def __iter__(self): ...
@@ -198,7 +293,7 @@ class collection(object):
         This tag will prevent any decoration from being applied to the method.
         Use this if you are orchestrating your own calls to collection_adapter
         in one of the basic SQLAlchemy interface methods, or to prevent
-        an automatic ABC method decoration from wrapping your implementation.
+        an automatic ABC method decoration from wrapping your implementation::
 
             # normally an 'extend' method on a list-like class would be
             # automatically intercepted and re-implemented in terms of
@@ -231,7 +326,7 @@ class collection(object):
 
         Adds "add to collection" handling to the method.  The decorator argument
         indicates which method argument holds the SQLAlchemy-relevant value.
-        Arguments can be specified positionally (i.e. integer) or by name.
+        Arguments can be specified positionally (i.e. integer) or by name::
 
             @collection.adds(1)
             def push(self, item): ...
@@ -254,7 +349,7 @@ class collection(object):
         holds the SQLAlchemy-relevant value to be added, and return value, if
         any will be considered the value to remove.
         
-        Arguments can be specified positionally (i.e. integer) or by name.
+        Arguments can be specified positionally (i.e. integer) or by name::
 
             @collection.replaces(2)
             def __setitem__(self, index, item): ...
@@ -273,7 +368,7 @@ class collection(object):
         Adds "remove from collection" handling to the method.  The decorator
         argument indicates which method argument holds the SQLAlchemy-relevant
         value to be removed. Arguments can be specified positionally (i.e.
-        integer) or by name.
+        integer) or by name::
 
             @collection.removes(1)
             def zap(self, item): ...
@@ -293,7 +388,7 @@ class collection(object):
 
         Adds "remove from collection" handling to the method.  The return value
         of the method, if any, is considered the value to remove.  The method
-        arguments are not inspected.
+        arguments are not inspected::
 
             @collection.removes_return()
             def pop(self): ...
@@ -316,12 +411,15 @@ def collection_adapter(collection):
 
     return getattr(collection, '_sa_adapter', None)
 
-class CollectionAdaptor(object):
-    """Bridges between the orm and arbitrary Python collections.
+class CollectionAdapter(object):
+    """Bridges between the ORM and arbitrary Python collections.
 
     Proxies base-level collection operations (append, remove, iterate)
     to the underlying Python collection, and emits add/remove events for
     entities entering or leaving the collection.
+
+    The ORM uses an CollectionAdapter exclusively for interaction with
+    entity collections.
     """
 
     def __init__(self, attr, owner, data):
@@ -330,53 +428,89 @@ class CollectionAdaptor(object):
         self._data = weakref.ref(data)
         self.link_to_self(data)
 
-    owner = property(lambda s: s._owner())
-    data = property(lambda s: s._data())
+    owner = property(lambda s: s._owner(),
+                     doc="The object that owns the entity collection.")
+    data = property(lambda s: s._data(),
+                    doc="The entity collection being adapted.")
 
     def link_to_self(self, data):
+        """Link a collection to this adapter, and fire a link event."""
+
         setattr(data, '_sa_adapter', self)
         if hasattr(data, '_sa_on_link'):
             getattr(data, '_sa_on_link')(self)
 
     def unlink(self, data):
+        """Unlink a collection from any adapter, and fire a link event."""
+
         setattr(data, '_sa_adapter', None)
         if hasattr(data, '_sa_on_link'):
             getattr(data, '_sa_on_link')(None)
 
     def append_with_event(self, item, initiator=None):
+        """Add an entity to the collection, firing mutation events."""
+
         getattr(self._data(), '_sa_appender')(item, _sa_initiator=initiator)
 
     def append_without_event(self, item):
+        """Add or restore an entity to the collection, firing no events."""
+
         getattr(self._data(), '_sa_appender')(item, _sa_initiator=False)
 
     def remove_with_event(self, item, initiator=None):
+        """Remove an entity from the collection, firing mutation events."""
+
         getattr(self._data(), '_sa_remover')(item, _sa_initiator=initiator)
 
     def remove_without_event(self, item):
+        """Remove an entity from the collection, firing no events."""
+
         getattr(self._data(), '_sa_remover')(item, _sa_initiator=False)
 
     def clear_with_event(self, initiator=None):
+        """Empty the collection, firing a mutation event for each entity."""
+
         for item in list(self):
             self.remove_with_event(item, initiator)
 
     def clear_without_event(self):
+        """Empty the collection, firing no events."""
+
         for item in list(self):
             self.remove_without_event(item)
 
     def __iter__(self):
+        """Iterate over entities in the collection."""
+
         return getattr(self._data(), '_sa_iterator')()
 
     def __len__(self):
+        """Count entities in the collection."""
+
         return len(list(getattr(self._data(), '_sa_iterator')()))
 
     def __nonzero__(self):
         return True
 
     def fire_append_event(self, item, initiator=None):
+        """Notify that a entity has entered the collection.
+
+        Initiator is the InstrumentedAttribute that initiated the membership
+        mutation, and should be left as None unless you are passing along
+        an initiator value from a chained operation.
+        """
+        
         if initiator is not False and item is not None:
             self.attr.fire_append_event(self._owner(), item, initiator)
 
     def fire_remove_event(self, item, initiator=None):
+        """Notify that a entity has entered the collection.
+
+        Initiator is the InstrumentedAttribute that initiated the membership
+        mutation, and should be left as None unless you are passing along
+        an initiator value from a chained operation.
+        """
+
         if initiator is not False and item is not None:
             self.attr.fire_remove_event(self._owner(), item, initiator)
     
@@ -454,6 +588,8 @@ def __converting_factory(original_factory):
     return wrapper
 
 def _instrument_class(cls):
+    """Modify methods in a class and install instrumentation."""
+
     # FIXME: more formally document this as a decoratorless/Python 2.3
     # option for specifying instrumentation.  (likely doc'd here in code only,
     # not in online docs.)
@@ -641,11 +777,8 @@ def _list_decorators():
     class."""
     
     def _tidy(fn):
-        try:
-            setattr(fn, '_sa_instrumented', True)
-            fn.__doc__ = getattr(getattr(list, fn.__name__), '__doc__')
-        except:
-            raise
+        setattr(fn, '_sa_instrumented', True)
+        fn.__doc__ = getattr(getattr(list, fn.__name__), '__doc__')
 
     def append(fn):
         def append(self, item, _sa_initiator=None):
@@ -765,11 +898,8 @@ def _dict_decorators():
     mapping class."""
 
     def _tidy(fn):
-        try:
-            setattr(fn, '_sa_instrumented', True)
-            fn.__doc__ = getattr(getattr(dict, fn.__name__), '__doc__')
-        except:
-            raise
+        setattr(fn, '_sa_instrumented', True)
+        fn.__doc__ = getattr(getattr(dict, fn.__name__), '__doc__')
 
     Unspecified=object()
 
@@ -863,11 +993,8 @@ def _set_decorators():
     sequence class."""
 
     def _tidy(fn):
-        try:
-            setattr(fn, '_sa_instrumented', True)
-            fn.__doc__ = getattr(getattr(set, fn.__name__), '__doc__')
-        except:
-            raise
+        setattr(fn, '_sa_instrumented', True)
+        fn.__doc__ = getattr(getattr(set, fn.__name__), '__doc__')
 
     Unspecified=object()
 
@@ -995,15 +1122,11 @@ __interfaces = {
                   'remover': 'remove',
                   'iterator': '__iter__',
                   '_decorators': _set_decorators(), },
-    # < 0.4 compatible naming (almost), deprecated- use decorators instead.
-    dict: { 'appender': 'set',
-            'remover': 'remove',
-            'iterator': 'itervalues',
+    # decorators are required for dicts and object collections.
+    dict: { 'iterator': 'itervalues',
             '_decorators': _dict_decorators(), },
     # < 0.4 compatible naming, deprecated- use decorators instead.
-    None: { 'appender': 'append',
-            'remover': 'remove',
-            'iterator': 'values', }
+    None: { }
     }
 
 
@@ -1011,21 +1134,37 @@ class MappedCollection(dict):
     """A basic dictionary-based collection class.
 
     Extends dict with the minimal bag semantics that collection classes require.
-    "set" and "remove" are implemented in terms of a keying function: any
+    ``set`` and ``remove`` are implemented in terms of a keying function: any
     callable that takes an object and returns an object for use as a dictionary
     key.
     """
     
     def __init__(self, keyfunc):
+        """Create a new collection with keying provided by keyfunc.
+
+        keyfunc may be any callable any callable that takes an object and
+        returns an object for use as a dictionary key.
+
+        The keyfunc will be called every time the ORM needs to add a member by
+        value-only (such as when loading instances from the database) or remove
+        a member.  The usual cautions about dictionary keying apply-
+        ``keyfunc(object)`` should return the same output for the life of the
+        collection.  Keying based on mutable properties can result in
+        unreachable instances "lost" in the collection.
+        """
         self.keyfunc = keyfunc
 
     def set(self, value, _sa_initiator=None):
+        """Add an item to the collection, with a key provided by this instance's keyfunc."""
+
         key = self.keyfunc(value)
         self.__setitem__(key, value, _sa_initiator)
     set = collection.internally_instrumented(set)
     set = collection.appender(set)
     
     def remove(self, value, _sa_initiator=None):
+        """Remove an item from the collection by value, consulting this instance's keyfunc for the key."""
+        
         key = self.keyfunc(value)
         # Let self[key] raise if key is not in this collection
         if self[key] != value:

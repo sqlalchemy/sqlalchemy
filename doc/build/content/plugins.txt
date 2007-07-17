@@ -374,7 +374,7 @@ directly:
 `orderinglist` is a helper for mutable ordered relations.  It will intercept
 list operations performed on a relation collection and automatically
 synchronize changes in list position with an attribute on the related objects.
-(See [advdatamapping_properties_customlist](rel:advdatamapping_properties_customlist) for more information on the general pattern.)
+(See [advdatamapping_properties_entitycollections](rel:advdatamapping_properties_customcollections) for more information on the general pattern.)
 
 Example: Two tables that store slides in a presentation.  Each slide
 has a number of bullet points, displayed in order by the 'position'

@@ -777,13 +777,13 @@ class CustomCollectionsTest(testbase.ORMTest):
         class Bar(object):
             pass
         class AppenderDict(dict):
+            @collection.appender
             def set(self, item):
                 self[id(item)] = item
+            @collection.remover
             def remove(self, item):
                 if id(item) in self:
                     del self[id(item)]
-            def __iter__(self):
-                return dict.__iter__(self)
                 
         mapper(Foo, sometable, properties={
             'bars':relation(Bar, collection_class=AppenderDict)
