@@ -4,14 +4,14 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import sys, StringIO, string, types, re, datetime, inspect, warnings
+import re, datetime, inspect, warnings
 
-from sqlalchemy import sql,engine,schema,ansisql
+from sqlalchemy import sql,schema,ansisql
 from sqlalchemy.engine import default
 import sqlalchemy.types as sqltypes
 import sqlalchemy.exceptions as exceptions
 import sqlalchemy.util as util
-from array import array
+from array import array as _array
 
 RESERVED_WORDS = util.Set(
     ['accessible', 'add', 'all', 'alter', 'analyze','and', 'as', 'asc',
@@ -1040,7 +1040,7 @@ class MySQLDialect(ansisql.ANSIDialect):
 
     def get_default_schema_name(self):
         if not hasattr(self, '_default_schema_name'):
-            self._default_schema_name = text("select database()", self).scalar()
+            self._default_schema_name = sql.text("select database()", self).scalar()
         return self._default_schema_name
 
     def has_table(self, connection, table_name, schema=None):
@@ -1213,7 +1213,7 @@ class _MySQLPythonRowProxy(object):
         self.charset = charset
     def __getitem__(self, index):
         item = self.rowproxy[index]
-        if isinstance(item, array):
+        if isinstance(item, _array):
             item = item.tostring()
         if self.charset and isinstance(item, unicode):
             return item.encode(self.charset)
@@ -1221,7 +1221,7 @@ class _MySQLPythonRowProxy(object):
             return item
     def __getattr__(self, attr):
         item = getattr(self.rowproxy, attr)
-        if isinstance(item, array):
+        if isinstance(item, _array):
             item = item.tostring()
         if self.charset and isinstance(item, unicode):
             return item.encode(self.charset)
