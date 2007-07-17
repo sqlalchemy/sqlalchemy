@@ -1191,8 +1191,6 @@ class MetaData(SchemaItem):
         
         if bind is None:
             bind = kwargs.pop('engine_or_url', None)
-        if bind is None:
-            raise exceptions.ArguemntError("'bind' argument is required for connect()")
         from sqlalchemy.engine.url import URL
         if isinstance(bind, (basestring, URL)):
             self._bind = sqlalchemy.create_engine(bind, **kwargs)
