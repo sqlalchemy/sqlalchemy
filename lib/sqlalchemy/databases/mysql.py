@@ -1093,10 +1093,11 @@ class MySQLDialect(ansisql.ANSIDialect):
             table.metadata.tables[table.name]= table
 
         try:
-            rp = connection.execute("describe " + self._escape_table_name(table),
-                                   {})
-        except:
-            raise exceptions.NoSuchTableError(table.fullname)
+            rp = connection.execute("DESCRIBE " + self._escape_table_name(table))
+        except exceptions.SQLError, e:
+            if e.orig.args[0] == 1146:
+                raise exceptions.NoSuchTableError(table.fullname)
+            raise
 
         for row in _compat_fetch(rp, charset=decode_from):
             (name, type, nullable, primary_key, default) = \
