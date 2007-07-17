@@ -1068,11 +1068,21 @@ class MySQLDialect(ansisql.ANSIDialect):
         return self._default_schema_name
 
     def has_table(self, connection, table_name, schema=None):
+        # SHOW TABLE STATUS LIKE and SHOW TABLES LIKE do not function properly
+        # on macosx (and maybe win?) with multibyte table names.
+        #
+        # TODO: if this is not a problem on win, make the strategy swappable
+        # based on platform.  DESCRIBE is much slower.
         if schema is not None:
-            st = 'SHOW TABLE STATUS FROM `%s` LIKE %%s' % schema
+            st = "DESCRIBE `%s`.`%s`" % (schema, table_name)
         else:
-            st = 'SHOW TABLE STATUS LIKE %s'
-        return connection.execute(st, table_name).rowcount != 0
+            st = "DESCRIBE `%s`" % table_name
+        try:
+            return connection.execute(st).rowcount > 0
+        except exceptions.SQLError, e:
+            if e.orig.args[0] == 1146:
+                return False
+            raise
 
     def get_version_info(self, connectable):
         if hasattr(connectable, 'connect'):
