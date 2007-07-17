@@ -802,7 +802,7 @@ class Query(object):
             # if theres an order by, add those columns to the column list
             # of the "rowcount" query we're going to make
             if order_by:
-                order_by = util.to_list(order_by) or []
+                order_by = [sql._literal_as_text(o) for o in util.to_list(order_by) or []]
                 cf = sql_util.ColumnFinder()
                 for o in order_by:
                     cf.traverse(o)

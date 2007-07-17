@@ -66,7 +66,7 @@ class EagerTest(QueryTest):
         ))
         
         q = create_session().query(User)
-        l = q.filter(users.c.id==addresses.c.user_id).order_by(addresses.c.email_address).all()
+        l = q.filter(User.id==Address.user_id).order_by(Address.email_address).all()
         
         assert [
             User(id=8, addresses=[
@@ -236,7 +236,7 @@ class EagerTest(QueryTest):
         sess = create_session()
         q = sess.query(Item)
         l = q.filter((Item.c.description=='item 2') | (Item.c.description=='item 5') | (Item.c.description=='item 3')).\
-            order_by(Item.c.id).limit(2).all()
+            order_by(Item.id).limit(2).all()
 
         assert fixtures.item_keyword_result[1:3] == l
         
@@ -259,7 +259,7 @@ class EagerTest(QueryTest):
         q = sess.query(User)
 
         if testbase.db.engine.name != 'mssql':
-            l = q.join('orders').order_by(desc(orders.c.user_id)).limit(2).offset(1)
+            l = q.join('orders').order_by(desc(Order.user_id)).limit(2).offset(1)
             assert [
                 User(id=9, 
                     orders=[Order(id=2), Order(id=4)],
@@ -271,7 +271,7 @@ class EagerTest(QueryTest):
                 )
             ] == l.all()
 
-        l = q.join('addresses').order_by(desc(addresses.c.email_address)).limit(1).offset(0)
+        l = q.join('addresses').order_by(desc(Address.email_address)).limit(1).offset(0)
         assert [
             User(id=7, 
                 orders=[Order(id=1), Order(id=3), Order(id=5)],
