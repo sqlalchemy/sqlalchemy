@@ -53,7 +53,7 @@ class TableCollection(object):
         for table in self.tables:
             vis.traverse(table)
         sorter = topological.QueueDependencySorter( tuples, self.tables )
-        head =  sorter.sort()
+        head = sorter.sort()
         sequence = []
         def to_sequence( node, seq=sequence):
             seq.append( node.item )

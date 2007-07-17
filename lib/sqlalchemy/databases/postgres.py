@@ -275,7 +275,7 @@ class PGDialect(ansisql.ANSIDialect):
         return PGExecutionContext(self, *args, **kwargs)
 
     def max_identifier_length(self):
-        return 68
+        return 63
         
     def type_descriptor(self, typeobj):
         if self.version == 2:

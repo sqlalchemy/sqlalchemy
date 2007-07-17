@@ -91,7 +91,7 @@ class PropertyLoader(StrategizedProperty):
 
         self.association = association
         self.order_by = order_by
-        self.attributeext=attributeext
+        self.attributeext = attributeext
         if isinstance(backref, str):
             # propigate explicitly sent primary/secondary join conditions to the BackRef object if
             # just a string was sent

@@ -318,7 +318,7 @@ Select statements can also generate a WHERE clause based on the parameters you g
 
 #### Operators {@name=operators}
 
-Supported column operators so far are all the numerical comparison operators, i.e. '==', '>', '>=', etc., as well as `like()`, `startswith()`, `endswith()`, `between()`, and `in()`.  Boolean operators include `not_()`, `and_()` and `or_()`, which also can be used inline via '~', '&amp;', and '|'.  Math operators are '+', '-', '*', '/'.  Any custom operator can be specified via the `op()` function shown below.
+Supported column operators so far are all the numerical comparison operators, i.e. '==', '>', '>=', etc., as well as `like()`, `startswith()`, `endswith()`, `between()`, and `in_()`.  Boolean operators include `not_()`, `and_()` and `or_()`, which also can be used inline via '~', '&amp;', and '|'.  Math operators are '+', '-', '*', '/'.  Any custom operator can be specified via the `op()` function shown below.
  
     {python}
     # "like" operator
