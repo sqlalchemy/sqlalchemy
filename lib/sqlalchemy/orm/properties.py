@@ -60,7 +60,7 @@ class ColumnProperty(StrategizedProperty):
         return value
 
     class ColumnComparator(PropComparator):
-        def compare_self(self):
+        def clause_element(self):
             return self.prop.columns[0]
             
         def operate(self, op, other):
@@ -69,7 +69,7 @@ class ColumnProperty(StrategizedProperty):
         def reverse_operate(self, op, other):
             col = self.prop.columns[0]
             return op(col._bind_param(other), col)
-            
+
             
 ColumnProperty.logger = logging.class_logger(ColumnProperty)
 

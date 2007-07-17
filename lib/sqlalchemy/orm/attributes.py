@@ -81,8 +81,8 @@ class InstrumentedAttribute(sql.Comparator):
             return self
         return self.get(obj)
 
-    def compare_self(self):
-        return self.comparator.compare_self()
+    def clause_element(self):
+        return self.comparator.clause_element()
         
     def operate(self, op, other):
         return op(self.comparator, other)

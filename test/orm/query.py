@@ -152,6 +152,9 @@ class OperatorTest(QueryTest):
                              "\n'" + compiled + "'\n does not match\n'" +
                              fwd_sql + "'\n or\n'" + rev_sql + "'")
     
+    def test_in(self):
+         self._test(User.id.in_('a', 'b'), "users.id IN (:users_id, :users_id_1)")
+    
 class CompileTest(QueryTest):
     def test_deferred(self):
         session = create_session()
@@ -469,11 +472,11 @@ class InstancesTest(QueryTest):
             ]
             
         q = sess.query(User)
-        q = q.group_by([c for c in users.c]).order_by(User.c.id).outerjoin('addresses').add_column(func.count(addresses.c.id).label('count'))
+        q = q.group_by([c for c in users.c]).order_by(User.id).outerjoin('addresses').add_column(func.count(addresses.c.id).label('count'))
         l = q.all()
         assert l == expected
 
-        s = select([users, func.count(addresses.c.id).label('count')]).select_from(users.outerjoin(addresses)).group_by(*[c for c in users.c]).order_by(users.c.id)
+        s = select([users, func.count(addresses.c.id).label('count')]).select_from(users.outerjoin(addresses)).group_by(*[c for c in users.c]).order_by(User.id)
         q = sess.query(User)
         l = q.add_column("count").from_statement(s).all()
         assert l == expected

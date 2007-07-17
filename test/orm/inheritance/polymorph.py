@@ -295,18 +295,17 @@ def generate_round_trip_test(include_base=False, lazy_relation=True, redefine_co
             assert sets.Set([(e.get_name(), e.status) for e in c.employees]) == sets.Set([('pointy haired boss', 'AAB'), ('dilbert', 'BBA'), ('wally', 'CGG'), ('jsmith', 'ABA')])
         print "\n"
 
-    
         # test selecting from the query, using the base mapped table (people) as the selection criterion.
         # in the case of the polymorphic Person query, the "people" selectable should be adapted to be "person_join"
-        dilbert = session.query(Person).selectfirst(people.c.name=='dilbert')
-        dilbert2 = session.query(Engineer).selectfirst(people.c.name=='dilbert')
+        dilbert = session.query(Person).filter(getattr(Person, person_attribute_name)=='dilbert').first()
+        dilbert2 = session.query(Engineer).filter(getattr(Person, person_attribute_name)=='dilbert').first()
         assert dilbert is dilbert2
 
         # test selecting from the query, joining against an alias of the base "people" table.  test that
         # the "palias" alias does *not* get sucked up into the "person_join" conversion.
         palias = people.alias("palias")
-        session.query(Person).selectfirst((palias.c.name=='dilbert') & (palias.c.person_id==people.c.person_id))
-        dilbert2 = session.query(Engineer).selectfirst((palias.c.name=='dilbert') & (palias.c.person_id==people.c.person_id))
+        session.query(Person).filter((palias.c.name=='dilbert') & (palias.c.person_id==Person.person_id)).first()
+        dilbert2 = session.query(Engineer).filter((palias.c.name=='dilbert') & (palias.c.person_id==Person.person_id)).first()
         assert dilbert is dilbert2
 
         session.query(Person).selectfirst((engineers.c.engineer_name=="engineer1") & (engineers.c.person_id==people.c.person_id))

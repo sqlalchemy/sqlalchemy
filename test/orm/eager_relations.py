@@ -20,7 +20,7 @@ class EagerTest(QueryTest):
         sess = create_session()
         q = sess.query(User)
 
-        assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(users.c.id == 7).all()
+        assert [User(id=7, addresses=[Address(id=1, email_address='jack@bean.com')])] == q.filter(User.id==7).all()
         assert fixtures.user_address_result == q.all()
 
     def test_no_orphan(self):
@@ -375,6 +375,7 @@ class EagerTest(QueryTest):
             'user':relation(User, lazy=False)
         })
         mapper(User, users)
+        mapper(Item, items)
 
         q = create_session().query(Order)
         assert [
@@ -382,7 +383,7 @@ class EagerTest(QueryTest):
             Order(id=4, user=User(id=9))
         ] == q.all()
         
-        q = q.select_from(s.join(order_items).join(items)).filter(~items.c.id.in_(1, 2, 5))
+        q = q.select_from(s.join(order_items).join(items)).filter(~Item.id.in_(1, 2, 5))
         assert [
             Order(id=3, user=User(id=7)),
         ] == q.all()
@@ -394,7 +395,7 @@ class EagerTest(QueryTest):
             addresses = relation(mapper(Address, addresses), lazy=False)
         ))
         q = create_session().query(User)
-        l = q.filter(addresses.c.email_address == 'ed@lala.com').filter(addresses.c.user_id==users.c.id)
+        l = q.filter(addresses.c.email_address == 'ed@lala.com').filter(Address.user_id==User.id)
         assert fixtures.user_address_result[1:2] == l.all()
 
 if __name__ == '__main__':

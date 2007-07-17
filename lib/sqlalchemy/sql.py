@@ -781,7 +781,9 @@ def _is_literal(element):
     return not isinstance(element, ClauseElement)
 
 def _literal_as_text(element):
-    if _is_literal(element):
+    if isinstance(element, Comparator):
+        return element.clause_element()
+    elif _is_literal(element):
         return _TextClause(unicode(element))
     else:
         return element
@@ -1144,7 +1146,7 @@ class Comparator(object):
     between_op = staticmethod(between_op)
     
     def in_op(a, b):
-        return a.in_(b)
+        return a.in_(*b)
     in_op = staticmethod(in_op)
     
     def startswith_op(a, b):
@@ -1155,7 +1157,7 @@ class Comparator(object):
         return a.endswith(b)
     endswith_op = staticmethod(endswith_op)
     
-    def compare_self(self):
+    def clause_element(self):
         raise NotImplementedError()
         
     def operate(self, op, other):
@@ -1233,19 +1235,19 @@ class _CompareMixin(Comparator):
     def __compare(self, operator, obj, negate=None):
         if obj is None or isinstance(obj, _Null):
             if operator == '=':
-                return _BinaryExpression(self.compare_self(), null(), 'IS', negate='IS NOT')
+                return _BinaryExpression(self.clause_element(), null(), 'IS', negate='IS NOT')
             elif operator == '!=':
-                return _BinaryExpression(self.compare_self(), null(), 'IS NOT', negate='IS')
+                return _BinaryExpression(self.clause_element(), null(), 'IS NOT', negate='IS')
             else:
                 raise exceptions.ArgumentError("Only '='/'!=' operators can be used with NULL")
         else:
             obj = self._check_literal(obj)
 
-        return _BinaryExpression(self.compare_self(), obj, operator, type=sqltypes.Boolean, negate=negate)
+        return _BinaryExpression(self.clause_element(), obj, operator, type=sqltypes.Boolean, negate=negate)
 
     def __operate(self, operator, obj):
         obj = self._check_literal(obj)
-        return _BinaryExpression(self.compare_self(), obj, operator, type=self._compare_type(obj))
+        return _BinaryExpression(self.clause_element(), obj, operator, type=self._compare_type(obj))
 
     operators = {
         operator.add : (__operate, '+'),
@@ -1341,13 +1343,13 @@ class _CompareMixin(Comparator):
 
     def _check_literal(self, other):
         if isinstance(other, Comparator):
-            return other.compare_self()
+            return other.clause_element()
         elif _is_literal(other):
             return self._bind_param(other)
         else:
             return other
     
-    def compare_self(self):
+    def clause_element(self):
         """Allow ``_CompareMixins`` to return the appropriate object to be used in expressions."""
 
         return self
@@ -2456,7 +2458,7 @@ class _Label(ColumnElement):
     _label = property(lambda s: s.name)
     orig_set = property(lambda s:s.obj.orig_set)
 
-    def compare_self(self):
+    def clause_element(self):
         return self.obj
     
     def _copy_internals(self):
