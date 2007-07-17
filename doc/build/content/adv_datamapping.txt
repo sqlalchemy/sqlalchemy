@@ -115,9 +115,7 @@ Synonym can be established with the flag "proxy=True", to create a class-level p
 
 #### Entity Collections {@name=entitycollections}
 
-Mapping a one-to-many or many-to-many relationship results in a collection of
-values accessible through an attribute on the parent instance.  By default, this
-collection is a `list`:
+Mapping a one-to-many or many-to-many relationship results in a collection of values accessible through an attribute on the parent instance.  By default, this collection is a `list`:
 
     {python}
     mapper(Parent, properties={
@@ -128,9 +126,7 @@ collection is a `list`:
     parent.children.append(Child())
     print parent.children[0]
 
-Collections are not limited to lists.  Sets, mutable sequences and almost any
-other Python object that can act as a container can be used in place of the
-default list.
+Collections are not limited to lists.  Sets, mutable sequences and almost any other Python object that can act as a container can be used in place of the default list.
 
     {python}
     # use a set
@@ -145,16 +141,9 @@ default list.
 
 ##### Custom Entity Collections {@name=customcollections}
 
-You can use your own types for collections as well.  For most cases, simply
-inherit from `list` or `set` and add the custom behavior.
+You can use your own types for collections as well.  For most cases, simply inherit from `list` or `set` and add the custom behavior.
 
-Collections in SQLAlchemy are transparently *instrumented*.  Instrumentation
-means that normal operations on the collection are tracked and result in changes
-being written to the database at flush time.  Additionally, collection
-operations can fire *events* which indicate some secondary operation must take
-place.  Examples of a secondary operation include saving the child item in the
-parent's `Session` (i.e. the `save-update` cascade), as well as synchronizing
-the state of a bi-directional relationship (i.e. a `backref`).
+Collections in SQLAlchemy are transparently *instrumented*.  Instrumentation means that normal operations on the collection are tracked and result in changes being written to the database at flush time.  Additionally, collection operations can fire *events* which indicate some secondary operation must take place.  Examples of a secondary operation include saving the child item in the parent's `Session` (i.e. the `save-update` cascade), as well as synchronizing the state of a bi-directional relationship (i.e. a `backref`).
 
 The collections package understands the basic interface of lists, sets and dicts and will automatically apply instrumentation to those built-in types and their subclasses.  Object-derived types that implement a basic collection interface are detected and instrumented via duck-typing:
 
@@ -173,13 +162,9 @@ The collections package understands the basic interface of lists, sets and dicts
         def foo(self):
             return 'foo'
 
-`append`, `remove`, and `extend` are known list-like methods, and will be
-instrumented automatically.  `__iter__` is not a mutator method and won't be
-instrumented, and `foo` won't be either.
+`append`, `remove`, and `extend` are known list-like methods, and will be instrumented automatically.  `__iter__` is not a mutator method and won't be instrumented, and `foo` won't be either.
 
-Duck-typing (i.e. guesswork) isn't rock-solid, of course, so you can be explicit
-about the interface you are implementing by providing an `__emulates__` class
-attribute:
+Duck-typing (i.e. guesswork) isn't rock-solid, of course, so you can be explicit about the interface you are implementing by providing an `__emulates__` class attribute:
 
     {python}
     class SetLike(object):
@@ -194,23 +179,13 @@ attribute:
         def __iter__(self):
             return iter(self.data)
 
-This class looks list-like because of `append`, but `__emulates__` forces it to
-set-like.  `remove` is known to be part of the set interface and will be
-instrumented.
+This class looks list-like because of `append`, but `__emulates__` forces it to set-like.  `remove` is known to be part of the set interface and will be instrumented.
 
-But this class won't work quite yet: a little glue is needed to adapt it for use
-by SQLAlchemy.  The ORM needs to know which methods to use to append, remove and
-iterate over members of the collection.  When using a type like `list` or `set`,
-the appropriate methods are well-known and used automatically when present.
-This set-like class does not provide the expected `add` method, so we must
-supply an explicit mapping for the ORM via a decorator.
+But this class won't work quite yet: a little glue is needed to adapt it for use by SQLAlchemy.  The ORM needs to know which methods to use to append, remove and iterate over members of the collection.  When using a type like `list` or `set`, the appropriate methods are well-known and used automatically when present. This set-like class does not provide the expected `add` method, so we must supply an explicit mapping for the ORM via a decorator.
 
 ##### Collection Decorators {@name=collectiondecorators}
 
-Decorators can be used to tag the individual methods the ORM needs to manage
-collections.  Use them when your class doesn't quite meet the regular interface
-for its container type, or you simply would like to use a different method to
-get the job done.
+Decorators can be used to tag the individual methods the ORM needs to manage collections.  Use them when your class doesn't quite meet the regular interface for its container type, or you simply would like to use a different method to get the job done.
 
     {python}
     from sqlalchemy.orm.collections import collection
@@ -231,10 +206,7 @@ get the job done.
         def __iter__(self):
             return iter(self.data)
 
-And that's all that's needed to complete the example.  SQLAlchemy will add
-instances via the `append` method.  `remove` and `__iter__` are the default
-methods for sets and will be used for removing and iteration.  Default methods
-can be changed as well:
+And that's all that's needed to complete the example.  SQLAlchemy will add instances via the `append` method.  `remove` and `__iter__` are the default methods for sets and will be used for removing and iteration.  Default methods can be changed as well:
 
     {python}
     from sqlalchemy.orm.collections import collection
@@ -248,18 +220,11 @@ can be changed as well:
         def hey_use_this_instead_for_iteration(self):
             # ...
 
-There is no requirement to be list-, or set-like at all.  Collection classes can
-be any shape, so long as they have the append, remove and iterate interface
-marked for SQLAlchemy's use.  Append and remove methods will be called with a
-mapped entity as the single argument, and iterator methods are called with no
-arguments and must return an iterator.
+There is no requirement to be list-, or set-like at all.  Collection classes can be any shape, so long as they have the append, remove and iterate interface marked for SQLAlchemy's use.  Append and remove methods will be called with a mapped entity as the single argument, and iterator methods are called with no arguments and must return an iterator.
 
 ##### Dictionary-Based Collections {@name=dictcollections}
 
-A `dict` can be used as a collection, but a keying strategy is needed to map
-entities loaded by the ORM to key, value pairs.  The
-[collections](rel:docstrings_sqlalchemy.orm.collections) package provides
-several built-in types for dictionary-based collections:
+A `dict` can be used as a collection, but a keying strategy is needed to map entities loaded by the ORM to key, value pairs.  The [collections](rel:docstrings_sqlalchemy.orm.collections) package provides several built-in types for dictionary-based collections:
 
     {python}
     from sqlalchemy.orm.collections import column_mapped_collection, attr_mapped_collection, mapped_collection
@@ -278,14 +243,9 @@ several built-in types for dictionary-based collections:
     item.notes['color'] = Note('color', 'blue')
     print item.notes['color']
 
-These functions each provide a `dict` subclass with decorated `set` and
-`remove` methods and the keying strategy of your choice.
+These functions each provide a `dict` subclass with decorated `set` and `remove` methods and the keying strategy of your choice.
 
-The
-[collections.MappedCollection](rel:docstrings_sqlalchemy.orm.collections.MappedCollection)
-class can be used as a base class for your custom types or as a mix-in to
-quickly add `dict` collection support to other classes.  It uses a keying
-function to delegate to `__setitem__` and `__delitem__`:
+The [collections.MappedCollection](rel:docstrings_sqlalchemy.orm.collections.MappedCollection) class can be used as a base class for your custom types or as a mix-in to quickly add `dict` collection support to other classes.  It uses a keying function to delegate to `__setitem__` and `__delitem__`:
 
     {python}
     from sqlalchemy.util import OrderedDict
@@ -298,24 +258,13 @@ function to delegate to `__setitem__` and `__delitem__`:
             MappedCollection.__init__(self, keyfunc=lambda node: node.name)
             OrderedDict.__init__(self, *args, **kw)
 
-The ORM understands the `dict` interface just like lists and sets, and will
-automatically instrument all dict-like methods if you choose to subclass `dict`
-or provide dict-like collection behavior in a duck-typed class.  You must
-decorate appender and remover methods, however- there are no compatible methods
-in the basic dictionary interface for SQLAlchemy to use by default.  Iteration
-will go through `itervalues()` unless otherwise decorated.
+The ORM understands the `dict` interface just like lists and sets, and will automatically instrument all dict-like methods if you choose to subclass `dict` or provide dict-like collection behavior in a duck-typed class.  You must decorate appender and remover methods, however- there are no compatible methods in the basic dictionary interface for SQLAlchemy to use by default.  Iteration will go through `itervalues()` unless otherwise decorated.
 
 ##### Instrumentation and Custom Types {@name=adv_collections}
 
-Many custom types and existing library classes can be used as a entity
-collection type as-is without further ado.  However, it is important to note that
-the instrumentation process _will_ modify the type, adding decorators around
-methods automatically.
+Many custom types and existing library classes can be used as a entity collection type as-is without further ado.  However, it is important to note that the instrumentation process _will_ modify the type, adding decorators around methods automatically.
 
-The decorations are lightweight and no-op outside of relations, but they do add
-unneeded overhead when triggered elsewhere.  When using a library class as a
-collection, it can be good practice to use the "trivial subclass" trick to
-restrict the decorations to just your usage in relations.  For example:
+The decorations are lightweight and no-op outside of relations, but they do add unneeded overhead when triggered elsewhere.  When using a library class as a collection, it can be good practice to use the "trivial subclass" trick to restrict the decorations to just your usage in relations.  For example:
 
     {python}
     class MyAwesomeList(some.great.library.AwesomeList):
@@ -323,13 +272,9 @@ restrict the decorations to just your usage in relations.  For example:
 
     # ... relation(..., collection_class=MyAwesomeList)
 
-The ORM uses this approach for built-ins, quietly substituting a trivial
-subclass when a `list`, `set` or `dict` is used directly.
+The ORM uses this approach for built-ins, quietly substituting a trivial subclass when a `list`, `set` or `dict` is used directly.
 
-The collections package provides additional decorators and support for authoring
-custom types.  See the [package
-documentation](rel:docstrings_sqlalchemy.orm.collections) for more information
-and discussion of advanced usage and Python 2.3-compatible decoration options.
+The collections package provides additional decorators and support for authoring custom types.  See the [package documentation](rel:docstrings_sqlalchemy.orm.collections) for more information and discussion of advanced usage and Python 2.3-compatible decoration options.
 
 #### Custom Join Conditions {@name=customjoin}
 
