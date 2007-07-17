@@ -482,7 +482,7 @@ It's safe to use a `Session` which is transactional or autoflushing, as well as 
 When using the `threadlocal` engine context, things are that much easier; the `Session` uses the same connection/transaction as everyone else in the current thread, whether or not you explicitly bind it:
 
     {python}
-    engine = create_engine('foo://', threadlocal=True)
+    engine = create_engine('postgres://mydb', strategy="threadlocal")
     engine.begin()
     
     sess = create_session()  # session takes place in the transaction like everyone else
