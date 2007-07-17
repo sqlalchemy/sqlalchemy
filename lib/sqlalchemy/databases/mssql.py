@@ -251,8 +251,7 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
                 self.IINSERT = False
 
             if self.IINSERT:
-                # TODO: quoting rules for table name here ?
-                self.cursor.execute("SET IDENTITY_INSERT %s ON" % self.compiled.statement.table.fullname)
+                self.cursor.execute("SET IDENTITY_INSERT %s ON" % self.dialect.preparer().format_table(self.compiled.statement.table))
 
         super(MSSQLExecutionContext, self).pre_exec()
 
@@ -264,8 +263,7 @@ class MSSQLExecutionContext(default.DefaultExecutionContext):
         
         if self.compiled.isinsert:
             if self.IINSERT:
-                # TODO: quoting rules for table name here ?
-                self.cursor.execute("SET IDENTITY_INSERT %s OFF" % self.compiled.statement.table.fullname)
+                self.cursor.execute("SET IDENTITY_INSERT %s OFF" % self.dialect.preparer().format_table(self.compiled.statement.table))
                 self.IINSERT = False
             elif self.HASIDENT:
                 if not len(self._last_inserted_ids) or self._last_inserted_ids[0] is None:
@@ -532,7 +530,7 @@ class MSSQLDialect(ansisql.ANSIDialect):
             raise exceptions.NoSuchTableError(table.name)
 
         # We also run an sp_columns to check for identity columns:
-        cursor = connection.execute("sp_columns " + table.name)
+        cursor = connection.execute("sp_columns " + self.preparer().format_table(table))
         ic = None
         while True:
             row = cursor.fetchone()

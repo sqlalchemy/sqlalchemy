@@ -233,7 +233,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
         return (row is not None)
 
     def reflecttable(self, connection, table):
-        c = connection.execute("PRAGMA table_info(" + table.name + ")", {})
+        c = connection.execute("PRAGMA table_info(%s)" % self.preparer().format_table(table), {})
         found_table = False
         while True:
             row = c.fetchone()
@@ -266,7 +266,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
         if not found_table:
             raise exceptions.NoSuchTableError(table.name)
 
-        c = connection.execute("PRAGMA foreign_key_list(" + table.name + ")", {})
+        c = connection.execute("PRAGMA foreign_key_list(%s)" % self.preparer().format_table(table), {})
         fks = {}
         while True:
             row = c.fetchone()
@@ -295,7 +295,7 @@ class SQLiteDialect(ansisql.ANSIDialect):
         for name, value in fks.iteritems():
             table.append_constraint(schema.ForeignKeyConstraint(value[0], value[1]))
         # check for UNIQUE indexes
-        c = connection.execute("PRAGMA index_list(" + table.name + ")", {})
+        c = connection.execute("PRAGMA index_list(%s)" % self.preparer().format_table(table), {})
         unique_indexes = []
         while True:
             row = c.fetchone()

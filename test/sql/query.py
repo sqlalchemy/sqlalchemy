@@ -458,6 +458,22 @@ class QueryTest(PersistTest):
         finally:
             tbl.drop()
             con.execute('drop schema paj')
+
+    @testbase.supported('mssql')
+    def test_insertid_reserved(self):
+        meta = MetaData(testbase.db)
+        table = Table(
+            'select', meta, 
+            Column('col', Integer, primary_key=True)
+        )
+        table.create()
+        
+        meta2 = MetaData(testbase.db)
+        try:
+            table.insert().execute(col=7)
+        finally:
+            table.drop()
+
     
     def test_in_filtering(self):
         """test the 'shortname' field on BindParamClause."""
