@@ -4,16 +4,14 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-
-
-from sqlalchemy import sql, schema, exceptions
-from sqlalchemy import logging
-from sqlalchemy.orm import util as mapperutil
-
 """Contains the ClauseSynchronizer class, which is used to map
 attributes between two objects in a manner corresponding to a SQL
 clause that compares column values.
 """
+
+from sqlalchemy import sql, schema, exceptions
+from sqlalchemy import logging
+from sqlalchemy.orm import util as mapperutil
 
 ONETOMANY = 0
 MANYTOONE = 1

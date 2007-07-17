@@ -578,6 +578,8 @@ class Query(object):
     def __iter__(self):
         statement = self.compile()
         statement.use_labels = True
+        if self.session.autoflush:
+            self.session.flush()
         result = self.session.execute(self.mapper, statement, params=self._params)
         try:
             return iter(self.instances(result))

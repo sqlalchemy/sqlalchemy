@@ -21,11 +21,12 @@ class SessionTransaction(object):
     The SessionTransaction object is **not** threadsafe.
     """
 
-    def __init__(self, session, parent=None, autoflush=True):
+    def __init__(self, session, parent=None, autoflush=True, nested=False):
         self.session = session
-        self.connections = {}
-        self.parent = parent
+        self.__connections = {}
+        self.__parent = parent
         self.autoflush = autoflush
+        self.nested = nested
 
     def connection(self, mapper_or_class, entity_name=None):
         if isinstance(mapper_or_class, type):
@@ -33,55 +34,75 @@ class SessionTransaction(object):
         engine = self.session.get_bind(mapper_or_class)
         return self.get_or_add(engine)
 
-    def _begin(self):
-        return SessionTransaction(self.session, self)
+    def _begin(self, **kwargs):
+        return SessionTransaction(self.session, self, **kwargs)
 
     def add(self, bind):
-        if self.parent is not None:
-            return self.parent.add(bind)
+        if self.__parent is not None:
+            return self.__parent.add(bind)
             
-        if self.connections.has_key(bind.engine):
-            raise exceptions.InvalidRequestError("Session already has a Connection associated for the given Connection's Engine")
+        if self.__connections.has_key(bind.engine):
+            raise exceptions.InvalidRequestError("Session already has a Connection associated for the given %sEngine" % (isinstance(bind, engine.Connection) and "Connection's " or ""))
         return self.get_or_add(bind)
 
-    def get_or_add(self, bind):
-        if self.parent is not None:
-            return self.parent.get_or_add(bind)
+    def _connection_dict(self):
+        if self.__parent is not None and not self.nested:
+            return self.__parent._connection_dict()
+        else:
+            return self.__connections
             
-        if self.connections.has_key(bind):
-            return self.connections[bind][0]
+    def get_or_add(self, bind):
+        if self.__parent is not None:
+            if not self.nested:
+                return self.__parent.get_or_add(bind)
+            
+            if self.__connections.has_key(bind):
+                return self.__connections[bind][0]
 
+            if bind in self.__parent._connection_dict():
+                (conn, trans, autoclose) = self.__parent.__connections[bind]
+                self.__connections[conn] = self.__connections[bind.engine] = (conn, conn.begin_nested(), autoclose)
+                return conn
+        elif self.__connections.has_key(bind):
+            return self.__connections[bind][0]
+            
         if not isinstance(bind, engine.Connection):
             e = bind
             c = bind.contextual_connect()
         else:
             e = bind.engine
             c = bind
-
-        self.connections[bind] = self.connections[e] = (c, c.begin(), c is not bind)
-        return self.connections[bind][0]
+            if e in self.__connections:
+                raise exceptions.InvalidRequestError("Session already has a Connection associated for the given Connection's Engine")
+        if self.nested:
+            trans = c.begin_nested()
+        else:
+            trans = c.begin()
+        self.__connections[c] = self.__connections[e] = (c, trans, c is not bind)
+        return self.__connections[c][0]
 
     def commit(self):
-        if self.parent is not None:
-            return
+        if self.__parent is not None and not self.nested:
+            return self.__parent
         if self.autoflush:
             self.session.flush()
-        for t in util.Set(self.connections.values()):
+        for t in util.Set(self.__connections.values()):
             t[1].commit()
         self.close()
+        return self.__parent
 
     def rollback(self):
-        if self.parent is not None:
-            self.parent.rollback()
-            return
-        for k, t in self.connections.iteritems():
+        if self.__parent is not None and not self.nested:
+            return self.__parent.rollback()
+        for t in util.Set(self.__connections.values()):
             t[1].rollback()
         self.close()
-
+        return self.__parent
+        
     def close(self):
-        if self.parent is not None:
+        if self.__parent is not None:
             return
-        for t in self.connections.values():
+        for t in util.Set(self.__connections.values()):
             if t[2]:
                 t[0].close()
         self.session.transaction = None
@@ -105,23 +126,21 @@ class Session(object):
     of Sessions, see the ``sqlalchemy.ext.sessioncontext`` module.
     """
 
-    def __init__(self, bind=None, hash_key=None, import_session=None, echo_uow=False, weak_identity_map=False):
-        if import_session is not None:
-            self.uow = unitofwork.UnitOfWork(identity_map=import_session.uow.identity_map, weak_identity_map=weak_identity_map)
-        else:
-            self.uow = unitofwork.UnitOfWork(weak_identity_map=weak_identity_map)
+    def __init__(self, bind=None, autoflush=False, transactional=False, echo_uow=False, weak_identity_map=False):
+        self.uow = unitofwork.UnitOfWork(weak_identity_map=weak_identity_map)
 
         self.bind = bind
         self.binds = {}
         self.echo_uow = echo_uow
         self.weak_identity_map = weak_identity_map
         self.transaction = None
-        if hash_key is None:
-            self.hash_key = id(self)
-        else:
-            self.hash_key = hash_key
+        self.hash_key = id(self)
+        self.autoflush = autoflush
+        self.transactional = transactional or autoflush
+        if self.transactional:
+            self.begin()
         _sessions[self.hash_key] = self
-
+            
     def _get_echo_uow(self):
         return self.uow.echo
 
@@ -129,21 +148,34 @@ class Session(object):
         self.uow.echo = value
     echo_uow = property(_get_echo_uow,_set_echo_uow)
     
-    def create_transaction(self, **kwargs):
-        """Return a new ``SessionTransaction`` corresponding to an
-        existing or new transaction.
-
-        If the transaction is new, the returned ``SessionTransaction``
-        will have commit control over the underlying transaction, else
-        will have rollback control only.
-        """
+    def begin(self, **kwargs):
+        """Begin a transaction on this Session."""
 
         if self.transaction is not None:
-            return self.transaction._begin()
+            self.transaction = self.transaction._begin(**kwargs)
         else:
             self.transaction = SessionTransaction(self, **kwargs)
-            return self.transaction
+    create_transaction = begin
 
+    def begin_nested(self):
+        return self.begin(nested=True)
+    
+    def rollback(self):
+        if self.transaction is None:
+            raise exceptions.InvalidRequestError("No transaction is begun.")
+        else:
+            self.transaction = self.transaction.rollback()
+        if self.transaction is None and self.transactional:
+            self.begin()
+            
+    def commit(self):
+        if self.transaction is None:
+            raise exceptions.InvalidRequestError("No transaction is begun.")
+        else:
+            self.transaction = self.transaction.commit()
+        if self.transaction is None and self.transactional:
+            self.begin()
+        
     def connect(self, mapper=None, **kwargs):
         """Return a unique connection corresponding to the given mapper.
 

@@ -4,14 +4,13 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+"""Provide default implementations of per-dialect sqlalchemy.engine classes"""
 
 from sqlalchemy import schema, exceptions, util, sql, types
 import StringIO, sys, re
 from sqlalchemy.engine import base
 
-"""Provide default implementations of the engine interfaces"""
 
-        
 class DefaultDialect(base.Dialect):
     """Default implementation of Dialect"""
 

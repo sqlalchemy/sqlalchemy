@@ -6,6 +6,7 @@ import unittest, sys, datetime
 import tables
 db = testbase.db
 from sqlalchemy import *
+from testbase import Table, Column
 
 class BindTest(testbase.PersistTest):
     def test_create_drop_explicit(self):
@@ -101,7 +102,9 @@ class BindTest(testbase.PersistTest):
     def test_implicit_execution(self):
         metadata = MetaData()
         table = Table('test_table', metadata,   
-            Column('foo', Integer))
+            Column('foo', Integer),
+            test_needs_acid=True,
+            )
         conn = testbase.db.connect()
         metadata.create_all(bind=conn)
         try:
@@ -114,7 +117,7 @@ class BindTest(testbase.PersistTest):
             table.insert().execute(foo=7)
             trans.rollback()
             metadata.bind = None
-            assert testbase.db.execute("select count(1) from test_table").scalar() == 0
+            assert conn.execute("select count(1) from test_table").scalar() == 0
         finally:
             metadata.drop_all(bind=conn)
             

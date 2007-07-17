@@ -52,7 +52,7 @@ class InstrumentedAttribute(sql.Comparator):
               detect changes on the parent instance
               
             comparator
-              a sql.Comparator to which compare/math events will be sent
+              a sql.Comparator to which class-level compare/math events will be sent
               
         """
         

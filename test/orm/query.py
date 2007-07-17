@@ -496,6 +496,8 @@ class InstancesTest(QueryTest):
         l = q.add_column("count").add_column("concat").from_statement(s).all()
         assert l == expected
         
+        assert [user8] == create_session().query(User).select_from(s).filter(s.c.count==3).all()
+        
         q = create_session().query(User).add_column(func.count(addresses.c.id))\
             .add_column(("Name:" + users.c.name)).select_from(users.outerjoin(addresses))\
             .group_by([c for c in users.c]).order_by(users.c.id)

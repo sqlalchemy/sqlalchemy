@@ -463,7 +463,7 @@ class PassiveDeletesTest(UnitOfWorkTest):
         mytable = Table('mytable', metadata,
             Column('id', Integer, primary_key=True),
             Column('data', String(30)),
-            test_need_fk=True,
+            test_needs_fk=True,
             )
 
         myothertable = Table('myothertable', metadata,
@@ -471,7 +471,7 @@ class PassiveDeletesTest(UnitOfWorkTest):
             Column('parent_id', Integer),
             Column('data', String(30)),
             ForeignKeyConstraint(['parent_id'],['mytable.id'], ondelete="CASCADE"),
-            test_need_fk=True,
+            test_needs_fk=True,
             )
 
         metadata.create_all()

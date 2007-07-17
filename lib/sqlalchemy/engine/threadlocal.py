@@ -2,7 +2,7 @@ from sqlalchemy import schema, exceptions, util, sql, types
 import StringIO, sys, re
 from sqlalchemy.engine import base, default
 
-"""Provide a thread-local transactional wrapper around the basic ComposedSQLEngine.
+"""Provide a thread-local transactional wrapper around the root Engine class.
 
 Multiple calls to engine.connect() will return the same connection for
 the same thread. also provides begin/commit methods on the engine

@@ -674,7 +674,7 @@ class Connection(Connectable):
     def _autorollback(self):
         if not self.in_transaction():
             self._rollback_impl()
-
+    
     def close(self):
         try:
             c = self.__connection

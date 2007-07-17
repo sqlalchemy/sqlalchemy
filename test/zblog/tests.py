@@ -13,9 +13,9 @@ from zblog.blog import *
 class ZBlogTest(AssertMixin):
 
     def create_tables(self):
-        tables.metadata.create_all(connectable=db)
+        tables.metadata.create_all(bind=db)
     def drop_tables(self):
-        tables.metadata.drop_all(connectable=db)
+        tables.metadata.drop_all(bind=db)
         
     def setUpAll(self):
         self.create_tables()
@@ -32,7 +32,7 @@ class SavePostTest(ZBlogTest):
         super(SavePostTest, self).setUpAll()
         mappers.zblog_mappers()
         global blog_id, user_id
-        s = create_session(bind_to=db)
+        s = create_session(bind=db)
         user = User('zbloguser', "Zblog User", "hello", group=administrator)
         blog = Blog(owner=user)
         blog.name = "this is a blog"
@@ -51,9 +51,9 @@ class SavePostTest(ZBlogTest):
         """test that a transient/pending instance has proper bi-directional behavior.
         
         this requires that lazy loaders do not fire off for a transient/pending instance."""
-        s = create_session(bind_to=db)
+        s = create_session(bind=db)
 
-        trans = s.create_transaction()
+        s.begin()
         try:
             blog = s.query(Blog).get(blog_id)
             post = Post(headline="asdf asdf", summary="asdfasfd")
@@ -62,14 +62,14 @@ class SavePostTest(ZBlogTest):
             post.blog = blog
             assert post in blog.posts
         finally:
-            trans.rollback()
+            s.rollback()
             
     def testoptimisticorphans(self):
         """test that instances in the session with un-loaded parents will not 
         get marked as "orphans" and then deleted """
-        s = create_session(bind_to=db)
+        s = create_session(bind=db)
         
-        trans = s.create_transaction()
+        s.begin()
         try:
             blog = s.query(Blog).get(blog_id)
             post = Post(headline="asdf asdf", summary="asdfasfd")
@@ -91,7 +91,7 @@ class SavePostTest(ZBlogTest):
             assert s.query(Post).get(post.id) is not None
             
         finally:
-            trans.rollback()
+            s.rollback()
         
             
 if __name__ == "__main__":

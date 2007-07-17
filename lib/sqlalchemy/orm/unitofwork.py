@@ -198,14 +198,14 @@ class UnitOfWork(object):
         for obj in self.deleted.intersection(objset).difference(processed):
             flush_context.register_object(obj, isdelete=True)
 
-        trans = session.create_transaction(autoflush=False)
-        flush_context.transaction = trans
+        session.create_transaction(autoflush=False)
+        flush_context.transaction = session.transaction
         try:
             flush_context.execute()
         except:
-            trans.rollback()
+            session.rollback()
             raise
-        trans.commit()
+        session.commit()
 
         flush_context.post_exec()
 

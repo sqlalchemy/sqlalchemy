@@ -4,9 +4,7 @@ By default there are two, one which is the "thread-local" strategy,
 one which is the "plain" strategy.
 
 New strategies can be added via constructing a new EngineStrategy
-object which will add itself to the list of available strategies here,
-or replace one of the existing name.  this can be accomplished via a
-mod; see the sqlalchemy/mods package for details.
+object which will add itself to the list of available strategies.
 """
 
 

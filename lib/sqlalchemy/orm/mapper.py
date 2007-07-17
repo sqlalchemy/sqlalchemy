@@ -1593,6 +1593,7 @@ class Mapper(object):
     def populate_instance(self, selectcontext, instance, row, ispostselect=None, **flags):
         """populate an instance from a result row."""
 
+
         populators = selectcontext.attributes.get(('instance_populators', self, ispostselect), None)
         if populators is None:
             populators = []

@@ -447,81 +447,6 @@ documentation](rel:docstrings_sqlalchemy.ext.orderinglist) for more
 information, and also check out the unit tests for examples of stepped
 numbering, alphabetical and Fibonacci numbering.
     
-### threadlocal
-
-**Author:**  Mike Bayer and Daniel Miller
-
-`threadlocal` is an extension that was created primarily to provide backwards compatibility with the older SQLAlchemy 0.1 series.  It uses three features which SQLAlchemy 0.2 and above provide as distinct features:  `SessionContext`, `assign_mapper`, and the `TLEngine`, which is the `Engine` used with the threadlocal `create_engine()` strategy.  It is **strongly** recommended that these three features are understood individually before using threadlocal.
-
-In SQLAlchemy 0.1, users never dealt with explcit connections and didn't have a very explicit `Session` interface, instead relying upon a more magical global object called `objectstore`.  The `objectstore` idea was wildly popular with about half of SA's users, and completely unpopular with the other half.  The threadlocal mod basically brings back `objectstore`, which is in fact just a `SessionContext` where you can call `Session` methods directly off of it, instead of saying `context.current`.  For `threadlocal` to faithfully produce 0.1 behavior, it is invoked as a *mod* which globally installs the objectstore's mapper extension, such that all `Mapper`s will automatically assign all new instances of mapped classes to the objectstore's contextual `Session`.  Additionally, it also changes the default engine strategy used by `create_engine` to be the "threadlocal" strategy, which in normal practice does not affect much. 
-
-When you import threadlocal, what you get is:
-
-* the "objectstore" session context object is now added to the `sqlalchemy` namespace.
-* a global `MapperExtension` is set up for all mappers which assigns "objectstore"'s session as the default session context, used by new instances as well as `Query` objects (see the section [plugins_sessioncontext_sessioncontextext](rel:plugins_sessioncontext_sessioncontextext)).
-* a new function "assign_mapper" is added to the `sqlalchemy` namespace, which calls the `assignmapper` mapper function using the new "objectstore" context.
-* the `create_engine` function is modified so that "threadlocal", and not "plain", is the default engine strategy.
-
-So an important point to understand is, **don't use the threadlocal mod unless you explcitly are looking for that behavior**.  Unfortunately, the easy import of the "threadlocal" mod has found its way into several tutorials on external websites, which produces application-wide behavior that is in conflict with the SQLAlchemy tutorial and data mapping documentation.
-
-While "threadlocal" is only about 10 lines of code, it is strongly advised that users instead make usage of `SessionContext` and `assign_mapper` explictly to eliminate confusion.  Additionally, the "threadlocal" strategy on `create_engine()` also exists primarily to provide patterns used in 0.1 and is probably not worth using either, unless you specifically need those patterns.
-
-Basic usage of threadlocal involves importing the mod, *before* any usage of the `sqlalchemy` namespace, since threadlocal is going to add the "objectstore" and "assign_mapper" keywords to "sqlalchemy".
-
-To use `objectstore`:
-
-    {python}
-    import sqlalchemy.mods.threadlocal
-    from sqlalchemy import *
-
-    metadata = MetaData('sqlite:///')
-    user_table = Table('users', metadata,
-        Column('user_id', Integer, primary_key=True),
-        Column('user_name', String(50), nullable=False)
-    )
-
-    class User(object):
-        pass
-    mapper(User, user_table)
-
-    # "user" object is added to the session automatically
-    user = User()
-
-    # flush the contextual session
-    objectstore.flush()
-
-The actual `Session` is available as:
-
-    {python}
-    objectstore.get_session()
-    
-To use `assign_mapper`:
-
-    {python}
-    import sqlalchemy.mods.threadlocal
-    from sqlalchemy import *
-
-    metadata = MetaData('sqlite:///')
-    user_table = Table('users', metadata,
-        Column('user_id', Integer, primary_key=True),
-        Column('user_name', String(50), nullable=False)
-    )
-
-    class User(object):
-        pass
-        
-    # note that no "context" object is needed
-    assign_mapper(User, user_table)
-
-    # call up a user
-    user = User.selectfirst(user_table.c.user_id==7)
-
-    # call 'delete' on the user
-    user.delete()
-    
-    # flush
-    objectstore.flush()
-
 
 ### ActiveMapper
 
@@ -598,6 +523,3 @@ SqlSoup creates mapped classes on the fly from tables, which are automatically r
 
 Full SqlSoup documentation is on the [SQLAlchemy Wiki](http://www.sqlalchemy.org/trac/wiki/SqlSoup).
 
-### ProxyEngine
-
-This extension is temporarily removed from the 0.4 series of SQLAlchemy.  A newer method of SQL instrumentation will eventually be re-introduced.

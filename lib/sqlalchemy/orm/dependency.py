@@ -6,8 +6,8 @@
 
 
 """Bridge the ``PropertyLoader`` (i.e. a ``relation()``) and the
-``UOWTransaction`` together to allow processing of scalar- and
-list-based dependencies at flush time.
+``UOWTransaction`` together to allow processing of relation()-based
+ dependencies at flush time.
 """
 
 from sqlalchemy.orm import sync
