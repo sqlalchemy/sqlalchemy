@@ -267,19 +267,6 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
         )
         
     def testoperators(self):
-        self.runtest(
-            table1.select((table1.c.myid != 12) & ~(table1.c.name=='john')), 
-            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != :mytable_myid AND NOT mytable.name = :mytable_name"
-        )
-
-        self.runtest(
-            table1.select((table1.c.myid != 12) & ~table1.c.name), 
-            "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != :mytable_myid AND NOT mytable.name"
-        )
-        
-        self.runtest(
-            literal("a") + literal("b") * literal("c"), ":literal + :literal_1 * :literal_2"
-        )
 
         # exercise arithmetic operators
         for (py_op, sql_op) in ((operator.add, '+'), (operator.mul, '*'),
@@ -324,6 +311,25 @@ sq.myothertable_othername AS sq_myothertable_othername FROM (" + sqstring + ") A
                 self.assert_(compiled == fwd_sql or compiled == rev_sql,
                              "\n'" + compiled + "'\n does not match\n'" +
                              fwd_sql + "'\n or\n'" + rev_sql + "'")
+
+        self.runtest(
+         table1.select((table1.c.myid != 12) & ~(table1.c.name=='john')), 
+         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != :mytable_myid AND mytable.name != :mytable_name"
+        )
+
+        self.runtest(
+         table1.select((table1.c.myid != 12) & ~and_(table1.c.name=='john', table1.c.name=='ed', table1.c.name=='fred')), 
+         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != :mytable_myid AND NOT (mytable.name = :mytable_name AND mytable.name = :mytable_name_1 AND mytable.name = :mytable_name_2)"
+        )
+
+        self.runtest(
+         table1.select((table1.c.myid != 12) & ~table1.c.name), 
+         "SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE mytable.myid != :mytable_myid AND NOT mytable.name"
+        )
+
+        self.runtest(
+         literal("a") + literal("b") * literal("c"), ":literal + :literal_1 * :literal_2"
+        )
 
         # test the op() function, also that its results are further usable in expressions
         self.runtest(
@@ -978,8 +984,8 @@ UNION SELECT mytable.myid, mytable.name, mytable.description FROM mytable WHERE 
             "SELECT op.field FROM op WHERE :literal + (op.field IN (:op_field, :op_field_1))")
         self.runtest(table.select((5 + table.c.field).in_(5,6)),
             "SELECT op.field FROM op WHERE :op_field + op.field IN (:literal, :literal_1)")
-        self.runtest(table.select(not_(table.c.field == 5)),
-            "SELECT op.field FROM op WHERE NOT op.field = :op_field")
+        self.runtest(table.select(not_(and_(table.c.field == 5, table.c.field == 7))),
+            "SELECT op.field FROM op WHERE NOT (op.field = :op_field AND op.field = :op_field_1)")
         self.runtest(table.select(not_(table.c.field) == 5),
             "SELECT op.field FROM op WHERE (NOT op.field) = :literal")
         self.runtest(table.select((table.c.field == table.c.field).between(False, True)),

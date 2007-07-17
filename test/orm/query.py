@@ -1,8 +1,10 @@
 from sqlalchemy import *
+from sqlalchemy import ansisql
 from sqlalchemy.orm import *
 import testbase
 from testbase import Table, Column
 from fixtures import *
+import operator
 
 class Base(object):
     def __init__(self, **kwargs):
@@ -97,10 +99,63 @@ class GetTest(QueryTest):
         mapper(LocalFoo, table)
         assert create_session().query(LocalFoo).get(ustring) == LocalFoo(id=ustring, data=ustring)
 
+class OperatorTest(QueryTest):
+    """test sql.Comparator implementation for MapperProperties"""
+    
+    def _test(self, clause, expected):
+        c = str(clause.compile(dialect=ansisql.ANSIDialect()))
+        assert c == expected, "%s != %s" % (c, expected)
+        
+    def test_arithmetic(self):
+        create_session().query(User)
+        for (py_op, sql_op) in ((operator.add, '+'), (operator.mul, '*'),
+                                (operator.sub, '-'), (operator.div, '/'),
+                                ):
+            for (lhs, rhs, res) in (
+                ('a', User.id, ':users_id %s users.id'),
+                ('a', literal('b'), ':literal %s :literal_1'),
+                (User.id, 'b', 'users.id %s :users_id'),
+                (User.id, literal('b'), 'users.id %s :literal'),
+                (User.id, User.id, 'users.id %s users.id'),
+                (literal('a'), 'b', ':literal %s :literal_1'),
+                (literal('a'), User.id, ':literal %s users.id'),
+                (literal('a'), literal('b'), ':literal %s :literal_1'),
+                ):
+                self._test(py_op(lhs, rhs), res % sql_op)
+
+    def test_comparison(self):
+        create_session().query(User)
+        for (py_op, fwd_op, rev_op) in ((operator.lt, '<', '>'),
+                                        (operator.gt, '>', '<'),
+                                        (operator.eq, '=', '='),
+                                        (operator.ne, '!=', '!='),
+                                        (operator.le, '<=', '>='),
+                                        (operator.ge, '>=', '<=')):
+            for (lhs, rhs, l_sql, r_sql) in (
+                ('a', User.id, ':users_id', 'users.id'),
+                ('a', literal('b'), ':literal_1', ':literal'), # note swap!
+                (User.id, 'b', 'users.id', ':users_id'),
+                (User.id, literal('b'), 'users.id', ':literal'),
+                (User.id, User.id, 'users.id', 'users.id'),
+                (literal('a'), 'b', ':literal', ':literal_1'),
+                (literal('a'), User.id, ':literal', 'users.id'),
+                (literal('a'), literal('b'), ':literal', ':literal_1'),
+                ):
+
+                # the compiled clause should match either (e.g.):
+                # 'a' < 'b' -or- 'b' > 'a'.
+                compiled = str(py_op(lhs, rhs).compile(dialect=ansisql.ANSIDialect()))
+                fwd_sql = "%s %s %s" % (l_sql, fwd_op, r_sql)
+                rev_sql = "%s %s %s" % (r_sql, rev_op, l_sql)
+
+                self.assert_(compiled == fwd_sql or compiled == rev_sql,
+                             "\n'" + compiled + "'\n does not match\n'" +
+                             fwd_sql + "'\n or\n'" + rev_sql + "'")
+    
 class CompileTest(QueryTest):
     def test_deferred(self):
         session = create_session()
-        s = session.query(User).filter(and_(addresses.c.email_address == bindparam('emailad'), addresses.c.user_id==users.c.id)).compile()
+        s = session.query(User).filter(and_(addresses.c.email_address == bindparam('emailad'), Address.user_id==User.id)).compile()
         
         l = session.query(User).instances(s.execute(emailad = 'jack@bean.com'))
         assert [User(id=7)] == l
@@ -109,7 +164,7 @@ class SliceTest(QueryTest):
     def test_first(self):
         assert  User(id=7) == create_session().query(User).first()
         
-        assert create_session().query(User).filter(users.c.id==27).first() is None
+        assert create_session().query(User).filter(User.id==27).first() is None
         
         # more slice tests are available in test/orm/generative.py
         
@@ -122,7 +177,7 @@ class TextTest(QueryTest):
 
         assert [User(id=9)] == create_session().query(User).filter("name='fred'").filter("id=9").all()
 
-        assert [User(id=9)] == create_session().query(User).filter("name='fred'").filter(users.c.id==9).all()
+        assert [User(id=9)] == create_session().query(User).filter("name='fred'").filter(User.id==9).all()
 
     def test_binds(self):
         assert [User(id=8), User(id=9)] == create_session().query(User).filter("id in (:id1, :id2)").params(id1=8, id2=9).all()
@@ -139,14 +194,8 @@ class FilterTest(QueryTest):
         assert User(id=8) == create_session().query(User)[1]
         
     def test_onefilter(self):
-        assert [User(id=8), User(id=9)] == create_session().query(User).filter(users.c.name.endswith('ed')).all()
+        assert [User(id=8), User(id=9)] == create_session().query(User).filter(User.name.endswith('ed')).all()
 
-    def test_typecheck(self):
-        try:
-            create_session().query(User).filter(User.name==5)
-            assert False
-        except exceptions.ArgumentError, e:
-            assert str(e) == "filter() argument must be of type sqlalchemy.sql.ClauseElement or string"
 
 class CountTest(QueryTest):
     def test_basic(self):
@@ -163,7 +212,7 @@ class TextTest(QueryTest):
 
         assert [User(id=9)] == create_session().query(User).filter("name='fred'").filter("id=9").all()
 
-        assert [User(id=9)] == create_session().query(User).filter("name='fred'").filter(users.c.id==9).all()
+        assert [User(id=9)] == create_session().query(User).filter("name='fred'").filter(User.id==9).all()
 
     def test_binds(self):
         assert [User(id=8), User(id=9)] == create_session().query(User).filter("id in (:id1, :id2)").params(id1=8, id2=9).all()

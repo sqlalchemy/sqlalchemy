@@ -5,7 +5,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-from sqlalchemy import util, logging
+from sqlalchemy import util, logging, sql
 
 # returned by a MapperExtension method to indicate a "do nothing" response
 EXT_PASS = object()
@@ -334,6 +334,11 @@ class MapperProperty(object):
         raise NotImplementedError()
 
 
+class PropComparator(sql.Comparator):
+    """defines comparison operations for MapperProperty objects"""
+    
+    def __init__(self, prop):
+        self.prop = prop
 
 class StrategizedProperty(MapperProperty):
     """A MapperProperty which uses selectable strategies to affect

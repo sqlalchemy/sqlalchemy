@@ -4,7 +4,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy import util
+from sqlalchemy import util, sql
 from sqlalchemy.orm import util as orm_util, interfaces, collections
 from sqlalchemy.orm.mapper import class_mapper
 from sqlalchemy import logging, exceptions
@@ -14,15 +14,55 @@ import weakref
 PASSIVE_NORESULT = object()
 ATTR_WAS_SET = object()
 
-class InstrumentedAttribute(object):
-    def __init__(self, class_, manager, key, callable_, trackparent=False, extension=None, compare_function=None, mutable_scalars=False, **kwargs):
+class InstrumentedAttribute(sql.Comparator):
+    """attribute access for instrumented classes."""
+    
+    def __init__(self, class_, manager, key, callable_, trackparent=False, extension=None, compare_function=None, mutable_scalars=False, comparator=None, **kwargs):
+        """Construct an InstrumentedAttribute.
+        
+            class_
+              the class to be instrumented.
+                
+            manager
+              AttributeManager managing this class
+              
+            key
+              string name of the attribute
+              
+            callable_
+              optional function which generates a callable based on a parent 
+              instance, which produces the "default" values for a scalar or 
+              collection attribute when it's first accessed, if not present already.
+              
+            trackparent
+              if True, attempt to track if an instance has a parent attached to it 
+              via this attribute
+              
+            extension
+              an AttributeExtension object which will receive 
+              set/delete/append/remove/etc. events 
+              
+            compare_function
+              a function that compares two values which are normally assignable to this 
+              attribute
+              
+            mutable_scalars
+              if True, the values which are normally assignable to this attribute can mutate, 
+              and need to be compared against a copy of their original contents in order to 
+              detect changes on the parent instance
+              
+            comparator
+              a sql.Comparator to which compare/math events will be sent
+              
+        """
+        
         self.class_ = class_
         self.manager = manager
         self.key = key
         self.callable_ = callable_
         self.trackparent = trackparent
         self.mutable_scalars = mutable_scalars
-
+        self.comparator = comparator
         self.copy = None
         if compare_function is None:
             self.is_equal = lambda x,y: x == y
@@ -41,6 +81,15 @@ class InstrumentedAttribute(object):
             return self
         return self.get(obj)
 
+    def compare_self(self):
+        return self.comparator.compare_self()
+        
+    def operate(self, op, other):
+        return self.comparator.operate(op, other)
+
+    def reverse_operate(self, op, other):
+        return self.comparator.reverse_operate(op, other)
+        
     def hasparent(self, item, optimistic=False):
         """Return the boolean value of a `hasparent` flag attached to the given item.
 
@@ -242,6 +291,8 @@ InstrumentedAttribute.logger = logging.class_logger(InstrumentedAttribute)
 
         
 class InstrumentedScalarAttribute(InstrumentedAttribute):
+    """represents a scalar-holding InstrumentedAttribute."""
+    
     def __init__(self, class_, manager, key, callable_, trackparent=False, extension=None, copy_function=None, compare_function=None, mutable_scalars=False, **kwargs):
         super(InstrumentedScalarAttribute, self).__init__(class_, manager, key,
           callable_, trackparent=trackparent, extension=extension,
@@ -295,6 +346,9 @@ class InstrumentedScalarAttribute(InstrumentedAttribute):
         obj.__dict__[self.key] = value
         self.fire_replace_event(obj, value, old, initiator)
 
+    type = property(lambda self: self.property.columns[0].type)
+
+        
 class InstrumentedCollectionAttribute(InstrumentedAttribute):
     """A collection-holding attribute that instruments changes in membership.
 
@@ -592,17 +646,7 @@ class AttributeHistory(object):
         return self.attr.hasparent(obj)
 
 class AttributeManager(object):
-    """Allow the instrumentation of object attributes.
-
-    ``AttributeManager`` is stateless, but can be overridden by
-    subclasses to redefine some of its factory operations. Also be
-    aware ``AttributeManager`` will cache attributes for a given
-    class, allowing not to determine those for each objects (used in
-    ``managed_attributes()`` and
-    ``noninherited_managed_attributes()``). This cache is cleared for
-    a given class while calling ``register_attribute()``, and can be
-    cleared using ``clear_attribute_cache()``.
-    """
+    """Allow the instrumentation of object attributes."""
 
     def __init__(self):
         # will cache attributes, indexed by class objects

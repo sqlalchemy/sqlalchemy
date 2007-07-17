@@ -26,7 +26,7 @@ are less guaranteed to stay the same in future releases.
 
 from sqlalchemy import util, exceptions, logging
 from sqlalchemy import types as sqltypes
-import string, re, sets
+import string, re, sets, operator
 
 __all__ = ['AbstractDialect', 'Alias', 'ClauseElement', 'ClauseParameters',
            'ClauseVisitor', 'ColumnCollection', 'ColumnElement',
@@ -1126,44 +1126,144 @@ class ClauseElement(object):
     def _negate(self):
         return _UnaryExpression(self.self_group(against="NOT"), operator="NOT", negate=None)
 
-class _CompareMixin(object):
-    """Defines comparison operations for ``ClauseElement`` instances.
-    
-    This is a mixin class that adds the capability to produce ``ClauseElement``
-    instances based on regular Python operators.  
-    These operations are achieved using Python's operator overload methods
-    (i.e. ``__eq__()``, ``__ne__()``, etc.
-    
-    Overridden operators include all comparison operators (i.e. '==', '!=', '<'),
-    math operators ('+', '-', '*', etc), the '&' and '|' operators which evaluate
-    to ``AND`` and ``OR`` respectively. 
 
-    Other methods exist to create additional SQL clauses such as ``IN``, ``LIKE``, 
-    ``DISTINCT``, etc.
-    
-    """
+class Comparator(object):
+    """defines comparison and math operations"""
 
+    def like_op(a, b):
+        return a.like(b)
+    like_op = staticmethod(like_op)
+    
+    def between_op(a, b):
+        return a.between(b)
+    between_op = staticmethod(between_op)
+    
+    def in_op(a, b):
+        return a.in_(b)
+    in_op = staticmethod(in_op)
+    
+    def startswith_op(a, b):
+        return a.startswith(b)
+    startswith_op = staticmethod(startswith_op)
+    
+    def endswith_op(a, b):
+        return a.endswith(b)
+    endswith_op = staticmethod(endswith_op)
+    
+    def compare_self(self):
+        raise NotImplementedError()
+        
+    def operate(self, op, other):
+        raise NotImplementedError()
+
+    def reverse_operate(self, op, other):
+        raise NotImplementedError()
+    
     def __lt__(self, other):
-        return self._compare('<', other)
+        return self.operate(operator.lt, other)
 
     def __le__(self, other):
-        return self._compare('<=', other)
+        return self.operate(operator.le, other)
 
     def __eq__(self, other):
-        return self._compare('=', other)
+        return self.operate(operator.eq, other)
 
     def __ne__(self, other):
-        return self._compare('!=', other)
+        return self.operate(operator.ne, other)
 
     def __gt__(self, other):
-        return self._compare('>', other)
+        return self.operate(operator.gt, other)
 
     def __ge__(self, other):
-        return self._compare('>=', other)
+        return self.operate(operator.ge, other)
 
     def like(self, other):
-        """produce a ``LIKE`` clause."""
-        return self._compare('LIKE', other)
+        return self.operate(Comparator.like_op, other)
+
+    def in_(self, *other):
+        return self.operate(Comparator.in_op, other)
+
+    def startswith(self, other):
+        return self.operate(Comparator.startswith_op, other)
+
+    def endswith(self, other):
+        return self.operate(Comparator.endswith_op, other)
+
+    def __radd__(self, other):
+        return self.reverse_operate(operator.add, other)
+
+    def __rsub__(self, other):
+        return self.reverse_operate(operator.sub, other)
+
+    def __rmul__(self, other):
+        return self.reverse_operate(operator.mul, other)
+
+    def __rdiv__(self, other):
+        return self.reverse_operate(operator.div, other)
+
+    def between(self, cleft, cright):
+        return self.operate(Comparator.between_op, (cleft, cright))
+
+    def __add__(self, other):
+        return self.operate(operator.add, other)
+
+    def __sub__(self, other):
+        return self.operate(operator.sub, other)
+
+    def __mul__(self, other):
+        return self.operate(operator.mul, other)
+
+    def __div__(self, other):
+        return self.operate(operator.div, other)
+
+    def __mod__(self, other):
+        return self.operate(operator.mod, other)
+
+    def __truediv__(self, other):
+        return self.operate(operator.truediv, other)
+
+class _CompareMixin(Comparator):
+    """Defines comparison and math operations for ``ClauseElement`` instances."""
+
+    def __compare(self, operator, obj, negate=None):
+        if obj is None or isinstance(obj, _Null):
+            if operator == '=':
+                return _BinaryExpression(self.compare_self(), null(), 'IS', negate='IS NOT')
+            elif operator == '!=':
+                return _BinaryExpression(self.compare_self(), null(), 'IS NOT', negate='IS')
+            else:
+                raise exceptions.ArgumentError("Only '='/'!=' operators can be used with NULL")
+        else:
+            obj = self._check_literal(obj)
+
+        return _BinaryExpression(self.compare_self(), obj, operator, type=sqltypes.Boolean, negate=negate)
+
+    def __operate(self, operator, obj):
+        obj = self._check_literal(obj)
+        return _BinaryExpression(self.compare_self(), obj, operator, type=self._compare_type(obj))
+
+    operators = {
+        operator.add : (__operate, '+'),
+        operator.mul : (__operate, '*'),
+        operator.sub : (__operate, '-'),
+        operator.div : (__operate, '/'),
+        operator.mod : (__operate, '%'),
+        operator.truediv : (__operate, '/'),
+        operator.lt : (__compare, '<', '=>'),
+        operator.le : (__compare, '<=', '>'),
+        operator.ne : (__compare, '!=', '='),
+        operator.gt : (__compare, '>', '<='),
+        operator.ge : (__compare, '>=', '<'),
+        operator.eq : (__compare, '=', '!='),
+        Comparator.like_op : (__compare, 'LIKE', 'NOT LIKE'),
+    }
+
+    def operate(self, op, other):
+        o = _CompareMixin.operators[op]
+        return o[0](self, o[1], other, *o[2:])
+    
+    def reverse_operate(self, op, other):
+        return self._bind_param(other).operate(op, self)
 
     def in_(self, *other):
         """produce an ``IN`` clause."""
@@ -1175,7 +1275,7 @@ class _CompareMixin(object):
                 return self.__eq__( o)    #single item -> ==
             else:
                 assert hasattr( o, '_selectable')   #better check?
-                return self._compare( 'IN', o, negate='NOT IN')   #single selectable
+                return self.__compare( 'IN', o, negate='NOT IN')   #single selectable
 
         args = []
         for o in other:
@@ -1185,12 +1285,12 @@ class _CompareMixin(object):
             else:
                 o = self._bind_param(o)
             args.append(o)
-        return self._compare( 'IN', ClauseList(*args).self_group(against='IN'), negate='NOT IN')
+        return self.__compare( 'IN', ClauseList(*args).self_group(against='IN'), negate='NOT IN')
 
     def startswith(self, other):
         """produce the clause ``LIKE '<other>%'``"""
         perc = isinstance(other,(str,unicode)) and '%' or literal('%',type= sqltypes.String)
-        return self._compare('LIKE', other + perc)
+        return self.__compare('LIKE', other + perc)
 
     def endswith(self, other):
         """produce the clause ``LIKE '%<other>'``"""
@@ -1198,16 +1298,7 @@ class _CompareMixin(object):
         else:
             po = literal('%', type= sqltypes.String) + other
             po.type = sqltypes.to_instance( sqltypes.String)     #force!
-        return self._compare('LIKE', po)
-
-    def __radd__(self, other):
-        return self._bind_param(other)._operate('+', self)
-    def __rsub__(self, other):
-        return self._bind_param(other)._operate('-', self)
-    def __rmul__(self, other):
-        return self._bind_param(other)._operate('*', self)
-    def __rdiv__(self, other):
-        return self._bind_param(other)._operate('/', self)
+        return self.__compare('LIKE', po)
 
     def label(self, name):
         """produce a column label, i.e. ``<columnname> AS <name>``"""
@@ -1238,59 +1329,21 @@ class _CompareMixin(object):
             passed to the generated function.
             
         """
-        return lambda other: self._operate(operator, other)
-
-    # and here come the math operators:
-
-    def __add__(self, other):
-        return self._operate('+', other)
-
-    def __sub__(self, other):
-        return self._operate('-', other)
-
-    def __mul__(self, other):
-        return self._operate('*', other)
-
-    def __div__(self, other):
-        return self._operate('/', other)
-
-    def __mod__(self, other):
-        return self._operate('%', other)
-
-    def __truediv__(self, other):
-        return self._operate('/', other)
+        return lambda other: self.__operate(operator, other)
 
     def _bind_param(self, obj):
         return _BindParamClause('literal', obj, shortname=None, type=self.type, unique=True)
 
     def _check_literal(self, other):
-        if _is_literal(other):
+        if isinstance(other, Comparator):
+            return other.compare_self()
+        elif _is_literal(other):
             return self._bind_param(other)
         else:
             return other
-
-    def _compare(self, operator, obj, negate=None):
-        if obj is None or isinstance(obj, _Null):
-            if operator == '=':
-                return _BinaryExpression(self._compare_self(), null(), 'IS', negate='IS NOT')
-            elif operator == '!=':
-                return _BinaryExpression(self._compare_self(), null(), 'IS NOT', negate='IS')
-            else:
-                raise exceptions.ArgumentError("Only '='/'!=' operators can be used with NULL")
-        else:
-            obj = self._check_literal(obj)
-
-        return _BinaryExpression(self._compare_self(), obj, operator, type=sqltypes.Boolean, negate=negate)
-
-    def _operate(self, operator, obj):
-        if _is_literal(obj):
-            obj = self._bind_param(obj)
-        return _BinaryExpression(self._compare_self(), obj, operator, type=self._compare_type(obj))
-
-    def _compare_self(self):
-        """Allow ``ColumnImpl`` to return its ``Column`` object for
-        usage in ``ClauseElements``, all others to just return self.
-        """
+    
+    def compare_self(self):
+        """Allow ``_CompareMixins`` to return the appropriate object to be used in expressions."""
 
         return self
 
@@ -2398,7 +2451,7 @@ class _Label(ColumnElement):
     _label = property(lambda s: s.name)
     orig_set = property(lambda s:s.obj.orig_set)
 
-    def _compare_self(self):
+    def compare_self(self):
         return self.obj
     
     def _copy_internals(self):

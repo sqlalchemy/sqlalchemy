@@ -1150,9 +1150,7 @@ class ResultProxy(object):
             elif isinstance(key, basestring) and key.lower() in props:
                 rec = props[key.lower()]
             elif isinstance(key, sql.ColumnElement):
-                print "LABEL ON COLUMN", repr(key.key), "IS", repr(key._label)
                 label = context.column_labels.get(key._label, key.name).lower()
-                print "SO YEAH, NOW WE GOT LABEL", repr(label), "AND PROPS IS", repr(props)
                 if label in props:
                     rec = props[label]
 
