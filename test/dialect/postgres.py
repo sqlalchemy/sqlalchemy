@@ -79,6 +79,27 @@ class MiscTest(AssertMixin):
             m1.drop_all()
 
     @testbase.supported('postgres')
+    def test_pg_weirdchar_reflection(self):
+        meta1 = MetaData(testbase.db)
+        subject = Table("subject", meta1,
+                        Column("id$", Integer, primary_key=True),
+                        )
+
+        referer = Table("referer", meta1,
+                        Column("id", Integer, primary_key=True),
+                        Column("ref", Integer, ForeignKey('subject.id$')),
+                        )
+        meta1.create_all()
+        try:
+            meta2 = MetaData(testbase.db)
+            subject = Table("subject", meta2, autoload=True)
+            referer = Table("referer", meta2, autoload=True)
+            print str(subject.join(referer).onclause)
+            self.assert_((subject.c['id$']==referer.c.ref).compare(subject.join(referer).onclause))
+        finally:
+            meta1.drop_all()
+        
+    @testbase.supported('postgres')
     def test_checksfor_sequence(self):
         meta1 = MetaData(testbase.db)
         t = Table('mytable', meta1, 

@@ -2,6 +2,9 @@
 - sql
     - got connection-bound metadata to work with implicit execution
     - cleanup to connection-bound sessions, SessionTransaction
+    - foreign key specs can have any chararcter in their identifiers
+     [ticket:667]
+    
 - postgres
     - fixed max identifier length (63) [ticket:571]
 
