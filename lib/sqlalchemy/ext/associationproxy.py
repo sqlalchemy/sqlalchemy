@@ -302,6 +302,9 @@ class _AssociationList(object):
     def insert(self, index, value):
         self.col[index:index] = [self._create(value)]
 
+    def pop(self, index=-1):
+        return self.getter(self.col.pop(index))
+
     def clear(self):
         del self.col[0:len(self.col)]
 

@@ -138,6 +138,13 @@ class _CollectionOperations(PersistTest):
         self.assert_(len(p1._children) == 3)
         self.assert_(len(p1.children) == 3)
 
+        popped = p1.children.pop()
+        self.assert_(len(p1.children) == 2)
+        self.assert_(popped not in p1.children)
+        p1 = self.roundtrip(p1)
+        self.assert_(len(p1.children) == 2)
+        self.assert_(popped not in p1.children)
+
         p1.children[1] = 'changed-in-place'
         self.assert_(p1.children[1] == 'changed-in-place')
         inplace_id = p1._children[1].id
@@ -435,14 +442,7 @@ class SetTest(_CollectionOperations):
                         print 'want', repr(control)
                         print 'got', repr(p.children)
                         raise
-    
-    # workaround for bug #548
-    def test_set_pop(self):
-        Parent, Child = self.Parent, self.Child
-        p = Parent('p1')
-        p.children.add('a')
-        p.children.pop()
-        self.assert_(True)
+
 
 class CustomSetTest(SetTest):
     def __init__(self, *args, **kw):
