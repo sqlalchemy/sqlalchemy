@@ -165,10 +165,38 @@ class PropertyLoader(StrategizedProperty):
         def __eq__(self, other):
             if other is None:
                 return ~sql.exists([1], self.prop.primaryjoin)
-            else:
+            elif self.prop.uselist:
+                if not hasattr(other, '__iter__'):
+                    raise exceptions.InvalidRequestError("Can only compare a collection to an iterable object")
+                else:
+                    j = self.prop.primaryjoin
+                    if self.prop.secondaryjoin:
+                        j = j & self.prop.secondaryjoin
+                    clauses = []
+                    for o in other:
+                        clauses.append(
+                            sql.exists([1], j & sql.and_(*[x==y for (x, y) in zip(self.prop.mapper.primary_key, self.prop.mapper.primary_key_from_instance(o))]))
+                        )
+                    return sql.and_(*clauses)
+            else:  
                 return self.prop._optimized_compare(other)
         
+        def contains(self, other):
+            if not self.prop.uselist:
+                raise exceptions.InvalidRequestError("'contains' not implemented for scalar attributes")
+            clause = self.prop._optimized_compare(other)
+
+            j = self.prop.primaryjoin
+            if self.prop.secondaryjoin:
+                j = j & self.prop.secondaryjoin
+
+            clause.negation_clause = ~sql.exists([1], j & sql.and_(*[x==y for (x, y) in zip(self.prop.mapper.primary_key, self.prop.mapper.primary_key_from_instance(other))]))
+            return clause
+
         def __ne__(self, other):
+            if self.prop.uselist and not hasattr(other, '__iter__'):
+                raise exceptions.InvalidRequestError("Can only compare a collection to an iterable object")
+                
             j = self.prop.primaryjoin
             if self.prop.secondaryjoin:
                 j = j & self.prop.secondaryjoin

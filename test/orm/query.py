@@ -204,18 +204,30 @@ class FilterTest(QueryTest):
         
         sess = create_session()
         address = sess.query(Address).get(3)
-        assert [User(id=8)] == sess.query(User).filter(User.addresses==address).all()
+        assert [User(id=8)] == sess.query(User).filter(User.addresses.contains(address)).all()
+
+        try:
+            sess.query(User).filter(User.addresses == address)
+            assert False
+        except exceptions.InvalidRequestError:
+            assert True
 
         assert [User(id=10)] == sess.query(User).filter(User.addresses==None).all()
 
-        assert [User(id=7), User(id=9), User(id=10)] == sess.query(User).filter(User.addresses!=address).all()
+        try:
+            assert [User(id=7), User(id=9), User(id=10)] == sess.query(User).filter(User.addresses!=address).all()
+            assert False
+        except exceptions.InvalidRequestError:
+            assert True
+            
+        #assert [User(id=7), User(id=9), User(id=10)] == sess.query(User).filter(User.addresses!=address).all()
         
     def test_contains_m2m(self):
         sess = create_session()
         item = sess.query(Item).get(3)
-        assert [Order(id=1), Order(id=2), Order(id=3)] == sess.query(Order).filter(Order.items==item).all()
+        assert [Order(id=1), Order(id=2), Order(id=3)] == sess.query(Order).filter(Order.items.contains(item)).all()
 
-        assert [Order(id=4), Order(id=5)] == sess.query(Order).filter(Order.items!=item).all()
+        assert [Order(id=4), Order(id=5)] == sess.query(Order).filter(~Order.items.contains(item)).all()
 
     def test_has(self):
         """test scalar comparison to an object instance"""

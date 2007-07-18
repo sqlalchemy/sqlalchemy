@@ -368,7 +368,7 @@ def and_(*clauses):
     """
     if len(clauses) == 1:
         return clauses[0]
-    return ClauseList(operator='AND', *clauses)
+    return ClauseList(operator='AND', negate='OR', *clauses)
 
 def or_(*clauses):
     """Join a list of clauses together using the ``OR`` operator.
@@ -379,7 +379,7 @@ def or_(*clauses):
 
     if len(clauses) == 1:
         return clauses[0]
-    return ClauseList(operator='OR', *clauses)
+    return ClauseList(operator='OR', negate='AND', *clauses)
 
 def not_(clause):
     """Return a negation of the given clause, i.e. ``NOT(clause)``.
@@ -1131,7 +1131,10 @@ class ClauseElement(object):
         return self._negate()
 
     def _negate(self):
-        return _UnaryExpression(self.self_group(against="NOT"), operator="NOT", negate=None)
+        if hasattr(self, 'negation_clause'):
+            return self.negation_clause
+        else:
+            return _UnaryExpression(self.self_group(against="NOT"), operator="NOT", negate=None)
 
 
 class Comparator(object):
@@ -1907,6 +1910,7 @@ class ClauseList(ClauseElement):
         self.operator = kwargs.pop('operator', ',')
         self.group = kwargs.pop('group', True)
         self.group_contents = kwargs.pop('group_contents', True)
+        self.negate_operator = kwargs.pop('negate', None)
         for c in clauses:
             if c is None: 
                 continue
@@ -1927,6 +1931,14 @@ class ClauseList(ClauseElement):
 
     def _copy_internals(self):
         self.clauses = [clause._clone() for clause in self.clauses]
+
+    def _negate(self):
+        if hasattr(self, 'negation_clause'):
+            return self.negation_clause
+        elif self.negate_operator is None:
+            return super(ClauseList, self).negate()
+        else:
+            return ClauseList(operator=self.negate_operator, negate=self.operator, *(not_(c) for c in self.clauses))
 
     def get_children(self, **kwargs):
         return self.clauses

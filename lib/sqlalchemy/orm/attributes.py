@@ -14,7 +14,7 @@ import weakref
 PASSIVE_NORESULT = object()
 ATTR_WAS_SET = object()
 
-class InstrumentedAttribute(sql.Comparator):
+class InstrumentedAttribute(interfaces.PropComparator):
     """attribute access for instrumented classes."""
     
     def __init__(self, class_, manager, key, callable_, trackparent=False, extension=None, compare_function=None, mutable_scalars=False, comparator=None, **kwargs):

@@ -339,10 +339,18 @@ class MapperProperty(object):
 
 class PropComparator(sql.Comparator):
     """defines comparison operations for MapperProperty objects"""
+
+    def contains_op(a, b):
+        return a.contains(b)
+    contains_op = staticmethod(contains_op)
     
     def __init__(self, prop):
         self.prop = prop
 
+    def contains(self, other):
+        """return true if this collection contains other"""
+        return self.operate(PropComparator.contains_op, other)
+        
 class StrategizedProperty(MapperProperty):
     """A MapperProperty which uses selectable strategies to affect
     loading behavior.
