@@ -230,23 +230,29 @@ class LazyTest(QueryTest):
     def test_uses_get(self):
         """test that a simple many-to-one lazyload optimizes to use query.get()."""
 
-        mapper(Address, addresses, properties = dict(
-            user = relation(mapper(User, users), lazy=True)
-        ))
+        for pj in (
+            None,
+            users.c.id==addresses.c.user_id,
+            addresses.c.user_id==users.c.id
+        ):
+            mapper(Address, addresses, properties = dict(
+                user = relation(mapper(User, users), lazy=True, primaryjoin=pj)
+            ))
         
-        sess = create_session()
+            sess = create_session()
         
-        # load address
-        a1 = sess.query(Address).filter_by(email_address="ed@wood.com").one()
+            # load address
+            a1 = sess.query(Address).filter_by(email_address="ed@wood.com").one()
         
-        # load user that is attached to the address
-        u1 = sess.query(User).get(8)
+            # load user that is attached to the address
+            u1 = sess.query(User).get(8)
         
-        def go():
-            # lazy load of a1.user should get it from the session
-            assert a1.user is u1
-        self.assert_sql_count(testbase.db, go, 0)
-
+            def go():
+                # lazy load of a1.user should get it from the session
+                assert a1.user is u1
+            self.assert_sql_count(testbase.db, go, 0)
+            clear_mappers()
+        
     def test_many_to_one(self):
         mapper(Address, addresses, properties = dict(
             user = relation(mapper(User, users), lazy=True)

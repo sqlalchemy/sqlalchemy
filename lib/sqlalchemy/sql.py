@@ -2127,7 +2127,13 @@ class _BinaryExpression(ColumnElement):
 
         return (
             isinstance(other, _BinaryExpression) and self.operator == other.operator and
-            self.left.compare(other.left) and self.right.compare(other.right)
+                (
+                    self.left.compare(other.left) and self.right.compare(other.right)
+                    or (
+                        self.operator in ['=', '!=', '+', '*'] and
+                        self.left.compare(other.right) and self.right.compare(other.left)
+                    )
+                )
         )
         
     def self_group(self, against=None):
