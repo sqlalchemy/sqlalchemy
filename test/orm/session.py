@@ -93,7 +93,26 @@ class SessionTest(AssertMixin):
         u = User()
         sess.save(u)
         sess.flush()
-        assert transaction.get_or_add(testbase.db) is trans2.get_or_add(testbase.db) #is transaction.get_or_add(c) is trans2.get_or_add(c) is c
+        assert transaction.get_or_add(testbase.db) is trans2.get_or_add(testbase.db) is transaction.get_or_add(c) is trans2.get_or_add(c) is c
+
+        try:
+            transaction.add(testbase.db.connect())
+            assert False
+        except exceptions.InvalidRequestError, e: 
+            assert str(e) == "Session already has a Connection associated for the given Connection's Engine"
+
+        try:
+            transaction.get_or_add(testbase.db.connect())
+            assert False
+        except exceptions.InvalidRequestError, e: 
+            assert str(e) == "Session already has a Connection associated for the given Connection's Engine"
+
+        try:
+            transaction.add(testbase.db)
+            assert False
+        except exceptions.InvalidRequestError, e: 
+            assert str(e) == "Session already has a Connection associated for the given Engine"
+
         trans2.commit()
         transaction.rollback()
         assert len(sess.query(User).select()) == 0

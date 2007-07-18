@@ -39,9 +39,10 @@ class SessionTransaction(object):
     def add(self, bind):
         if self.parent is not None:
             return self.parent.add(bind)
-            
+
         if self.connections.has_key(bind.engine):
-            raise exceptions.InvalidRequestError("Session already has a Connection associated for the given Connection's Engine")
+            raise exceptions.InvalidRequestError("Session already has a Connection associated for the given %sEngine" % (isinstance(bind, engine.Connection) and "Connection's " or ""))
+            
         return self.get_or_add(bind)
 
     def get_or_add(self, bind):
@@ -57,6 +58,8 @@ class SessionTransaction(object):
         else:
             e = bind.engine
             c = bind
+            if e in self.connections:
+                raise exceptions.InvalidRequestError("Session already has a Connection associated for the given Connection's Engine")
 
         self.connections[bind] = self.connections[e] = (c, c.begin(), c is not bind)
         return self.connections[bind][0]
