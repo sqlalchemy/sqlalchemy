@@ -303,6 +303,14 @@ To continue the `MyClass` example:
                primary_key=True)
     )
 
+    class User(object):
+        def __init__(self, name):
+            self.name = name
+
+    class Keyword(object):
+        def __init__(self, keyword):
+            self.keyword = keyword
+
     mapper(User, users, properties={
         'kw': relation(Keyword, secondary=userkeywords)
         })
@@ -324,16 +332,13 @@ With ``association_proxy`` you have a "view" of the relation that contains just 
 
     {python}
     from sqlalchemy.ext.associationproxy import association_proxy
+
     class User(object):
         def __init__(self, name):
             self.name = name
 
         # proxy the 'keyword' attribute from the 'kw' relation
         keywords = association_proxy('kw', 'keyword')
-
-    class Keyword(object):
-        def __init__(self, keyword):
-            self.keyword = keyword
 
     # ...
     >>> user.kw
