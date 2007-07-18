@@ -368,7 +368,7 @@ def and_(*clauses):
     """
     if len(clauses) == 1:
         return clauses[0]
-    return ClauseList(operator='AND', negate='OR', *clauses)
+    return ClauseList(operator='AND', *clauses)
 
 def or_(*clauses):
     """Join a list of clauses together using the ``OR`` operator.
@@ -379,7 +379,7 @@ def or_(*clauses):
 
     if len(clauses) == 1:
         return clauses[0]
-    return ClauseList(operator='OR', negate='AND', *clauses)
+    return ClauseList(operator='OR', *clauses)
 
 def not_(clause):
     """Return a negation of the given clause, i.e. ``NOT(clause)``.
@@ -1936,7 +1936,7 @@ class ClauseList(ClauseElement):
         if hasattr(self, 'negation_clause'):
             return self.negation_clause
         elif self.negate_operator is None:
-            return super(ClauseList, self).negate()
+            return super(ClauseList, self)._negate()
         else:
             return ClauseList(operator=self.negate_operator, negate=self.operator, *(not_(c) for c in self.clauses))
 

@@ -151,6 +151,7 @@ class BindTest(testbase.PersistTest):
                     assert str(e) == "This Compiled object is not bound to any Engine or Connection."
                 
         finally:
+            bind.close()
             metadata.drop_all(bind=testbase.db)
     
     def test_session(self):
@@ -183,6 +184,7 @@ class BindTest(testbase.PersistTest):
                 assert str(e).startswith("Could not locate any Engine or Connection bound to mapper")
                 
         finally:
+            bind.close()
             metadata.drop_all(bind=testbase.db)
         
                

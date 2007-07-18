@@ -746,7 +746,7 @@ class Query(object):
         else:
             primary_key = self.primary_key_columns
             s = sql.select([sql.func.count(list(primary_key)[0])], whereclause, from_obj=from_obj, **context.select_args())
-        return self.session.scalar(self.mapper, s, params=self._params)
+        return self.session.scalar(s, params=self._params, mapper=self.mapper)
         
     def compile(self):
         """compiles and returns a SQL statement based on the criterion and conditions within this Query."""

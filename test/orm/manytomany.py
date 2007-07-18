@@ -279,15 +279,15 @@ class M2MTest3(testbase.ORMTest):
         class A(object):pass
         class B(object):pass
 
-        assign_mapper(B, b)
+        mapper(B, b)
 
-        assign_mapper(A, a, 
+        mapper(A, a, 
             properties = {
                 'tbs' : relation(B, primaryjoin=and_(b.c.a1==a.c.a1, b.c.b2 == True), lazy=False),
             }
         )
 
-        assign_mapper(C, c, 
+        mapper(C, c, 
             properties = {
                 'a1s' : relation(A, secondary=c2a1, lazy=False),
                 'a2s' : relation(A, secondary=c2a2, lazy=False)

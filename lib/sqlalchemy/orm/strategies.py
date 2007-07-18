@@ -104,7 +104,7 @@ class ColumnLoader(LoaderStrategy):
             for c in param_names:
                 params[c.name] = mapper.get_attr_by_column(instance, c)
 
-            result = session.execute(mapper, statement, params)
+            result = session.execute(statement, params, mapper=mapper)
             try:
                 row = result.fetchone()
                 for prop in group:
@@ -194,7 +194,7 @@ class DeferredColumnLoader(LoaderStrategy):
                 statement = sql.select([self.columns[0]], clause, from_obj=[localparent.mapped_table], use_labels=True)
                     
             if group is not None:
-                result = session.execute(localparent, statement, params)
+                result = session.execute(statement, params, mapper=localparent)
                 try:
                     row = result.fetchone()
                     for prop in group:
@@ -203,7 +203,7 @@ class DeferredColumnLoader(LoaderStrategy):
                 finally:
                     result.close()
             else:
-                return session.scalar(localparent, sql.select([self.columns[0]], clause, from_obj=[localparent.mapped_table], use_labels=True),params)
+                return session.scalar(sql.select([self.columns[0]], clause, from_obj=[localparent.mapped_table], use_labels=True),params, mapper=localparent)
 
         return lazyload
                 

@@ -44,7 +44,7 @@ class RelationTest(testbase.PersistTest):
     def setUp(self):
         global session
         session = create_session(bind=testbase.db)
-        conn = session.connect()
+        conn = testbase.db.connect()
         conn.create(tbl_a)
         conn.create(tbl_b)
         conn.create(tbl_c)
@@ -82,7 +82,7 @@ class RelationTest(testbase.PersistTest):
         session.save_or_update(b)
         
     def tearDown(self):
-        conn = session.connect()
+        conn = testbase.db.connect()
         conn.drop(tbl_d)
         conn.drop(tbl_c)
         conn.drop(tbl_b)

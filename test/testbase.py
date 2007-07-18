@@ -59,7 +59,6 @@ firebird=firebird://sysdba:s@localhost/tmp/test.fdb
     parser.add_option("--quiet", action="store_true", dest="quiet", help="suppress unittest output")
     parser.add_option("--log-info", action="append", dest="log_info", help="turn on info logging for <LOG> (multiple OK)")
     parser.add_option("--log-debug", action="append", dest="log_debug", help="turn on debug logging for <LOG> (multiple OK)")
-    parser.add_option("--nothreadlocal", action="store_true", dest="nothreadlocal", help="dont use thread-local mod")
     parser.add_option("--enginestrategy", action="store", default=None, dest="enginestrategy", help="engine strategy (plain or threadlocal, defaults to plain)")
     parser.add_option("--coverage", action="store_true", dest="coverage", help="Dump a full coverage report after running")
     parser.add_option("--reversetop", action="store_true", dest="topological", help="Reverse the collection ordering for topological sorts (helps reveal dependency issues)")
@@ -117,9 +116,6 @@ firebird=firebird://sysdba:s@localhost/tmp/test.fdb
     if options.mysql_engine:
         table_options['mysql_engine'] = options.mysql_engine
 
-    if not options.nothreadlocal:
-        __import__('sqlalchemy.mods.threadlocal')
-        sqlalchemy.mods.threadlocal.uninstall_plugin()
 
     global echo
     echo = options.verbose and not options.quiet
@@ -230,13 +226,6 @@ class PersistTest(unittest.TestCase):
         """DEPRECATED.  use print <statement>"""
         echo_text(text)
         
-    def install_threadlocal(self):
-        """DEPRECATED."""
-        sqlalchemy.mods.threadlocal.install_plugin()
-        
-    def uninstall_threadlocal(self):
-        """DEPRECATED."""
-        sqlalchemy.mods.threadlocal.uninstall_plugin()
 
     def setUpAll(self):
         pass
