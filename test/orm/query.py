@@ -226,7 +226,17 @@ class FilterTest(QueryTest):
 
         assert [Address(id=1), Address(id=5)] == sess.query(Address).filter(Address.user!=user).all()
 
+class AggregateTest(QueryTest):
+    def test_sum(self):
+        sess = create_session()
+        orders = sess.query(Order).filter(Order.id.in_(2, 3, 4))
+        assert orders.sum(Order.user_id * Order.address_id) == 79
+
+    def test_apply(self):
+        sess = create_session()
+        assert sess.query(Order).apply_sum(Order.user_id * Order.address_id).filter(Order.id.in_(2, 3, 4)).one() == 79
         
+                
 class CountTest(QueryTest):
     def test_basic(self):
         assert 4 == create_session().query(User).count()
